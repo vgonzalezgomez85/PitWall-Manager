@@ -1,0 +1,84 @@
+<%- include('../partials/header', { pageTitle: t('wizard.confirm_title') }) %>
+<div class="container container--narrow">
+
+  <%- include('../partials/wizard-progress', { step: wizard.has_pole ? 5 : 4, hasPole: wizard.has_pole }) %>
+
+  <h1 class="page-title"><%= t('wizard.confirm_title') %></h1>
+
+  <div class="summary-card">
+    <table class="summary-table">
+      <tr>
+        <th><%= t('wizard.summary_name') %></th>
+        <td><strong><%= wizard.name %></strong></td>
+      </tr>
+      <tr>
+        <th><%= t('wizard.summary_type') %></th>
+        <td><span class="badge badge--type"><%= t('races.type.' + wizard.type) %></span></td>
+      </tr>
+      <tr>
+        <th><%= t('wizard.summary_format') %></th>
+        <td><span class="badge badge--format"><%= t('races.format.' + wizard.format) %></span></td>
+      </tr>
+      <tr>
+        <th><%= t('wizard.summary_lanes') %></th>
+        <td><%= wizard.lanes_count %></td>
+      </tr>
+      <tr>
+        <th><%= t('wizard.manga_duration') %></th>
+        <td><%= wizard.manga_duration_minutes %> <%= lang === 'es' ? 'minutos' : 'minutes' %></td>
+      </tr>
+      <tr>
+        <th><%= lang === 'es' ? 'Pole position' : 'Pole position' %></th>
+        <td>
+          <% if (wizard.has_pole) { %>
+            <span class="badge" style="background:rgba(246,201,14,.15);color:#f6c90e;border:1px solid rgba(246,201,14,.3)">
+              🏁 <%= lang === 'es' ? 'Sí, con sesión de clasificación' : 'Yes, with qualifying session' %>
+            </span>
+          <% } else { %>
+            <span style="color:#8b949e"><%= lang === 'es' ? 'No' : 'No' %></span>
+          <% } %>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Lane sequence preview -->
+  <h2 class="section-title"><%= lang === 'es' ? 'Secuencia de carriles' : 'Lane sequence' %></h2>
+  <div class="seq-display" style="margin-bottom:2rem">
+    <% wizard.lane_sequence.forEach((lane, i) => { %>
+      <span class="seq-display__lane" style="background:<%= LANE_COLORS[lane-1] %>"><%= lane %></span>
+      <% if (i < wizard.lane_sequence.length - 1) { %><span class="seq-display__arrow">→</span><% } %>
+    <% }) %>
+  </div>
+
+  <% if (wizard.has_pole && wizard.participants?.length) { %>
+    <h2 class="section-title"><%= lang === 'es' ? 'Participantes de Pole' : 'Pole participants' %></h2>
+    <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:2rem">
+      <% wizard.participants.forEach((p, i) => { %>
+        <span class="badge badge--neutral" style="background:rgba(255,255,255,.06)">
+          <%= p.name %>
+          <% if (p.members?.length) { %>
+            <span style="color:#8b949e;font-size:.78rem;margin-left:.25rem">(<%= p.members.join(', ') %>)</span>
+          <% } %>
+        </span>
+      <% }) %>
+    </div>
+  <% } else if (!wizard.has_pole) { %>
+    <p class="form-hint" style="margin-bottom:2rem">
+      <%= lang === 'es'
+        ? 'Los participantes se añaden al crear cada tanda, no ahora.'
+        : 'Participants are added when creating each heat group, not now.' %>
+    </p>
+  <% } %>
+
+  <form action="/races" method="POST">
+    <div class="form-actions">
+      <a href="<%= wizard.has_pole ? '/races/new/step4' : '/races/new/step3' %>" class="btn btn--ghost">← <%= t('wizard.back') %></a>
+      <button type="submit" class="btn btn--primary btn--lg">
+        🏁 <%= t('wizard.confirm_create') %>
+      </button>
+    </div>
+  </form>
+
+</div>
+<%- include('../partials/footer') %>

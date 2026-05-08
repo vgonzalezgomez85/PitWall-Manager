@@ -1,0 +1,50 @@
+<%- include('../partials/header', { pageTitle: t('races.title') }) %>
+<div class="container">
+
+  <div class="page-header">
+    <h1 class="page-title"><%= t('races.title') %></h1>
+    <a href="/races/new" class="btn btn--primary">+ <%= t('nav.new_race') %></a>
+  </div>
+
+  <% if (races.length === 0) { %>
+    <div class="empty-state">
+      <div class="empty-state__icon">🏁</div>
+      <p class="empty-state__text"><%= t('races.no_races') %></p>
+      <a href="/races/new" class="btn btn--primary"><%= t('races.create_first') %></a>
+    </div>
+  <% } else { %>
+    <div class="race-grid">
+      <% races.forEach(race => { %>
+        <a href="/races/<%= race.id %>" class="race-card">
+          <div class="race-card__header">
+            <span class="badge badge--<%= race.status %>"><%= t('races.status.' + race.status) %></span>
+            <span class="badge badge--type"><%= t('races.type.' + race.type) %></span>
+          </div>
+          <h2 class="race-card__name"><%= race.name %></h2>
+          <div class="race-card__meta">
+            <span class="meta-item">
+              <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 1.5a5.5 5.5 0 110 11 5.5 5.5 0 010-11zM7.25 4v4.25l3.25 1.95.75-1.25-2.75-1.65V4h-1.25z"/></svg>
+              <%= new Date(race.created_at).toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-GB') %>
+            </span>
+            <span class="meta-item">
+              <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5A6.5 6.5 0 1014.5 8 6.51 6.51 0 008 1.5zm0-1.5a8 8 0 110 16A8 8 0 018 0zm.5 4.75v3.5l3 1.75-.75 1.25-3.5-2.04V4.75h1.25z"/></svg>
+              <%= race.format === 'team' ? t('races.format.team') : t('races.format.individual') %>
+            </span>
+            <span class="meta-item">
+              <svg viewBox="0 0 16 16" fill="currentColor"><path d="M1 1h14v2H1V1zm0 4h14v2H1V5zm0 4h14v2H1V9zm0 4h14v2H1v-2z"/></svg>
+              <%= race.lanes_count %> <%= t('races.lanes') %>
+            </span>
+            <% if (race.driver_count > 0) { %>
+            <span class="meta-item">
+              <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 8a3 3 0 100-6 3 3 0 000 6zm-5 6s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3z"/></svg>
+              <%= race.driver_count %> <%= t('races.drivers') %>
+            </span>
+            <% } %>
+          </div>
+        </a>
+      <% }) %>
+    </div>
+  <% } %>
+
+</div>
+<%- include('../partials/footer') %>

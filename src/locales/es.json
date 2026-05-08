@@ -1,0 +1,123 @@
+{
+  "app": {
+    "title": "Slot Timer Pro",
+    "tagline": "Gestión de carreras de scalextric"
+  },
+  "nav": {
+    "races": "Carreras",
+    "new_race": "Nueva Carrera"
+  },
+  "races": {
+    "title": "Carreras",
+    "no_races": "No hay carreras registradas",
+    "create_first": "Crea tu primera carrera",
+    "lanes": "Carriles",
+    "drivers": "Pilotos",
+    "teams": "Equipos",
+    "created": "Creada",
+    "status": {
+      "pending": "Pendiente",
+      "active": "En curso",
+      "completed": "Completada",
+      "finished": "Finalizada"
+    },
+    "type": {
+      "club": "Club",
+      "championship": "Campeonato"
+    },
+    "format": {
+      "individual": "Individual",
+      "team": "Por Equipos"
+    }
+  },
+  "wizard": {
+    "step": "Paso",
+    "of": "de",
+    "steps": {
+      "type": "Tipo",
+      "format": "Formato",
+      "sequence": "Secuencia",
+      "confirm": "Confirmar",
+      "participants": "Participantes"
+    },
+    "step1_title": "Nueva Carrera — Tipo",
+    "step2_title": "Nueva Carrera — Formato",
+    "step3_seq_title": "Nueva Carrera — Secuencia de Carriles",
+    "confirm_title": "Nueva Carrera — Confirmación",
+    "race_name": "Nombre de la carrera",
+    "race_name_placeholder": "Ej: Gran Premio de Navidad",
+    "race_type": "Tipo de carrera",
+    "club_race": "Carrera de Club",
+    "club_race_desc": "Carrera informal entre aficionados",
+    "championship_race": "Carrera de Campeonato",
+    "championship_race_desc": "Puntuable para el campeonato oficial",
+    "lanes_count": "Número de carriles",
+    "lanes_hint": "Entre 2 y 32 carriles",
+    "manga_duration": "Duración de manga",
+    "race_format": "Formato de carrera",
+    "individual": "Individual",
+    "individual_desc": "Cada carril tiene un piloto asignado",
+    "team": "Por Equipos",
+    "team_desc": "Cada carril tiene un equipo con varios integrantes",
+    "members_per_team": "Integrantes por equipo",
+    "members_hint": "Todos los equipos tendrán el mismo número de integrantes",
+    "team_name": "Nombre del equipo",
+    "team_name_ph": "Ej: Scuderia Ferrari",
+    "member_name": "Nombre del integrante",
+    "member_ph": "Ej: Carlos Sainz",
+    "lane": "Carril",
+    "driver_name": "Nombre del piloto",
+    "driver_name_ph": "Ej: Max Verstappen",
+    "optional": "Opcional",
+    "confirm_create": "Crear Carrera",
+    "back": "Volver",
+    "next": "Siguiente",
+    "summary": "Resumen",
+    "summary_name": "Nombre",
+    "summary_type": "Tipo",
+    "summary_format": "Formato",
+    "summary_lanes": "Carriles",
+    "summary_members": "Integrantes por equipo",
+    "no_name": "(sin nombre)"
+  },
+  "race": {
+    "details": "Detalles",
+    "teams": "Equipos",
+    "drivers": "Pilotos",
+    "lane": "Carril",
+    "members": "Integrantes",
+    "status": "Estado",
+    "start": "Iniciar carrera",
+    "delete": "Eliminar carrera",
+    "delete_confirm": "¿Seguro que quieres eliminar esta carrera? Esta acción no se puede deshacer.",
+    "back_to_list": "Volver a la lista"
+  },
+  "drivers": {
+    "title": "Base de datos de pilotos",
+    "categories": {
+      "platino": "Platino",
+      "oro": "Oro",
+      "plata": "Plata",
+      "bronce": "Bronce"
+    }
+  },
+  "errors": {
+    "name_required": "El nombre de la carrera es obligatorio (mínimo 2 caracteres)",
+    "type_required": "Debes seleccionar el tipo de carrera",
+    "lanes_invalid": "El número de carriles debe estar entre 2 y 32",
+    "duration_invalid": "La duración de la manga debe estar entre 1 y 120 minutos",
+    "format_required": "Debes seleccionar el formato de carrera",
+    "sequence_invalid": "La secuencia debe contener cada carril exactamente una vez",
+    "members_count_invalid": "El número de integrantes debe ser entre 1 y 10",
+    "not_enough_teams": "El número de equipos debe ser igual al número de carriles en la secuencia",
+    "not_enough_drivers": "El número de pilotos debe ser igual al número de carriles en la secuencia",
+    "category_required": "Debes seleccionar una categoría"
+  },
+  "actions": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "back": "Volver"
+  }
+}

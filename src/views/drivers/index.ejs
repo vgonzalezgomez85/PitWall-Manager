@@ -1,0 +1,101 @@
+<%- include('../partials/header', { pageTitle: lang === 'es' ? 'Pilotos' : 'Drivers' }) %>
+<div class="container">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title"><%= lang === 'es' ? 'Base de datos de pilotos' : 'Driver database' %></h1>
+      <p class="page-subtitle"><%= profiles.length %> <%= lang === 'es' ? 'pilotos registrados' : 'registered drivers' %></p>
+    </div>
+    <div class="page-header__actions">
+      <a href="/plantilla_pilotos.csv" download class="btn btn--ghost">
+        ⬇ <%= lang === 'es' ? 'Plantilla CSV' : 'CSV Template' %>
+      </a>
+      <button class="btn btn--ghost" onclick="document.getElementById('csv-import-panel').classList.toggle('hidden')">
+        📂 <%= lang === 'es' ? 'Importar CSV' : 'Import CSV' %>
+      </button>
+      <a href="/drivers/new" class="btn btn--primary">+ <%= lang === 'es' ? 'Nuevo piloto' : 'New driver' %></a>
+    </div>
+  </div>
+
+  <!-- CSV Import panel -->
+  <div id="csv-import-panel" class="hidden" style="margin-bottom:1.5rem">
+    <div class="form-card" style="padding:1.25rem">
+      <p class="form-label" style="margin-bottom:.75rem">
+        <%= lang === 'es'
+          ? 'Selecciona un fichero CSV con columnas: nombre, categoria (opcional)'
+          : 'Select a CSV file with columns: nombre, categoria (optional)' %>
+      </p>
+      <form action="/drivers/import" method="POST" id="csv-form">
+        <input type="hidden" name="csv_content" id="csv-content-input">
+        <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap">
+          <input type="file" id="csv-file-picker" accept=".csv,text/csv" class="btn btn--ghost"
+                 style="cursor:pointer;padding:.4rem .75rem">
+          <span id="csv-file-name" class="form-hint"></span>
+          <button type="submit" id="csv-submit" class="btn btn--primary" disabled>
+            <%= lang === 'es' ? 'Importar' : 'Import' %>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <% if (profiles.length === 0) { %>
+    <div class="empty-state">
+      <div class="empty-state__icon">🏎️</div>
+      <p class="empty-state__text">
+        <%= lang === 'es' ? 'Sin pilotos registrados. Añade el primero.' : 'No drivers registered yet. Add the first one.' %>
+      </p>
+      <a href="/drivers/new" class="btn btn--primary">+ <%= lang === 'es' ? 'Añadir piloto' : 'Add driver' %></a>
+    </div>
+  <% } else { %>
+
+    <% const CATEGORIES = ['platino','oro','plata','bronce']; %>
+    <% const CAT_LABELS = { es: { platino:'Platino', oro:'Oro', plata:'Plata', bronce:'Bronce' }, en: { platino:'Platinum', oro:'Gold', plata:'Silver', bronce:'Bronze' } }; %>
+
+    <% CATEGORIES.forEach(cat => { %>
+      <% const group = profiles.filter(p => p.category === cat); %>
+      <% if (group.length > 0) { %>
+        <div class="section-header" style="margin:1.75rem 0 .6rem">
+          <span class="cat-badge cat-badge--<%= cat %>">
+            <span class="cat-badge__icon"><%= {platino:'💎',oro:'🥇',plata:'🥈',bronce:'🥉'}[cat] %></span>
+            <%= CAT_LABELS[lang][cat] %>
+            <span class="cat-badge__count"><%= group.length %></span>
+          </span>
+        </div>
+        <div class="drivers-list">
+          <% group.forEach(p => { %>
+            <div class="driver-profile-card">
+              <div class="driver-profile-card__info">
+                <span class="cat-dot cat-dot--<%= p.category %>"></span>
+                <span class="driver-profile-card__name"><%= p.name %></span>
+              </div>
+              <div style="display:flex;gap:.3rem">
+                <a href="/drivers/<%= p.id %>/edit" class="btn btn--ghost btn--sm">✏</a>
+                <form action="/drivers/<%= p.id %>?_method=DELETE" method="POST" style="display:inline"
+                      onsubmit="return confirm('<%= lang === 'es' ? '¿Eliminar piloto?' : 'Delete driver?' %>')">
+                  <button type="submit" class="btn btn--danger btn--sm">✕</button>
+                </form>
+              </div>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+    <% }) %>
+
+  <% } %>
+
+</div>
+<script>
+document.getElementById('csv-file-picker').addEventListener('change', function() {
+  const file = this.files[0];
+  if (!file) return;
+  document.getElementById('csv-file-name').textContent = file.name;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('csv-content-input').value = e.target.result;
+    document.getElementById('csv-submit').disabled = false;
+  };
+  reader.readAsText(file, 'UTF-8');
+});
+</script>
+<%- include('../partials/footer') %>

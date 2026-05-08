@@ -1,0 +1,268 @@
+<%- include('../partials/header', { pageTitle: (lang === 'es' ? 'Resultados' : 'Results') + ' — ' + race.name }) %>
+<style>
+@media print {
+  .navbar, .page-header__actions, .results-tabs, .back-link,
+  .results-panel:not(.active) { display: none !important; }
+  .results-panel.active { display: block !important; }
+  body { background: #fff !important; color: #000 !important; }
+  .results-table { border-collapse: collapse; width: 100%; }
+  .results-table th, .results-table td { border: 1px solid #ccc; padding: 6px 10px; }
+  .results-table thead th { background: #f0f0f0 !important; color: #000 !important; }
+  .pos-badge { border: 1px solid #999; color: #000 !important; background: none !important; }
+  .result-highlight { font-weight: 700; }
+  .page-title::before { content: "<%= race.name %> — "; font-size: 1rem; color: #555; display: block; }
+}
+</style>
+<div class="container">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <a href="/races/<%= race.id %>" class="back-link">← <%= t('race.back_to_list') %></a>
+      <h1 class="page-title"><%= lang === 'es' ? 'Resultados' : 'Results' %></h1>
+      <p class="page-subtitle"><%= race.name %> · <%= t('races.type.' + race.type) %> · <%= t('races.format.' + race.format) %></p>
+    </div>
+    <div class="page-header__actions">
+      <span class="badge badge--neutral"><%= tandas.length %> <%= lang === 'es' ? 'tandas' : 'rounds' %></span>
+      <a href="/races/<%= race.id %>/results/xlsx?lang=<%= lang %>" class="btn btn--ghost btn--sm" title="<%= lang === 'es' ? 'Exportar a Excel' : 'Export to Excel' %>">
+        📊 Excel
+      </a>
+      <button class="btn btn--ghost btn--sm" onclick="window.print()" title="<%= lang === 'es' ? 'Guardar como PDF' : 'Save as PDF' %>">
+        🖨 PDF
+      </button>
+    </div>
+  </div>
+
+  <% if (results.length === 0) { %>
+    <div class="empty-state">
+      <div class="empty-state__icon">📊</div>
+      <p class="empty-state__text">
+        <%= lang === 'es' ? 'Sin datos todavía. Completa al menos una manga para ver resultados.' : 'No data yet. Complete at least one heat to see results.' %>
+      </p>
+    </div>
+  <% } else { %>
+
+    <%
+      function fmtMs(ms) {
+        if (ms == null) return '—';
+        const totalSec   = Math.floor(ms / 1000);
+        const hundredths = Math.floor((ms % 1000) / 10);
+        const secs = totalSec % 60;
+        const mins = Math.floor(totalSec / 60);
+        return (mins > 0 ? mins + ':' : '') + String(secs).padStart(mins > 0 ? 2 : 1, '0') + '.' + String(hundredths).padStart(2, '0');
+      }
+    %>
+
+    <!-- Tab nav -->
+    <div class="results-tabs">
+      <button class="results-tab active" data-tab="total">
+        🏆 <%= lang === 'es' ? 'Total vueltas' : 'Total laps' %>
+      </button>
+      <button class="results-tab" data-tab="best">
+        ⚡ <%= lang === 'es' ? 'Mejor vuelta' : 'Best lap' %>
+      </button>
+      <button class="results-tab" data-tab="avg">
+        📈 <%= lang === 'es' ? 'Vuelta media' : 'Average lap' %>
+      </button>
+      <button class="results-tab" data-tab="lanes">
+        🗂 <%= lang === 'es' ? 'Por carril' : 'Per lane' %>
+      </button>
+    </div>
+
+    <!-- ── Total laps ranking ── -->
+    <div class="results-panel active" id="tab-total">
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th class="col-pos">#</th>
+            <th><%= lang === 'es' ? 'Piloto / Equipo' : 'Driver / Team' %></th>
+            <th class="col-num"><%= lang === 'es' ? 'Vueltas' : 'Laps' %></th>
+            <th class="col-num"><%= lang === 'es' ? 'Mejor' : 'Best' %></th>
+            <th class="col-num"><%= lang === 'es' ? 'Media' : 'Avg' %></th>
+            <th class="col-num"><%= lang === 'es' ? 'Mangas' : 'Heats' %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% const byTotal = [...results].sort((a,b) => b.total_laps - a.total_laps || (a.best_lap_ms||Infinity) - (b.best_lap_ms||Infinity)); %>
+          <% byTotal.forEach((r, i) => { %>
+            <tr class="results-row <%= i < 3 ? 'top-' + (i+1) : '' %>">
+              <td class="col-pos">
+                <span class="pos-badge pos-<%= i+1 %>"><%= i+1 %></span>
+              </td>
+              <td>
+                <% if (r.color) { %>
+                  <span class="lane-dot" style="background:<%= r.color %>; width:10px; height:10px; display:inline-block; border-radius:3px; margin-right:6px;"></span>
+                <% } %>
+                <strong><%= r.entity_name %></strong>
+              </td>
+              <td class="col-num result-highlight"><%= r.total_laps %></td>
+              <td class="col-num"><%= fmtMs(r.best_lap_ms) %></td>
+              <td class="col-num text-muted"><%= fmtMs(Math.round(r.avg_lap_ms)) %></td>
+              <td class="col-num text-muted"><%= r.mangas_raced %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ── Best lap ranking ── -->
+    <div class="results-panel" id="tab-best">
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th class="col-pos">#</th>
+            <th><%= lang === 'es' ? 'Piloto / Equipo' : 'Driver / Team' %></th>
+            <th class="col-num"><%= lang === 'es' ? 'Mejor vuelta' : 'Best lap' %></th>
+            <th class="col-num"><%= lang === 'es' ? 'Vueltas' : 'Laps' %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% const byBest = [...results].filter(r => r.best_lap_ms).sort((a,b) => a.best_lap_ms - b.best_lap_ms); %>
+          <% byBest.forEach((r, i) => { %>
+            <tr class="results-row <%= i < 3 ? 'top-' + (i+1) : '' %>">
+              <td class="col-pos">
+                <span class="pos-badge pos-<%= i+1 %>"><%= i+1 %></span>
+              </td>
+              <td>
+                <% if (r.color) { %>
+                  <span class="lane-dot" style="background:<%= r.color %>; width:10px; height:10px; display:inline-block; border-radius:3px; margin-right:6px;"></span>
+                <% } %>
+                <strong><%= r.entity_name %></strong>
+              </td>
+              <td class="col-num result-highlight"><%= fmtMs(r.best_lap_ms) %></td>
+              <td class="col-num text-muted"><%= r.total_laps %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ── Average lap ranking ── -->
+    <div class="results-panel" id="tab-avg">
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th class="col-pos">#</th>
+            <th><%= lang === 'es' ? 'Piloto / Equipo' : 'Driver / Team' %></th>
+            <th class="col-num"><%= lang === 'es' ? 'Media' : 'Average' %></th>
+            <th class="col-num"><%= lang === 'es' ? 'Vueltas' : 'Laps' %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% const byAvg = [...results].filter(r => r.avg_lap_ms).sort((a,b) => a.avg_lap_ms - b.avg_lap_ms); %>
+          <% byAvg.forEach((r, i) => { %>
+            <tr class="results-row <%= i < 3 ? 'top-' + (i+1) : '' %>">
+              <td class="col-pos">
+                <span class="pos-badge pos-<%= i+1 %>"><%= i+1 %></span>
+              </td>
+              <td>
+                <% if (r.color) { %>
+                  <span class="lane-dot" style="background:<%= r.color %>; width:10px; height:10px; display:inline-block; border-radius:3px; margin-right:6px;"></span>
+                <% } %>
+                <strong><%= r.entity_name %></strong>
+              </td>
+              <td class="col-num result-highlight"><%= fmtMs(Math.round(r.avg_lap_ms)) %></td>
+              <td class="col-num text-muted"><%= r.total_laps %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ── Per-lane breakdown ── -->
+    <div class="results-panel" id="tab-lanes">
+      <% results.forEach(r => { %>
+        <div class="per-lane-block">
+          <div class="per-lane-header">
+            <% if (r.color) { %>
+              <span class="lane-dot" style="background:<%= r.color %>; width:14px; height:14px; display:inline-block; border-radius:4px; margin-right:8px; flex-shrink:0"></span>
+            <% } %>
+            <strong><%= r.entity_name %></strong>
+            <span class="text-muted" style="font-size:.8rem; margin-left:.5rem">
+              <%= r.total_laps %> <%= lang === 'es' ? 'vueltas totales' : 'total laps' %>
+            </span>
+          </div>
+          <% if (r.perLane && r.perLane.length > 0) { %>
+            <table class="per-lane-table">
+              <thead>
+                <tr>
+                  <th><%= lang === 'es' ? 'Carril' : 'Lane' %></th>
+                  <th class="col-num"><%= lang === 'es' ? 'Vueltas' : 'Laps' %></th>
+                  <th class="col-num"><%= lang === 'es' ? 'Mejor' : 'Best' %></th>
+                  <th class="col-num"><%= lang === 'es' ? 'Media' : 'Avg' %></th>
+                  <th class="col-num" title="<%= lang === 'es' ? 'Salidas de pista' : 'Off-track exits' %>">🚨</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% r.perLane.forEach(pl => { %>
+                  <tr>
+                    <td>
+                      <span class="lane-dot" style="background:<%= LANE_COLORS[pl.lane-1] || '#8b949e' %>"><%= pl.lane %></span>
+                    </td>
+                    <td class="col-num"><%= pl.laps %></td>
+                    <td class="col-num"><%= fmtMs(pl.best_ms) %></td>
+                    <td class="col-num text-muted"><%= fmtMs(Math.round(pl.avg_ms)) %></td>
+                    <td class="col-num" style="<%= pl.exit_count > 0 ? 'color:#e63946;font-weight:600' : 'color:#8b949e' %>">
+                      <%= pl.exit_count || 0 %>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          <% } else { %>
+            <p class="form-hint" style="padding:.5rem 0"><%= lang === 'es' ? 'Sin datos de vueltas.' : 'No lap data.' %></p>
+          <% } %>
+        </div>
+      <% }) %>
+    </div>
+
+  <% } %>
+
+  <!-- Lap corrections per manga -->
+  <% if (tandas.some(t => t.mangas && t.mangas.length > 0)) { %>
+    <div style="margin-top:2.5rem">
+      <h2 class="section-title">
+        🔧 <%= lang === 'es' ? 'Corrección de vueltas' : 'Lap Corrections' %>
+      </h2>
+      <p class="form-hint" style="margin-bottom:1rem">
+        <%= lang === 'es'
+          ? 'Elimina vueltas fantasma, transfiere vueltas entre carriles o añade vueltas manualmente.'
+          : 'Remove ghost laps, transfer laps between lanes, or add laps manually.' %>
+      </p>
+      <div style="display:flex;flex-direction:column;gap:.5rem">
+        <% tandas.forEach(t => { %>
+          <% if (t.mangas && t.mangas.length > 0) { %>
+            <div class="tanda-block" style="padding:.75rem 1rem">
+              <span class="tanda-num"><%= lang === 'es' ? 'Tanda' : 'Round' %> <%= t.number %></span>
+              <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.5rem">
+                <% t.mangas.forEach(m => { %>
+                  <a href="/races/<%= race.id %>/mangas/<%= m.id %>/corrections"
+                     class="btn btn--ghost btn--sm">
+                    <%= lang === 'es' ? 'Manga' : 'Heat' %> <%= m.number %>
+                    <span class="badge badge--<%= m.status %>" style="font-size:.65rem;margin-left:.3rem">
+                      <%= {pending: lang==='es'?'Pend.':'Pend.', active: lang==='es'?'Activa':'Active', finished: '✓'}[m.status] %>
+                    </span>
+                  </a>
+                <% }) %>
+              </div>
+            </div>
+          <% } %>
+        <% }) %>
+      </div>
+    </div>
+  <% } %>
+
+</div>
+
+<script>
+  document.querySelectorAll('.results-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.results-tab').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.results-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+</script>
+
+<%- include('../partials/footer') %>

@@ -1,0 +1,190 @@
+<%
+function formatMs(ms) {
+  if (!ms) return '—';
+  const m = Math.floor(ms / 60000);
+  const s = ((ms % 60000) / 1000).toFixed(3).padStart(6, '0');
+  return m > 0 ? m + ':' + s : s + 's';
+}
+%>
+<%- include('../partials/header', { pageTitle: lang === 'es' ? 'Elección de Carriles' : 'Lane Selection' }) %>
+<div class="container container--narrow">
+
+  <a href="/races/<%= race.id %>/pole/results" class="back-link">← <%= lang === 'es' ? 'Volver a resultados' : 'Back to results' %></a>
+  <h1 class="page-title">🚦 <%= lang === 'es' ? 'Elección de Carril de Salida' : 'Starting Lane Selection' %></h1>
+  <p class="page-subtitle">
+    <%= race.name %> ·
+    <%= lang === 'es'
+      ? 'Elige en orden de clasificación de pole. El primero en elegir es el poleman.'
+      : 'Choose in pole order. The pole sitter picks first.' %>
+  </p>
+
+  <div class="pole-lanes-layout">
+
+    <!-- Left: participants in pole order -->
+    <div class="pole-pickers">
+      <h3 class="pole-section-title">
+        <%= lang === 'es' ? 'Orden de elección' : 'Pick order' %>
+      </h3>
+      <% entries.forEach((entry, idx) => { %>
+        <div class="pole-picker-row" id="picker-<%= idx %>" data-idx="<%= idx %>">
+          <span class="pos-badge <%= idx === 0 ? 'pos-1' : '' %>" style="<%= idx === 0 ? 'background:#f6c90e;color:#000' : '' %>">
+            <%= idx + 1 %>
+          </span>
+          <span class="pole-picker-name"><%= entry.entity_name %></span>
+          <span class="pole-picker-time"><%= formatMs(entry.lap_time_ms) %></span>
+          <span class="pole-picker-lane" id="picked-<%= idx %>"></span>
+        </div>
+      <% }) %>
+    </div>
+
+    <!-- Right: lane grid -->
+    <div class="pole-lane-grid-wrap">
+      <h3 class="pole-section-title">
+        <span id="pickPrompt">
+          <%= lang === 'es'
+            ? `${entries[0]?.entity_name || ''} elige carril…`
+            : `${entries[0]?.entity_name || ''} picks a lane…` %>
+        </span>
+      </h3>
+      <div class="pole-lane-grid" id="laneGrid">
+        <% activeLanes.forEach(lane => { %>
+          <button type="button"
+                  class="pole-lane-btn-big"
+                  id="lane-btn-<%= lane %>"
+                  data-lane="<%= lane %>"
+                  style="--card-color:<%= LANE_COLORS[lane - 1] %>">
+            <span class="pole-lane-num"><%= lane %></span>
+            <span class="pole-lane-owner" id="lane-owner-<%= lane %>"></span>
+          </button>
+        <% }) %>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Rest participants (if more than active lanes) -->
+  <% if (entries.length > activeLanes.length) { %>
+    <p class="form-hint" style="margin-top:1rem">
+      ℹ️ <%= lang === 'es'
+        ? `Los últimos ${entries.length - activeLanes.length} participante(s) descansarán en la manga 1 y entrarán en rotación en las siguientes.`
+        : `The last ${entries.length - activeLanes.length} participant(s) will rest in heat 1 and rotate in from heat 2.` %>
+    </p>
+  <% } %>
+
+  <!-- Hidden form for submission -->
+  <form id="laneForm" action="/races/<%= race.id %>/pole/lanes" method="POST" style="margin-top:1.5rem">
+    <div id="hiddenInputs"></div>
+    <div id="formActions" style="display:none">
+      <div class="form-actions">
+        <a href="/races/<%= race.id %>/pole/results" class="btn btn--ghost">← <%= lang === 'es' ? 'Volver' : 'Back' %></a>
+        <button type="submit" class="btn btn--primary btn--lg">
+          🏁 <%= lang === 'es' ? 'Crear Primera Tanda' : 'Create First Heat Group' %>
+        </button>
+      </div>
+    </div>
+  </form>
+
+</div>
+
+<script>
+const LANG          = "<%= lang %>";
+const ACTIVE_LANES  = <%- JSON.stringify(activeLanes) %>;
+const LANE_COLORS   = <%- JSON.stringify(LANE_COLORS) %>;
+const ENTRIES       = <%- JSON.stringify(entries.map(e => ({ name: e.entity_name }))) %>;
+const TOTAL_PICKERS = Math.min(ENTRIES.length, ACTIVE_LANES.length);
+
+let currentPicker = 0;
+// laneOrder[seqPos] = entity_name  (matches the extended[] array in buildSchedule)
+const laneOrder = Array(ACTIVE_LANES.length).fill(null);
+
+function pickerName(idx) { return ENTRIES[idx]?.name || ''; }
+
+function updatePrompt() {
+  const el = document.getElementById('pickPrompt');
+  if (currentPicker >= TOTAL_PICKERS) {
+    el.textContent = LANG === 'es' ? '✓ Todos han elegido carril' : '✓ All lanes assigned';
+    return;
+  }
+  el.textContent = LANG === 'es'
+    ? `${pickerName(currentPicker)} elige carril…`
+    : `${pickerName(currentPicker)} picks a lane…`;
+}
+
+function highlightCurrentPicker() {
+  document.querySelectorAll('.pole-picker-row').forEach((row, i) => {
+    row.classList.toggle('pole-picker-row--active', i === currentPicker);
+    row.classList.toggle('pole-picker-row--done',   i < currentPicker || (i >= TOTAL_PICKERS));
+  });
+}
+
+function pickLane(lane) {
+  if (currentPicker >= TOTAL_PICKERS) return;
+
+  // Find the position of this lane in ACTIVE_LANES (= its sequence index)
+  const seqIdx = ACTIVE_LANES.indexOf(lane);
+  if (seqIdx < 0 || laneOrder[seqIdx] !== null) return; // already taken
+
+  const name = pickerName(currentPicker);
+  laneOrder[seqIdx] = name;
+
+  // Update lane button
+  const btn = document.getElementById('lane-btn-' + lane);
+  if (btn) {
+    btn.classList.add('pole-lane-btn-big--taken');
+    btn.disabled = true;
+    document.getElementById('lane-owner-' + lane).textContent = name;
+  }
+
+  // Update picker row
+  const picked = document.getElementById('picked-' + currentPicker);
+  if (picked) {
+    picked.innerHTML = `<span class="lane-dot-inline" style="background:${LANE_COLORS[lane-1]}">${lane}</span>`;
+  }
+
+  currentPicker++;
+  updatePrompt();
+  highlightCurrentPicker();
+
+  // If all active pickers done, show submit
+  if (currentPicker >= TOTAL_PICKERS) {
+    buildForm();
+    document.getElementById('formActions').style.display = '';
+  }
+}
+
+function buildForm() {
+  const wrap = document.getElementById('hiddenInputs');
+  wrap.innerHTML = '';
+  // order[i] = name of entity at position i in laneSequence
+  laneOrder.forEach((name, i) => {
+    if (name) {
+      const inp = document.createElement('input');
+      inp.type  = 'hidden';
+      inp.name  = 'order[]';
+      inp.value = name;
+      wrap.appendChild(inp);
+    }
+  });
+  // Append remaining participants (rest in manga 1) in pole order
+  const pickedSet = new Set(laneOrder.filter(Boolean));
+  ENTRIES.slice(TOTAL_PICKERS).forEach(e => {
+    const inp = document.createElement('input');
+    inp.type  = 'hidden';
+    inp.name  = 'order[]';
+    inp.value = e.name;
+    wrap.appendChild(inp);
+  });
+}
+
+// Lane click handler
+document.getElementById('laneGrid').addEventListener('click', e => {
+  const btn = e.target.closest('.pole-lane-btn-big');
+  if (btn && !btn.disabled) pickLane(parseInt(btn.dataset.lane, 10));
+});
+
+// Init
+highlightCurrentPicker();
+updatePrompt();
+</script>
+
+<%- include('../partials/footer') %>

@@ -1,0 +1,8 @@
+{
+  "tier": "pro",
+  "licensee": "Nombre del Club",
+  "hardwareId": "62:1d:b0:9a:2e:b7",
+  "expiresAt": "2027-12-31",
+  "issuedAt": "2026-05-08",
+  "signature": "17fc6e10fd5510c81b1561e53a2766e4cba8b4b4a7be108961f8faecfe95a96c"
+}

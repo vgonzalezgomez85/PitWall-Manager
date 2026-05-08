@@ -1,0 +1,149 @@
+<%- include('../partials/header', { pageTitle: lang === 'es' ? 'Licencia' : 'License' }) %>
+<div class="container container--narrow">
+
+  <div class="page-header">
+    <h1 class="page-title"><%= lang === 'es' ? 'Licencia' : 'License' %></h1>
+  </div>
+
+  <%
+    const tierLabel = { basic: 'Basic', club: 'Club', pro: 'Pro' }[info.tier] || info.tier;
+    const tierClass = { basic: 'tier--basic', club: 'tier--club', pro: 'tier--pro' }[info.tier] || '';
+  %>
+
+  <div class="license-card">
+    <div class="license-card__header">
+      <span class="tier-badge <%= tierClass %>"><%= tierLabel %></span>
+      <span class="license-licensee"><%= info.licensee %></span>
+    </div>
+
+    <% if (info.error) { %>
+      <div class="alert alert--error" style="margin-top:1rem"><%= info.error %></div>
+    <% } %>
+
+    <div class="license-details">
+      <div class="license-detail">
+        <span class="license-detail__label"><%= lang === 'es' ? 'Nivel' : 'Tier' %></span>
+        <span class="license-detail__value"><%= tierLabel %></span>
+      </div>
+      <div class="license-detail">
+        <span class="license-detail__label"><%= lang === 'es' ? 'Titular' : 'Licensee' %></span>
+        <span class="license-detail__value"><%= info.licensee %></span>
+      </div>
+      <div class="license-detail">
+        <span class="license-detail__label"><%= lang === 'es' ? 'Expira' : 'Expires' %></span>
+        <span class="license-detail__value"><%= info.expiresAt || (lang === 'es' ? 'Sin licencia activa' : 'No active license') %></span>
+      </div>
+      <div class="license-detail">
+        <span class="license-detail__label"><%= lang === 'es' ? 'ID de equipo' : 'Hardware ID' %></span>
+        <span class="license-detail__value license-detail__value--mono"><%= info.hardwareId %></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-card" style="margin-top:1.5rem">
+    <h2 class="section-title" style="margin-top:0">
+      <%= lang === 'es' ? 'Activar licencia' : 'Activate license' %>
+    </h2>
+    <p class="form-hint">
+      <%= lang === 'es'
+        ? 'Pega el contenido del fichero .license que recibiste al comprar Slot Timer Pro.'
+        : 'Paste the content of the .license file you received when purchasing Slot Timer Pro.' %>
+    </p>
+    <form action="/license/upload" method="POST">
+      <div class="form-group">
+        <label class="form-label"><%= lang === 'es' ? 'Fichero de licencia (JSON)' : 'License file (JSON)' %></label>
+        <textarea class="form-input" name="license_json" rows="8" placeholder='{"tier":"club","licensee":"Mi Club",...}'
+          style="font-family:monospace;font-size:.85rem"></textarea>
+      </div>
+      <div class="form-group eula-accept">
+        <label class="eula-checkbox-label">
+          <input type="checkbox" name="eula_accepted" value="1" required id="eulaCheck">
+          <%= lang === 'es'
+            ? 'He leído y acepto el'
+            : 'I have read and accept the' %>
+          <a href="/eula" target="_blank"><%= lang === 'es' ? 'Contrato de Licencia (EULA)' : 'End User License Agreement (EULA)' %></a>
+        </label>
+      </div>
+      <div class="form-actions">
+        <a href="/" class="btn btn--ghost"><%= lang === 'es' ? 'Cancelar' : 'Cancel' %></a>
+        <button type="submit" class="btn btn--primary" id="activateBtn" disabled>
+          <%= lang === 'es' ? 'Activar' : 'Activate' %>
+        </button>
+      </div>
+    </form>
+    <script>
+      document.getElementById('eulaCheck').addEventListener('change', function() {
+        document.getElementById('activateBtn').disabled = !this.checked;
+      });
+    </script>
+  </div>
+
+  <div class="form-card" style="margin-top:1.5rem">
+    <h2 class="section-title" style="margin-top:0">
+      <%= lang === 'es' ? 'Módulos incluidos' : 'Included modules' %>
+    </h2>
+    <%
+      const tiers = [
+        { key: 'basic', label: 'Basic', modules: [
+          { key: 'simulation',  es: 'Modo simulación',          en: 'Simulation mode' },
+          { key: 'ds300_single',es: 'DS-300 un circuito',        en: 'DS-300 single circuit' },
+          { key: 'training',    es: 'Entrenamiento libre',       en: 'Free training' },
+          { key: 'races_basic', es: 'Carreras (1 tanda, 1 manga)', en: 'Races (1 tanda, 1 manga)' },
+        ]},
+        { key: 'club', label: 'Club', modules: [
+          { key: 'races_unlimited', es: 'Carreras ilimitadas',    en: 'Unlimited races' },
+          { key: 'export',          es: 'Exportar Excel',         en: 'Export to Excel' },
+          { key: 'mobile',          es: 'App móvil',              en: 'Mobile app' },
+          { key: 'pole',            es: 'Pole position',          en: 'Pole position' },
+        ]},
+        { key: 'pro', label: 'Pro', modules: [
+          { key: 'multi_circuit', es: 'Multi-circuito DS-300', en: 'Multi-circuit DS-300' },
+          { key: 'tv',            es: 'Vista TV/proyector',    en: 'TV/projector view' },
+        ]},
+      ];
+    %>
+    <table class="modules-table">
+      <tbody>
+        <% tiers.forEach(tier => { %>
+          <tr class="modules-table__tier-row">
+            <td colspan="2" class="modules-table__tier-label tier-badge <%= 'tier--' + tier.key %>">
+              <%= tier.label %>
+            </td>
+          </tr>
+          <% tier.modules.forEach(mod => { %>
+            <% const active = info.tier === 'pro' || (info.tier === 'club' && (tier.key === 'basic' || tier.key === 'club')) || (info.tier === 'basic' && tier.key === 'basic'); %>
+            <tr class="modules-table__row <%= active ? 'modules-table__row--active' : '' %>">
+              <td class="modules-table__icon"><%= active ? '✓' : '○' %></td>
+              <td><%= lang === 'es' ? mod.es : mod.en %></td>
+            </tr>
+          <% }) %>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<style>
+.license-card { background:#161b22; border:1px solid #30363d; border-radius:12px; padding:1.5rem; }
+.license-card__header { display:flex; align-items:center; gap:1rem; margin-bottom:1rem; }
+.license-licensee { font-size:1.1rem; font-weight:600; color:#e6edf3; }
+.tier-badge { display:inline-block; padding:.25rem .75rem; border-radius:20px; font-size:.8rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; }
+.tier--basic { background:#21262d; color:#8b949e; }
+.tier--club  { background:#1c3a5e; color:#58a6ff; }
+.tier--pro   { background:#3a1f5e; color:#d2a8ff; }
+.license-details { display:grid; gap:.75rem; margin-top:1rem; }
+.license-detail { display:flex; justify-content:space-between; align-items:center; padding:.5rem 0; border-bottom:1px solid #21262d; }
+.license-detail:last-child { border-bottom:none; }
+.license-detail__label { color:#8b949e; font-size:.875rem; }
+.license-detail__value { color:#e6edf3; font-weight:500; }
+.license-detail__value--mono { font-family:monospace; font-size:.875rem; background:#0d1117; padding:.2rem .5rem; border-radius:4px; }
+.modules-table { width:100%; border-collapse:collapse; }
+.modules-table__tier-row td { padding:.5rem 0 .25rem; }
+.modules-table__tier-label { padding:.4rem .75rem !important; }
+.modules-table__row td { padding:.4rem .5rem; color:#8b949e; }
+.modules-table__row--active td { color:#e6edf3; }
+.modules-table__icon { width:2rem; text-align:center; color:#8b949e; }
+.modules-table__row--active .modules-table__icon { color:#3fb950; }
+</style>
+
+<%- include('../partials/footer') %>

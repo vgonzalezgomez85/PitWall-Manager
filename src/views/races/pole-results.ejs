@@ -1,0 +1,136 @@
+<%
+function formatMs(ms) {
+  if (!ms) return '—';
+  const m = Math.floor(ms / 60000);
+  const s = ((ms % 60000) / 1000).toFixed(3).padStart(6, '0');
+  return m > 0 ? m + ':' + s : s + 's';
+}
+%>
+<%- include('../partials/header', { pageTitle: lang === 'es' ? 'Resultados Pole Position' : 'Pole Position Results' }) %>
+<div class="container container--narrow">
+
+  <a href="/races/<%= race.id %>" class="back-link">← <%= t('race.back_to_list') %></a>
+  <h1 class="page-title">🏁 <%= lang === 'es' ? 'Clasificación de Pole' : 'Pole Classification' %></h1>
+  <p class="page-subtitle">
+    <%= race.name %> ·
+    <%= lang === 'es' ? 'Carril de pole:' : 'Pole lane:' %>
+    <span class="lane-dot-inline" style="background:<%= LANE_COLORS[session.lane - 1] %>"><%= session.lane %></span>
+  </p>
+
+  <% if (!allTimed) { %>
+    <div class="alert" style="background:rgba(255,193,7,.08);border:1px solid rgba(255,193,7,.3);color:#ffc107;margin-bottom:1.25rem">
+      ⚠️ <%= lang === 'es'
+        ? 'Hay participantes sin tiempo registrado. Puedes editar los tiempos antes de continuar.'
+        : 'Some participants have no recorded time. You can edit times before continuing.' %>
+    </div>
+  <% } %>
+
+  <!-- Classification table -->
+  <div class="form-card" style="padding:0;overflow:hidden">
+    <table class="pole-table">
+      <thead>
+        <tr>
+          <th style="width:3rem">#</th>
+          <th><%= lang === 'es' ? 'Participante' : 'Participant' %></th>
+          <th style="text-align:right"><%= lang === 'es' ? 'Tiempo' : 'Time' %></th>
+          <th style="text-align:right;color:#8b949e;font-weight:400;font-size:.78rem">
+            <%= lang === 'es' ? 'Diferencia' : 'Gap' %>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <%
+          const best = entries.find(e => e.lap_time_ms != null)?.lap_time_ms;
+          let timedPos = 0;
+        %>
+        <% entries.forEach((entry, idx) => { %>
+          <% if (entry.lap_time_ms != null) timedPos++; %>
+          <% const gap = (entry.lap_time_ms != null && timedPos > 1 && best) ? entry.lap_time_ms - best : null; %>
+          <tr class="<%= timedPos === 1 && entry.lap_time_ms ? 'pole-row--leader' : '' %>">
+            <td>
+              <% if (timedPos === 1 && entry.lap_time_ms) { %>
+                <span class="pos-badge pos-1" style="background:#f6c90e;color:#000">P</span>
+              <% } else if (entry.lap_time_ms != null) { %>
+                <span class="pos-badge"><%= timedPos %></span>
+              <% } else { %>
+                <span style="color:#8b949e">—</span>
+              <% } %>
+            </td>
+            <td><span style="font-weight:500"><%= entry.entity_name %></span></td>
+            <td style="text-align:right;font-family:monospace;font-size:.95rem">
+              <%= formatMs(entry.lap_time_ms) %>
+            </td>
+            <td style="text-align:right;color:#8b949e;font-size:.82rem;font-family:monospace">
+              <% if (gap != null) { %>+<%= (gap / 1000).toFixed(3) %>s<% } %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Actions -->
+  <div style="display:flex;gap:.75rem;margin-top:1.5rem;flex-wrap:wrap;align-items:center">
+    <button type="button" id="btnEditTimes" class="btn btn--ghost">
+      ✏️ <%= lang === 'es' ? 'Editar tiempos' : 'Edit times' %>
+    </button>
+    <% if (session.status !== 'done') { %>
+      <a href="/races/<%= race.id %>/pole/lanes" class="btn btn--primary">
+        🚦 <%= lang === 'es' ? 'Asignar carriles de salida' : 'Assign starting lanes' %> →
+      </a>
+    <% } else { %>
+      <span class="badge badge--finished">✓ <%= lang === 'es' ? 'Pole completada' : 'Pole done' %></span>
+      <a href="/races/<%= race.id %>" class="btn btn--ghost">
+        <%= lang === 'es' ? 'Volver a la carrera' : 'Back to race' %>
+      </a>
+    <% } %>
+  </div>
+
+  <!-- Inline time editor (hidden by default) -->
+  <div id="timeEditor" style="display:none;margin-top:1.5rem">
+    <div class="form-card">
+      <h3 style="margin:0 0 1rem;font-size:.95rem">
+        <%= lang === 'es' ? 'Editar tiempos' : 'Edit times' %>
+        <span class="form-hint" style="font-weight:400;margin-left:.5rem">
+          <%= lang === 'es' ? '— formato: 8.456 ó 1:08.456' : '— format: 8.456 or 1:08.456' %>
+        </span>
+      </h3>
+      <form action="/races/<%= race.id %>/pole/times" method="POST">
+        <% entries.forEach(entry => { %>
+          <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.6rem">
+            <span style="flex:1;font-size:.9rem"><%= entry.entity_name %></span>
+            <input
+              class="form-input"
+              type="text"
+              name="times[<%= entry.id %>]"
+              value="<%= entry.lap_time_ms ? (entry.lap_time_ms / 1000).toFixed(3) : '' %>"
+              placeholder="<%= lang === 'es' ? 'ej: 8.456' : 'e.g. 8.456' %>"
+              style="width:140px;font-family:monospace">
+          </div>
+        <% }) %>
+        <div class="form-actions" style="margin-top:1rem">
+          <button type="button" id="btnCancelEdit" class="btn btn--ghost btn--sm">
+            <%= lang === 'es' ? 'Cancelar' : 'Cancel' %>
+          </button>
+          <button type="submit" class="btn btn--primary btn--sm">
+            💾 <%= lang === 'es' ? 'Guardar tiempos' : 'Save times' %>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+
+<script>
+document.getElementById('btnEditTimes').addEventListener('click', () => {
+  document.getElementById('timeEditor').style.display = '';
+  document.getElementById('btnEditTimes').style.display = 'none';
+});
+document.getElementById('btnCancelEdit')?.addEventListener('click', () => {
+  document.getElementById('timeEditor').style.display = 'none';
+  document.getElementById('btnEditTimes').style.display = '';
+});
+</script>
+
+<%- include('../partials/footer') %>

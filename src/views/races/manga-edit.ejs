@@ -1,0 +1,49 @@
+<%- include('../partials/header', { pageTitle: lang === 'es' ? 'Editar Manga' : 'Edit Heat' }) %>
+<div class="container container--narrow">
+
+  <a href="/races/<%= race.id %>" class="back-link">← <%= lang === 'es' ? 'Volver a la carrera' : 'Back to race' %></a>
+  <h1 class="page-title">
+    <%= lang === 'es' ? 'Editar Manga' : 'Edit Heat' %> <%= manga.number %>
+  </h1>
+  <p class="page-subtitle"><%= race.name %></p>
+
+  <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/edit" method="POST" class="form-card">
+
+    <p class="form-hint" style="margin-bottom:1.25rem">
+      <%= lang === 'es'
+        ? 'Reasigna quién va en cada carril. Solo se muestran carriles activos (sin descanso).'
+        : 'Reassign who goes in each lane. Only active (non-rest) lanes are shown.' %>
+    </p>
+
+    <div style="display:flex;flex-direction:column;gap:.75rem">
+      <% lanes.filter(l => !l.is_rest).forEach(lane => {
+           const currentId = lane.team_id || lane.driver_id;
+           const currentName = lane.team_name || lane.driver_name || '—';
+      %>
+        <div style="display:grid;grid-template-columns:3rem 1fr;align-items:center;gap:1rem">
+          <span class="lane-dot" style="background:<%= LANE_COLORS[lane.lane - 1] %>;width:2.2rem;height:2.2rem;font-size:1rem;display:flex;align-items:center;justify-content:center;border-radius:8px;font-weight:700;color:#fff">
+            <%= lane.lane %>
+          </span>
+          <select name="assignment[<%= lane.id %>]" class="form-input" style="margin:0">
+            <% participants.forEach(p => { %>
+              <option value="<%= p.id %>" <%= p.id === currentId ? 'selected' : '' %>>
+                <%= p.name %>
+              </option>
+            <% }) %>
+          </select>
+        </div>
+      <% }) %>
+    </div>
+
+    <div class="form-actions" style="margin-top:1.5rem">
+      <a href="/races/<%= race.id %>" class="btn btn--ghost">
+        <%= lang === 'es' ? 'Cancelar' : 'Cancel' %>
+      </a>
+      <button type="submit" class="btn btn--primary">
+        <%= lang === 'es' ? 'Guardar cambios' : 'Save changes' %>
+      </button>
+    </div>
+
+  </form>
+</div>
+<%- include('../partials/footer') %>

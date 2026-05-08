@@ -1,0 +1,68 @@
+<%- include('../partials/header', { pageTitle: lang === 'es' ? 'Circuitos' : 'Circuits' }) %>
+<div class="container">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem">
+    <h1 class="page-title" style="margin:0">
+      🏁 <%= lang === 'es' ? 'Circuitos' : 'Circuits' %>
+    </h1>
+    <a href="/circuits/new" class="btn btn--primary">
+      + <%= lang === 'es' ? 'Nuevo circuito' : 'New circuit' %>
+    </a>
+  </div>
+
+  <% if (circuits.length === 0) { %>
+    <div class="empty-state" style="padding:3rem">
+      <p class="empty-state__text">
+        <%= lang === 'es' ? 'No hay circuitos. Crea uno para reutilizarlo en tus carreras.' : 'No circuits yet. Create one to reuse it in your races.' %>
+      </p>
+      <a href="/circuits/new" class="btn btn--primary" style="margin-top:1rem">
+        + <%= lang === 'es' ? 'Crear circuito' : 'Create circuit' %>
+      </a>
+    </div>
+  <% } else { %>
+    <div class="tanda-block" style="padding:0;overflow:hidden">
+      <table class="schedule-table">
+        <thead>
+          <tr>
+            <th><%= lang === 'es' ? 'Nombre' : 'Name' %></th>
+            <th><%= lang === 'es' ? 'Circuitos' : 'Sub-circuits' %></th>
+            <th><%= lang === 'es' ? 'Carriles' : 'Lanes' %></th>
+            <th><%= lang === 'es' ? 'Vuelta mínima' : 'Min lap' %></th>
+            <th><%= lang === 'es' ? 'Notas' : 'Notes' %></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% circuits.forEach(c => { %>
+            <tr>
+              <td style="font-weight:600"><%= c.name %></td>
+              <td style="font-family:monospace"><%= c.circuits_count %></td>
+              <td style="font-family:monospace"><%= c.lanes_count %></td>
+              <td style="font-family:monospace">
+                <% if (c.min_lap_ms > 0) { %>
+                  <span style="color:#4caf50;font-weight:600"><%= (c.min_lap_ms / 1000).toFixed(2) %>s</span>
+                <% } else { %>
+                  <span style="color:var(--text-muted)">—</span>
+                <% } %>
+              </td>
+              <td style="color:var(--text-muted);font-size:.85rem"><%= c.description || '—' %></td>
+              <td>
+                <div style="display:flex;gap:.4rem;justify-content:flex-end">
+                  <a href="/circuits/<%= c.id %>/edit" class="btn btn--ghost btn--sm">
+                    ✏ <%= lang === 'es' ? 'Editar' : 'Edit' %>
+                  </a>
+                  <form action="/circuits/<%= c.id %>/delete" method="POST"
+                        onsubmit="return confirm('<%= lang === 'es' ? '¿Eliminar circuito?' : 'Delete circuit?' %>')">
+                    <button type="submit" class="btn btn--danger btn--sm">✕</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+
+</div>
+<%- include('../partials/footer') %>

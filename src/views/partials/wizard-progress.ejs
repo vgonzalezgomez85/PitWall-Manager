@@ -1,0 +1,17 @@
+<div class="wizard-progress">
+  <%
+    const _hasPole = typeof hasPole !== 'undefined' ? !!hasPole : false;
+    const _steps   = _hasPole
+      ? ['type', 'format', 'sequence', 'participants', 'confirm']
+      : ['type', 'format', 'sequence', 'confirm'];
+  %>
+  <% _steps.forEach((s, i) => { %>
+    <div class="wizard-step <%= i + 1 < step ? 'done' : (i + 1 === step ? 'active' : '') %>">
+      <div class="wizard-step__dot"><%= i + 1 < step ? '✓' : (i + 1) %></div>
+      <span class="wizard-step__label"><%= t('wizard.steps.' + s) %></span>
+    </div>
+    <% if (i < _steps.length - 1) { %>
+      <div class="wizard-connector <%= i + 1 < step ? 'done' : '' %>"></div>
+    <% } %>
+  <% }) %>
+</div>

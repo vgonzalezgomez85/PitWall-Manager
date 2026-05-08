@@ -1,0 +1,11 @@
+node_modules/
+database/*.db
+database/*.db-shm
+database/*.db-wal
+.env
+*.log
+.DS_Store
+license.json
+dist/
+dist-app/
+out/

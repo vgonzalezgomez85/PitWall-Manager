@@ -1,0 +1,123 @@
+{
+  "app": {
+    "title": "Slot Timer Pro",
+    "tagline": "Scalextric race management"
+  },
+  "nav": {
+    "races": "Races",
+    "new_race": "New Race"
+  },
+  "races": {
+    "title": "Races",
+    "no_races": "No races registered yet",
+    "create_first": "Create your first race",
+    "lanes": "Lanes",
+    "drivers": "Drivers",
+    "teams": "Teams",
+    "created": "Created",
+    "status": {
+      "pending": "Pending",
+      "active": "Active",
+      "completed": "Completed",
+      "finished": "Finished"
+    },
+    "type": {
+      "club": "Club",
+      "championship": "Championship"
+    },
+    "format": {
+      "individual": "Individual",
+      "team": "Team"
+    }
+  },
+  "wizard": {
+    "step": "Step",
+    "of": "of",
+    "steps": {
+      "type": "Type",
+      "format": "Format",
+      "sequence": "Sequence",
+      "confirm": "Confirm",
+      "participants": "Participants"
+    },
+    "step1_title": "New Race — Type",
+    "step2_title": "New Race — Format",
+    "step3_seq_title": "New Race — Lane Sequence",
+    "confirm_title": "New Race — Confirmation",
+    "race_name": "Race name",
+    "race_name_placeholder": "E.g.: Christmas Grand Prix",
+    "race_type": "Race type",
+    "club_race": "Club Race",
+    "club_race_desc": "Informal race between hobbyists",
+    "championship_race": "Championship Race",
+    "championship_race_desc": "Counts towards the official championship",
+    "lanes_count": "Number of lanes",
+    "lanes_hint": "Between 2 and 32 lanes",
+    "manga_duration": "Heat duration",
+    "race_format": "Race format",
+    "individual": "Individual",
+    "individual_desc": "Each lane has one assigned driver",
+    "team": "Team",
+    "team_desc": "Each lane has a team with multiple members",
+    "members_per_team": "Members per team",
+    "members_hint": "All teams will have the same number of members",
+    "team_name": "Team name",
+    "team_name_ph": "E.g.: Scuderia Ferrari",
+    "member_name": "Member name",
+    "member_ph": "E.g.: Carlos Sainz",
+    "lane": "Lane",
+    "driver_name": "Driver name",
+    "driver_name_ph": "E.g.: Max Verstappen",
+    "optional": "Optional",
+    "confirm_create": "Create Race",
+    "back": "Back",
+    "next": "Next",
+    "summary": "Summary",
+    "summary_name": "Name",
+    "summary_type": "Type",
+    "summary_format": "Format",
+    "summary_lanes": "Lanes",
+    "summary_members": "Members per team",
+    "no_name": "(no name)"
+  },
+  "race": {
+    "details": "Details",
+    "teams": "Teams",
+    "drivers": "Drivers",
+    "lane": "Lane",
+    "members": "Members",
+    "status": "Status",
+    "start": "Start race",
+    "delete": "Delete race",
+    "delete_confirm": "Are you sure you want to delete this race? This action cannot be undone.",
+    "back_to_list": "Back to list"
+  },
+  "drivers": {
+    "title": "Driver database",
+    "categories": {
+      "platino": "Platinum",
+      "oro": "Gold",
+      "plata": "Silver",
+      "bronce": "Bronze"
+    }
+  },
+  "errors": {
+    "name_required": "Race name is required (minimum 2 characters)",
+    "type_required": "You must select a race type",
+    "lanes_invalid": "Number of lanes must be between 2 and 32",
+    "duration_invalid": "Heat duration must be between 1 and 120 minutes",
+    "format_required": "You must select a race format",
+    "sequence_invalid": "The sequence must contain each lane exactly once",
+    "members_count_invalid": "Number of members must be between 1 and 10",
+    "not_enough_teams": "Number of teams must equal the number of lanes in the sequence",
+    "not_enough_drivers": "Number of drivers must equal the number of lanes in the sequence",
+    "category_required": "You must select a category"
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "back": "Back"
+  }
+}

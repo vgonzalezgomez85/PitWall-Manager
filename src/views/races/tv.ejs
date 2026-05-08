@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="<%= lang %>">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= race.name %> — TV — Slot Timer Pro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/tv.css">
+</head>
+<body class="tv-body">
+
+  <!-- ── Header ────────────────────────────────────────────────────────────── -->
+  <header class="tv-header">
+    <div class="tv-header__left">
+      <div class="tv-race-name"><%= race.name %></div>
+      <div class="tv-manga-tag">
+        <% if (tanda) { %><%= lang === 'es' ? 'Tanda' : 'Round' %> <%= tanda.number %> · <% } %>
+        <%= lang === 'es' ? 'Manga' : 'Heat' %> #<%= manga.number %>
+      </div>
+    </div>
+
+    <div class="tv-header__center">
+      <div id="tvTimer" class="tv-timer"><%= String(race.manga_duration_minutes).padStart(2,'0') %>:00</div>
+      <div class="tv-timer-label"><%= lang === 'es' ? 'tiempo restante' : 'remaining' %></div>
+    </div>
+
+    <div class="tv-header__right">
+      <div id="tvStatus" class="tv-status
+        <% if (isActive) { %>tv-status--active
+        <% } else if (manga.status === 'finished') { %>tv-status--finished
+        <% } else { %>tv-status--pending<% } %>">
+        <% if (isActive) { %>
+          <span class="tv-status-dot tv-status-dot--active"></span>
+          <%= lang === 'es' ? 'EN CARRERA' : 'RACING' %>
+        <% } else if (manga.status === 'finished') { %>
+          <%= lang === 'es' ? 'FINALIZADA' : 'FINISHED' %>
+        <% } else { %>
+          <%= lang === 'es' ? 'EN ESPERA' : 'PENDING' %>
+        <% } %>
+      </div>
+      <div class="tv-logo">Slot Timer Pro</div>
+    </div>
+  </header>
+
+  <!-- ── Standings ─────────────────────────────────────────────────────────── -->
+  <div class="tv-standings">
+    <div class="tv-panel-title">
+      <%= lang === 'es' ? 'CLASIFICACIÓN GENERAL' : 'OVERALL STANDINGS' %>
+    </div>
+    <table class="tv-table">
+      <thead>
+        <tr>
+          <th style="width:6vw">#</th>
+          <th><%= lang === 'es' ? 'Piloto / Equipo' : 'Driver / Team' %></th>
+          <th class="tv-right" style="width:12vw" title="<%= lang === 'es' ? 'Total vueltas en carrera' : 'Total race laps' %>">
+            <%= lang === 'es' ? 'Total' : 'Total' %>
+          </th>
+          <th class="tv-right" style="width:10vw" title="<%= lang === 'es' ? 'Vueltas esta manga' : 'Laps this heat' %>">
+            <%= lang === 'es' ? 'Manga' : 'Heat' %>
+          </th>
+          <th class="tv-right" style="width:12vw"><%= lang === 'es' ? 'Mejor' : 'Best' %></th>
+          <th class="tv-right" style="width:10vw"><%= lang === 'es' ? 'Diferencia' : 'Gap' %></th>
+        </tr>
+      </thead>
+      <tbody id="tvBody"></tbody>
+    </table>
+  </div>
+
+  <!-- ── Ticker ─────────────────────────────────────────────────────────────── -->
+  <div class="tv-ticker">
+    <span class="tv-ticker-label"><%= lang === 'es' ? 'Últimas' : 'Latest' %></span>
+    <div id="tvTicker" class="tv-ticker-items"></div>
+  </div>
+
+  <%
+    const LC = ['#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4','#ff5722','#607d8b','#795548','#e91e63','#3f51b5','#009688','#cddc39','#ffc107','#f44336','#673ab7','#03a9f4','#8bc34a','#ff6f00','#880e4f','#1a237e','#b71c1c','#004d40','#f57f17','#311b92','#0d47a1','#1b5e20','#33691e','#bf360c','#4a148c','#006064','#827717'];
+    const tvLanes = lanes.filter(l => !l.is_rest).map(l => ({
+      lane:         l.lane,
+      prevLapCount: prevLapsByLane[l.lane] || 0
+    }));
+  %>
+
+  <script>
+    const TV_DATA = <%- JSON.stringify({
+      mangaId:    manga.id,
+      isActive:   isActive,
+      durationMs: race.manga_duration_minutes * 60 * 1000,
+      standings:  standings,
+      lanes:      tvLanes
+    }) %>;
+    const LANG = "<%= lang %>";
+  </script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/tv.js"></script>
+</body>
+</html>

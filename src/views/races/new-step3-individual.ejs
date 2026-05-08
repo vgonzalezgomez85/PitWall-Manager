@@ -1,0 +1,39 @@
+<%- include('../partials/header', { pageTitle: t('wizard.step3_individual_title') }) %>
+<div class="container container--narrow">
+
+  <%- include('../partials/wizard-progress', { step: 3 }) %>
+
+  <h1 class="page-title"><%= t('wizard.step3_individual_title') %></h1>
+  <p class="page-subtitle"><%= wizard.name %> · <%= wizard.lanes_count %> <%= t('races.lanes') %></p>
+  <p class="form-hint"><%= t('wizard.optional') %> — <%= lang === 'es' ? 'Puedes dejarlo en blanco y añadir los pilotos más adelante.' : 'You can leave this blank and add drivers later.' %></p>
+
+  <form action="/races/new/step3-individual" method="POST" class="form-card">
+
+    <div class="drivers-grid">
+      <% for (let i = 0; i < wizard.lanes_count; i++) { %>
+        <div class="driver-row">
+          <div class="lane-badge" style="background: <%= ['#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4','#ff5722','#607d8b','#795548','#e91e63','#3f51b5','#009688','#cddc39','#ffc107','#f44336','#673ab7','#03a9f4','#8bc34a','#ff6f00','#880e4f','#1a237e','#b71c1c','#004d40','#f57f17','#311b92','#0d47a1','#1b5e20','#33691e','#bf360c','#4a148c','#006064','#827717'][i] %>">
+            <%= i + 1 %>
+          </div>
+          <div class="driver-field">
+            <label class="sr-only" for="driver_<%= i %>"><%= t('wizard.lane') %> <%= i + 1 %></label>
+            <input
+              class="form-input"
+              type="text"
+              id="driver_<%= i %>"
+              name="drivers[<%= i %>]"
+              placeholder="<%= t('wizard.driver_name_ph') %>"
+              autocomplete="off">
+          </div>
+        </div>
+      <% } %>
+    </div>
+
+    <div class="form-actions">
+      <a href="/races/new/step2" class="btn btn--ghost">← <%= t('wizard.back') %></a>
+      <button type="submit" class="btn btn--primary"><%= t('wizard.next') %> →</button>
+    </div>
+
+  </form>
+</div>
+<%- include('../partials/footer') %>

@@ -1,0 +1,89 @@
+<%- include('../partials/header', { pageTitle: lang === 'es' ? 'Iniciar Pole Position' : 'Start Pole Position' }) %>
+<div class="container container--narrow">
+
+  <a href="/races/<%= race.id %>" class="back-link">← <%= t('race.back_to_list') %></a>
+  <h1 class="page-title">🏁 <%= lang === 'es' ? 'Configurar Pole Position' : 'Setup Pole Position' %></h1>
+  <p class="page-subtitle"><%= race.name %> · <%= t('races.format.' + race.format) %></p>
+
+  <% if (errors.length > 0) { %>
+    <div class="alert alert--error">
+      <% errors.forEach(e => { %><p><%= lang === 'es' ? 'Carril inválido. Elige un carril entre 1 y ' + race.lanes_count + '.' : 'Invalid lane. Choose between 1 and ' + race.lanes_count + '.' %></p><% }) %>
+    </div>
+  <% } %>
+
+  <div class="form-card">
+
+    <!-- Participants preview -->
+    <div style="margin-bottom:1.5rem">
+      <p class="pole-section-title" style="margin-bottom:.75rem">
+        <%= lang === 'es' ? 'Participantes' : 'Participants' %>
+        <span class="form-hint" style="font-weight:400;margin-left:.5rem">
+          (<%= entries.length %> · <%= lang === 'es' ? 'el orden de salida será aleatorio' : 'call order will be random' %>)
+        </span>
+      </p>
+      <div style="display:flex;flex-wrap:wrap;gap:.4rem">
+        <% entries.forEach((e, i) => { %>
+          <span class="badge badge--neutral" style="background:rgba(255,255,255,.06)"><%= e.entity_name %></span>
+        <% }) %>
+      </div>
+    </div>
+
+    <hr style="border:none;border-top:1px solid var(--border);margin:1.25rem 0">
+
+    <!-- Lane picker -->
+    <form action="/races/<%= race.id %>/pole/start" method="POST">
+
+      <div class="form-group">
+        <label class="form-label">
+          <%= lang === 'es' ? 'Carril de pole' : 'Pole lane' %>
+        </label>
+        <p class="form-hint" style="margin-bottom:.75rem">
+          <%= lang === 'es'
+            ? 'Todos los participantes harán su vuelta clasificatoria por este carril.'
+            : 'All participants will run their qualifying lap on this lane.' %>
+        </p>
+        <div class="pole-lane-picker">
+          <button type="button" id="poleLaneDec" class="btn btn--ghost btn--sm pole-lane-btn">−</button>
+          <div class="pole-lane-display" id="poleLaneDisplay">
+            <span id="poleLaneNum">1</span>
+          </div>
+          <button type="button" id="poleLaneInc" class="btn btn--ghost btn--sm pole-lane-btn">+</button>
+          <button type="button" id="poleLaneRandom" class="btn btn--ghost" style="margin-left:.75rem">
+            🎲 <%= lang === 'es' ? 'Aleatorio' : 'Random' %>
+          </button>
+        </div>
+        <input type="hidden" name="pole_lane" id="poleLaneInput" value="1">
+      </div>
+
+      <div class="form-actions" style="margin-top:1.5rem">
+        <a href="/races/<%= race.id %>" class="btn btn--ghost">← <%= t('wizard.back') %></a>
+        <button type="submit" class="btn btn--primary btn--lg">
+          🚦 <%= lang === 'es' ? 'Empezar Pole' : 'Start Pole' %>
+        </button>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+<script>
+const TOTAL_LANES = <%= race.lanes_count %>;
+const COLORS      = <%- JSON.stringify(LANE_COLORS) %>;
+let poleLane = 1;
+
+function setPoleLane(n) {
+  poleLane = Math.max(1, Math.min(TOTAL_LANES, n));
+  document.getElementById('poleLaneNum').textContent    = poleLane;
+  document.getElementById('poleLaneInput').value        = poleLane;
+  document.getElementById('poleLaneDisplay').style.background = COLORS[(poleLane - 1) % COLORS.length];
+}
+setPoleLane(1);
+
+document.getElementById('poleLaneDec').addEventListener('click', () => setPoleLane(poleLane - 1));
+document.getElementById('poleLaneInc').addEventListener('click', () => setPoleLane(poleLane + 1));
+document.getElementById('poleLaneRandom').addEventListener('click', () => {
+  setPoleLane(Math.floor(Math.random() * TOTAL_LANES) + 1);
+});
+</script>
+
+<%- include('../partials/footer') %>
