@@ -1,0 +1,136 @@
+/* ── Reset + base ────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+.training-body {
+  display: flex; flex-direction: column; min-height: 100vh;
+  background: #0a0d13;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: #e6edf3;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+.training-header {
+  display: flex; align-items: center; gap: 1.5rem;
+  padding: .6rem 1.4rem;
+  background: #0d1117;
+  border-bottom: 2px solid #161b22;
+  flex-shrink: 0; height: 74px;
+}
+
+.training-header__timer { flex-shrink: 0; }
+
+.tr-timer {
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
+  font-size: 2.5rem; color: #3fb950; letter-spacing: .04em; line-height: 1;
+}
+.tr-timer-label {
+  font-size: .62rem; color: #6e7681; letter-spacing: .1em;
+  text-transform: lowercase; margin-top: 2px;
+}
+
+.training-header__info { flex: 1; min-width: 0; }
+.tr-title {
+  font-family: 'Rajdhani', sans-serif; font-size: 1.15rem; font-weight: 700;
+  color: #e6edf3; letter-spacing: .06em;
+}
+.tr-subtitle { font-size: .72rem; color: #6e7681; margin-top: .1rem; }
+
+.training-header__actions { display: flex; gap: .5rem; align-items: center; flex-shrink: 0; }
+
+.tr-btn {
+  padding: .5rem 1.1rem; border-radius: 5px; border: none; cursor: pointer;
+  font-family: 'Rajdhani', sans-serif; font-size: 1rem; font-weight: 700;
+  letter-spacing: .06em; text-decoration: none;
+  display: inline-flex; align-items: center; gap: .3rem;
+  transition: filter .15s;
+}
+.tr-btn:hover { filter: brightness(1.15); text-decoration: none; }
+.tr-btn--stop  { background: #e63946; color: #fff; }
+.tr-btn--voice { background: #21262d; color: #8b949e; font-size: .95rem; }
+.tr-btn--back  { background: #21262d; color: #8b949e; font-size: .85rem; }
+
+/* ── Cards grid ──────────────────────────────────────────────────────────── */
+.training-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: .9rem; padding: 1rem;
+  align-content: start;
+}
+
+/* ── Lane card ───────────────────────────────────────────────────────────── */
+.tr-card {
+  background: #0d1520;
+  border: 2px solid var(--card-color, #21262d);
+  border-radius: 10px;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  transition: border-color .3s;
+}
+
+.tr-card__header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: .6rem .9rem .3rem;
+}
+.tr-card__label {
+  font-size: .62rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--card-color, #6e7681);
+}
+.tr-card__count {
+  font-family: 'Share Tech Mono', monospace; font-size: .78rem;
+  color: #8b949e; font-weight: 700;
+}
+
+.tr-card__best {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 2.4rem; font-weight: 700; color: #f6c90e;
+  line-height: 1; padding: .1rem .9rem .15rem;
+}
+
+.tr-card__avg-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: .1rem .9rem .5rem;
+}
+.tr-card__avg-label { font-size: .65rem; color: #6e7681; }
+.tr-card__avg-val {
+  font-family: 'Share Tech Mono', monospace; font-size: .9rem;
+  color: #e6a817; font-weight: 600;
+}
+
+.tr-card__divider {
+  height: 1px; background: #161b22; margin: 0 .9rem;
+}
+
+/* Scrollable lap times list */
+.tr-card__laps {
+  overflow-y: auto;
+  max-height: 240px;
+  padding: .4rem .9rem .6rem;
+  display: flex; flex-direction: column; gap: .06rem;
+}
+
+.tr-lap-item {
+  font-family: 'Share Tech Mono', monospace; font-size: .78rem;
+  color: #8b949e; padding: .1rem 0;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+}
+.tr-lap-item--best {
+  color: #58a6ff; font-weight: 700; font-size: .82rem;
+}
+.tr-lap-empty {
+  font-size: .75rem; color: #4e555e; text-align: center; padding: .4rem 0;
+}
+
+/* Flash on new lap */
+@keyframes trFlash {
+  0%   { background: rgba(246,201,14,.18); border-color: #f6c90e; }
+  100% { background: #0d1520; }
+}
+.tr-card.tr-flash { animation: trFlash .7s ease-out forwards; }
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .training-header { height: auto; flex-wrap: wrap; gap: .75rem; padding: .6rem 1rem; }
+  .training-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .tr-card__best { font-size: 1.9rem; }
+  .tr-card__laps { max-height: 160px; }
+}

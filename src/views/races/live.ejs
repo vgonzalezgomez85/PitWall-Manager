@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="<%= lang %>">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= race.name %> — <%= lang === 'es' ? 'Manga' : 'Heat' %> <%= manga.number %> — Slot Timer Pro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/live.css">
+</head>
+<body class="live-body">
+
+  <!-- ── Header ────────────────────────────────────────────────────────────── -->
+  <header class="live-header">
+    <div class="live-header__timer">
+      <div id="raceTimer" class="live-timer"><%= String(race.manga_duration_minutes).padStart(2,'0') %>:00</div>
+      <div class="live-timer-label"><%= lang === 'es' ? 'tiempo' : 'time' %></div>
+    </div>
+
+    <div class="live-header__info">
+      <div class="live-manga-id">
+        <% if (tanda) { %>
+          <span class="live-tanda-tag"><%= lang === 'es' ? 'Tanda' : 'Round' %> <%= tanda.number %></span>
+        <% } %>
+        <span class="live-manga-tag"><%= lang === 'es' ? 'Manga' : 'Heat' %> #<%= manga.number %></span>
+      </div>
+      <div id="timerStatus" class="live-status">
+        <% if (isActive) { %>
+          <span class="status-dot status-dot--active"></span>
+          <span class="status-text status-text--active"><%= lang === 'es' ? 'En carrera' : 'Racing' %></span>
+        <% } else if (manga.status === 'finished') { %>
+          <span class="status-text status-text--finished"><%= lang === 'es' ? 'Finalizada' : 'Finished' %></span>
+        <% } else { %>
+          <span class="status-text status-text--pending"><%= lang === 'es' ? 'En espera' : 'Pending' %></span>
+        <% } %>
+      </div>
+      <div class="live-race-subtitle"><%= race.name %></div>
+    </div>
+
+    <div class="live-header__actions">
+      <% if (manga.status === 'pending') { %>
+        <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/start" method="POST" style="display:inline">
+          <button class="lbtn lbtn--go">▶ GO</button>
+        </form>
+      <% } else if (isActive || manga.status === 'active') { %>
+        <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/stop" method="POST" style="display:inline">
+          <button class="lbtn lbtn--fin">■ FIN</button>
+        </form>
+      <% } else if (manga.status === 'finished') { %>
+        <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/repeat" method="POST" style="display:inline"
+          onsubmit="return confirm('<%= lang === 'es' ? '¿Repetir esta manga? Se borrarán las vueltas registradas.' : 'Repeat this heat? All recorded laps will be deleted.' %>')">
+          <button class="lbtn lbtn--repeat">↺ <%= lang === 'es' ? 'Repetir' : 'Repeat' %></button>
+        </form>
+      <% } %>
+      <button id="voiceBtn" class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Activar/silenciar voz' : 'Toggle voice' %>" onclick="toggleVoice()">🔊</button>
+      <a href="/races/<%= race.id %>/mangas/<%= manga.id %>/tv" target="_blank" class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Pantalla TV' : 'TV display' %>">📺</a>
+      <a href="/races/<%= race.id %>/mangas/<%= manga.id %>/corrections" target="_blank" class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Corrección de vueltas' : 'Lap corrections' %>">🔧</a>
+      <a href="/races/<%= race.id %>" class="lbtn lbtn--back">← <%= lang === 'es' ? 'Volver' : 'Back' %></a>
+    </div>
+  </header>
+
+  <!-- ── Main layout ───────────────────────────────────────────────────────── -->
+  <div class="live-layout">
+
+    <!-- Lane cards -->
+    <div class="live-lanes" id="lanesGrid"></div>
+
+    <!-- Sidebar -->
+    <aside class="live-sidebar">
+
+      <div class="live-panel">
+        <div class="live-panel__title">
+          <%= lang === 'es' ? 'CLASIFICACIÓN GENERAL' : 'STANDINGS' %>
+          <a href="/races/<%= race.id %>/mangas/<%= manga.id %>/panel/standings" target="_blank" class="panel-expand" title="<%= lang === 'es' ? 'Abrir en ventana' : 'Open in window' %>">⤢</a>
+        </div>
+        <table class="sidebar-table">
+          <thead>
+            <tr>
+              <th style="width:28px">#</th>
+              <th><%= lang === 'es' ? 'Piloto / Equipo' : 'Driver / Team' %></th>
+              <th class="sr-right" title="<%= lang === 'es' ? 'Vueltas esta manga' : 'Laps this heat' %>"><%= lang === 'es' ? 'Vlt.' : 'Lps.' %></th>
+              <th class="sr-right" title="<%= lang === 'es' ? 'Total vueltas en carrera' : 'Total race laps' %>"><%= lang === 'es' ? 'Total' : 'Total' %></th>
+              <th class="sr-right"><%= lang === 'es' ? 'Mejor' : 'Best' %></th>
+              <th class="sr-right"><%= lang === 'es' ? 'Media' : 'Avg' %></th>
+            </tr>
+          </thead>
+          <tbody id="standingsBody"></tbody>
+        </table>
+      </div>
+
+      <div class="live-panel">
+        <div class="live-panel__title">
+          <%= lang === 'es' ? 'PROYECCIÓN FINAL' : 'FINAL PROJECTION' %>
+          <a href="/races/<%= race.id %>/mangas/<%= manga.id %>/panel/projected" target="_blank" class="panel-expand" title="<%= lang === 'es' ? 'Abrir en ventana' : 'Open in window' %>">⤢</a>
+        </div>
+        <table class="sidebar-table">
+          <thead>
+            <tr>
+              <th style="width:28px">#</th>
+              <th><%= lang === 'es' ? 'Participante' : 'Participant' %></th>
+              <th class="sr-right"><%= lang === 'es' ? 'Proyectado' : 'Projected' %></th>
+              <th class="sr-right"><%= lang === 'es' ? 'En pista' : 'On track' %></th>
+            </tr>
+          </thead>
+          <tbody id="projectedBody"></tbody>
+        </table>
+      </div>
+
+      <div class="live-panel live-panel--ticker">
+        <div class="live-panel__title">
+          <%= lang === 'es' ? 'ÚLTIMAS VUELTAS' : 'LAST LAPS' %>
+          <a href="/races/<%= race.id %>/mangas/<%= manga.id %>/panel/ticker" target="_blank" class="panel-expand" title="<%= lang === 'es' ? 'Abrir en ventana' : 'Open in window' %>">⤢</a>
+        </div>
+        <div id="lapTicker" class="ticker-list"></div>
+      </div>
+
+    </aside>
+  </div>
+
+  <%
+    // Compute initial lane state from DB laps
+    const LC = ['#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4','#ff5722','#607d8b','#795548','#e91e63','#3f51b5','#009688','#cddc39','#ffc107','#f44336','#673ab7','#03a9f4','#8bc34a','#ff6f00','#880e4f','#1a237e','#b71c1c','#004d40','#f57f17','#311b92','#0d47a1','#1b5e20','#33691e','#bf360c','#4a148c','#006064','#827717'];
+    const laneInit = {};
+    lanes.forEach(l => {
+      laneInit[l.lane] = {
+        lane:         l.lane,
+        name:         l.team_name || l.driver_name || ('Lane ' + l.lane),
+        color:        LC[l.lane - 1] || '#8b949e',
+        isRest:       l.is_rest ? true : false,
+        lapCount:     0, bestLapMs: null, lastLapMs: null, exitCount: 0,
+        prevLapCount: prevLapsByLane[l.lane] || 0,
+        _lapSum: 0, _lapN: 0, avgLapMs: null
+      };
+    });
+    laps.forEach(l => {
+      const s = laneInit[l.lane];
+      if (!s || s.isRest) return;
+      s.lapCount = Math.max(s.lapCount, l.lap_number);
+      s.lastLapMs = l.lap_time_ms;
+      if (!l.is_exit && (!s.bestLapMs || l.lap_time_ms < s.bestLapMs)) s.bestLapMs = l.lap_time_ms;
+      if (l.is_exit) { s.exitCount++; } else { s._lapSum += l.lap_time_ms; s._lapN++; }
+    });
+    Object.values(laneInit).forEach(s => {
+      s.avgLapMs = s._lapN > 0 ? Math.round(s._lapSum / s._lapN) : null;
+    });
+  %>
+
+  <script>
+    const RACE_DATA = <%- JSON.stringify({
+      id:          race.id,
+      raceId:      race.id,
+      mangaId:     manga.id,
+      mangaNumber: manga.number,
+      mangaStatus: manga.status,
+      isActive:    isActive,
+      durationMs:  race.manga_duration_minutes * 60 * 1000,
+      standings:   standings,
+      lanes:       Object.values(laneInit)
+    }) %>;
+    const LANG = "<%= lang %>";
+  </script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/live.js"></script>
+</body>
+</html>

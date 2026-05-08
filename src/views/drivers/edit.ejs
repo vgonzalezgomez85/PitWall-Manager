@@ -1,0 +1,53 @@
+<%- include('../partials/header', { pageTitle: lang === 'es' ? 'Editar piloto' : 'Edit driver' }) %>
+<div class="container container--narrow">
+
+  <a href="/drivers" class="back-link">← <%= lang === 'es' ? 'Volver a pilotos' : 'Back to drivers' %></a>
+  <h1 class="page-title"><%= lang === 'es' ? 'Editar piloto' : 'Edit driver' %></h1>
+
+  <% if (errors.length > 0) { %>
+    <div class="alert alert--error">
+      <% errors.forEach(e => { %><p><%= t('errors.' + e) %></p><% }) %>
+    </div>
+  <% } %>
+
+  <form action="/drivers/<%= profile.id %>" method="POST" class="form-card">
+
+    <div class="form-group">
+      <label class="form-label" for="name"><%= lang === 'es' ? 'Nombre del piloto' : 'Driver name' %></label>
+      <input
+        class="form-input <%= errors.includes('name_required') ? 'form-input--error' : '' %>"
+        type="text" id="name" name="name"
+        value="<%= body.name ?? profile.name %>"
+        autocomplete="off" autofocus required>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label"><%= lang === 'es' ? 'Categoría' : 'Category' %></label>
+      <div class="option-cards" style="grid-template-columns: repeat(4, 1fr)">
+        <% [['platino','💎'],['oro','🥇'],['plata','🥈'],['bronce','🥉']].forEach(([cat,icon]) => { %>
+          <label class="option-card">
+            <input type="radio" name="category" value="<%= cat %>"
+              <%= (body.category ?? profile.category) === cat ? 'checked' : '' %> required>
+            <div class="option-card__body" style="align-items:center;text-align:center;padding:.9rem .5rem">
+              <span class="option-card__icon"><%= icon %></span>
+              <span class="option-card__title cat-text--<%= cat %>">
+                <%= lang === 'es'
+                  ? {platino:'Platino',oro:'Oro',plata:'Plata',bronce:'Bronce'}[cat]
+                  : {platino:'Platinum',oro:'Gold',plata:'Silver',bronce:'Bronze'}[cat] %>
+              </span>
+            </div>
+          </label>
+        <% }) %>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <a href="/drivers" class="btn btn--ghost">← <%= lang === 'es' ? 'Cancelar' : 'Cancel' %></a>
+      <button type="submit" class="btn btn--primary">
+        <%= lang === 'es' ? 'Guardar cambios' : 'Save changes' %>
+      </button>
+    </div>
+
+  </form>
+</div>
+<%- include('../partials/footer') %>

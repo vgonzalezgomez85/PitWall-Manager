@@ -1,0 +1,279 @@
+<%- include('../partials/header', { pageTitle: race.name }) %>
+<div class="container">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <a href="/races" class="back-link">← <%= t('race.back_to_list') %></a>
+      <h1 class="page-title"><%= race.name %></h1>
+      <div class="badge-row">
+        <span class="badge badge--<%= race.status %>">
+          <%= lang === 'es'
+            ? {pending:'Pendiente',active:'En curso',finished:'Completada'}[race.status]||race.status
+            : {pending:'Pending',active:'Active',finished:'Completed'}[race.status]||race.status %>
+        </span>
+        <span class="badge badge--type"><%= t('races.type.' + race.type) %></span>
+        <span class="badge badge--format"><%= t('races.format.' + race.format) %></span>
+        <span class="badge badge--neutral"><%= race.lanes_count %> <%= t('races.lanes') %></span>
+        <span class="badge badge--neutral">⏱ <%= race.manga_duration_minutes %> min</span>
+      </div>
+    </div>
+    <div class="page-header__actions">
+      <% if (race.status !== 'finished') { %>
+        <a href="/races/<%= race.id %>/tandas/new" class="btn btn--primary">
+          + <%= lang === 'es' ? 'Nueva Tanda' : 'New Tanda' %>
+        </a>
+        <form action="/races/<%= race.id %>/complete" method="POST" style="display:inline"
+              onsubmit="return confirm('<%= lang === 'es' ? '¿Marcar carrera como completada?' : 'Mark race as completed?' %>')">
+          <button type="submit" class="btn btn--ghost">
+            ✅ <%= lang === 'es' ? 'Completar carrera' : 'Complete race' %>
+          </button>
+        </form>
+      <% } %>
+      <a href="/races/<%= race.id %>/results" class="btn btn--ghost">
+        📊 <%= lang === 'es' ? 'Resultados' : 'Results' %>
+      </a>
+      <form action="/races/<%= race.id %>?_method=DELETE" method="POST" style="display:inline"
+            onsubmit="return confirm('<%= t('race.delete_confirm') %>')">
+        <button type="submit" class="btn btn--danger"><%= t('race.delete') %></button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Lane sequence -->
+  <div class="seq-display">
+    <span class="seq-display__label"><%= lang === 'es' ? 'Secuencia de carriles:' : 'Lane sequence:' %></span>
+    <% laneSequence.forEach((lane, i) => { %>
+      <span class="seq-display__lane" style="background:<%= LANE_COLORS[lane-1] %>"><%= lane %></span>
+      <% if (i < laneSequence.length - 1) { %><span class="seq-display__arrow">→</span><% } %>
+    <% }) %>
+  </div>
+
+  <!-- Pole Position section -->
+  <% if (race.has_pole) { %>
+    <div class="pole-banner">
+      <div class="pole-banner__icon">🏁</div>
+      <div class="pole-banner__body">
+        <span class="pole-banner__title">
+          <%= lang === 'es' ? 'Pole Position' : 'Pole Position' %>
+        </span>
+        <% if (!poleSession) { %>
+          <span class="pole-banner__desc">
+            <%= lang === 'es'
+              ? 'Realiza la sesión de clasificación antes de crear la primera tanda.'
+              : 'Run the qualifying session before creating the first heat group.' %>
+          </span>
+        <% } else if (poleSession.status === 'timing') { %>
+          <span class="pole-banner__desc">
+            <%= lang === 'es' ? 'Sesión en curso — introduce los tiempos y asigna carriles.' : 'Session in progress — enter times and assign lanes.' %>
+          </span>
+        <% } else { %>
+          <span class="badge badge--finished" style="font-size:.78rem">
+            ✓ <%= lang === 'es' ? 'Completada' : 'Completed' %>
+          </span>
+        <% } %>
+      </div>
+      <div class="pole-banner__actions">
+        <% if (!poleSession) { %>
+          <span class="form-hint"><%= lang === 'es' ? '(carrera no guardada aún)' : '(race not saved yet)' %></span>
+        <% } else if (poleSession.status === 'setup') { %>
+          <a href="/races/<%= race.id %>/pole/setup" class="btn btn--primary btn--sm">
+            🏁 <%= lang === 'es' ? 'Iniciar Pole' : 'Start Pole' %>
+          </a>
+        <% } else if (poleSession.status === 'in_progress') { %>
+          <a href="/races/<%= race.id %>/pole/timing" class="btn btn--primary btn--sm">
+            ⏱ <%= lang === 'es' ? 'Continuar' : 'Continue' %>
+          </a>
+        <% } else { %>
+          <a href="/races/<%= race.id %>/pole/results" class="btn btn--ghost btn--sm">
+            📊 <%= lang === 'es' ? 'Ver clasificación' : 'View results' %>
+          </a>
+          <a href="/races/<%= race.id %>/pole/lanes" class="btn btn--primary btn--sm">
+            🚦 <%= lang === 'es' ? 'Asignar carriles' : 'Assign lanes' %>
+          </a>
+        <% } %>
+      </div>
+    </div>
+  <% } %>
+
+  <!-- Tandas -->
+  <% if (tandas.length === 0) { %>
+    <div class="empty-state" style="padding:3rem">
+      <div class="empty-state__icon">🏎️</div>
+      <% if (race.has_pole && poleSession && poleSession.status !== 'done') { %>
+        <p class="empty-state__text">
+          <%= lang === 'es'
+            ? 'Completa la pole position antes de crear la primera tanda.'
+            : 'Complete the pole position before creating the first heat group.' %>
+        </p>
+        <a href="/races/<%= race.id %>/pole/<%= poleSession.status === 'in_progress' ? 'timing' : 'setup' %>" class="btn btn--primary">
+          🏁 <%= lang === 'es' ? 'Ir a Pole Position' : 'Go to Pole Position' %>
+        </a>
+      <% } else { %>
+        <p class="empty-state__text">
+          <%= lang === 'es' ? 'Sin tandas todavía. Añade la primera tanda para empezar.' : 'No tandas yet. Add the first tanda to begin.' %>
+        </p>
+        <a href="/races/<%= race.id %>/tandas/new" class="btn btn--primary">
+          + <%= lang === 'es' ? 'Añadir Tanda 1' : 'Add Tanda 1' %>
+        </a>
+      <% } %>
+    </div>
+  <% } else { %>
+    <% tandas.forEach(tanda => { %>
+      <div class="tanda-block">
+        <div class="tanda-header">
+          <div class="tanda-header__left">
+            <span class="tanda-num"><%= lang === 'es' ? 'Tanda' : 'Heat' %> <%= tanda.number %></span>
+            <span class="badge badge--<%= tanda.status === 'finished' ? 'finished' : tanda.status === 'active' ? 'active' : 'pending' %>">
+              <%= lang === 'es'
+                ? {pending:'Pendiente',active:'En curso',finished:'Finalizada'}[tanda.status]
+                : {pending:'Pending',active:'Active',finished:'Finished'}[tanda.status] %>
+            </span>
+            <span class="form-hint">
+              <%= tanda.mangas_finished %> / <%= tanda.manga_count %>
+              <%= lang === 'es' ? 'mangas' : 'heats' %>
+            </span>
+          </div>
+          <div style="display:flex;gap:.4rem">
+            <% const activeManga = tanda.mangas.find(m => m.status === 'active'); %>
+            <% const nextManga   = tanda.mangas.find(m => m.status === 'pending'); %>
+            <% if (activeManga) { %>
+              <a href="/races/<%= race.id %>/mangas/<%= activeManga.id %>/live" class="btn btn--success btn--sm">
+                <span class="live-dot" style="margin-right:2px"></span>
+                <%= lang === 'es' ? 'Manga ' + activeManga.number : 'Heat ' + activeManga.number %>
+              </a>
+            <% } else if (nextManga) { %>
+              <a href="/races/<%= race.id %>/mangas/<%= nextManga.id %>/live" class="btn btn--success btn--sm">
+                ▶ <%= lang === 'es' ? 'Manga ' + nextManga.number : 'Heat ' + nextManga.number %>
+              </a>
+            <% } %>
+            <% if (tanda.status !== 'active') { %>
+              <a href="/races/<%= race.id %>/tandas/<%= tanda.id %>/edit" class="btn btn--ghost btn--sm">
+                ✏ <%= lang === 'es' ? 'Editar' : 'Edit' %>
+              </a>
+              <form action="/races/<%= race.id %>/tandas/<%= tanda.id %>?_method=DELETE" method="POST"
+                    onsubmit="return confirm('<%= lang === 'es' ? '¿Eliminar tanda?' : 'Delete tanda?' %>')">
+                <button type="submit" class="btn btn--danger btn--sm">✕</button>
+              </form>
+            <% } %>
+          </div>
+        </div>
+
+        <!-- Manga schedule grid -->
+        <div class="manga-schedule" style="overflow-x:auto">
+          <table class="schedule-table">
+            <thead>
+              <tr>
+                <th class="sch-entity-col"><%= lang === 'es' ? 'Equipo / Piloto' : 'Team / Driver' %></th>
+                <% tanda.mangas.forEach(m => { %>
+                  <th class="sch-manga-col <%= m.status %>">
+                    <% if (m.status === 'finished' || m.status === 'active') { %>
+                      <a href="/races/<%= race.id %>/mangas/<%= m.id %>/live"
+                         style="color:inherit;text-decoration:none">
+                        M<%= m.number %>
+                        <% if (m.status === 'active') { %><span class="live-dot"></span><% } %>
+                        <% if (m.status === 'finished') { %><span style="font-size:.6rem">✓</span><% } %>
+                      </a>
+                    <% } else { %>
+                      M<%= m.number %>
+                      <a href="/races/<%= race.id %>/mangas/<%= m.id %>/edit"
+                         title="<%= lang === 'es' ? 'Editar' : 'Edit' %>"
+                         style="display:block;font-size:.65rem;color:var(--text-muted);text-decoration:none;margin-top:2px">✏</a>
+                    <% } %>
+                  </th>
+                <% }) %>
+              </tr>
+            </thead>
+            <tbody>
+              <%
+                // Build entity list from first manga
+                const firstManga = tanda.mangas[0];
+                if (firstManga) {
+                  const allLanes = firstManga.lanes;
+                  // Group by entity
+                  allLanes.forEach(ml => {
+                    const entityName = ml.team_name || ml.driver_name || '—';
+              %>
+              <tr>
+                <td class="sch-entity-col">
+                  <% if (ml.team_color) { %>
+                    <span class="lane-dot" style="background:<%= ml.team_color %>;width:12px;height:12px;display:inline-block;border-radius:3px;margin-right:4px"></span>
+                  <% } %>
+                  <%= entityName %>
+                </td>
+                <% tanda.mangas.forEach(m => {
+                     const slot = m.lanes.find(l =>
+                       (ml.team_id   && l.team_id   === ml.team_id) ||
+                       (ml.driver_id && l.driver_id === ml.driver_id)
+                     );
+                     const lane = slot?.lane ?? 0;
+                     const isRest = !slot || slot.is_rest;
+                %>
+                  <td class="sch-lane-cell <%= isRest ? 'rest' : '' %> <%= m.status %>">
+                    <% if (isRest) { %>
+                      <span class="rest-label">—</span>
+                    <% } else { %>
+                      <span class="lane-cell-dot" style="background:<%= LANE_COLORS[lane-1] %>"><%= lane %></span>
+                    <% } %>
+                    <% if (m.status !== 'pending') { %>
+                      <%
+                        const mangaLaps = m.total_laps || 0;
+                      %>
+                    <% } %>
+                  </td>
+                <% }) %>
+              </tr>
+              <% }); } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <% }) %>
+  <% } %>
+
+  <!-- Virtual / projected standings -->
+  <% if (virtualStandings.length > 0) { %>
+    <h2 class="section-title" style="margin-top:2.5rem">
+      📊 <%= lang === 'es' ? 'Clasificación Virtual' : 'Projected Standings' %>
+    </h2>
+    <p class="form-hint" style="margin-bottom:1rem">
+      <%= lang === 'es'
+        ? 'Posición estimada al final, basada en el ritmo medio de cada participante en las mangas completadas.'
+        : 'Estimated final position based on each participant\'s average pace across completed heats.' %>
+    </p>
+    <div class="virtual-standings">
+      <% virtualStandings.forEach(r => { %>
+        <%
+          const maxProj = virtualStandings[0].projected_laps || 1;
+          const pctDone = r.projected_laps > 0
+            ? Math.round((r.total_laps / r.projected_laps) * 100) : 0;
+        %>
+        <div class="vs-row">
+          <span class="pos-badge pos-<%= r.position %> vs-pos"><%= r.position %></span>
+          <% if (r.color) { %>
+            <span style="width:12px;height:12px;background:<%= r.color %>;border-radius:3px;flex-shrink:0;display:inline-block"></span>
+          <% } %>
+          <span class="vs-name"><%= r.entity_name %></span>
+          <div class="vs-bar-wrap">
+            <div class="vs-bar">
+              <div class="vs-bar__done" style="width:<%= pctDone %>%"></div>
+            </div>
+          </div>
+          <span class="vs-stat">
+            <strong><%= r.projected_laps %></strong>
+            <span class="text-muted" style="font-size:.72rem">
+              &nbsp;<%= r.total_laps %>vr&nbsp;·&nbsp;<%= r.mangas_raced %>/<%= r.total_scheduled %>mg
+            </span>
+          </span>
+          <% if (r.exit_count > 0) { %>
+            <span class="exit-badge" title="<%= lang === 'es' ? 'Salidas de pista' : 'Track exits' %>">
+              🚨 <%= r.exit_count %>
+            </span>
+          <% } %>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+
+</div>
+<%- include('../partials/footer') %>

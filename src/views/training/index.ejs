@@ -1,0 +1,26 @@
+<%- include('../partials/header', { lang, pageTitle: lang === 'es' ? 'Entrenamiento' : 'Training' }) %>
+
+<div class="page-header">
+  <h1 class="page-title">🎯 <%= lang === 'es' ? 'Entrenamiento' : 'Training' %></h1>
+  <p class="page-subtitle">
+    <%= lang === 'es'
+      ? 'Modo libre: registra vueltas por carril sin estructura de carrera.'
+      : 'Free practice: record laps per lane without a race structure.' %>
+  </p>
+</div>
+
+<div class="card" style="max-width:420px">
+  <form action="/training/start" method="POST">
+    <div class="form-group">
+      <label class="form-label">
+        <%= lang === 'es' ? 'Número de carriles activos' : 'Number of active lanes' %>
+      </label>
+      <input type="number" name="lanes" class="form-input" value="6" min="1" max="32" required>
+    </div>
+    <button type="submit" class="btn btn-primary" style="width:100%">
+      ▶ <%= lang === 'es' ? 'Iniciar entrenamiento' : 'Start training' %>
+    </button>
+  </form>
+</div>
+
+<%- include('../partials/footer') %>

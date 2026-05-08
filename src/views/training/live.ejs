@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="<%= lang %>">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= lang === 'es' ? 'Entrenamiento' : 'Training' %> — Slot Timer Pro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/training.css">
+</head>
+<body class="training-body">
+
+  <!-- ── Header ────────────────────────────────────────────────────────────── -->
+  <header class="training-header">
+    <div class="training-header__timer">
+      <div id="trainingTimer" class="tr-timer">00:00</div>
+      <div class="tr-timer-label"><%= lang === 'es' ? 'tiempo' : 'time' %></div>
+    </div>
+
+    <div class="training-header__info">
+      <div class="tr-title">🎯 <%= lang === 'es' ? 'ENTRENAMIENTO' : 'TRAINING' %></div>
+      <div class="tr-subtitle"><%= lanes.length %> <%= lang === 'es' ? 'carriles activos' : 'active lanes' %></div>
+    </div>
+
+    <div class="training-header__actions">
+      <form action="/training/stop" method="POST" style="display:inline">
+        <button class="tr-btn tr-btn--stop">■ <%= lang === 'es' ? 'Parar' : 'Stop' %></button>
+      </form>
+      <button id="voiceBtn" class="tr-btn tr-btn--voice" onclick="toggleVoice()" title="<%= lang === 'es' ? 'Activar/silenciar voz' : 'Toggle voice' %>">🔊</button>
+      <a href="/training" class="tr-btn tr-btn--back">← <%= lang === 'es' ? 'Volver' : 'Back' %></a>
+    </div>
+  </header>
+
+  <!-- ── Lane cards ────────────────────────────────────────────────────────── -->
+  <div class="training-grid" id="trainingGrid"></div>
+
+  <script>
+    const TRAINING_DATA = <%- JSON.stringify({
+      startedAt: startedAt,
+      lanes:     lanes
+    }) %>;
+    const LANG = "<%= lang %>";
+  </script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/training.js"></script>
+</body>
+</html>

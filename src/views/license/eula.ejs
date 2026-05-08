@@ -1,0 +1,142 @@
+<%- include('../partials/header', { pageTitle: lang === 'es' ? 'Términos de uso' : 'Terms of Use' }) %>
+<div class="container container--narrow">
+
+  <div class="page-header">
+    <h1 class="page-title"><%= lang === 'es' ? 'Contrato de Licencia de Usuario Final' : 'End User License Agreement' %></h1>
+    <p class="page-subtitle">Slot Timer Pro · v1.0 · 2026-05-08</p>
+  </div>
+
+  <div class="eula-lang-switch">
+    <a href="/eula?lang=es" class="btn btn--ghost btn--sm <%= lang === 'es' ? 'btn--active' : '' %>">Español</a>
+    <a href="/eula?lang=en" class="btn btn--ghost btn--sm <%= lang === 'en' ? 'btn--active' : '' %>">English</a>
+  </div>
+
+  <div class="eula-body">
+  <% if (lang === 'es') { %>
+
+    <h2>1. Definiciones</h2>
+    <p><strong>Software:</strong> la aplicación Slot Timer Pro, incluyendo todos sus componentes, actualizaciones, documentación y materiales asociados.</p>
+    <p><strong>Licencia:</strong> el derecho limitado, no exclusivo e intransferible de uso del Software concedido al Usuario.</p>
+    <p><strong>Dispositivo autorizado:</strong> el equipo informático identificado por el Hardware ID registrado en el fichero de licencia.</p>
+    <p><strong>Tier:</strong> el nivel de licencia contratado (Basic, Club o Pro), que determina las funcionalidades disponibles.</p>
+    <p><strong>Período de licencia:</strong> el intervalo de tiempo comprendido entre la fecha de activación y la fecha de expiración indicada en el fichero de licencia.</p>
+
+    <h2>2. Concesión de licencia</h2>
+    <p>Sujeto al pago de la tarifa correspondiente y al cumplimiento de este Contrato, el Licenciante le concede una licencia limitada, no exclusiva y no transferible para:</p>
+    <ul>
+      <li>Instalar y utilizar una (1) copia del Software en el Dispositivo autorizado.</li>
+      <li>Acceder a las funcionalidades correspondientes al Tier contratado.</li>
+      <li>Recibir actualizaciones del Software durante el Período de licencia vigente, sin coste adicional.</li>
+    </ul>
+
+    <h2>3. Restricciones</h2>
+    <p>El Usuario no podrá, salvo autorización expresa y por escrito del Licenciante:</p>
+    <ul>
+      <li>Copiar, reproducir o distribuir el Software a terceros.</li>
+      <li>Modificar, adaptar, traducir, realizar ingeniería inversa, descompilar o desensamblar el Software.</li>
+      <li>Crear obras derivadas basadas en el Software.</li>
+      <li>Sublicenciar, vender, alquilar, arrendar o ceder la Licencia o cualquier derecho sobre el Software.</li>
+      <li>Eliminar, alterar u ocultar cualquier aviso de propiedad intelectual, marca comercial o autoría del Software.</li>
+      <li>Utilizar el Software en más dispositivos de los autorizados por la Licencia.</li>
+      <li>Manipular, falsificar o intentar eludir el sistema de verificación de licencias.</li>
+    </ul>
+
+    <h2>4. Actualizaciones</h2>
+    <p>Durante el Período de licencia activo, el Usuario tendrá derecho a recibir todas las actualizaciones del Software que el Licenciante publique para el Tier contratado, sin coste adicional. El Licenciante no garantiza la publicación de actualizaciones en ningún plazo concreto ni la incorporación de funcionalidades específicas.</p>
+
+    <h2>5. Vinculación al hardware</h2>
+    <p>La Licencia queda vinculada al Dispositivo autorizado mediante su Hardware ID. En caso de sustitución del equipo por avería u otra causa, el Usuario deberá solicitar la reemisión de la licencia aportando el nuevo Hardware ID. El Licenciante realizará esta gestión sin coste adicional dentro del Período de licencia vigente.</p>
+
+    <h2>6. Propiedad intelectual</h2>
+    <p>El Software y todos sus componentes son propiedad exclusiva del Licenciante y están protegidos por la legislación española y europea en materia de propiedad intelectual. Este Contrato no transfiere al Usuario ningún derecho de propiedad sobre el Software.</p>
+
+    <h2>7. Limitación de responsabilidad</h2>
+    <p>El Software se proporciona "tal cual" (<em>as is</em>), sin garantías de ningún tipo, expresas o implícitas.</p>
+    <p>En ningún caso el Licenciante será responsable de daños indirectos, incidentales, especiales o consecuentes, incluyendo pérdida de beneficios, pérdida de datos o interrupción de actividad.</p>
+    <p><strong>En particular, el Licenciante no asume ninguna responsabilidad por errores en la medición de tiempos, clasificaciones incorrectas, fallos técnicos durante competiciones o cualquier perjuicio derivado de decisiones tomadas con base en los datos proporcionados por el Software.</strong> El Usuario es el único responsable de verificar la exactitud de los resultados.</p>
+    <p>La responsabilidad total máxima del Licenciante no podrá exceder el importe abonado por la Licencia durante los doce (12) meses anteriores al evento que origine la reclamación.</p>
+
+    <h2>8. Vigencia y resolución</h2>
+    <p>Este Contrato permanece vigente hasta la fecha de expiración de la Licencia. El Licenciante podrá resolverlo de forma inmediata ante incumplimiento. La expiración o resolución no dará derecho a reembolso, salvo lo previsto por la normativa de consumo aplicable.</p>
+
+    <h2>9. Protección de datos</h2>
+    <p>El Licenciante trata los datos del titular de la licencia exclusivamente para gestionar la relación comercial y emitir el fichero de licencia, sin cederlos a terceros, conforme al RGPD (Reglamento UE 2016/679).</p>
+
+    <h2>10. Ley aplicable y jurisdicción</h2>
+    <p>Este Contrato se rige por la legislación española. Las partes se someten a la jurisdicción de los Juzgados y Tribunales de España, sin perjuicio de los derechos que la normativa europea de consumo reconoce al Usuario en su país de residencia.</p>
+
+  <% } else { %>
+
+    <h2>1. Definitions</h2>
+    <p><strong>Software:</strong> the Slot Timer Pro application, including all its components, updates, documentation and associated materials.</p>
+    <p><strong>Licence:</strong> the limited, non-exclusive and non-transferable right to use the Software granted to the User.</p>
+    <p><strong>Authorised Device:</strong> the computer identified by the Hardware ID registered in the licence file.</p>
+    <p><strong>Tier:</strong> the contracted licence level (Basic, Club or Pro), which determines the available features.</p>
+    <p><strong>Licence Period:</strong> the interval between the activation date and the expiry date stated in the licence file.</p>
+
+    <h2>2. Grant of Licence</h2>
+    <p>Subject to payment of the applicable fee and compliance with this Agreement, the Licensor grants you a limited, non-exclusive, non-transferable licence to:</p>
+    <ul>
+      <li>Install and use one (1) copy of the Software on the Authorised Device.</li>
+      <li>Access the features corresponding to the contracted Tier.</li>
+      <li>Receive Software updates during the active Licence Period at no additional cost.</li>
+    </ul>
+
+    <h2>3. Restrictions</h2>
+    <p>The User may not, without the Licensor's express prior written authorisation:</p>
+    <ul>
+      <li>Copy, reproduce or distribute the Software to third parties.</li>
+      <li>Modify, adapt, translate, reverse engineer, decompile or disassemble the Software.</li>
+      <li>Create derivative works based on the Software.</li>
+      <li>Sublicence, sell, rent, lease or assign the Licence or any rights in the Software.</li>
+      <li>Remove, alter or obscure any intellectual property notice, trademark or authorship notice.</li>
+      <li>Use the Software on more devices than authorised by the Licence.</li>
+      <li>Manipulate, forge or attempt to circumvent the licence verification system.</li>
+    </ul>
+
+    <h2>4. Updates</h2>
+    <p>During the active Licence Period, the User is entitled to receive all Software updates published by the Licensor for the contracted Tier, at no additional cost. The Licensor does not guarantee publication of updates within any specific timeframe or the inclusion of any particular feature.</p>
+
+    <h2>5. Hardware Binding</h2>
+    <p>The Licence is bound to the Authorised Device through its Hardware ID. In the event of device replacement, the User must request a licence reissue providing the new Hardware ID. The Licensor will carry out this process at no additional cost during the active Licence Period.</p>
+
+    <h2>6. Intellectual Property</h2>
+    <p>The Software and all its components are the exclusive property of the Licensor and are protected under Spanish and European intellectual property law. This Agreement does not transfer any ownership rights in the Software to the User.</p>
+
+    <h2>7. Limitation of Liability</h2>
+    <p>The Software is provided "as is", without warranties of any kind, express or implied.</p>
+    <p>In no event shall the Licensor be liable for any indirect, incidental, special or consequential damages, including loss of profits, loss of data or business interruption.</p>
+    <p><strong>In particular, the Licensor accepts no liability for timing measurement errors, incorrect classifications, technical failures during competitions, or any loss arising from decisions made on the basis of data provided by the Software.</strong> The User bears sole responsibility for verifying the accuracy of results.</p>
+    <p>The Licensor's total maximum liability shall not exceed the amount paid for the Licence during the twelve (12) months preceding the event giving rise to the claim.</p>
+
+    <h2>8. Term and Termination</h2>
+    <p>This Agreement remains in force until the Licence expiry date. The Licensor may terminate it immediately upon breach. Expiry or termination shall not entitle the User to any refund, except as required by applicable consumer protection law.</p>
+
+    <h2>9. Data Protection</h2>
+    <p>The Licensor processes the licence holder's data solely to manage the commercial relationship and issue the licence file, without sharing it with third parties, in accordance with GDPR (Regulation EU 2016/679).</p>
+
+    <h2>10. Governing Law and Jurisdiction</h2>
+    <p>This Agreement is governed by Spanish law. The parties submit to the jurisdiction of the courts of Spain, without prejudice to the mandatory consumer protection rights applicable in the User's country of residence under European Union law.</p>
+
+  <% } %>
+  </div>
+
+  <div style="text-align:center;margin-top:2rem">
+    <a href="/license" class="btn btn--ghost"><%= lang === 'es' ? '← Volver a licencia' : '← Back to license' %></a>
+  </div>
+</div>
+
+<style>
+.eula-lang-switch { display:flex; gap:.5rem; margin-bottom:1.5rem; }
+.btn--active { background:#21262d; color:#e6edf3; }
+.page-subtitle { color:#8b949e; font-size:.9rem; margin-top:.25rem; }
+.eula-body { background:#0d1117; border:1px solid #21262d; border-radius:12px; padding:2rem; line-height:1.7; }
+.eula-body h2 { color:#e6edf3; font-size:1rem; font-weight:600; margin:1.75rem 0 .5rem; padding-bottom:.4rem; border-bottom:1px solid #21262d; }
+.eula-body h2:first-child { margin-top:0; }
+.eula-body p { color:#8b949e; margin:.5rem 0; font-size:.9rem; }
+.eula-body ul { color:#8b949e; font-size:.9rem; padding-left:1.5rem; margin:.5rem 0; }
+.eula-body li { margin:.3rem 0; }
+.eula-body strong { color:#c9d1d9; }
+</style>
+
+<%- include('../partials/footer') %>

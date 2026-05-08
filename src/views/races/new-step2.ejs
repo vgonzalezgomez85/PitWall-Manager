@@ -1,0 +1,46 @@
+<%- include('../partials/header', { pageTitle: t('wizard.step2_title') }) %>
+<div class="container container--narrow">
+
+  <%- include('../partials/wizard-progress', { step: 2, hasPole: wizard.has_pole }) %>
+
+  <h1 class="page-title"><%= t('wizard.step2_title') %></h1>
+  <p class="page-subtitle"><%= wizard.name %> · <%= t('races.type.' + wizard.type) %> · <%= wizard.lanes_count %> <%= t('races.lanes') %></p>
+
+  <% if (errors.length > 0) { %>
+    <div class="alert alert--error">
+      <% errors.forEach(e => { %><p><%= t('errors.' + e) %></p><% }) %>
+    </div>
+  <% } %>
+
+  <form action="/races/new/step2" method="POST" class="form-card">
+
+    <div class="form-group">
+      <label class="form-label"><%= t('wizard.race_format') %></label>
+      <div class="option-cards">
+        <label class="option-card">
+          <input type="radio" name="format" value="individual" required>
+          <div class="option-card__body">
+            <span class="option-card__icon">👤</span>
+            <span class="option-card__title"><%= t('wizard.individual') %></span>
+            <span class="option-card__desc"><%= t('wizard.individual_desc') %></span>
+          </div>
+        </label>
+        <label class="option-card">
+          <input type="radio" name="format" value="team" required>
+          <div class="option-card__body">
+            <span class="option-card__icon">👥</span>
+            <span class="option-card__title"><%= t('wizard.team') %></span>
+            <span class="option-card__desc"><%= t('wizard.team_desc') %></span>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <a href="/races/new" class="btn btn--ghost">← <%= t('wizard.back') %></a>
+      <button type="submit" class="btn btn--primary"><%= t('wizard.next') %> →</button>
+    </div>
+
+  </form>
+</div>
+<%- include('../partials/footer') %>

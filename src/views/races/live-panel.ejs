@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="<%= lang %>">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>
+    <% if (type === 'standings') { %><%= lang === 'es' ? 'Clasificación' : 'Standings' %>
+    <% } else if (type === 'projected') { %><%= lang === 'es' ? 'Proyección Final' : 'Final Projection' %>
+    <% } else { %><%= lang === 'es' ? 'Últimas Vueltas' : 'Last Laps' %><% } %>
+    — <%= race.name %>
+  </title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/live.css">
+  <style>
+    .panel-body {
+      display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+      background: #0a0d13; font-family: 'Inter', system-ui, sans-serif; color: #e6edf3;
+    }
+    .panel-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: .55rem 1.2rem;
+      background: #0d1117; border-bottom: 2px solid #161b22;
+      flex-shrink: 0;
+    }
+    .panel-header__left { display: flex; align-items: center; gap: .75rem; }
+    .panel-title {
+      font-size: .65rem; font-weight: 700; letter-spacing: .15em;
+      color: #6e7681; text-transform: uppercase;
+    }
+    .panel-manga {
+      font-family: 'Rajdhani', sans-serif; font-size: 1rem; font-weight: 700;
+      color: #e6edf3; letter-spacing: .04em;
+    }
+    .panel-race { font-size: .72rem; color: #6e7681; }
+    .panel-status { display: flex; align-items: center; gap: .4rem; }
+
+    .panel-table-wrap { flex: 1; overflow-y: auto; }
+
+    .panel-table {
+      width: 100%; border-collapse: collapse; font-size: .92rem; table-layout: fixed;
+    }
+    .panel-table thead {
+      position: sticky; top: 0; z-index: 5;
+    }
+    .panel-table thead th {
+      padding: .5rem 1rem; font-size: .68rem; font-weight: 700;
+      letter-spacing: .09em; color: #4e555e; text-transform: uppercase;
+      background: #080b10; border-bottom: 1px solid #161b22; text-align: left;
+    }
+    .panel-table td {
+      padding: .55rem 1rem; border-bottom: 1px solid #0f1419; vertical-align: middle;
+    }
+    .pt-right { text-align: right !important; }
+
+    .pt-row { transition: background .2s; }
+    .pt-row:nth-child(odd) { background: rgba(255,255,255,.015); }
+    @keyframes ptFlash { 0% { background: rgba(246,201,14,.2); } 100% {} }
+    .pt-row.flash { animation: ptFlash .65s ease-out forwards; }
+
+    .pt-pos {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px; border-radius: 50%;
+      font-family: 'Rajdhani', sans-serif; font-size: .88rem; font-weight: 700;
+    }
+    .pt-pos.p1 { background: #f6c90e; color: #0d1117; }
+    .pt-pos.p2 { background: #b0b8c0; color: #0d1117; }
+    .pt-pos.p3 { background: #a0674a; color: #fff; }
+    .pt-pos.pn { background: #21262d; color: #8b949e; }
+
+    .pt-name  { color: #e6edf3; font-weight: 500; }
+    .pt-laps  { font-family: 'Share Tech Mono', monospace; color: #f6c90e; font-weight: 700; font-size: 1.05rem; }
+    .pt-best  { font-family: 'Share Tech Mono', monospace; color: #58a6ff; }
+    .pt-last  { font-family: 'Share Tech Mono', monospace; color: #8b949e; }
+    .pt-exit  { color: #e63946; }
+    .pt-proj  { font-family: 'Share Tech Mono', monospace; color: #e6edf3; font-weight: 700; font-size: 1.05rem; }
+    .pt-ontrack { font-family: 'Share Tech Mono', monospace; color: #f6c90e; }
+
+    /* Ticker panel */
+    .ticker-panel { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+    .ticker-panel-list { flex: 1; overflow-y: auto; padding: .5rem 0; }
+    .ticker-panel-item {
+      display: flex; align-items: center; gap: .75rem;
+      padding: .5rem 1.2rem; border-left: 4px solid transparent;
+      border-bottom: 1px solid #0f1419; opacity: 0; transition: opacity .25s;
+    }
+    .ticker-panel-item.visible { opacity: 1; }
+    .ticker-pdot {
+      width: 30px; height: 30px; border-radius: 6px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Rajdhani', sans-serif; font-size: .95rem; font-weight: 700; color: #fff;
+    }
+    .ticker-pname  { font-size: .9rem; color: #c9d1d9; flex: 1; }
+    .ticker-plapn  { font-size: .82rem; color: #8b949e; }
+    .ticker-ptime  { font-family: 'Share Tech Mono', monospace; font-size: .88rem; color: #f6c90e; }
+  </style>
+</head>
+<body class="panel-body">
+
+  <header class="panel-header">
+    <div class="panel-header__left">
+      <% if (type === 'standings') { %>
+        <span class="panel-title"><%= lang === 'es' ? 'Clasificación General' : 'Standings' %></span>
+      <% } else if (type === 'projected') { %>
+        <span class="panel-title"><%= lang === 'es' ? 'Proyección Final' : 'Final Projection' %></span>
+      <% } else { %>
+        <span class="panel-title"><%= lang === 'es' ? 'Últimas Vueltas' : 'Last Laps' %></span>
+      <% } %>
+      <span class="panel-manga">
+        <% if (tanda) { %><%= lang === 'es' ? 'Tanda' : 'Round' %> <%= tanda.number %> · <% } %>
+        <%= lang === 'es' ? 'Manga' : 'Heat' %> #<%= manga.number %>
+      </span>
+    </div>
+    <div class="panel-header__left">
+      <div id="panelStatus" class="panel-status">
+        <% if (isActive) { %>
+          <span class="status-dot status-dot--active"></span>
+          <span class="status-text status-text--active"><%= lang === 'es' ? 'En carrera' : 'Racing' %></span>
+        <% } else if (manga.status === 'finished') { %>
+          <span class="status-text status-text--finished"><%= lang === 'es' ? 'Finalizada' : 'Finished' %></span>
+        <% } else { %>
+          <span class="status-text status-text--pending"><%= lang === 'es' ? 'En espera' : 'Pending' %></span>
+        <% } %>
+      </div>
+      <span class="panel-race"><%= race.name %></span>
+    </div>
+  </header>
+
+  <% if (type === 'standings') { %>
+  <div class="panel-table-wrap">
+    <table class="panel-table">
+      <thead>
+        <tr>
+          <th style="width:50px">#</th>
+          <th><%= lang === 'es' ? 'Piloto / Equipo' : 'Driver / Team' %></th>
+          <th class="pt-right" style="width:100px"><%= lang === 'es' ? 'Vueltas' : 'Laps' %></th>
+          <th class="pt-right" style="width:130px"><%= lang === 'es' ? 'Última' : 'Last' %></th>
+          <th class="pt-right" style="width:130px"><%= lang === 'es' ? 'Mejor' : 'Best' %></th>
+          <th class="pt-right" style="width:80px" title="<%= lang === 'es' ? 'Salidas de pista' : 'Track exits' %>">Sal.</th>
+        </tr>
+      </thead>
+      <tbody id="panelBody"></tbody>
+    </table>
+  </div>
+  <% } else if (type === 'projected') { %>
+  <div class="panel-table-wrap">
+    <table class="panel-table">
+      <thead>
+        <tr>
+          <th style="width:50px">#</th>
+          <th><%= lang === 'es' ? 'Participante' : 'Participant' %></th>
+          <th class="pt-right" style="width:140px"><%= lang === 'es' ? 'Proyectado' : 'Projected' %></th>
+          <th class="pt-right" style="width:120px"><%= lang === 'es' ? 'En pista' : 'On track' %></th>
+          <th class="pt-right" style="width:130px"><%= lang === 'es' ? 'Mejor' : 'Best' %></th>
+        </tr>
+      </thead>
+      <tbody id="panelBody"></tbody>
+    </table>
+  </div>
+  <% } else { %>
+  <div class="ticker-panel">
+    <div class="ticker-panel-list" id="panelBody"></div>
+  </div>
+  <% } %>
+
+  <%
+    const LC2 = ['#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4','#ff5722','#607d8b','#795548','#e91e63','#3f51b5','#009688','#cddc39','#ffc107','#f44336','#673ab7','#03a9f4','#8bc34a','#ff6f00','#880e4f','#1a237e','#b71c1c','#004d40','#f57f17','#311b92','#0d47a1','#1b5e20','#33691e','#bf360c','#4a148c','#006064','#827717'];
+    const laneInit2 = {};
+    lanes.forEach(l => {
+      laneInit2[l.lane] = {
+        lane: l.lane, name: l.team_name || l.driver_name || ('Lane ' + l.lane),
+        color: LC2[l.lane - 1] || '#8b949e', isRest: l.is_rest ? true : false,
+        lapCount: 0, bestLapMs: null, lastLapMs: null, exitCount: 0
+      };
+    });
+    laps.forEach(l => {
+      const s = laneInit2[l.lane];
+      if (!s || s.isRest) return;
+      s.lapCount = Math.max(s.lapCount, l.lap_number);
+      s.lastLapMs = l.lap_time_ms;
+      if (!l.is_exit && (!s.bestLapMs || l.lap_time_ms < s.bestLapMs)) s.bestLapMs = l.lap_time_ms;
+      if (l.is_exit) s.exitCount++;
+    });
+  %>
+
+  <script>
+    const PANEL_DATA = <%- JSON.stringify({
+      raceId:    race.id,
+      mangaId:   manga.id,
+      isActive:  isActive,
+      durationMs: race.manga_duration_minutes * 60 * 1000,
+      standings: standings,
+      lanes:     Object.values(laneInit2),
+      type:      type
+    }) %>;
+    const LANG = "<%= lang %>";
+  </script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    function formatMs(ms) {
+      if (ms == null) return '—';
+      const totalSec   = Math.floor(ms / 1000);
+      const hundredths = Math.floor((ms % 1000) / 10);
+      const secs = totalSec % 60;
+      const mins = Math.floor(totalSec / 60);
+      return `${mins > 0 ? mins + ':' : ''}${String(secs).padStart(mins > 0 ? 2 : 1, '0')}.${String(hundredths).padStart(2, '0')}`;
+    }
+
+    function posClass(pos) { return ['p1','p2','p3'][pos-1] || 'pn'; }
+
+    const panelBody = document.getElementById('panelBody');
+
+    function renderStandings(data) {
+      if (!data?.standings) return;
+      panelBody.innerHTML = data.standings.map((r, i) => `
+        <tr class="pt-row">
+          <td><span class="pt-pos ${posClass(i+1)}">${i+1}</span></td>
+          <td><span class="pt-name">${r.name}</span></td>
+          <td class="pt-right"><span class="pt-laps">${r.lapCount}</span></td>
+          <td class="pt-right"><span class="pt-last">${formatMs(r.lastLapMs)}</span></td>
+          <td class="pt-right"><span class="pt-best">${formatMs(r.bestLapMs)}</span></td>
+          <td class="pt-right"><span class="pt-exit">${r.exitCount > 0 ? r.exitCount : '—'}</span></td>
+        </tr>`).join('');
+    }
+
+    function renderProjected(data) {
+      if (!data?.standings) return;
+      const elapsed   = data.elapsedMs   ?? 0;
+      const remaining = data.remainingMs ?? 0;
+      const projected = data.standings.map(r => {
+        const proj = elapsed > 5000 && r.lapCount > 0
+          ? Math.round(r.lapCount + (r.lapCount / elapsed) * remaining)
+          : r.lapCount;
+        return { ...r, projected: proj };
+      }).sort((a,b) => b.projected - a.projected || (a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity));
+
+      panelBody.innerHTML = projected.map((r, i) => `
+        <tr class="pt-row">
+          <td><span class="pt-pos ${posClass(i+1)}">${i+1}</span></td>
+          <td><span class="pt-name">${r.name}</span></td>
+          <td class="pt-right"><span class="pt-proj">${r.projected}</span></td>
+          <td class="pt-right"><span class="pt-ontrack">${r.lapCount}</span></td>
+          <td class="pt-right"><span class="pt-best">${formatMs(r.bestLapMs)}</span></td>
+        </tr>`).join('');
+    }
+
+    function addTicker(lap) {
+      const el = document.createElement('div');
+      el.className = 'ticker-panel-item';
+      el.style.borderLeftColor = lap.color;
+      el.innerHTML = `
+        <span class="ticker-pdot" style="background:${lap.color}">${lap.lane}</span>
+        <span class="ticker-pname">${lap.name}</span>
+        <span class="ticker-plapn">V${lap.lapNumber}</span>
+        <span class="ticker-ptime">${formatMs(lap.lapTimeMs)}</span>`;
+      panelBody.insertBefore(el, panelBody.firstChild);
+      setTimeout(() => el.classList.add('visible'), 10);
+    }
+
+    function renderInitial() {
+      const initialData = {
+        standings: PANEL_DATA.lanes
+          .filter(l => !l.isRest)
+          .sort((a,b) => b.lapCount - a.lapCount || (a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity))
+          .map((r, i) => ({ ...r, position: i+1, exitCount: r.exitCount ?? 0 })),
+        elapsedMs: 0, remainingMs: 0
+      };
+      if (PANEL_DATA.type === 'standings') renderStandings(initialData);
+      else if (PANEL_DATA.type === 'projected') renderProjected(initialData);
+    }
+
+    if (PANEL_DATA.standings) {
+      if (PANEL_DATA.type === 'standings') renderStandings(PANEL_DATA.standings);
+      else if (PANEL_DATA.type === 'projected') renderProjected(PANEL_DATA.standings);
+    } else {
+      renderInitial();
+    }
+
+    if (PANEL_DATA.isActive) {
+      const socket = io();
+      socket.on('connect', () => socket.emit('standings:request'));
+
+      socket.on('standings', (data) => {
+        if (PANEL_DATA.type === 'standings')  renderStandings(data);
+        else if (PANEL_DATA.type === 'projected') renderProjected(data);
+      });
+
+      socket.on('lap', (lap) => {
+        if (PANEL_DATA.type === 'ticker') addTicker(lap);
+      });
+
+      socket.on('manga:stopped', () => {
+        const s = document.getElementById('panelStatus');
+        if (s) s.innerHTML = `<span class="status-text status-text--finished">${LANG === 'es' ? 'Finalizada' : 'Finished'}</span>`;
+      });
+
+      socket.on('manga:cancelled', () => { location.reload(); });
+    }
+  </script>
+</body>
+</html>

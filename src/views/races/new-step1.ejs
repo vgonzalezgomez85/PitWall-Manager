@@ -1,0 +1,276 @@
+<%- include('../partials/header', { pageTitle: t('wizard.step1_title') }) %>
+<div class="container container--narrow">
+
+  <%- include('../partials/wizard-progress', { step: 1 }) %>
+
+  <h1 class="page-title"><%= t('wizard.step1_title') %></h1>
+
+  <% if (errors.length > 0) { %>
+    <div class="alert alert--error">
+      <% errors.forEach(e => { %><p><%= t('errors.' + e) %></p><% }) %>
+    </div>
+  <% } %>
+
+  <form action="/races/new/step1" method="POST" class="form-card">
+
+    <!-- Name -->
+    <div class="form-group">
+      <label class="form-label" for="name"><%= t('wizard.race_name') %></label>
+      <input
+        class="form-input <%= errors.includes('name_required') ? 'form-input--error' : '' %>"
+        type="text" id="name" name="name"
+        placeholder="<%= t('wizard.race_name_placeholder') %>"
+        value="<%= body.name || '' %>"
+        autocomplete="off" autofocus required>
+    </div>
+
+    <!-- Type -->
+    <div class="form-group">
+      <label class="form-label"><%= t('wizard.race_type') %></label>
+      <div class="option-cards">
+        <label class="option-card">
+          <input type="radio" name="type" value="club" <%= body.type === 'club' ? 'checked' : '' %> required>
+          <div class="option-card__body">
+            <span class="option-card__icon">🏎️</span>
+            <span class="option-card__title"><%= t('wizard.club_race') %></span>
+            <span class="option-card__desc"><%= t('wizard.club_race_desc') %></span>
+          </div>
+        </label>
+        <label class="option-card">
+          <input type="radio" name="type" value="championship" <%= body.type === 'championship' ? 'checked' : '' %> required>
+          <div class="option-card__body">
+            <span class="option-card__icon">🏆</span>
+            <span class="option-card__title"><%= t('wizard.championship_race') %></span>
+            <span class="option-card__desc"><%= t('wizard.championship_race_desc') %></span>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <!-- Duration -->
+    <div class="form-group">
+      <label class="form-label" for="manga_duration_minutes"><%= t('wizard.manga_duration') %></label>
+      <div class="input-row">
+        <input class="form-input form-input--sm <%= errors.includes('duration_invalid') ? 'form-input--error' : '' %>"
+          type="number" id="manga_duration_minutes" name="manga_duration_minutes"
+          min="1" max="120" value="<%= body.manga_duration_minutes || 5 %>" required>
+        <span class="form-hint"><%= lang === 'es' ? 'minutos por manga' : 'minutes per heat' %></span>
+      </div>
+    </div>
+
+    <!-- Circuit selector -->
+    <div class="form-group">
+      <label class="form-label">
+        <%= lang === 'es' ? 'Circuito' : 'Circuit' %>
+      </label>
+      <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
+        <select id="circuitSelect" class="form-input" style="max-width:22rem"
+                onchange="applyCircuit(this.value)">
+          <option value="">— <%= lang === 'es' ? 'Configurar manualmente' : 'Configure manually' %> —</option>
+          <% savedCircuits.forEach(c => { %>
+            <option value="<%= c.id %>"
+                    data-count="<%= c.circuits_count %>"
+                    data-config="<%= c.circuits_config %>"
+                    data-min-ms="<%= c.min_lap_ms %>"
+                    <%= body.circuit_id == c.id ? 'selected' : '' %>>
+              <%= c.name %> (<%= c.lanes_count %> <%= lang === 'es' ? 'carriles' : 'lanes' %><% if (c.min_lap_ms > 0) { %> · min <%= (c.min_lap_ms/1000).toFixed(2) %>s<% } %>)
+            </option>
+          <% }) %>
+        </select>
+        <a href="/circuits/new" class="btn btn--ghost btn--sm" target="_blank">
+          + <%= lang === 'es' ? 'Nuevo circuito' : 'New circuit' %>
+        </a>
+      </div>
+      <input type="hidden" name="circuit_id" id="circuitId" value="<%= body.circuit_id || '' %>">
+    </div>
+
+    <!-- Circuit configuration -->
+    <div class="form-group" id="circuitConfigGroup">
+      <label class="form-label">
+        <%= lang === 'es' ? 'Configuración de carriles' : 'Lane configuration' %>
+      </label>
+
+      <!-- Number of circuits -->
+      <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem">
+        <span class="form-hint" style="flex-shrink:0">
+          <%= lang === 'es' ? 'Número de circuitos:' : 'Number of circuits:' %>
+        </span>
+        <div class="circ-pills" id="circPills">
+          <% for(let i=1; i<=6; i++) { %>
+            <button type="button" class="circ-pill<%= (parseInt(body.circuits_count)||1) === i ? ' active' : '' %>"
+              data-n="<%= i %>"><%= i %></button>
+          <% } %>
+        </div>
+        <input type="hidden" name="circuits_count" id="circuitsCount" value="<%= body.circuits_count || 1 %>">
+      </div>
+
+      <!-- Per-circuit lane inputs -->
+      <div class="circuits-grid" id="circuitsGrid">
+        <% for(let i=1; i<=6; i++) { %>
+          <div class="circuit-cfg-row" data-idx="<%= i %>"
+               style="<%= (parseInt(body.circuits_count)||1) < i ? 'display:none' : '' %>">
+            <span class="circuit-num-badge" style="background:<%= ['#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4'][i-1] %>">
+              <%= lang === 'es' ? 'C' : 'C' %><%= i %>
+            </span>
+            <input
+              class="form-input form-input--sm <%= errors.includes('lanes_invalid') ? 'form-input--error' : '' %>"
+              type="number"
+              name="circuit_lanes_<%= i %>"
+              id="circLanes_<%= i %>"
+              min="2" max="8"
+              value="<%= body['circuit_lanes_' + i] || (i === 1 ? 6 : 4) %>">
+            <span class="form-hint"><%= lang === 'es' ? 'carriles' : 'lanes' %></span>
+          </div>
+        <% } %>
+      </div>
+
+      <!-- Total -->
+      <div class="circuits-total">
+        <span class="form-hint"><%= lang === 'es' ? 'Total:' : 'Total:' %></span>
+        <strong id="totalLanesDisplay" style="color:#58a6ff">
+          <%= body.lanes_count || 6 %>
+        </strong>
+        <span class="form-hint"> <%= t('races.lanes') %></span>
+      </div>
+
+      <!-- Minimum lap time -->
+      <div style="display:flex;align-items:center;gap:.6rem;margin-top:.75rem;flex-wrap:wrap">
+        <span class="form-hint" style="flex-shrink:0">
+          <%= lang === 'es' ? 'Vuelta mínima:' : 'Min lap time:' %>
+        </span>
+        <input class="form-input form-input--sm" type="number" id="minLapS" name="min_lap_s"
+               step="0.01" min="0" max="999"
+               placeholder="<%= lang === 'es' ? 'desactivado' : 'disabled' %>"
+               value="<%= body.min_lap_s || '' %>"
+               style="width:5.5rem">
+        <span class="form-hint">s</span>
+        <span class="form-hint" id="minLapHint" style="color:#4caf50"></span>
+      </div>
+    </div>
+
+    <!-- Pole position -->
+    <div class="form-group">
+      <label class="form-label">
+        <%= lang === 'es' ? 'Pole position' : 'Pole position' %>
+      </label>
+      <div class="option-cards">
+        <label class="option-card">
+          <input type="radio" name="has_pole" value="0" <%= (body.has_pole || '0') !== '1' ? 'checked' : '' %> required>
+          <div class="option-card__body">
+            <span class="option-card__icon">🏎️</span>
+            <span class="option-card__title"><%= lang === 'es' ? 'Sin pole' : 'No pole' %></span>
+            <span class="option-card__desc">
+              <%= lang === 'es' ? 'Los carriles de salida se asignan al crear la tanda.' : 'Starting lanes are assigned when creating the heat group.' %>
+            </span>
+          </div>
+        </label>
+        <label class="option-card">
+          <input type="radio" name="has_pole" value="1" <%= body.has_pole === '1' ? 'checked' : '' %>>
+          <div class="option-card__body">
+            <span class="option-card__icon">🏁</span>
+            <span class="option-card__title"><%= lang === 'es' ? 'Con pole position' : 'With pole position' %></span>
+            <span class="option-card__desc">
+              <%= lang === 'es' ? 'Sesión de clasificación: el más rápido elige carril primero.' : 'Qualifying session: fastest picks their starting lane first.' %>
+            </span>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <a href="/races" class="btn btn--ghost"><%= t('wizard.back') %></a>
+      <button type="submit" class="btn btn--primary"><%= t('wizard.next') %> →</button>
+    </div>
+
+  </form>
+</div>
+
+<script>
+const circPills    = document.getElementById('circPills');
+const circCount    = document.getElementById('circuitsCount');
+const circGrid     = document.getElementById('circuitsGrid');
+const totalDisplay = document.getElementById('totalLanesDisplay');
+const circuitIdEl  = document.getElementById('circuitId');
+const minLapInput  = document.getElementById('minLapS');
+const minLapHint   = document.getElementById('minLapHint');
+
+function getActiveCount() { return parseInt(circCount.value, 10); }
+
+function updateTotal() {
+  const n = getActiveCount();
+  let total = 0;
+  for (let i = 1; i <= n; i++) {
+    total += parseInt(document.getElementById('circLanes_' + i)?.value || 0, 10) || 0;
+  }
+  totalDisplay.textContent = total;
+}
+
+function setCircuitCount(n) {
+  circCount.value = n;
+  circPills.querySelectorAll('.circ-pill').forEach(btn => {
+    btn.classList.toggle('active', parseInt(btn.dataset.n) === n);
+  });
+  circGrid.querySelectorAll('.circuit-cfg-row').forEach(row => {
+    row.style.display = parseInt(row.dataset.idx) <= n ? '' : 'none';
+  });
+  updateTotal();
+}
+
+function setReadonly(readonly) {
+  circPills.querySelectorAll('.circ-pill').forEach(b => b.disabled = readonly);
+  circGrid.querySelectorAll('input[type=number]').forEach(i => i.readOnly = readonly);
+  minLapInput.readOnly = readonly;
+  circGrid.style.opacity = readonly ? '.55' : '';
+  minLapInput.style.opacity = readonly ? '.55' : '';
+}
+
+function applyCircuit(id) {
+  const sel = document.getElementById('circuitSelect');
+  const opt = sel.querySelector(`option[value="${id}"]`);
+  circuitIdEl.value = id || '';
+
+  if (!id || !opt) {
+    setReadonly(false);
+    minLapHint.textContent = '';
+    return;
+  }
+
+  const count  = parseInt(opt.dataset.count, 10);
+  const config = JSON.parse(opt.dataset.config || '[]');
+  const minMs  = parseInt(opt.dataset.minMs, 10) || 0;
+
+  setCircuitCount(count);
+  config.forEach((lanes, i) => {
+    const inp = document.getElementById('circLanes_' + (i + 1));
+    if (inp) inp.value = lanes;
+  });
+  updateTotal();
+
+  if (minMs > 0) {
+    minLapInput.value = (minMs / 1000).toFixed(2);
+    minLapHint.textContent = '<%= lang === "es" ? "← del circuito" : "← from circuit" %>';
+  } else {
+    minLapInput.value = '';
+    minLapHint.textContent = '';
+  }
+  setReadonly(true);
+}
+
+circPills.addEventListener('click', e => {
+  const btn = e.target.closest('.circ-pill');
+  if (btn) setCircuitCount(parseInt(btn.dataset.n));
+});
+
+circGrid.addEventListener('input', updateTotal);
+
+// Init: restore circuit selection if coming back from error
+const initId = circuitIdEl.value;
+if (initId) {
+  document.getElementById('circuitSelect').value = initId;
+  applyCircuit(initId);
+} else {
+  updateTotal();
+}
+</script>
+
+<%- include('../partials/footer') %>

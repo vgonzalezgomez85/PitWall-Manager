@@ -1,0 +1,354 @@
+<%- include('../partials/header', { pageTitle: lang === 'es' ? 'Nueva Tanda' : 'New Heat Group' }) %>
+<div class="container container--narrow">
+
+  <a href="/races/<%= race.id %>" class="back-link">← <%= t('race.back_to_list') %></a>
+  <h1 class="page-title"><%= lang === 'es' ? 'Nueva Tanda' : 'New Heat Group' %></h1>
+  <p class="page-subtitle"><%= race.name %> · <%= t('races.format.' + race.format) %> · <%= laneSequence.length %> <%= t('races.lanes') %></p>
+
+  <% if (errors.length > 0) { %>
+    <div class="alert alert--error">
+      <% errors.forEach(e => { %><p><%= t('errors.' + e) %></p><% }) %>
+    </div>
+  <% } %>
+
+  <div class="form-card">
+
+    <div class="seq-display" style="margin-bottom:1.75rem">
+      <span class="seq-display__label"><%= lang === 'es' ? 'Secuencia:' : 'Sequence:' %></span>
+      <% laneSequence.forEach((lane, i) => { %>
+        <% if (lane === 0) { %>
+          <span class="seq-display__lane" style="background:#30363d;color:#8b949e;font-size:.65rem"><%= lang === 'es' ? 'DSC' : 'REST' %></span>
+        <% } else { %>
+          <span class="seq-display__lane" style="background:<%= LANE_COLORS[lane-1] %>"><%= lane %></span>
+        <% } %>
+        <% if (i < laneSequence.length - 1) { %><span class="seq-display__arrow">→</span><% } %>
+      <% }) %>
+    </div>
+
+    <div id="restInfo" class="alert" style="display:none;background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.25);color:#58a6ff;margin-bottom:1.25rem">
+      <span id="restInfoText"></span>
+    </div>
+
+    <form action="/races/<%= race.id %>/tandas" method="POST">
+
+      <% if (race.format === 'individual') { %>
+
+        <p class="form-hint" style="margin-bottom:1.25rem">
+          <%= lang === 'es'
+            ? `Mínimo ${laneSequence.length} pilotos. Añade más para rotaciones con descanso.`
+            : `Minimum ${laneSequence.length} drivers. Add more for rotation with rest slots.` %>
+        </p>
+
+        <div id="driversGrid" class="drivers-grid">
+          <% const initD = Math.max(laneSequence.length, body.drivers ? body.drivers.length : 0); %>
+          <% for (let i = 0; i < initD; i++) { %>
+            <div class="driver-row participant-row" data-row="<%= i %>">
+              <span class="lane-badge participant-badge" style="background:<%= LANE_COLORS[i % LANE_COLORS.length] %>" data-index="<%= i %>"><%= i + 1 %></span>
+              <div class="driver-field participant-fields">
+                <input
+                  class="form-input participant-name"
+                  type="text"
+                  name="drivers[]"
+                  placeholder="<%= t('wizard.driver_name_ph') %>"
+                  value="<%= (body.drivers && body.drivers[i]) || '' %>"
+                  autocomplete="off"
+                  <%= i < laneSequence.length ? 'required' : '' %>>
+              </div>
+              <% if (i >= laneSequence.length) { %>
+                <button type="button" class="btn btn--danger btn--sm remove-row" title="<%= lang === 'es' ? 'Eliminar' : 'Remove' %>">✕</button>
+              <% } %>
+            </div>
+          <% } %>
+        </div>
+
+        <button type="button" id="addDriver" class="btn btn--ghost btn--sm" style="margin-top:.75rem">
+          + <%= lang === 'es' ? 'Añadir piloto' : 'Add driver' %>
+        </button>
+
+      <% } else { %>
+
+        <p class="form-hint" style="margin-bottom:1.25rem">
+          <%= lang === 'es'
+            ? `Mínimo ${laneSequence.length} equipos. Añade más para rotaciones con descanso.`
+            : `Minimum ${laneSequence.length} teams. Add more for rotation with rest slots.` %>
+        </p>
+
+        <div id="teamsContainer" class="teams-container">
+          <% const initT = Math.max(laneSequence.length, body.teams ? Object.keys(body.teams).length : 0); %>
+          <% for (let i = 0; i < initT; i++) { %>
+            <div class="team-block participant-row" data-row="<%= i %>">
+              <div class="team-block__header" style="border-left-color:<%= LANE_COLORS[i % LANE_COLORS.length] %>">
+                <span class="lane-badge participant-badge" style="background:<%= LANE_COLORS[i % LANE_COLORS.length] %>" data-index="<%= i %>"><%= i + 1 %></span>
+                <input
+                  class="form-input team-name-input"
+                  type="text"
+                  name="teams[<%= i %>][name]"
+                  placeholder="<%= t('wizard.team_name_ph') %>"
+                  value="<%= (body.teams && body.teams[i] && body.teams[i].name) || '' %>"
+                  autocomplete="off"
+                  <%= i < laneSequence.length ? 'required' : '' %>>
+                <% if (i >= laneSequence.length) { %>
+                  <button type="button" class="btn btn--danger btn--sm remove-row" style="margin-left:.5rem">✕</button>
+                <% } %>
+              </div>
+              <div class="team-members">
+                <% for (let m = 0; m < 4; m++) { %>
+                  <div class="member-row">
+                    <span class="member-num"><%= m + 1 %></span>
+                    <input
+                      class="form-input participant-name"
+                      type="text"
+                      name="teams[<%= i %>][members][]"
+                      placeholder="<%= t('wizard.member_ph') %> <%= m + 1 %><%= m === 0 ? '' : (' (' + t('wizard.optional') + ')') %>"
+                      value="<%= (body.teams && body.teams[i] && body.teams[i].members && body.teams[i].members[m]) || '' %>"
+                      autocomplete="off"
+                      <%= m === 0 && i < laneSequence.length ? 'required' : '' %>>
+                  </div>
+                <% } %>
+              </div>
+            </div>
+          <% } %>
+        </div>
+
+        <button type="button" id="addTeam" class="btn btn--ghost btn--sm" style="margin-top:.75rem">
+          + <%= lang === 'es' ? 'Añadir equipo' : 'Add team' %>
+        </button>
+
+      <% } %>
+
+      <div class="form-actions" style="margin-top:1.5rem">
+        <a href="/races/<%= race.id %>" class="btn btn--ghost">← <%= t('wizard.back') %></a>
+        <button type="submit" class="btn btn--primary">
+          🏁 <%= lang === 'es' ? 'Crear Tanda' : 'Create Heat Group' %>
+        </button>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+<script>
+const LANES     = <%= laneSequence.length %>;
+const LANG      = "<%= lang %>";
+const COLORS    = <%- JSON.stringify(LANE_COLORS) %>;
+const DRIVER_PH = "<%= t('wizard.driver_name_ph') %>";
+const TEAM_PH   = "<%= t('wizard.team_name_ph') %>";
+const MEMBER_PH = "<%= t('wizard.member_ph') %>";
+const OPT_LBL   = "<%= t('wizard.optional') %>";
+
+// Flat list of all profiles with their category for the autocomplete
+const ALL_PROFILES = <%- JSON.stringify(
+  (profiles || []).map(p => ({ name: p.name, category: p.category }))
+) %>;
+
+const CAT_ICONS = { platino: '💎', oro: '🥇', plata: '🥈', bronce: '🥉' };
+
+// ── Autocomplete ──────────────────────────────────────────────────────────────
+const acDrop = document.createElement('div');
+acDrop.className = 'ac-dropdown';
+document.body.appendChild(acDrop);
+
+let acTarget = null;
+let acActive = -1;
+
+function acItems() { return acDrop.querySelectorAll('.ac-item'); }
+
+function acFilter(query) {
+  if (!query) return [];
+  const q = query.toLowerCase();
+  return ALL_PROFILES.filter(p => p.name.toLowerCase().includes(q)).slice(0, 10);
+}
+
+function acShow(input, results) {
+  if (!results.length) { acHide(); return; }
+  acTarget = input;
+  acActive = -1;
+
+  const rect = input.getBoundingClientRect();
+  acDrop.style.left  = (rect.left  + window.scrollX) + 'px';
+  acDrop.style.top   = (rect.bottom + window.scrollY + 2) + 'px';
+  acDrop.style.width = rect.width + 'px';
+
+  acDrop.innerHTML = results.map(p =>
+    `<div class="ac-item" data-name="${p.name}">
+      <span class="ac-cat">${CAT_ICONS[p.category] || ''}</span>
+      <span class="ac-name">${p.name}</span>
+    </div>`
+  ).join('');
+  acDrop.classList.add('ac-dropdown--open');
+}
+
+function acHide() {
+  acDrop.classList.remove('ac-dropdown--open');
+  acTarget = null;
+  acActive = -1;
+}
+
+function acSelect(name) {
+  if (acTarget) {
+    acTarget.value = name;
+    acTarget.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  acHide();
+}
+
+function acHighlight(idx) {
+  const items = acItems();
+  items.forEach((el, i) => el.classList.toggle('ac-item--active', i === idx));
+  if (items[idx]) items[idx].scrollIntoView({ block: 'nearest' });
+}
+
+// Input event → show suggestions
+document.addEventListener('input', e => {
+  if (!e.target.classList.contains('participant-name')) return;
+  acShow(e.target, acFilter(e.target.value));
+});
+
+// Keyboard navigation
+document.addEventListener('keydown', e => {
+  if (!acDrop.classList.contains('ac-dropdown--open')) return;
+  const items = acItems();
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    acActive = Math.min(acActive + 1, items.length - 1);
+    acHighlight(acActive);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    acActive = Math.max(acActive - 1, 0);
+    acHighlight(acActive);
+  } else if (e.key === 'Enter' && acActive >= 0) {
+    e.preventDefault();
+    acSelect(items[acActive].dataset.name);
+  } else if (e.key === 'Escape') {
+    acHide();
+  }
+});
+
+// Click on suggestion
+acDrop.addEventListener('mousedown', e => {
+  const item = e.target.closest('.ac-item');
+  if (item) { e.preventDefault(); acSelect(item.dataset.name); }
+});
+
+// Hide when clicking outside
+document.addEventListener('focusout', e => {
+  if (e.target.classList.contains('participant-name')) {
+    setTimeout(acHide, 150);
+  }
+});
+
+// ── Rest info banner ──────────────────────────────────────────────────────────
+function updateRestInfo() {
+  const container = document.getElementById('driversGrid') || document.getElementById('teamsContainer');
+  if (!container) return;
+  const total = container.querySelectorAll('.participant-row').length;
+  const info  = document.getElementById('restInfo');
+  if (total > LANES) {
+    document.getElementById('restInfoText').textContent = LANG === 'es'
+      ? `Con ${total} participantes y ${LANES} carriles: ${total - LANES} descansarán por manga. Ciclo = ${total} mangas.`
+      : `With ${total} participants and ${LANES} lanes: ${total - LANES} will rest per heat. Cycle = ${total} heats.`;
+    info.style.display = '';
+  } else {
+    info.style.display = 'none';
+  }
+}
+
+// ── Re-number rows ────────────────────────────────────────────────────────────
+function renumber(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const isTeams = containerId === 'teamsContainer';
+  container.querySelectorAll('.participant-row').forEach((row, i) => {
+    row.dataset.row = i;
+    const badge = row.querySelector('.participant-badge');
+    if (badge) {
+      badge.dataset.index = i;
+      badge.textContent   = i + 1;
+      const color = COLORS[i % COLORS.length];
+      badge.style.background = color;
+      if (isTeams) {
+        const hdr = row.querySelector('.team-block__header');
+        if (hdr) hdr.style.borderLeftColor = color;
+      }
+    }
+    if (isTeams) {
+      const nameInp = row.querySelector('.team-name-input');
+      if (nameInp) nameInp.name = `teams[${i}][name]`;
+      row.querySelectorAll('.team-members input').forEach(inp => { inp.name = `teams[${i}][members][]`; });
+    }
+  });
+  updateRestInfo();
+}
+
+// ── Add driver row ────────────────────────────────────────────────────────────
+document.getElementById('addDriver')?.addEventListener('click', () => {
+  const grid  = document.getElementById('driversGrid');
+  const idx   = grid.querySelectorAll('.participant-row').length;
+  const color = COLORS[idx % COLORS.length];
+  const div   = document.createElement('div');
+  div.className  = 'driver-row participant-row';
+  div.dataset.row = idx;
+  div.innerHTML = `
+    <span class="lane-badge participant-badge" style="background:${color}" data-index="${idx}">${idx + 1}</span>
+    <div class="driver-field participant-fields" style="display:flex;flex:1">
+      <input class="form-input participant-name" type="text" name="drivers[]"
+        placeholder="${DRIVER_PH}" autocomplete="off">
+    </div>
+    <button type="button" class="btn btn--danger btn--sm remove-row"
+      title="${LANG === 'es' ? 'Eliminar' : 'Remove'}">✕</button>`;
+  grid.appendChild(div);
+  div.querySelector('.participant-name').focus();
+  updateRestInfo();
+});
+
+document.getElementById('driversGrid')?.addEventListener('click', e => {
+  if (e.target.classList.contains('remove-row')) {
+    e.target.closest('.participant-row').remove();
+    renumber('driversGrid');
+  }
+});
+
+// ── Add team block ────────────────────────────────────────────────────────────
+document.getElementById('addTeam')?.addEventListener('click', () => {
+  const container = document.getElementById('teamsContainer');
+  const idx   = container.querySelectorAll('.participant-row').length;
+  const color = COLORS[idx % COLORS.length];
+
+  const members = [0,1,2,3].map(m => `
+    <div class="member-row">
+      <span class="member-num">${m + 1}</span>
+      <input class="form-input participant-name" type="text"
+        name="teams[${idx}][members][]"
+        placeholder="${MEMBER_PH} ${m + 1}${m > 0 ? ' (' + OPT_LBL + ')' : ''}"
+        autocomplete="off">
+    </div>`).join('');
+
+  const block = document.createElement('div');
+  block.className  = 'team-block participant-row';
+  block.dataset.row = idx;
+  block.innerHTML = `
+    <div class="team-block__header" style="border-left-color:${color}">
+      <span class="lane-badge participant-badge" style="background:${color}" data-index="${idx}">${idx + 1}</span>
+      <input class="form-input team-name-input" type="text"
+        name="teams[${idx}][name]"
+        placeholder="${TEAM_PH}" autocomplete="off">
+      <button type="button" class="btn btn--danger btn--sm remove-row"
+        style="margin-left:.5rem" title="${LANG === 'es' ? 'Eliminar' : 'Remove'}">✕</button>
+    </div>
+    <div class="team-members">${members}</div>`;
+  container.appendChild(block);
+  block.querySelector('input').focus();
+  updateRestInfo();
+});
+
+document.getElementById('teamsContainer')?.addEventListener('click', e => {
+  if (e.target.classList.contains('remove-row')) {
+    e.target.closest('.participant-row').remove();
+    renumber('teamsContainer');
+  }
+});
+
+updateRestInfo();
+</script>
+
+<%- include('../partials/footer') %>

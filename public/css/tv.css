@@ -1,0 +1,177 @@
+/* ── Reset + base ────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body { width: 100%; height: 100%; overflow: hidden; }
+
+.tv-body {
+  display: flex; flex-direction: column; height: 100vh;
+  background: #080b10;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: #e6edf3;
+}
+
+/* ── Header bar ──────────────────────────────────────────────────────────── */
+.tv-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .6vh 2vw;
+  background: #0d1117;
+  border-bottom: 3px solid #161b22;
+  flex-shrink: 0;
+  height: 12vh;
+}
+
+.tv-header__left { display: flex; flex-direction: column; gap: .2vh; min-width: 0; }
+.tv-race-name {
+  font-family: 'Rajdhani', sans-serif; font-size: 2.4vh; font-weight: 700;
+  color: #8b949e; letter-spacing: .08em; text-transform: uppercase;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tv-manga-tag {
+  font-family: 'Rajdhani', sans-serif; font-size: 1.5vh; font-weight: 600;
+  color: #4e555e; letter-spacing: .06em;
+}
+
+.tv-header__center { text-align: center; flex-shrink: 0; }
+.tv-timer {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8vh; color: #f6c90e; letter-spacing: .06em; line-height: 1;
+}
+.tv-timer-label {
+  font-size: 1.2vh; color: #6e7681; letter-spacing: .12em; text-transform: uppercase;
+}
+
+.tv-header__right { display: flex; flex-direction: column; align-items: flex-end; gap: .4vh; }
+.tv-status {
+  display: flex; align-items: center; gap: .6vw;
+  font-size: 1.6vh; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+}
+.tv-status-dot {
+  width: 1.2vh; height: 1.2vh; border-radius: 50%; flex-shrink: 0;
+}
+.tv-status-dot--active {
+  background: #3fb950; box-shadow: 0 0 8px #3fb950;
+  animation: blink 1.2s ease-in-out infinite;
+}
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+.tv-status--active   { color: #3fb950; }
+.tv-status--pending  { color: #f6c90e; }
+.tv-status--finished { color: #8b949e; }
+
+.tv-logo {
+  font-family: 'Rajdhani', sans-serif; font-size: 1.8vh; font-weight: 700;
+  color: #30363d; letter-spacing: .12em;
+}
+
+/* ── Panel title ─────────────────────────────────────────────────────────── */
+.tv-panel-title {
+  font-size: 1.2vh; font-weight: 700; letter-spacing: .16em; color: #4e555e;
+  text-transform: uppercase; padding: .8vh 2vw .4vh;
+  background: #0a0d13; border-bottom: 1px solid #161b22;
+  flex-shrink: 0;
+}
+
+/* ── Standings table ─────────────────────────────────────────────────────── */
+.tv-standings {
+  flex: 1; display: flex; flex-direction: column; overflow: hidden;
+}
+
+.tv-table {
+  width: 100%; border-collapse: collapse; flex: 1;
+}
+.tv-table thead th {
+  padding: .8vh 1.2vw; font-size: 1.4vh; font-weight: 700;
+  letter-spacing: .1em; color: #4e555e; text-transform: uppercase;
+  background: #0a0d13; border-bottom: 2px solid #161b22;
+  text-align: left;
+}
+.tv-table thead .tv-right { text-align: right; }
+
+.tv-row {
+  border-bottom: 1px solid #0f1419;
+  transition: background .3s;
+}
+.tv-row:nth-child(even) { background: rgba(255,255,255,.018); }
+
+@keyframes tvFlash { 0% { background: rgba(246,201,14,.2); } 100% {} }
+.tv-row.flash { animation: tvFlash .8s ease-out forwards; }
+
+.tv-table td { padding: .6vh 1.2vw; vertical-align: middle; }
+.tv-right { text-align: right; }
+
+/* Position cell */
+.tv-pos {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 4.5vh; height: 4.5vh; border-radius: 50%;
+  font-family: 'Rajdhani', sans-serif; font-size: 2.4vh; font-weight: 700;
+}
+.tv-pos.p1 { background: #f6c90e; color: #080b10; }
+.tv-pos.p2 { background: #b0b8c0; color: #080b10; }
+.tv-pos.p3 { background: #a0674a; color: #fff; }
+.tv-pos.pn { background: #21262d; color: #8b949e; }
+
+/* Color stripe */
+.tv-stripe {
+  display: inline-block; width: 1.2vw; height: 5vh; border-radius: 4px;
+  flex-shrink: 0; vertical-align: middle; margin-right: .8vw;
+}
+
+/* Name */
+.tv-name {
+  font-size: 2.8vh; font-weight: 600; color: #e6edf3;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 28vw;
+}
+
+/* Total laps — biggest number */
+.tv-total {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 4.5vh; font-weight: 700; color: #f6c90e;
+}
+
+/* Manga laps */
+.tv-manga-laps {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 2.4vh; color: #8b949e;
+}
+
+/* Best lap */
+.tv-best {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 2.4vh; color: #58a6ff;
+}
+
+/* Gap */
+.tv-gap {
+  font-family: 'Rajdhani', sans-serif; font-size: 2.2vh; font-weight: 700;
+  text-align: right;
+}
+.tv-gap--leader { color: #f6c90e; letter-spacing: .06em; }
+.tv-gap--behind { color: #6e7681; }
+
+/* ── Bottom ticker ───────────────────────────────────────────────────────── */
+.tv-ticker {
+  height: 5vh; flex-shrink: 0;
+  background: #0d1117; border-top: 2px solid #161b22;
+  display: flex; align-items: center; overflow: hidden;
+  padding: 0 1.5vw; gap: 1.5vw;
+}
+.tv-ticker-label {
+  font-size: 1.2vh; font-weight: 700; letter-spacing: .12em; color: #4e555e;
+  text-transform: uppercase; flex-shrink: 0;
+}
+.tv-ticker-items {
+  display: flex; gap: 2vw; align-items: center; flex: 1; overflow: hidden;
+}
+.tv-tick {
+  display: flex; gap: .6vw; align-items: center; flex-shrink: 0;
+  font-size: 1.6vh;
+}
+.tv-tick-dot {
+  width: 2.2vh; height: 2.2vh; border-radius: 3px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Rajdhani', sans-serif; font-size: 1.4vh; font-weight: 700; color: #fff;
+}
+.tv-tick-name { color: #8b949e; }
+.tv-tick-time {
+  font-family: 'Share Tech Mono', monospace; color: #f6c90e;
+}

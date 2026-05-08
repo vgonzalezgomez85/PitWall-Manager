@@ -1,0 +1,293 @@
+<%
+function formatMs(ms) {
+  if (ms == null) return '—';
+  const m = Math.floor(ms / 60000);
+  const s = ((ms % 60000) / 1000).toFixed(3).padStart(6, '0');
+  return m > 0 ? m + ':' + s : s + 's';
+}
+%>
+<%- include('../partials/header', { pageTitle: lang === 'es' ? 'Pole Position — Cronometraje' : 'Pole Position — Timing' }) %>
+<div class="container container--narrow">
+
+  <a href="/races/<%= race.id %>" class="back-link">← <%= t('race.back_to_list') %></a>
+  <h1 class="page-title">🏁 Pole Position</h1>
+  <p class="page-subtitle">
+    <%= race.name %> ·
+    <%= lang === 'es' ? 'Carril de pole:' : 'Pole lane:' %>
+    <span class="lane-dot-inline" style="background:<%= LANE_COLORS[session.lane - 1] %>"><%= session.lane %></span>
+    · <span id="js-progress"><%= session.current_idx %></span> / <%= entries.length %>
+    <%= lang === 'es' ? 'completados' : 'done' %>
+  </p>
+
+  <div class="pole-timing-layout">
+
+    <!-- Current participant (big card) -->
+    <% if (current) { %>
+      <div class="pole-current-card" id="js-current-card">
+
+        <div class="pole-current-label">
+          🚦 <%= lang === 'es' ? 'En pista ahora' : 'On track now' %>
+        </div>
+        <div class="pole-current-name" id="js-current-name"><%= current.entity_name %></div>
+        <% if (race.format === 'team') { %>
+          <% let members = []; try { members = JSON.parse(current.members_json || '[]'); } catch {} %>
+          <% if (members.length > 0) { %>
+            <div class="pole-current-members">
+              <% members.forEach(m => { %><span class="badge badge--neutral"><%= m %></span><% }) %>
+            </div>
+          <% } %>
+        <% } %>
+
+        <!-- Countdown -->
+        <div id="js-countdown-wrap" style="margin-top:1.25rem;display:none">
+          <div id="js-countdown" class="pole-countdown">00:00</div>
+          <div id="js-best-live" style="margin-top:.6rem;text-align:center;display:none">
+            <span class="pole-best-label"><%= lang === 'es' ? 'Mejor vuelta:' : 'Best lap:' %></span>
+            <span id="js-best-val" class="pole-best-val">—</span>
+          </div>
+        </div>
+
+        <!-- Lap list -->
+        <div id="js-lap-list-wrap" style="margin-top:1rem;display:none">
+          <p class="pole-section-title" style="text-align:center">
+            <%= lang === 'es' ? 'Vueltas' : 'Laps' %>
+          </p>
+          <div id="js-lap-list" class="pole-lap-list"></div>
+        </div>
+
+        <!-- Finished result -->
+        <div id="js-finished-result" style="display:none;margin-top:1.25rem;text-align:center">
+          <div class="pole-best-final">
+            <span><%= lang === 'es' ? 'Mejor vuelta:' : 'Best lap:' %></span>
+            <strong id="js-final-best" style="font-size:1.5rem;font-family:monospace;margin-left:.5rem">—</strong>
+          </div>
+          <div id="js-final-laps" class="form-hint" style="margin-top:.4rem"></div>
+        </div>
+
+        <!-- Action buttons -->
+        <div id="js-btn-idle" style="margin-top:1.5rem;text-align:center">
+          <button id="js-btn-start" class="btn btn--primary btn--lg" onclick="startTiming()">
+            ▶ <%= lang === 'es' ? 'Iniciar' : 'Start' %>
+          </button>
+        </div>
+
+        <div id="js-btn-running" style="margin-top:1.5rem;text-align:center;display:none">
+          <button id="js-btn-stop" class="btn btn--ghost" onclick="stopTiming()">
+            ⏹ <%= lang === 'es' ? 'Parar' : 'Stop' %>
+          </button>
+        </div>
+
+        <div id="js-btn-finished" style="margin-top:1.5rem;text-align:center;display:none">
+          <form action="/races/<%= race.id %>/pole/next" method="POST">
+            <button type="submit" class="btn btn--primary btn--lg">
+              <%= lang === 'es' ? 'Siguiente →' : 'Next →' %>
+            </button>
+          </form>
+        </div>
+
+      </div>
+    <% } %>
+
+    <!-- Side panel: live classification + next + pending -->
+    <div class="pole-timing-side">
+
+      <!-- Live classification -->
+      <div>
+        <p class="pole-section-title">
+          🏆 <%= lang === 'es' ? 'Clasificación en vivo' : 'Live standings' %>
+        </p>
+        <div id="js-standings" class="pole-standings-list">
+          <!-- populated by JS -->
+        </div>
+      </div>
+
+      <% if (next) { %>
+        <div class="pole-next-card" style="margin-top:1rem">
+          <div class="pole-next-label">⏭ <%= lang === 'es' ? 'Siguiente' : 'Next' %></div>
+          <div class="pole-next-name"><%= next.entity_name %></div>
+        </div>
+      <% } %>
+
+    </div>
+  </div>
+
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const RACE_ID     = '<%= race.id %>';
+const IS_RUNNING  = <%- isTimingRunning ? 'true' : 'false' %>;
+const DURATION_MS = <%= durationMs %>;
+const LANG_ES     = '<%= lang %>' === 'es';
+
+// Seed classification from server data
+// done = already timed, current = on track, waiting = not yet
+const seedClassification = [
+  <% entries.forEach(e => { %>
+  {
+    name:      <%- JSON.stringify(e.entity_name) %>,
+    bestLapMs: <%- e.lap_time_ms != null ? e.lap_time_ms : 'null' %>,
+    isCurrent: <%- e.order_idx === session.current_idx ? 'true' : 'false' %>,
+    isDone:    <%- e.order_idx < session.current_idx ? 'true' : 'false' %>,
+  },
+  <% }) %>
+];
+
+// Classification state: map name → { bestLapMs, isCurrent, isDone }
+const clsMap = {};
+seedClassification.forEach(e => {
+  clsMap[e.name] = { bestLapMs: e.bestLapMs, isCurrent: e.isCurrent, isDone: e.isDone };
+});
+
+function renderStandings() {
+  const list = document.getElementById('js-standings');
+  if (!list) return;
+
+  const timed   = Object.entries(clsMap).filter(([, v]) => v.bestLapMs != null).sort((a, b) => a[1].bestLapMs - b[1].bestLapMs);
+  const untimed = Object.entries(clsMap).filter(([, v]) => v.bestLapMs == null);
+
+  const rows = [...timed, ...untimed];
+  let html = '';
+  rows.forEach(([name, v], i) => {
+    const pos    = v.bestLapMs != null ? i + 1 : '—';
+    const time   = v.bestLapMs != null ? formatMs(v.bestLapMs) : (v.isCurrent ? '⏱' : '—');
+    const cls    = v.isCurrent ? ' pole-std-row--current' : (v.isDone ? '' : ' pole-std-row--waiting');
+    html += `<div class="pole-std-row${cls}">
+      <span class="pole-std-pos">${pos}</span>
+      <span class="pole-std-name">${name}</span>
+      <span class="pole-std-time">${time}</span>
+    </div>`;
+  });
+  list.innerHTML = html || '<p class="form-hint" style="padding:.5rem">—</p>';
+}
+
+// State: 'idle' | 'running' | 'finished'
+let state = IS_RUNNING ? 'running' : 'idle';
+
+function enterIdle() {
+  state = 'idle';
+  show('js-btn-idle'); hide('js-btn-running'); hide('js-btn-finished');
+  hide('js-countdown-wrap'); hide('js-best-live'); hide('js-lap-list-wrap'); hide('js-finished-result');
+}
+
+function enterRunning() {
+  state = 'running';
+  hide('js-btn-idle'); show('js-btn-running'); hide('js-btn-finished');
+  show('js-countdown-wrap'); show('js-lap-list-wrap'); hide('js-finished-result');
+  setCountdown(DURATION_MS);
+}
+
+function enterFinished(bestLapMs, lapCount) {
+  state = 'finished';
+  hide('js-btn-idle'); hide('js-btn-running'); show('js-btn-finished');
+  hide('js-countdown-wrap'); show('js-finished-result');
+  document.getElementById('js-final-best').textContent = formatMs(bestLapMs);
+  const n = lapCount || 0;
+  document.getElementById('js-final-laps').textContent =
+    n === 1 ? (LANG_ES ? '1 vuelta' : '1 lap') : (LANG_ES ? n + ' vueltas' : n + ' laps');
+}
+
+function setCountdown(remainingMs) {
+  const el = document.getElementById('js-countdown');
+  if (!el) return;
+  const total = Math.max(0, remainingMs);
+  const m = Math.floor(total / 60000);
+  const s = Math.floor((total % 60000) / 1000);
+  el.textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  el.className = 'pole-countdown' + (total <= 10000 ? ' pole-countdown--urgent' : '');
+}
+
+function formatMs(ms) {
+  if (ms == null) return '—';
+  const m = Math.floor(ms / 60000);
+  const s = ((ms % 60000) / 1000).toFixed(3).padStart(6, '0');
+  return m > 0 ? m + ':' + s : s + 's';
+}
+
+function show(id) { const el = document.getElementById(id); if (el) el.style.display = ''; }
+function hide(id) { const el = document.getElementById(id); if (el) el.style.display = 'none'; }
+
+async function startTiming() {
+  const btn = document.getElementById('js-btn-start');
+  btn.disabled = true;
+  try {
+    const r = await fetch(`/races/${RACE_ID}/pole/participant/start`, { method: 'POST' });
+    if (!r.ok) throw new Error('start failed');
+    enterRunning();
+  } catch(e) {
+    btn.disabled = false;
+    alert(LANG_ES ? 'Error al iniciar el cronómetro' : 'Failed to start timer');
+  }
+}
+
+async function stopTiming() {
+  const btn = document.getElementById('js-btn-stop');
+  btn.disabled = true;
+  try {
+    const r = await fetch(`/races/${RACE_ID}/pole/participant/stop`, { method: 'POST' });
+    const data = await r.json();
+    enterFinished(data.bestLapMs, 0);
+  } catch(e) {
+    btn.disabled = false;
+  }
+}
+
+// Socket.io
+const socket = io();
+
+socket.on('pole:tick', ({ remainingMs }) => {
+  if (state !== 'running') return;
+  setCountdown(remainingMs);
+});
+
+socket.on('pole:lap', ({ lapNumber, lapTimeMs, bestLapMs, improved }) => {
+  if (state !== 'running') return;
+
+  // Update best lap in classification for current participant
+  const currentName = document.getElementById('js-current-name')?.textContent?.trim();
+  if (currentName && clsMap[currentName]) {
+    clsMap[currentName].bestLapMs = bestLapMs;
+    renderStandings();
+  }
+
+  // Update best lap badge
+  const bestEl = document.getElementById('js-best-val');
+  if (bestEl) { bestEl.textContent = formatMs(bestLapMs); show('js-best-live'); }
+
+  // Add lap row
+  const listEl = document.getElementById('js-lap-list');
+  if (listEl) {
+    const row = document.createElement('div');
+    row.className = 'pole-lap-row' + (improved ? ' pole-lap-row--best' : '');
+    row.innerHTML =
+      `<span class="pole-lap-num">${LANG_ES ? 'Vuelta' : 'Lap'} ${lapNumber}</span>` +
+      `<span class="pole-lap-time">${formatMs(lapTimeMs)}${improved ? ' ★' : ''}</span>`;
+    listEl.prepend(row);
+  }
+});
+
+socket.on('pole:finished', ({ entryName, bestLapMs, lapCount }) => {
+  // Mark as done in classification
+  if (clsMap[entryName]) {
+    clsMap[entryName].isCurrent = false;
+    clsMap[entryName].isDone    = true;
+    clsMap[entryName].bestLapMs = bestLapMs;
+    renderStandings();
+  }
+  enterFinished(bestLapMs, lapCount);
+});
+
+socket.on('pole:started', () => {
+  if (state !== 'running') enterRunning();
+});
+
+// Init
+if (IS_RUNNING) {
+  enterRunning();
+} else {
+  enterIdle();
+}
+renderStandings();
+</script>
+
+<%- include('../partials/footer') %>

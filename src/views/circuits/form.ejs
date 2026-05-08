@@ -1,0 +1,149 @@
+<%
+  const isEdit = !!circuit;
+  const formTitle = isEdit
+    ? (lang === 'es' ? 'Editar circuito' : 'Edit circuit')
+    : (lang === 'es' ? 'Nuevo circuito' : 'New circuit');
+  const formAction = isEdit ? '/circuits/' + circuit.id : '/circuits';
+  const CIRCUIT_COLORS = ['#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4'];
+%>
+<%- include('../partials/header', { pageTitle: formTitle }) %>
+<div class="container container--narrow">
+
+  <a href="/circuits" class="back-link">
+    ← <%= lang === 'es' ? 'Volver a circuitos' : 'Back to circuits' %>
+  </a>
+  <h1 class="page-title">🏁 <%= formTitle %></h1>
+
+  <% if (errors.length > 0) { %>
+    <div class="alert alert--error">
+      <% errors.forEach(e => { %>
+        <p>
+          <% if (e === 'name_required') { %><%= lang === 'es' ? 'El nombre es obligatorio (mínimo 2 caracteres).' : 'Name is required (min 2 characters).' %>
+          <% } else if (e === 'lanes_invalid') { %><%= lang === 'es' ? 'Número de carriles no válido (2–8 por circuito).' : 'Invalid lane count (2–8 per sub-circuit).' %>
+          <% } else { %><%= e %><% } %>
+        </p>
+      <% }) %>
+    </div>
+  <% } %>
+
+  <form action="<%= formAction %>" method="POST" class="form-card">
+
+    <div class="form-group">
+      <label class="form-label" for="cName"><%= lang === 'es' ? 'Nombre' : 'Name' %></label>
+      <input class="form-input <%= errors.includes('name_required') ? 'form-input--error' : '' %>"
+             type="text" id="cName" name="name"
+             placeholder="<%= lang === 'es' ? 'Ej: Pista principal' : 'e.g. Main track' %>"
+             value="<%= body.name || '' %>" autocomplete="off" autofocus required>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">
+        <%= lang === 'es' ? 'Configuración de carriles' : 'Lane configuration' %>
+      </label>
+
+      <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem">
+        <span class="form-hint" style="flex-shrink:0">
+          <%= lang === 'es' ? 'Número de circuitos:' : 'Number of sub-circuits:' %>
+        </span>
+        <div class="circ-pills" id="circPills">
+          <% for (let i = 1; i <= 6; i++) { %>
+            <button type="button" class="circ-pill<%= (parseInt(body.circuits_count)||1) === i ? ' active' : '' %>"
+                    data-n="<%= i %>"><%= i %></button>
+          <% } %>
+        </div>
+        <input type="hidden" name="circuits_count" id="circuitsCount" value="<%= body.circuits_count || 1 %>">
+      </div>
+
+      <div class="circuits-grid" id="circuitsGrid">
+        <% for (let i = 1; i <= 6; i++) { %>
+          <div class="circuit-cfg-row" data-idx="<%= i %>"
+               style="<%= (parseInt(body.circuits_count)||1) < i ? 'display:none' : '' %>">
+            <span class="circuit-num-badge" style="background:<%= CIRCUIT_COLORS[i-1] %>">C<%= i %></span>
+            <input class="form-input form-input--sm <%= errors.includes('lanes_invalid') ? 'form-input--error' : '' %>"
+                   type="number" name="circuit_lanes_<%= i %>" id="circLanes_<%= i %>"
+                   min="2" max="8" value="<%= body['circuit_lanes_' + i] || (i === 1 ? 6 : 4) %>">
+            <span class="form-hint"><%= lang === 'es' ? 'carriles' : 'lanes' %></span>
+          </div>
+        <% } %>
+      </div>
+
+      <div class="circuits-total">
+        <span class="form-hint"><%= lang === 'es' ? 'Total:' : 'Total:' %></span>
+        <strong id="totalLanesDisplay" style="color:#58a6ff">—</strong>
+        <span class="form-hint"> <%= lang === 'es' ? 'carriles' : 'lanes' %></span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="minLapS">
+        <%= lang === 'es' ? 'Vuelta mínima (segundos)' : 'Minimum lap time (seconds)' %>
+      </label>
+      <div class="input-row">
+        <input class="form-input form-input--sm"
+               type="number" id="minLapS" name="min_lap_s" step="0.01" min="0" max="999"
+               placeholder="<%= lang === 'es' ? 'Ej: 3.50' : 'e.g. 3.50' %>"
+               value="<%= body.min_lap_s || '' %>">
+        <span class="form-hint">s</span>
+      </div>
+      <p class="form-hint" style="margin-top:.35rem">
+        <%= lang === 'es'
+          ? 'Vueltas más rápidas que este tiempo se marcarán automáticamente como fantasma. Dejar vacío para desactivar.'
+          : 'Laps faster than this will be auto-marked as ghost. Leave empty to disable.' %>
+      </p>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="cDesc">
+        <%= lang === 'es' ? 'Notas (opcional)' : 'Notes (optional)' %>
+      </label>
+      <input class="form-input" type="text" id="cDesc" name="description"
+             placeholder="<%= lang === 'es' ? 'Descripción o ubicación...' : 'Description or location...' %>"
+             value="<%= body.description || '' %>">
+    </div>
+
+    <div class="form-actions">
+      <a href="/circuits" class="btn btn--ghost"><%= lang === 'es' ? 'Cancelar' : 'Cancel' %></a>
+      <button type="submit" class="btn btn--primary">
+        <%= isEdit ? (lang === 'es' ? 'Guardar cambios' : 'Save changes') : (lang === 'es' ? 'Crear circuito' : 'Create circuit') %>
+      </button>
+    </div>
+
+  </form>
+</div>
+
+<script>
+const circPills    = document.getElementById('circPills');
+const circCount    = document.getElementById('circuitsCount');
+const circGrid     = document.getElementById('circuitsGrid');
+const totalDisplay = document.getElementById('totalLanesDisplay');
+
+function updateTotal() {
+  const n = parseInt(circCount.value, 10);
+  let total = 0;
+  for (let i = 1; i <= n; i++) {
+    total += parseInt(document.getElementById('circLanes_' + i)?.value || 0, 10) || 0;
+  }
+  totalDisplay.textContent = total;
+}
+
+function setCircuitCount(n) {
+  circCount.value = n;
+  circPills.querySelectorAll('.circ-pill').forEach(btn => {
+    btn.classList.toggle('active', parseInt(btn.dataset.n) === n);
+  });
+  circGrid.querySelectorAll('.circuit-cfg-row').forEach(row => {
+    row.style.display = parseInt(row.dataset.idx) <= n ? '' : 'none';
+  });
+  updateTotal();
+}
+
+circPills.addEventListener('click', e => {
+  const btn = e.target.closest('.circ-pill');
+  if (btn) setCircuitCount(parseInt(btn.dataset.n));
+});
+
+circGrid.addEventListener('input', updateTotal);
+updateTotal();
+</script>
+
+<%- include('../partials/footer') %>

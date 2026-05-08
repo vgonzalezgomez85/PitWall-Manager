@@ -1,0 +1,194 @@
+<%- include('../partials/header', { pageTitle: t('wizard.step3_seq_title') }) %>
+<div class="container container--narrow">
+
+  <%- include('../partials/wizard-progress', { step: 3, hasPole: wizard.has_pole }) %>
+
+  <h1 class="page-title"><%= t('wizard.step3_seq_title') %></h1>
+  <%
+    const circuitLabels = circuits.map((lanes, i) => {
+      let start = 1;
+      for (let j = 0; j < i; j++) start += circuits[j];
+      return { num: i+1, start, end: start + lanes - 1, lanes };
+    });
+  %>
+  <p class="page-subtitle">
+    <%= wizard.name %> ·
+    <% circuitLabels.forEach((c, i) => { %>
+      <%= lang === 'es' ? 'C' : 'C' %><%= c.num %>: <%= c.lanes %> <%= t('races.lanes') %><%= i < circuitLabels.length-1 ? ' · ' : '' %>
+    <% }) %>
+    (total: <%= wizard.lanes_count %>)
+  </p>
+
+  <% if (errors.length > 0) { %>
+    <div class="alert alert--error">
+      <p>
+        <%= lang === 'es'
+          ? 'La secuencia debe contener cada carril exactamente una vez (más los descansos opcionales).'
+          : 'The sequence must contain each lane exactly once (plus optional rest slots).' %>
+      </p>
+    </div>
+  <% } %>
+
+  <div class="form-card">
+
+    <!-- Circuit legend (only for multi-circuit) -->
+    <% if (circuits.length > 1) { %>
+      <div class="circuit-legend" style="margin-bottom:1.25rem">
+        <% circuitLabels.forEach(c => { %>
+          <% const colors = ['#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4']; %>
+          <span class="circuit-legend-item">
+            <span class="circuit-legend-dot" style="background:<%= colors[c.num-1] %>">C<%= c.num %></span>
+            <%= lang === 'es' ? 'Carriles' : 'Lanes' %> <%= c.start %>–<%= c.end %>
+          </span>
+        <% }) %>
+      </div>
+    <% } %>
+
+    <p class="form-hint" style="margin-bottom:1.25rem">
+      <%= lang === 'es'
+        ? 'Arrastra los carriles para definir el orden de rotación. Añade descansos opcionales a la secuencia.'
+        : 'Drag lanes to define the rotation order. Optionally add rest slots to the sequence.' %>
+    </p>
+
+    <div id="laneList" class="seq-list">
+      <%
+        const COLORS_SEQ = ['#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4','#ff5722','#607d8b','#795548','#e91e63','#3f51b5','#009688','#cddc39','#ffc107','#f44336','#673ab7','#03a9f4','#8bc34a','#ff6f00','#880e4f','#1a237e','#b71c1c','#004d40','#f57f17','#311b92','#0d47a1','#1b5e20','#33691e','#bf360c','#4a148c','#006064','#827717'];
+      %>
+      <% sequence.forEach((lane, i) => { %>
+        <% if (lane === 0) { %>
+          <div class="seq-item seq-item--rest" draggable="true" data-lane="0">
+            <span class="seq-handle">⠿</span>
+            <span class="seq-dot seq-dot--rest"><%= lang === 'es' ? 'DSC' : 'REST' %></span>
+            <button type="button" class="seq-remove" title="<%= lang === 'es' ? 'Quitar' : 'Remove' %>">✕</button>
+            <span class="seq-arrow"><%= i < sequence.length - 1 ? '→' : '' %></span>
+          </div>
+        <% } else { %>
+          <div class="seq-item" draggable="true" data-lane="<%= lane %>">
+            <span class="seq-handle">⠿</span>
+            <span class="seq-dot" style="background:<%= COLORS_SEQ[lane-1] %>"><%= lane %></span>
+            <span class="seq-arrow"><%= i < sequence.length - 1 ? '→' : '' %></span>
+          </div>
+        <% } %>
+      <% }) %>
+    </div>
+
+    <!-- Controls -->
+    <div style="margin-top:.75rem;display:flex;gap:.75rem;align-items:center;flex-wrap:wrap">
+      <button type="button" id="btnReset" class="btn btn--ghost btn--sm">
+        <%= lang === 'es' ? '↺ Patrón estándar' : '↺ Standard pattern' %>
+      </button>
+      <button type="button" id="btnAddRest" class="btn btn--ghost btn--sm">
+        + <%= lang === 'es' ? 'Añadir descanso' : 'Add rest slot' %>
+      </button>
+      <span class="form-hint" id="seqPreview"></span>
+    </div>
+
+    <% if (circuits.length === 1) { %>
+      <p class="form-hint" style="margin-top:.5rem;color:#8b949e">
+        💡 <%= lang === 'es'
+          ? 'Con 1 circuito, los pilotos en descanso aparcarán físicamente en el carril 2.'
+          : 'With 1 circuit, resting drivers will physically park on lane 2.' %>
+      </p>
+    <% } %>
+
+    <form action="/races/new/step3" method="POST" id="seqForm" style="margin-top:1.5rem">
+      <input type="hidden" name="lane_sequence" id="seqInput">
+
+      <div class="form-actions">
+        <a href="/races/new/step2" class="btn btn--ghost">← <%= t('wizard.back') %></a>
+        <button type="submit" class="btn btn--primary"><%= t('wizard.next') %> →</button>
+      </div>
+    </form>
+
+  </div>
+</div>
+
+<script>
+const LANES   = <%= wizard.lanes_count %>;
+const LANG    = "<%= lang %>";
+const COLORS  = <%- JSON.stringify(['#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4','#ff5722','#607d8b','#795548','#e91e63','#3f51b5','#009688','#cddc39','#ffc107','#f44336','#673ab7','#03a9f4','#8bc34a','#ff6f00','#880e4f','#1a237e','#b71c1c','#004d40','#f57f17','#311b92','#0d47a1','#1b5e20','#33691e','#bf360c','#4a148c','#006064','#827717']) %>;
+
+// Standard sequence: odd lanes ascending → even lanes descending
+const STD_SEQ = (() => {
+  const odds = [], evens = [];
+  for (let i = 1; i <= LANES; i++) { if (i % 2) odds.push(i); else evens.push(i); }
+  return [...odds, ...evens.reverse()];
+})();
+
+const list     = document.getElementById('laneList');
+const seqInput = document.getElementById('seqInput');
+const preview  = document.getElementById('seqPreview');
+
+function readOrder() {
+  return [...list.querySelectorAll('.seq-item')].map(el => +el.dataset.lane);
+}
+
+function updatePreview() {
+  const order = readOrder();
+  seqInput.value = order.join(',');
+  const restLabel = LANG === 'es' ? 'DSC' : 'REST';
+  preview.textContent = order.map(n => n === 0 ? restLabel : n).join(' → ');
+  list.querySelectorAll('.seq-arrow').forEach((el, i) => {
+    el.textContent = i < order.length - 1 ? '→' : '';
+  });
+}
+updatePreview();
+
+// ── Drag-and-drop ─────────────────────────────────────────────────────────────
+let dragSrc = null;
+list.addEventListener('dragstart', e => {
+  dragSrc = e.target.closest('.seq-item');
+  e.dataTransfer.effectAllowed = 'move';
+});
+list.addEventListener('dragover', e => {
+  e.preventDefault();
+  const target = e.target.closest('.seq-item');
+  if (target && target !== dragSrc) {
+    const rect  = target.getBoundingClientRect();
+    const after = e.clientY > rect.top + rect.height / 2;
+    list.insertBefore(dragSrc, after ? target.nextSibling : target);
+    updatePreview();
+  }
+});
+list.addEventListener('dragend', () => { dragSrc = null; updatePreview(); });
+
+// ── Remove rest slot ──────────────────────────────────────────────────────────
+list.addEventListener('click', e => {
+  const btn = e.target.closest('.seq-remove');
+  if (btn) {
+    btn.closest('.seq-item').remove();
+    updatePreview();
+  }
+});
+
+// ── Add rest slot ─────────────────────────────────────────────────────────────
+document.getElementById('btnAddRest').addEventListener('click', () => {
+  const item = document.createElement('div');
+  item.className = 'seq-item seq-item--rest';
+  item.draggable = true;
+  item.dataset.lane = '0';
+  item.innerHTML = `
+    <span class="seq-handle">⠿</span>
+    <span class="seq-dot seq-dot--rest">${LANG === 'es' ? 'DSC' : 'REST'}</span>
+    <button type="button" class="seq-remove" title="${LANG === 'es' ? 'Quitar' : 'Remove'}">✕</button>
+    <span class="seq-arrow"></span>`;
+  list.appendChild(item);
+  updatePreview();
+});
+
+// ── Reset to standard ─────────────────────────────────────────────────────────
+document.getElementById('btnReset').addEventListener('click', () => {
+  // Remove all rest items, keep lane items in standard order
+  const items = [...list.querySelectorAll('.seq-item:not(.seq-item--rest)')];
+  const byLane = Object.fromEntries(items.map(el => [+el.dataset.lane, el]));
+  list.querySelectorAll('.seq-item--rest').forEach(el => el.remove());
+  STD_SEQ.forEach(lane => list.appendChild(byLane[lane]));
+  updatePreview();
+});
+
+document.getElementById('seqForm').addEventListener('submit', () => {
+  seqInput.value = readOrder().join(',');
+});
+</script>
+
+<%- include('../partials/footer') %>

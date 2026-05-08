@@ -1,0 +1,181 @@
+<%- include('../partials/header', { pageTitle: (lang === 'es' ? 'Corrección de vueltas' : 'Lap Corrections') }) %>
+<div class="container">
+
+  <a href="/races/<%= race.id %>/mangas/<%= manga.id %>/live" class="back-link">
+    ← <%= lang === 'es' ? 'Volver a la manga' : 'Back to heat' %>
+  </a>
+  <h1 class="page-title">
+    🔧 <%= lang === 'es' ? 'Corrección de vueltas' : 'Lap Corrections' %>
+  </h1>
+  <p class="page-subtitle">
+    <%= race.name %>
+    <% if (tanda) { %> · <%= lang === 'es' ? 'Tanda' : 'Round' %> <%= tanda.number %><% } %>
+    · <%= lang === 'es' ? 'Manga' : 'Heat' %> <%= manga.number %>
+    <span class="badge badge--<%= manga.status %>" style="margin-left:.4rem">
+      <%= {pending: lang==='es'?'Pendiente':'Pending', active: lang==='es'?'En curso':'Active', finished: lang==='es'?'Finalizada':'Finished'}[manga.status] %>
+    </span>
+  </p>
+
+  <%
+    function fmtMs(ms) {
+      if (ms == null) return '—';
+      const totalSec   = Math.floor(ms / 1000);
+      const hundredths = Math.floor((ms % 1000) / 10);
+      const secs = totalSec % 60;
+      const mins = Math.floor(totalSec / 60);
+      return (mins > 0 ? mins + ':' : '') + String(secs).padStart(mins > 0 ? 2 : 1, '0') + '.' + String(hundredths).padStart(2, '0');
+    }
+  %>
+
+  <% if (laneGroups.length === 0) { %>
+    <div class="empty-state" style="padding:3rem">
+      <p class="empty-state__text">
+        <%= lang === 'es' ? 'Esta manga no tiene carriles activos.' : 'This heat has no active lanes.' %>
+      </p>
+    </div>
+  <% } else { %>
+
+    <!-- Per-lane lap tables -->
+    <% laneGroups.forEach(group => {
+         const validLaps = group.laps.filter(l => !l.is_ghost).length;
+         const ghostLaps = group.laps.filter(l =>  l.is_ghost).length;
+         const entityName = group.info.team_name || group.info.driver_name || ('Lane ' + group.info.lane);
+         const otherLanes = activeLanes.filter(l => l !== group.info.lane);
+         const validForAvg = group.laps.filter(l => !l.is_ghost && !l.is_exit && l.lap_time_ms > 500);
+         const avgMs  = validForAvg.length ? Math.round(validForAvg.reduce((s,l) => s + l.lap_time_ms, 0) / validForAvg.length) : null;
+         const avgS   = avgMs ? (avgMs / 1000).toFixed(2) : '';
+    %>
+      <div class="tanda-block" style="margin-bottom:1.5rem">
+        <div class="tanda-header">
+          <div class="tanda-header__left">
+            <span class="lane-dot" style="background:<%= LANE_COLORS[group.info.lane - 1] %>;width:2rem;height:2rem;font-size:.9rem;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;font-weight:700;color:#fff;flex-shrink:0">
+              <%= group.info.lane %>
+            </span>
+            <span style="font-weight:600"><%= entityName %></span>
+            <span class="form-hint">
+              <%= validLaps %> <%= lang === 'es' ? 'válidas' : 'valid' %>
+              <% if (ghostLaps > 0) { %>
+                · <span style="color:#ff9800"><%= ghostLaps %> <%= lang === 'es' ? 'fantasma' : 'ghost' %></span>
+              <% } %>
+            </span>
+          </div>
+        </div>
+
+        <% if (group.laps.length === 0) { %>
+          <p class="form-hint" style="padding:.75rem 1rem">
+            <%= lang === 'es' ? 'Sin vueltas registradas en este carril.' : 'No laps recorded on this lane.' %>
+          </p>
+        <% } else { %>
+          <div style="overflow-x:auto">
+            <table class="schedule-table" style="min-width:520px">
+              <thead>
+                <tr>
+                  <th style="width:3rem">#</th>
+                  <th style="width:6rem"><%= lang === 'es' ? 'Tiempo' : 'Time' %></th>
+                  <th style="width:6rem"><%= lang === 'es' ? 'Acumulado' : 'Elapsed' %></th>
+                  <th style="width:6rem"><%= lang === 'es' ? 'Estado' : 'Status' %></th>
+                  <th><%= lang === 'es' ? 'Acciones' : 'Actions' %></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% group.laps.forEach(lap => { %>
+                  <tr class="<%= lap.is_ghost ? 'corr-ghost-row' : '' %>">
+                    <td style="font-family:monospace;color:var(--text-muted)"><%= lap.lap_number %></td>
+                    <td style="font-family:monospace;font-weight:600"><%= fmtMs(lap.lap_time_ms) %></td>
+                    <td style="font-family:monospace;color:var(--text-muted)"><%= fmtMs(lap.elapsed_ms) %></td>
+                    <td>
+                      <% if (lap.is_ghost && lap.transferred_to_lane) { %>
+                        <span style="color:#ff9800;font-size:.78rem;font-weight:600">
+                          👻 → <%= lang === 'es' ? 'Carril' : 'Lane' %> <%= lap.transferred_to_lane %>
+                        </span>
+                      <% } else if (lap.is_ghost && lap.ghost_from_lane) { %>
+                        <span style="color:#ff9800;font-size:.78rem;font-weight:600">
+                          👻 ← <%= lang === 'es' ? 'Carril' : 'Lane' %> <%= lap.ghost_from_lane %>
+                        </span>
+                      <% } else if (lap.is_ghost) { %>
+                        <span style="color:#ff9800;font-size:.78rem;font-weight:600">
+                          👻 <%= lang === 'es' ? 'Fantasma' : 'Ghost' %>
+                        </span>
+                      <% } else if (lap.transferred_from_lane) { %>
+                        <span style="color:#58a6ff;font-size:.78rem;font-weight:600">
+                          ↔ <%= lang === 'es' ? 'de Carril' : 'from Lane' %> <%= lap.transferred_from_lane %>
+                        </span>
+                      <% } else if (lap.is_exit) { %>
+                        <span style="color:var(--text-muted);font-size:.78rem">⚠ <%= lang === 'es' ? 'Salida' : 'Exit' %></span>
+                      <% } else { %>
+                        <span style="color:#4caf50;font-size:.8rem;font-weight:600">✓ <%= lang === 'es' ? 'Válida' : 'Valid' %></span>
+                      <% } %>
+                    </td>
+                    <td>
+                      <% const delMsg = lang === 'es' ? '¿Eliminar vuelta permanentemente?' : 'Delete lap permanently?'; %>
+                      <div style="display:flex;flex-wrap:wrap;gap:.4rem;align-items:center">
+                        <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/corrections/delete/<%= lap.id %>" method="POST"
+                              onsubmit="return confirm('<%= delMsg %>')">
+                          <button type="submit" class="btn btn--danger btn--sm" title="<%= lang === 'es' ? 'Eliminar vuelta' : 'Delete lap' %>">✕</button>
+                        </form>
+                        <% if (lap.is_ghost) { %>
+                          <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/corrections/restore/<%= lap.id %>" method="POST">
+                            <button type="submit" class="btn btn--ghost btn--sm">
+                              ↩ <%= lang === 'es' ? 'Restaurar' : 'Restore' %>
+                            </button>
+                          </form>
+                        <% } else if (!lap.transferred_from_lane) { %>
+                          <%# Primary action: move to another lane %>
+                          <% if (otherLanes.length > 0) { %>
+                            <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/corrections/transfer/<%= lap.id %>" method="POST"
+                                  style="display:flex;align-items:center;gap:.3rem">
+                              <select name="to_lane" class="form-input" style="padding:.2rem .4rem;font-size:.78rem;width:auto;height:auto">
+                                <% otherLanes.forEach(l => { %>
+                                  <option value="<%= l %>"><%= lang === 'es' ? 'Carril' : 'Lane' %> <%= l %></option>
+                                <% }) %>
+                              </select>
+                              <button type="submit" class="btn btn--primary btn--sm">
+                                ↔ <%= lang === 'es' ? 'Mover a carril' : 'Move to lane' %>
+                              </button>
+                            </form>
+                          <% } %>
+                          <%# Secondary action: mark ghost without transfer (false positive) %>
+                          <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/corrections/ghost/<%= lap.id %>" method="POST">
+                            <button type="submit" class="btn btn--sm" style="background:transparent;color:var(--text-muted);border:1px solid var(--border-color);font-size:.72rem"
+                                    title="<%= lang === 'es' ? 'Cruce falso del sensor — nadie recibe esta vuelta' : 'False sensor crossing — nobody receives this lap' %>">
+                              👻 <%= lang === 'es' ? 'Falso positivo' : 'False positive' %>
+                            </button>
+                          </form>
+                        <% } %>
+                      </div>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } %>
+        <!-- Add lap inline form for this lane -->
+        <div style="padding:.6rem 1rem;border-top:1px solid var(--border-color);display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
+          <span style="font-size:.78rem;color:var(--text-muted)">
+            + <%= lang === 'es' ? 'Añadir' : 'Add' %>
+          </span>
+          <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/corrections/add" method="POST"
+                style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
+            <input type="hidden" name="lane" value="<%= group.info.lane %>">
+            <input type="number" name="count" value="1" min="1" max="20"
+                   class="form-input" style="width:3.8rem;padding:.25rem .4rem;font-size:.82rem"
+                   title="<%= lang === 'es' ? 'Número de vueltas' : 'Number of laps' %>">
+            <span style="font-size:.78rem;color:var(--text-muted)"><%= lang === 'es' ? 'vuelta(s) ·' : 'lap(s) ·' %></span>
+            <input type="number" name="lap_time_s" step="0.01" min="0.1" max="999"
+                   value="<%= avgS %>" placeholder="s"
+                   class="form-input" style="width:5.5rem;padding:.25rem .4rem;font-size:.82rem" required
+                   title="<%= lang === 'es' ? 'Tiempo por vuelta (segundos)' : 'Lap time (seconds)' %>">
+            <span style="font-size:.78rem;color:var(--text-muted)">s
+              <% if (avgS) { %><span style="color:var(--text-muted);font-size:.7rem">(media <%= avgS %>s)</span><% } %>
+            </span>
+            <button type="submit" class="btn btn--ghost btn--sm">+ <%= lang === 'es' ? 'Añadir' : 'Add' %></button>
+          </form>
+        </div>
+      </div>
+    <% }) %>
+
+  <% } %>
+
+</div>
+<%- include('../partials/footer') %>
