@@ -41,15 +41,15 @@
     </div>
 
     <div class="live-header__actions">
-      <% if (manga.status === 'pending') { %>
-        <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/start" method="POST" style="display:inline">
-          <button class="lbtn lbtn--go">▶ GO</button>
-        </form>
-      <% } else if (isActive || manga.status === 'active') { %>
-        <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/stop" method="POST" style="display:inline">
-          <button class="lbtn lbtn--fin">■ FIN</button>
-        </form>
-      <% } else if (manga.status === 'finished') { %>
+      <% if (typeof nextTanda !== 'undefined' && nextTanda) { %>
+        <button id="next-tanda-btn" class="lbtn lbtn--go"
+                data-race-id="<%= race.id %>"
+                data-tanda-id="<%= tanda.id %>"
+                data-next-tanda-number="<%= nextTanda.number %>">
+          ▶ Tanda <%= nextTanda.number %>
+        </button>
+      <% } %>
+      <% if (manga.status === 'finished') { %>
         <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/repeat" method="POST" style="display:inline"
           onsubmit="return confirm('<%= lang === 'es' ? '¿Repetir esta manga? Se borrarán las vueltas registradas.' : 'Repeat this heat? All recorded laps will be deleted.' %>')">
           <button class="lbtn lbtn--repeat">↺ <%= lang === 'es' ? 'Repetir' : 'Repeat' %></button>
@@ -178,6 +178,7 @@
       id:           race.id,
       raceId:       race.id,
       mangaId:      manga.id,
+      tandaId:      manga.tanda_id,
       mangaNumber:  manga.number,
       mangaStatus:  manga.status,
       isActive:     isActive,
@@ -188,6 +189,7 @@
       raceBestLaps: raceBestLaps,
       hasQrCheckin: hasQrCheckin,
     }) %>;
+    RACE_DATA.allParticipants = <%- JSON.stringify(allParticipants) %>;
     const LANG = "<%= lang %>";
   </script>
   <script src="/socket.io/socket.io.js"></script>

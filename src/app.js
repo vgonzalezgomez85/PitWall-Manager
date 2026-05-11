@@ -31,12 +31,20 @@ const TrainingService = require('./services/TrainingService');
 let _pendingGoDurationMs = null;
 
 SerialService.on('race_go', ({ durationMs }) => {
+  if (TimingService._tandaBoundary) {
+    console.log('[DS-300] GO ignored — tanda boundary, waiting for user to start next tanda');
+    return;
+  }
   _pendingGoDurationMs = durationMs || null;
   SocketService.emit('race:semaphore');
 });
 
 SerialService.on('race_started', () => {
   if (TimingService.isRunning) return;
+  if (TimingService._tandaBoundary) {
+    console.log('[DS-300] STARTED ignored — tanda boundary, waiting for user to start next tanda');
+    return;
+  }
 
   let setup = TimingService._pendingSetup;
 

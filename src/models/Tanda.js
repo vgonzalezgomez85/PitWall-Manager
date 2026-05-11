@@ -39,6 +39,15 @@ class Tanda {
     db.prepare('UPDATE tandas SET status = ? WHERE id = ?').run(status, id);
   }
 
+  static findNextPending(raceId, afterNumber) {
+    return db.prepare(`
+      SELECT t.* FROM tandas t
+      WHERE t.race_id = ? AND t.number > ?
+        AND EXISTS (SELECT 1 FROM mangas m WHERE m.tanda_id = t.id AND m.status = 'pending')
+      ORDER BY t.number ASC LIMIT 1
+    `).get(raceId, afterNumber);
+  }
+
   static delete(id) {
     db.prepare('DELETE FROM tandas WHERE id = ?').run(id);
   }
