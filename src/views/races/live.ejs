@@ -57,6 +57,12 @@
       <% } %>
       <button id="voiceBtn" class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Activar/silenciar voz' : 'Toggle voice' %>" onclick="toggleVoice()">🔊</button>
       <button id="viewBtn" class="lbtn lbtn--view" title="<%= lang === 'es' ? 'Cambiar vista' : 'Toggle view' %>" onclick="toggleView()">⊞</button>
+      <button class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Clasificación en ventana' : 'Standings window' %>"
+        onclick="window.open('/races/<%= race.id %>/mangas/<%= manga.id %>/panel/standings','_blank','width=560,height=780')">📊</button>
+      <button class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Proyección en ventana' : 'Projection window' %>"
+        onclick="window.open('/races/<%= race.id %>/mangas/<%= manga.id %>/panel/projected','_blank','width=560,height=680')">📈</button>
+      <button class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Mejores vueltas en ventana' : 'Best laps window' %>"
+        onclick="window.open('/races/<%= race.id %>/mangas/<%= manga.id %>/panel/ticker','_blank','width=480,height=620')">⏱</button>
       <a href="/races/<%= race.id %>/mangas/<%= manga.id %>/tv" target="_blank" class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Pantalla TV' : 'TV display' %>">📺</a>
       <% if (race.format === 'team' && totalMangas > 1 && license.tier === 'pro') { %>
         <a href="/races/<%= race.id %>/lemans" target="_blank" class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Clasificación Le Mans' : 'Le Mans standings' %>">🏁</a>
@@ -193,6 +199,6 @@
     const LANG = "<%= lang %>";
   </script>
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/js/live.js"></script>
+  <script src="/js/live.js?v=<%= Date.now() %>"></script>
 </body>
 </html>

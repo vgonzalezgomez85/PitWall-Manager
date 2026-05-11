@@ -148,8 +148,22 @@ class SessionController {
       nextTanda = Tanda.findNextPending(race.id, tanda.number) || null;
     }
 
-    // All-race participant totals for projection (includes finished tandas)
+    // All-race participant totals + remaining pending mangas (for full-race projection)
     const allParticipants = Lap.aggregateByRace(race.id);
+    const db = require('../config/database');
+    const isTeamRace = race.format === 'team';
+    const remainingMap = {};
+    db.prepare(`
+      SELECT ${isTeamRace ? 'ml.team_id AS eid' : 'ml.driver_id AS eid'}, COUNT(*) AS cnt
+      FROM manga_lanes ml
+      JOIN mangas m ON m.id = ml.manga_id
+      WHERE m.race_id = ? AND m.status = 'pending' AND ml.is_rest = 0
+        AND ${isTeamRace ? 'ml.team_id IS NOT NULL' : 'ml.driver_id IS NOT NULL'}
+      GROUP BY eid
+    `).all(race.id).forEach(r => { remainingMap[r.eid] = r.cnt; });
+    allParticipants.forEach(p => {
+      p.remaining_mangas = remainingMap[p.entity_id] || 0;
+    });
 
     const LicenseService = require('../services/LicenseService');
     const hasBestLaps  = LicenseService.has('best_laps');
