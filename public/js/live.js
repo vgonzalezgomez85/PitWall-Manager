@@ -95,11 +95,11 @@ function startCountdown(remaining) {
 
     if (!warned60 && remainingMs <= 60000) {
       warned60 = true;
-      announceWarning(LANG === 'es' ? 'Un minuto' : 'One minute');
+      announceWarning(LANG === 'es' ? 'Queda 1 minuto' : 'One minute remaining');
     }
     if (!warned30 && remainingMs <= 30000) {
       warned30 = true;
-      announceWarning(LANG === 'es' ? 'Treinta segundos' : 'Thirty seconds');
+      announceWarning(LANG === 'es' ? 'Quedan 30 segundos' : '30 seconds remaining');
     }
 
     if (remainingMs <= 0) {
@@ -333,17 +333,53 @@ function renderProjected(data) {
   const elapsed   = data.elapsedMs   ?? 0;
   const remaining = data.remainingMs ?? 0;
 
-  const projected = data.standings.map(r => {
-    const total = getTotalLaps(r.lane, r.lapCount);
-    // Project additional laps for remaining time based on current manga pace,
-    // then add to the total already accumulated across the whole race
-    const extraProj = elapsed > 5000 && r.lapCount > 0
-      ? Math.round((r.lapCount / elapsed) * remaining)
-      : 0;
-    return { ...r, total, projectedTotal: total + extraProj };
-  }).sort((a, b) => b.projectedTotal - a.projectedTotal || (a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity));
+  // Build map of active participants with in-memory totals + projection
+  const totalMangaDuration = elapsed + remaining;
+  const activeMap = new Map();
+  data.standings.forEach(r => {
+    const prevLaps  = prevLapCountMap[r.lane] || 0;
+    const total     = prevLaps + r.lapCount;
+    // Project: how many complete laps will they finish in the full manga duration?
+    const avgLapMs  = r.lapCount > 1 ? elapsed / r.lapCount : null;
+    const projMangaLaps = avgLapMs && totalMangaDuration > 0
+      ? Math.floor(totalMangaDuration / avgLapMs)
+      : r.lapCount;
+    activeMap.set(r.name, {
+      name: r.name, color: r.color,
+      total, projectedTotal: prevLaps + projMangaLaps,
+      bestLapMs: r.bestLapMs, avgLapMs: r.avgLapMs,
+    });
+  });
 
-  projectedBody.innerHTML = projected.map((r, i) => `
+  // Merge: all race participants (DB totals) + active overrides (in-memory)
+  const seen = new Set();
+  const rows = [];
+
+  (RACE_DATA.allParticipants || []).forEach(p => {
+    const name = p.entity_name;
+    if (seen.has(name)) return;
+    seen.add(name);
+    if (activeMap.has(name)) {
+      rows.push(activeMap.get(name));
+    } else {
+      rows.push({
+        name, color: p.color || '#8b949e',
+        total: p.total_laps,
+        projectedTotal: p.total_laps,
+        bestLapMs: p.best_lap_ms ?? null,
+        avgLapMs:  p.avg_lap_ms  != null ? Math.round(p.avg_lap_ms) : null,
+      });
+    }
+  });
+
+  // Active participants not yet in DB (no laps before this manga)
+  activeMap.forEach((r, name) => {
+    if (!seen.has(name)) rows.push(r);
+  });
+
+  rows.sort((a, b) => b.projectedTotal - a.projectedTotal || (a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity));
+
+  projectedBody.innerHTML = rows.map((r, i) => `
     <tr class="srow">
       <td><span class="sr-pos ${posClass(i+1)}">${i+1}</span></td>
       <td style="max-width:80px"><span class="sr-name" title="${r.name}">${r.name}</span></td>
@@ -416,6 +452,27 @@ function addTick(lap) {
   const items = ticker.querySelectorAll('.ticker-item');
   if (items.length > MAX_TICKS) items[items.length - 1].remove();
 }
+
+// ── Next-tanda button (rendered by server on page load) ───────────────────────
+(function () {
+  const btn = document.getElementById('next-tanda-btn');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    btn.disabled    = true;
+    btn.textContent = LANG === 'es' ? 'Cargando...' : 'Loading...';
+    try {
+      const r = await fetch(
+        `/races/${btn.dataset.raceId}/tandas/${btn.dataset.tandaId}/next-tanda`,
+        { method: 'POST' }
+      );
+      const d = await r.json();
+      if (d.ok) location.href = `/races/${btn.dataset.raceId}/mangas/${d.mangaId}/live`;
+    } catch {
+      btn.disabled    = false;
+      btn.textContent = `▶ Tanda ${btn.dataset.nextTandaNumber}`;
+    }
+  });
+})();
 
 // ── Initialize ────────────────────────────────────────────────────────────────
 initCards();
@@ -558,7 +615,37 @@ if (RACE_DATA.isActive || RACE_DATA.mangaStatus === 'pending') {
             : `<span class="next-lane-arrow">→</span> ${LANG === 'es' ? 'Carril' : 'Lane'} <strong>${nextLane}</strong>`;
           card.appendChild(badge);
         });
+      }
 
+      // Tanda finished — show "Next Tanda" button if one exists
+      if (data?.isTandaEnd && data.nextTandaId) {
+        const actions = document.querySelector('.live-header__actions');
+        if (actions && !document.getElementById('next-tanda-btn')) {
+          const btn = document.createElement('button');
+          btn.id        = 'next-tanda-btn';
+          btn.className = 'lbtn lbtn--go';
+          btn.innerHTML = LANG === 'es'
+            ? `▶ Tanda ${data.nextTandaNumber}`
+            : `▶ Tanda ${data.nextTandaNumber}`;
+          btn.addEventListener('click', async () => {
+            btn.disabled   = true;
+            btn.textContent = LANG === 'es' ? 'Cargando...' : 'Loading...';
+            try {
+              const r = await fetch(
+                `/races/${RACE_DATA.raceId}/tandas/${RACE_DATA.tandaId}/next-tanda`,
+                { method: 'POST' }
+              );
+              const d = await r.json();
+              if (d.ok) {
+                location.href = `/races/${RACE_DATA.raceId}/mangas/${d.mangaId}/live`;
+              }
+            } catch {
+              btn.disabled   = false;
+              btn.textContent = LANG === 'es' ? `▶ Tanda ${data.nextTandaNumber}` : `▶ Tanda ${data.nextTandaNumber}`;
+            }
+          });
+          actions.prepend(btn);
+        }
       }
     });
 

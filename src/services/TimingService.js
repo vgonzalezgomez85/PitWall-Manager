@@ -17,6 +17,7 @@ class TimingServiceClass {
     this._lapHandler     = null;
     this._recentCrossings = new Map(); // lane → {timestamp, lapTimeMs}
     this._pendingSetup   = null; // manga queued for DS hardware GO
+    this._tandaBoundary  = false; // true when last manga of a tanda just ended — blocks auto-GO
   }
 
   // Queue a manga to be started by DS hardware GO button
@@ -109,13 +110,28 @@ class TimingServiceClass {
 
     let nextMangaId  = null;
     let nextLanes    = {};   // { currentLane → nextLane }
+    let isTandaEnd   = false;
+    let nextTandaId  = null;
+    let nextTandaNumber = null;
 
     if (updateDb) {
       Manga.updateStatus(this.session.manga.id, 'finished');
       const next = Manga.nextPending(this.session.manga.tanda_id);
 
       if (!next) {
+        // Last manga of this tanda — mark it finished and look for a next tanda
         Tanda.updateStatus(this.session.manga.tanda_id, 'finished');
+        isTandaEnd = true;
+        this._tandaBoundary = true; // block auto-GO until user explicitly starts next tanda
+
+        const currentTanda = Tanda.findById(this.session.manga.tanda_id);
+        const nextTanda    = currentTanda
+          ? Tanda.findNextPending(this.session.race.id, currentTanda.number)
+          : null;
+        if (nextTanda) {
+          nextTandaId     = nextTanda.id;
+          nextTandaNumber = nextTanda.number;
+        }
       } else {
         nextMangaId = next.id;
 
@@ -140,7 +156,7 @@ class TimingServiceClass {
       }
     }
 
-    SocketService.emit('manga:stopped', { mangaId: this.session.manga.id, nextMangaId, nextLanes });
+    SocketService.emit('manga:stopped', { mangaId: this.session.manga.id, nextMangaId, nextLanes, isTandaEnd, nextTandaId, nextTandaNumber });
     console.log(`[TimingService] Manga ${this.session.manga.number} stopped`);
     this.session = null;
   }

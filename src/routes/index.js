@@ -47,6 +47,7 @@ router.get( '/races/:id/mangas/:mangaId/panel/:type',  SessionController.panel);
 router.post('/races/:id/mangas/:mangaId/start',        SessionController.start);
 router.post('/races/:id/mangas/:mangaId/checkin',      requireModule('qr_checkin'), SessionController.driverCheckin);
 router.post('/races/:id/mangas/:mangaId/stop',         SessionController.stop);
+router.post('/races/:id/tandas/:tandaId/next-tanda',   SessionController.activateNextTanda);
 router.post('/races/:id/mangas/:mangaId/repeat',       SessionController.repeat);
 
 // ── Le Mans classification board ──────────────────────────────────────────────

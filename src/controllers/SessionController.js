@@ -142,11 +142,20 @@ class SessionController {
     const raceBestLaps = {};
     raceBestLapsArr.forEach(r => { raceBestLaps[r.lane] = { bestLapMs: r.bestLapMs, entityName: r.entityName }; });
 
+    // Next tanda button: show whenever this tanda is finished (regardless of manga state)
+    let nextTanda = null;
+    if (tanda?.status === 'finished') {
+      nextTanda = Tanda.findNextPending(race.id, tanda.number) || null;
+    }
+
+    // All-race participant totals for projection (includes finished tandas)
+    const allParticipants = Lap.aggregateByRace(race.id);
+
     const LicenseService = require('../services/LicenseService');
     const hasBestLaps  = LicenseService.has('best_laps');
     const hasQrCheckin = LicenseService.has('qr_checkin');
 
-    res.render('races/live', { t: req.t, race, manga, tanda, lanes, laps, isActive, standings, prevLapsByLane, totalMangas, totalTandas, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin });
+    res.render('races/live', { t: req.t, race, manga, tanda, lanes, laps, isActive, standings, prevLapsByLane, totalMangas, totalTandas, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, allParticipants });
   }
 
   // GET /races/:id/mangas/:mangaId/panel/:type  (standalone popup)
@@ -434,6 +443,31 @@ class SessionController {
     });
 
     return res.json({ ok: true, lane, driverName: driver.name });
+  }
+
+  // ── Activate next tanda: register its first manga for DS-300 GO ──────────────
+  static activateNextTanda(req, res) {
+    const raceId  = parseInt(req.params.id, 10);
+    const tandaId = parseInt(req.params.tandaId, 10);
+
+    const race  = Race.findById(raceId);
+    const tanda = Tanda.findById(tandaId);
+    if (!race || !tanda) return res.status(404).json({ error: 'Not found' });
+
+    const nextTanda = Tanda.findNextPending(raceId, tanda.number);
+    if (!nextTanda) return res.status(404).json({ error: 'No next tanda' });
+
+    const manga = Manga.nextPending(nextTanda.id);
+    if (!manga) return res.status(404).json({ error: 'No pending manga in next tanda' });
+
+    const lanes   = Manga.getLanes(manga.id);
+    const teams   = Team.findByTanda(nextTanda.id);
+    const drivers = Driver.findByTanda(nextTanda.id);
+
+    TimingService.setPendingManga(manga, race, lanes, teams, drivers);
+    TimingService._tandaBoundary = false;
+
+    return res.json({ ok: true, mangaId: manga.id, tandaId: nextTanda.id, tandaNumber: nextTanda.number });
   }
 }
 
