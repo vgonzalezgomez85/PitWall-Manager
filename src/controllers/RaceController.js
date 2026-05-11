@@ -1,11 +1,12 @@
-const Race        = require('../models/Race');
-const Driver      = require('../models/Driver');
-const Team        = require('../models/Team');
-const Tanda       = require('../models/Tanda');
-const Manga       = require('../models/Manga');
-const Lap         = require('../models/Lap');
-const PoleSession = require('../models/PoleSession');
-const Circuit     = require('../models/Circuit');
+const Race         = require('../models/Race');
+const Driver       = require('../models/Driver');
+const Team         = require('../models/Team');
+const Tanda        = require('../models/Tanda');
+const Manga        = require('../models/Manga');
+const Lap          = require('../models/Lap');
+const PoleSession  = require('../models/PoleSession');
+const Circuit      = require('../models/Circuit');
+const TimingService = require('../services/TimingService');
 
 const LANE_COLORS = [
   '#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4',
@@ -42,15 +43,14 @@ class RaceController {
   }
 
   static postStep1(req, res) {
-    const { name, type, manga_duration_minutes } = req.body;
+    const { name, type } = req.body;
     const errors = [];
 
     const trimmedName = (name || '').trim();
     if (trimmedName.length < 2) errors.push('name_required');
     if (!['club', 'championship'].includes(type)) errors.push('type_required');
 
-    const duration = parseInt(manga_duration_minutes, 10);
-    if (isNaN(duration) || duration < 1 || duration > 120) errors.push('duration_invalid');
+    const duration = 99; // DS-300 controls actual duration via GO signal
 
     // Parse circuit configuration
     const circuitId = parseInt(req.body.circuit_id, 10) || null;
@@ -109,6 +109,15 @@ class RaceController {
     const { format } = req.body;
     if (!['individual', 'team'].includes(format)) {
       return res.render('races/new-step2', { t: req.t, wizard: req.session.wizard, errors: ['format_required'] });
+    }
+    const LicenseService = require('../services/LicenseService');
+    if (format === 'team' && !LicenseService.has('team_races')) {
+      const lang = req.session?.lang || 'es';
+      req.session.flash = { type: 'error', text: (lang === 'es'
+        ? 'Las carreras por equipos requieren licencia Pro.'
+        : 'Team races require a Pro license.')
+        + ' <a href="/license">Ver licencia</a>' };
+      return res.redirect('/races/new/step2');
     }
     req.session.wizard.format = format;
     res.redirect('/races/new/step3');
@@ -251,6 +260,10 @@ class RaceController {
     const race = Race.findById(req.params.id);
     if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
 
+    // If a manga is currently active, go straight to live
+    const activeManga = Manga.findActive(race.id);
+    if (activeManga) return res.redirect(`/races/${race.id}/mangas/${activeManga.id}/live`);
+
     const laneSequence = Race.getLaneSequence(race);
     const tandas = Tanda.findByRace(race.id);
 
@@ -286,6 +299,17 @@ class RaceController {
     virtualStandings.forEach((r, i) => { r.position = i + 1; });
 
     const poleSession = race.has_pole ? PoleSession.findByRace(race.id) : null;
+
+    // Pre-register the first pending manga so DS-300 GO can start it from this page
+    if (!TimingService.isRunning) {
+      const firstPending = tandasWithMangas.flatMap(t => t.mangas).find(m => m.status === 'pending');
+      if (firstPending) {
+        const teams   = Team.findByTanda(firstPending.tanda_id);
+        const drivers = Driver.findByTanda(firstPending.tanda_id);
+        const lanes   = Manga.getLanes(firstPending.id);
+        TimingService.setPendingManga(firstPending, race, lanes, teams, drivers);
+      }
+    }
 
     res.render('races/show', {
       t: req.t, race, laneSequence, tandas: tandasWithMangas,

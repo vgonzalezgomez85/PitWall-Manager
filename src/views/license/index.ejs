@@ -6,8 +6,8 @@
   </div>
 
   <%
-    const tierLabel = { basic: 'Basic', club: 'Club', pro: 'Pro' }[info.tier] || info.tier;
-    const tierClass = { basic: 'tier--basic', club: 'tier--club', pro: 'tier--pro' }[info.tier] || '';
+    const tierLabel = { basic: 'Basic', pro: 'Pro' }[info.tier] || info.tier;
+    const tierClass = { basic: 'tier--basic', pro: 'tier--pro' }[info.tier] || '';
   %>
 
   <div class="license-card">
@@ -46,13 +46,13 @@
     </h2>
     <p class="form-hint">
       <%= lang === 'es'
-        ? 'Pega el contenido del fichero .license que recibiste al comprar Slot Timer Pro.'
-        : 'Paste the content of the .license file you received when purchasing Slot Timer Pro.' %>
+        ? 'Pega el contenido del fichero .license que recibiste al comprar Voltrace Manager.'
+        : 'Paste the content of the .license file you received when purchasing Voltrace Manager.' %>
     </p>
     <form action="/license/upload" method="POST">
       <div class="form-group">
         <label class="form-label"><%= lang === 'es' ? 'Fichero de licencia (JSON)' : 'License file (JSON)' %></label>
-        <textarea class="form-input" name="license_json" rows="8" placeholder='{"tier":"club","licensee":"Mi Club",...}'
+        <textarea class="form-input" name="license_json" rows="8" placeholder='{"tier":"pro","licensee":"Mi Club",...}'
           style="font-family:monospace;font-size:.85rem"></textarea>
       </div>
       <div class="form-group eula-accept">
@@ -90,15 +90,19 @@
           { key: 'training',    es: 'Entrenamiento libre',       en: 'Free training' },
           { key: 'races_basic', es: 'Carreras (1 tanda, 1 manga)', en: 'Races (1 tanda, 1 manga)' },
         ]},
-        { key: 'club', label: 'Club', modules: [
-          { key: 'races_unlimited', es: 'Carreras ilimitadas',    en: 'Unlimited races' },
-          { key: 'export',          es: 'Exportar Excel',         en: 'Export to Excel' },
-          { key: 'mobile',          es: 'App móvil',              en: 'Mobile app' },
-          { key: 'pole',            es: 'Pole position',          en: 'Pole position' },
-        ]},
         { key: 'pro', label: 'Pro', modules: [
-          { key: 'multi_circuit', es: 'Multi-circuito DS-300', en: 'Multi-circuit DS-300' },
-          { key: 'tv',            es: 'Vista TV/proyector',    en: 'TV/projector view' },
+          { key: 'races_unlimited', es: 'Carreras ilimitadas (tandas y mangas)',      en: 'Unlimited races (rounds & heats)' },
+          { key: 'team_races',      es: 'Carreras por equipos',                       en: 'Team format races' },
+          { key: 'export',          es: 'Exportar resultados a Excel',                en: 'Export results to Excel' },
+          { key: 'mobile',          es: 'App móvil para pilotos',                     en: 'Mobile app for drivers' },
+          { key: 'pole',            es: 'Sesión de pole position',                    en: 'Pole position session' },
+          { key: 'driver_profiles', es: 'Perfiles de piloto y códigos QR',            en: 'Driver profiles & QR codes' },
+          { key: 'teams_catalog',   es: 'Catálogo de equipos (coche, foto, categoría)', en: 'Teams catalog (car, photo, category)' },
+          { key: 'best_laps',       es: 'Panel de mejores vueltas en directo',        en: 'Live best laps panel' },
+          { key: 'multi_circuit',   es: 'Multi-circuito DS-300',                      en: 'Multi-circuit DS-300' },
+          { key: 'tv',              es: 'Vista TV/proyector',                         en: 'TV/projector view' },
+          { key: 'qr_checkin',      es: 'Check-in piloto por QR en directo',          en: 'Live QR driver check-in' },
+          { key: 'lemans',          es: 'Clasificación general estilo Le Mans',        en: 'Le Mans-style overall standings' },
         ]},
       ];
     %>
@@ -111,7 +115,7 @@
             </td>
           </tr>
           <% tier.modules.forEach(mod => { %>
-            <% const active = info.tier === 'pro' || (info.tier === 'club' && (tier.key === 'basic' || tier.key === 'club')) || (info.tier === 'basic' && tier.key === 'basic'); %>
+            <% const active = info.tier === 'pro' || (info.tier === 'basic' && tier.key === 'basic'); %>
             <tr class="modules-table__row <%= active ? 'modules-table__row--active' : '' %>">
               <td class="modules-table__icon"><%= active ? '✓' : '○' %></td>
               <td><%= lang === 'es' ? mod.es : mod.en %></td>
@@ -129,7 +133,6 @@
 .license-licensee { font-size:1.1rem; font-weight:600; color:#e6edf3; }
 .tier-badge { display:inline-block; padding:.25rem .75rem; border-radius:20px; font-size:.8rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; }
 .tier--basic { background:#21262d; color:#8b949e; }
-.tier--club  { background:#1c3a5e; color:#58a6ff; }
 .tier--pro   { background:#3a1f5e; color:#d2a8ff; }
 .license-details { display:grid; gap:.75rem; margin-top:1rem; }
 .license-detail { display:flex; justify-content:space-between; align-items:center; padding:.5rem 0; border-bottom:1px solid #21262d; }

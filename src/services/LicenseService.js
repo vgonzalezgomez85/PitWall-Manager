@@ -10,11 +10,12 @@ const SIGN_SECRET = 'slt-2026-xK9mP3qR7vN2wL5j';
 // Modules included in each tier (cumulative upward)
 const TIER_MODULES = {
   basic: ['simulation', 'ds300_single', 'training', 'races_basic'],
-  club:  ['races_unlimited', 'export', 'mobile', 'pole'],
-  pro:   ['multi_circuit', 'tv'],
+  pro:   ['races_unlimited', 'export', 'mobile', 'pole',
+          'driver_profiles', 'teams_catalog', 'team_races', 'best_laps',
+          'multi_circuit', 'tv', 'qr_checkin', 'lemans'],
 };
 
-const TIER_RANK = { basic: 0, club: 1, pro: 2 };
+const TIER_RANK = { basic: 0, pro: 1 };
 
 function hardwareId() {
   const ifaces = os.networkInterfaces();

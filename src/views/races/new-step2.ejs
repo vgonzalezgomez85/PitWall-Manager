@@ -25,14 +25,24 @@
             <span class="option-card__desc"><%= t('wizard.individual_desc') %></span>
           </div>
         </label>
-        <label class="option-card">
-          <input type="radio" name="format" value="team" required>
-          <div class="option-card__body">
-            <span class="option-card__icon">👥</span>
-            <span class="option-card__title"><%= t('wizard.team') %></span>
-            <span class="option-card__desc"><%= t('wizard.team_desc') %></span>
-          </div>
-        </label>
+        <% if (license.tier === 'pro') { %>
+          <label class="option-card">
+            <input type="radio" name="format" value="team" required>
+            <div class="option-card__body">
+              <span class="option-card__icon">👥</span>
+              <span class="option-card__title"><%= t('wizard.team') %></span>
+              <span class="option-card__desc"><%= t('wizard.team_desc') %></span>
+            </div>
+          </label>
+        <% } else { %>
+          <label class="option-card option-card--locked" title="<%= lang === 'es' ? 'Requiere licencia Pro' : 'Requires Pro license' %>">
+            <div class="option-card__body" style="opacity:.45;pointer-events:none">
+              <span class="option-card__icon">👥</span>
+              <span class="option-card__title"><%= t('wizard.team') %> <span class="lock-badge">Pro</span></span>
+              <span class="option-card__desc"><%= t('wizard.team_desc') %></span>
+            </div>
+          </label>
+        <% } %>
       </div>
     </div>
 

@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="<%= lang %>">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= race.name %> — <%= lang === 'es' ? 'Clasificación' : 'Standings' %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0d0d0d;
+      --surface:  #161b22;
+      --surface2: #1c2330;
+      --border:   #30363d;
+      --text:     #e6edf3;
+      --muted:    #8b949e;
+      --gold:     #f6c90e;
+      --silver:   #b0b8c0;
+      --bronze:   #cd7f4a;
+      --green:    #3fb950;
+      --header-h: 64px;
+      --row-h:    58px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Header ── */
+    .lm-header {
+      height: var(--header-h);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.5rem;
+      gap: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .lm-header__race {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: .02em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .lm-header__title {
+      font-size: .75rem;
+      font-weight: 600;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .lm-header__badge {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      font-size: .7rem;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .lm-live-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; }
+      50%      { opacity: .3; }
+    }
+
+    /* ── Table ── */
+    .lm-wrap {
+      padding: .5rem 1rem 2rem;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .lm-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0 3px;
+    }
+
+    .lm-table thead th {
+      font-size: .6rem;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: .5rem .6rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .lm-table thead th.th-r { text-align: right; }
+
+    /* Car photo cell */
+    .td-car {
+      width: 96px;
+      padding: .3rem .4rem;
+    }
+    .car-img {
+      height: 48px;
+      max-width: 90px;
+      object-fit: contain;
+      border-radius: 4px;
+      background: #0d1117;
+      display: block;
+    }
+    .car-placeholder {
+      width: 80px; height: 44px;
+      border-radius: 4px;
+      background: #161b22;
+      border: 1px solid #21262d;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .65rem;
+      color: #30363d;
+    }
+
+    /* Category badge */
+    .cat-badge {
+      display: inline-block;
+      padding: .15rem .5rem;
+      border-radius: 12px;
+      font-size: .65rem;
+      font-weight: 700;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      background: #21262d;
+      color: #e6edf3;
+      white-space: nowrap;
+    }
+
+    /* Row */
+    .lm-row {
+      background: var(--surface);
+      transition: background .15s;
+      cursor: default;
+    }
+    .lm-row:hover { background: var(--surface2); }
+    .lm-row.row--leader { background: rgba(246,201,14,.06); }
+    .lm-row.row--leader:hover { background: rgba(246,201,14,.1); }
+    .lm-row.row--new-best td { animation: bestFlash .8s ease-out; }
+    @keyframes bestFlash {
+      0%   { background: rgba(63,185,80,.25); }
+      100% { background: transparent; }
+    }
+
+    .lm-row td {
+      padding: .55rem .6rem;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+    .lm-row td:first-child { border-radius: 4px 0 0 4px; }
+    .lm-row td:last-child  { border-radius: 0 4px 4px 0; }
+
+    /* Position */
+    .td-pos {
+      width: 40px;
+      text-align: center;
+    }
+    .pos-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      font-size: .75rem;
+      font-weight: 700;
+      background: #21262d;
+      color: var(--muted);
+    }
+    .pos-badge.p1 { background: var(--gold);   color: #0d1117; }
+    .pos-badge.p2 { background: var(--silver); color: #0d1117; }
+    .pos-badge.p3 { background: var(--bronze); color: #fff; }
+
+    /* Color bar */
+    .td-bar {
+      width: 6px;
+      padding: 0 0 0 2px;
+    }
+    .color-bar {
+      width: 4px;
+      height: 38px;
+      border-radius: 2px;
+    }
+
+    /* Team + driver */
+    .td-team { min-width: 160px; }
+    .team-name {
+      font-size: .95rem;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .team-driver {
+      font-size: .72rem;
+      color: var(--muted);
+      margin-top: 1px;
+      font-weight: 400;
+    }
+    .team-driver span {
+      color: var(--green);
+      font-weight: 600;
+    }
+
+    /* Laps */
+    .td-laps {
+      width: 70px;
+      text-align: right;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #e6edf3;
+    }
+    .row--leader .td-laps { color: var(--gold); }
+
+    /* Gap */
+    .td-gap {
+      width: 80px;
+      text-align: right;
+    }
+    .gap-badge {
+      display: inline-block;
+      padding: .15rem .55rem;
+      border-radius: 20px;
+      font-size: .72rem;
+      font-weight: 600;
+      font-family: 'Share Tech Mono', monospace;
+      background: #21262d;
+      color: var(--muted);
+      min-width: 54px;
+      text-align: center;
+    }
+    .gap-badge.gap--leader {
+      background: rgba(246,201,14,.12);
+      color: var(--gold);
+    }
+    .gap-badge.gap--1lap { background: rgba(255,87,34,.15); color: #ff5722; }
+    .gap-badge.gap--2lap { background: rgba(255,87,34,.08); color: #ff7043; }
+
+    /* Best */
+    .td-best {
+      width: 90px;
+      text-align: right;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .78rem;
+      color: #58a6ff;
+    }
+    .td-best .best--fastest { color: var(--gold); font-weight: 700; }
+
+    /* Delta animation for lap count change */
+    @keyframes lapPop {
+      0%   { transform: scale(1.25); color: var(--green); }
+      100% { transform: scale(1);    color: inherit; }
+    }
+    .lap-pop { animation: lapPop .5s ease-out forwards; }
+  </style>
+</head>
+<body>
+
+  <header class="lm-header">
+    <div>
+      <div class="lm-header__title"><%= lang === 'es' ? 'CLASIFICACIÓN GENERAL' : 'OVERALL STANDINGS' %></div>
+      <div class="lm-header__race"><%= race.name %></div>
+    </div>
+    <div class="lm-header__badge" id="liveStatus" style="display:<%= isActive ? 'flex' : 'none' %>">
+      <div class="lm-live-dot"></div>
+      <span><%= lang === 'es' ? 'EN DIRECTO' : 'LIVE' %></span>
+    </div>
+  </header>
+
+  <div class="lm-wrap">
+    <table class="lm-table">
+      <thead>
+        <tr>
+          <th class="td-pos">P</th>
+          <th class="td-bar" style="width:10px"></th>
+          <th class="td-car"><%= lang === 'es' ? 'Coche' : 'Car' %></th>
+          <th><%= lang === 'es' ? 'Equipo / Piloto activo' : 'Team / Active driver' %></th>
+          <th style="width:80px"><%= lang === 'es' ? 'Categoría' : 'Category' %></th>
+          <th class="th-r" style="width:70px"><%= lang === 'es' ? 'Vueltas' : 'Laps' %></th>
+          <th class="th-r" style="width:80px">Gap</th>
+          <th class="th-r" style="width:90px"><%= lang === 'es' ? 'Mejor' : 'Best' %></th>
+        </tr>
+      </thead>
+      <tbody id="lmBody"></tbody>
+    </table>
+  </div>
+
+  <script>
+    const LM_DATA = <%- JSON.stringify({
+      standings:    standings,
+      activeMangaId: activeMangaId,
+      laneToTeam:   laneToTeam,
+      isActive:     isActive,
+    }) %>;
+    const LANG = "<%= lang %>";
+  </script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    function formatMs(ms) {
+      if (ms == null) return '—';
+      const totalSec   = Math.floor(ms / 1000);
+      const hundredths = Math.floor((ms % 1000) / 10);
+      const secs = totalSec % 60;
+      const mins = Math.floor(totalSec / 60);
+      return `${mins > 0 ? mins + ':' : ''}${String(secs).padStart(mins > 0 ? 2 : 1, '0')}.${String(hundredths).padStart(2, '0')}`;
+    }
+
+    function posClass(p) {
+      return p === 1 ? 'p1' : p === 2 ? 'p2' : p === 3 ? 'p3' : '';
+    }
+
+    function gapLabel(gap) {
+      if (gap === 0) return `<span class="gap-badge gap--leader">—</span>`;
+      const lbl = `+${gap} ${LANG === 'es' ? (gap === 1 ? 'vlt.' : 'vlts.') : (gap === 1 ? 'lap' : 'laps')}`;
+      const cls = gap === 1 ? 'gap--1lap' : gap <= 2 ? 'gap--2lap' : '';
+      return `<span class="gap-badge ${cls}">${lbl}</span>`;
+    }
+
+    // ── State ─────────────────────────────────────────────────────────────────
+    // standings keyed by team name
+    const state = {};
+    LM_DATA.standings.forEach(s => {
+      state[s.name] = {
+        ...s,
+        currentLaps: s.totalLaps - s.prevLaps, // laps in current/last manga
+      };
+    });
+
+    // Track active drivers (updated via socket)
+    const activeDrivers = {};
+    LM_DATA.standings.forEach(s => {
+      if (s.currentDriver) activeDrivers[s.name] = s.currentDriver;
+    });
+
+    // ── Render ────────────────────────────────────────────────────────────────
+    const tbody = document.getElementById('lmBody');
+
+    function render() {
+      const rows = Object.values(state).sort((a, b) =>
+        b.totalLaps - a.totalLaps || (a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity)
+      );
+      const leaderLaps = rows[0]?.totalLaps ?? 0;
+      const fastestMs  = Math.min(...rows.map(r => r.bestLapMs ?? Infinity));
+
+      rows.forEach((r, i) => {
+        r.position = i + 1;
+        r.gap = leaderLaps - r.totalLaps;
+      });
+
+      tbody.innerHTML = rows.map(r => {
+        const driver = activeDrivers[r.name] ?? r.currentDriver;
+        const driverHtml = driver
+          ? `<div class="team-driver"><span>${driver}</span></div>`
+          : '';
+        const isFastest = r.bestLapMs != null && r.bestLapMs === fastestMs;
+        const bestHtml = r.bestLapMs != null
+          ? `<span class="${isFastest ? 'best--fastest' : ''}">${formatMs(r.bestLapMs)}</span>`
+          : '<span style="color:#30363d">—</span>';
+        const carHtml = r.car_photo
+          ? `<img class="car-img" src="${r.car_photo}" alt="${r.coche||''}">`
+          : `<div class="car-placeholder">${r.coche ? r.coche.substring(0,8) : '—'}</div>`;
+        const catHtml = r.categoria
+          ? `<span class="cat-badge">${r.categoria}</span>`
+          : `<span style="color:#30363d">—</span>`;
+
+        return `<tr class="lm-row ${r.position===1?'row--leader':''}" data-team="${encodeURIComponent(r.name)}">
+          <td class="td-pos"><span class="pos-badge ${posClass(r.position)}">${r.position}</span></td>
+          <td class="td-bar"><div class="color-bar" style="background:${r.color}"></div></td>
+          <td class="td-car">${carHtml}</td>
+          <td class="td-team">
+            <div class="team-name">${r.name}</div>
+            ${r.coche ? `<div class="team-driver" style="color:#8b949e">${r.coche}</div>` : ''}
+            ${driverHtml}
+          </td>
+          <td>${catHtml}</td>
+          <td class="td-laps" id="laps-${encodeURIComponent(r.name)}">${r.totalLaps}</td>
+          <td class="td-gap">${gapLabel(r.gap)}</td>
+          <td class="td-best">${bestHtml}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    render();
+
+    // ── Socket.io ─────────────────────────────────────────────────────────────
+    if (LM_DATA.isActive && LM_DATA.activeMangaId) {
+      const socket = io();
+      const laneToTeam = LM_DATA.laneToTeam;
+
+      socket.on('standings', (data) => {
+        if (!data?.standings) return;
+        let changed = false;
+        data.standings.forEach(row => {
+          const teamName = laneToTeam[row.lane];
+          if (!teamName || !state[teamName]) return;
+          const s = state[teamName];
+          const newTotal = s.prevLaps + row.lapCount;
+          if (newTotal !== s.totalLaps) { s.totalLaps = newTotal; changed = true; }
+          if (row.bestLapMs != null && (s.bestLapMs == null || row.bestLapMs < s.bestLapMs)) {
+            s.bestLapMs = row.bestLapMs; changed = true;
+          }
+        });
+        if (changed) render();
+      });
+
+      socket.on('driver_checkin', (data) => {
+        const teamName = laneToTeam[data.lane];
+        if (teamName && data.driverName) {
+          activeDrivers[teamName] = data.driverName;
+          render();
+        }
+      });
+    }
+  </script>
+</body>
+</html>

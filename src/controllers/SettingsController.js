@@ -1,6 +1,7 @@
 const Settings       = require('../models/Settings');
 const SerialService  = require('../services/SerialService');
 const LicenseService = require('../services/LicenseService');
+const Circuit        = require('../models/Circuit');
 
 class SettingsController {
 
@@ -21,6 +22,7 @@ class SettingsController {
       ports,
       circuits,
       multiCircuit,
+      allCircuits:    Circuit.findAll(),
       isSimulating:   SerialService.isSimulating,
       connectedPorts: SerialService.connectedPorts,
       rawLog:         SerialService.getRawLog().slice(-20),
@@ -49,10 +51,11 @@ class SettingsController {
     }
 
     Settings.setMany({
-      serial_mode:     serial_mode || 'simulation',
-      circuits_serial: JSON.stringify(circuits),
-      sim_lanes:       sim_lanes   || '6',
-      sim_avg_ms:      sim_avg_ms  || '12000',
+      serial_mode:          serial_mode || 'simulation',
+      circuits_serial:      JSON.stringify(circuits),
+      sim_lanes:            sim_lanes   || '6',
+      sim_avg_ms:           sim_avg_ms  || '12000',
+      training_circuit_id:  req.body.training_circuit_id || '',
     });
 
     if (serial_mode === 'serial' && circuits.length > 0) {

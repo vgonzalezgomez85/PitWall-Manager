@@ -13,6 +13,7 @@
       <button class="btn btn--ghost" onclick="document.getElementById('csv-import-panel').classList.toggle('hidden')">
         📂 <%= lang === 'es' ? 'Importar CSV' : 'Import CSV' %>
       </button>
+      <a href="/drivers/qr-all" target="_blank" class="btn btn--ghost">▦ <%= lang === 'es' ? 'Exportar QR' : 'Export QR' %></a>
       <a href="/drivers/new" class="btn btn--primary">+ <%= lang === 'es' ? 'Nuevo piloto' : 'New driver' %></a>
     </div>
   </div>
@@ -70,6 +71,7 @@
                 <span class="driver-profile-card__name"><%= p.name %></span>
               </div>
               <div style="display:flex;gap:.3rem">
+                <a href="/drivers/<%= p.id %>/qr" target="_blank" class="btn btn--ghost btn--sm" title="QR">▦</a>
                 <a href="/drivers/<%= p.id %>/edit" class="btn btn--ghost btn--sm">✏</a>
                 <form action="/drivers/<%= p.id %>?_method=DELETE" method="POST" style="display:inline"
                       onsubmit="return confirm('<%= lang === 'es' ? '¿Eliminar piloto?' : 'Delete driver?' %>')">

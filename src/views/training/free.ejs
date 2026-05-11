@@ -1,0 +1,52 @@
+<%- include('../partials/header', { lang, pageTitle: lang === 'es' ? 'Entrenamiento' : 'Training' }) %>
+
+<div class="page-header">
+  <h1 class="page-title">🎯 <%= lang === 'es' ? 'Entrenamiento' : 'Training' %></h1>
+  <p class="page-subtitle">
+    <%= lang === 'es'
+      ? 'Modo libre: registra vueltas por carril sin estructura de carrera.'
+      : 'Free practice: record laps per lane without a race structure.' %>
+  </p>
+</div>
+
+<div class="card" style="max-width:420px">
+  <form action="/training/start" method="POST">
+    <div class="form-group">
+      <label class="form-label">
+        <%= lang === 'es' ? 'Número de carriles activos' : 'Number of active lanes' %>
+      </label>
+      <input type="number" name="lanes" class="form-input" value="6" min="1" max="32" required>
+    </div>
+    <button type="submit" class="btn btn-primary" style="width:100%">
+      ▶ <%= lang === 'es' ? 'Iniciar entrenamiento' : 'Start training' %>
+    </button>
+  </form>
+</div>
+
+<%- include('../partials/footer') %>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  function showSemaphore() {
+    if (document.getElementById('semaphore-overlay')) return;
+    const ov = document.createElement('div');
+    ov.id = 'semaphore-overlay';
+    ov.className = 'semaphore-overlay';
+    ov.innerHTML = `<div class="semaphore-panel">${[1,2,3,4,5].map(i =>
+      `<div class="s-light" id="sl${i}"></div>`).join('')}</div>`;
+    document.body.appendChild(ov);
+    [1,2,3,4,5].forEach((n, i) =>
+      setTimeout(() => document.getElementById(`sl${n}`)?.classList.add('lit'), i * 1000)
+    );
+    setTimeout(() => {
+      [1,2,3,4,5].forEach(n => document.getElementById(`sl${n}`)?.classList.remove('lit'));
+      setTimeout(() => ov.remove(), 800);
+    }, 6000);
+  }
+
+  const socket = io();
+  socket.on('race:semaphore', () => showSemaphore());
+  socket.on('training:autostart', () => {
+    const hasSemaphore = !!document.getElementById('semaphore-overlay');
+    setTimeout(() => { location.href = '/training/live'; }, hasSemaphore ? 7000 : 300);
+  });
+</script>

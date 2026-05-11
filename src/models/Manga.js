@@ -144,6 +144,14 @@ class Manga {
       LIMIT 1
     `).get(raceId);
   }
+
+  static findFirstPending(raceId) {
+    return db.prepare(`
+      SELECT m.* FROM mangas m
+      WHERE m.race_id = ? AND m.status = 'pending'
+      ORDER BY m.id ASC LIMIT 1
+    `).get(raceId);
+  }
 }
 
 module.exports = Manga;

@@ -1,4 +1,5 @@
 const DriverProfile = require('../models/DriverProfile');
+const QRCode        = require('qrcode');
 
 const VALID_CATEGORIES = ['platino', 'oro', 'plata', 'bronce'];
 
@@ -77,6 +78,32 @@ class DriverProfileController {
     });
 
     res.redirect('/drivers');
+  }
+  static _ensureQR(db, profile) {
+    if (!profile.qr_code) {
+      db.prepare('UPDATE driver_profiles SET qr_code=? WHERE id=?').run(`DRV:${profile.id}`, profile.id);
+      profile.qr_code = `DRV:${profile.id}`;
+    }
+    return profile;
+  }
+
+  static async qrAll(req, res) {
+    const db = require('../config/database');
+    const profiles = DriverProfile.findAll().map(p => DriverProfileController._ensureQR(db, p));
+    const items = await Promise.all(profiles.map(async p => ({
+      ...p,
+      qrDataUrl: await QRCode.toDataURL(p.qr_code, { width: 200, margin: 2 }),
+    })));
+    res.render('drivers/qr-all', { t: req.t, items });
+  }
+
+  static async qrPage(req, res) {
+    const db = require('../config/database');
+    let profile = DriverProfile.findById(req.params.id);
+    if (!profile) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+    profile = DriverProfileController._ensureQR(db, profile);
+    const qrDataUrl = await QRCode.toDataURL(profile.qr_code, { width: 240, margin: 2 });
+    res.render('drivers/qr', { t: req.t, profile, qrDataUrl });
   }
 }
 

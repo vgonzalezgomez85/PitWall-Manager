@@ -231,49 +231,48 @@
     <% }) %>
   <% } %>
 
-  <!-- Virtual / projected standings -->
-  <% if (virtualStandings.length > 0) { %>
-    <h2 class="section-title" style="margin-top:2.5rem">
-      📊 <%= lang === 'es' ? 'Clasificación Virtual' : 'Projected Standings' %>
-    </h2>
-    <p class="form-hint" style="margin-bottom:1rem">
-      <%= lang === 'es'
-        ? 'Posición estimada al final, basada en el ritmo medio de cada participante en las mangas completadas.'
-        : 'Estimated final position based on each participant\'s average pace across completed heats.' %>
-    </p>
-    <div class="virtual-standings">
-      <% virtualStandings.forEach(r => { %>
-        <%
-          const maxProj = virtualStandings[0].projected_laps || 1;
-          const pctDone = r.projected_laps > 0
-            ? Math.round((r.total_laps / r.projected_laps) * 100) : 0;
-        %>
-        <div class="vs-row">
-          <span class="pos-badge pos-<%= r.position %> vs-pos"><%= r.position %></span>
-          <% if (r.color) { %>
-            <span style="width:12px;height:12px;background:<%= r.color %>;border-radius:3px;flex-shrink:0;display:inline-block"></span>
-          <% } %>
-          <span class="vs-name"><%= r.entity_name %></span>
-          <div class="vs-bar-wrap">
-            <div class="vs-bar">
-              <div class="vs-bar__done" style="width:<%= pctDone %>%"></div>
-            </div>
-          </div>
-          <span class="vs-stat">
-            <strong><%= r.projected_laps %></strong>
-            <span class="text-muted" style="font-size:.72rem">
-              &nbsp;<%= r.total_laps %>vr&nbsp;·&nbsp;<%= r.mangas_raced %>/<%= r.total_scheduled %>mg
-            </span>
-          </span>
-          <% if (r.exit_count > 0) { %>
-            <span class="exit-badge" title="<%= lang === 'es' ? 'Salidas de pista' : 'Track exits' %>">
-              🚨 <%= r.exit_count %>
-            </span>
-          <% } %>
-        </div>
-      <% }) %>
-    </div>
-  <% } %>
 
 </div>
 <%- include('../partials/footer') %>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const _raceId = <%= race.id %>;
+  const socket  = io();
+  let _semaphoreFallback = null;
+
+  function showSemaphore() {
+    if (document.getElementById('semaphore-overlay')) return;
+    const ov = document.createElement('div');
+    ov.id = 'semaphore-overlay';
+    ov.className = 'semaphore-overlay';
+    ov.innerHTML = `<div class="semaphore-panel">${[1,2,3,4,5].map(i =>
+      `<div class="s-light" id="sl${i}"></div>`).join('')}</div>`;
+    document.body.appendChild(ov);
+    [1,2,3,4,5].forEach((n, i) =>
+      setTimeout(() => document.getElementById(`sl${n}`)?.classList.add('lit'), i * 1000)
+    );
+    _semaphoreFallback = setTimeout(() => semaphoreGo(null), 10000);
+  }
+
+  function semaphoreGo(callback) {
+    if (_semaphoreFallback) { clearTimeout(_semaphoreFallback); _semaphoreFallback = null; }
+    [1,2,3,4,5].forEach(n => {
+      const el = document.getElementById(`sl${n}`);
+      if (!el) return;
+      el.classList.remove('lit');
+      el.classList.add('go');
+    });
+    setTimeout(() => {
+      document.getElementById('semaphore-overlay')?.remove();
+      if (callback) callback();
+    }, 900);
+  }
+
+  socket.on('race:semaphore', () => showSemaphore());
+  socket.on('manga:started', (data) => {
+    if (data.raceId && data.raceId !== _raceId) return;
+    if (data.mangaId) {
+      location.href = `/races/${_raceId}/mangas/${data.mangaId}/live`;
+    }
+  });
+</script>

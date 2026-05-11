@@ -9,3 +9,5 @@ license.json
 dist/
 dist-app/
 out/
+public/uploads/
+src/data/slotime.license

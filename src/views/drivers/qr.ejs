@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="<%= lang %>">
+<head>
+  <meta charset="UTF-8">
+  <title>QR — <%= profile.name %></title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Arial', sans-serif;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 2rem;
+      gap: 1.5rem;
+    }
+    .qr-card {
+      border: 2px solid #222;
+      border-radius: 12px;
+      padding: 1.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: .75rem;
+      page-break-inside: avoid;
+    }
+    .qr-name   { font-size: 1.4rem; font-weight: 700; text-align: center; }
+    .qr-cat    { font-size: .9rem; color: #555; text-align: center; }
+    .qr-code   { font-family: monospace; font-size: .75rem; color: #888; }
+    .qr-img    { display: block; }
+    .no-print  { margin-top: 1.5rem; display: flex; gap: .75rem; }
+    button {
+      padding: .5rem 1.25rem; border-radius: 6px; border: 1px solid #ccc;
+      cursor: pointer; font-size: .9rem;
+    }
+    button.primary { background: #1a7f37; color: #fff; border-color: #1a7f37; }
+    @media print {
+      .no-print { display: none; }
+      body { padding: .5cm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="qr-card">
+    <div class="qr-name"><%= profile.name %></div>
+    <div class="qr-cat">
+      <%= { platino:'💎 Platino', oro:'🥇 Oro', plata:'🥈 Plata', bronce:'🥉 Bronce' }[profile.category] || profile.category %>
+    </div>
+    <img class="qr-img" src="<%= qrDataUrl %>" alt="QR" width="240" height="240">
+    <div class="qr-code"><%= profile.qr_code %></div>
+  </div>
+
+  <div class="no-print">
+    <button onclick="window.print()" class="primary">🖨 <%= lang === 'es' ? 'Imprimir' : 'Print' %></button>
+    <button onclick="window.close()"><%= lang === 'es' ? 'Cerrar' : 'Close' %></button>
+  </div>
+</body>
+</html>

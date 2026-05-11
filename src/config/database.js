@@ -148,9 +148,50 @@ const migrations = [
   `ALTER TABLE races ADD COLUMN circuit_id INTEGER REFERENCES circuits(id) ON DELETE SET NULL`,
   `ALTER TABLE races ADD COLUMN min_lap_ms INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE laps ADD COLUMN ghost_from_lane INTEGER`,
+
+  // ── Teams catalog ──────────────────────────────────────────────────────────
+  `CREATE TABLE IF NOT EXISTS teams_catalog (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    name       TEXT    NOT NULL,
+    color      TEXT    NOT NULL DEFAULT '#8b949e',
+    notes      TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`,
+  `CREATE TABLE IF NOT EXISTS teams_catalog_members (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    team_id    INTEGER NOT NULL REFERENCES teams_catalog(id) ON DELETE CASCADE,
+    driver_id  INTEGER REFERENCES driver_profiles(id) ON DELETE SET NULL,
+    name       TEXT    NOT NULL,
+    position   INTEGER NOT NULL DEFAULT 0
+  )`,
+  `ALTER TABLE teams_catalog ADD COLUMN country TEXT`,
+  `ALTER TABLE teams_catalog ADD COLUMN categoria TEXT`,
+  `ALTER TABLE teams_catalog ADD COLUMN coche TEXT`,
+  `ALTER TABLE teams_catalog ADD COLUMN car_photo TEXT`,
+  `CREATE TABLE IF NOT EXISTS driver_shifts (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    manga_id    INTEGER NOT NULL REFERENCES mangas(id) ON DELETE CASCADE,
+    race_id     INTEGER NOT NULL REFERENCES races(id) ON DELETE CASCADE,
+    lane        INTEGER NOT NULL,
+    team_id     INTEGER REFERENCES teams(id) ON DELETE SET NULL,
+    driver_id   INTEGER REFERENCES drivers(id) ON DELETE SET NULL,
+    driver_name TEXT    NOT NULL,
+    started_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`,
+  `ALTER TABLE driver_profiles ADD COLUMN qr_code TEXT UNIQUE`,
 ];
 for (const sql of migrations) {
   try { db.exec(sql); } catch { /* already exists */ }
 }
+
+// Assign qr_code to any driver_profile that doesn't have one yet
+// (only runs if the column exists, i.e. migration already applied)
+try {
+  const profilesWithoutQR = db.prepare('SELECT id FROM driver_profiles WHERE qr_code IS NULL').all();
+  const setQR = db.prepare('UPDATE driver_profiles SET qr_code = ? WHERE id = ?');
+  for (const p of profilesWithoutQR) {
+    setQR.run(`DRV:${p.id}`, p.id);
+  }
+} catch { /* column not yet created on very first run — migration handles it */ }
 
 module.exports = db;
