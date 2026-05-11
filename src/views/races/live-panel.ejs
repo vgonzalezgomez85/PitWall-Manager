@@ -39,7 +39,8 @@
     .panel-table-wrap { flex: 1; overflow-y: auto; }
 
     .panel-table {
-      width: 100%; border-collapse: collapse; font-size: .92rem; table-layout: fixed;
+      width: 100%; border-collapse: collapse;
+      font-size: var(--pt-font, .92rem); table-layout: fixed;
     }
     .panel-table thead {
       position: sticky; top: 0; z-index: 5;
@@ -50,7 +51,8 @@
       background: #080b10; border-bottom: 1px solid #161b22; text-align: left;
     }
     .panel-table td {
-      padding: .55rem 1rem; border-bottom: 1px solid #0f1419; vertical-align: middle;
+      padding: var(--pt-pad, .55rem) 1rem;
+      border-bottom: 1px solid #0f1419; vertical-align: middle;
     }
     .pt-right { text-align: right !important; }
 
@@ -211,6 +213,22 @@
 
     const panelBody = document.getElementById('panelBody');
 
+    function fitTable() {
+      const wrap = document.querySelector('.panel-table-wrap');
+      if (!wrap) return;
+      const thead = wrap.querySelector('thead');
+      const rows  = panelBody ? panelBody.querySelectorAll('tr') : [];
+      if (!rows.length) return;
+      const available = wrap.clientHeight - (thead ? thead.offsetHeight : 32);
+      const rowH   = available / rows.length;
+      // rowH ≈ fontSize * lineHeight(1.5) + 2 * padding; keep padding = fontSize * 0.45
+      const fontSize = Math.min(0.92, Math.max(0.38, rowH / (1.5 + 0.9)));
+      const pad      = Math.min(0.55, Math.max(0.06, fontSize * 0.45));
+      document.documentElement.style.setProperty('--pt-font', fontSize.toFixed(3) + 'rem');
+      document.documentElement.style.setProperty('--pt-pad',  pad.toFixed(3) + 'rem');
+    }
+    window.addEventListener('resize', fitTable);
+
     function renderStandings(data) {
       if (!data?.standings) return;
       panelBody.innerHTML = data.standings.map((r, i) => `
@@ -222,6 +240,7 @@
           <td class="pt-right"><span class="pt-best">${formatMs(r.bestLapMs)}</span></td>
           <td class="pt-right"><span class="pt-exit">${r.exitCount > 0 ? r.exitCount : '—'}</span></td>
         </tr>`).join('');
+      requestAnimationFrame(fitTable);
     }
 
     function renderProjected(data) {
@@ -243,6 +262,7 @@
           <td class="pt-right"><span class="pt-ontrack">${r.lapCount}</span></td>
           <td class="pt-right"><span class="pt-best">${formatMs(r.bestLapMs)}</span></td>
         </tr>`).join('');
+      requestAnimationFrame(fitTable);
     }
 
     function addTicker(lap) {
@@ -276,6 +296,7 @@
     } else {
       renderInitial();
     }
+    requestAnimationFrame(fitTable);
 
     if (PANEL_DATA.isActive) {
       const socket = io();

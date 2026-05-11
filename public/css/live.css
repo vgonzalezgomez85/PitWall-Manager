@@ -93,7 +93,7 @@
   flex: 1; min-width: 0;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: .8rem; padding: .9rem;
+  gap: var(--card-gap, .8rem); padding: var(--card-pad, .9rem);
   overflow-y: auto; align-content: start;
   /* order property on children requires grid to respect it */
 }
@@ -181,11 +181,29 @@
 }
 .lane-card.exit-flash { animation: cardExitFlash 1.1s ease-out forwards; }
 
-/* ── Sidebar ─────────────────────────────────────────────────────────────── */
+/* ── On-track message (first crossing) ──────────────────────────────────── */
+.on-track-msg {
+  position: absolute;
+  bottom: .6rem; left: 50%; transform: translateX(-50%);
+  background: rgba(63,185,80,.18);
+  border: 1px solid #3fb95088;
+  color: #3fb950;
+  font-size: .72rem; font-weight: 700; letter-spacing: .06em;
+  padding: .2rem .6rem;
+  border-radius: 4px;
+  pointer-events: none;
+  animation: onTrackFade 3s ease-out forwards;
+  white-space: nowrap;
+}
+@keyframes onTrackFade {
+  0%   { opacity: 1; }
+  60%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ── Sidebar (hidden — panels open in separate windows) ─────────────────── */
 .live-sidebar {
-  width: 400px; flex-shrink: 0;
-  background: #0d1117; border-left: 1px solid #161b22;
-  display: flex; flex-direction: column; overflow: hidden;
+  display: none;
 }
 
 .live-panel {

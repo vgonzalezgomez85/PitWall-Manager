@@ -177,6 +177,17 @@ function buildCard(lane) {
 }
 
 function initCards() {
+  const activeLaneCount = RACE_DATA.lanes.filter(l => !l.isRest).length;
+  const targetRows = activeLaneCount <= 8  ? 1
+                   : activeLaneCount <= 16 ? 2
+                   :                         3;
+  const cols    = Math.ceil(activeLaneCount / targetRows);
+  const cardGap = activeLaneCount <= 16 ? '.8rem' : '.5rem';
+  const cardPad = activeLaneCount <= 16 ? '.9rem' : '.6rem';
+  lanesGrid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  lanesGrid.style.setProperty('--card-gap', cardGap);
+  lanesGrid.style.setProperty('--card-pad', cardPad);
+
   RACE_DATA.lanes.forEach(lane => {
     lanesGrid.appendChild(buildCard(lane));
     if (lane.activeDriver) setActiveDriver(lane.lane, lane.activeDriver);
@@ -333,25 +344,41 @@ function renderProjected(data) {
   const elapsed   = data.elapsedMs   ?? 0;
   const remaining = data.remainingMs ?? 0;
 
-  // Build map of active participants with in-memory totals + projection
+  // Build lookup of allParticipants by name for quick access
+  const allPMap = new Map();
+  (RACE_DATA.allParticipants || []).forEach(p => allPMap.set(p.entity_name, p));
+
   const totalMangaDuration = elapsed + remaining;
+
+  // Helper: project remaining mangas based on historical avg laps/manga
+  function projFutureMangas(name, extraMangas) {
+    const p = allPMap.get(name);
+    if (!p || !extraMangas) return 0;
+    const avgPerManga = p.mangas_raced > 0 ? p.total_laps / p.mangas_raced : 0;
+    return Math.round(extraMangas * avgPerManga);
+  }
+
+  // Active lanes: project this manga to completion + remaining pending mangas
   const activeMap = new Map();
   data.standings.forEach(r => {
     const prevLaps  = prevLapCountMap[r.lane] || 0;
     const total     = prevLaps + r.lapCount;
-    // Project: how many complete laps will they finish in the full manga duration?
-    const avgLapMs  = r.lapCount > 1 ? elapsed / r.lapCount : null;
-    const projMangaLaps = avgLapMs && totalMangaDuration > 0
+    const avgLapMs  = r.lapCount > 1 ? elapsed / r.lapCount : (r.avgLapMs || null);
+    const projThisManga = avgLapMs && totalMangaDuration > 0
       ? Math.floor(totalMangaDuration / avgLapMs)
       : r.lapCount;
+    const p = allPMap.get(r.name);
+    const futureMangas = p?.remaining_mangas || 0;
+    const projFuture   = projFutureMangas(r.name, futureMangas);
     activeMap.set(r.name, {
       name: r.name, color: r.color,
-      total, projectedTotal: prevLaps + projMangaLaps,
+      total,
+      projectedTotal: prevLaps + projThisManga + projFuture,
       bestLapMs: r.bestLapMs, avgLapMs: r.avgLapMs,
     });
   });
 
-  // Merge: all race participants (DB totals) + active overrides (in-memory)
+  // Merge: all race participants (DB totals + future mangas) + active overrides
   const seen = new Set();
   const rows = [];
 
@@ -362,17 +389,20 @@ function renderProjected(data) {
     if (activeMap.has(name)) {
       rows.push(activeMap.get(name));
     } else {
+      // Not racing this manga (resting or different tanda): use DB total + project future
+      const avgPerManga  = p.mangas_raced > 0 ? p.total_laps / p.mangas_raced : 0;
+      const projFuture   = Math.round((p.remaining_mangas || 0) * avgPerManga);
       rows.push({
         name, color: p.color || '#8b949e',
         total: p.total_laps,
-        projectedTotal: p.total_laps,
+        projectedTotal: p.total_laps + projFuture,
         bestLapMs: p.best_lap_ms ?? null,
         avgLapMs:  p.avg_lap_ms  != null ? Math.round(p.avg_lap_ms) : null,
       });
     }
   });
 
-  // Active participants not yet in DB (no laps before this manga)
+  // Active participants not yet in DB (first manga ever)
   activeMap.forEach((r, name) => {
     if (!seen.has(name)) rows.push(r);
   });
@@ -571,6 +601,18 @@ if (RACE_DATA.isActive || RACE_DATA.mangaStatus === 'pending') {
           remainingMs = data.remainingMs;
         }
       }
+    });
+
+    socket.on('lane:on_track', ({ lane }) => {
+      const card = document.getElementById(`card-${lane}`);
+      if (!card || card.classList.contains('is-rest')) return;
+      const existing = card.querySelector('.on-track-msg');
+      if (existing) existing.remove();
+      const msg = document.createElement('div');
+      msg.className = 'on-track-msg';
+      msg.textContent = LANG === 'es' ? 'En pista' : 'On track';
+      card.appendChild(msg);
+      setTimeout(() => msg.remove(), 3000);
     });
 
     socket.on('lap', (lap) => {

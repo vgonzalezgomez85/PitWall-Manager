@@ -242,6 +242,7 @@ class TimingServiceClass {
     // First crossing from device may have null lapTimeMs (no valid lap yet)
     if (deviceLapTimeMs === null) {
       ld.lastCrossing = timestamp;
+      SocketService.emit('lane:on_track', { lane, color: ld.color, name: ld.name });
       return;
     }
 
