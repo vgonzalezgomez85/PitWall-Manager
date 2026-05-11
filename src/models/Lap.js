@@ -62,6 +62,26 @@ class Lap {
     `).all(raceId);
   }
 
+  // Best valid lap per lane across the entire race, with team/driver attribution
+  static raceBestByLane(raceId) {
+    return db.prepare(`
+      SELECT l.lane,
+        l.lap_time_ms  AS bestLapMs,
+        COALESCE(t.name, d.name) AS entityName,
+        CASE WHEN t.id IS NOT NULL THEN 'team' ELSE 'driver' END AS entityType
+      FROM laps l
+      LEFT JOIN teams   t ON t.id = l.team_id
+      LEFT JOIN drivers d ON d.id = l.driver_id
+      WHERE l.race_id = ? AND l.is_ghost = 0 AND l.is_exit = 0 AND l.lap_number > 0
+        AND l.lap_time_ms = (
+          SELECT MIN(l2.lap_time_ms) FROM laps l2
+          WHERE l2.race_id = l.race_id AND l2.lane = l.lane
+            AND l2.is_ghost = 0 AND l2.is_exit = 0 AND l2.lap_number > 0
+        )
+      GROUP BY l.lane
+    `).all(raceId);
+  }
+
   // Aggregate results per entity (team or driver) across all mangas of a race
   static aggregateByRace(raceId) {
     return db.prepare(`

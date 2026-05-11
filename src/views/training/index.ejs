@@ -1,26 +1,44 @@
 <%- include('../partials/header', { lang, pageTitle: lang === 'es' ? 'Entrenamiento' : 'Training' }) %>
 
-<div class="page-header">
-  <h1 class="page-title">🎯 <%= lang === 'es' ? 'Entrenamiento' : 'Training' %></h1>
-  <p class="page-subtitle">
-    <%= lang === 'es'
-      ? 'Modo libre: registra vueltas por carril sin estructura de carrera.'
-      : 'Free practice: record laps per lane without a race structure.' %>
-  </p>
+<div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:3rem">
+
+  <div class="page-header" style="justify-content:center;margin-bottom:2rem">
+    <div>
+      <h1 class="page-title">🎯 <%= lang === 'es' ? 'Entrenamiento' : 'Training' %></h1>
+      <p class="page-subtitle">
+        <%= lang === 'es' ? 'Selecciona la modalidad de entrenamiento.' : 'Select the training mode.' %>
+      </p>
+    </div>
+  </div>
+
+<div class="training-mode-grid">
+
+  <a href="/training/free" class="training-mode-card">
+    <div class="training-mode-card__icon">🏎️</div>
+    <div class="training-mode-card__title">
+      <%= lang === 'es' ? 'Entrenamiento libre' : 'Free practice' %>
+    </div>
+    <div class="training-mode-card__desc">
+      <%= lang === 'es'
+        ? 'Registra vueltas por carril sin estructura de equipos. Ideal para sesiones abiertas.'
+        : 'Record laps per lane without team structure. Ideal for open sessions.' %>
+    </div>
+  </a>
+
+  <a href="/training/competition" class="training-mode-card">
+    <div class="training-mode-card__icon">🏆</div>
+    <div class="training-mode-card__title">
+      <%= lang === 'es' ? 'Entrenamiento de competición' : 'Competition training' %>
+    </div>
+    <div class="training-mode-card__desc">
+      <%= lang === 'es'
+        ? 'Equipos o pilotos asignados a carriles con rotación automática tras cada tanda.'
+        : 'Teams or pilots assigned to lanes with automatic rotation after each heat.' %>
+    </div>
+  </a>
+
 </div>
 
-<div class="card" style="max-width:420px">
-  <form action="/training/start" method="POST">
-    <div class="form-group">
-      <label class="form-label">
-        <%= lang === 'es' ? 'Número de carriles activos' : 'Number of active lanes' %>
-      </label>
-      <input type="number" name="lanes" class="form-input" value="6" min="1" max="32" required>
-    </div>
-    <button type="submit" class="btn btn-primary" style="width:100%">
-      ▶ <%= lang === 'es' ? 'Iniciar entrenamiento' : 'Start training' %>
-    </button>
-  </form>
 </div>
 
 <%- include('../partials/footer') %>

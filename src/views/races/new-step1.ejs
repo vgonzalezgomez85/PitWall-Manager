@@ -47,17 +47,6 @@
       </div>
     </div>
 
-    <!-- Duration -->
-    <div class="form-group">
-      <label class="form-label" for="manga_duration_minutes"><%= t('wizard.manga_duration') %></label>
-      <div class="input-row">
-        <input class="form-input form-input--sm <%= errors.includes('duration_invalid') ? 'form-input--error' : '' %>"
-          type="number" id="manga_duration_minutes" name="manga_duration_minutes"
-          min="1" max="120" value="<%= body.manga_duration_minutes || 5 %>" required>
-        <span class="form-hint"><%= lang === 'es' ? 'minutos por manga' : 'minutes per heat' %></span>
-      </div>
-    </div>
-
     <!-- Circuit selector -->
     <div class="form-group">
       <label class="form-label">

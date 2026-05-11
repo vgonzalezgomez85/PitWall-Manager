@@ -4,6 +4,7 @@ const Manga          = require('../models/Manga');
 const Team           = require('../models/Team');
 const Driver         = require('../models/Driver');
 const DriverProfile  = require('../models/DriverProfile');
+const TeamCatalog    = require('../models/TeamCatalog');
 const LicenseService = require('../services/LicenseService');
 
 const LANE_COLORS = [
@@ -22,9 +23,10 @@ class TandaController {
     const race = Race.findById(req.params.id);
     if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
 
-    const laneSequence = Race.getLaneSequence(race);
-    const profiles     = DriverProfile.findAll();
-    res.render('races/tanda-new', { t: req.t, race, laneSequence, LANE_COLORS, profiles, errors: [], body: {} });
+    const laneSequence  = Race.getLaneSequence(race);
+    const profiles      = DriverProfile.findAll();
+    const teamsCatalog  = TeamCatalog.findAll();
+    res.render('races/tanda-new', { t: req.t, race, laneSequence, LANE_COLORS, profiles, teamsCatalog, errors: [], body: {} });
   }
 
   // POST /races/:id/tandas
@@ -60,31 +62,32 @@ class TandaController {
     const tandaId = Tanda.create(race.id);
 
     if (race.format === 'team') {
-      const rawTeams = req.body.teams || {};
-      const teamsArray = Array.isArray(rawTeams) ? rawTeams : Object.values(rawTeams);
+      const catalogIds = [].concat(req.body.team_catalog_ids || []).map(id => parseInt(id, 10)).filter(Boolean);
 
-      if (teamsArray.length < laneSequence.length) {
+      if (catalogIds.length < laneSequence.filter(l => l !== 0).length) {
         errors.push('not_enough_teams');
       }
 
       if (errors.length) {
         Tanda.delete(tandaId);
-        return res.render('races/tanda-new', { t: req.t, race, laneSequence, LANE_COLORS, profiles: DriverProfile.findAll(), errors, body: req.body });
+        const teamsCatalog = TeamCatalog.findAll();
+        return res.render('races/tanda-new', { t: req.t, race, laneSequence, LANE_COLORS, profiles: DriverProfile.findAll(), teamsCatalog, errors, body: req.body });
       }
 
-      teamsArray.forEach((team, idx) => {
-        const teamName = (team.name || `Team ${idx + 1}`).trim();
+      catalogIds.forEach((catalogId, idx) => {
+        const catalogTeam = TeamCatalog.findById(catalogId);
+        const teamName = catalogTeam ? catalogTeam.name : `Equipo ${idx + 1}`;
         const teamId = Team.create({
           race_id: race.id, tanda_id: tandaId,
-          name: teamName, lane: 0, color: LANE_COLORS[idx]
+          name: teamName, lane: 0, color: LANE_COLORS[idx % LANE_COLORS.length]
         });
-        const members = Array.isArray(team.members)
-          ? team.members : Object.values(team.members || {});
-        members.forEach(mName => {
-          if (mName?.trim()) {
-            Driver.create({ race_id: race.id, tanda_id: tandaId, team_id: teamId, name: mName.trim() });
-          }
-        });
+        if (catalogTeam) {
+          catalogTeam.members.forEach(m => {
+            if (m.name?.trim()) {
+              Driver.create({ race_id: race.id, tanda_id: tandaId, team_id: teamId, name: m.name.trim() });
+            }
+          });
+        }
         entities.push({ id: teamId, type: 'team', name: teamName });
       });
 

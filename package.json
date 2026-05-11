@@ -1,8 +1,8 @@
 {
   "name": "slot-timer-pro",
-  "productName": "Slot Timer Pro",
+  "productName": "Voltrace Manager",
   "version": "1.0.0",
-  "description": "Slot Timer Pro — Slot car race management and timing system",
+  "description": "Voltrace Manager — Slot car race management and timing system",
   "main": "electron/main.js",
   "scripts": {
     "start": "node src/app.js",
@@ -21,6 +21,8 @@
     "express-session": "^1.17.3",
     "method-override": "^3.0.0",
     "morgan": "^1.10.0",
+    "multer": "^2.1.1",
+    "qrcode": "^1.5.4",
     "serialport": "^12.0.0",
     "socket.io": "^4.7.5",
     "xlsx": "^0.18.5"
@@ -31,9 +33,9 @@
     "nodemon": "^3.1.0"
   },
   "build": {
-    "appId": "com.slotime.racing",
-    "productName": "Slot Timer Pro",
-    "copyright": "Copyright © 2026 Slot Timer Pro",
+    "appId": "com.voltrace.manager",
+    "productName": "Voltrace Manager",
+    "copyright": "Copyright © 2026 Voltrace Manager",
     "directories": {
       "output": "dist-app"
     },
@@ -76,7 +78,7 @@
       "identity": null
     },
     "dmg": {
-      "title": "Instalar Slot Timer Pro",
+      "title": "Instalar Voltrace Manager",
       "contents": [
         {
           "x": 410,
@@ -113,7 +115,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Slot Timer Pro"
+      "shortcutName": "Voltrace Manager"
     },
     "linux": {
       "target": [

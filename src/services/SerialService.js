@@ -1,71 +1,99 @@
+const fs           = require('fs');
+const path         = require('path');
+const { performance } = require('perf_hooks');
 const EventEmitter = require('events');
-const Settings = require('../models/Settings');
+const Settings     = require('../models/Settings');
 
-// ── DS-300 protocol constants ─────────────────────────────────────────────────
-const FRAME_LEN   = 21;
-const FRAME_START = 0xE0;
-const FRAME_END   = 0xEB;
-const CMD_LAP     = 0xA9;
-const CMD_GO      = 0xA1;
-const CMD_STOP    = 0xA7;
+// Fixed offset so performance.now() (relative) maps to epoch ms (float, ~0.01ms precision)
+const _PERF_OFFSET = Date.now() - performance.now();
 
-function bcd(byte) {
-  return ((byte >> 4) & 0x0F) * 10 + (byte & 0x0F);
+const REPLAY_FILE = path.join(__dirname, '../data/RegistroCarrera.txt');
+
+// DS-300 protocol: frame-based at 56000 baud
+//
+// Each crossing event = 1 frame of ~19 bytes.
+// Frame boundaries are detected by silence gaps > FRAME_GAP_MS between bytes.
+// Lane identity is encoded in byte index 10 (0-based) using a non-sequential bitmask.
+
+const FRAME_GAP_MS    = 75;    // gap > 75ms between bytes → new frame starts
+const MIN_CROSSING_MS = 500;   // minimum ms between two crossings on the same lane
+const MAX_LAP_MS      = 240000; // elapsed > 240s → car stopped; reset ref, skip recording
+
+// DS-300 lap time is encoded in bytes 14-17 (0-based) as decimal-in-hex:
+//   byte14 = minutes, byte15 = seconds, byte16 = hundredths, byte17 = ten-thousandths
+//   e.g. 0x13 → read hex digits as decimal → 13 seconds
+//   If any nibble is A-F → first crossing (no previous reference), no valid time.
+function ds300Byte(b) {
+  return ((b >> 4) <= 9 && (b & 0xF) <= 9) ? parseInt(b.toString(16), 10) : null;
 }
 
-function laneFromMask(mask) {
-  for (let bit = 7; bit >= 0; bit--) {
-    if (mask & (1 << bit)) return 8 - bit;
-  }
-  return null;
+function readLapTimeMs(frame) {
+  if (frame.length < 18) return null;
+  const mins  = ds300Byte(frame[14]);
+  const secs  = ds300Byte(frame[15]);
+  const cents = ds300Byte(frame[16]); // centésimas → × 10 ms
+  const dmils = ds300Byte(frame[17]); // diezmilésimas → × 0.1 ms
+  if (mins === null || secs === null || cents === null || dmils === null) return null;
+  return mins * 60000 + secs * 1000 + cents * 10 + dmils * 0.1;
 }
 
-function parseLapTimeMs(b14, b15, b16, b17) {
-  if (b14 === 0xAA || b15 === 0xAB) return null;
-  const mins   = bcd(b14);
-  const secs   = bcd(b15);
-  const centis = bcd(b16);
-  return mins * 60000 + secs * 1000 + centis * 10;
-}
+// DS-300 frame: lane identity is encoded in byte index 10 (0-based).
+// Non-sequential bitmask — order matters.
+const LANE_MAP = [
+  [0x80, 1], [0x40, 2], [0x20, 3], [0x10, 4],
+  [0x08, 5], [0x04, 6], [0x02, 7], [0x01, 8],
+];
 
-function checksumOk(frame) {
-  let sum = 0;
-  for (let i = 1; i <= 17; i++) sum += frame[i];
-  return (sum & 0xFF) === frame[18];
-}
-
-// ── Per-circuit connection state ──────────────────────────────────────────────
+// ── Per-circuit connection ────────────────────────────────────────────────────
 class CircuitConnection {
-  constructor(circuitIndex, laneOffset, onCrossing, onGo, onStop) {
-    this._circuitIndex = circuitIndex;
-    this._laneOffset   = laneOffset;   // global lane = ds300Lane + laneOffset
-    this._onCrossing   = onCrossing;
-    this._onGo         = onGo;
-    this._onStop       = onStop;
-    this._port         = null;
-    this._buf          = Buffer.alloc(0);
-    this._rawLog       = [];
+  constructor(circuitIndex, laneOffset, onCrossing, onGo, onStop, onPause, onResume, onGoSignal, onFinish) {
+    this._circuitIndex  = circuitIndex;
+    this._laneOffset    = laneOffset;
+    this._onCrossing    = onCrossing;
+    this._onGo          = onGo;
+    this._onStop        = onStop;
+    this._onPause       = onPause;
+    this._onResume      = onResume;
+    this._onGoSignal    = onGoSignal;
+    this._onFinish      = onFinish;
+    this._port          = null;
+    this._rawLog        = [];
+    this._frameBuf      = [];
+    this._frameStartTs  = null;
+    this._lastByteTs    = null;
+    this._flushTimer    = null;
+    this._raceState     = null;
   }
 
-  async connect(portPath, baudRate = 4800) {
+  async connect(portPath, baudRate = 56000) {
     const { SerialPort } = require('serialport');
     if (this._port) await new Promise(r => this._port.close(r));
-    this._buf = Buffer.alloc(0);
+    if (this._flushTimer) { clearTimeout(this._flushTimer); this._flushTimer = null; }
+    this._frameBuf     = [];
+    this._frameStartTs = null;
+    this._lastByteTs   = null;
 
-    this._port = new SerialPort({ path: portPath, baudRate, autoOpen: false });
-    await new Promise((resolve, reject) => {
-      this._port.open(err => err ? reject(err) : resolve());
-    });
+    // macOS pseudo-terminals reject non-standard baud rates (IOSSIOSPEED).
+    // Fall back to 57600 for virtual ports — the actual rate is irrelevant there.
+    const rates = baudRate !== 57600 ? [baudRate, 57600] : [57600];
+    let openedAt = baudRate;
+    for (const rate of rates) {
+      const p = new SerialPort({ path: portPath, baudRate: rate, autoOpen: false });
+      const err = await new Promise(r => p.open(e => r(e)));
+      if (!err) { this._port = p; openedAt = rate; break; }
+      console.warn(`[DS-300 C${this._circuitIndex + 1}] ${portPath} @ ${rate} failed: ${err.message}`);
+      if (rate === rates[rates.length - 1]) throw err;
+    }
 
     this._port.on('data', chunk => this._onData(chunk));
     this._port.on('error', err => {
       console.error(`[DS-300 C${this._circuitIndex + 1}] Port error:`, err.message);
       if (process.platform === 'linux' && err.message.includes('Permission denied')) {
-        console.error(`[DS-300] Linux: add your user to the dialout group and restart:\n  sudo usermod -a -G dialout $USER`);
+        console.error('[DS-300] Linux: sudo usermod -a -G dialout $USER  then log out/in');
       }
     });
 
-    console.log(`[DS-300 C${this._circuitIndex + 1}] Connected to ${portPath} @ ${baudRate} baud (lane offset: ${this._laneOffset})`);
+    console.log(`[DS-300 C${this._circuitIndex + 1}] Connected to ${portPath} @ ${openedAt} baud (lane offset: ${this._laneOffset})`);
   }
 
   async close() {
@@ -74,57 +102,115 @@ class CircuitConnection {
     this._port = null;
   }
 
-  get path()    { return this._port?.path ?? null; }
-  get rawLog()  { return [...this._rawLog]; }
+  get path()   { return this._port?.path ?? null; }
+  get rawLog() { return [...this._rawLog]; }
 
   _onData(chunk) {
+    const now = _PERF_OFFSET + performance.now(); // float ms, ~0.01ms precision
+
     for (const b of chunk) {
-      this._rawLog.push({ byte: b, ts: Date.now() });
+      this._rawLog.push({ byte: b, ts: now });
       if (this._rawLog.length > 200) this._rawLog.shift();
     }
-    this._buf = Buffer.concat([this._buf, chunk]);
 
-    while (this._buf.length >= FRAME_LEN) {
-      const start = this._buf.indexOf(FRAME_START);
-      if (start < 0) { this._buf = Buffer.alloc(0); break; }
-      if (start > 0) { this._buf = this._buf.slice(start); continue; }
-      if (this._buf.length < FRAME_LEN) break;
+    // Cancel any pending silence-flush — we just got more bytes
+    if (this._flushTimer) { clearTimeout(this._flushTimer); this._flushTimer = null; }
 
-      const frame = this._buf.slice(0, FRAME_LEN);
-      if (frame[FRAME_LEN - 1] !== FRAME_END) { this._buf = this._buf.slice(1); continue; }
-      if (!checksumOk(frame)) {
-        console.warn(`[DS-300 C${this._circuitIndex + 1}] Checksum failed`);
-        this._buf = this._buf.slice(FRAME_LEN);
+    for (const byte of chunk) {
+      const gap = this._lastByteTs !== null && (now - this._lastByteTs) > FRAME_GAP_MS;
+
+      if (gap) {
+        // Gap detected mid-chunk: flush whatever was buffered before this chunk
+        if (this._frameBuf.length > 0) {
+          this._processFrame(this._frameBuf, this._frameStartTs);
+        }
+        this._frameBuf     = [byte];
+        this._frameStartTs = now;
+      } else {
+        if (this._frameBuf.length === 0) this._frameStartTs = now;
+        this._frameBuf.push(byte);
+      }
+
+      this._lastByteTs = now;
+    }
+
+    // Flush the frame after FRAME_GAP_MS of silence — don't wait for the next frame
+    this._flushTimer = setTimeout(() => {
+      this._flushTimer = null;
+      if (this._frameBuf.length > 0) {
+        this._processFrame(this._frameBuf, this._frameStartTs);
+        this._frameBuf     = [];
+        this._frameStartTs = null;
+      }
+    }, FRAME_GAP_MS + 5);
+  }
+
+  _setRaceState(newState) {
+    if (newState === this._raceState) return;
+    this._raceState = newState;
+    console.log(`[DS-300 C${this._circuitIndex + 1}] Race state → ${newState}`);
+    if      (newState === 'running')  this._onGo();
+    else if (newState === 'resumed')  this._onResume();
+    else if (newState === 'paused')   this._onPause();
+    else if (newState === 'stopped')  this._onStop();
+    else if (newState === 'finished') this._onFinish();
+  }
+
+  _processFrame(frame, ts) {
+    if (frame.length < 2) return;
+
+    const laneByte = frame.length >= 11 ? frame[10] : 0;
+
+    // ── GO frame: byte7=0x3e, byte8=0xa1, byte10=minutes duration ─────────────
+    if (frame.length >= 11 && frame[7] === 0x3e && frame[8] === 0xa1) {
+      const mins = (ds300Byte(frame[9]) ?? 0) * 100 + (ds300Byte(frame[10]) ?? 0);
+      // Emit race_go FIRST so handlers can store durationMs before race_started fires
+      this._onGoSignal(mins * 60000);
+      this._setRaceState('running');
+      return;
+    }
+
+    // ── Control frame (no lane crossing) ──────────────────────────────────────
+    if (!laneByte) {
+      // Forced stop: byte8=0xa7
+      if (frame[8] === 0xa7) {
+        this._setRaceState('stopped');
+        return;
+      }
+      // Normal end (time expired): byte8=0xa4
+      if (frame[8] === 0xa4) {
+        this._setRaceState('finished');
+        return;
+      }
+      const stateByte = frame[1];
+      if      (stateByte === 0x06) this._setRaceState('running');
+      else if (stateByte === 0x0f) this._setRaceState('resumed');
+      else if (stateByte === 0x0c) this._setRaceState('paused');
+      else if (stateByte === 0x08) this._setRaceState('stopped');
+      return;
+    }
+
+    // ── Lane crossing ──────────────────────────────────────────────────────────
+    // Read lap time directly from DS-300 frame bytes 14-17.
+    // null → first crossing (bytes contain non-decimal nibbles, no previous reference).
+    const lapTimeMs = readLapTimeMs(frame);
+
+    for (const [mask, localLane] of LANE_MAP) {
+      if (!(laneByte & mask)) continue;
+
+      const globalLane = localLane + this._laneOffset;
+
+      if (lapTimeMs === null) {
+        console.log(`[DS-300 C${this._circuitIndex + 1}] Lane ${localLane} → global ${globalLane} — first crossing`);
+        this._onCrossing({ lane: globalLane, timestamp: ts, lapTimeMs: null });
         continue;
       }
 
-      this._parseFrame(frame);
-      this._buf = this._buf.slice(FRAME_LEN);
+      if (lapTimeMs < MIN_CROSSING_MS || lapTimeMs > MAX_LAP_MS) continue;
+
+      console.log(`[DS-300 C${this._circuitIndex + 1}] Lane ${localLane} → global ${globalLane} — ${lapTimeMs.toFixed(1)}ms`);
+      this._onCrossing({ lane: globalLane, timestamp: ts, lapTimeMs });
     }
-
-    if (this._buf.length > FRAME_LEN * 4) {
-      this._buf = this._buf.slice(this._buf.length - FRAME_LEN * 2);
-    }
-  }
-
-  _parseFrame(frame) {
-    const cmd  = frame[8];
-    const type = frame[7];
-    const now  = Date.now();
-
-    if (cmd === CMD_LAP && type === 0x1B) {
-      const localLane  = laneFromMask(frame[10]);
-      if (localLane === null) return;
-      const globalLane = localLane + this._laneOffset;
-      const lapTimeMs  = parseLapTimeMs(frame[14], frame[15], frame[16], frame[17]);
-      const lapNumber  = frame[12];
-
-      console.log(`[DS-300 C${this._circuitIndex + 1}] Lane ${localLane} → global ${globalLane} — ${lapTimeMs != null ? lapTimeMs + 'ms' : 'first crossing'}`);
-      this._onCrossing({ lane: globalLane, timestamp: now, lapTimeMs, lapNumber, circuit: this._circuitIndex + 1 });
-    }
-
-    if (cmd === CMD_GO)  { console.log(`[DS-300 C${this._circuitIndex + 1}] GO`);   this._onGo(); }
-    if (cmd === CMD_STOP){ console.log(`[DS-300 C${this._circuitIndex + 1}] STOP`); this._onStop(); }
   }
 }
 
@@ -132,9 +218,9 @@ class CircuitConnection {
 class SerialServiceClass extends EventEmitter {
   constructor() {
     super();
-    this._connections  = [];   // CircuitConnection[]
-    this._simRunning   = false;
-    this._simTimers    = new Map();
+    this._connections = [];
+    this._simRunning  = false;
+    this._simTimers   = new Map();
   }
 
   // ── Startup ──────────────────────────────────────────────────────────────
@@ -162,7 +248,7 @@ class SerialServiceClass extends EventEmitter {
 
       // Legacy single-port config
       const portPath = Settings.get('serial_port', '');
-      const baudRate = parseInt(Settings.get('serial_baud', '4800'), 10);
+      const baudRate = parseInt(Settings.get('serial_baud', '56000'), 10);
       if (portPath) {
         this.connectMultiple([{ port: portPath, baud: baudRate, lanes: 8 }]).catch(() => this._startSim());
         return;
@@ -181,13 +267,17 @@ class SerialServiceClass extends EventEmitter {
     const connections = [];
 
     for (let i = 0; i < circuitConfigs.length; i++) {
-      const { port, baud = 4800, lanes = 8 } = circuitConfigs[i];
+      const { port, baud = 56000, lanes = 8 } = circuitConfigs[i];
       const conn = new CircuitConnection(
         i,
         laneOffset,
         data => this.emit('lane_crossing', data),
         ()   => this.emit('race_started'),
         ()   => this.emit('race_stopped'),
+        ()   => this.emit('race_paused'),
+        ()   => this.emit('race_resumed'),
+        ms   => this.emit('race_go', { durationMs: ms }),
+        ()   => this.emit('race_finished'),
       );
       await conn.connect(port, baud);
       connections.push(conn);
@@ -197,8 +287,7 @@ class SerialServiceClass extends EventEmitter {
     this._connections = connections;
   }
 
-  // Legacy single-port API (for backward compat)
-  async connectSerial(portPath, baudRate = 4800) {
+  async connectSerial(portPath, baudRate = 56000) {
     await this.connectMultiple([{ port: portPath, baud: baudRate, lanes: 8 }]);
   }
 
@@ -214,9 +303,102 @@ class SerialServiceClass extends EventEmitter {
   // ── Simulation ───────────────────────────────────────────────────────────
 
   _startSim() {
-    const lanes  = parseInt(Settings.get('sim_lanes',   '6'),   10);
-    const avgMs  = parseInt(Settings.get('sim_avg_ms', '12000'), 10);
+    if (fs.existsSync(REPLAY_FILE)) {
+      this.startFileReplay(REPLAY_FILE);
+      return;
+    }
+    const lanes = parseInt(Settings.get('sim_lanes',   '6'),    10);
+    const avgMs = parseInt(Settings.get('sim_avg_ms', '12000'), 10);
     this.startSimulation(lanes, avgMs);
+  }
+
+  _parseReplayFile(content) {
+    const lineRe = /^(\d+):(\d+):(\d+)\.(\d+)\s+((?:[0-9A-Fa-f]{2}\s*)+)/;
+    let prevRawMs = -1;
+    let offset    = 0;
+    const events  = [];
+
+    for (const raw of content.split('\n')) {
+      const m = raw.match(lineRe);
+      if (!m) continue;
+
+      const bytes = m[5].trim().split(/\s+/).map(h => parseInt(h, 16));
+      if (bytes.length < 11) continue;
+      const laneByte = bytes[10];
+      if (!laneByte) continue;
+
+      // Find which lane(s) crossed
+      const lanes = [];
+      for (const [mask, lane] of LANE_MAP) {
+        if (laneByte & mask) lanes.push(lane);
+      }
+      if (lanes.length === 0) continue;
+
+      // Support up to 4 decimal places (diezmilésimas); pad/truncate to 4 digits
+      const frac4 = m[4].padEnd(4, '0').slice(0, 4);
+      const rawMs = parseInt(m[1]) * 3600000
+                  + parseInt(m[2]) * 60000
+                  + parseInt(m[3]) * 1000
+                  + parseInt(frac4) * 0.1;
+
+      // Midnight wraparound: if timestamp goes back by more than 1 hour
+      if (prevRawMs >= 0 && rawMs < prevRawMs - 3600000) offset += 86400000;
+      prevRawMs = rawMs;
+
+      const absMs = rawMs + offset;
+      for (const lane of lanes) events.push({ absMs, lane });
+    }
+
+    events.sort((a, b) => a.absMs - b.absMs);
+    return events;
+  }
+
+  startFileReplay(filePath) {
+    this.stopSimulation();
+    this._simRunning = true;
+
+    let content;
+    try { content = fs.readFileSync(filePath, 'utf8'); }
+    catch { return this.startSimulation(); }
+
+    const events = this._parseReplayFile(content);
+    if (events.length === 0) return this.startSimulation();
+
+    // Build per-lane lap-time arrays from the parsed events
+    const laneEvents = new Map();
+    for (const ev of events) {
+      if (!laneEvents.has(ev.lane)) laneEvents.set(ev.lane, []);
+      laneEvents.get(ev.lane).push(ev.absMs);
+    }
+
+    const laneLaps = new Map();
+    for (const [lane, times] of laneEvents) {
+      const laps = [];
+      for (let i = 1; i < times.length; i++) {
+        const d = times[i] - times[i - 1];
+        if (d >= 500 && d <= 120000) laps.push(d);
+      }
+      if (laps.length > 0) laneLaps.set(lane, laps);
+    }
+
+    const lanesFound = [...laneLaps.keys()];
+    console.log(`[SerialService] File replay — ${lanesFound.length} lanes, ${events.length} events from ${filePath}`);
+
+    for (const lane of lanesFound) {
+      const laps = laneLaps.get(lane);
+      const stagger = Math.random() * (laps[0] || 12000);
+      const t = setTimeout(() => this._replayLap(lane, laps, 0), stagger);
+      this._simTimers.set(lane, t);
+    }
+  }
+
+  _replayLap(lane, laps, idx) {
+    if (!this._simRunning) return;
+    const lapTimeMs = laps[idx];
+    this.emit('lane_crossing', { lane, timestamp: Date.now(), lapTimeMs });
+    const next = (idx + 1) % laps.length;
+    const t = setTimeout(() => this._replayLap(lane, laps, next), lapTimeMs);
+    this._simTimers.set(lane, t);
   }
 
   startSimulation(lanesCount = 6, avgLapMs = 12000) {
@@ -255,7 +437,6 @@ class SerialServiceClass extends EventEmitter {
   }
 
   getRawLog() {
-    // Merge raw logs from all connections
     return this._connections.flatMap(c => c.rawLog)
       .sort((a, b) => a.ts - b.ts)
       .slice(-40);

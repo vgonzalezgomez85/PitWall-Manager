@@ -1,11 +1,11 @@
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function formatMs(ms) {
   if (ms == null) return '—';
-  const totalSec   = Math.floor(ms / 1000);
-  const hundredths = Math.floor((ms % 1000) / 10);
+  const totalSec = Math.floor(ms / 1000);
+  const millis   = Math.floor(ms % 1000);
   const secs = totalSec % 60;
   const mins = Math.floor(totalSec / 60);
-  return `${mins > 0 ? mins + ':' : ''}${String(secs).padStart(mins > 0 ? 2 : 1, '0')}.${String(hundredths).padStart(2, '0')}`;
+  return `${mins > 0 ? mins + ':' : ''}${String(secs).padStart(mins > 0 ? 2 : 1, '0')}.${String(millis).padStart(3, '0')}`;
 }
 
 function formatMsForSpeech(ms) {
@@ -25,18 +25,37 @@ function formatElapsed(ms) {
   return `${String(m).padStart(2,'0')}:${String(s % 60).padStart(2,'0')}`;
 }
 
-// ── Elapsed timer ─────────────────────────────────────────────────────────────
-const timerEl = document.getElementById('trainingTimer');
-let elapsedMs = TRAINING_DATA.startedAt ? Date.now() - TRAINING_DATA.startedAt : 0;
-timerEl.textContent = formatElapsed(elapsedMs);
-setInterval(() => {
-  elapsedMs += 250;
-  timerEl.textContent = formatElapsed(elapsedMs);
-}, 250);
+// ── Timer (countdown if duration known, elapsed otherwise) ────────────────────
+const timerEl  = document.getElementById('trainingTimer');
+let durationMs = TRAINING_DATA.durationMs || 0;
+let elapsedMs  = TRAINING_DATA.startedAt ? Date.now() - TRAINING_DATA.startedAt : 0;
+let standby    = TRAINING_DATA.standby || false;
+let heatNumber = TRAINING_DATA.heatNumber || null;
+
+function updateTimer() {
+  if (standby) { timerEl.textContent = '--:--'; return; }
+  timerEl.textContent = durationMs > 0
+    ? formatElapsed(Math.max(0, durationMs - elapsedMs))
+    : formatElapsed(elapsedMs);
+}
+
+updateTimer();
+setInterval(() => { if (!standby) { elapsedMs += 250; updateTimer(); } }, 250);
+
+function setStandby(isStandby) {
+  standby = isStandby;
+  const statusEl = document.getElementById('tr-status');
+  if (statusEl) {
+    statusEl.innerHTML = isStandby
+      ? `<span class="tr-standby-badge">${LANG === 'es' ? '⏳ Esperando GO…' : '⏳ Waiting for GO…'}</span>`
+      : `${TRAINING_DATA.lanes.length} ${LANG === 'es' ? 'carriles activos' : 'active lanes'}`;
+  }
+  updateTimer();
+}
 
 // ── Lane cards ────────────────────────────────────────────────────────────────
 const grid  = document.getElementById('trainingGrid');
-const laneLabel = LANG === 'es' ? 'CARRIL' : 'LANE';
+const laneLabel = '';
 
 function buildCard(lane) {
   const card = document.createElement('div');
@@ -45,15 +64,22 @@ function buildCard(lane) {
   card.style.setProperty('--card-color', lane.color);
   card.innerHTML = `
     <div class="tr-card__header">
-      <span class="tr-card__label">${laneLabel} ${lane.lane}</span>
+      <span class="tr-card__label"><span class="tr-card__lane-num">${lane.lane}</span></span>
       <span class="tr-card__count" id="tr-count-${lane.lane}">
         ${lane.count} ${LANG === 'es' ? 'vlt' : 'lps'}
       </span>
     </div>
-    <div class="tr-card__best" id="tr-best-${lane.lane}">${formatMs(lane.bestMs)}</div>
+    ${lane.participantName ? `<div class="tr-card__name" id="tr-name-${lane.lane}">${lane.participantName}</div>` : ''}
+    <div class="tr-card__session-record" id="tr-srec-${lane.lane}">
+      <span class="tr-srec-label">🏆 ${LANG === 'es' ? 'Récord carril' : 'Lane record'}</span>
+      <span class="tr-srec-time" id="tr-srec-time-${lane.lane}">${sessionRecords[lane.lane] ? formatMs(sessionRecords[lane.lane]) : '—'}</span>
+    </div>
+    <div class="tr-card__best" id="tr-best-${lane.lane}">${formatMs(lane.lastMs)}</div>
     <div class="tr-card__avg-row">
       <span class="tr-card__avg-label">${LANG === 'es' ? 'Media' : 'Avg'}</span>
       <span class="tr-card__avg-val" id="tr-avg-${lane.lane}">${formatMs(lane.avgMs)}</span>
+      <span class="tr-card__avg-label" style="margin-left:.6rem">${LANG === 'es' ? 'Mejor' : 'Best'}</span>
+      <span class="tr-card__avg-val" id="tr-record-${lane.lane}" style="color:var(--card-color)">${formatMs(lane.bestMs)}</span>
     </div>
     <div class="tr-card__divider"></div>
     <div class="tr-card__laps" id="tr-laps-${lane.lane}">
@@ -64,8 +90,9 @@ function buildCard(lane) {
 
 function renderLapList(laps) {
   if (!laps || laps.length === 0) return `<div class="tr-lap-empty">—</div>`;
-  return laps.map((ms, i) =>
-    `<div class="tr-lap-item${i === 0 ? ' tr-lap-item--best' : ''}">${formatMs(ms)}</div>`
+  const best = Math.min(...laps);
+  return laps.map(ms =>
+    `<div class="tr-lap-item${ms === best ? ' tr-lap-item--best' : ''}">${formatMs(ms)}</div>`
   ).join('');
 }
 
@@ -74,10 +101,20 @@ function updateCard(data) {
   const bestEl  = document.getElementById(`tr-best-${data.lane}`);
   const avgEl   = document.getElementById(`tr-avg-${data.lane}`);
   const lapsEl  = document.getElementById(`tr-laps-${data.lane}`);
-  if (countEl) countEl.textContent = `${data.count} ${LANG === 'es' ? 'vlt' : 'lps'}`;
-  if (bestEl)  bestEl.textContent  = formatMs(data.bestMs);
-  if (avgEl)   avgEl.textContent   = formatMs(data.avgMs);
-  if (lapsEl)  lapsEl.innerHTML    = renderLapList(data.laps);
+  const recordEl = document.getElementById(`tr-record-${data.lane}`);
+  if (countEl)  countEl.textContent  = `${data.count} ${LANG === 'es' ? 'vlt' : 'lps'}`;
+  if (bestEl)   bestEl.textContent   = formatMs(data.lastMs ?? data.lapTimeMs);
+  if (avgEl)    avgEl.textContent    = formatMs(data.avgMs);
+  if (recordEl) recordEl.textContent = formatMs(data.bestMs);
+  if (lapsEl)   lapsEl.innerHTML     = renderLapList(data.laps);
+}
+
+function toggleView() {
+  if (TRAINING_DATA.lanes.length > 8) return;
+  const grid = document.getElementById('trainingGrid');
+  const btn  = document.getElementById('viewBtn');
+  const expanded = grid.classList.toggle('training-grid--expanded');
+  btn.classList.toggle('active', expanded);
 }
 
 function flashCard(laneNum) {
@@ -88,8 +125,19 @@ function flashCard(laneNum) {
   el.classList.add('tr-flash');
 }
 
+// ── Session records ───────────────────────────────────────────────────────────
+let sessionRecords = { ...TRAINING_DATA.sessionRecords };
+
 // ── Initialize cards ──────────────────────────────────────────────────────────
 TRAINING_DATA.lanes.forEach(lane => grid.appendChild(buildCard(lane)));
+
+// Default view: expanded for ≤8 lanes; hide button for >8
+if (TRAINING_DATA.lanes.length <= 8) {
+  grid.classList.add('training-grid--expanded');
+  document.getElementById('viewBtn')?.classList.add('active');
+} else {
+  document.getElementById('viewBtn')?.style.setProperty('display', 'none');
+}
 
 // ── Voice announcements ───────────────────────────────────────────────────────
 const speechQueue = [];
@@ -123,10 +171,29 @@ function announce(text) {
   if (!speechBusy) drainSpeech();
 }
 
+// ── Semaphore ─────────────────────────────────────────────────────────────────
+function showSemaphore() {
+  if (document.getElementById('semaphore-overlay')) return;
+  const ov = document.createElement('div');
+  ov.id = 'semaphore-overlay';
+  ov.className = 'semaphore-overlay';
+  ov.innerHTML = `<div class="semaphore-panel">${[1,2,3,4,5].map(i =>
+    `<div class="s-light" id="sl${i}"></div>`).join('')}</div>`;
+  document.body.appendChild(ov);
+  [1,2,3,4,5].forEach((n, i) =>
+    setTimeout(() => document.getElementById(`sl${n}`)?.classList.add('lit'), i * 1000)
+  );
+  setTimeout(() => {
+    [1,2,3,4,5].forEach(n => document.getElementById(`sl${n}`)?.classList.remove('lit'));
+    setTimeout(() => ov.remove(), 800);
+  }, 6000);
+}
+
 // ── Socket.io ─────────────────────────────────────────────────────────────────
 const socket = io();
 
 socket.on('connect', () => socket.emit('training:request'));
+socket.on('race:semaphore', () => showSemaphore());
 
 socket.on('training:data', (lanes) => {
   lanes.forEach(lane => updateCard(lane));
@@ -143,6 +210,51 @@ socket.on('training:lap', (data) => {
   announce(text);
 });
 
+socket.on('training:activated', (lanes) => {
+  elapsedMs = 0;
+  setStandby(false);
+  lanes.forEach(lane => updateCard(lane));
+});
+
+socket.on('training:standby', (lanes) => {
+  durationMs = 0;
+  elapsedMs  = 0;
+  setStandby(true);
+  lanes.forEach(lane => updateCard(lane));
+});
+
+socket.on('training:record', ({ lane, recordMs }) => {
+  sessionRecords[lane] = recordMs;
+  const timeEl = document.getElementById(`tr-srec-time-${lane}`);
+  if (timeEl) timeEl.textContent = formatMs(recordMs);
+  const cardEl = document.getElementById(`tr-card-${lane}`);
+  if (cardEl) {
+    cardEl.classList.add('tr-record-flash');
+    setTimeout(() => cardEl.classList.remove('tr-record-flash'), 1500);
+  }
+});
+
+socket.on('training:records_reset', () => {
+  sessionRecords = {};
+  document.querySelectorAll('[id^="tr-srec-time-"]').forEach(el => el.textContent = '—');
+});
+
+socket.on('training:go', ({ durationMs: ms }) => {
+  durationMs = ms;
+  elapsedMs  = 0;
+  updateTimer();
+});
+
+socket.on('competition:heat', ({ heat }) => {
+  heatNumber = heat;
+  const statusEl = document.getElementById('tr-status');
+  if (statusEl && heat) {
+    const heatLabel = LANG === 'es' ? `Tanda ${heat}` : `Heat ${heat}`;
+    const sub = statusEl.querySelector('.tr-standby-badge');
+    if (sub) sub.textContent = `⏳ ${heatLabel} — ${LANG === 'es' ? 'Esperando GO…' : 'Waiting for GO…'}`;
+  }
+});
+
 socket.on('training:stopped', () => {
-  location.href = '/training';
+  location.href = TRAINING_DATA.isCompetition ? '/training/competition' : '/training';
 });

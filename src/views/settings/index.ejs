@@ -44,6 +44,20 @@
       </div>
     </div>
 
+    <!-- ── Training circuit ──────────────────────────────────────────── -->
+    <div class="form-group">
+      <label class="form-label"><%= lang === 'es' ? 'Circuito de entrenamiento' : 'Training circuit' %></label>
+      <select class="form-input" name="training_circuit_id">
+        <option value=""><%= lang === 'es' ? '— Sin circuito (configurar manualmente) —' : '— No circuit (configure manually) —' %></option>
+        <% (typeof allCircuits !== 'undefined' ? allCircuits : []).forEach(c => { %>
+          <option value="<%= c.id %>" <%= (cfg.training_circuit_id == c.id) ? 'selected' : '' %>>
+            <%= c.name %> (<%= c.lanes_count %> <%= lang === 'es' ? 'carriles' : 'lanes' %>)
+          </option>
+        <% }) %>
+      </select>
+      <p class="form-hint"><%= lang === 'es' ? 'Carriles activos al entrar en modo entrenamiento.' : 'Active lanes when entering training mode.' %></p>
+    </div>
+
     <!-- ── Simulation ──────────────────────────────────────────────────── -->
     <div id="simSettings">
       <h3 class="form-label" style="margin-bottom:.75rem"><%= lang === 'es' ? 'Parámetros de simulación' : 'Simulation parameters' %></h3>
@@ -103,7 +117,7 @@
             <div class="circuit-row__body">
               <div class="circuit-row__field circuit-row__field--port">
                 <label class="form-label"><%= lang === 'es' ? 'Puerto serie' : 'Serial port' %></label>
-                <select class="form-input" name="circuit_port">
+                <select class="form-input port-select" name="circuit_port" style="margin-bottom:.35rem">
                   <option value=""><%= lang === 'es' ? '— seleccionar —' : '— select —' %></option>
                   <% ports.forEach(p => { %>
                     <option value="<%= p.path %>" <%= c.port === p.path ? 'selected' : '' %>>
@@ -114,6 +128,9 @@
                     <option value="<%= c.port %>" selected><%= c.port %></option>
                   <% } %>
                 </select>
+                <input class="form-input port-manual" type="text"
+                  placeholder="<%= lang === 'es' ? 'o escribe el path: /dev/ttys003' : 'or type path: COM3' %>"
+                  value="<%= c.port || '' %>" style="font-size:.8rem">
               </div>
               <div class="circuit-row__field circuit-row__field--baud">
                 <label class="form-label">Baud</label>
@@ -198,6 +215,26 @@ function updateLaneBadges() {
   });
 }
 
+// Port select ↔ manual input sync
+function wirePortFields(container) {
+  const sel = container.querySelector('.port-select');
+  const inp = container.querySelector('.port-manual');
+  if (!sel || !inp) return;
+  // Select changes → update input
+  sel.addEventListener('change', () => { if (sel.value) inp.value = sel.value; });
+  // Input changes → update select name so the form submits the typed value
+  inp.addEventListener('input', () => {
+    // Add typed value as an option if not present, select it
+    let opt = Array.from(sel.options).find(o => o.value === inp.value);
+    if (!opt && inp.value) {
+      opt = new Option(inp.value, inp.value);
+      sel.appendChild(opt);
+    }
+    sel.value = inp.value;
+  });
+}
+document.querySelectorAll('.circuit-row__field--port').forEach(wirePortFields);
+
 document.getElementById('circuitList').addEventListener('input', e => {
   if (e.target.classList.contains('circuit-lanes-input')) updateLaneBadges();
 });
@@ -220,7 +257,8 @@ document.getElementById('addCircuit')?.addEventListener('click', () => {
     <div class="circuit-row__body">
       <div class="circuit-row__field circuit-row__field--port">
         <label class="form-label">Puerto serie</label>
-        <select class="form-input" name="circuit_port"><option value="">— seleccionar —</option>${portOptions}</select>
+        <select class="form-input port-select" name="circuit_port" style="margin-bottom:.35rem"><option value="">— seleccionar —</option>${portOptions}</select>
+        <input class="form-input port-manual" type="text" placeholder="o escribe el path: /dev/ttys003" style="font-size:.8rem">
       </div>
       <div class="circuit-row__field circuit-row__field--baud">
         <label class="form-label">Baud</label>
@@ -232,6 +270,7 @@ document.getElementById('addCircuit')?.addEventListener('click', () => {
       </div>
     </div>`;
   list.appendChild(div);
+  wirePortFields(div.querySelector('.circuit-row__field--port'));
   updateLaneBadges();
 });
 

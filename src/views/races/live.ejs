@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= race.name %> — <%= lang === 'es' ? 'Manga' : 'Heat' %> <%= manga.number %> — Slot Timer Pro</title>
+  <title><%= race.name %> — <%= lang === 'es' ? 'Manga' : 'Heat' %> <%= manga.number %> — Voltrace Manager</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
@@ -21,9 +21,11 @@
     <div class="live-header__info">
       <div class="live-manga-id">
         <% if (tanda) { %>
-          <span class="live-tanda-tag"><%= lang === 'es' ? 'Tanda' : 'Round' %> <%= tanda.number %></span>
+          <span class="live-tanda-tag"><%= lang === 'es' ? 'Tanda' : 'Round' %> <%= tanda.number %>/<%= typeof totalTandas !== 'undefined' ? totalTandas : '?' %></span>
         <% } %>
-        <span class="live-manga-tag"><%= lang === 'es' ? 'Manga' : 'Heat' %> #<%= manga.number %></span>
+        <span class="live-manga-tag">
+          <%= lang === 'es' ? 'Manga' : 'Heat' %> <%= manga.number %>/<%= typeof totalMangas !== 'undefined' ? totalMangas : '?' %>
+        </span>
       </div>
       <div id="timerStatus" class="live-status">
         <% if (isActive) { %>
@@ -54,7 +56,11 @@
         </form>
       <% } %>
       <button id="voiceBtn" class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Activar/silenciar voz' : 'Toggle voice' %>" onclick="toggleVoice()">🔊</button>
+      <button id="viewBtn" class="lbtn lbtn--view" title="<%= lang === 'es' ? 'Cambiar vista' : 'Toggle view' %>" onclick="toggleView()">⊞</button>
       <a href="/races/<%= race.id %>/mangas/<%= manga.id %>/tv" target="_blank" class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Pantalla TV' : 'TV display' %>">📺</a>
+      <% if (race.format === 'team' && totalMangas > 1 && license.tier === 'pro') { %>
+        <a href="/races/<%= race.id %>/lemans" target="_blank" class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Clasificación Le Mans' : 'Le Mans standings' %>">🏁</a>
+      <% } %>
       <a href="/races/<%= race.id %>/mangas/<%= manga.id %>/corrections" target="_blank" class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Corrección de vueltas' : 'Lap corrections' %>">🔧</a>
       <a href="/races/<%= race.id %>" class="lbtn lbtn--back">← <%= lang === 'es' ? 'Volver' : 'Back' %></a>
     </div>
@@ -79,10 +85,12 @@
             <tr>
               <th style="width:28px">#</th>
               <th><%= lang === 'es' ? 'Piloto / Equipo' : 'Driver / Team' %></th>
+              <th style="width:18px"></th>
               <th class="sr-right" title="<%= lang === 'es' ? 'Vueltas esta manga' : 'Laps this heat' %>"><%= lang === 'es' ? 'Vlt.' : 'Lps.' %></th>
               <th class="sr-right" title="<%= lang === 'es' ? 'Total vueltas en carrera' : 'Total race laps' %>"><%= lang === 'es' ? 'Total' : 'Total' %></th>
               <th class="sr-right"><%= lang === 'es' ? 'Mejor' : 'Best' %></th>
               <th class="sr-right"><%= lang === 'es' ? 'Media' : 'Avg' %></th>
+              <th class="sr-right" title="<%= lang === 'es' ? 'Diferencia media - vuelta rápida' : 'Avg - best lap delta' %>">Δ</th>
             </tr>
           </thead>
           <tbody id="standingsBody"></tbody>
@@ -101,11 +109,28 @@
               <th><%= lang === 'es' ? 'Participante' : 'Participant' %></th>
               <th class="sr-right"><%= lang === 'es' ? 'Proyectado' : 'Projected' %></th>
               <th class="sr-right"><%= lang === 'es' ? 'En pista' : 'On track' %></th>
+              <th class="sr-right"><%= lang === 'es' ? 'Media' : 'Avg' %></th>
             </tr>
           </thead>
           <tbody id="projectedBody"></tbody>
         </table>
       </div>
+
+      <% if (hasBestLaps) { %>
+      <div class="live-panel">
+        <div class="live-panel__title"><%= lang === 'es' ? 'MEJORES VUELTAS' : 'BEST LAPS' %></div>
+        <table class="sidebar-table">
+          <thead>
+            <tr>
+              <th class="sr-center"><%= lang === 'es' ? 'Carril' : 'Lane' %></th>
+              <th><%= lang === 'es' ? 'Piloto / Equipo' : 'Driver / Team' %></th>
+              <th class="sr-right"><%= lang === 'es' ? 'Mejor' : 'Best' %></th>
+            </tr>
+          </thead>
+          <tbody id="bestLapsBody"></tbody>
+        </table>
+      </div>
+      <% } %>
 
       <div class="live-panel live-panel--ticker">
         <div class="live-panel__title">
@@ -126,11 +151,13 @@
       laneInit[l.lane] = {
         lane:         l.lane,
         name:         l.team_name || l.driver_name || ('Lane ' + l.lane),
-        color:        LC[l.lane - 1] || '#8b949e',
+        color:        l.is_rest ? (l.team_color || '#484f58') : (LC[l.lane - 1] || '#8b949e'),
         isRest:       l.is_rest ? true : false,
         lapCount:     0, bestLapMs: null, lastLapMs: null, exitCount: 0,
         prevLapCount: prevLapsByLane[l.lane] || 0,
-        _lapSum: 0, _lapN: 0, avgLapMs: null
+        _lapSum: 0, _lapN: 0, avgLapMs: null,
+        teamMembers:  teamMembersByLane[l.lane] || [],
+        activeDriver: activeDriversByLane[l.lane] || null,
       };
     });
     laps.forEach(l => {
@@ -148,15 +175,18 @@
 
   <script>
     const RACE_DATA = <%- JSON.stringify({
-      id:          race.id,
-      raceId:      race.id,
-      mangaId:     manga.id,
-      mangaNumber: manga.number,
-      mangaStatus: manga.status,
-      isActive:    isActive,
-      durationMs:  race.manga_duration_minutes * 60 * 1000,
-      standings:   standings,
-      lanes:       Object.values(laneInit)
+      id:           race.id,
+      raceId:       race.id,
+      mangaId:      manga.id,
+      mangaNumber:  manga.number,
+      mangaStatus:  manga.status,
+      isActive:     isActive,
+      isTeam:       race.format === 'team',
+      durationMs:   null,
+      standings:    standings,
+      lanes:        Object.values(laneInit),
+      raceBestLaps: raceBestLaps,
+      hasQrCheckin: hasQrCheckin,
     }) %>;
     const LANG = "<%= lang %>";
   </script>

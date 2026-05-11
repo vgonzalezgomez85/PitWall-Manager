@@ -44,11 +44,26 @@
       </div>
     <% } %>
 
-    <p class="form-hint" style="margin-bottom:1.25rem">
-      <%= lang === 'es'
-        ? 'Arrastra los carriles para definir el orden de rotación. Añade descansos opcionales a la secuencia.'
-        : 'Drag lanes to define the rotation order. Optionally add rest slots to the sequence.' %>
-    </p>
+    <!-- Controls arriba -->
+    <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-bottom:1.25rem;padding:1rem;background:#0d1117;border-radius:8px;border:1px solid #21262d">
+      <label class="form-label" style="margin:0;white-space:nowrap;font-size:1rem">
+        <%= lang === 'es' ? 'Participantes:' : 'Participants:' %>
+      </label>
+      <input type="number" id="numParticipants" class="form-input form-input--sm"
+        min="<%= wizard.lanes_count %>" max="99"
+        value="<%= wizard.lanes_count %>"
+        style="width:80px;font-size:1rem">
+      <button type="button" id="btnSmartSeq" class="btn btn--primary">
+        ⚡ <%= lang === 'es' ? 'Generar secuencia' : 'Generate sequence' %>
+      </button>
+      <% if (circuits.length >= 2) { %>
+        <span class="form-hint" style="color:#8b949e">
+          💡 <%= lang === 'es' ? 'C impares: DSC después del carril 2 · C pares: DSC después del penúltimo' : 'Odd C: rest after lane 2 · Even C: rest after second-to-last' %>
+        </span>
+      <% } %>
+    </div>
+
+    <p class="form-hint" id="seqPreview" style="margin-bottom:.75rem"></p>
 
     <div id="laneList" class="seq-list">
       <%
@@ -72,24 +87,9 @@
       <% }) %>
     </div>
 
-    <!-- Controls -->
-    <div style="margin-top:.75rem;display:flex;gap:.75rem;align-items:center;flex-wrap:wrap">
-      <button type="button" id="btnReset" class="btn btn--ghost btn--sm">
-        <%= lang === 'es' ? '↺ Patrón estándar' : '↺ Standard pattern' %>
-      </button>
-      <button type="button" id="btnAddRest" class="btn btn--ghost btn--sm">
-        + <%= lang === 'es' ? 'Añadir descanso' : 'Add rest slot' %>
-      </button>
-      <span class="form-hint" id="seqPreview"></span>
-    </div>
-
-    <% if (circuits.length === 1) { %>
-      <p class="form-hint" style="margin-top:.5rem;color:#8b949e">
-        💡 <%= lang === 'es'
-          ? 'Con 1 circuito, los pilotos en descanso aparcarán físicamente en el carril 2.'
-          : 'With 1 circuit, resting drivers will physically park on lane 2.' %>
-      </p>
-    <% } %>
+    <p class="form-hint" style="margin-top:.5rem;color:#6e7681">
+      <%= lang === 'es' ? 'Arrastra los elementos para ajustar el orden manualmente.' : 'Drag items to manually adjust the order.' %>
+    </p>
 
     <form action="/races/new/step3" method="POST" id="seqForm" style="margin-top:1.5rem">
       <input type="hidden" name="lane_sequence" id="seqInput">
@@ -104,11 +104,42 @@
 </div>
 
 <script>
-const LANES   = <%= wizard.lanes_count %>;
-const LANG    = "<%= lang %>";
-const COLORS  = <%- JSON.stringify(['#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4','#ff5722','#607d8b','#795548','#e91e63','#3f51b5','#009688','#cddc39','#ffc107','#f44336','#673ab7','#03a9f4','#8bc34a','#ff6f00','#880e4f','#1a237e','#b71c1c','#004d40','#f57f17','#311b92','#0d47a1','#1b5e20','#33691e','#bf360c','#4a148c','#006064','#827717']) %>;
+const LANES    = <%= wizard.lanes_count %>;
+const LANG     = "<%= lang %>";
+const CIRCUITS = <%- JSON.stringify(circuits) %>; // e.g. [8, 8]
+const COLORS   = <%- JSON.stringify(['#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4','#ff5722','#607d8b','#795548','#e91e63','#3f51b5','#009688','#cddc39','#ffc107','#f44336','#673ab7','#03a9f4','#8bc34a','#ff6f00','#880e4f','#1a237e','#b71c1c','#004d40','#f57f17','#311b92','#0d47a1','#1b5e20','#33691e','#bf360c','#4a148c','#006064','#827717']) %>;
 
-// Standard sequence: odd lanes ascending → even lanes descending
+// ── Smart sequence: circuit-based with mirror rule ────────────────────────────
+// Odd circuits (C1,C3...): rest after local lane 2
+// Even circuits (C2,C4...): rest after local lane M-1 (mirror of lane 2)
+function buildSmartSeq(numParticipants) {
+  const totalRests   = Math.max(0, numParticipants - LANES);
+  const numCircuits  = CIRCUITS.length;
+  // Distribute rests evenly across circuits (1 rest point per circuit)
+  const restsPerCircuit = Array(numCircuits).fill(Math.floor(totalRests / numCircuits));
+  for (let i = 0; i < totalRests % numCircuits; i++) restsPerCircuit[i]++;
+
+  const seq = [];
+  let globalStart = 1;
+
+  CIRCUITS.forEach((M, ci) => {
+    const isEven   = (ci + 1) % 2 === 0; // 1-based index: C2, C4 are even
+    // Rest position: local lane 2 for odd, local lane M-1 for even
+    const restAfterLocal = isEven ? (M - 1) : 2;
+    const rests = restsPerCircuit[ci];
+
+    for (let local = 1; local <= M; local++) {
+      seq.push(globalStart + local - 1);
+      if (local === restAfterLocal) {
+        for (let r = 0; r < rests; r++) seq.push(0); // REST
+      }
+    }
+    globalStart += M;
+  });
+  return seq;
+}
+
+// Standard sequence: odd lanes ascending → even lanes descending (legacy)
 const STD_SEQ = (() => {
   const odds = [], evens = [];
   for (let i = 1; i <= LANES; i++) { if (i % 2) odds.push(i); else evens.push(i); }
@@ -161,8 +192,9 @@ list.addEventListener('click', e => {
   }
 });
 
-// ── Add rest slot ─────────────────────────────────────────────────────────────
-document.getElementById('btnAddRest').addEventListener('click', () => {
+
+// ── Generate smart sequence ───────────────────────────────────────────────────
+function makeRestEl() {
   const item = document.createElement('div');
   item.className = 'seq-item seq-item--rest';
   item.draggable = true;
@@ -172,18 +204,30 @@ document.getElementById('btnAddRest').addEventListener('click', () => {
     <span class="seq-dot seq-dot--rest">${LANG === 'es' ? 'DSC' : 'REST'}</span>
     <button type="button" class="seq-remove" title="${LANG === 'es' ? 'Quitar' : 'Remove'}">✕</button>
     <span class="seq-arrow"></span>`;
-  list.appendChild(item);
-  updatePreview();
-});
+  return item;
+}
 
-// ── Reset to standard ─────────────────────────────────────────────────────────
-document.getElementById('btnReset').addEventListener('click', () => {
-  // Remove all rest items, keep lane items in standard order
-  const items = [...list.querySelectorAll('.seq-item:not(.seq-item--rest)')];
-  const byLane = Object.fromEntries(items.map(el => [+el.dataset.lane, el]));
-  list.querySelectorAll('.seq-item--rest').forEach(el => el.remove());
-  STD_SEQ.forEach(lane => list.appendChild(byLane[lane]));
+function makeLaneEl(lane) {
+  const item = document.createElement('div');
+  item.className = 'seq-item';
+  item.draggable = true;
+  item.dataset.lane = lane;
+  item.innerHTML = `
+    <span class="seq-handle">⠿</span>
+    <span class="seq-dot" style="background:${COLORS[lane-1]}">${lane}</span>
+    <span class="seq-arrow"></span>`;
+  return item;
+}
+
+function applySeq(seq) {
+  list.innerHTML = '';
+  seq.forEach(lane => list.appendChild(lane === 0 ? makeRestEl() : makeLaneEl(lane)));
   updatePreview();
+}
+
+document.getElementById('btnSmartSeq').addEventListener('click', () => {
+  const n = parseInt(document.getElementById('numParticipants').value, 10) || LANES;
+  applySeq(buildSmartSeq(n));
 });
 
 document.getElementById('seqForm').addEventListener('submit', () => {

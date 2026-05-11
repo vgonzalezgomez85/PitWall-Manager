@@ -19,6 +19,8 @@ class DriverProfile {
     const { lastInsertRowid } = db.prepare(
       'INSERT INTO driver_profiles (name, category) VALUES (?, ?)'
     ).run(name, category);
+    db.prepare('UPDATE driver_profiles SET qr_code = ? WHERE id = ?')
+      .run(`DRV:${lastInsertRowid}`, lastInsertRowid);
     return lastInsertRowid;
   }
 

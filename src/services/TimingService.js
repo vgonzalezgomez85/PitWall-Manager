@@ -30,10 +30,11 @@ class TimingServiceClass {
 
   // ── Start manga ───────────────────────────────────────────────────────────
 
-  startManga(manga, race, lanes, teams, drivers) {
+  startManga(manga, race, lanes, teams, drivers, durationMs = null) {
     if (this.session) this.stopManga(false);
 
     const startTime = Date.now();
+    const sessionDurationMs = durationMs || (race.manga_duration_minutes * 60 * 1000);
 
     const laneMap = {};
     lanes.forEach(ml => {
@@ -52,10 +53,21 @@ class TimingServiceClass {
         lapsMsSum:     0,
         lapAvgMs:      0,
         exitCount:     0,
+        raceBestLapMs:    null,
+        raceBestEntity:   null,
       };
     });
 
-    this.session = { manga, race, laneMap, startTime, status: 'running' };
+    // Load race-wide best laps from previous mangas
+    const prevBests = Lap.raceBestByLane(race.id);
+    prevBests.forEach(row => {
+      if (laneMap[row.lane]) {
+        laneMap[row.lane].raceBestLapMs  = row.bestLapMs;
+        laneMap[row.lane].raceBestEntity = row.entityName;
+      }
+    });
+
+    this.session = { manga, race, lanes, teams, drivers, laneMap, startTime, durationMs: sessionDurationMs, status: 'running' };
 
     const activeLanes = Object.keys(laneMap).map(Number);
     if (SerialService.isSimulating && activeLanes.length > 0) {
@@ -69,11 +81,10 @@ class TimingServiceClass {
       SocketService.emit('tick', { elapsedMs: Date.now() - startTime });
     }, 1000);
 
-    const durationMs = (race.manga_duration_minutes || 5) * 60 * 1000;
     this._autoStopTimer = setTimeout(() => {
       console.log('[TimingService] Manga auto-stopped (time expired)');
       this.stopManga(true);
-    }, durationMs);
+    }, sessionDurationMs);
 
     Manga.updateStatus(manga.id, 'active');
     SocketService.emit('manga:started', { mangaId: manga.id, ...this.getStandings() });
@@ -112,9 +123,8 @@ class TimingServiceClass {
         const nextLaneDefs = Manga.getLanes(next.id);
         const nextByEntity = {};
         for (const nl of nextLaneDefs) {
-          if (nl.is_rest) continue;
           const key = nl.team_id ? `t${nl.team_id}` : `d${nl.driver_id}`;
-          nextByEntity[key] = nl.lane;
+          nextByEntity[key] = nl.is_rest ? 'rest' : nl.lane;
         }
         for (const [lane, ld] of Object.entries(this.session.laneMap)) {
           const key = ld.teamId ? `t${ld.teamId}` : `d${ld.driverId}`;
@@ -133,6 +143,39 @@ class TimingServiceClass {
     SocketService.emit('manga:stopped', { mangaId: this.session.manga.id, nextMangaId, nextLanes });
     console.log(`[TimingService] Manga ${this.session.manga.number} stopped`);
     this.session = null;
+  }
+
+  // ── Pause / Resume manga ──────────────────────────────────────────────────
+
+  pauseManga() {
+    if (!this.session || this.session.status !== 'running') return;
+    this.session.status    = 'paused';
+    this.session.pauseStart = Date.now();
+    clearInterval(this._tickInt);
+    clearTimeout(this._autoStopTimer);
+    this._tickInt = this._autoStopTimer = null;
+    SocketService.emit('manga:paused');
+    console.log(`[TimingService] Manga ${this.session.manga.number} paused`);
+  }
+
+  resumeManga() {
+    if (!this.session || this.session.status !== 'paused') return;
+    const pausedMs = Date.now() - this.session.pauseStart;
+    this.session.startTime += pausedMs; // shift start so elapsed stays correct
+    this.session.status     = 'running';
+    this.session.pauseStart = null;
+
+    this._tickInt = setInterval(() => {
+      SocketService.emit('tick', { elapsedMs: Date.now() - this.session.startTime });
+    }, 1000);
+
+    const remaining = this.session.durationMs - (Date.now() - this.session.startTime);
+    if (remaining > 0) {
+      this._autoStopTimer = setTimeout(() => this.stopManga(true), remaining);
+    }
+
+    SocketService.emit('manga:resumed');
+    console.log(`[TimingService] Manga ${this.session.manga.number} resumed`);
   }
 
   // ── Cancel manga (manual stop) — resets to pending, deletes laps ──────────
@@ -223,6 +266,10 @@ class TimingServiceClass {
       ld.lastLapMs    = lapTimeMs;
       ld.lastCrossing = timestamp;
       if (!ld.bestLapMs || lapTimeMs < ld.bestLapMs) ld.bestLapMs = lapTimeMs;
+      if (!ld.raceBestLapMs || lapTimeMs < ld.raceBestLapMs) {
+        ld.raceBestLapMs  = lapTimeMs;
+        ld.raceBestEntity = ld.name;
+      }
 
       if (isExit) {
         ld.exitCount++;
@@ -311,12 +358,18 @@ class TimingServiceClass {
     const leaderLaps = rows[0]?.lapCount ?? 0;
     rows.forEach((r, i) => { r.position = i + 1; r.gap = leaderLaps - r.lapCount; });
 
+    const raceBestLaps = {};
+    Object.values(laneMap).forEach(l => {
+      raceBestLaps[l.lane] = { bestLapMs: l.raceBestLapMs, entityName: l.raceBestEntity };
+    });
+
     return {
-      mangaId:     manga.id,
-      raceId:      race.id,
-      elapsedMs:   Date.now() - startTime,
-      remainingMs: Math.max(0, race.manga_duration_minutes * 60000 - (Date.now() - startTime)),
-      standings:   rows,
+      mangaId:      manga.id,
+      raceId:       race.id,
+      elapsedMs:    Date.now() - startTime,
+      remainingMs:  Math.max(0, this.session.durationMs - (Date.now() - startTime)),
+      standings:    rows,
+      raceBestLaps,
     };
   }
 

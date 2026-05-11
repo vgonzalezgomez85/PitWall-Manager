@@ -1,0 +1,423 @@
+<%
+  const isEdit = !!team;
+  const formTitle = isEdit
+    ? (lang === 'es' ? 'Editar equipo' : 'Edit team')
+    : (lang === 'es' ? 'Nuevo equipo' : 'New team');
+  const formAction = isEdit ? '/teams/' + team.id : '/teams';
+  const currentMembers = isEdit ? team.members : [];
+%>
+<%- include('../partials/header', { pageTitle: formTitle }) %>
+<div class="container container--narrow">
+
+  <a href="/teams" class="back-link">
+    ← <%= lang === 'es' ? 'Volver a equipos' : 'Back to teams' %>
+  </a>
+  <h1 class="page-title">🤝 <%= formTitle %></h1>
+
+  <% if (errors.length > 0) { %>
+    <div class="alert alert--error">
+      <% errors.forEach(e => { %>
+        <p>
+          <% if (e === 'name_required') { %>
+            <%= lang === 'es' ? 'El nombre es obligatorio (mínimo 2 caracteres).' : 'Name is required (min 2 characters).' %>
+          <% } else { %><%= e %><% } %>
+        </p>
+      <% }) %>
+    </div>
+  <% } %>
+
+  <form action="<%= formAction %>" method="POST" enctype="multipart/form-data" class="form-card">
+
+    <!-- Name -->
+    <div class="form-group">
+      <label class="form-label" for="tName"><%= lang === 'es' ? 'Nombre del equipo' : 'Team name' %></label>
+      <input class="form-input <%= errors.includes('name_required') ? 'form-input--error' : '' %>"
+             type="text" id="tName" name="name"
+             placeholder="<%= lang === 'es' ? 'Ej: Red Racers' : 'e.g. Red Racers' %>"
+             value="<%= body.name || '' %>" autocomplete="off" autofocus required>
+    </div>
+
+    <!-- Categoria + Coche (two columns) -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+      <div class="form-group" style="margin:0">
+        <label class="form-label" for="tCategoria"><%= lang === 'es' ? 'Categoría' : 'Category' %></label>
+        <input class="form-input" type="text" id="tCategoria" name="categoria"
+               placeholder="<%= lang === 'es' ? 'Ej: LMH, LMGT3, Clase A...' : 'e.g. LMH, GTE, Class A...' %>"
+               value="<%= body.categoria || '' %>" autocomplete="off">
+      </div>
+      <div class="form-group" style="margin:0">
+        <label class="form-label" for="tCoche"><%= lang === 'es' ? 'Coche' : 'Car' %></label>
+        <input class="form-input" type="text" id="tCoche" name="coche"
+               placeholder="<%= lang === 'es' ? 'Ej: Ferrari 499P, Porsche 963...' : 'e.g. Ferrari 499P, Porsche 963...' %>"
+               value="<%= body.coche || '' %>" autocomplete="off">
+      </div>
+    </div>
+
+    <!-- Car photo -->
+    <div class="form-group">
+      <label class="form-label"><%= lang === 'es' ? 'Foto del coche' : 'Car photo' %></label>
+      <% const currentPhoto = isEdit ? team.car_photo : null; %>
+      <% if (currentPhoto) { %>
+        <div id="currentPhotoWrap" style="margin-bottom:.6rem;display:flex;align-items:center;gap:.75rem">
+          <img src="<%= currentPhoto %>" alt="car"
+               style="height:56px;border-radius:6px;object-fit:contain;background:#0d1117;border:1px solid #30363d;padding:2px">
+          <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-size:.82rem;color:#8b949e">
+            <input type="checkbox" name="remove_car_photo" value="1" id="removePhotoChk"
+                   onchange="document.getElementById('currentPhotoWrap').style.opacity=this.checked?'0.3':'1'">
+            <%= lang === 'es' ? 'Eliminar foto' : 'Remove photo' %>
+          </label>
+        </div>
+      <% } %>
+      <div class="car-upload-area" id="carUploadArea">
+        <input type="file" name="car_photo" id="carPhotoInput" accept="image/*"
+               style="display:none" onchange="previewCarPhoto(this)">
+        <label for="carPhotoInput" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:.4rem;padding:.9rem;border:1.5px dashed #30363d;border-radius:8px;transition:border-color .2s"
+               id="carUploadLabel"
+               onmouseover="this.style.borderColor='#58a6ff'" onmouseout="this.style.borderColor='#30363d'">
+          <img id="carPreview" src="#" alt=""
+               style="display:none;height:64px;object-fit:contain;border-radius:4px;background:#0d1117">
+          <span id="carUploadHint" style="font-size:.82rem;color:#8b949e">
+            <%= lang === 'es' ? '📁 Seleccionar imagen (JPG, PNG, WebP — máx 4MB)' : '📁 Select image (JPG, PNG, WebP — max 4MB)' %>
+          </span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Country -->
+    <div class="form-group">
+      <label class="form-label"><%= lang === 'es' ? 'País' : 'Country' %></label>
+      <div style="position:relative">
+        <div id="flagPickerBtn" class="form-input" style="cursor:pointer;display:flex;align-items:center;gap:.6rem;user-select:none">
+          <span id="flagDisplay" style="font-size:1.4rem;line-height:1;display:flex;align-items:center">
+            <% if (body.country && body.country.split('|')[1] === '__SVG__') { %>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 6" width="26" height="17" style="border-radius:2px"><rect width="9" height="6" fill="#FCDD09"/><rect y="0.667" width="9" height="0.889" fill="#DA121A"/><rect y="2.222" width="9" height="0.889" fill="#DA121A"/><rect y="3.778" width="9" height="0.889" fill="#DA121A"/><rect y="5.333" width="9" height="0.667" fill="#DA121A"/></svg>
+            <% } else { %>
+              <%= body.country ? body.country.split('|')[1] : '🌐' %>
+            <% } %>
+          </span>
+          <span id="flagLabel" style="flex:1;color:<%= body.country ? '#e6edf3' : '#8b949e' %>">
+            <%= body.country ? body.country.split('|')[0] : (lang === 'es' ? 'Selecciona un país...' : 'Select a country...') %>
+          </span>
+          <span style="color:#8b949e;font-size:.8rem">▼</span>
+        </div>
+        <input type="hidden" name="country" id="countryInput" value="<%= body.country || '' %>">
+        <div id="flagDropdown" style="display:none;position:absolute;top:calc(100% + 2px);left:0;right:0;z-index:200;background:#161b22;border:1px solid #30363d;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.5);overflow:hidden">
+          <div style="padding:.5rem">
+            <input type="text" id="flagSearch" class="form-input form-input--sm"
+                   placeholder="<%= lang === 'es' ? 'Buscar país...' : 'Search country...' %>"
+                   autocomplete="off" style="width:100%">
+          </div>
+          <ul id="flagList" style="margin:0;padding:0 0 .4rem;list-style:none;max-height:220px;overflow-y:auto"></ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Members -->
+    <div class="form-group">
+      <label class="form-label"><%= lang === 'es' ? 'Pilotos del equipo' : 'Team drivers' %></label>
+      <div id="membersList" style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:.75rem">
+        <% currentMembers.forEach(m => { %>
+          <div class="member-row" style="position:relative;display:flex;gap:.5rem;align-items:center">
+            <div style="flex:1;position:relative">
+              <input type="text" name="member_name[]" class="form-input member-name-input"
+                     placeholder="<%= lang === 'es' ? 'Nombre piloto' : 'Driver name' %>"
+                     value="<%= m.name %>" autocomplete="off">
+              <input type="hidden" name="member_driver_id[]" class="member-driver-id" value="<%= m.driver_id || '' %>">
+              <ul class="ac-dropdown" style="display:none"></ul>
+            </div>
+            <% if (m.driver_id) { %>
+              <span class="member-linked" title="<%= lang === 'es' ? 'Vinculado a perfil' : 'Linked to profile' %>">🔗</span>
+            <% } else { %>
+              <span class="member-linked" style="visibility:hidden">🔗</span>
+            <% } %>
+            <button type="button" class="btn btn--danger btn--sm member-remove" title="<%= lang === 'es' ? 'Quitar' : 'Remove' %>">✕</button>
+          </div>
+        <% }) %>
+      </div>
+      <button type="button" id="btnAddMember" class="btn btn--ghost btn--sm">
+        + <%= lang === 'es' ? 'Añadir piloto' : 'Add driver' %>
+      </button>
+      <p class="form-hint" style="margin-top:.4rem">
+        <%= lang === 'es' ? 'Escribe para buscar entre los perfiles existentes o introduce un nombre nuevo.' : 'Type to search existing profiles or enter a new name.' %>
+      </p>
+    </div>
+
+    <!-- Notes -->
+    <div class="form-group">
+      <label class="form-label" for="tNotes">
+        <%= lang === 'es' ? 'Notas (opcional)' : 'Notes (optional)' %>
+      </label>
+      <input class="form-input" type="text" id="tNotes" name="notes"
+             placeholder="<%= lang === 'es' ? 'Club, categoría...' : 'Club, category...' %>"
+             value="<%= body.notes || '' %>">
+    </div>
+
+    <div class="form-actions">
+      <a href="/teams" class="btn btn--ghost"><%= lang === 'es' ? 'Cancelar' : 'Cancel' %></a>
+      <button type="submit" class="btn btn--primary">
+        <%= isEdit ? (lang === 'es' ? 'Guardar cambios' : 'Save changes') : (lang === 'es' ? 'Crear equipo' : 'Create team') %>
+      </button>
+    </div>
+
+  </form>
+</div>
+
+<style>
+.ac-dropdown {
+  position:absolute;
+  top:calc(100% + 2px);
+  left:0;right:0;
+  background:#161b22;
+  border:1px solid #30363d;
+  border-radius:6px;
+  margin:0;padding:0;
+  list-style:none;
+  z-index:100;
+  max-height:180px;
+  overflow-y:auto;
+  box-shadow:0 4px 12px rgba(0,0,0,.4);
+}
+.ac-dropdown li {
+  padding:.45rem .75rem;
+  cursor:pointer;
+  font-size:.9rem;
+  color:#e6edf3;
+  display:flex;
+  align-items:center;
+  gap:.5rem;
+}
+.ac-dropdown li:hover, .ac-dropdown li.ac-active {
+  background:#21262d;
+}
+.ac-dropdown li .ac-category {
+  font-size:.75rem;
+  color:#8b949e;
+  margin-left:auto;
+}
+.member-linked { font-size:.9rem; flex-shrink:0; }
+</style>
+
+<script>
+const DRIVERS = <%- JSON.stringify(drivers.map(d => ({ id: d.id, name: d.name, category: d.category || '' }))) %>;
+const LANG = "<%= lang %>";
+
+// ── Flag picker ───────────────────────────────────────────────────────────────
+const SENYERA_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 6" width="26" height="17" style="border-radius:2px;vertical-align:middle;flex-shrink:0"><rect width="9" height="6" fill="#FCDD09"/><rect y="0.667" width="9" height="0.889" fill="#DA121A"/><rect y="2.222" width="9" height="0.889" fill="#DA121A"/><rect y="3.778" width="9" height="0.889" fill="#DA121A"/><rect y="5.333" width="9" height="0.667" fill="#DA121A"/></svg>`;
+
+const COUNTRIES = [
+  ['Catalunya', '__SVG__'],
+  ['Afghanistan','🇦🇫'],['Albania','🇦🇱'],['Algeria','🇩🇿'],['Andorra','🇦🇩'],['Angola','🇦🇴'],
+  ['Argentina','🇦🇷'],['Armenia','🇦🇲'],['Australia','🇦🇺'],['Austria','🇦🇹'],['Azerbaijan','🇦🇿'],
+  ['Bahrain','🇧🇭'],['Bangladesh','🇧🇩'],['Belarus','🇧🇾'],['Belgium','🇧🇪'],['Bolivia','🇧🇴'],
+  ['Bosnia','🇧🇦'],['Brazil','🇧🇷'],['Bulgaria','🇧🇬'],['Canada','🇨🇦'],['Chile','🇨🇱'],
+  ['China','🇨🇳'],['Colombia','🇨🇴'],['Croatia','🇭🇷'],['Cuba','🇨🇺'],['Cyprus','🇨🇾'],
+  ['Czech Republic','🇨🇿'],['Denmark','🇩🇰'],['Ecuador','🇪🇨'],['Egypt','🇪🇬'],['Estonia','🇪🇪'],
+  ['Finland','🇫🇮'],['France','🇫🇷'],['Georgia','🇬🇪'],['Germany','🇩🇪'],['Ghana','🇬🇭'],
+  ['Greece','🇬🇷'],['Guatemala','🇬🇹'],['Honduras','🇭🇳'],['Hungary','🇭🇺'],['Iceland','🇮🇸'],
+  ['India','🇮🇳'],['Indonesia','🇮🇩'],['Iran','🇮🇷'],['Iraq','🇮🇶'],['Ireland','🇮🇪'],
+  ['Israel','🇮🇱'],['Italy','🇮🇹'],['Jamaica','🇯🇲'],['Japan','🇯🇵'],['Jordan','🇯🇴'],
+  ['Kazakhstan','🇰🇿'],['Kenya','🇰🇪'],['Kuwait','🇰🇼'],['Latvia','🇱🇻'],['Lebanon','🇱🇧'],
+  ['Libya','🇱🇾'],['Lithuania','🇱🇹'],['Luxembourg','🇱🇺'],['Malaysia','🇲🇾'],['Malta','🇲🇹'],
+  ['Mexico','🇲🇽'],['Moldova','🇲🇩'],['Monaco','🇲🇨'],['Morocco','🇲🇦'],['Netherlands','🇳🇱'],
+  ['New Zealand','🇳🇿'],['Nigeria','🇳🇬'],['North Korea','🇰🇵'],['Norway','🇳🇴'],['Pakistan','🇵🇰'],
+  ['Panama','🇵🇦'],['Paraguay','🇵🇾'],['Peru','🇵🇪'],['Philippines','🇵🇭'],['Poland','🇵🇱'],
+  ['Portugal','🇵🇹'],['Qatar','🇶🇦'],['Romania','🇷🇴'],['Russia','🇷🇺'],['Saudi Arabia','🇸🇦'],
+  ['Serbia','🇷🇸'],['Singapore','🇸🇬'],['Slovakia','🇸🇰'],['Slovenia','🇸🇮'],['South Africa','🇿🇦'],
+  ['South Korea','🇰🇷'],['Spain','🇪🇸'],['Sweden','🇸🇪'],['Switzerland','🇨🇭'],['Thailand','🇹🇭'],
+  ['Tunisia','🇹🇳'],['Turkey','🇹🇷'],['Ukraine','🇺🇦'],['United Arab Emirates','🇦🇪'],
+  ['United Kingdom','🇬🇧'],['United States','🇺🇸'],['Uruguay','🇺🇾'],['Venezuela','🇻🇪'],
+  ['Vietnam','🇻🇳'],
+];
+
+const flagBtn      = document.getElementById('flagPickerBtn');
+const flagDropdown = document.getElementById('flagDropdown');
+const flagSearch   = document.getElementById('flagSearch');
+const flagList     = document.getElementById('flagList');
+const flagDisplay  = document.getElementById('flagDisplay');
+const flagLabel    = document.getElementById('flagLabel');
+const countryInput = document.getElementById('countryInput');
+
+function flagHtml(flag, size = '1.3rem') {
+  if (flag === '__SVG__') return SENYERA_SVG;
+  return `<span style="font-size:${size};line-height:1">${flag}</span>`;
+}
+
+function setFlagDisplay(name, flag) {
+  if (flag === '__SVG__') {
+    flagDisplay.innerHTML = SENYERA_SVG;
+  } else {
+    flagDisplay.innerHTML = '';
+    flagDisplay.textContent = flag;
+  }
+  flagLabel.textContent = name;
+  flagLabel.style.color = '#e6edf3';
+}
+
+function renderFlagList(q = '') {
+  const filtered = q
+    ? COUNTRIES.filter(([name]) => name.toLowerCase().includes(q.toLowerCase()))
+    : COUNTRIES;
+  flagList.innerHTML = filtered.map(([name, flag]) =>
+    `<li data-name="${name}" data-flag="${flag}"
+         style="padding:.4rem .75rem;cursor:pointer;display:flex;align-items:center;gap:.6rem;font-size:.9rem;color:#e6edf3"
+         onmouseover="this.style.background='#21262d'" onmouseout="this.style.background=''">
+       ${flagHtml(flag)}${name}
+     </li>`
+  ).join('');
+}
+
+// Init display if country already set
+(function initDisplay() {
+  const val = countryInput.value;
+  if (!val) return;
+  const [name, flag] = val.split('|');
+  setFlagDisplay(name, flag);
+})();
+
+flagBtn.addEventListener('click', () => {
+  const open = flagDropdown.style.display !== 'none';
+  flagDropdown.style.display = open ? 'none' : 'block';
+  if (!open) { renderFlagList(); flagSearch.value = ''; flagSearch.focus(); }
+});
+
+flagSearch.addEventListener('input', () => renderFlagList(flagSearch.value));
+
+flagList.addEventListener('mousedown', e => {
+  const li = e.target.closest('li');
+  if (!li) return;
+  const name = li.dataset.name;
+  const flag = li.dataset.flag;
+  countryInput.value = `${name}|${flag}`;
+  setFlagDisplay(name, flag);
+  flagDropdown.style.display = 'none';
+});
+
+document.addEventListener('click', e => {
+  if (!flagBtn.contains(e.target) && !flagDropdown.contains(e.target)) {
+    flagDropdown.style.display = 'none';
+  }
+});
+
+const membersList = document.getElementById('membersList');
+
+function makeMemberRow(name = '', driverId = '') {
+  const row = document.createElement('div');
+  row.className = 'member-row';
+  row.style.cssText = 'position:relative;display:flex;gap:.5rem;align-items:center';
+  row.innerHTML = `
+    <div style="flex:1;position:relative">
+      <input type="text" name="member_name[]" class="form-input member-name-input"
+             placeholder="${LANG === 'es' ? 'Nombre piloto' : 'Driver name'}"
+             value="${name.replace(/"/g, '&quot;')}" autocomplete="off">
+      <input type="hidden" name="member_driver_id[]" class="member-driver-id" value="${driverId}">
+      <ul class="ac-dropdown" style="display:none"></ul>
+    </div>
+    <span class="member-linked" style="visibility:${driverId ? 'visible' : 'hidden'}">🔗</span>
+    <button type="button" class="btn btn--danger btn--sm member-remove"
+            title="${LANG === 'es' ? 'Quitar' : 'Remove'}">✕</button>`;
+  return row;
+}
+
+function attachAutocomplete(row) {
+  const input   = row.querySelector('.member-name-input');
+  const hidden  = row.querySelector('.member-driver-id');
+  const linked  = row.querySelector('.member-linked');
+  const dropdown = row.querySelector('.ac-dropdown');
+  let activeIdx = -1;
+
+  function clearLink() {
+    hidden.value = '';
+    linked.style.visibility = 'hidden';
+  }
+
+  function selectDriver(d) {
+    input.value   = d.name;
+    hidden.value  = d.id;
+    linked.style.visibility = 'visible';
+    hideDropdown();
+  }
+
+  function showSuggestions(q) {
+    const matches = DRIVERS.filter(d => d.name.toLowerCase().includes(q.toLowerCase()));
+    if (!matches.length || !q) { hideDropdown(); return; }
+    activeIdx = -1;
+    dropdown.innerHTML = matches.map((d, i) =>
+      `<li data-idx="${i}">
+        ${d.name}
+        <span class="ac-category">${d.category}</span>
+      </li>`
+    ).join('');
+    dropdown._matches = matches;
+    dropdown.style.display = 'block';
+  }
+
+  function hideDropdown() {
+    dropdown.style.display = 'none';
+    dropdown.innerHTML = '';
+    activeIdx = -1;
+  }
+
+  input.addEventListener('input', () => {
+    clearLink();
+    showSuggestions(input.value.trim());
+  });
+
+  input.addEventListener('keydown', e => {
+    const items = dropdown.querySelectorAll('li');
+    if (!items.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      activeIdx = Math.min(activeIdx + 1, items.length - 1);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      activeIdx = Math.max(activeIdx - 1, 0);
+    } else if (e.key === 'Enter' && activeIdx >= 0) {
+      e.preventDefault();
+      selectDriver(dropdown._matches[activeIdx]);
+      return;
+    } else if (e.key === 'Escape') {
+      hideDropdown(); return;
+    }
+    items.forEach((li, i) => li.classList.toggle('ac-active', i === activeIdx));
+    if (activeIdx >= 0) items[activeIdx].scrollIntoView({ block: 'nearest' });
+  });
+
+  dropdown.addEventListener('mousedown', e => {
+    const li = e.target.closest('li');
+    if (li) selectDriver(dropdown._matches[+li.dataset.idx]);
+  });
+
+  input.addEventListener('blur', () => setTimeout(hideDropdown, 150));
+}
+
+// Attach to existing rows
+membersList.querySelectorAll('.member-row').forEach(attachAutocomplete);
+
+document.getElementById('btnAddMember').addEventListener('click', () => {
+  const row = makeMemberRow();
+  membersList.appendChild(row);
+  attachAutocomplete(row);
+  row.querySelector('input').focus();
+});
+
+membersList.addEventListener('click', e => {
+  if (e.target.closest('.member-remove')) {
+    e.target.closest('.member-row').remove();
+  }
+});
+
+function previewCarPhoto(input) {
+  if (!input.files || !input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const prev = document.getElementById('carPreview');
+    const hint = document.getElementById('carUploadHint');
+    prev.src = e.target.result;
+    prev.style.display = 'block';
+    hint.textContent = input.files[0].name;
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+</script>
+
+<%- include('../partials/footer') %>

@@ -1,5 +1,8 @@
 const SerialService = require('./SerialService');
 const SocketService = require('./SocketService');
+const Settings      = require('../models/Settings');
+const Circuit       = require('../models/Circuit');
+const TimingService = require('./TimingService');
 
 const LANE_COLORS = [
   '#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4',
@@ -10,40 +13,111 @@ const LANE_COLORS = [
   '#006064','#827717'
 ];
 
+function lanesFromSettings() {
+  const circuitId = Settings.get('training_circuit_id', '');
+  if (circuitId) {
+    const c = Circuit.findById(parseInt(circuitId, 10));
+    if (c) return c.lanes_count;
+  }
+  return parseInt(Settings.get('sim_lanes', '6'), 10) || 6;
+}
+
 class TrainingServiceClass {
   constructor() {
-    this._active    = false;
-    this._lanes     = [];
-    this._laneData  = new Map();
-    this._handler   = null;
-    this._startedAt = null;
+    this._standby        = false;
+    this._active         = false;
+    this._paused         = false;
+    this._lanes          = [];
+    this._laneData       = new Map();
+    this._handler        = null;
+    this._startedAt      = null;
+    this._durationMs     = null;
+    this._sessionRecords = new Map(); // lane → bestMs, persists until reset
+
+    SerialService.on('race_go', ({ durationMs }) => {
+      if (TimingService._pendingSetup || TimingService.isRunning) return;
+      this._durationMs = durationMs;
+      this._paused = false;
+      if (this._standby && !this._active) {
+        this._activate();
+      } else if (!this._active && !this._standby) {
+        this.prepare(lanesFromSettings());
+        this._activate();
+      }
+      SocketService.emit('training:go', { durationMs });
+    });
+
+    SerialService.on('race_started', () => {
+      if (TimingService._pendingSetup || TimingService.isRunning) return;
+      this._paused = false;
+      if (this._standby && !this._active) {
+        this._activate();
+      }
+    });
+
+    SerialService.on('race_resumed',  () => { this._paused = false; });
+    SerialService.on('race_paused',   () => { this._paused = true;  });
+    // Forced stop: preserve lap data, go back to standby to restart same session
+    SerialService.on('race_stopped',  () => { if (this._active) this._pauseToStandby(); });
+    // Normal end: clear data, standby for new session
+    SerialService.on('race_finished', () => { if (this._active) this._resetToStandby(); });
   }
 
-  get isActive()  { return this._active; }
-  get startedAt() { return this._startedAt; }
+  get isActive()   { return this._active; }
+  get isStandby()  { return this._standby && !this._active; }
+  get isReady()    { return this._active || this._standby; }
+  get startedAt()  { return this._startedAt; }
+  get durationMs() { return this._durationMs; }
 
-  start(lanesCount) {
-    if (this._active) this.stop();
+  getSessionRecords() {
+    const out = {};
+    for (const [lane, ms] of this._sessionRecords) out[lane] = ms;
+    return out;
+  }
 
-    this._active    = true;
-    this._startedAt = Date.now();
-    this._lanes     = [];
-    this._laneData  = new Map();
-
+  // ── Prepare lanes in standby (no recording) ────────────────────────────────
+  prepare(lanesCount) {
+    if (this._active) this._deactivate();
+    this._standby    = true;
+    this._startedAt  = null;
+    this._durationMs = null;
+    this._lanes      = [];
+    this._laneData   = new Map();
     for (let i = 1; i <= lanesCount; i++) {
       this._lanes.push(i);
-      this._laneData.set(i, { laps: [], sum: 0, count: 0 });
+      this._laneData.set(i, { laps: [], chronoLaps: [], sum: 0, count: 0, lastMs: null });
     }
+    console.log(`[TrainingService] Standby — ${lanesCount} lanes`);
+  }
+
+  // ── Activate from standby: start recording laps ───────────────────────────
+  _activate() {
+    if (this._active) return;
+    this._standby   = false;
+    this._active    = true;
+    this._paused    = false;
+    this._startedAt = Date.now();
 
     this._handler = ({ lane, lapTimeMs }) => {
-      if (!this._active || lapTimeMs == null) return;
+      if (!this._active || this._paused || lapTimeMs == null) return;
       const ld = this._laneData.get(lane);
       if (!ld) return;
 
       ld.count++;
-      ld.sum += lapTimeMs;
+      ld.sum   += lapTimeMs;
+      ld.lastMs = lapTimeMs;
       ld.laps.push(lapTimeMs);
       ld.laps.sort((a, b) => a - b);
+      ld.chronoLaps.push(lapTimeMs);
+      if (ld.chronoLaps.length > 20) ld.chronoLaps.shift();
+
+      // Update session record
+      const prevRecord = this._sessionRecords.get(lane);
+      const newRecord  = !prevRecord || lapTimeMs < prevRecord;
+      if (newRecord) {
+        this._sessionRecords.set(lane, lapTimeMs);
+        SocketService.emit('training:record', { lane, recordMs: lapTimeMs });
+      }
 
       SocketService.emit('training:lap', {
         lane,
@@ -52,35 +126,87 @@ class TrainingServiceClass {
         count:  ld.count,
         avgMs:  Math.round(ld.sum / ld.count),
         bestMs: ld.laps[0],
-        laps:   [...ld.laps],
+        lastMs: lapTimeMs,
+        laps:   [...ld.chronoLaps].reverse(),
       });
     };
 
     SerialService.on('lane_crossing', this._handler);
-    console.log(`[TrainingService] Started — ${lanesCount} lanes`);
+    SocketService.emit('training:activated', this.getLanes());
+    console.log(`[TrainingService] Activated — ${this._lanes.length} lanes`);
   }
 
-  stop() {
-    if (!this._active) return;
+  // ── Deactivate: stop recording, keep lane config ──────────────────────────
+  _deactivate() {
     this._active = false;
     if (this._handler) {
       SerialService.off('lane_crossing', this._handler);
       this._handler = null;
     }
-    SocketService.emit('training:stopped');
+  }
+
+  // ── Forced stop: stop recording but keep lap data ─────────────────────────
+  _pauseToStandby() {
+    this._deactivate();
+    this._standby    = true;
+    this._startedAt  = null;
+    this._durationMs = null;
+    SocketService.emit('training:standby', this.getLanes());
+    console.log('[TrainingService] Forced stop — data preserved, back to standby');
+  }
+
+  // ── Normal end: reset to standby and clear data ───────────────────────────
+  _resetToStandby() {
+    const lanes = this._lanes.length;
+    this._deactivate();
+    this.prepare(lanes);
+    SocketService.emit('training:standby', this.getLanes());
+    console.log('[TrainingService] Session finished — data cleared, standby');
+  }
+
+  // ── Manual reset: clear records + full stop ───────────────────────────────
+  resetSession() {
+    this._sessionRecords.clear();
+    const lanes = this._lanes.length || lanesFromSettings();
+    this._deactivate();
+    this._standby = false;
+    this._startedAt = null;
+    this._durationMs = null;
+    this.prepare(lanes);
+    SocketService.emit('training:records_reset');
+    SocketService.emit('training:standby', this.getLanes());
+    console.log('[TrainingService] Session reset — records cleared');
+  }
+
+  // ── Manual stop (Stop button) ─────────────────────────────────────────────
+  stop() {
+    const lanes = this._lanes.length;
+    this._deactivate();
+    this._standby = false;
+    this._startedAt = null;
+    this._durationMs = null;
+    this.prepare(lanes || lanesFromSettings());
+    SocketService.emit('training:standby', this.getLanes());
     console.log('[TrainingService] Stopped');
+  }
+
+  // ── Manual full start (legacy / form submit) ──────────────────────────────
+  start(lanesCount) {
+    this.prepare(lanesCount);
+    this._activate();
   }
 
   getLanes() {
     return this._lanes.map(lane => {
-      const ld = this._laneData.get(lane) || { laps: [], sum: 0, count: 0 };
+      const ld = this._laneData.get(lane) || { laps: [], chronoLaps: [], sum: 0, count: 0, lastMs: null };
       return {
         lane,
         color:  LANE_COLORS[lane - 1] || '#8b949e',
         count:  ld.count,
         avgMs:  ld.count > 0 ? Math.round(ld.sum / ld.count) : null,
         bestMs: ld.laps.length > 0 ? ld.laps[0] : null,
-        laps:   [...ld.laps],
+        lastMs: ld.lastMs,
+        laps:   [...ld.chronoLaps].reverse(),
       };
     });
   }

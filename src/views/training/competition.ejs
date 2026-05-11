@@ -1,0 +1,104 @@
+<%- include('../partials/header', { lang, pageTitle: lang === 'es' ? 'Entrenamiento de competición' : 'Competition training' }) %>
+
+<div class="container--narrow">
+
+  <div class="page-header">
+    <div>
+      <a href="/training" class="back-link">← <%= lang === 'es' ? 'Volver' : 'Back' %></a>
+      <h1 class="page-title">🏆 <%= lang === 'es' ? 'Entrenamiento de competición' : 'Competition training' %></h1>
+    </div>
+  </div>
+
+  <form action="/training/competition/start" method="POST" id="compForm">
+
+    <!-- Participants list -->
+    <div class="card" style="margin-bottom:1.25rem">
+      <h3 class="form-label" style="margin-bottom:1rem">
+        <%= lang === 'es' ? 'Participantes' : 'Participants' %>
+      </h3>
+
+      <div id="participantList" style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:1rem">
+        <!-- Filled by JS -->
+      </div>
+
+      <div style="display:flex;gap:.5rem;align-items:center">
+        <input type="text" id="newName" class="form-input"
+          placeholder="<%= lang === 'es' ? 'Nombre del piloto / equipo' : 'Pilot / team name' %>"
+          style="flex:1" maxlength="30">
+        <button type="button" class="btn btn--ghost" onclick="addParticipant()">
+          + <%= lang === 'es' ? 'Añadir' : 'Add' %>
+        </button>
+      </div>
+      <p class="form-hint" style="margin-top:.5rem">
+        <%= lang === 'es'
+          ? 'Los participantes se asignan a los carriles en el orden en que los añades.'
+          : 'Participants are assigned to lanes in the order you add them.' %>
+      </p>
+    </div>
+
+    <!-- Hidden inputs filled by JS -->
+    <div id="hiddenInputs"></div>
+
+    <button type="submit" class="btn btn--primary btn--lg" style="width:100%" id="startBtn" disabled>
+      ▶ <%= lang === 'es' ? 'Preparar sesión' : 'Prepare session' %>
+    </button>
+
+  </form>
+
+</div>
+
+<%- include('../partials/footer') %>
+<script>
+const COLORS = [
+  '#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4',
+  '#ff5722','#607d8b','#795548','#e91e63','#3f51b5','#009688',
+  '#cddc39','#ffc107','#f44336','#673ab7','#03a9f4','#8bc34a',
+];
+let participants = [];
+
+function addParticipant() {
+  const input = document.getElementById('newName');
+  const name  = input.value.trim();
+  if (!name) return;
+  participants.push({ name, color: COLORS[participants.length % COLORS.length] });
+  input.value = '';
+  renderList();
+}
+
+function removeParticipant(i) {
+  participants.splice(i, 1);
+  // Reassign colors in order
+  participants = participants.map((p, idx) => ({ ...p, color: COLORS[idx % COLORS.length] }));
+  renderList();
+}
+
+function renderList() {
+  const list   = document.getElementById('participantList');
+  const hidden = document.getElementById('hiddenInputs');
+  const btn    = document.getElementById('startBtn');
+
+  list.innerHTML = participants.length === 0
+    ? `<p style="color:#6e7681;font-size:.85rem">${'<%= lang === "es" ? "Sin participantes aún." : "No participants yet." %>'}</p>`
+    : participants.map((p, i) => `
+        <div style="display:flex;align-items:center;gap:.75rem;padding:.5rem .75rem;background:#0d1520;border-radius:8px;border:1px solid #21262d">
+          <span style="width:14px;height:14px;border-radius:50%;background:${p.color};flex-shrink:0"></span>
+          <span style="flex:1;font-weight:600">${p.name}</span>
+          <span style="font-size:.75rem;color:#6e7681"><%= lang === 'es' ? 'Carril' : 'Lane' %> ${i + 1}</span>
+          <button type="button" onclick="removeParticipant(${i})" style="background:none;border:none;color:#6e7681;cursor:pointer;font-size:1rem">✕</button>
+        </div>`).join('');
+
+  hidden.innerHTML = participants.map((p, i) =>
+    `<input type="hidden" name="participants[${i}][name]" value="${p.name}">
+     <input type="hidden" name="participants[${i}][color]" value="${p.color}">`
+  ).join('');
+
+  btn.disabled = participants.length < 2;
+}
+
+// Allow Enter to add participant
+document.getElementById('newName').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); addParticipant(); }
+});
+
+renderList();
+</script>

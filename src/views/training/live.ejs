@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= lang === 'es' ? 'Entrenamiento' : 'Training' %> — Slot Timer Pro</title>
+  <title><%= lang === 'es' ? 'Entrenamiento' : 'Training' %> — Voltrace Manager</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
@@ -20,15 +20,30 @@
 
     <div class="training-header__info">
       <div class="tr-title">🎯 <%= lang === 'es' ? 'ENTRENAMIENTO' : 'TRAINING' %></div>
-      <div class="tr-subtitle"><%= lanes.length %> <%= lang === 'es' ? 'carriles activos' : 'active lanes' %></div>
+      <div class="tr-subtitle" id="tr-status">
+        <% if (standby) { %>
+          <span class="tr-standby-badge"><%= lang === 'es' ? '⏳ Esperando GO…' : '⏳ Waiting for GO…' %></span>
+        <% } else { %>
+          <%= lanes.length %> <%= lang === 'es' ? 'carriles activos' : 'active lanes' %>
+        <% } %>
+      </div>
     </div>
 
     <div class="training-header__actions">
-      <form action="/training/stop" method="POST" style="display:inline">
-        <button class="tr-btn tr-btn--stop">■ <%= lang === 'es' ? 'Parar' : 'Stop' %></button>
-      </form>
       <button id="voiceBtn" class="tr-btn tr-btn--voice" onclick="toggleVoice()" title="<%= lang === 'es' ? 'Activar/silenciar voz' : 'Toggle voice' %>">🔊</button>
-      <a href="/training" class="tr-btn tr-btn--back">← <%= lang === 'es' ? 'Volver' : 'Back' %></a>
+      <button id="viewBtn" class="tr-btn tr-btn--view" onclick="toggleView()" title="<%= lang === 'es' ? 'Cambiar vista' : 'Toggle view' %>">⊞</button>
+      <% if (typeof heatNumber !== 'undefined' && heatNumber !== null) { %>
+        <form action="/training/competition/stop" method="POST" style="display:inline"
+          onsubmit="return confirm('<%= lang === 'es' ? '¿Reiniciar sesión? Se perderán todos los datos.' : 'Reset session? All data will be lost.' %>')">
+          <button class="tr-btn tr-btn--reset">↺ <%= lang === 'es' ? 'Reset' : 'Reset' %></button>
+        </form>
+      <% } else { %>
+        <form action="/training/free/reset" method="POST" style="display:inline"
+          onsubmit="return confirm('<%= lang === 'es' ? '¿Reiniciar sesión? Se borrarán los récords.' : 'Reset session? Records will be cleared.' %>')">
+          <button class="tr-btn tr-btn--reset">↺ <%= lang === 'es' ? 'Reset' : 'Reset' %></button>
+        </form>
+      <% } %>
+      <a href="/" class="tr-btn tr-btn--back">← <%= lang === 'es' ? 'Volver' : 'Back' %></a>
     </div>
   </header>
 
@@ -37,8 +52,13 @@
 
   <script>
     const TRAINING_DATA = <%- JSON.stringify({
-      startedAt: startedAt,
-      lanes:     lanes
+      startedAt:      startedAt,
+      durationMs:     durationMs,
+      standby:        standby,
+      heatNumber:     typeof heatNumber !== 'undefined' ? heatNumber : null,
+      isCompetition:  typeof heatNumber !== 'undefined' && heatNumber !== null,
+      sessionRecords: typeof sessionRecords !== 'undefined' ? sessionRecords : {},
+      lanes:          lanes
     }) %>;
     const LANG = "<%= lang %>";
   </script>

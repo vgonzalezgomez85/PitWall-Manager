@@ -28,16 +28,59 @@ SerialService.init(); // start with saved settings (or simulation if not configu
 const TimingService  = require('./services/TimingService');
 const TrainingService = require('./services/TrainingService');
 
+let _pendingGoDurationMs = null;
+
+SerialService.on('race_go', ({ durationMs }) => {
+  _pendingGoDurationMs = durationMs || null;
+  SocketService.emit('race:semaphore');
+});
+
 SerialService.on('race_started', () => {
   if (TimingService.isRunning) return;
-  const setup = TimingService._pendingSetup;
-  if (!setup) { console.log('[DS-300] GO received but no pending manga is set'); return; }
-  TimingService.startManga(setup.manga, setup.race, setup.lanes, setup.teams, setup.drivers);
+
+  let setup = TimingService._pendingSetup;
+
+  // Auto-find first pending manga if none registered (e.g. after server restart)
+  if (!setup) {
+    const Race   = require('./models/Race');
+    const Manga  = require('./models/Manga');
+    const Team   = require('./models/Team');
+    const Driver = require('./models/Driver');
+
+    const races = Race.findAll().filter(r => r.status === 'active');
+    for (const race of races) {
+      const manga = Manga.findFirstPending(race.id);
+      if (manga) {
+        const lanes   = Manga.getLanes(manga.id);
+        const teams   = Team.findByTanda(manga.tanda_id);
+        const drivers = Driver.findByTanda(manga.tanda_id);
+        setup = { manga, race, lanes, teams, drivers };
+        console.log(`[DS-300] Auto-found pending manga ${manga.id} for race ${race.id}`);
+        break;
+      }
+    }
+  }
+
+  if (!setup) { console.log('[DS-300] GO received but no pending manga found'); return; }
+  TimingService.startManga(setup.manga, setup.race, setup.lanes, setup.teams, setup.drivers, _pendingGoDurationMs);
+  _pendingGoDurationMs = null;
   TimingService.clearPendingManga();
 });
 
 SerialService.on('race_stopped', () => {
   if (TimingService.isRunning) TimingService.cancelManga();
+});
+
+SerialService.on('race_finished', () => {
+  if (TimingService.isRunning) TimingService.stopManga(true);
+});
+
+SerialService.on('race_paused', () => {
+  if (TimingService.isRunning) TimingService.pauseManga();
+});
+
+SerialService.on('race_resumed', () => {
+  TimingService.resumeManga();
 });
 
 const PORT = process.env.PORT || 3000;
@@ -81,7 +124,7 @@ module.exports = { app, server };
 
 if (require.main === module) {
   server.listen(PORT, () => {
-    console.log(`\n  Slot Timer Pro running at http://localhost:${PORT}\n`);
+    console.log(`\n  Voltrace Manager running at http://localhost:${PORT}\n`);
     announceBonjour(PORT);
   });
 }
@@ -90,8 +133,8 @@ function announceBonjour(port) {
   try {
     const { Bonjour } = require('bonjour-service');
     const bonjour = new Bonjour();
-    bonjour.publish({ name: 'Slot Timer Pro', type: 'slot-timer-pro', port });
-    console.log(`  [mDNS] Slot Timer Pro announced on local network (port ${port})\n`);
+    bonjour.publish({ name: 'Voltrace Manager', type: 'voltrace-manager', port });
+    console.log(`  [mDNS] Voltrace Manager announced on local network (port ${port})\n`);
     process.on('exit', () => bonjour.destroy());
   } catch (e) {
     console.warn('  [mDNS] Could not start Bonjour:', e.message);

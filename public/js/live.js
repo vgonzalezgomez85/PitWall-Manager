@@ -8,11 +8,59 @@ function formatMs(ms) {
   return `${mins > 0 ? mins + ':' : ''}${String(secs).padStart(mins > 0 ? 2 : 1, '0')}.${String(hundredths).padStart(2, '0')}`;
 }
 
+
+function formatDelta(bestMs, avgMs) {
+  if (bestMs == null || avgMs == null) return '—';
+  const d = avgMs - bestMs;
+  if (d < 0) return '—';
+  return '+' + formatMs(d);
+}
+
 function formatRemaining(ms) {
   const totalSec = Math.ceil(Math.max(0, ms) / 1000);
   const m = Math.floor(totalSec / 60);
   const s = totalSec % 60;
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+// ── View toggle ───────────────────────────────────────────────────────────────
+function toggleView() {
+  if (RACE_DATA.lanes.filter(l => !l.isRest).length > 8) return;
+  const grid = document.getElementById('lanesGrid');
+  const btn  = document.getElementById('viewBtn');
+  const expanded = grid.classList.toggle('live-lanes--expanded');
+  btn.classList.toggle('active', expanded);
+}
+
+// ── Semaphore ─────────────────────────────────────────────────────────────────
+let _semaphoreFallback = null;
+
+function showSemaphore() {
+  if (document.getElementById('semaphore-overlay')) return;
+  const ov = document.createElement('div');
+  ov.id = 'semaphore-overlay';
+  ov.className = 'semaphore-overlay';
+  ov.innerHTML = `<div class="semaphore-panel">${[1,2,3,4,5].map(i =>
+    `<div class="s-light" id="sl${i}"></div>`).join('')}</div>`;
+  document.body.appendChild(ov);
+  [1,2,3,4,5].forEach((n, i) =>
+    setTimeout(() => document.getElementById(`sl${n}`)?.classList.add('lit'), i * 1000)
+  );
+  _semaphoreFallback = setTimeout(() => semaphoreGo(null), 10000);
+}
+
+function semaphoreGo(callback) {
+  if (_semaphoreFallback) { clearTimeout(_semaphoreFallback); _semaphoreFallback = null; }
+  [1,2,3,4,5].forEach(n => {
+    const el = document.getElementById(`sl${n}`);
+    if (!el) return;
+    el.classList.remove('lit');
+    el.classList.add('go');
+  });
+  setTimeout(() => {
+    document.getElementById('semaphore-overlay')?.remove();
+    if (callback) callback();
+  }, 900);
 }
 
 // ── Countdown timer ───────────────────────────────────────────────────────────
@@ -21,10 +69,22 @@ let lastTickAt  = null;
 let timerInt    = null;
 const timerEl   = document.getElementById('raceTimer');
 const statusEl  = document.getElementById('timerStatus');
+let warned60 = false;
+let warned30 = false;
+
+function announceWarning(text) {
+  if (!window.speechSynthesis) return;
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = LANG === 'es' ? 'es-ES' : 'en-US';
+  u.rate = 1;
+  speechSynthesis.speak(u);
+}
 
 function startCountdown(remaining) {
   remainingMs = remaining;
   lastTickAt  = Date.now();
+  warned60 = remaining <= 60000;
+  warned30 = remaining <= 30000;
   if (timerInt) clearInterval(timerInt);
   timerInt = setInterval(() => {
     const now     = Date.now();
@@ -32,6 +92,16 @@ function startCountdown(remaining) {
     lastTickAt    = now;
     remainingMs   = Math.max(0, remainingMs - elapsed);
     timerEl.textContent = formatRemaining(remainingMs);
+
+    if (!warned60 && remainingMs <= 60000) {
+      warned60 = true;
+      announceWarning(LANG === 'es' ? 'Un minuto' : 'One minute');
+    }
+    if (!warned30 && remainingMs <= 30000) {
+      warned30 = true;
+      announceWarning(LANG === 'es' ? 'Treinta segundos' : 'Thirty seconds');
+    }
+
     if (remainingMs <= 0) {
       clearInterval(timerInt);
       timerInt = null;
@@ -45,25 +115,37 @@ const prevLapCountMap = {};
 RACE_DATA.lanes.forEach(l => { prevLapCountMap[l.lane] = l.prevLapCount || 0; });
 function getTotalLaps(lane, lapCount) { return (prevLapCountMap[lane] || 0) + lapCount; }
 
+// Rest lanes for this manga (teams/drivers sitting out)
+const restLanes = RACE_DATA.lanes.filter(l => l.isRest);
+
 // ── Lane cards ────────────────────────────────────────────────────────────────
 const lanesGrid = document.getElementById('lanesGrid');
-const laneLabel = LANG === 'es' ? 'CARRIL' : 'LANE';
+const laneLabel = '';
 
 function buildCard(lane) {
   const card = document.createElement('div');
   card.className = 'lane-card' + (lane.isRest ? ' is-rest' : '');
   card.id = `card-${lane.lane}`;
-  card.style.setProperty('--card-color', lane.isRest ? '#21262d' : lane.color);
+  card.style.setProperty('--card-color', lane.color);
 
   if (lane.isRest) {
-    card.innerHTML = `<div class="lane-card__label">${laneLabel} ${lane.lane}</div>`;
+    const restTotal = lane.prevLapCount || 0;
+    card.innerHTML = `
+      <div class="lane-card__rest-icon">💤</div>
+      <div class="lane-card__rest-name">${lane.name}</div>
+      <div class="lane-card__rest-laps" id="card-rest-laps-${lane.lane}">${restTotal}</div>
+      <div class="lane-card__rest-label">${LANG === 'es' ? 'Descansando' : 'Resting'}</div>`;
     return card;
   }
 
   const initTotal = getTotalLaps(lane.lane, lane.lapCount ?? 0);
   card.innerHTML = `
-    <div class="lane-card__label">${laneLabel} ${lane.lane}</div>
-    <div class="lane-card__name">${lane.name}</div>
+    <div class="lane-card__label"><span class="lane-card__lane-num">${lane.lane}</span></div>
+    <div class="lane-card__name-row">
+      <span class="lane-card__pos" id="card-pos-${lane.lane}"></span>
+      <span class="lane-card__name">${lane.name}</span>
+    </div>
+    <div class="lane-card__driver-row" id="card-driver-${lane.lane}"></div>
     <div class="lane-card__laps" id="card-laps-${lane.lane}">${lane.lapCount ?? 0}</div>
     <div class="lane-card__total-row">
       <span class="lane-card__total-label">${LANG === 'es' ? 'Total carrera' : 'Race total'}</span>
@@ -86,12 +168,19 @@ function buildCard(lane) {
         <span class="lane-card__time-label">${LANG === 'es' ? 'Salidas' : 'Exits'}</span>
         <span class="lane-card__time-val lane-card__time-val--exits" id="card-exits-${lane.lane}">${lane.exitCount ?? 0}</span>
       </div>
+      <div class="lane-card__time-row">
+        <span class="lane-card__time-label">Δ</span>
+        <span class="lane-card__time-val lane-card__time-val--delta" id="card-delta-${lane.lane}">${formatDelta(lane.bestLapMs, lane.avgLapMs)}</span>
+      </div>
     </div>`;
   return card;
 }
 
 function initCards() {
-  RACE_DATA.lanes.forEach(lane => lanesGrid.appendChild(buildCard(lane)));
+  RACE_DATA.lanes.forEach(lane => {
+    lanesGrid.appendChild(buildCard(lane));
+    if (lane.activeDriver) setActiveDriver(lane.lane, lane.activeDriver);
+  });
 }
 
 function updateCard(lane, lapCount, lastLapMs, bestLapMs, avgLapMs, exitCount) {
@@ -101,6 +190,7 @@ function updateCard(lane, lapCount, lastLapMs, bestLapMs, avgLapMs, exitCount) {
   const avgEl   = document.getElementById(`card-avg-${lane}`);
   const totalEl = document.getElementById(`card-total-${lane}`);
   const exitsEl = document.getElementById(`card-exits-${lane}`);
+  const deltaEl = document.getElementById(`card-delta-${lane}`);
   if (lapsEl)  lapsEl.textContent  = lapCount;
   if (lastEl)  lastEl.textContent  = formatMs(lastLapMs);
   if (bestEl)  bestEl.textContent  = formatMs(bestLapMs);
@@ -110,6 +200,7 @@ function updateCard(lane, lapCount, lastLapMs, bestLapMs, avgLapMs, exitCount) {
     exitsEl.textContent = exitCount ?? 0;
     exitsEl.classList.toggle('lane-card__time-val--exits-active', (exitCount ?? 0) > 0);
   }
+  if (deltaEl) deltaEl.textContent = formatDelta(bestLapMs, avgLapMs);
 }
 
 function flashCard(lane, isExit) {
@@ -140,6 +231,11 @@ function sortCards(rows) {
   sorted.forEach((r, i) => {
     const card = document.getElementById(`card-${r.lane}`);
     if (card) card.style.order = i;
+    const posEl = document.getElementById(`card-pos-${r.lane}`);
+    if (posEl) {
+      posEl.textContent = `P${i + 1}`;
+      posEl.className = `lane-card__pos lane-card__pos--${['1','2','3'][i] ?? 'n'}`;
+    }
   });
   // Rest cards go to the end
   RACE_DATA.lanes.filter(l => l.isRest).forEach(l => {
@@ -148,28 +244,87 @@ function sortCards(rows) {
   });
 }
 
+// Tracks previous gap (in total laps) from each lane to the driver ahead
+let prevGapToAhead = {};
+
 function renderStandings(data) {
   if (!data?.standings) return;
+  // Merge active lanes with resting entities (lapCount=0 this manga)
+  const restRows = restLanes.map(l => ({
+    lane: l.lane, name: l.name, color: l.color,
+    lapCount: 0, lastLapMs: null, bestLapMs: null, avgLapMs: null,
+    exitCount: 0, isRest: true, prevLapCount: l.prevLapCount || 0,
+  }));
+
+  const rowTotal = r => r.isRest ? (r.prevLapCount || 0) : getTotalLaps(r.lane, r.lapCount);
+
   // Sort sidebar by total race laps
-  const rows = [...data.standings].sort((a, b) => {
-    const ta = getTotalLaps(a.lane, a.lapCount);
-    const tb = getTotalLaps(b.lane, b.lapCount);
-    return tb - ta || (a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity);
+  const rows = [...data.standings, ...restRows].sort((a, b) =>
+    rowTotal(b) - rowTotal(a) || (a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity)
+  );
+
+  // Compute current gap to the driver immediately ahead for each row
+  const currentGap = {};
+  rows.forEach((r, i) => {
+    if (i === 0) return;
+    currentGap[r.lane] = rowTotal(rows[i-1]) - rowTotal(r);
   });
 
-  standingsBody.innerHTML = rows.map((r, i) => `
+  // Determine arrows: ↑ green if closing to ahead, ↓ red if driver behind is closing
+  const aheadArrow  = {}; // lane → '↑' or ''
+  const behindArrow = {}; // lane → '↓' or ''
+  rows.forEach((r, i) => {
+    // Arrow up: this driver's gap to ahead shrank
+    if (i > 0) {
+      const prev = prevGapToAhead[r.lane];
+      const curr = currentGap[r.lane];
+      aheadArrow[r.lane] = (prev != null && curr < prev) ? '↑' : '';
+    }
+    // Arrow down: the driver behind's gap to us shrank (i.e. they're catching up)
+    if (i < rows.length - 1) {
+      const behindLane = rows[i+1].lane;
+      const prev = prevGapToAhead[behindLane];
+      const curr = currentGap[behindLane];
+      behindArrow[r.lane] = (prev != null && curr < prev) ? '↓' : '';
+    }
+  });
+
+  // Save gaps for next render
+  prevGapToAhead = { ...currentGap };
+
+  standingsBody.innerHTML = rows.map((r, i) => {
+    if (r.isRest) {
+      return `
+      <tr class="srow srow--rest" id="srow-rest-${i}">
+        <td><span class="sr-pos">${i+1}</span></td>
+        <td style="max-width:80px" colspan="2"><span class="sr-name sr-name--rest" title="${r.name}">💤 ${r.name}</span></td>
+        <td class="sr-right">—</td>
+        <td class="sr-right"><span class="sr-total">${r.prevLapCount}</span></td>
+        <td class="sr-right">—</td>
+        <td class="sr-right">—</td>
+        <td class="sr-right">—</td>
+      </tr>`;
+    }
+    const upActive   = !!aheadArrow[r.lane]  && i > 0;
+    const downActive = !!behindArrow[r.lane] && i < rows.length - 1;
+    const arrows = `<span class="sr-arrow-up ${upActive ? 'active' : ''}">${i > 0 ? '↑' : ''}</span><span class="sr-arrow-down ${downActive ? 'active' : ''}">${i < rows.length - 1 ? '↓' : ''}</span>`;
+    return `
     <tr class="srow" id="srow-${r.lane}">
       <td><span class="sr-pos ${posClass(i+1)}">${i+1}</span></td>
       <td style="max-width:80px"><span class="sr-name" title="${r.name}">${r.name}</span></td>
+      <td class="sr-arrows">${arrows}</td>
       <td class="sr-right"><span class="sr-laps">${r.lapCount}</span></td>
       <td class="sr-right"><span class="sr-total">${getTotalLaps(r.lane, r.lapCount)}</span></td>
       <td class="sr-right"><span class="sr-best">${formatMs(r.bestLapMs)}</span></td>
       <td class="sr-right"><span class="sr-avg">${formatMs(r.avgLapMs)}</span></td>
-    </tr>`).join('');
+      <td class="sr-right"><span class="sr-delta">${formatDelta(r.bestLapMs, r.avgLapMs)}</span></td>
+    </tr>`;
+  }).join('');
 
   data.standings.forEach(r => updateCard(r.lane, r.lapCount, r.lastLapMs, r.bestLapMs, r.avgLapMs, r.exitCount));
   sortCards(data.standings);
 
+  updateRaceBestLaps(data.raceBestLaps);
   renderProjected(data);
 }
 
@@ -194,7 +349,53 @@ function renderProjected(data) {
       <td style="max-width:80px"><span class="sr-name" title="${r.name}">${r.name}</span></td>
       <td class="sr-right"><span class="sr-proj">${r.projectedTotal}</span></td>
       <td class="sr-right"><span class="sr-ontrack">${r.total}</span></td>
+      <td class="sr-right"><span class="sr-avg">${formatMs(r.avgLapMs)}</span></td>
     </tr>`).join('');
+}
+
+// ── Best laps panel ──────────────────────────────────────────────────────────
+const bestLapsBody = document.getElementById('bestLapsBody');
+let   _raceBestLaps = { ...(RACE_DATA.raceBestLaps || {}) };
+
+function renderBestLaps() {
+  const rows = RACE_DATA.lanes
+    .filter(l => !l.isRest)
+    .map(l => ({
+      lane:       l.lane,
+      color:      l.color,
+      name:       l.name,
+      bestLapMs:  (_raceBestLaps[l.lane]?.bestLapMs) ?? null,
+      entityName: (_raceBestLaps[l.lane]?.entityName) ?? null,
+    }))
+    .filter(r => r.bestLapMs != null)
+    .sort((a, b) => a.bestLapMs - b.bestLapMs);
+
+  if (!bestLapsBody) return;
+  if (rows.length === 0) { bestLapsBody.innerHTML = ''; return; }
+
+  const fastest = rows[0].bestLapMs;
+  bestLapsBody.innerHTML = rows.map((r, i) => {
+    const cls = i === 0 ? 'best-lap-row--gold' : '';
+    const dot = `<span class="ticker-dot" style="background:${r.color};display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;font-size:10px;color:#fff;font-weight:700">${r.lane}</span>`;
+    return `<tr class="srow best-lap-row ${cls}">
+      <td class="sr-center">${dot}</td>
+      <td style="max-width:90px"><span class="sr-name" title="${r.entityName || r.name}">${r.entityName || r.name}</span></td>
+      <td class="sr-right"><span class="sr-best" style="${i===0?'color:#ffd700;font-weight:700':''}">${formatMs(r.bestLapMs)}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function updateRaceBestLaps(raceBestLaps) {
+  if (!raceBestLaps) return;
+  let changed = false;
+  Object.entries(raceBestLaps).forEach(([lane, info]) => {
+    const prev = _raceBestLaps[lane];
+    if (!prev || info.bestLapMs < prev.bestLapMs) {
+      _raceBestLaps[lane] = info;
+      changed = true;
+    }
+  });
+  if (changed) renderBestLaps();
 }
 
 // ── Lap ticker ────────────────────────────────────────────────────────────────
@@ -219,9 +420,20 @@ function addTick(lap) {
 // ── Initialize ────────────────────────────────────────────────────────────────
 initCards();
 
+// Default view: expanded for ≤8 lanes; hide button for >8
+if (RACE_DATA.lanes.filter(l => !l.isRest).length <= 8) {
+  lanesGrid.classList.add('live-lanes--expanded');
+  document.getElementById('viewBtn')?.classList.add('active');
+} else {
+  document.getElementById('viewBtn')?.style.setProperty('display', 'none');
+}
+
 if (RACE_DATA.standings) {
   renderStandings(RACE_DATA.standings);
+  renderBestLaps();
   if (RACE_DATA.standings.remainingMs != null) {
+    if (RACE_DATA.standings.elapsedMs != null)
+      RACE_DATA.durationMs = RACE_DATA.standings.remainingMs + RACE_DATA.standings.elapsedMs;
     startCountdown(RACE_DATA.standings.remainingMs);
   }
 } else {
@@ -238,6 +450,7 @@ if (RACE_DATA.standings) {
     elapsedMs: 0, remainingMs: 0
   };
   if (initialData.standings.length > 0) renderStandings(initialData);
+  renderBestLaps();
 }
 
 // ── Voice announcements ───────────────────────────────────────────────────────
@@ -293,8 +506,13 @@ if (RACE_DATA.isActive || RACE_DATA.mangaStatus === 'pending') {
 
     socket.on('standings', (data) => {
       renderStandings(data);
-      if (data.remainingMs != null && timerInt && lastTickAt) {
-        remainingMs = data.remainingMs;
+      if (data.remainingMs != null) {
+        if (data.elapsedMs != null) RACE_DATA.durationMs = data.remainingMs + data.elapsedMs;
+        if (!timerInt) {
+          startCountdown(data.remainingMs);
+        } else if (lastTickAt) {
+          remainingMs = data.remainingMs;
+        }
       }
     });
 
@@ -313,12 +531,15 @@ if (RACE_DATA.isActive || RACE_DATA.mangaStatus === 'pending') {
     });
 
     socket.on('tick', ({ elapsedMs }) => {
+      // durationMs is set from standings data; this fires only if standings was missed
       if (timerInt === null && RACE_DATA.durationMs) {
         startCountdown(RACE_DATA.durationMs - elapsedMs);
       }
     });
 
     socket.on('manga:stopped', (data) => {
+      if (data?.mangaId && data.mangaId !== RACE_DATA.mangaId) return;
+      RACE_DATA.isActive = false;
       if (timerInt) { clearInterval(timerInt); timerInt = null; }
       statusEl.innerHTML = `<span class="status-text status-text--finished">${LANG === 'es' ? 'Finalizada' : 'Finished'}</span>`;
       timerEl.textContent = '00:00';
@@ -331,38 +552,186 @@ if (RACE_DATA.isActive || RACE_DATA.mangaStatus === 'pending') {
           const existing = card.querySelector('.next-lane-badge');
           if (existing) existing.remove();
           const badge = document.createElement('div');
-          badge.className = 'next-lane-badge';
-          badge.innerHTML = `<span class="next-lane-arrow">→</span> ${LANG === 'es' ? 'Carril' : 'Lane'} <strong>${nextLane}</strong>`;
+          badge.className = nextLane === 'rest' ? 'next-lane-badge next-lane-badge--rest' : 'next-lane-badge';
+          badge.innerHTML = nextLane === 'rest'
+            ? `<span class="next-lane-arrow">→</span> <strong>${LANG === 'es' ? 'Descanso' : 'Rest'}</strong>`
+            : `<span class="next-lane-arrow">→</span> ${LANG === 'es' ? 'Carril' : 'Lane'} <strong>${nextLane}</strong>`;
           card.appendChild(badge);
         });
 
-        // Show banner inviting to press GO
-        const grid = document.getElementById('lanesGrid');
-        const banner = document.createElement('div');
-        banner.id = 'next-manga-banner';
-        banner.className = 'next-manga-banner';
-        banner.textContent = LANG === 'es'
-          ? '▶ Siguiente manga preparada — pulsa GO para iniciar'
-          : '▶ Next heat ready — press GO to start';
-        grid.parentNode.insertBefore(banner, grid);
       }
     });
 
     socket.on('manga:cancelled', (data) => {
+      RACE_DATA.isActive = false;
       if (!data.mangaId || data.mangaId === RACE_DATA.mangaId) {
         location.reload();
       }
     });
+
+    socket.on('manga:paused', () => {
+      if (timerInt) { clearInterval(timerInt); timerInt = null; }
+      let ov = document.getElementById('pause-overlay');
+      if (!ov) {
+        ov = document.createElement('div');
+        ov.id = 'pause-overlay';
+        ov.className = 'pause-overlay';
+        ov.textContent = LANG === 'es' ? '⏸ PAUSA' : '⏸ PAUSED';
+        document.body.appendChild(ov);
+      }
+    });
+
+    socket.on('manga:resumed', () => {
+      document.getElementById('pause-overlay')?.remove();
+    });
   }
+
+  socket.on('race:semaphore', () => showSemaphore());
+
+  // ── Driver check-in ────────────────────────────────────────────────────────
+  socket.on('driver_checkin', ({ lane, driverName }) => {
+    setActiveDriver(lane, driverName);
+  });
 
   // Navigate to next manga when DS hardware GO starts it after current finished
   socket.on('manga:started', (data) => {
-    if (RACE_DATA.isActive) return; // current manga still active, ignore
+    if (RACE_DATA.isActive) return;
     if (data.mangaId && data.mangaId !== RACE_DATA.mangaId) {
-      // A new manga started — navigate to its live page
-      location.href = `/races/${RACE_DATA.raceId}/mangas/${data.mangaId}/live`;
+      semaphoreGo(() => { location.href = `/races/${RACE_DATA.raceId}/mangas/${data.mangaId}/live`; });
     } else {
-      location.reload();
+      semaphoreGo(() => location.reload());
     }
   });
+}
+
+// ── Driver check-in helpers ───────────────────────────────────────────────────
+function setActiveDriver(lane, driverName) {
+  const el = document.getElementById(`card-driver-${lane}`);
+  if (!el) return;
+  if (driverName) {
+    el.innerHTML = `<span class="lane-card__driver-name">👤 ${driverName}</span>`;
+    el.classList.add('lane-card__driver-row--active');
+    // Flash animation
+    const card = document.getElementById(`card-${lane}`);
+    if (card) { card.classList.add('card-checkin-flash'); setTimeout(() => card.classList.remove('card-checkin-flash'), 800); }
+  } else {
+    el.innerHTML = '';
+    el.classList.remove('lane-card__driver-row--active');
+  }
+}
+
+// ── QR scanner input (USB reader acts as keyboard + Enter) ────────────────────
+if (RACE_DATA.isTeam && RACE_DATA.hasQrCheckin) {
+  const qrBuffer  = { value: '', timer: null };
+  const QR_TIMEOUT = 80; // ms between keystrokes — scanner is faster than human
+
+  document.addEventListener('keydown', e => {
+    // Ignore if focus is on an interactive element (manual override inputs)
+    const tag = document.activeElement?.tagName;
+    if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+
+    if (e.key === 'Enter') {
+      const code = qrBuffer.value.trim();
+      qrBuffer.value = '';
+      if (code.startsWith('DRV:')) submitQR(code);
+      return;
+    }
+
+    if (e.key.length === 1) {
+      qrBuffer.value += e.key;
+      clearTimeout(qrBuffer.timer);
+      qrBuffer.timer = setTimeout(() => { qrBuffer.value = ''; }, 500);
+    }
+  });
+
+  async function submitQR(qrCode) {
+    try {
+      const r = await fetch(`/races/${RACE_DATA.raceId}/mangas/${RACE_DATA.mangaId}/checkin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ qr_code: qrCode }),
+      });
+      const data = await r.json();
+      if (!data.ok) {
+        showCheckinToast(data.error === 'driver_not_in_manga'
+          ? (LANG === 'es' ? 'Piloto no asignado a esta manga' : 'Driver not in this heat')
+          : (LANG === 'es' ? 'QR no reconocido' : 'Unknown QR'), 'error');
+      }
+    } catch { /* ignore network errors */ }
+  }
+
+  function showCheckinToast(msg, type = 'ok') {
+    let toast = document.getElementById('checkin-toast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'checkin-toast';
+      toast.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);padding:.6rem 1.25rem;border-radius:8px;font-size:.9rem;font-weight:600;z-index:500;transition:opacity .3s;pointer-events:none';
+      document.body.appendChild(toast);
+    }
+    toast.textContent = msg;
+    toast.style.background = type === 'error' ? '#b91c1c' : '#166534';
+    toast.style.color = '#fff';
+    toast.style.opacity = '1';
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => { toast.style.opacity = '0'; }, 2500);
+  }
+}
+
+// ── Manual override popup ─────────────────────────────────────────────────────
+if (RACE_DATA.isTeam && RACE_DATA.hasQrCheckin) {
+  const lanesGrid = document.getElementById('lanesGrid');
+
+  lanesGrid.addEventListener('click', e => {
+    const card = e.target.closest('.lane-card:not(.is-rest)');
+    if (!card) return;
+    const lane = parseInt(card.id.replace('card-', ''));
+    openManualOverride(lane);
+  });
+
+  function openManualOverride(lane) {
+    const existing = document.getElementById('manual-override-popup');
+    if (existing) existing.remove();
+
+    // Get team members for this lane
+    const laneData = RACE_DATA.lanes.find(l => l.lane === lane);
+    if (!laneData || !laneData.teamMembers?.length) return;
+
+    const popup = document.createElement('div');
+    popup.id = 'manual-override-popup';
+    popup.style.cssText = 'position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center';
+
+    const members = laneData.teamMembers.map(m =>
+      `<button class="btn btn--ghost" style="width:100%;text-align:left;padding:.6rem .75rem;font-size:1rem"
+               data-driver-id="${m.id}" data-driver-name="${m.name}">
+         👤 ${m.name}
+       </button>`
+    ).join('');
+
+    popup.innerHTML = `
+      <div style="background:#161b22;border:1px solid #30363d;border-radius:10px;padding:1.25rem;min-width:260px;max-width:90vw">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+          <strong style="color:#e6edf3">${LANG === 'es' ? 'Piloto en carril' : 'Driver in lane'} ${lane}</strong>
+          <button id="closeOverride" class="btn btn--ghost btn--sm">✕</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:.4rem">${members}</div>
+      </div>`;
+
+    document.body.appendChild(popup);
+    popup.querySelector('#closeOverride').addEventListener('click', () => popup.remove());
+    popup.addEventListener('click', e => { if (e.target === popup) popup.remove(); });
+
+    popup.querySelectorAll('[data-driver-id]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const driverId   = btn.dataset.driverId;
+        const driverName = btn.dataset.driverName;
+        popup.remove();
+        await fetch(`/races/${RACE_DATA.raceId}/mangas/${RACE_DATA.mangaId}/checkin`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lane, driver_id: driverId }),
+        });
+        setActiveDriver(lane, driverName);
+      });
+    });
+  }
 }
