@@ -1,10 +1,43 @@
   </main>
-  <footer class="footer">
-    <span>Voltrace Manager &copy; <%= new Date().getFullYear() %></span>
-    <span class="footer-sep">·</span>
-    <span>Slot car race management and timing</span>
-    <span class="footer-sep">·</span>
-    <a href="/eula" class="footer-link"><%= typeof lang !== 'undefined' && lang === 'en' ? 'Terms of Use' : 'Términos de uso' %></a>
+  <footer class="footer footer--status">
+
+    <!-- Status indicators -->
+    <div class="footer-status">
+      <% if (typeof tier !== 'undefined') { %>
+        <a href="/license" class="footer-pill footer-pill--tier tier--<%= tier %>" title="<%= lang === 'es' ? 'Licencia' : 'License' %>">
+          <%= tier.toUpperCase() %>
+        </a>
+      <% } %>
+
+      <% if (typeof serialStatus !== 'undefined') { %>
+        <a href="/settings" class="footer-pill footer-pill--serial" title="<%= lang === 'es' ? 'Estado de puertos serie' : 'Serial port status' %>">
+          <% if (serialStatus.simulating) { %>
+            <span class="status-dot status-dot--sim"></span><%= lang === 'es' ? 'Simulación' : 'Simulation' %>
+          <% } else if (serialStatus.ports && serialStatus.ports.length > 0) { %>
+            <span class="status-dot status-dot--ok"></span>
+            DS-300 ×<%= serialStatus.ports.length %>
+            <span class="footer-pill__detail">
+              <%= serialStatus.ports.map(p => (p.split('/').pop())).join(' · ') %>
+            </span>
+          <% } else { %>
+            <span class="status-dot status-dot--off"></span><%= lang === 'es' ? 'Sin conexión' : 'Disconnected' %>
+          <% } %>
+        </a>
+      <% } %>
+
+      <div class="footer-langs">
+        <a href="?lang=es" class="lang-btn <%= typeof lang !== 'undefined' && lang === 'es' ? 'active' : '' %>">ES</a>
+        <a href="?lang=en" class="lang-btn <%= typeof lang !== 'undefined' && lang === 'en' ? 'active' : '' %>">EN</a>
+      </div>
+    </div>
+
+    <!-- Copyright + legal -->
+    <div class="footer-info">
+      <span>Voltrace Manager &copy; <%= new Date().getFullYear() %></span>
+      <span class="footer-sep">·</span>
+      <a href="/eula" class="footer-link"><%= typeof lang !== 'undefined' && lang === 'en' ? 'Terms of Use' : 'Términos de uso' %></a>
+    </div>
+
   </footer>
   <script src="/js/app.js"></script>
 </body>

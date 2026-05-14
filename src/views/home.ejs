@@ -1,13 +1,26 @@
 <%- include('partials/header', { lang, pageTitle: lang === 'es' ? 'Inicio' : 'Home' }) %>
 
-<div style="display:flex;flex-direction:column;align-items:center;padding:3rem 2rem">
+<div class="home-wrapper">
 
-  <div style="text-align:center;margin-bottom:3rem">
-    <h1 class="page-title" style="font-size:2.5rem">Voltrace Manager</h1>
-    <p class="page-subtitle"><%= lang === 'es' ? 'Selecciona un módulo para comenzar.' : 'Select a module to get started.' %></p>
+  <!-- Top row: las dos tarjetas principales -->
+  <div class="home-grid home-grid--top">
+
+    <a href="/training" class="home-card home-card--hero">
+      <div class="home-card__icon">⏱️</div>
+      <div class="home-card__title"><%= lang === 'es' ? 'Entrenamientos' : 'Training' %></div>
+      <div class="home-card__desc"><%= lang === 'es' ? 'Sesiones de entrenamiento libre o de competición.' : 'Free or competition training sessions.' %></div>
+    </a>
+
+    <a href="/races" class="home-card home-card--hero">
+      <div class="home-card__icon">🚦</div>
+      <div class="home-card__title"><%= lang === 'es' ? 'Carreras' : 'Races' %></div>
+      <div class="home-card__desc"><%= lang === 'es' ? 'Gestiona y controla tus carreras en tiempo real.' : 'Manage and control your races in real time.' %></div>
+    </a>
+
   </div>
 
-  <div class="home-grid">
+  <!-- Bottom row: resto de módulos en grid de 3 -->
+  <div class="home-grid home-grid--bottom">
 
     <a href="/drivers" class="home-card">
       <div class="home-card__icon">👥</div>
@@ -36,31 +49,15 @@
     <a href="/circuits" class="home-card">
       <div class="home-card__icon">
         <svg viewBox="0 0 64 40" width="48" height="30" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <!-- outer track -->
           <rect x="2" y="2" width="60" height="36" rx="10" ry="10" stroke="#8b949e" stroke-width="3" fill="none"/>
-          <!-- inner cutout -->
           <rect x="10" y="10" width="44" height="20" rx="6" ry="6" stroke="#8b949e" stroke-width="2.5" fill="none"/>
-          <!-- chicane left -->
           <line x1="10" y1="20" x2="16" y2="14" stroke="#f6c90e" stroke-width="2" stroke-linecap="round"/>
           <line x1="16" y1="14" x2="22" y2="20" stroke="#f6c90e" stroke-width="2" stroke-linecap="round"/>
-          <!-- start/finish line -->
           <line x1="32" y1="2" x2="32" y2="10" stroke="#e63946" stroke-width="2.5" stroke-linecap="round"/>
         </svg>
       </div>
       <div class="home-card__title"><%= lang === 'es' ? 'Circuitos' : 'Circuits' %></div>
       <div class="home-card__desc"><%= lang === 'es' ? 'Define los circuitos y su configuración de carriles.' : 'Define circuits and their lane configuration.' %></div>
-    </a>
-
-    <a href="/training" class="home-card">
-      <div class="home-card__icon">⏱️</div>
-      <div class="home-card__title"><%= lang === 'es' ? 'Entrenamientos' : 'Training' %></div>
-      <div class="home-card__desc"><%= lang === 'es' ? 'Sesiones de entrenamiento libre o de competición.' : 'Free or competition training sessions.' %></div>
-    </a>
-
-    <a href="/races" class="home-card">
-      <div class="home-card__icon">🚦</div>
-      <div class="home-card__title"><%= lang === 'es' ? 'Carrera' : 'Race' %></div>
-      <div class="home-card__desc"><%= lang === 'es' ? 'Gestiona y controla tus carreras en tiempo real.' : 'Manage and control your races in real time.' %></div>
     </a>
 
     <a href="/settings" class="home-card">

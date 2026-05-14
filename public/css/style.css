@@ -39,6 +39,9 @@ input, button, select { font-family: inherit; }
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
 }
+.navbar--slim { padding: .55rem 1.4rem; }
+.navbar--slim .brand { font-size: 1.2rem; gap: .5rem; }
+.navbar--slim .brand-flag { width: 20px; height: 20px; }
 .brand {
   display: flex; align-items: center; gap: .6rem;
   font-family: var(--font-race); font-size: 1.7rem; font-weight: 700;
@@ -79,6 +82,42 @@ input, button, select { font-family: inherit; }
   display: flex; justify-content: center; gap: .5rem;
 }
 .footer-sep { color: var(--border); }
+
+/* Footer with status indicators */
+.footer--status {
+  flex-direction: column; gap: .55rem;
+  padding: .65rem 1.4rem .7rem;
+}
+.footer-status {
+  display: flex; align-items: center; justify-content: center;
+  gap: .5rem; flex-wrap: wrap;
+}
+.footer-info {
+  display: flex; align-items: center; justify-content: center; gap: .5rem;
+  font-size: .75rem; color: var(--text-sub);
+}
+.footer-pill {
+  display: inline-flex; align-items: center; gap: .4rem;
+  padding: .25rem .65rem; border-radius: 20px;
+  font-size: .75rem; font-weight: 600;
+  background: #161b22; color: #c9d1d9;
+  border: 1px solid #21262d;
+  text-decoration: none; transition: border-color .15s, background .15s;
+}
+.footer-pill:hover { border-color: #30363d; background: #1c2128; text-decoration: none; }
+.footer-pill__detail { color: #6e7681; font-weight: 400; font-family: 'Share Tech Mono', monospace; font-size: .7rem; }
+.footer-pill--tier.tier--pro    { background: linear-gradient(90deg, #5e2c8a22, #a371f722); border-color: #6e40c9; color: #d2a8ff; }
+.footer-pill--tier.tier--basic  { color: #8b949e; }
+.footer-pill--serial { color: #c9d1d9; }
+.status-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  display: inline-block;
+}
+.status-dot--ok  { background: #3fb950; box-shadow: 0 0 6px #3fb950; }
+.status-dot--sim { background: #f6c90e; box-shadow: 0 0 6px #f6c90e; }
+.status-dot--off { background: #6e7681; }
+.footer-langs { display: flex; gap: .15rem; }
+.footer-langs .lang-btn { padding: .2rem .5rem; font-size: .7rem; }
 
 /* ── Page header ───────────────────────────────────────────────────────── */
 .page-header {
@@ -975,13 +1014,34 @@ input, button, select { font-family: inherit; }
 .training-mode-card__desc  { font-size: .88rem; color: #8b949e; line-height: 1.5; }
 
 /* ── Home dashboard ──────────────────────────────────────────────────────── */
+.home-wrapper {
+  display: flex; flex-direction: column; gap: 1.25rem;
+  width: 100%; max-width: 1100px; margin: 0 auto;
+  padding: 2rem 1.5rem;
+  box-sizing: border-box;
+}
 .home-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 1.25rem;
   width: 100%;
-  max-width: 900px;
 }
+.home-grid--top    { grid-template-columns: repeat(2, 1fr); }
+.home-grid--bottom { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 720px) {
+  .home-grid--top    { grid-template-columns: 1fr; }
+  .home-grid--bottom { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 460px) {
+  .home-grid--bottom { grid-template-columns: 1fr; }
+}
+/* Hero cards (Entrenamientos / Carreras) — más grandes */
+.home-card--hero {
+  padding: 2.5rem 2rem; min-height: 180px;
+  border-color: #30363d;
+}
+.home-card--hero .home-card__icon  { font-size: 3rem; }
+.home-card--hero .home-card__title { font-size: 1.7rem; }
+.home-card--hero .home-card__desc  { font-size: .95rem; }
 .home-card {
   background: #0d1520;
   border: 2px solid #21262d;
