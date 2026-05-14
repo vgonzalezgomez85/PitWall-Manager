@@ -9,18 +9,6 @@
 
   <div class="home-grid">
 
-    <a href="/races" class="home-card">
-      <div class="home-card__icon">🚦</div>
-      <div class="home-card__title"><%= lang === 'es' ? 'Carreras' : 'Races' %></div>
-      <div class="home-card__desc"><%= lang === 'es' ? 'Gestiona y controla tus carreras en tiempo real.' : 'Manage and control your races in real time.' %></div>
-    </a>
-
-    <a href="/training" class="home-card">
-      <div class="home-card__icon">⏱️</div>
-      <div class="home-card__title"><%= lang === 'es' ? 'Entrenamiento' : 'Training' %></div>
-      <div class="home-card__desc"><%= lang === 'es' ? 'Sesiones de entrenamiento libre o de competición.' : 'Free or competition training sessions.' %></div>
-    </a>
-
     <a href="/drivers" class="home-card">
       <div class="home-card__icon">👥</div>
       <div class="home-card__title"><%= lang === 'es' ? 'Pilotos' : 'Drivers' %></div>
@@ -31,6 +19,18 @@
       <div class="home-card__icon">🤝</div>
       <div class="home-card__title"><%= lang === 'es' ? 'Equipos' : 'Teams' %></div>
       <div class="home-card__desc"><%= lang === 'es' ? 'Crea y gestiona el catálogo de equipos con sus pilotos.' : 'Create and manage your team catalog with their drivers.' %></div>
+    </a>
+
+    <a href="/categories" class="home-card">
+      <div class="home-card__icon">🏷️</div>
+      <div class="home-card__title"><%= lang === 'es' ? 'Categorías' : 'Categories' %></div>
+      <div class="home-card__desc"><%= lang === 'es' ? 'Gestiona las categorías de carreras y tiempos mínimos.' : 'Manage race categories and minimum times.' %></div>
+    </a>
+
+    <a href="/cars" class="home-card">
+      <div class="home-card__icon">🏎️</div>
+      <div class="home-card__title"><%= lang === 'es' ? 'Coches' : 'Cars' %></div>
+      <div class="home-card__desc"><%= lang === 'es' ? 'Gestiona el catálogo de coches y su categoría.' : 'Manage your car catalog and their category.' %></div>
     </a>
 
     <a href="/circuits" class="home-card">
@@ -51,10 +51,16 @@
       <div class="home-card__desc"><%= lang === 'es' ? 'Define los circuitos y su configuración de carriles.' : 'Define circuits and their lane configuration.' %></div>
     </a>
 
-    <a href="/races/new" class="home-card home-card--accent">
-      <div class="home-card__icon">➕</div>
-      <div class="home-card__title"><%= lang === 'es' ? 'Nueva carrera' : 'New race' %></div>
-      <div class="home-card__desc"><%= lang === 'es' ? 'Crea una nueva carrera y configura las tandas.' : 'Create a new race and set up the heats.' %></div>
+    <a href="/training" class="home-card">
+      <div class="home-card__icon">⏱️</div>
+      <div class="home-card__title"><%= lang === 'es' ? 'Entrenamientos' : 'Training' %></div>
+      <div class="home-card__desc"><%= lang === 'es' ? 'Sesiones de entrenamiento libre o de competición.' : 'Free or competition training sessions.' %></div>
+    </a>
+
+    <a href="/races" class="home-card">
+      <div class="home-card__icon">🚦</div>
+      <div class="home-card__title"><%= lang === 'es' ? 'Carrera' : 'Race' %></div>
+      <div class="home-card__desc"><%= lang === 'es' ? 'Gestiona y controla tus carreras en tiempo real.' : 'Manage and control your races in real time.' %></div>
     </a>
 
     <a href="/settings" class="home-card">

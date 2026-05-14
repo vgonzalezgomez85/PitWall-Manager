@@ -161,12 +161,34 @@ class CircuitConnection {
 
     const laneByte = frame.length >= 11 ? frame[10] : 0;
 
-    // ── GO frame: byte7=0x3e, byte8=0xa1, byte10=minutes duration ─────────────
+    // ── Real DS-300 GO sequence (3 frames, deltas +2500ms / +2953ms from t1):
+    //    Trama 1: byte7=0x3E byte8=0xA1 byte10=BCD(durationMins)  → store duration, latch pending start
+    //    Trama 2: byte7=0x00 byte8=0xA2                            → semaphore step 2 (intermediate)
+    //    Trama 3: byte7=0x00 byte8=0xA3                            → current ON, race starts (countdown)
     if (frame.length >= 11 && frame[7] === 0x3e && frame[8] === 0xa1) {
-      const mins = (ds300Byte(frame[9]) ?? 0) * 100 + (ds300Byte(frame[10]) ?? 0);
-      // Emit race_go FIRST so handlers can store durationMs before race_started fires
+      const mins = ds300Byte(frame[10]) ?? 0;
       this._onGoSignal(mins * 60000);
+      this._pendingGoStart = true;
+      if (this._goFallbackTimer) clearTimeout(this._goFallbackTimer);
+      // Fallback: if trama 3 never arrives, start race anyway after 5s
+      this._goFallbackTimer = setTimeout(() => {
+        if (this._pendingGoStart) {
+          this._pendingGoStart = false;
+          this._setRaceState('running');
+        }
+      }, 5000);
+      return;
+    }
+
+    if (this._pendingGoStart && frame.length >= 9 && frame[7] === 0x00 && frame[8] === 0xa3) {
+      this._pendingGoStart = false;
+      if (this._goFallbackTimer) { clearTimeout(this._goFallbackTimer); this._goFallbackTimer = null; }
       this._setRaceState('running');
+      return;
+    }
+
+    // Trama 2 (0xA2) is consumed silently — only relevant for hardware-driven LED panels
+    if (this._pendingGoStart && frame.length >= 9 && frame[7] === 0x00 && frame[8] === 0xa2) {
       return;
     }
 

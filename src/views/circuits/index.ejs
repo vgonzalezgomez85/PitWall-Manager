@@ -25,19 +25,29 @@
         <thead>
           <tr>
             <th><%= lang === 'es' ? 'Nombre' : 'Name' %></th>
-            <th><%= lang === 'es' ? 'Circuitos' : 'Sub-circuits' %></th>
-            <th><%= lang === 'es' ? 'Carriles' : 'Lanes' %></th>
+            <th><%= lang === 'es' ? 'Sub-circuitos' : 'Sub-circuits' %></th>
+            <th><%= lang === 'es' ? 'Configuración de carriles' : 'Lane configuration' %></th>
+            <th><%= lang === 'es' ? 'Carriles totales' : 'Total lanes' %></th>
             <th><%= lang === 'es' ? 'Vuelta mínima' : 'Min lap' %></th>
+            <th><%= lang === 'es' ? 'Por categoría' : 'Per category' %></th>
             <th><%= lang === 'es' ? 'Notas' : 'Notes' %></th>
+            <th><%= lang === 'es' ? 'Creado' : 'Created' %></th>
             <th></th>
           </tr>
         </thead>
         <tbody>
-          <% circuits.forEach(c => { %>
+          <% circuits.forEach(c => {
+            let cfg = [];
+            try { cfg = JSON.parse(c.circuits_config || '[]'); } catch {}
+            if (!Array.isArray(cfg) || cfg.length === 0) cfg = [c.lanes_count];
+            const cfgLabel = cfg.join(' + ');
+            const created = c.created_at ? new Date(c.created_at.replace(' ', 'T') + 'Z').toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US') : '—';
+          %>
             <tr>
               <td style="font-weight:600"><%= c.name %></td>
               <td style="font-family:monospace"><%= c.circuits_count %></td>
-              <td style="font-family:monospace"><%= c.lanes_count %></td>
+              <td style="font-family:monospace; color:#58a6ff"><%= cfgLabel %></td>
+              <td style="font-family:monospace; font-weight:600"><%= c.lanes_count %></td>
               <td style="font-family:monospace">
                 <% if (c.min_lap_ms > 0) { %>
                   <span style="color:#4caf50;font-weight:600"><%= (c.min_lap_ms / 1000).toFixed(2) %>s</span>
@@ -45,7 +55,22 @@
                   <span style="color:var(--text-muted)">—</span>
                 <% } %>
               </td>
+              <td style="font-size:.85rem">
+                <% if (c.category_times && c.category_times.length > 0) { %>
+                  <div style="display:flex;flex-wrap:wrap;gap:.3rem">
+                    <% c.category_times.forEach(ct => { %>
+                      <span style="background:#161b22;border:1px solid #21262d;border-radius:4px;padding:.15rem .4rem;font-family:monospace">
+                        <span style="color:#8b949e"><%= ct.category_name %>:</span>
+                        <span style="color:#58a6ff;font-weight:600"><%= (ct.min_lap_ms / 1000).toFixed(2) %>s</span>
+                      </span>
+                    <% }) %>
+                  </div>
+                <% } else { %>
+                  <span style="color:var(--text-muted)">—</span>
+                <% } %>
+              </td>
               <td style="color:var(--text-muted);font-size:.85rem"><%= c.description || '—' %></td>
+              <td style="color:var(--text-muted);font-size:.85rem"><%= created %></td>
               <td>
                 <div style="display:flex;gap:.4rem;justify-content:flex-end">
                   <a href="/circuits/<%= c.id %>/edit" class="btn btn--ghost btn--sm">

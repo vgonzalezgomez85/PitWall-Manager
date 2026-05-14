@@ -1,0 +1,80 @@
+<%- include('../partials/header-compact', { lang, pageTitle: typeof pageTitle !== 'undefined' ? pageTitle : '' }) %>
+
+<div class="container--narrow">
+
+  <div class="page-header">
+    <div>
+      <a href="/cars" class="back-link">← <%= lang === 'es' ? 'Volver' : 'Back' %></a>
+      <h1 class="page-title">
+        <% if (car) { %>
+          ✏️ <%= lang === 'es' ? 'Editar coche' : 'Edit car' %>
+        <% } else { %>
+          ➕ <%= lang === 'es' ? 'Nuevo coche' : 'New car' %>
+        <% } %>
+      </h1>
+    </div>
+  </div>
+
+  <% if (error) { %>
+    <div class="card" style="background:#3d1f1f;border:1px solid var(--red);margin-bottom:1rem;padding:1rem;border-radius:8px">
+      <p style="color:var(--red);margin:0"><strong>⚠️ <%= lang === 'es' ? 'Error' : 'Error' %></strong></p>
+      <p style="color:var(--red);margin:.5rem 0 0;font-size:.9rem"><%= error %></p>
+    </div>
+  <% } %>
+
+  <form action="<% if (car) { %>/cars/<%= car.id %><% } else { %>/cars<% } %>" method="POST" class="card">
+    <div class="form-group">
+      <label class="form-label"><%= lang === 'es' ? 'Marca' : 'Brand' %> *</label>
+      <input type="text" id="brand" name="brand" class="form-input" maxlength="50" list="brandList"
+        value="<%= car?.brand || '' %>" required autofocus>
+      <datalist id="brandList">
+        <% brands.forEach(b => { %>
+          <option value="<%= b %>">
+        <% }) %>
+      </datalist>
+      <p class="form-hint"><%= lang === 'es' ? 'Ej: Slot.it, NSR, Scaleauto' : 'E.g: Slot.it, NSR, Scaleauto' %></p>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label"><%= lang === 'es' ? 'Modelo' : 'Model' %> *</label>
+      <input type="text" name="model" class="form-input" maxlength="100"
+        value="<%= car?.model || '' %>" required>
+      <p class="form-hint"><%= lang === 'es' ? 'Ej: Ferrari 360 GTC, Porsche 911 GT2' : 'E.g: Ferrari 360 GTC, Porsche 911 GT2' %></p>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label"><%= lang === 'es' ? 'Categoría' : 'Category' %> *</label>
+      <input type="text" id="category" name="category_name" class="form-input" maxlength="100" list="categoryList"
+        value="<%= car?.category_name || '' %>" required>
+      <datalist id="categoryList">
+        <% categories.forEach(cat => { %>
+          <option value="<%= cat.name %>">
+        <% }) %>
+      </datalist>
+      <p class="form-hint"><%= lang === 'es' ? 'Categoría a la que pertenece este coche. Escribe el nombre o selecciona una existente.' : 'Category this car belongs to. Type a name or select an existing one.' %></p>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label"><%= lang === 'es' ? 'Descripción' : 'Description' %></label>
+      <textarea name="description" class="form-input" rows="3" maxlength="200"
+        placeholder="<%= lang === 'es' ? 'Descripción opcional...' : 'Optional description...' %>"><%= car?.description || '' %></textarea>
+      <p class="form-hint"><%= lang === 'es' ? 'Información adicional sobre este coche' : 'Additional information about this car' %></p>
+    </div>
+
+    <div style="display:flex;gap:.75rem">
+      <button type="submit" class="btn btn--primary">
+        <% if (car) { %>
+          💾 <%= lang === 'es' ? 'Guardar cambios' : 'Save changes' %>
+        <% } else { %>
+          ➕ <%= lang === 'es' ? 'Crear coche' : 'Create car' %>
+        <% } %>
+      </button>
+      <a href="/cars" class="btn btn--ghost">
+        <%= lang === 'es' ? 'Cancelar' : 'Cancel' %>
+      </a>
+    </div>
+  </form>
+
+</div>
+
+<%- include('../partials/footer') %>

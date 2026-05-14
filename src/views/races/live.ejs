@@ -96,7 +96,8 @@
               <th class="sr-right" title="<%= lang === 'es' ? 'Total vueltas en carrera' : 'Total race laps' %>"><%= lang === 'es' ? 'Total' : 'Total' %></th>
               <th class="sr-right"><%= lang === 'es' ? 'Mejor' : 'Best' %></th>
               <th class="sr-right"><%= lang === 'es' ? 'Media' : 'Avg' %></th>
-              <th class="sr-right" title="<%= lang === 'es' ? 'Diferencia media - vuelta rápida' : 'Avg - best lap delta' %>">Δ</th>
+              <th class="sr-right" style="text-align:right"><%= lang === 'es' ? 'Gap V' : 'Gap L' %></th>
+              <th class="sr-right" style="text-align:right"><%= lang === 'es' ? 'Gap S' : 'Gap S' %></th>
             </tr>
           </thead>
           <tbody id="standingsBody"></tbody>
@@ -113,9 +114,11 @@
             <tr>
               <th style="width:28px">#</th>
               <th><%= lang === 'es' ? 'Participante' : 'Participant' %></th>
-              <th class="sr-right"><%= lang === 'es' ? 'Proyectado' : 'Projected' %></th>
+              <th class="sr-right"><%= lang === 'es' ? 'V estimada' : 'Est. Laps' %></th>
               <th class="sr-right"><%= lang === 'es' ? 'En pista' : 'On track' %></th>
               <th class="sr-right"><%= lang === 'es' ? 'Media' : 'Avg' %></th>
+              <th class="sr-right" style="text-align:right"><%= lang === 'es' ? 'Gap V' : 'Gap L' %></th>
+              <th class="sr-right" style="text-align:right"><%= lang === 'es' ? 'Gap S' : 'Gap S' %></th>
             </tr>
           </thead>
           <tbody id="projectedBody"></tbody>

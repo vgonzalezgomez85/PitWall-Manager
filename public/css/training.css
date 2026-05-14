@@ -53,12 +53,16 @@
 .tr-btn--back  { background: #21262d; color: #8b949e; font-size: .85rem; }
 
 /* ── Cards grid ──────────────────────────────────────────────────────────── */
+/* Una columna por carril, ocupando toda la altura disponible bajo el header. */
 .training-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(clamp(160px, 20vw, 280px), 1fr));
-  gap: clamp(.5rem, 1vw, .9rem);
-  padding: clamp(.5rem, 1vw, 1rem);
-  align-content: start;
+  grid-template-columns: repeat(var(--lanes, 6), minmax(0, 1fr));
+  grid-auto-rows: 1fr;
+  gap: clamp(.4rem, .8vw, .8rem);
+  padding: clamp(.4rem, .8vw, .9rem);
+  height: calc(100vh - 96px); /* header height */
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 /* ── Lane card ───────────────────────────────────────────────────────────── */
@@ -93,23 +97,30 @@
 }
 
 .tr-card__avg-row {
-  display: flex; justify-content: space-between; align-items: center;
+  display: flex; flex-direction: column; gap: .15rem;
   padding: .1rem .9rem .5rem;
 }
-.tr-card__avg-label { font-size: 1rem; color: #6e7681; }
+.tr-card__avg-cell {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: .5rem;
+}
+.tr-card__avg-label { font-size: .9rem; color: #6e7681; flex-shrink: 0; }
 .tr-card__avg-val {
-  font-family: 'Share Tech Mono', monospace; font-size: 1.2rem;
+  font-family: 'Share Tech Mono', monospace; font-size: 1.15rem;
   color: #e6a817; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-align: right;
 }
 
 .tr-card__divider {
   height: 1px; background: #161b22; margin: 0 .9rem;
 }
 
-/* Scrollable lap times list */
+/* Scrollable lap times list — fills the remaining column height */
 .tr-card__laps {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
-  max-height: 240px;
   padding: .4rem .9rem .6rem;
   display: flex; flex-direction: column; gap: .06rem;
 }
@@ -136,9 +147,14 @@
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
   .training-header { height: auto; flex-wrap: wrap; gap: .75rem; padding: .6rem 1rem; }
-  .training-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .training-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    grid-auto-rows: auto;
+    height: auto;
+    overflow: visible;
+  }
   .tr-card__best { font-size: 1.9rem; }
-  .tr-card__laps { max-height: 160px; }
+  .tr-card__laps { flex: 0 0 auto; max-height: 160px; }
 }
 
 /* ── Semaphore overlay ─────────────────────────────────────────────────────── */
@@ -162,6 +178,11 @@
   background: #cc0000;
   box-shadow: 0 0 20px #ff0000, 0 0 50px #cc0000;
   border-color: #ff4444;
+}
+.s-light.go {
+  background: #00c853;
+  box-shadow: 0 0 20px #00ff6a, 0 0 50px #00c853;
+  border-color: #44ff88;
 }
 
 .tr-standby-badge {

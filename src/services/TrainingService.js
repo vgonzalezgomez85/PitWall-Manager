@@ -30,29 +30,35 @@ class TrainingServiceClass {
     this._lanes          = [];
     this._laneData       = new Map();
     this._handler        = null;
-    this._startedAt      = null;
-    this._durationMs     = null;
-    this._sessionRecords = new Map(); // lane → bestMs, persists until reset
+    this._startedAt        = null;
+    this._durationMs       = null;
+    this._pendingDurationMs = null;
+    this._sessionRecords   = new Map(); // lane → bestMs, persists until reset
 
+    // Trama 1 del GO: solo prepara y guarda la duración. La activación (cronómetro)
+    // se difiere hasta race_started (trama 3, t+3134ms) para que la cuenta atrás
+    // comience exactamente cuando la corriente se enciende.
     SerialService.on('race_go', ({ durationMs }) => {
-      if (TimingService._pendingSetup || TimingService.isRunning) return;
-      this._durationMs = durationMs;
+      // Trama 1: guarda duración. No activa todavía — el cronómetro arranca en trama 3.
+      if (this._active) return;
+      this._pendingDurationMs = durationMs;
       this._paused = false;
-      if (this._standby && !this._active) {
-        this._activate();
-      } else if (!this._active && !this._standby) {
+      if (!this._standby) {
         this.prepare(lanesFromSettings());
-        this._activate();
       }
-      SocketService.emit('training:go', { durationMs });
     });
 
     SerialService.on('race_started', () => {
-      if (TimingService._pendingSetup || TimingService.isRunning) return;
+      // Trama 3: activa el cronómetro y emite training:go.
+      if (this._active) return;
       this._paused = false;
-      if (this._standby && !this._active) {
-        this._activate();
+      if (this._pendingDurationMs != null) {
+        this._durationMs = this._pendingDurationMs;
+        this._pendingDurationMs = null;
       }
+      if (!this._standby) this.prepare(lanesFromSettings());
+      this._activate();
+      SocketService.emit('training:go', { durationMs: this._durationMs });
     });
 
     SerialService.on('race_resumed',  () => { this._paused = false; });

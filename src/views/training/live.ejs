@@ -48,7 +48,7 @@
   </header>
 
   <!-- ── Lane cards ────────────────────────────────────────────────────────── -->
-  <div class="training-grid" id="trainingGrid"></div>
+  <div class="training-grid" id="trainingGrid" style="--lanes: <%= lanes.length %>"></div>
 
   <script>
     const TRAINING_DATA = <%- JSON.stringify({

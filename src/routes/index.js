@@ -8,6 +8,8 @@ const DriverProfileController     = require('../controllers/DriverProfileControl
 const PoleController              = require('../controllers/PoleController');
 const LapCorrectionController     = require('../controllers/LapCorrectionController');
 const CircuitController           = require('../controllers/CircuitController');
+const CategoryController          = require('../controllers/CategoryController');
+const CarController               = require('../controllers/CarController');
 const TeamCatalogController       = require('../controllers/TeamCatalogController');
 const TrainingController          = require('../controllers/TrainingController');
 const MobileController            = require('../controllers/MobileController');
@@ -103,6 +105,23 @@ router.post(  '/circuits',            CircuitController.create);
 router.get(   '/circuits/:id/edit',   CircuitController.editForm);
 router.post(  '/circuits/:id',        CircuitController.update);
 router.post(  '/circuits/:id/delete', CircuitController.delete);
+
+// ── Categories ────────────────────────────────────────────────────────────────
+router.get(   '/categories',            CategoryController.index);
+router.get(   '/categories/new',        CategoryController.new);
+router.post(  '/categories',            CategoryController.create);
+router.get(   '/categories/:id/edit',   CategoryController.edit);
+router.post(  '/categories/:id',        CategoryController.update);
+router.post(  '/categories/:id/delete', CategoryController.delete);
+router.post(  '/api/categories',        CategoryController.apiCreate);
+
+// ── Cars ──────────────────────────────────────────────────────────────────────
+router.get(   '/cars',            CarController.index);
+router.get(   '/cars/new',        CarController.new);
+router.post(  '/cars',            CarController.create);
+router.get(   '/cars/:id/edit',   CarController.edit);
+router.post(  '/cars/:id',        CarController.update);
+router.post(  '/cars/:id/delete', CarController.delete);
 
 router.get(   '/teams',            requireModule('teams_catalog'), TeamCatalogController.index);
 router.get(   '/teams/new',        requireModule('teams_catalog'), TeamCatalogController.newForm);
