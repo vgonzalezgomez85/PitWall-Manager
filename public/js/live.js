@@ -663,11 +663,13 @@ function announce(text) {
 }
 
 // ── Socket.io ─────────────────────────────────────────────────────────────────
-if (RACE_DATA.isActive || RACE_DATA.mangaStatus === 'pending') {
+// Always open the socket on the live page (even when the current manga is
+// finished) so the hardware GO can start the next pending manga and navigate
+// here. The server only fires GO when at least one localhost client is on a
+// live page — so we MUST emit race:live:join regardless of manga status.
+{
   const socket = io();
 
-  // Announce we're on the race live page — the server uses this to gate
-  // hardware GO events (only fires if a localhost client is here).
   socket.on('connect', () => socket.emit('race:live:join'));
   window.addEventListener('beforeunload', () => socket.emit('race:live:leave'));
 
