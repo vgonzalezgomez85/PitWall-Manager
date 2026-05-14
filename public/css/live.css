@@ -294,8 +294,10 @@ body.resizing-sidebar * { cursor: col-resize !important; }
 
 /* Sidebar table */
 .sidebar-table {
-  width: 100%; border-collapse: collapse; font-size: .78rem; table-layout: fixed;
+  width: 100%; border-collapse: collapse; font-size: .95rem; table-layout: fixed;
 }
+.sidebar-table thead th { font-size: .72rem; }
+.sidebar-table td { padding: .42rem .6rem; }
 .sidebar-table--auto { table-layout: auto; }
 .sidebar-table--auto th, .sidebar-table--auto td { white-space: nowrap; }
 .sidebar-table--auto td:nth-child(2) { max-width: none; }
@@ -317,8 +319,8 @@ body.resizing-sidebar * { cursor: col-resize !important; }
 
 .sr-pos {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 20px; height: 20px; border-radius: 50%;
-  font-family: 'Rajdhani', sans-serif; font-size: .74rem; font-weight: 700;
+  width: 24px; height: 24px; border-radius: 50%;
+  font-family: 'Rajdhani', sans-serif; font-size: .85rem; font-weight: 700;
 }
 .sr-pos.p1 { background: #f6c90e; color: #0d1117; }
 .sr-pos.p2 { background: #b0b8c0; color: #0d1117; }
@@ -333,11 +335,11 @@ body.resizing-sidebar * { cursor: col-resize !important; }
 .sr-name--rest { color: #8b949e; font-style: italic; }
 .sr-laps    { font-family: 'Share Tech Mono', monospace; color: #f6c90e; font-weight: 700; }
 .sr-total   { font-family: 'Share Tech Mono', monospace; color: #c9d1d9; font-weight: 700; }
-.sr-best    { font-family: 'Share Tech Mono', monospace; color: #58a6ff; font-size: .7rem; }
-.sr-avg     { font-family: 'Share Tech Mono', monospace; color: #e6a817; font-size: .7rem; }
-.sr-delta      { font-family: 'Share Tech Mono', monospace; color: #f97316; font-size: .7rem; }
+.sr-best    { font-family: 'Share Tech Mono', monospace; color: #58a6ff; font-size: .88rem; }
+.sr-avg     { font-family: 'Share Tech Mono', monospace; color: #e6a817; font-size: .88rem; }
+.sr-delta      { font-family: 'Share Tech Mono', monospace; color: #f97316; font-size: .88rem; }
 .sr-center { text-align: center; }
-.sr-arrows              { text-align: center; white-space: nowrap; line-height: 1.1; font-size: .8rem; }
+.sr-arrows              { text-align: center; white-space: nowrap; line-height: 1.1; font-size: .95rem; }
 .sr-arrow-up            { color: #30363d; font-weight: 700; display: block; }
 .sr-arrow-up.good       { color: #3fb950; }   /* closing on the one above */
 .sr-arrow-up.bad        { color: #e63946; }   /* losing distance to the one above */
@@ -345,7 +347,7 @@ body.resizing-sidebar * { cursor: col-resize !important; }
 .sr-arrow-down.bad      { color: #e63946; }   /* the one below is closing in */
 .sr-arrow-down.good     { color: #3fb950; }   /* opening gap on the one below */
 .sr-proj    { font-family: 'Share Tech Mono', monospace; color: #e6edf3; font-weight: 700; }
-.sr-ontrack { font-family: 'Share Tech Mono', monospace; color: #f6c90e; font-size: .7rem; }
+.sr-ontrack { font-family: 'Share Tech Mono', monospace; color: #f6c90e; font-size: .88rem; }
 
 /* ── Best laps panel ────────────────────────────────────────────────────── */
 .best-lap-row--gold { background: rgba(246,201,14,.06) !important; }
