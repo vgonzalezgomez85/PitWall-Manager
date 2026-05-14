@@ -47,6 +47,12 @@ SerialService.on('race_started', () => {
     console.log('[DS-300] STARTED ignored — tanda boundary, waiting for user to start next tanda');
     return;
   }
+  // Race manga only starts when a localhost client is on the live view.
+  // Training keeps working regardless (above autostart emit).
+  if (!SocketService.hasLocalLiveViewer()) {
+    console.log('[DS-300] GO ignored for race — no localhost client on live view');
+    return;
+  }
 
   let setup = TimingService._pendingSetup;
 

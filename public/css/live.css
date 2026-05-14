@@ -88,23 +88,23 @@
   flex: 1; display: flex; min-height: 0; overflow: hidden;
 }
 
-/* ── Lane cards area ─────────────────────────────────────────────────────── */
+/* ── Lane cards area — vista horizontal: una fila por carril ────────────── */
 .live-lanes {
   flex: 1; min-width: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: var(--card-gap, .8rem); padding: var(--card-pad, .9rem);
-  overflow-y: auto; align-content: start;
-  /* order property on children requires grid to respect it */
+  display: flex; flex-direction: column;
+  gap: var(--card-gap, .6rem); padding: var(--card-pad, .8rem);
+  overflow-y: auto;
 }
 .live-lanes > .lane-card { transition: order 0s; }
 
 .lane-card {
   background: #0d1520;
   border: 2px solid var(--card-color, #21262d);
-  border-radius: 10px; padding: 1rem 1.1rem;
+  border-radius: 10px; padding: .8rem 1.2rem;
   position: relative; overflow: hidden;
-  display: flex; flex-direction: column; gap: .3rem;
+  display: grid;
+  grid-template-columns: minmax(180px, 1.4fr) minmax(80px, .8fr) repeat(6, minmax(80px, 1fr));
+  align-items: center; gap: 1rem;
   transition: border-color .3s;
 }
 
@@ -131,8 +131,25 @@
 }
 
 .lane-card__label {
-  font-size: .78rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+  display: inline-flex; align-items: baseline; gap: .5rem;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
   color: var(--card-color, #6e7681);
+  padding: .25rem .8rem;
+  background: rgba(0,0,0,.25);
+  border-radius: 6px;
+  align-self: flex-start;
+}
+.lane-card__track-text {
+  font-size: 1.4rem;
+  letter-spacing: .12em;
+  opacity: .85;
+}
+.lane-card__lane-num {
+  font-size: 2.4rem;
+  font-weight: 800;
+  color: var(--card-color, #e6edf3);
+  line-height: 1;
 }
 .lane-card__name {
   font-size: 1.25rem; font-weight: 600; color: #e6edf3;
@@ -143,29 +160,45 @@
   font-size: 5rem; font-weight: 700; color: #f6c90e;
   line-height: 1; margin: .1rem 0;
 }
-.lane-card__total-row {
-  display: flex; justify-content: space-between; align-items: center;
-  margin: .1rem 0 .25rem;
+/* Columnas horizontales dentro de cada lane-card */
+.lane-card__col {
+  display: flex; flex-direction: column; align-items: center; gap: .15rem;
+  min-width: 0;
 }
-.lane-card__total-label { font-size: .82rem; color: #6e7681; letter-spacing: .04em; }
-.lane-card__total-val {
+/* Columna del nombre: PISTA arriba, nombre del piloto SIEMPRE debajo. */
+.lane-card__col--name {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start;
+  gap: .5rem;
+}
+.lane-card__col--name .lane-card__label {
+  align-self: flex-start;
+}
+.lane-card__col--name .lane-card__name-row {
+  width: 100%;
+  display: flex; align-items: center; gap: .5rem;
+  margin: 0; padding: 0; border: 0;
+}
+.lane-card__col--laps .lane-card__laps {
   font-family: 'Share Tech Mono', monospace;
-  font-size: 1.2rem; font-weight: 700; color: #c9d1d9;
+  font-size: 3.4rem; font-weight: 700; color: #f6c90e;
+  line-height: 1; margin: 0;
 }
-
-.lane-card__times { display: flex; flex-direction: column; gap: .18rem; }
-.lane-card__time-row {
-  display: flex; justify-content: space-between; align-items: center; font-size: .95rem;
+.lane-card__col-label {
+  font-size: .8rem; color: #6e7681; letter-spacing: .1em;
+  text-transform: uppercase; font-weight: 600;
 }
-.lane-card__time-label { color: #6e7681; }
-.lane-card__time-val {
-  font-family: 'Share Tech Mono', monospace; color: #8b949e;
+.lane-card__col-val {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 1.9rem; font-weight: 700; color: #c9d1d9;
+  line-height: 1.1;
 }
-.lane-card__time-val--best         { color: #58a6ff; }
-.lane-card__time-val--avg          { color: #e6a817; }
-.lane-card__time-val--exits        { color: #6e7681; }
-.lane-card__time-val--exits-active { color: #e63946; font-weight: 700; }
-.lane-card__time-val--delta        { color: #f97316; font-size: .8em; }
+.lane-card__col-val--best         { color: #58a6ff; }
+.lane-card__col-val--avg          { color: #e6a817; }
+.lane-card__col-val--exits        { color: #8b949e; }
+.lane-card__col-val--exits-active { color: #e63946; font-weight: 800; }
+.lane-card__col-val--delta        { color: #f97316; font-size: 1.5rem; }
 
 
 /* Flash on new lap */
@@ -318,8 +351,12 @@
     max-height: 220px; flex-direction: row;
   }
   .live-panel--ticker { display: none; }
-  .live-lanes { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
-  .lane-card__laps { font-size: 2.8rem; }
+  .lane-card {
+    grid-template-columns: 1fr;
+    gap: .5rem;
+  }
+  .lane-card__col { align-items: flex-start; }
+  .lane-card__laps { font-size: 2.4rem; }
 }
 
 /* ── Settings extras (reused from old live.css) ──────────────────────────── */
@@ -408,37 +445,91 @@
 }
 
 /* ── Vista expandida ─────────────────────────────────────────────────────── */
-.live-lanes--expanded {
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
-  gap: 1.1rem;
-  align-content: stretch;
+/* ── Vista VERTICAL: una columna por carril, ancho auto al contenido ───── */
+.live-lanes--vertical {
+  flex-direction: row;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(min-content, max-content);
+  justify-content: start;
+  align-content: start;
+  gap: .5rem;
 }
-.live-lanes--expanded .lane-card {
-  font-size: 1.2em;
+.live-lanes--vertical .lane-card {
+  display: flex; flex-direction: column;
+  padding: .7rem .9rem;
+  gap: .45rem;
+  height: 100%;
+  align-items: stretch;
 }
-.live-lanes--expanded .lane-card__laps {
-  font-size: 7rem;
+
+/* Cabecera: PISTA + nombre apilados, ALINEADOS A LA IZQUIERDA */
+.live-lanes--vertical .lane-card__col--name {
+  align-items: flex-start; gap: .35rem;
+  padding-bottom: .55rem;
+  border-bottom: 1px solid #21262d;
 }
-.live-lanes--expanded .lane-card__name {
-  font-size: 1.25rem;
+.live-lanes--vertical .lane-card__label {
+  align-self: flex-start;
+  padding: .2rem .65rem;
 }
-.live-lanes--expanded .lane-card__time-val {
-  font-size: 1rem;
+.live-lanes--vertical .lane-card__name-row {
+  display: flex; align-items: center; gap: .35rem;
+  justify-content: flex-start; width: 100%;
 }
-.live-lanes--expanded .lane-card__time-row {
+.live-lanes--vertical .lane-card__name {
   font-size: .95rem;
+  text-align: left;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.live-lanes--vertical .lane-card__lane-num   { font-size: 1.8rem; }
+.live-lanes--vertical .lane-card__track-text { font-size: .95rem; }
+
+/* Vueltas: label arriba a la izquierda, número grande alineado a la izquierda */
+.live-lanes--vertical .lane-card__col--laps {
+  align-items: flex-start;
+  padding: .2rem 0 .5rem;
+  border-bottom: 1px solid #21262d;
+}
+.live-lanes--vertical .lane-card__col--laps .lane-card__col-label {
+  font-size: .7rem; margin-bottom: .1rem;
+}
+.live-lanes--vertical .lane-card__laps {
+  font-size: 2.6rem; margin: 0;
+  text-align: left;
+}
+
+/* Resto de columnas: label + valor pegados a la izquierda, label con ancho fijo
+   para que los valores formen una columna vertical alineada entre ellos. */
+.live-lanes--vertical .lane-card__col {
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: .75rem;
+  padding: .05rem 0;
+  text-align: left;
+}
+.live-lanes--vertical .lane-card__col-label {
+  font-size: .72rem;
+  color: #6e7681;
+  letter-spacing: .08em;
+  font-weight: 600;
+  flex-shrink: 0;
+  width: 5rem;
+  text-align: left;
+}
+.live-lanes--vertical .lane-card__col-val {
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-align: left;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .lbtn--view       { background: #21262d; color: #8b949e; font-size: 1.1rem; }
 .lbtn--view.active { background: #1f6feb; color: #fff; }
 
-.lane-card__lane-num {
-  background: var(--card-color, #21262d);
-  color: #0a0d13;
-  border-radius: 6px;
-  padding: .1rem .5rem;
-  font-weight: 900;
-}
+/* (lane-num está definido arriba en .lane-card__label) */
 
 .lane-card__pos {
   font-family: 'Rajdhani', sans-serif;
@@ -452,11 +543,9 @@
 .lane-card__pos--n { background: #21262d; color: #8b949e; }
 
 .lane-card__name-row {
-  display: flex; align-items: center; gap: .5rem;
+  display: flex; align-items: center; gap: .6rem;
   overflow: hidden;
-  border-top: 1px solid #1e2530;
-  margin-top: .15rem;
-  padding-top: .3rem;
+  margin: 0; padding: 0;
 }
 .lane-card__name-row .lane-card__name {
   flex: 1; min-width: 0;
