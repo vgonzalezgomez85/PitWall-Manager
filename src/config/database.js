@@ -179,6 +179,50 @@ const migrations = [
     started_at  DATETIME DEFAULT CURRENT_TIMESTAMP
   )`,
   `ALTER TABLE driver_profiles ADD COLUMN qr_code TEXT UNIQUE`,
+
+  // ── Categories & cars ──────────────────────────────────────────────────────
+  `CREATE TABLE IF NOT EXISTS categories (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT NOT NULL UNIQUE,
+    description TEXT,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`,
+  `CREATE TABLE IF NOT EXISTS cars (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    brand       TEXT NOT NULL,
+    model       TEXT NOT NULL,
+    category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+    description TEXT,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`,
+  `CREATE TABLE IF NOT EXISTS circuit_category_times (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    circuit_id  INTEGER NOT NULL REFERENCES circuits(id) ON DELETE CASCADE,
+    category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+    min_lap_ms  INTEGER NOT NULL DEFAULT 0,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(circuit_id, category_id)
+  )`,
+  `CREATE TABLE IF NOT EXISTS race_categories (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    race_id     INTEGER NOT NULL REFERENCES races(id) ON DELETE CASCADE,
+    category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(race_id, category_id)
+  )`,
+  `CREATE TABLE IF NOT EXISTS competition_training_results (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id        TEXT NOT NULL,
+    heat_number       INTEGER NOT NULL,
+    lane              INTEGER NOT NULL,
+    participant_name  TEXT NOT NULL,
+    team_id           INTEGER REFERENCES teams(id) ON DELETE SET NULL,
+    driver_id         INTEGER REFERENCES drivers(id) ON DELETE SET NULL,
+    best_lap_ms       INTEGER,
+    avg_lap_ms        INTEGER,
+    lap_count         INTEGER DEFAULT 0,
+    created_at        DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`,
 ];
 for (const sql of migrations) {
   try { db.exec(sql); } catch { /* already exists */ }
