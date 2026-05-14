@@ -145,8 +145,9 @@ router.post('/training/stop',                 TrainingController.stop);
 router.post('/training/free/reset',           TrainingController.freeReset);
 
 // ── Settings ──────────────────────────────────────────────────────────────────
-router.get( '/settings', SettingsController.index);
-router.post('/settings', SettingsController.save);
+router.get( '/settings',           SettingsController.index);
+router.post('/settings',           SettingsController.save);
+router.get( '/api/settings/ports', SettingsController.listPorts);
 
 // ── Mobile API ────────────────────────────────────────────────────────────────
 router.get('/api/mobile/session', MobileController.session);
