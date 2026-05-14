@@ -148,6 +148,62 @@ class SessionController {
       nextTanda = Tanda.findNextPending(race.id, tanda.number) || null;
     }
 
+    // Next-manga lane assignments per current lane (for "→ Pista X" hint on cards
+    // once the current manga finishes). Looks first inside the same tanda, then
+    // falls back to the first manga of the next pending tanda.
+    const nextLaneByLane = {};
+    let nextMangaInfo = null;
+    {
+      const sameTandaMangas = Manga.findByTanda(manga.tanda_id) || [];
+      let next = sameTandaMangas.find(m => m.number > manga.number && m.status !== 'finished');
+      if (!next && tanda) {
+        const nt = Tanda.findNextPending(race.id, tanda.number);
+        if (nt) {
+          const ntMangas = Manga.findByTanda(nt.id) || [];
+          next = ntMangas.find(m => m.status !== 'finished') || null;
+          if (next) nextMangaInfo = { tandaNumber: nt.number, mangaNumber: next.number, sameTanda: false };
+        }
+      } else if (next) {
+        nextMangaInfo = { tandaNumber: tanda.number, mangaNumber: next.number, sameTanda: true };
+      }
+      if (next) {
+        const nextLanes = Manga.getLanes(next.id) || [];
+        // Number resting entities in next manga (1..N) so we can show
+        // "→ Descanso n/N" on each card.
+        const nextRest = nextLanes.filter(nl => nl.is_rest)
+          .sort((a, b) => (a.team_name || a.driver_name || '').localeCompare(b.team_name || b.driver_name || ''));
+        const nextRestTotal = nextRest.length;
+        const nextRestPosByKey = {};
+        nextRest.forEach((nl, i) => {
+          const key = nl.team_id ? `t${nl.team_id}` : `d${nl.driver_id}`;
+          nextRestPosByKey[key] = i + 1;
+        });
+        // Same alphabetical numbering for CURRENT rest entities (so cardId matches client)
+        const curRest = lanes.filter(l => l.is_rest)
+          .sort((a, b) => (a.team_name || a.driver_name || '').localeCompare(b.team_name || b.driver_name || ''));
+        const curRestPosByKey = {};
+        curRest.forEach((cl, i) => {
+          const key = cl.team_id ? `t${cl.team_id}` : `d${cl.driver_id}`;
+          curRestPosByKey[key] = i + 1;
+        });
+
+        lanes.forEach(l => {
+          if (!l.team_id && !l.driver_id) return;
+          const match = nextLanes.find(nl =>
+            (l.team_id   && nl.team_id   === l.team_id) ||
+            (l.driver_id && nl.driver_id === l.driver_id)
+          );
+          if (!match) return;
+          const myKey  = l.team_id ? `t${l.team_id}` : `d${l.driver_id}`;
+          const cardId = l.is_rest ? `r${curRestPosByKey[myKey] || 0}` : String(l.lane);
+          const value  = match.is_rest
+            ? { rest: true, pos: nextRestPosByKey[myKey] || 0, total: nextRestTotal }
+            : { lane: match.lane };
+          nextLaneByLane[cardId] = value;
+        });
+      }
+    }
+
     // All-race participant totals + remaining pending mangas (for full-race projection).
     // Includes ALL entities assigned to any manga of the race (even tandas not started yet).
     const allParticipants = Lap.aggregateByRace(race.id);
@@ -192,7 +248,7 @@ class SessionController {
     const hasBestLaps  = LicenseService.has('best_laps');
     const hasQrCheckin = LicenseService.has('qr_checkin');
 
-    res.render('races/live', { t: req.t, race, manga, tanda, lanes, laps, isActive, standings, prevLapsByLane, totalMangas, totalTandas, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, allParticipants });
+    res.render('races/live', { t: req.t, race, manga, tanda, lanes, laps, isActive, standings, prevLapsByLane, totalMangas, totalTandas, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, allParticipants, nextLaneByLane, nextMangaInfo });
   }
 
   // GET /races/:id/mangas/:mangaId/panel/:type  (standalone popup)

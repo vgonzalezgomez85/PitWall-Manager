@@ -111,17 +111,34 @@
     // Compute initial lane state from DB laps
     const LC = ['#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4','#ff5722','#607d8b','#795548','#e91e63','#3f51b5','#009688','#cddc39','#ffc107','#f44336','#673ab7','#03a9f4','#8bc34a','#ff6f00','#880e4f','#1a237e','#b71c1c','#004d40','#f57f17','#311b92','#0d47a1','#1b5e20','#33691e','#bf360c','#4a148c','#006064','#827717'];
     const laneInit = {};
+    // Number resting entities (1..N) alphabetically by name so each rest
+    // entity has its own card with "Descanso n/N".
+    const restEntries = lanes.filter(l => l.is_rest)
+      .sort((a, b) => (a.team_name || a.driver_name || '').localeCompare(b.team_name || b.driver_name || ''));
+    const restTotal = restEntries.length;
+    const restPosByEntityKey = {};
+    restEntries.forEach((r, i) => {
+      const key = r.team_id ? `t${r.team_id}` : `d${r.driver_id}`;
+      restPosByEntityKey[key] = i + 1;
+    });
     lanes.forEach(l => {
-      laneInit[l.lane] = {
+      const entityKey = l.team_id ? `t${l.team_id}` : (l.driver_id ? `d${l.driver_id}` : null);
+      const restPos = l.is_rest && entityKey ? restPosByEntityKey[entityKey] : null;
+      const cardId  = l.is_rest ? ('r' + (restPos || 0)) : String(l.lane);
+      laneInit[cardId] = {
+        cardId,
         lane:         l.lane,
         name:         l.team_name || l.driver_name || ('Lane ' + l.lane),
         color:        l.is_rest ? (l.team_color || '#484f58') : (LC[l.lane - 1] || '#8b949e'),
         isRest:       l.is_rest ? true : false,
+        restPos, restTotal,
         lapCount:     0, bestLapMs: null, lastLapMs: null, exitCount: 0,
         prevLapCount: prevLapsByLane[l.lane] || 0,
         _lapSum: 0, _lapN: 0, avgLapMs: null,
         teamMembers:  teamMembersByLane[l.lane] || [],
         activeDriver: activeDriversByLane[l.lane] || null,
+        entityId:     l.team_id || l.driver_id || null,
+        entityType:   l.team_id ? 'team' : (l.driver_id ? 'driver' : null),
       };
     });
     laps.forEach(l => {
@@ -139,19 +156,21 @@
 
   <script>
     const RACE_DATA = <%- JSON.stringify({
-      id:           race.id,
-      raceId:       race.id,
-      mangaId:      manga.id,
-      tandaId:      manga.tanda_id,
-      mangaNumber:  manga.number,
-      mangaStatus:  manga.status,
-      isActive:     isActive,
-      isTeam:       race.format === 'team',
-      durationMs:   null,
-      standings:    standings,
-      lanes:        Object.values(laneInit),
-      raceBestLaps: raceBestLaps,
-      hasQrCheckin: hasQrCheckin,
+      id:             race.id,
+      raceId:         race.id,
+      mangaId:        manga.id,
+      tandaId:        manga.tanda_id,
+      mangaNumber:    manga.number,
+      mangaStatus:    manga.status,
+      isActive:       isActive,
+      isTeam:         race.format === 'team',
+      durationMs:     null,
+      standings:      standings,
+      lanes:          Object.values(laneInit),
+      raceBestLaps:   raceBestLaps,
+      hasQrCheckin:   hasQrCheckin,
+      nextLaneByLane: nextLaneByLane || {},
+      nextMangaInfo:  nextMangaInfo  || null,
     }) %>;
     RACE_DATA.allParticipants = <%- JSON.stringify(allParticipants) %>;
     const LANG = "<%= lang %>";

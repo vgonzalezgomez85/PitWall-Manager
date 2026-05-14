@@ -129,16 +129,19 @@ const laneLabel = '';
 function buildCard(lane) {
   const card = document.createElement('div');
   card.className = 'lane-card' + (lane.isRest ? ' is-rest' : '');
-  card.id = `card-${lane.lane}`;
+  card.id = `card-${lane.cardId || lane.lane}`;
   card.style.setProperty('--card-color', lane.color);
 
   if (lane.isRest) {
     const restTotal = lane.prevLapCount || 0;
+    const posLabel = (lane.restPos && lane.restTotal)
+      ? `${LANG === 'es' ? 'Descanso' : 'Rest'} ${lane.restPos}/${lane.restTotal}`
+      : (LANG === 'es' ? 'Descansando' : 'Resting');
     card.innerHTML = `
       <div class="lane-card__rest-icon">💤</div>
       <div class="lane-card__rest-name">${lane.name}</div>
-      <div class="lane-card__rest-laps" id="card-rest-laps-${lane.lane}">${restTotal}</div>
-      <div class="lane-card__rest-label">${LANG === 'es' ? 'Descansando' : 'Resting'}</div>`;
+      <div class="lane-card__rest-laps" id="card-rest-laps-${lane.cardId || lane.lane}">${restTotal}</div>
+      <div class="lane-card__rest-label">${posLabel}</div>`;
     return card;
   }
 
@@ -151,6 +154,10 @@ function buildCard(lane) {
       </div>
       <div class="lane-card__name-row">
         <span class="lane-card__pos" id="card-pos-${lane.lane}"></span>
+        <span class="lane-card__trend" id="card-trend-${lane.lane}">
+          <span class="lane-card__trend-up"></span>
+          <span class="lane-card__trend-down"></span>
+        </span>
         <span class="lane-card__name">${lane.name}</span>
       </div>
       <div class="lane-card__driver-row" id="card-driver-${lane.lane}"></div>
@@ -189,8 +196,42 @@ function buildCard(lane) {
     <div class="lane-card__col">
       <div class="lane-card__col-label">Δ</div>
       <div class="lane-card__col-val lane-card__col-val--delta" id="card-delta-${lane.lane}">${formatDelta(lane.bestLapMs, lane.avgLapMs)}</div>
-    </div>`;
+    </div>
+
+`;
   return card;
+}
+
+function renderNextLaneHints() {
+  const map = RACE_DATA.nextLaneByLane || {};
+  Object.entries(map).forEach(([cardKey, info]) => {
+    const card = document.getElementById(`card-${cardKey}`);
+    if (!card) return;
+    if (card.querySelector('.next-lane-badge')) return;
+    appendNextLaneBadge(card, info);
+  });
+}
+
+function appendNextLaneBadge(card, info) {
+  const badge = document.createElement('div');
+  if (info && info.rest) {
+    badge.className = 'next-lane-badge next-lane-badge--rest';
+    const tail = info.total ? `${info.pos}/${info.total}` : '';
+    badge.innerHTML = `<span class="next-lane-arrow">→</span> <strong>${LANG === 'es' ? 'Descanso' : 'Rest'}${tail ? ' ' + tail : ''}</strong>`;
+  } else if (info && info.lane != null) {
+    badge.className = 'next-lane-badge';
+    badge.innerHTML = `<span class="next-lane-arrow">→</span> ${LANG === 'es' ? 'Carril' : 'Lane'} <strong>${info.lane}</strong>`;
+  } else {
+    // Fallback for legacy emission ('rest' string or bare number)
+    if (info === 'rest') {
+      badge.className = 'next-lane-badge next-lane-badge--rest';
+      badge.innerHTML = `<span class="next-lane-arrow">→</span> <strong>${LANG === 'es' ? 'Descanso' : 'Rest'}</strong>`;
+    } else {
+      badge.className = 'next-lane-badge';
+      badge.innerHTML = `<span class="next-lane-arrow">→</span> ${LANG === 'es' ? 'Carril' : 'Lane'} <strong>${info}</strong>`;
+    }
+  }
+  card.appendChild(badge);
 }
 
 function initCards() {
@@ -209,6 +250,7 @@ function initCards() {
     lanesGrid.appendChild(buildCard(lane));
     if (lane.activeDriver) setActiveDriver(lane.lane, lane.activeDriver);
   });
+  if (RACE_DATA.mangaStatus === 'finished') renderNextLaneHints();
 }
 
 function updateCard(lane, lapCount, lastLapMs, bestLapMs, avgLapMs, exitCount) {
@@ -247,6 +289,8 @@ function posClass(pos) {
   return ['p1','p2','p3'][pos - 1] || 'pn';
 }
 
+let prevLaneGap = {};
+
 function sortCards(rows) {
   // Sort by total race laps desc, then best lap asc
   const sorted = [...rows]
@@ -256,6 +300,15 @@ function sortCards(rows) {
       const tb = getTotalLaps(b.lane, b.lapCount);
       return tb - ta || (a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity);
     });
+
+  const BIG = 1e9;
+  const scoreOf = r => getTotalLaps(r.lane, r.lapCount) * BIG - (r.avgLapMs ?? BIG);
+  const gapAbove = {}, gapBelow = {};
+  sorted.forEach((r, i) => {
+    gapAbove[r.lane] = i === 0 ? null : scoreOf(sorted[i-1]) - scoreOf(r);
+    gapBelow[r.lane] = i === sorted.length - 1 ? null : scoreOf(r) - scoreOf(sorted[i+1]);
+  });
+
   sorted.forEach((r, i) => {
     const card = document.getElementById(`card-${r.lane}`);
     if (card) card.style.order = i;
@@ -264,11 +317,42 @@ function sortCards(rows) {
       posEl.textContent = `P${i + 1}`;
       posEl.className = `lane-card__pos lane-card__pos--${['1','2','3'][i] ?? 'n'}`;
     }
+
+    const trendEl = document.getElementById(`card-trend-${r.lane}`);
+    if (trendEl) {
+      const upEl   = trendEl.querySelector('.lane-card__trend-up');
+      const downEl = trendEl.querySelector('.lane-card__trend-down');
+      const prev = prevLaneGap[r.lane] || {};
+      const ga = gapAbove[r.lane], gb = gapBelow[r.lane];
+
+      // ▲: closing on the one above = good (green), widening = bad (red)
+      if (upEl) {
+        upEl.classList.remove('good', 'bad');
+        upEl.textContent = ga == null ? '' : '▲';
+        if (ga != null && prev.above != null) {
+          if (ga < prev.above)      upEl.classList.add('good');
+          else if (ga > prev.above) upEl.classList.add('bad');
+        }
+      }
+      // ▼: the one below is closing on me = bad (red), opening gap = good (green)
+      if (downEl) {
+        downEl.classList.remove('good', 'bad');
+        downEl.textContent = gb == null ? '' : '▼';
+        if (gb != null && prev.below != null) {
+          if (gb < prev.below)      downEl.classList.add('bad');
+          else if (gb > prev.below) downEl.classList.add('good');
+        }
+      }
+    }
   });
-  // Rest cards go to the end
+
+  prevLaneGap = {};
+  sorted.forEach(r => { prevLaneGap[r.lane] = { above: gapAbove[r.lane], below: gapBelow[r.lane] }; });
+
+  // Rest cards go to the end (keep their relative order: restPos 1..N)
   RACE_DATA.lanes.filter(l => l.isRest).forEach(l => {
-    const card = document.getElementById(`card-${l.lane}`);
-    if (card) card.style.order = 999;
+    const card = document.getElementById(`card-${l.cardId || l.lane}`);
+    if (card) card.style.order = 999 + (l.restPos || 0);
   });
 }
 
@@ -730,17 +814,12 @@ function announce(text) {
 
       // Show next-lane indicator on each card
       if (data?.nextLanes && Object.keys(data.nextLanes).length > 0) {
-        Object.entries(data.nextLanes).forEach(([currentLane, nextLane]) => {
-          const card = document.getElementById(`card-${currentLane}`);
-          if (!card || card.classList.contains('is-rest')) return;
+        Object.entries(data.nextLanes).forEach(([cardKey, info]) => {
+          const card = document.getElementById(`card-${cardKey}`);
+          if (!card) return;
           const existing = card.querySelector('.next-lane-badge');
           if (existing) existing.remove();
-          const badge = document.createElement('div');
-          badge.className = nextLane === 'rest' ? 'next-lane-badge next-lane-badge--rest' : 'next-lane-badge';
-          badge.innerHTML = nextLane === 'rest'
-            ? `<span class="next-lane-arrow">→</span> <strong>${LANG === 'es' ? 'Descanso' : 'Rest'}</strong>`
-            : `<span class="next-lane-arrow">→</span> ${LANG === 'es' ? 'Carril' : 'Lane'} <strong>${nextLane}</strong>`;
-          card.appendChild(badge);
+          appendNextLaneBadge(card, info);
         });
       }
 
