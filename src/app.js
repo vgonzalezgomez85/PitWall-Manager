@@ -111,11 +111,17 @@ app.use(session({
 }));
 app.use(i18n);
 
-// Expose license info and flash messages to all views
+// Expose license info, serial status and flash messages to all views
 app.use((req, res, next) => {
   res.locals.license = LicenseService.info;
   res.locals.tier    = LicenseService.tier;
   res.locals.flash   = req.session.flash || null;
+  // Serial port status (computed at render time, lightweight)
+  const SerialService = require('./services/SerialService');
+  res.locals.serialStatus = {
+    simulating: SerialService.isSimulating,
+    ports:      SerialService.connectedPorts || [],
+  };
   delete req.session.flash;
   next();
 });
