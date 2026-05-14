@@ -5,11 +5,23 @@ const Settings            = require('../models/Settings');
 const Circuit             = require('../models/Circuit');
 
 function lanesFromSettings() {
+  // 1. Sum lanes across all DS-300 circuits when in serial mode.
+  if (Settings.get('serial_mode', '') === 'serial') {
+    try {
+      const cfg = JSON.parse(Settings.get('circuits_serial', '[]'));
+      if (Array.isArray(cfg) && cfg.length > 0) {
+        const total = cfg.reduce((sum, c) => sum + (parseInt(c.lanes, 10) || 0), 0);
+        if (total > 0) return total;
+      }
+    } catch {}
+  }
+  // 2. Legacy single training circuit (kept for backwards-compat).
   const circuitId = Settings.get('training_circuit_id', '');
   if (circuitId) {
     const c = Circuit.findById(parseInt(circuitId, 10));
     if (c) return c.lanes_count;
   }
+  // 3. Simulation fallback.
   return parseInt(Settings.get('sim_lanes', '6'), 10) || 6;
 }
 
@@ -25,8 +37,13 @@ class TrainingController {
 
   // GET /training/free — start free training standby
   static free(req, res) {
-    if (!TrainingService.isReady) {
-      TrainingService.prepare(lanesFromSettings());
+    const expected = lanesFromSettings();
+    // Re-prepare when not running and the lane count changed (e.g. circuits
+    // added/removed in Settings while in standby).
+    if (!TrainingService.isActive && TrainingService.laneCount !== expected) {
+      TrainingService.prepare(expected);
+    } else if (!TrainingService.isReady) {
+      TrainingService.prepare(expected);
     }
     res.redirect('/training/live');
   }

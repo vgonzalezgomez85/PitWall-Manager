@@ -5,9 +5,26 @@ const Circuit        = require('../models/Circuit');
 
 class SettingsController {
 
+  static async _scanPorts() {
+    const fs = require('fs');
+    const ports = await SerialService.listPorts();
+    const out = ports.map(p => ({ path: p.path, manufacturer: p.manufacturer || null }));
+    if (process.platform !== 'win32') {
+      try {
+        const entries = fs.readdirSync('/dev')
+          .filter(n => /^ttys\d{3,}$|^tty\.(usbserial|usbmodem|SLAB|wchusbserial)/i.test(n))
+          .map(n => '/dev/' + n)
+          .filter(p => !out.find(o => o.path === p));
+        for (const path of entries) out.push({ path, manufacturer: 'pty/usb-serial' });
+      } catch {}
+    }
+    out.sort((a, b) => a.path.localeCompare(b.path));
+    return out;
+  }
+
   static async index(req, res) {
     const cfg   = Settings.getAll();
-    const ports = await SerialService.listPorts();
+    const ports = await SettingsController._scanPorts();
 
     let circuits = [];
     try { circuits = JSON.parse(cfg.circuits_serial || '[]'); } catch {}
@@ -29,6 +46,10 @@ class SettingsController {
     });
   }
 
+  static async listPorts(req, res) {
+    res.json({ ports: await SettingsController._scanPorts() });
+  }
+
   static async save(req, res) {
     const { serial_mode, sim_lanes, sim_avg_ms } = req.body;
 
@@ -36,13 +57,25 @@ class SettingsController {
     const portArr  = [].concat(req.body['circuit_port']  || []);
     const baudArr  = [].concat(req.body['circuit_baud']  || []);
     const lanesArr = [].concat(req.body['circuit_lanes'] || []);
+    const refArr   = [].concat(req.body['circuit_ref']   || []);
 
     let circuits = portArr
-      .map((port, i) => ({
-        port:  port.trim(),
-        baud:  parseInt(baudArr[i]  || '4800', 10),
-        lanes: parseInt(lanesArr[i] || '8',    10),
-      }))
+      .map((port, i) => {
+        const refId = parseInt(refArr[i], 10);
+        let lanes = parseInt(lanesArr[i] || '8', 10);
+        let circuit_id = null;
+        // If a saved circuit is referenced, override lanes with its lanes_count
+        if (refId) {
+          const ref = Circuit.findById(refId);
+          if (ref) { lanes = ref.lanes_count; circuit_id = ref.id; }
+        }
+        return {
+          port:  port.trim(),
+          baud:  parseInt(baudArr[i] || '4800', 10),
+          lanes,
+          ...(circuit_id ? { circuit_id } : {}),
+        };
+      })
       .filter(c => c.port);
 
     // Pro-only: multi-circuit. Non-Pro may only use one circuit.
@@ -50,12 +83,16 @@ class SettingsController {
       circuits = circuits.slice(0, 1);
     }
 
+    // Training circuit is derived from the first DS-300 that references a saved
+    // circuit. Falls back to '' (none) if no DS-300 has one assigned.
+    const trainingCircuitId = (circuits.find(c => c.circuit_id) || {}).circuit_id || '';
+
     Settings.setMany({
       serial_mode:          serial_mode || 'simulation',
       circuits_serial:      JSON.stringify(circuits),
       sim_lanes:            sim_lanes   || '6',
       sim_avg_ms:           sim_avg_ms  || '12000',
-      training_circuit_id:  req.body.training_circuit_id || '',
+      training_circuit_id:  String(trainingCircuitId),
     });
 
     if (serial_mode === 'serial' && circuits.length > 0) {

@@ -44,20 +44,6 @@
       </div>
     </div>
 
-    <!-- ── Training circuit ──────────────────────────────────────────── -->
-    <div class="form-group">
-      <label class="form-label"><%= lang === 'es' ? 'Circuito de entrenamiento' : 'Training circuit' %></label>
-      <select class="form-input" name="training_circuit_id">
-        <option value=""><%= lang === 'es' ? '— Sin circuito (configurar manualmente) —' : '— No circuit (configure manually) —' %></option>
-        <% (typeof allCircuits !== 'undefined' ? allCircuits : []).forEach(c => { %>
-          <option value="<%= c.id %>" <%= (cfg.training_circuit_id == c.id) ? 'selected' : '' %>>
-            <%= c.name %> (<%= c.lanes_count %> <%= lang === 'es' ? 'carriles' : 'lanes' %>)
-          </option>
-        <% }) %>
-      </select>
-      <p class="form-hint"><%= lang === 'es' ? 'Carriles activos al entrar en modo entrenamiento.' : 'Active lanes when entering training mode.' %></p>
-    </div>
-
     <!-- ── Simulation ──────────────────────────────────────────────────── -->
     <div id="simSettings">
       <h3 class="form-label" style="margin-bottom:.75rem"><%= lang === 'es' ? 'Parámetros de simulación' : 'Simulation parameters' %></h3>
@@ -87,15 +73,20 @@
               : 'Each DS-300 controls one independent circuit. Lanes are numbered globally.' %>
           </p>
         </div>
-        <% if (multiCircuit) { %>
-          <button type="button" class="btn btn--ghost btn--sm" id="addCircuit">
-            + <%= lang === 'es' ? 'Añadir circuito' : 'Add circuit' %>
+        <div style="display:flex;gap:.5rem;align-items:center">
+          <button type="button" class="btn btn--ghost btn--sm" id="refreshPorts" title="<%= lang === 'es' ? 'Buscar puertos COM' : 'Search COM ports' %>">
+            ⟳ <%= lang === 'es' ? 'Buscar puertos' : 'Refresh ports' %>
           </button>
-        <% } else { %>
-          <a href="/license" class="upgrade-hint">
-            🔒 <%= lang === 'es' ? 'Multi-circuito requiere Pro' : 'Multi-circuit requires Pro' %>
-          </a>
-        <% } %>
+          <% if (multiCircuit) { %>
+            <button type="button" class="btn btn--ghost btn--sm" id="addCircuit">
+              + <%= lang === 'es' ? 'Añadir circuito' : 'Add circuit' %>
+            </button>
+          <% } else { %>
+            <a href="/license" class="upgrade-hint">
+              🔒 <%= lang === 'es' ? 'Multi-circuito requiere Pro' : 'Multi-circuit requires Pro' %>
+            </a>
+          <% } %>
+        </div>
       </div>
 
       <div id="circuitList">
@@ -136,9 +127,22 @@
                 <label class="form-label">Baud</label>
                 <input class="form-input" type="number" name="circuit_baud" value="<%= c.baud || 4800 %>">
               </div>
+              <div class="circuit-row__field circuit-row__field--circuit">
+                <label class="form-label"><%= lang === 'es' ? 'Circuito' : 'Circuit' %></label>
+                <select class="form-input circuit-ref-select" name="circuit_ref">
+                  <option value=""><%= lang === 'es' ? '— Manual —' : '— Manual —' %></option>
+                  <% allCircuits.forEach(ac => { %>
+                    <option value="<%= ac.id %>" data-lanes="<%= ac.lanes_count %>"
+                      <%= String(c.circuit_id || '') === String(ac.id) ? 'selected' : '' %>>
+                      <%= ac.name %> (<%= ac.lanes_count %>)
+                    </option>
+                  <% }) %>
+                </select>
+              </div>
               <div class="circuit-row__field circuit-row__field--lanes">
                 <label class="form-label"><%= lang === 'es' ? 'Carriles' : 'Lanes' %></label>
-                <input class="form-input circuit-lanes-input" type="number" name="circuit_lanes" min="2" max="8" value="<%= c.lanes || 8 %>">
+                <input class="form-input circuit-lanes-input" type="number" name="circuit_lanes" min="2" max="8"
+                  value="<%= c.lanes || 8 %>" <%= c.circuit_id ? 'readonly' : '' %>>
               </div>
             </div>
           </div>
@@ -178,13 +182,15 @@
 .circuit-row__title { font-weight:600; color:#e6edf3; display:flex; align-items:center; gap:.6rem; font-size:.95rem; }
 .circuit-row__num { width:1.5rem; height:1.5rem; background:#21262d; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:.75rem; color:#8b949e; flex-shrink:0; }
 .circuit-row__lanes-badge { font-size:.72rem; background:#161b22; color:#58a6ff; border:1px solid #1c3a5e; padding:.15rem .5rem; border-radius:20px; font-weight:500; }
-.circuit-row__body { display:grid; grid-template-columns:1fr 110px 110px; gap:.75rem; align-items:end; }
+.circuit-row__body { display:grid; grid-template-columns:1fr 100px 1fr 100px; gap:.75rem; align-items:end; }
+.circuit-lanes-input[readonly] { background:#0a0d13; color:#8b949e; cursor:not-allowed; }
 .circuit-row__field { display:flex; flex-direction:column; gap:.35rem; }
 .btn-remove-circuit { background:none; border:none; color:#484f58; cursor:pointer; font-size:.9rem; padding:.3rem .5rem; border-radius:6px; line-height:1; transition:color .15s, background .15s; }
 .btn-remove-circuit:hover { color:#f85149; background:#21262d; }
 </style>
 
 <script>
+const LANG = "<%= lang %>";
 const modeRadios = document.querySelectorAll('input[name="serial_mode"]');
 const simDiv     = document.getElementById('simSettings');
 const serialDiv  = document.getElementById('serialSettings');
@@ -235,9 +241,35 @@ function wirePortFields(container) {
 }
 document.querySelectorAll('.circuit-row__field--port').forEach(wirePortFields);
 
+// Saved-circuit selector ↔ lanes input
+function wireCircuitRef(row) {
+  const sel = row.querySelector('.circuit-ref-select');
+  const inp = row.querySelector('.circuit-lanes-input');
+  if (!sel || !inp) return;
+  sel.addEventListener('change', () => {
+    const opt = sel.options[sel.selectedIndex];
+    const lanes = parseInt(opt?.dataset?.lanes || '0', 10);
+    if (sel.value && lanes > 0) {
+      inp.value    = lanes;
+      inp.readOnly = true;
+    } else {
+      inp.readOnly = false;
+    }
+    updateLaneBadges();
+  });
+}
+document.querySelectorAll('.circuit-row').forEach(wireCircuitRef);
+
 document.getElementById('circuitList').addEventListener('input', e => {
   if (e.target.classList.contains('circuit-lanes-input')) updateLaneBadges();
 });
+
+// Reusable HTML fragment for the saved-circuit selector (built from existing markup)
+const circuitRefOptions = `<option value="">— Manual —</option>` +
+  Array.from(document.querySelector('.circuit-ref-select')?.options || [])
+    .filter(o => o.value)
+    .map(o => `<option value="${o.value}" data-lanes="${o.dataset.lanes}">${o.textContent.trim()}</option>`)
+    .join('');
 
 // Add circuit
 document.getElementById('addCircuit')?.addEventListener('click', () => {
@@ -264,6 +296,10 @@ document.getElementById('addCircuit')?.addEventListener('click', () => {
         <label class="form-label">Baud</label>
         <input class="form-input" type="number" name="circuit_baud" value="4800">
       </div>
+      <div class="circuit-row__field circuit-row__field--circuit">
+        <label class="form-label">Circuito</label>
+        <select class="form-input circuit-ref-select" name="circuit_ref">${circuitRefOptions}</select>
+      </div>
       <div class="circuit-row__field circuit-row__field--lanes">
         <label class="form-label">Carriles</label>
         <input class="form-input circuit-lanes-input" type="number" name="circuit_lanes" min="2" max="8" value="8">
@@ -271,6 +307,7 @@ document.getElementById('addCircuit')?.addEventListener('click', () => {
     </div>`;
   list.appendChild(div);
   wirePortFields(div.querySelector('.circuit-row__field--port'));
+  wireCircuitRef(div);
   updateLaneBadges();
 });
 
@@ -279,6 +316,34 @@ document.getElementById('circuitList').addEventListener('click', e => {
   if (e.target.classList.contains('btn-remove-circuit')) {
     const rows = document.querySelectorAll('.circuit-row');
     if (rows.length > 1) { e.target.closest('.circuit-row').remove(); updateLaneBadges(); }
+  }
+});
+
+// Refresh COM ports — re-fetches the system port list and updates all selects
+document.getElementById('refreshPorts')?.addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⟳ ' + (LANG === 'es' ? 'Buscando…' : 'Searching…');
+  try {
+    const res = await fetch('/api/settings/ports');
+    const { ports } = await res.json();
+    document.querySelectorAll('.port-select').forEach(sel => {
+      const current = sel.value;
+      const newOptions = '<option value="">— ' + (LANG === 'es' ? 'seleccionar' : 'select') + ' —</option>' +
+        ports.map(p => `<option value="${p.path}"${p.path === current ? ' selected' : ''}>${p.path}${p.manufacturer ? ' — ' + p.manufacturer : ''}</option>`).join('');
+      // Preserve a typed value not in the list
+      let extra = '';
+      if (current && !ports.find(p => p.path === current)) {
+        extra = `<option value="${current}" selected>${current}</option>`;
+      }
+      sel.innerHTML = newOptions + extra;
+    });
+    btn.textContent = '✓ ' + (LANG === 'es' ? `${ports.length} puertos` : `${ports.length} ports`);
+    setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 1500);
+  } catch (err) {
+    btn.textContent = '✗ ' + (LANG === 'es' ? 'Error' : 'Error');
+    setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 2000);
   }
 });
 </script>

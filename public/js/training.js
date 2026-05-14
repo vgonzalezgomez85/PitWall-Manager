@@ -121,7 +121,6 @@ function updateCard(data) {
 }
 
 function toggleView() {
-  if (TRAINING_DATA.lanes.length > 8) return;
   const grid = document.getElementById('trainingGrid');
   const btn  = document.getElementById('viewBtn');
   const expanded = grid.classList.toggle('training-grid--expanded');
@@ -142,13 +141,12 @@ let sessionRecords = { ...TRAINING_DATA.sessionRecords };
 // ── Initialize cards ──────────────────────────────────────────────────────────
 TRAINING_DATA.lanes.forEach(lane => grid.appendChild(buildCard(lane)));
 
-// Default view: expanded for ≤8 lanes; hide button for >8
-if (TRAINING_DATA.lanes.length <= 8) {
-  grid.classList.add('training-grid--expanded');
-  document.getElementById('viewBtn')?.classList.add('active');
-} else {
-  document.getElementById('viewBtn')?.style.setProperty('display', 'none');
-}
+// Vista por defecto:
+//   ≤8 carriles → expandida (tarjetas grandes), botón activo para alternar.
+//   >8 carriles → también expandida (tarjetas en varias filas con buen tamaño),
+//                  botón visible para compactar a una sola fila de columnas.
+grid.classList.add('training-grid--expanded');
+document.getElementById('viewBtn')?.classList.add('active');
 
 // ── Voice announcements ───────────────────────────────────────────────────────
 const speechQueue = [];

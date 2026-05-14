@@ -72,6 +72,7 @@ class TrainingServiceClass {
   get isActive()   { return this._active; }
   get isStandby()  { return this._standby && !this._active; }
   get isReady()    { return this._active || this._standby; }
+  get laneCount()  { return this._lanes.length; }
   get startedAt()  { return this._startedAt; }
   get durationMs() { return this._durationMs; }
 
