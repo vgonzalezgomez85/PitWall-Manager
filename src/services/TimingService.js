@@ -135,16 +135,41 @@ class TimingServiceClass {
       } else {
         nextMangaId = next.id;
 
-        // Build currentLane → nextLane map keyed by entity (driver or team)
+        // Build cardId → next-target map (cardId = lane number for racing,
+        // r1..rN for resting entities sorted alphabetically). Each value is
+        // { lane } for a racing slot or { rest:true, pos, total } for rest.
         const nextLaneDefs = Manga.getLanes(next.id);
+        const nextRest = nextLaneDefs.filter(nl => nl.is_rest)
+          .sort((a, b) => (a.team_name || a.driver_name || '').localeCompare(b.team_name || b.driver_name || ''));
+        const nextRestTotal = nextRest.length;
+        const nextRestPos = {};
+        nextRest.forEach((nl, i) => {
+          const key = nl.team_id ? `t${nl.team_id}` : `d${nl.driver_id}`;
+          nextRestPos[key] = i + 1;
+        });
         const nextByEntity = {};
         for (const nl of nextLaneDefs) {
+          if (!nl.team_id && !nl.driver_id) continue;
           const key = nl.team_id ? `t${nl.team_id}` : `d${nl.driver_id}`;
-          nextByEntity[key] = nl.is_rest ? 'rest' : nl.lane;
+          nextByEntity[key] = nl.is_rest
+            ? { rest: true, pos: nextRestPos[key] || 0, total: nextRestTotal }
+            : { lane: nl.lane };
         }
-        for (const [lane, ld] of Object.entries(this.session.laneMap)) {
-          const key = ld.teamId ? `t${ld.teamId}` : `d${ld.driverId}`;
-          if (nextByEntity[key] != null) nextLanes[lane] = nextByEntity[key];
+
+        const curRest = this.session.lanes.filter(l => l.is_rest)
+          .sort((a, b) => (a.team_name || a.driver_name || '').localeCompare(b.team_name || b.driver_name || ''));
+        const curRestPos = {};
+        curRest.forEach((cl, i) => {
+          const key = cl.team_id ? `t${cl.team_id}` : `d${cl.driver_id}`;
+          curRestPos[key] = i + 1;
+        });
+
+        for (const cl of this.session.lanes) {
+          if (!cl.team_id && !cl.driver_id) continue;
+          const key = cl.team_id ? `t${cl.team_id}` : `d${cl.driver_id}`;
+          if (nextByEntity[key] == null) continue;
+          const cardId = cl.is_rest ? `r${curRestPos[key] || 0}` : String(cl.lane);
+          nextLanes[cardId] = nextByEntity[key];
         }
 
         // Pre-register next manga so DS-300 GO can start it immediately

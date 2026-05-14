@@ -62,18 +62,32 @@ SerialService.on('race_started', () => {
     const Manga  = require('./models/Manga');
     const Team   = require('./models/Team');
     const Driver = require('./models/Driver');
+    const db     = require('./config/database');
 
     const races = Race.findAll().filter(r => r.status === 'active');
     for (const race of races) {
       const manga = Manga.findFirstPending(race.id);
-      if (manga) {
-        const lanes   = Manga.getLanes(manga.id);
-        const teams   = Team.findByTanda(manga.tanda_id);
-        const drivers = Driver.findByTanda(manga.tanda_id);
-        setup = { manga, race, lanes, teams, drivers };
-        console.log(`[DS-300] Auto-found pending manga ${manga.id} for race ${race.id}`);
-        break;
+      if (!manga) continue;
+
+      // Tanda-boundary guard (survives server restarts): if the most recently
+      // finished manga of this race is in a different tanda than the pending
+      // one, block the auto-GO. User must hit "▶ Tanda N" first.
+      const lastFinished = db.prepare(
+        `SELECT tanda_id FROM mangas
+         WHERE race_id = ? AND status = 'finished' AND finished_at IS NOT NULL
+         ORDER BY finished_at DESC LIMIT 1`
+      ).get(race.id);
+      if (lastFinished && lastFinished.tanda_id !== manga.tanda_id) {
+        console.log(`[DS-300] GO ignored — tanda boundary (last finished was tanda ${lastFinished.tanda_id}, pending in tanda ${manga.tanda_id})`);
+        return;
       }
+
+      const lanes   = Manga.getLanes(manga.id);
+      const teams   = Team.findByTanda(manga.tanda_id);
+      const drivers = Driver.findByTanda(manga.tanda_id);
+      setup = { manga, race, lanes, teams, drivers };
+      console.log(`[DS-300] Auto-found pending manga ${manga.id} for race ${race.id}`);
+      break;
     }
   }
 
