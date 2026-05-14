@@ -238,38 +238,11 @@
 <script>
   const _raceId = <%= race.id %>;
   const socket  = io();
-  let _semaphoreFallback = null;
 
-  function showSemaphore() {
-    if (document.getElementById('semaphore-overlay')) return;
-    const ov = document.createElement('div');
-    ov.id = 'semaphore-overlay';
-    ov.className = 'semaphore-overlay';
-    ov.innerHTML = `<div class="semaphore-panel">${[1,2,3].map(i =>
-      `<div class="s-light" id="sl${i}"></div>`).join('')}</div>`;
-    document.body.appendChild(ov);
-    // Real DS-300 GO: tramas a t+0, t+416ms, t+3134ms
-    [0, 416, 3134].forEach((delay, i) =>
-      setTimeout(() => document.getElementById(`sl${i + 1}`)?.classList.add('lit'), delay)
-    );
-    _semaphoreFallback = setTimeout(() => semaphoreGo(null), 6000);
-  }
-
-  function semaphoreGo(callback) {
-    if (_semaphoreFallback) { clearTimeout(_semaphoreFallback); _semaphoreFallback = null; }
-    [1,2,3].forEach(n => {
-      const el = document.getElementById(`sl${n}`);
-      if (!el) return;
-      el.classList.remove('lit');
-      el.classList.add('go');
-    });
-    setTimeout(() => {
-      document.getElementById('semaphore-overlay')?.remove();
-      if (callback) callback();
-    }, 900);
-  }
-
-  socket.on('race:semaphore', () => showSemaphore());
+  // En la vista de detalle de carrera NO mostramos el semáforo cuando se pulsa
+  // GO en el DS-300. Solo navegamos a la live si efectivamente se inicia la
+  // manga (lo cual ya está gateado en el server: solo arranca si hay un cliente
+  // localhost en la live view).
   socket.on('manga:started', (data) => {
     if (data.raceId && data.raceId !== _raceId) return;
     if (data.mangaId) {

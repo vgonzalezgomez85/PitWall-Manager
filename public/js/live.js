@@ -23,13 +23,15 @@ function formatRemaining(ms) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-// ── View toggle ───────────────────────────────────────────────────────────────
+// ── View toggle: horizontal (filas anchas) ↔ vertical (columnas) ──────────────
 function toggleView() {
-  if (RACE_DATA.lanes.filter(l => !l.isRest).length > 8) return;
   const grid = document.getElementById('lanesGrid');
   const btn  = document.getElementById('viewBtn');
-  const expanded = grid.classList.toggle('live-lanes--expanded');
-  btn.classList.toggle('active', expanded);
+  const isVertical = grid.classList.toggle('live-lanes--vertical');
+  btn.textContent  = isVertical ? '☰' : '⊞';
+  btn.title        = isVertical
+    ? (LANG === 'es' ? 'Vista horizontal' : 'Horizontal view')
+    : (LANG === 'es' ? 'Vista vertical'   : 'Vertical view');
 }
 
 // ── Semaphore ─────────────────────────────────────────────────────────────────
@@ -142,53 +144,66 @@ function buildCard(lane) {
 
   const initTotal = getTotalLaps(lane.lane, lane.lapCount ?? 0);
   card.innerHTML = `
-    <div class="lane-card__label"><span class="lane-card__lane-num">${lane.lane}</span></div>
-    <div class="lane-card__name-row">
-      <span class="lane-card__pos" id="card-pos-${lane.lane}"></span>
-      <span class="lane-card__name">${lane.name}</span>
+    <div class="lane-card__col lane-card__col--name">
+      <div class="lane-card__label">
+        <span class="lane-card__track-text">${LANG === 'es' ? 'PISTA' : 'TRACK'}</span>
+        <span class="lane-card__lane-num">${lane.lane}</span>
+      </div>
+      <div class="lane-card__name-row">
+        <span class="lane-card__pos" id="card-pos-${lane.lane}"></span>
+        <span class="lane-card__name">${lane.name}</span>
+      </div>
+      <div class="lane-card__driver-row" id="card-driver-${lane.lane}"></div>
     </div>
-    <div class="lane-card__driver-row" id="card-driver-${lane.lane}"></div>
-    <div class="lane-card__laps" id="card-laps-${lane.lane}">${lane.lapCount ?? 0}</div>
-    <div class="lane-card__total-row">
-      <span class="lane-card__total-label">${LANG === 'es' ? 'Total carrera' : 'Race total'}</span>
-      <span class="lane-card__total-val" id="card-total-${lane.lane}">${initTotal}</span>
+
+    <div class="lane-card__col lane-card__col--laps">
+      <div class="lane-card__col-label">${LANG === 'es' ? 'VLT' : 'LAP'}</div>
+      <div class="lane-card__laps" id="card-laps-${lane.lane}">${lane.lapCount ?? 0}</div>
     </div>
-    <div class="lane-card__times">
-      <div class="lane-card__time-row">
-        <span class="lane-card__time-label">${LANG === 'es' ? 'Última' : 'Last'}</span>
-        <span class="lane-card__time-val" id="card-last-${lane.lane}">${formatMs(lane.lastLapMs)}</span>
-      </div>
-      <div class="lane-card__time-row">
-        <span class="lane-card__time-label">${LANG === 'es' ? 'Mejor' : 'Best'}</span>
-        <span class="lane-card__time-val lane-card__time-val--best" id="card-best-${lane.lane}">${formatMs(lane.bestLapMs)}</span>
-      </div>
-      <div class="lane-card__time-row">
-        <span class="lane-card__time-label">${LANG === 'es' ? 'Media' : 'Avg'}</span>
-        <span class="lane-card__time-val lane-card__time-val--avg" id="card-avg-${lane.lane}">${formatMs(lane.avgLapMs)}</span>
-      </div>
-      <div class="lane-card__time-row">
-        <span class="lane-card__time-label">${LANG === 'es' ? 'Salidas' : 'Exits'}</span>
-        <span class="lane-card__time-val lane-card__time-val--exits" id="card-exits-${lane.lane}">${lane.exitCount ?? 0}</span>
-      </div>
-      <div class="lane-card__time-row">
-        <span class="lane-card__time-label">Δ</span>
-        <span class="lane-card__time-val lane-card__time-val--delta" id="card-delta-${lane.lane}">${formatDelta(lane.bestLapMs, lane.avgLapMs)}</span>
-      </div>
+
+    <div class="lane-card__col">
+      <div class="lane-card__col-label">${LANG === 'es' ? 'Total' : 'Total'}</div>
+      <div class="lane-card__col-val" id="card-total-${lane.lane}">${initTotal}</div>
+    </div>
+
+    <div class="lane-card__col">
+      <div class="lane-card__col-label">${LANG === 'es' ? 'Última' : 'Last'}</div>
+      <div class="lane-card__col-val" id="card-last-${lane.lane}">${formatMs(lane.lastLapMs)}</div>
+    </div>
+
+    <div class="lane-card__col">
+      <div class="lane-card__col-label">${LANG === 'es' ? 'Mejor' : 'Best'}</div>
+      <div class="lane-card__col-val lane-card__col-val--best" id="card-best-${lane.lane}">${formatMs(lane.bestLapMs)}</div>
+    </div>
+
+    <div class="lane-card__col">
+      <div class="lane-card__col-label">${LANG === 'es' ? 'Media' : 'Avg'}</div>
+      <div class="lane-card__col-val lane-card__col-val--avg" id="card-avg-${lane.lane}">${formatMs(lane.avgLapMs)}</div>
+    </div>
+
+    <div class="lane-card__col">
+      <div class="lane-card__col-label">${LANG === 'es' ? 'Salidas' : 'Exits'}</div>
+      <div class="lane-card__col-val lane-card__col-val--exits" id="card-exits-${lane.lane}">${lane.exitCount ?? 0}</div>
+    </div>
+
+    <div class="lane-card__col">
+      <div class="lane-card__col-label">Δ</div>
+      <div class="lane-card__col-val lane-card__col-val--delta" id="card-delta-${lane.lane}">${formatDelta(lane.bestLapMs, lane.avgLapMs)}</div>
     </div>`;
   return card;
 }
 
 function initCards() {
   const activeLaneCount = RACE_DATA.lanes.filter(l => !l.isRest).length;
-  const targetRows = activeLaneCount <= 8  ? 1
-                   : activeLaneCount <= 16 ? 2
-                   :                         3;
-  const cols    = Math.ceil(activeLaneCount / targetRows);
-  const cardGap = activeLaneCount <= 16 ? '.8rem' : '.5rem';
-  const cardPad = activeLaneCount <= 16 ? '.9rem' : '.6rem';
-  lanesGrid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-  lanesGrid.style.setProperty('--card-gap', cardGap);
-  lanesGrid.style.setProperty('--card-pad', cardPad);
+  // Por defecto: hasta 8 carriles → vista horizontal (filas anchas).
+  //              más de 8         → vista vertical (columnas).
+  // El botón ⊞/☰ del header permite alternar manualmente.
+  if (activeLaneCount > 8) {
+    lanesGrid.classList.add('live-lanes--vertical');
+    const btn = document.getElementById('viewBtn');
+    if (btn) { btn.textContent = '☰'; btn.title = LANG === 'es' ? 'Vista horizontal' : 'Horizontal view'; }
+  }
+  lanesGrid.style.setProperty('--lanes', activeLaneCount);
 
   RACE_DATA.lanes.forEach(lane => {
     lanesGrid.appendChild(buildCard(lane));
@@ -211,7 +226,7 @@ function updateCard(lane, lapCount, lastLapMs, bestLapMs, avgLapMs, exitCount) {
   if (totalEl) totalEl.textContent = getTotalLaps(lane, lapCount);
   if (exitsEl) {
     exitsEl.textContent = exitCount ?? 0;
-    exitsEl.classList.toggle('lane-card__time-val--exits-active', (exitCount ?? 0) > 0);
+    exitsEl.classList.toggle('lane-card__col-val--exits-active', (exitCount ?? 0) > 0);
   }
   if (deltaEl) deltaEl.textContent = formatDelta(bestLapMs, avgLapMs);
 }
@@ -610,6 +625,11 @@ function announce(text) {
 // ── Socket.io ─────────────────────────────────────────────────────────────────
 if (RACE_DATA.isActive || RACE_DATA.mangaStatus === 'pending') {
   const socket = io();
+
+  // Announce we're on the race live page — the server uses this to gate
+  // hardware GO events (only fires if a localhost client is here).
+  socket.on('connect', () => socket.emit('race:live:join'));
+  window.addEventListener('beforeunload', () => socket.emit('race:live:leave'));
 
   if (RACE_DATA.isActive) {
     socket.on('connect', () => socket.emit('standings:request'));
