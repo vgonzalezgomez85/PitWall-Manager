@@ -178,18 +178,28 @@ class SessionController {
     const manga = Manga.findById(req.params.mangaId);
     if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
 
-    const type = req.params.type;
-    if (!['standings','projected','ticker'].includes(type)) {
-      return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
-    }
-
     const tanda    = Tanda.findById(manga.tanda_id);
     const lanes    = Manga.getLanes(manga.id);
     const laps     = Lap.findByManga(manga.id);
     const isActive = TimingService.activeMangaId === manga.id;
     const standings = isActive ? TimingService.getStandings() : null;
 
-    res.render('races/live-panel', { t: req.t, race, manga, tanda, lanes, laps, isActive, standings, type });
+    // Aggregate previous-manga laps per lane (for total-laps display).
+    const prevLapsByLane = {};
+    if (tanda) {
+      const allMangas = Manga.findByTanda(tanda.id) || [];
+      allMangas.forEach(m => {
+        if (m.id === manga.id) return;
+        const ml = Manga.getLanes(m.id) || [];
+        ml.forEach(x => {
+          if (!x || x.is_rest) return;
+          const prevLaps = Lap.findByManga(m.id).filter(l => l.lane === x.lane && !l.is_exit).length;
+          prevLapsByLane[x.lane] = (prevLapsByLane[x.lane] || 0) + prevLaps;
+        });
+      });
+    }
+
+    res.render('races/live-panel', { t: req.t, race, manga, tanda, lanes, laps, isActive, standings, prevLapsByLane });
   }
 
   // GET /races/:id/mangas/:mangaId/tv  (fullscreen TV projection)

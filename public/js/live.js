@@ -313,7 +313,7 @@ function renderStandings(data) {
     }
   });
 
-  standingsBody.innerHTML = rows.map((r, i) => {
+  if (standingsBody) standingsBody.innerHTML = rows.map((r, i) => {
     if (r.isRest) {
       return `
       <tr class="srow srow--rest" id="srow-rest-${i}">
@@ -440,7 +440,7 @@ function renderProjected(data) {
     }
   });
 
-  projectedBody.innerHTML = rows.map((r, i) => {
+  if (projectedBody) projectedBody.innerHTML = rows.map((r, i) => {
     const gapLapDisplay = projGapInLaps[r.name] !== 0 ? `-${projGapInLaps[r.name]}` : '—';
     const gapSecDisplay = projGapInMs[r.name] > 0 ? `+${formatMs(projGapInMs[r.name])}` : '—';
 
@@ -507,6 +507,7 @@ const ticker    = document.getElementById('lapTicker');
 const MAX_TICKS = 20;
 
 function addTick(lap) {
+  if (!ticker) return;
   const el = document.createElement('div');
   el.className = 'ticker-item';
   el.style.borderLeftColor = lap.color;

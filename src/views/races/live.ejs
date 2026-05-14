@@ -58,11 +58,7 @@
       <button id="voiceBtn" class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Activar/silenciar voz' : 'Toggle voice' %>" onclick="toggleVoice()">🔊</button>
       <button id="viewBtn" class="lbtn lbtn--view" title="<%= lang === 'es' ? 'Cambiar vista' : 'Toggle view' %>" onclick="toggleView()">⊞</button>
       <button class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Clasificación en ventana' : 'Standings window' %>"
-        onclick="window.open('/races/<%= race.id %>/mangas/<%= manga.id %>/panel/standings','_blank','width=560,height=780')">📊</button>
-      <button class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Proyección en ventana' : 'Projection window' %>"
-        onclick="window.open('/races/<%= race.id %>/mangas/<%= manga.id %>/panel/projected','_blank','width=560,height=680')">📈</button>
-      <button class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Mejores vueltas en ventana' : 'Best laps window' %>"
-        onclick="window.open('/races/<%= race.id %>/mangas/<%= manga.id %>/panel/ticker','_blank','width=480,height=620')">⏱</button>
+        onclick="window.open('/races/<%= race.id %>/mangas/<%= manga.id %>/panel/standings','_blank','width=620,height=780')">📊</button>
       <a href="/races/<%= race.id %>/mangas/<%= manga.id %>/tv" target="_blank" class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Pantalla TV' : 'TV display' %>">📺</a>
       <% if (race.format === 'team' && totalMangas > 1 && license.tier === 'pro') { %>
         <a href="/races/<%= race.id %>/lemans" target="_blank" class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Clasificación Le Mans' : 'Le Mans standings' %>">🏁</a>
@@ -78,44 +74,24 @@
     <!-- Lane cards -->
     <div class="live-lanes" id="lanesGrid"></div>
 
+    <!-- Resizer -->
+    <div id="sidebarResizer" class="sidebar-resizer" title="<%= lang === 'es' ? 'Arrastra para redimensionar' : 'Drag to resize' %>"></div>
+
     <!-- Sidebar -->
-    <aside class="live-sidebar">
+    <aside class="live-sidebar" id="liveSidebar">
 
       <div class="live-panel">
         <div class="live-panel__title">
-          <%= lang === 'es' ? 'CLASIFICACIÓN GENERAL' : 'STANDINGS' %>
+          <%= lang === 'es' ? 'CLASIFICACIÓN GENERAL' : 'OVERALL STANDINGS' %>
           <a href="/races/<%= race.id %>/mangas/<%= manga.id %>/panel/standings" target="_blank" class="panel-expand" title="<%= lang === 'es' ? 'Abrir en ventana' : 'Open in window' %>">⤢</a>
         </div>
         <table class="sidebar-table">
           <thead>
             <tr>
               <th style="width:28px">#</th>
-              <th><%= lang === 'es' ? 'Piloto / Equipo' : 'Driver / Team' %></th>
-              <th style="width:18px"></th>
-              <th class="sr-right" title="<%= lang === 'es' ? 'Vueltas esta manga' : 'Laps this heat' %>"><%= lang === 'es' ? 'Vlt.' : 'Lps.' %></th>
-              <th class="sr-right" title="<%= lang === 'es' ? 'Total vueltas en carrera' : 'Total race laps' %>"><%= lang === 'es' ? 'Total' : 'Total' %></th>
-              <th class="sr-right"><%= lang === 'es' ? 'Mejor' : 'Best' %></th>
-              <th class="sr-right"><%= lang === 'es' ? 'Media' : 'Avg' %></th>
-              <th class="sr-right" style="text-align:right"><%= lang === 'es' ? 'Gap V' : 'Gap L' %></th>
-              <th class="sr-right" style="text-align:right"><%= lang === 'es' ? 'Gap S' : 'Gap S' %></th>
-            </tr>
-          </thead>
-          <tbody id="standingsBody"></tbody>
-        </table>
-      </div>
-
-      <div class="live-panel">
-        <div class="live-panel__title">
-          <%= lang === 'es' ? 'PROYECCIÓN FINAL' : 'FINAL PROJECTION' %>
-          <a href="/races/<%= race.id %>/mangas/<%= manga.id %>/panel/projected" target="_blank" class="panel-expand" title="<%= lang === 'es' ? 'Abrir en ventana' : 'Open in window' %>">⤢</a>
-        </div>
-        <table class="sidebar-table">
-          <thead>
-            <tr>
-              <th style="width:28px">#</th>
               <th><%= lang === 'es' ? 'Participante' : 'Participant' %></th>
-              <th class="sr-right"><%= lang === 'es' ? 'V estimada' : 'Est. Laps' %></th>
-              <th class="sr-right"><%= lang === 'es' ? 'En pista' : 'On track' %></th>
+              <th class="sr-right" title="<%= lang === 'es' ? 'Vueltas proyectadas al final de la carrera' : 'Projected laps at end of race' %>"><%= lang === 'es' ? 'V. Proy.' : 'Proj.' %></th>
+              <th class="sr-right" title="<%= lang === 'es' ? 'Vueltas reales acumuladas' : 'Actual laps so far' %>"><%= lang === 'es' ? 'Total' : 'Total' %></th>
               <th class="sr-right"><%= lang === 'es' ? 'Media' : 'Avg' %></th>
               <th class="sr-right" style="text-align:right"><%= lang === 'es' ? 'Gap V' : 'Gap L' %></th>
               <th class="sr-right" style="text-align:right"><%= lang === 'es' ? 'Gap S' : 'Gap S' %></th>
@@ -123,30 +99,6 @@
           </thead>
           <tbody id="projectedBody"></tbody>
         </table>
-      </div>
-
-      <% if (hasBestLaps) { %>
-      <div class="live-panel">
-        <div class="live-panel__title"><%= lang === 'es' ? 'MEJORES VUELTAS' : 'BEST LAPS' %></div>
-        <table class="sidebar-table">
-          <thead>
-            <tr>
-              <th class="sr-center"><%= lang === 'es' ? 'Carril' : 'Lane' %></th>
-              <th><%= lang === 'es' ? 'Piloto / Equipo' : 'Driver / Team' %></th>
-              <th class="sr-right"><%= lang === 'es' ? 'Mejor' : 'Best' %></th>
-            </tr>
-          </thead>
-          <tbody id="bestLapsBody"></tbody>
-        </table>
-      </div>
-      <% } %>
-
-      <div class="live-panel live-panel--ticker">
-        <div class="live-panel__title">
-          <%= lang === 'es' ? 'ÚLTIMAS VUELTAS' : 'LAST LAPS' %>
-          <a href="/races/<%= race.id %>/mangas/<%= manga.id %>/panel/ticker" target="_blank" class="panel-expand" title="<%= lang === 'es' ? 'Abrir en ventana' : 'Open in window' %>">⤢</a>
-        </div>
-        <div id="lapTicker" class="ticker-list"></div>
       </div>
 
     </aside>
@@ -203,5 +155,49 @@
   </script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/live.js?v=<%= Date.now() %>"></script>
+  <script>
+    (function () {
+      const resizer = document.getElementById('sidebarResizer');
+      const sidebar = document.getElementById('liveSidebar');
+      if (!resizer || !sidebar) return;
+
+      const KEY = 'voltrace.liveSidebarW';
+      const MIN = 260, MAX_FRACTION = 0.75;
+
+      const saved = parseInt(localStorage.getItem(KEY), 10);
+      if (saved && saved >= MIN) {
+        document.documentElement.style.setProperty('--sidebar-w', saved + 'px');
+      }
+
+      let startX = 0, startW = 0;
+      function onDown(e) {
+        startX = e.clientX;
+        startW = sidebar.getBoundingClientRect().width;
+        document.body.classList.add('resizing-sidebar');
+        resizer.classList.add('dragging');
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp, { once: true });
+        e.preventDefault();
+      }
+      function onMove(e) {
+        const dx = e.clientX - startX;
+        const maxW = Math.floor(window.innerWidth * MAX_FRACTION);
+        const w = Math.min(maxW, Math.max(MIN, startW - dx));
+        document.documentElement.style.setProperty('--sidebar-w', w + 'px');
+      }
+      function onUp() {
+        document.body.classList.remove('resizing-sidebar');
+        resizer.classList.remove('dragging');
+        window.removeEventListener('mousemove', onMove);
+        const w = sidebar.getBoundingClientRect().width;
+        localStorage.setItem(KEY, String(Math.round(w)));
+      }
+      resizer.addEventListener('mousedown', onDown);
+      resizer.addEventListener('dblclick', () => {
+        document.documentElement.style.setProperty('--sidebar-w', '380px');
+        localStorage.removeItem(KEY);
+      });
+    })();
+  </script>
 </body>
 </html>
