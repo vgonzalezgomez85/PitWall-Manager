@@ -85,20 +85,23 @@
           <%= lang === 'es' ? 'CLASIFICACIÓN GENERAL' : 'OVERALL STANDINGS' %>
           <a href="/races/<%= race.id %>/mangas/<%= manga.id %>/panel/standings" target="_blank" class="panel-expand" title="<%= lang === 'es' ? 'Abrir en ventana' : 'Open in window' %>">⤢</a>
         </div>
-        <table class="sidebar-table">
+        <div class="live-panel__body">
+        <table class="sidebar-table sidebar-table--auto">
           <thead>
             <tr>
-              <th style="width:28px">#</th>
+              <th>#</th>
               <th><%= lang === 'es' ? 'Participante' : 'Participant' %></th>
               <th class="sr-right" title="<%= lang === 'es' ? 'Vueltas proyectadas al final de la carrera' : 'Projected laps at end of race' %>"><%= lang === 'es' ? 'V. Proy.' : 'Proj.' %></th>
               <th class="sr-right" title="<%= lang === 'es' ? 'Vueltas reales acumuladas' : 'Actual laps so far' %>"><%= lang === 'es' ? 'Total' : 'Total' %></th>
               <th class="sr-right"><%= lang === 'es' ? 'Media' : 'Avg' %></th>
-              <th class="sr-right" style="text-align:right"><%= lang === 'es' ? 'Gap V' : 'Gap L' %></th>
-              <th class="sr-right" style="text-align:right"><%= lang === 'es' ? 'Gap S' : 'Gap S' %></th>
+              <th class="sr-center" title="<%= lang === 'es' ? 'Tendencia (arriba/abajo)' : 'Trend (up/down)' %>">↕</th>
+              <th class="sr-right"><%= lang === 'es' ? 'Gap V' : 'Gap L' %></th>
+              <th class="sr-right"><%= lang === 'es' ? 'Gap S' : 'Gap S' %></th>
             </tr>
           </thead>
           <tbody id="projectedBody"></tbody>
         </table>
+        </div>
       </div>
 
     </aside>

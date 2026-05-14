@@ -271,10 +271,12 @@ body.resizing-sidebar { cursor: col-resize; user-select: none; }
 body.resizing-sidebar * { cursor: col-resize !important; }
 
 .live-panel {
-  display: flex; flex-direction: column; flex-shrink: 0;
+  display: flex; flex-direction: column; flex: 1; min-height: 0;
   border-bottom: 1px solid #161b22; overflow: hidden;
 }
+.live-panel__body { flex: 1; min-height: 0; overflow-y: auto; }
 .live-panel--ticker { flex: 1; overflow: hidden; }
+.sidebar-table thead th { position: sticky; top: 0; z-index: 2; }
 
 .live-panel__title {
   font-size: .58rem; font-weight: 700; letter-spacing: .14em;
@@ -294,6 +296,9 @@ body.resizing-sidebar * { cursor: col-resize !important; }
 .sidebar-table {
   width: 100%; border-collapse: collapse; font-size: .78rem; table-layout: fixed;
 }
+.sidebar-table--auto { table-layout: auto; }
+.sidebar-table--auto th, .sidebar-table--auto td { white-space: nowrap; }
+.sidebar-table--auto td:nth-child(2) { max-width: none; }
 .sidebar-table thead th {
   padding: .28rem .5rem; font-size: .6rem; font-weight: 700;
   letter-spacing: .07em; color: #4e555e; text-transform: uppercase;
@@ -332,11 +337,13 @@ body.resizing-sidebar * { cursor: col-resize !important; }
 .sr-avg     { font-family: 'Share Tech Mono', monospace; color: #e6a817; font-size: .7rem; }
 .sr-delta      { font-family: 'Share Tech Mono', monospace; color: #f97316; font-size: .7rem; }
 .sr-center { text-align: center; }
-.sr-arrows              { text-align: center; white-space: nowrap; line-height: 1.2; font-size: .75rem; }
+.sr-arrows              { text-align: center; white-space: nowrap; line-height: 1.1; font-size: .8rem; }
 .sr-arrow-up            { color: #30363d; font-weight: 700; display: block; }
-.sr-arrow-up.active     { color: #3fb950; }
+.sr-arrow-up.good       { color: #3fb950; }   /* closing on the one above */
+.sr-arrow-up.bad        { color: #e63946; }   /* losing distance to the one above */
 .sr-arrow-down          { color: #30363d; font-weight: 700; display: block; }
-.sr-arrow-down.active   { color: #e63946; }
+.sr-arrow-down.bad      { color: #e63946; }   /* the one below is closing in */
+.sr-arrow-down.good     { color: #3fb950; }   /* opening gap on the one below */
 .sr-proj    { font-family: 'Share Tech Mono', monospace; color: #e6edf3; font-weight: 700; }
 .sr-ontrack { font-family: 'Share Tech Mono', monospace; color: #f6c90e; font-size: .7rem; }
 

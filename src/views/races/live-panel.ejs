@@ -36,8 +36,9 @@
     .panel-table-wrap { flex: 1; overflow-y: auto; }
     .panel-table {
       width: 100%; border-collapse: collapse;
-      font-size: var(--pt-font, .92rem); table-layout: fixed;
+      font-size: var(--pt-font, .92rem); table-layout: auto;
     }
+    .panel-table th, .panel-table td { white-space: nowrap; }
     .panel-table thead { position: sticky; top: 0; z-index: 5; }
     .panel-table thead th {
       padding: .5rem 1rem; font-size: .68rem; font-weight: 700;
@@ -50,6 +51,14 @@
     }
     .pt-right { text-align: right !important; }
     .pt-row:nth-child(odd) { background: rgba(255,255,255,.015); }
+    .pt-row--idle .pt-name,
+    .pt-row--idle .pt-ontrack,
+    .pt-row--idle .pt-avg,
+    .pt-row--idle .pt-proj { opacity: .55; }
+    .pt-arrows { text-align: center; line-height: 1.05; }
+    .pt-arrow-up, .pt-arrow-down { display: block; font-weight: 700; color: #30363d; }
+    .pt-arrow-up.good,   .pt-arrow-down.good { color: #3fb950; }
+    .pt-arrow-up.bad,    .pt-arrow-down.bad  { color: #e63946; }
 
     .pt-pos {
       display: inline-flex; align-items: center; justify-content: center;
@@ -97,13 +106,14 @@
     <table class="panel-table">
       <thead>
         <tr>
-          <th style="width:50px">#</th>
+          <th>#</th>
           <th><%= lang === 'es' ? 'Participante' : 'Participant' %></th>
-          <th class="pt-right" style="width:110px" title="<%= lang === 'es' ? 'Vueltas proyectadas al final de la carrera' : 'Projected total laps' %>"><%= lang === 'es' ? 'V. Proy.' : 'Proj.' %></th>
-          <th class="pt-right" style="width:90px"><%= lang === 'es' ? 'Total' : 'Total' %></th>
-          <th class="pt-right" style="width:120px"><%= lang === 'es' ? 'Media' : 'Avg' %></th>
-          <th class="pt-right" style="width:80px"><%= lang === 'es' ? 'Gap V' : 'Gap L' %></th>
-          <th class="pt-right" style="width:100px"><%= lang === 'es' ? 'Gap S' : 'Gap S' %></th>
+          <th class="pt-right" title="<%= lang === 'es' ? 'Vueltas proyectadas al final de la carrera' : 'Projected total laps' %>"><%= lang === 'es' ? 'V. Proy.' : 'Proj.' %></th>
+          <th class="pt-right"><%= lang === 'es' ? 'Total' : 'Total' %></th>
+          <th class="pt-right"><%= lang === 'es' ? 'Media' : 'Avg' %></th>
+          <th title="<%= lang === 'es' ? 'Tendencia' : 'Trend' %>">↕</th>
+          <th class="pt-right"><%= lang === 'es' ? 'Gap V' : 'Gap L' %></th>
+          <th class="pt-right"><%= lang === 'es' ? 'Gap S' : 'Gap S' %></th>
         </tr>
       </thead>
       <tbody id="panelBody"></tbody>
@@ -146,7 +156,7 @@
       totalRaceMs:      race.lanes_count * race.manga_duration_minutes * 60 * 1000,
       standings:        standings,
       lanes:            Object.values(laneInit2),
-      prevLapsByLane:   prevLapsByLane || {},
+      allParticipants:  allParticipants || [],
     }) %>;
     const LANG = "<%= lang %>";
   </script>
@@ -180,52 +190,92 @@
     }
     window.addEventListener('resize', fitTable);
 
-    // Projected total laps for the WHOLE race:
-    //   totalRaceMs = lanes_count × manga_duration
-    //   projected  = floor(totalRaceMs / avgLapMs)
+    // Projected total laps for the WHOLE race for every participant of every tanda:
+    //   totalRaceMs = lanes_count × manga_duration_minutes
+    //   projected   = floor(totalRaceMs / avgLapMs) if avg available, else 0
+    // Live overrides for the active manga come from `standings` (avg in real time).
     function buildRows(data) {
-      const std = data?.standings || PANEL_DATA.lanes.filter(l => !l.isRest);
       const totalRaceMs = PANEL_DATA.totalRaceMs;
+      const liveByName = new Map();
+      if (data?.standings) {
+        data.standings.forEach(s => {
+          if (s.name) liveByName.set(s.name, s);
+        });
+      }
 
-      const rows = std.map(r => {
-        const prev = PANEL_DATA.prevLapsByLane[r.lane] || 0;
-        const total = prev + (r.lapCount || 0);
-        const avg = r.avgLapMs || null;
-        const projected = avg ? Math.floor(totalRaceMs / avg) : total;
+      const rows = (PANEL_DATA.allParticipants || []).map(p => {
+        const live = liveByName.get(p.entity_name);
+        const total   = (p.total_laps || 0) + (live?.lapCount || 0);
+        const avg     = live?.avgLapMs ?? (p.avg_lap_ms != null ? Math.round(p.avg_lap_ms) : null);
+        const projected = avg ? Math.floor(totalRaceMs / avg) : 0;
         return {
-          name: r.name, lane: r.lane,
+          name: p.entity_name,
           total, avgLapMs: avg, projectedTotal: projected,
+          hasData: total > 0 || avg != null,
         };
       });
 
       rows.sort((a, b) =>
         b.projectedTotal - a.projectedTotal ||
-        (a.avgLapMs ?? Infinity) - (b.avgLapMs ?? Infinity)
+        (a.avgLapMs ?? Infinity) - (b.avgLapMs ?? Infinity) ||
+        a.name.localeCompare(b.name)
       );
 
-      // Gaps
+      const BIG = 1e9;
+      const scoreOf = r => (r.projectedTotal || 0) * BIG - (r.avgLapMs ?? BIG);
+
       rows.forEach((r, i) => {
-        if (i === 0) { r._gapL = 0; r._gapMs = 0; return; }
-        const gapL = rows[i-1].projectedTotal - r.projectedTotal;
-        r._gapL = gapL;
-        r._gapMs = (gapL === 0 && r.avgLapMs != null && rows[i-1].avgLapMs != null)
-          ? rows[i-1].avgLapMs - r.avgLapMs : 0;
+        if (i === 0) { r._gapL = 0; r._gapMs = 0; r._gapAbove = null; }
+        else {
+          const above = rows[i-1];
+          r._gapL = above.projectedTotal - r.projectedTotal;
+          r._gapMs = (r._gapL === 0 && r.avgLapMs != null && above.avgLapMs != null)
+            ? above.avgLapMs - r.avgLapMs : 0;
+          r._gapAbove = scoreOf(above) - scoreOf(r);
+        }
+        const below = rows[i+1];
+        r._gapBelow = below ? scoreOf(r) - scoreOf(below) : null;
+
+        const prev = prevPanelGap[r.name] || {};
+        r._trUp = 'neutral'; r._trDown = 'neutral';
+        if (r._gapAbove != null && prev.above != null) {
+          if (r._gapAbove < prev.above)      r._trUp = 'good';
+          else if (r._gapAbove > prev.above) r._trUp = 'bad';
+        }
+        if (r._gapBelow != null && prev.below != null) {
+          if (r._gapBelow < prev.below)      r._trDown = 'bad';
+          else if (r._gapBelow > prev.below) r._trDown = 'good';
+        }
       });
+
+      prevPanelGap = {};
+      rows.forEach(r => { prevPanelGap[r.name] = { above: r._gapAbove, below: r._gapBelow }; });
       return rows;
     }
+    let prevPanelGap = {};
 
     function render(data) {
       const rows = buildRows(data);
-      panelBody.innerHTML = rows.map((r, i) => `
-        <tr class="pt-row">
+      panelBody.innerHTML = rows.map((r, i) => {
+        const upCls   = r._trUp === 'good' ? ' good' : r._trUp === 'bad' ? ' bad' : '';
+        const downCls = r._trDown === 'good' ? ' good' : r._trDown === 'bad' ? ' bad' : '';
+        const upCh    = i === 0 ? '' : '▲';
+        const downCh  = i === rows.length - 1 ? '' : '▼';
+        return `
+        <tr class="pt-row${r.hasData ? '' : ' pt-row--idle'}">
           <td><span class="pt-pos ${posClass(i+1)}">${i+1}</span></td>
           <td><span class="pt-name">${r.name}</span></td>
-          <td class="pt-right"><span class="pt-proj">${r.projectedTotal}</span></td>
+          <td class="pt-right"><span class="pt-proj">${r.projectedTotal || '—'}</span></td>
           <td class="pt-right"><span class="pt-ontrack">${r.total}</span></td>
           <td class="pt-right"><span class="pt-avg">${formatMs(r.avgLapMs)}</span></td>
+          <td class="pt-arrows">
+            <span class="pt-arrow-up${upCls}">${upCh}</span>
+            <span class="pt-arrow-down${downCls}">${downCh}</span>
+          </td>
           <td class="pt-right"><span class="pt-gap">${r._gapL > 0 ? '-' + r._gapL : '—'}</span></td>
           <td class="pt-right"><span class="pt-gap">${r._gapMs > 0 ? '+' + formatMs(r._gapMs) : '—'}</span></td>
-        </tr>`).join('');
+        </tr>`;
+      }).join('');
       requestAnimationFrame(fitTable);
     }
 
