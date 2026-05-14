@@ -76,7 +76,7 @@
 
     <div class="form-group">
       <label class="form-label" for="minLapS">
-        <%= lang === 'es' ? 'Vuelta mínima (segundos)' : 'Minimum lap time (seconds)' %>
+        <%= lang === 'es' ? 'Vuelta mínima por defecto (segundos)' : 'Default minimum lap (seconds)' %>
       </label>
       <div class="input-row">
         <input class="form-input form-input--sm"
@@ -87,10 +87,37 @@
       </div>
       <p class="form-hint" style="margin-top:.35rem">
         <%= lang === 'es'
-          ? 'Vueltas más rápidas que este tiempo se marcarán automáticamente como fantasma. Dejar vacío para desactivar.'
-          : 'Laps faster than this will be auto-marked as ghost. Leave empty to disable.' %>
+          ? 'Se usa cuando una carrera no tiene tiempo específico para su categoría. Vueltas más rápidas se marcarán automáticamente como fantasma. Dejar vacío para desactivar.'
+          : 'Used when a race has no category-specific time. Faster laps will be auto-marked as ghost. Leave empty to disable.' %>
       </p>
     </div>
+
+    <% if (categories && categories.length > 0) { %>
+    <div class="form-group">
+      <label class="form-label">
+        <%= lang === 'es' ? 'Vueltas mínimas por categoría (opcional)' : 'Per-category minimum laps (optional)' %>
+      </label>
+      <p class="form-hint" style="margin-bottom:.6rem">
+        <%= lang === 'es'
+          ? 'Sobrescribe el tiempo por defecto cuando la carrera pertenece a una categoría concreta. Deja vacío para usar el valor por defecto.'
+          : 'Overrides the default time when the race belongs to a specific category. Leave empty to use the default.' %>
+      </p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.6rem">
+        <% categories.forEach(cat => { %>
+          <div style="display:flex;align-items:center;gap:.5rem;background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:.5rem .7rem">
+            <span style="flex:1;font-weight:600;font-size:.95rem"><%= cat.name %></span>
+            <input class="form-input form-input--sm"
+                   type="number" step="0.01" min="0" max="999"
+                   name="category_min_lap_s_<%= cat.id %>"
+                   placeholder="—"
+                   style="width:5.5rem"
+                   value="<%= body['category_min_lap_s_' + cat.id] || '' %>">
+            <span class="form-hint">s</span>
+          </div>
+        <% }) %>
+      </div>
+    </div>
+    <% } %>
 
     <div class="form-group">
       <label class="form-label" for="cDesc">

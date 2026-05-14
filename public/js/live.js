@@ -40,18 +40,20 @@ function showSemaphore() {
   const ov = document.createElement('div');
   ov.id = 'semaphore-overlay';
   ov.className = 'semaphore-overlay';
-  ov.innerHTML = `<div class="semaphore-panel">${[1,2,3,4,5].map(i =>
+  ov.innerHTML = `<div class="semaphore-panel">${[1,2,3].map(i =>
     `<div class="s-light" id="sl${i}"></div>`).join('')}</div>`;
   document.body.appendChild(ov);
-  [1,2,3,4,5].forEach((n, i) =>
-    setTimeout(() => document.getElementById(`sl${n}`)?.classList.add('lit'), i * 1000)
+  // 3 luces rojas progresivas sobre los ~3.1s de la secuencia GO. La verde se
+  // dispara con la trama 3 (manga:started) vía semaphoreGo().
+  [0, 700, 1400].forEach((delay, i) =>
+    setTimeout(() => document.getElementById(`sl${i + 1}`)?.classList.add('lit'), delay)
   );
-  _semaphoreFallback = setTimeout(() => semaphoreGo(null), 10000);
+  _semaphoreFallback = setTimeout(() => semaphoreGo(null), 6000);
 }
 
 function semaphoreGo(callback) {
   if (_semaphoreFallback) { clearTimeout(_semaphoreFallback); _semaphoreFallback = null; }
-  [1,2,3,4,5].forEach(n => {
+  [1,2,3].forEach(n => {
     const el = document.getElementById(`sl${n}`);
     if (!el) return;
     el.classList.remove('lit');
@@ -60,7 +62,7 @@ function semaphoreGo(callback) {
   setTimeout(() => {
     document.getElementById('semaphore-overlay')?.remove();
     if (callback) callback();
-  }, 900);
+  }, 700);
 }
 
 // ── Countdown timer ───────────────────────────────────────────────────────────
@@ -274,61 +276,55 @@ function renderStandings(data) {
     rowTotal(b) - rowTotal(a) || (a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity)
   );
 
-  // Compute current gap to the driver immediately ahead for each row
-  const currentGap = {};
+  // Calculate gaps (vueltas y segundos)
+  const gapInLaps = {};
+  const gapInMs = {};
   rows.forEach((r, i) => {
-    if (i === 0) return;
-    currentGap[r.lane] = rowTotal(rows[i-1]) - rowTotal(r);
-  });
-
-  // Determine arrows: ↑ green if closing to ahead, ↓ red if driver behind is closing
-  const aheadArrow  = {}; // lane → '↑' or ''
-  const behindArrow = {}; // lane → '↓' or ''
-  rows.forEach((r, i) => {
-    // Arrow up: this driver's gap to ahead shrank
-    if (i > 0) {
-      const prev = prevGapToAhead[r.lane];
-      const curr = currentGap[r.lane];
-      aheadArrow[r.lane] = (prev != null && curr < prev) ? '↑' : '';
+    if (i === 0) {
+      gapInLaps[r.lane] = 0;
+      gapInMs[r.lane] = 0;
+      return;
     }
-    // Arrow down: the driver behind's gap to us shrank (i.e. they're catching up)
-    if (i < rows.length - 1) {
-      const behindLane = rows[i+1].lane;
-      const prev = prevGapToAhead[behindLane];
-      const curr = currentGap[behindLane];
-      behindArrow[r.lane] = (prev != null && curr < prev) ? '↓' : '';
+    const prevTotal = rowTotal(rows[i-1]);
+    const currTotal = rowTotal(r);
+    const lapGap = prevTotal - currTotal;
+    gapInLaps[r.lane] = lapGap;
+
+    // Gap en segundos: si está el mismo número de vueltas, usa la diferencia de promedio
+    if (lapGap === 0 && r.avgLapMs != null && rows[i-1].avgLapMs != null) {
+      gapInMs[r.lane] = rows[i-1].avgLapMs - r.avgLapMs;
+    } else {
+      gapInMs[r.lane] = 0;
     }
   });
-
-  // Save gaps for next render
-  prevGapToAhead = { ...currentGap };
 
   standingsBody.innerHTML = rows.map((r, i) => {
     if (r.isRest) {
       return `
       <tr class="srow srow--rest" id="srow-rest-${i}">
         <td><span class="sr-pos">${i+1}</span></td>
-        <td style="max-width:80px" colspan="2"><span class="sr-name sr-name--rest" title="${r.name}">💤 ${r.name}</span></td>
+        <td style="max-width:80px"><span class="sr-name sr-name--rest" title="${r.name}">💤 ${r.name}</span></td>
         <td class="sr-right">—</td>
         <td class="sr-right"><span class="sr-total">${r.prevLapCount}</span></td>
         <td class="sr-right">—</td>
         <td class="sr-right">—</td>
         <td class="sr-right">—</td>
+        <td class="sr-right">—</td>
       </tr>`;
     }
-    const upActive   = !!aheadArrow[r.lane]  && i > 0;
-    const downActive = !!behindArrow[r.lane] && i < rows.length - 1;
-    const arrows = `<span class="sr-arrow-up ${upActive ? 'active' : ''}">${i > 0 ? '↑' : ''}</span><span class="sr-arrow-down ${downActive ? 'active' : ''}">${i < rows.length - 1 ? '↓' : ''}</span>`;
+    const gapLapDisplay = gapInLaps[r.lane] !== 0 ? `-${gapInLaps[r.lane]}` : '—';
+    const gapSecDisplay = gapInMs[r.lane] > 0 ? `+${formatMs(gapInMs[r.lane])}` : '—';
+
     return `
     <tr class="srow" id="srow-${r.lane}">
-      <td><span class="sr-pos ${posClass(i+1)}">${i+1}</span></td>
+      <td style="width:28px"><span class="sr-pos ${posClass(i+1)}">${i+1}</span></td>
       <td style="max-width:80px"><span class="sr-name" title="${r.name}">${r.name}</span></td>
-      <td class="sr-arrows">${arrows}</td>
       <td class="sr-right"><span class="sr-laps">${r.lapCount}</span></td>
       <td class="sr-right"><span class="sr-total">${getTotalLaps(r.lane, r.lapCount)}</span></td>
       <td class="sr-right"><span class="sr-best">${formatMs(r.bestLapMs)}</span></td>
       <td class="sr-right"><span class="sr-avg">${formatMs(r.avgLapMs)}</span></td>
-      <td class="sr-right"><span class="sr-delta">${formatDelta(r.bestLapMs, r.avgLapMs)}</span></td>
+      <td class="sr-right"><span class="sr-delta">${gapLapDisplay}</span></td>
+      <td class="sr-right"><span class="sr-delta">${gapSecDisplay}</span></td>
     </tr>`;
   }).join('');
 
@@ -409,14 +405,41 @@ function renderProjected(data) {
 
   rows.sort((a, b) => b.projectedTotal - a.projectedTotal || (a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity));
 
-  projectedBody.innerHTML = rows.map((r, i) => `
+  // Calculate projected gaps en vueltas
+  const projGapInLaps = {};
+  const projGapInMs = {};
+  rows.forEach((r, i) => {
+    if (i === 0) {
+      projGapInLaps[r.name] = 0;
+      projGapInMs[r.name] = 0;
+      return;
+    }
+    const gapLaps = rows[i-1].projectedTotal - r.projectedTotal;
+    projGapInLaps[r.name] = gapLaps;
+
+    // Gap en segundos: si está el mismo número de vueltas, usa la diferencia de promedio
+    if (gapLaps === 0 && r.avgLapMs != null && rows[i-1].avgLapMs != null) {
+      projGapInMs[r.name] = rows[i-1].avgLapMs - r.avgLapMs;
+    } else {
+      projGapInMs[r.name] = 0;
+    }
+  });
+
+  projectedBody.innerHTML = rows.map((r, i) => {
+    const gapLapDisplay = projGapInLaps[r.name] !== 0 ? `-${projGapInLaps[r.name]}` : '—';
+    const gapSecDisplay = projGapInMs[r.name] > 0 ? `+${formatMs(projGapInMs[r.name])}` : '—';
+
+    return `
     <tr class="srow">
-      <td><span class="sr-pos ${posClass(i+1)}">${i+1}</span></td>
+      <td style="width:28px"><span class="sr-pos ${posClass(i+1)}">${i+1}</span></td>
       <td style="max-width:80px"><span class="sr-name" title="${r.name}">${r.name}</span></td>
       <td class="sr-right"><span class="sr-proj">${r.projectedTotal}</span></td>
       <td class="sr-right"><span class="sr-ontrack">${r.total}</span></td>
       <td class="sr-right"><span class="sr-avg">${formatMs(r.avgLapMs)}</span></td>
-    </tr>`).join('');
+      <td class="sr-right"><span class="sr-delta">${gapLapDisplay}</span></td>
+      <td class="sr-right"><span class="sr-delta">${gapSecDisplay}</span></td>
+    </tr>`;
+  }).join('');
 }
 
 // ── Best laps panel ──────────────────────────────────────────────────────────

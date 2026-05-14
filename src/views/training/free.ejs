@@ -31,22 +31,30 @@
     const ov = document.createElement('div');
     ov.id = 'semaphore-overlay';
     ov.className = 'semaphore-overlay';
-    ov.innerHTML = `<div class="semaphore-panel">${[1,2,3,4,5].map(i =>
+    ov.innerHTML = `<div class="semaphore-panel">${[1,2,3].map(i =>
       `<div class="s-light" id="sl${i}"></div>`).join('')}</div>`;
     document.body.appendChild(ov);
-    [1,2,3,4,5].forEach((n, i) =>
-      setTimeout(() => document.getElementById(`sl${n}`)?.classList.add('lit'), i * 1000)
+    // Real DS-300 GO: rojas a t+0, t+416ms (tramas 1 y 2). Trama 3 (t+3134ms) → verde.
+    [0, 416].forEach((delay, i) =>
+      setTimeout(() => document.getElementById(`sl${i + 1}`)?.classList.add('lit'), delay)
     );
-    setTimeout(() => {
-      [1,2,3,4,5].forEach(n => document.getElementById(`sl${n}`)?.classList.remove('lit'));
-      setTimeout(() => ov.remove(), 800);
-    }, 6000);
+  }
+  function semaphoreGo() {
+    const ov = document.getElementById('semaphore-overlay');
+    if (!ov) return;
+    [1,2,3].forEach(n => {
+      const el = document.getElementById(`sl${n}`);
+      if (!el) return;
+      el.classList.remove('lit');
+      el.classList.add('go');
+    });
+    setTimeout(() => ov.remove(), 1200);
   }
 
   const socket = io();
   socket.on('race:semaphore', () => showSemaphore());
   socket.on('training:autostart', () => {
-    const hasSemaphore = !!document.getElementById('semaphore-overlay');
-    setTimeout(() => { location.href = '/training/live'; }, hasSemaphore ? 7000 : 300);
+    semaphoreGo();
+    setTimeout(() => { location.href = '/training/live'; }, 1000);
   });
 </script>

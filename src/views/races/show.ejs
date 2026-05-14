@@ -245,18 +245,19 @@
     const ov = document.createElement('div');
     ov.id = 'semaphore-overlay';
     ov.className = 'semaphore-overlay';
-    ov.innerHTML = `<div class="semaphore-panel">${[1,2,3,4,5].map(i =>
+    ov.innerHTML = `<div class="semaphore-panel">${[1,2,3].map(i =>
       `<div class="s-light" id="sl${i}"></div>`).join('')}</div>`;
     document.body.appendChild(ov);
-    [1,2,3,4,5].forEach((n, i) =>
-      setTimeout(() => document.getElementById(`sl${n}`)?.classList.add('lit'), i * 1000)
+    // Real DS-300 GO: tramas a t+0, t+416ms, t+3134ms
+    [0, 416, 3134].forEach((delay, i) =>
+      setTimeout(() => document.getElementById(`sl${i + 1}`)?.classList.add('lit'), delay)
     );
-    _semaphoreFallback = setTimeout(() => semaphoreGo(null), 10000);
+    _semaphoreFallback = setTimeout(() => semaphoreGo(null), 6000);
   }
 
   function semaphoreGo(callback) {
     if (_semaphoreFallback) { clearTimeout(_semaphoreFallback); _semaphoreFallback = null; }
-    [1,2,3,4,5].forEach(n => {
+    [1,2,3].forEach(n => {
       const el = document.getElementById(`sl${n}`);
       if (!el) return;
       el.classList.remove('lit');

@@ -22,21 +22,29 @@ class CompetitionTrainingServiceClass {
     this._paused       = false;
     this._laneMap      = new Map(); // lane → {participantIdx, count, sum, lastMs, laps, chronoLaps}
     this._handler      = null;
-    this._startedAt    = null;
-    this._durationMs   = null;
+    this._startedAt        = null;
+    this._durationMs       = null;
+    this._pendingDurationMs = null;
 
+    // Trama 1: guarda la duración pero no arranca el cronómetro.
+    // Trama 3 (race_started): activa el heat y emite training:go.
     SerialService.on('race_go', ({ durationMs }) => {
       if (!this.isReady) return;
-      this._durationMs = durationMs;
+      this._pendingDurationMs = durationMs;
       this._paused = false;
-      if (this._standby && !this._active) this._activate();
-      SocketService.emit('training:go', { durationMs });
     });
 
     SerialService.on('race_started', () => {
       if (!this.isReady) return;
       this._paused = false;
+      if (this._pendingDurationMs != null) {
+        this._durationMs = this._pendingDurationMs;
+        this._pendingDurationMs = null;
+      }
       if (this._standby && !this._active) this._activate();
+      if (this._active) {
+        SocketService.emit('training:go', { durationMs: this._durationMs });
+      }
     });
 
     SerialService.on('race_paused',  () => { if (this._active) this._paused = true; });

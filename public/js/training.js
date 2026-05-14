@@ -40,7 +40,14 @@ function updateTimer() {
 }
 
 updateTimer();
-setInterval(() => { if (!standby) { elapsedMs += 250; updateTimer(); } }, 250);
+setInterval(() => {
+  if (standby) return;
+  // No descontar mientras el semáforo (overlay) está visible — la cuenta atrás
+  // empieza justo cuando desaparecen las luces verdes.
+  if (document.getElementById('semaphore-overlay')) return;
+  elapsedMs += 250;
+  updateTimer();
+}, 250);
 
 function setStandby(isStandby) {
   standby = isStandby;
@@ -76,10 +83,14 @@ function buildCard(lane) {
     </div>
     <div class="tr-card__best" id="tr-best-${lane.lane}">${formatMs(lane.lastMs)}</div>
     <div class="tr-card__avg-row">
-      <span class="tr-card__avg-label">${LANG === 'es' ? 'Media' : 'Avg'}</span>
-      <span class="tr-card__avg-val" id="tr-avg-${lane.lane}">${formatMs(lane.avgMs)}</span>
-      <span class="tr-card__avg-label" style="margin-left:.6rem">${LANG === 'es' ? 'Mejor' : 'Best'}</span>
-      <span class="tr-card__avg-val" id="tr-record-${lane.lane}" style="color:var(--card-color)">${formatMs(lane.bestMs)}</span>
+      <div class="tr-card__avg-cell">
+        <span class="tr-card__avg-label">${LANG === 'es' ? 'Media' : 'Avg'}</span>
+        <span class="tr-card__avg-val" id="tr-avg-${lane.lane}">${formatMs(lane.avgMs)}</span>
+      </div>
+      <div class="tr-card__avg-cell">
+        <span class="tr-card__avg-label">${LANG === 'es' ? 'Mejor' : 'Best'}</span>
+        <span class="tr-card__avg-val" id="tr-record-${lane.lane}" style="color:var(--card-color)">${formatMs(lane.bestMs)}</span>
+      </div>
     </div>
     <div class="tr-card__divider"></div>
     <div class="tr-card__laps" id="tr-laps-${lane.lane}">
@@ -177,16 +188,25 @@ function showSemaphore() {
   const ov = document.createElement('div');
   ov.id = 'semaphore-overlay';
   ov.className = 'semaphore-overlay';
-  ov.innerHTML = `<div class="semaphore-panel">${[1,2,3,4,5].map(i =>
+  ov.innerHTML = `<div class="semaphore-panel">${[1,2,3].map(i =>
     `<div class="s-light" id="sl${i}"></div>`).join('')}</div>`;
   document.body.appendChild(ov);
-  [1,2,3,4,5].forEach((n, i) =>
-    setTimeout(() => document.getElementById(`sl${n}`)?.classList.add('lit'), i * 1000)
+  // 3 luces rojas progresivas sobre los ~3.1s de la secuencia GO. La verde se
+  // dispara con la trama 3 (race_started → training:autostart) en semaphoreGo().
+  [0, 700, 1400].forEach((delay, i) =>
+    setTimeout(() => document.getElementById(`sl${i + 1}`)?.classList.add('lit'), delay)
   );
-  setTimeout(() => {
-    [1,2,3,4,5].forEach(n => document.getElementById(`sl${n}`)?.classList.remove('lit'));
-    setTimeout(() => ov.remove(), 800);
-  }, 6000);
+}
+function semaphoreGo() {
+  const ov = document.getElementById('semaphore-overlay');
+  if (!ov) return;
+  [1,2,3].forEach(n => {
+    const el = document.getElementById(`sl${n}`);
+    if (!el) return;
+    el.classList.remove('lit');
+    el.classList.add('go');
+  });
+  setTimeout(() => ov.remove(), 700);
 }
 
 // ── Socket.io ─────────────────────────────────────────────────────────────────
@@ -194,6 +214,7 @@ const socket = io();
 
 socket.on('connect', () => socket.emit('training:request'));
 socket.on('race:semaphore', () => showSemaphore());
+socket.on('training:autostart', () => semaphoreGo());
 
 socket.on('training:data', (lanes) => {
   lanes.forEach(lane => updateCard(lane));

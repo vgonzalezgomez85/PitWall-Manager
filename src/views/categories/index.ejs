@@ -1,0 +1,65 @@
+<%- include('../partials/header-compact', { lang, pageTitle: lang === 'es' ? 'Categorías' : 'Categories' }) %>
+
+<div class="container">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">🏷️ <%= lang === 'es' ? 'Categorías de carrera' : 'Race categories' %></h1>
+    </div>
+    <div class="page-header__actions">
+      <a href="/categories/new" class="btn btn--primary">
+        + <%= lang === 'es' ? 'Nueva categoría' : 'New category' %>
+      </a>
+    </div>
+  </div>
+
+  <% if (categories.length === 0) { %>
+    <div class="card" style="text-align:center;padding:2rem">
+      <p style="color:#6e7681;margin-bottom:1rem">
+        <%= lang === 'es' ? 'No hay categorías creadas aún.' : 'No categories yet.' %>
+      </p>
+      <a href="/categories/new" class="btn btn--primary">
+        <%= lang === 'es' ? 'Crear primera categoría' : 'Create first category' %>
+      </a>
+    </div>
+  <% } else { %>
+    <div class="card">
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border)">
+            <th style="text-align:left;padding:1rem;font-weight:600"><%= lang === 'es' ? 'Nombre' : 'Name' %></th>
+            <th style="text-align:left;padding:1rem;font-weight:600"><%= lang === 'es' ? 'Descripción' : 'Description' %></th>
+            <th style="text-align:center;padding:1rem;font-weight:600"><%= lang === 'es' ? 'Coches' : 'Cars' %></th>
+            <th style="text-align:left;padding:1rem;font-weight:600"><%= lang === 'es' ? 'Creada' : 'Created' %></th>
+            <th style="text-align:center;padding:1rem;font-weight:600"><%= lang === 'es' ? 'Acciones' : 'Actions' %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% categories.forEach(cat => {
+            const created = cat.created_at ? new Date(cat.created_at.replace(' ', 'T') + 'Z').toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US') : '—';
+          %>
+            <tr style="border-bottom:1px solid var(--border-light)">
+              <td style="padding:1rem;font-weight:500"><%= cat.name %></td>
+              <td style="padding:1rem;color:var(--text-muted);font-size:.9rem"><%= cat.description || '-' %></td>
+              <td style="padding:1rem;text-align:center;font-family:monospace;font-weight:600;color:#58a6ff"><%= cat.car_count || 0 %></td>
+              <td style="padding:1rem;color:var(--text-muted);font-size:.85rem"><%= created %></td>
+              <td style="padding:1rem;text-align:center;display:flex;gap:.5rem;justify-content:center">
+                <a href="/categories/<%= cat.id %>/edit" class="btn btn--ghost btn--sm">
+                  <%= lang === 'es' ? 'Editar' : 'Edit' %>
+                </a>
+                <form action="/categories/<%= cat.id %>/delete" method="POST" style="display:inline" onsubmit="return confirm('<%= lang === 'es' ? '¿Eliminar categoría?' : 'Delete category?' %>')">
+                  <button type="submit" class="btn btn--ghost btn--sm" style="color:var(--red)">
+                    <%= lang === 'es' ? 'Eliminar' : 'Delete' %>
+                  </button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+
+</div>
+
+<%- include('../partials/footer') %>

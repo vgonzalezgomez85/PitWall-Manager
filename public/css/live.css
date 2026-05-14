@@ -392,6 +392,11 @@
   box-shadow: 0 0 20px #ff0000, 0 0 50px #cc0000;
   border-color: #ff4444;
 }
+.s-light.go {
+  background: #00c853;
+  box-shadow: 0 0 20px #00ff6a, 0 0 50px #00c853;
+  border-color: #44ff88;
+}
 
 /* ── Pause overlay ─────────────────────────────────────────────────────────── */
 .pause-overlay {

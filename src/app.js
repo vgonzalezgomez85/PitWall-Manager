@@ -40,6 +40,8 @@ SerialService.on('race_go', ({ durationMs }) => {
 });
 
 SerialService.on('race_started', () => {
+  console.log('[DS-300] race_started → emit training:autostart');
+  SocketService.emit('training:autostart');
   if (TimingService.isRunning) return;
   if (TimingService._tandaBoundary) {
     console.log('[DS-300] STARTED ignored — tanda boundary, waiting for user to start next tanda');
