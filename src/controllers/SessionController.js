@@ -148,21 +148,44 @@ class SessionController {
       nextTanda = Tanda.findNextPending(race.id, tanda.number) || null;
     }
 
-    // All-race participant totals + remaining pending mangas (for full-race projection)
+    // All-race participant totals + remaining pending mangas (for full-race projection).
+    // Includes ALL entities assigned to any manga of the race (even tandas not started yet).
     const allParticipants = Lap.aggregateByRace(race.id);
     const db = require('../config/database');
     const isTeamRace = race.format === 'team';
-    const remainingMap = {};
-    db.prepare(`
-      SELECT ${isTeamRace ? 'ml.team_id AS eid' : 'ml.driver_id AS eid'}, COUNT(*) AS cnt
+    const idCol = isTeamRace ? 'ml.team_id' : 'ml.driver_id';
+    const nameJoin = isTeamRace
+      ? 'JOIN teams e ON e.id = ml.team_id'
+      : 'JOIN drivers e ON e.id = ml.driver_id';
+    const colorCol = isTeamRace ? 'e.color' : 'NULL';
+
+    const allAssigned = db.prepare(`
+      SELECT ${idCol} AS entity_id, e.name AS entity_name, ${colorCol} AS color,
+             SUM(CASE WHEN m.status = 'pending' THEN 1 ELSE 0 END) AS pending_mangas,
+             COUNT(*) AS planned_mangas
       FROM manga_lanes ml
       JOIN mangas m ON m.id = ml.manga_id
-      WHERE m.race_id = ? AND m.status = 'pending' AND ml.is_rest = 0
-        AND ${isTeamRace ? 'ml.team_id IS NOT NULL' : 'ml.driver_id IS NOT NULL'}
-      GROUP BY eid
-    `).all(race.id).forEach(r => { remainingMap[r.eid] = r.cnt; });
-    allParticipants.forEach(p => {
-      p.remaining_mangas = remainingMap[p.entity_id] || 0;
+      ${nameJoin}
+      WHERE m.race_id = ? AND ml.is_rest = 0 AND ${idCol} IS NOT NULL
+      GROUP BY entity_id
+    `).all(race.id);
+
+    const apMap = new Map(allParticipants.map(p => [p.entity_id, p]));
+    allAssigned.forEach(a => {
+      let p = apMap.get(a.entity_id);
+      if (!p) {
+        p = {
+          entity_id: a.entity_id, entity_name: a.entity_name,
+          entity_type: isTeamRace ? 'team' : 'driver',
+          color: a.color,
+          total_laps: 0, best_lap_ms: null, avg_lap_ms: null,
+          total_time_ms: 0, mangas_raced: 0, exit_count: 0,
+        };
+        allParticipants.push(p);
+        apMap.set(a.entity_id, p);
+      }
+      p.remaining_mangas = a.pending_mangas || 0;
+      p.planned_mangas   = a.planned_mangas || 0;
     });
 
     const LicenseService = require('../services/LicenseService');
@@ -184,22 +207,43 @@ class SessionController {
     const isActive = TimingService.activeMangaId === manga.id;
     const standings = isActive ? TimingService.getStandings() : null;
 
-    // Aggregate previous-manga laps per lane (for total-laps display).
-    const prevLapsByLane = {};
-    if (tanda) {
-      const allMangas = Manga.findByTanda(tanda.id) || [];
-      allMangas.forEach(m => {
-        if (m.id === manga.id) return;
-        const ml = Manga.getLanes(m.id) || [];
-        ml.forEach(x => {
-          if (!x || x.is_rest) return;
-          const prevLaps = Lap.findByManga(m.id).filter(l => l.lane === x.lane && !l.is_exit).length;
-          prevLapsByLane[x.lane] = (prevLapsByLane[x.lane] || 0) + prevLaps;
-        });
-      });
-    }
+    // All-race participants (includes pending tandas) — see live() for details
+    const allParticipants = Lap.aggregateByRace(race.id);
+    const db = require('../config/database');
+    const isTeamRace = race.format === 'team';
+    const idCol = isTeamRace ? 'ml.team_id' : 'ml.driver_id';
+    const nameJoin = isTeamRace
+      ? 'JOIN teams e ON e.id = ml.team_id'
+      : 'JOIN drivers e ON e.id = ml.driver_id';
+    const colorCol = isTeamRace ? 'e.color' : 'NULL';
+    const allAssigned = db.prepare(`
+      SELECT ${idCol} AS entity_id, e.name AS entity_name, ${colorCol} AS color,
+             SUM(CASE WHEN m.status = 'pending' THEN 1 ELSE 0 END) AS pending_mangas,
+             COUNT(*) AS planned_mangas
+      FROM manga_lanes ml
+      JOIN mangas m ON m.id = ml.manga_id
+      ${nameJoin}
+      WHERE m.race_id = ? AND ml.is_rest = 0 AND ${idCol} IS NOT NULL
+      GROUP BY entity_id
+    `).all(race.id);
+    const apMap = new Map(allParticipants.map(p => [p.entity_id, p]));
+    allAssigned.forEach(a => {
+      let p = apMap.get(a.entity_id);
+      if (!p) {
+        p = {
+          entity_id: a.entity_id, entity_name: a.entity_name,
+          entity_type: isTeamRace ? 'team' : 'driver', color: a.color,
+          total_laps: 0, best_lap_ms: null, avg_lap_ms: null,
+          total_time_ms: 0, mangas_raced: 0, exit_count: 0,
+        };
+        allParticipants.push(p);
+        apMap.set(a.entity_id, p);
+      }
+      p.remaining_mangas = a.pending_mangas || 0;
+      p.planned_mangas   = a.planned_mangas || 0;
+    });
 
-    res.render('races/live-panel', { t: req.t, race, manga, tanda, lanes, laps, isActive, standings, prevLapsByLane });
+    res.render('races/live-panel', { t: req.t, race, manga, tanda, lanes, laps, isActive, standings, allParticipants });
   }
 
   // GET /races/:id/mangas/:mangaId/tv  (fullscreen TV projection)

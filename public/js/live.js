@@ -350,6 +350,8 @@ function renderStandings(data) {
   renderProjected(data);
 }
 
+let prevProjGap = {};
+
 function renderProjected(data) {
   if (!data?.standings) return;
   const elapsed   = data.elapsedMs   ?? 0;
@@ -420,37 +422,74 @@ function renderProjected(data) {
 
   rows.sort((a, b) => b.projectedTotal - a.projectedTotal || (a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity));
 
-  // Calculate projected gaps en vueltas
+  // Calculate projected gaps en vueltas + a numeric score for trend tracking
+  // score = projectedTotal*BIG - avgLapMs (so closer to leader = higher; avg as tiebreaker)
+  const BIG = 1e9;
+  const scoreOf = r => (r.projectedTotal || 0) * BIG - (r.avgLapMs ?? BIG);
   const projGapInLaps = {};
-  const projGapInMs = {};
+  const projGapInMs   = {};
+  const gapAboveNow   = {};
+  const gapBelowNow   = {};
+
   rows.forEach((r, i) => {
     if (i === 0) {
       projGapInLaps[r.name] = 0;
       projGapInMs[r.name] = 0;
-      return;
-    }
-    const gapLaps = rows[i-1].projectedTotal - r.projectedTotal;
-    projGapInLaps[r.name] = gapLaps;
-
-    // Gap en segundos: si está el mismo número de vueltas, usa la diferencia de promedio
-    if (gapLaps === 0 && r.avgLapMs != null && rows[i-1].avgLapMs != null) {
-      projGapInMs[r.name] = rows[i-1].avgLapMs - r.avgLapMs;
+      gapAboveNow[r.name] = null;        // leader: no one above
     } else {
-      projGapInMs[r.name] = 0;
+      const above = rows[i-1];
+      const gapLaps = above.projectedTotal - r.projectedTotal;
+      projGapInLaps[r.name] = gapLaps;
+      projGapInMs[r.name] = (gapLaps === 0 && r.avgLapMs != null && above.avgLapMs != null)
+        ? above.avgLapMs - r.avgLapMs : 0;
+      gapAboveNow[r.name] = scoreOf(above) - scoreOf(r);
     }
+    const below = rows[i+1];
+    gapBelowNow[r.name] = below ? (scoreOf(r) - scoreOf(below)) : null;
+  });
+
+  // Compare with previous render to determine trend arrows
+  const trend = {};
+  rows.forEach(r => {
+    const prev = prevProjGap[r.name] || {};
+    const t = { up: 'neutral', down: 'neutral' };
+    if (gapAboveNow[r.name] != null && prev.above != null) {
+      if (gapAboveNow[r.name] < prev.above)      t.up = 'good'; // closing
+      else if (gapAboveNow[r.name] > prev.above) t.up = 'bad';  // widening
+    }
+    if (gapBelowNow[r.name] != null && prev.below != null) {
+      if (gapBelowNow[r.name] < prev.below)      t.down = 'bad';  // below is closing in
+      else if (gapBelowNow[r.name] > prev.below) t.down = 'good'; // opening gap
+    }
+    trend[r.name] = t;
+  });
+
+  // Persist current gaps for next render
+  prevProjGap = {};
+  rows.forEach(r => {
+    prevProjGap[r.name] = { above: gapAboveNow[r.name], below: gapBelowNow[r.name] };
   });
 
   if (projectedBody) projectedBody.innerHTML = rows.map((r, i) => {
     const gapLapDisplay = projGapInLaps[r.name] !== 0 ? `-${projGapInLaps[r.name]}` : '—';
     const gapSecDisplay = projGapInMs[r.name] > 0 ? `+${formatMs(projGapInMs[r.name])}` : '—';
+    const tr = trend[r.name];
+    const upCls   = tr.up === 'good' ? ' good' : tr.up === 'bad' ? ' bad' : '';
+    const downCls = tr.down === 'good' ? ' good' : tr.down === 'bad' ? ' bad' : '';
+    const upChar   = i === 0 ? '' : '▲';
+    const downChar = i === rows.length - 1 ? '' : '▼';
 
     return `
     <tr class="srow">
-      <td style="width:28px"><span class="sr-pos ${posClass(i+1)}">${i+1}</span></td>
-      <td style="max-width:80px"><span class="sr-name" title="${r.name}">${r.name}</span></td>
-      <td class="sr-right"><span class="sr-proj">${r.projectedTotal}</span></td>
+      <td><span class="sr-pos ${posClass(i+1)}">${i+1}</span></td>
+      <td><span class="sr-name" title="${r.name}">${r.name}</span></td>
+      <td class="sr-right"><span class="sr-proj">${r.projectedTotal || '—'}</span></td>
       <td class="sr-right"><span class="sr-ontrack">${r.total}</span></td>
       <td class="sr-right"><span class="sr-avg">${formatMs(r.avgLapMs)}</span></td>
+      <td class="sr-arrows">
+        <span class="sr-arrow-up${upCls}">${upChar}</span>
+        <span class="sr-arrow-down${downCls}">${downChar}</span>
+      </td>
       <td class="sr-right"><span class="sr-delta">${gapLapDisplay}</span></td>
       <td class="sr-right"><span class="sr-delta">${gapSecDisplay}</span></td>
     </tr>`;
