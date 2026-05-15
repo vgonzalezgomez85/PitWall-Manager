@@ -11,14 +11,21 @@
 
     <p class="form-hint" style="margin-bottom:1.25rem">
       <%= lang === 'es'
-        ? 'Reasigna quién va en cada carril. Solo se muestran carriles activos (sin descanso).'
-        : 'Reassign who goes in each lane. Only active (non-rest) lanes are shown.' %>
+        ? 'Reasigna quién va en cada carril y quién descansa.'
+        : 'Reassign who goes in each lane and who rests.' %>
     </p>
 
+    <%
+      // Order: active lanes (sorted by lane number) then rest slots (DSC1..DSCn
+      // by alphabetical name for a stable, reproducible order).
+      const activeLanes = lanes.filter(l => !l.is_rest).sort((a, b) => a.lane - b.lane);
+      const restLanes   = lanes.filter(l =>  l.is_rest).sort((a, b) =>
+        ((a.team_name || a.driver_name || '').localeCompare(b.team_name || b.driver_name || '')));
+    %>
+
     <div style="display:flex;flex-direction:column;gap:.75rem">
-      <% lanes.filter(l => !l.is_rest).forEach(lane => {
+      <% activeLanes.forEach(lane => {
            const currentId = lane.team_id || lane.driver_id;
-           const currentName = lane.team_name || lane.driver_name || '—';
       %>
         <div style="display:grid;grid-template-columns:3rem 1fr;align-items:center;gap:1rem">
           <span class="lane-dot" style="background:<%= LANE_COLORS[lane.lane - 1] %>;width:2.2rem;height:2.2rem;font-size:1rem;display:flex;align-items:center;justify-content:center;border-radius:8px;font-weight:700;color:#fff">
@@ -33,6 +40,30 @@
           </select>
         </div>
       <% }) %>
+
+      <% if (restLanes.length > 0) { %>
+        <div style="display:flex;align-items:center;gap:.5rem;margin-top:.4rem">
+          <span style="flex:1;height:1px;background:#21262d"></span>
+          <span class="form-hint" style="font-size:.75rem;letter-spacing:.08em">💤 <%= lang === 'es' ? 'DESCANSOS' : 'RESTING' %></span>
+          <span style="flex:1;height:1px;background:#21262d"></span>
+        </div>
+        <% restLanes.forEach((lane, idx) => {
+             const currentId = lane.team_id || lane.driver_id;
+        %>
+          <div style="display:grid;grid-template-columns:3rem 1fr;align-items:center;gap:1rem">
+            <span class="lane-dot" style="background:#30363d;color:#8b949e;width:2.2rem;height:2.2rem;font-size:.7rem;display:flex;align-items:center;justify-content:center;border-radius:8px;font-weight:700">
+              DSC<%= idx + 1 %>
+            </span>
+            <select name="assignment[<%= lane.id %>]" class="form-input" style="margin:0">
+              <% participants.forEach(p => { %>
+                <option value="<%= p.id %>" <%= p.id === currentId ? 'selected' : '' %>>
+                  <%= p.name %>
+                </option>
+              <% }) %>
+            </select>
+          </div>
+        <% }) %>
+      <% } %>
     </div>
 
     <div class="form-actions" style="margin-top:1.5rem">

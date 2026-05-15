@@ -165,7 +165,48 @@ class TandaController {
       driverId: race.format === 'individual' ? parseInt(entityId, 10) : null,
     }));
 
-    Manga.updateLaneAssignments(assignments);
+    // Cascade rebuild: only if NO manga of any tanda in this race has started.
+    const db = require('../config/database');
+    const allPending = db.prepare(
+      `SELECT COUNT(*) AS n FROM mangas WHERE race_id = ? AND status != 'pending'`
+    ).get(race.id).n === 0;
+
+    if (allPending) {
+      // Read this manga's slots in their original DB order (by id) so we
+      // know the position of each slot in the rotation.
+      const originalSlots = db.prepare(
+        'SELECT id, lane, is_rest FROM manga_lanes WHERE manga_id = ? ORDER BY id ASC'
+      ).all(manga.id);
+
+      // For each slot, find the participant the user assigned to it.
+      const assignMap = new Map(assignments.map(a => [a.mlId, a]));
+      const entities = [];
+      for (const slot of originalSlots) {
+        const a = assignMap.get(slot.id);
+        if (!a) continue; // shouldn't happen — form sends every slot
+        if (race.format === 'team') {
+          const t = Team.findById(a.teamId);
+          if (t) entities.push({ id: t.id, type: 'team', name: t.name });
+        } else {
+          const d = Driver.findById(a.driverId);
+          if (d) entities.push({ id: d.id, type: 'driver', name: d.name });
+        }
+      }
+
+      const laneSequence = Race.getLaneSequence(race);
+      const schedule = Manga.buildSchedule(laneSequence, entities);
+
+      // Drop all mangas of this tanda (cascade kills manga_lanes) and re-persist.
+      db.prepare('DELETE FROM mangas WHERE tanda_id = ?').run(manga.tanda_id);
+      Manga.persistSchedule(manga.tanda_id, race.id, schedule);
+
+      // Keep tanda status pending after rebuild.
+      Tanda.updateStatus(manga.tanda_id, 'pending');
+    } else {
+      // Some manga has started elsewhere → don't cascade; just save this one.
+      Manga.updateLaneAssignments(assignments);
+    }
+
     res.redirect(`/races/${race.id}`);
   }
 
