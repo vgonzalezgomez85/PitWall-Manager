@@ -9,21 +9,30 @@ class Circuit {
     return db.prepare('SELECT * FROM circuits WHERE id = ?').get(id);
   }
 
-  static create({ name, circuits_count, circuits_config, lanes_count, min_lap_ms, description }) {
+  static create({ name, circuits_count, circuits_config, lanes_count, min_lap_ms, description, lane_sequence }) {
     const cfg = Array.isArray(circuits_config) ? JSON.stringify(circuits_config) : (circuits_config || '[]');
+    const seq = Array.isArray(lane_sequence) ? JSON.stringify(lane_sequence) : (lane_sequence || '[]');
     const { lastInsertRowid } = db.prepare(`
-      INSERT INTO circuits (name, circuits_count, circuits_config, lanes_count, min_lap_ms, description)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(name, circuits_count || 1, cfg, lanes_count || 6, min_lap_ms || 0, description || null);
+      INSERT INTO circuits (name, circuits_count, circuits_config, lanes_count, min_lap_ms, description, lane_sequence)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(name, circuits_count || 1, cfg, lanes_count || 6, min_lap_ms || 0, description || null, seq);
     return lastInsertRowid;
   }
 
-  static update(id, { name, circuits_count, circuits_config, lanes_count, min_lap_ms, description }) {
+  static update(id, { name, circuits_count, circuits_config, lanes_count, min_lap_ms, description, lane_sequence }) {
     const cfg = Array.isArray(circuits_config) ? JSON.stringify(circuits_config) : (circuits_config || '[]');
+    const seq = Array.isArray(lane_sequence) ? JSON.stringify(lane_sequence) : (lane_sequence || '[]');
     db.prepare(`
-      UPDATE circuits SET name=?, circuits_count=?, circuits_config=?, lanes_count=?, min_lap_ms=?, description=?
+      UPDATE circuits SET name=?, circuits_count=?, circuits_config=?, lanes_count=?, min_lap_ms=?, description=?, lane_sequence=?
       WHERE id=?
-    `).run(name, circuits_count || 1, cfg, lanes_count || 6, min_lap_ms || 0, description || null, id);
+    `).run(name, circuits_count || 1, cfg, lanes_count || 6, min_lap_ms || 0, description || null, seq, id);
+  }
+
+  static getLaneSequence(circuit) {
+    try {
+      const s = JSON.parse(circuit.lane_sequence || '[]');
+      return Array.isArray(s) ? s : [];
+    } catch { return []; }
   }
 
   static delete(id) {

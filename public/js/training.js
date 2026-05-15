@@ -264,7 +264,7 @@ socket.on('training:go', ({ durationMs: ms }) => {
   updateTimer();
 });
 
-socket.on('competition:heat', ({ heat }) => {
+socket.on('competition:heat', ({ heat, resting }) => {
   heatNumber = heat;
   const statusEl = document.getElementById('tr-status');
   if (statusEl && heat) {
@@ -272,7 +272,27 @@ socket.on('competition:heat', ({ heat }) => {
     const sub = statusEl.querySelector('.tr-standby-badge');
     if (sub) sub.textContent = `⏳ ${heatLabel} — ${LANG === 'es' ? 'Esperando GO…' : 'Waiting for GO…'}`;
   }
+  renderRestingBar(resting || []);
 });
+
+function renderRestingBar(resting) {
+  const bar = document.getElementById('restingBar');
+  const items = document.getElementById('restingItems');
+  if (!bar || !items) return;
+  if (!resting || resting.length === 0) {
+    bar.style.display = 'none';
+    items.innerHTML = '';
+    return;
+  }
+  bar.style.display = '';
+  items.innerHTML = resting.map(r => `
+    <div class="resting-chip">
+      <span class="resting-chip__num">DSC${r.restNum}</span>
+      <span class="resting-chip__dot" style="background:${r.color}"></span>
+      <span class="resting-chip__name">${r.name}</span>
+    </div>
+  `).join('');
+}
 
 socket.on('training:stopped', () => {
   location.href = TRAINING_DATA.isCompetition ? '/training/competition' : '/training';

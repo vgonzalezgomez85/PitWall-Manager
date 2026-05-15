@@ -179,6 +179,7 @@ const migrations = [
     started_at  DATETIME DEFAULT CURRENT_TIMESTAMP
   )`,
   `ALTER TABLE driver_profiles ADD COLUMN qr_code TEXT UNIQUE`,
+  `ALTER TABLE circuits ADD COLUMN lane_sequence TEXT NOT NULL DEFAULT '[]'`,
 
   // ── Categories & cars ──────────────────────────────────────────────────────
   `CREATE TABLE IF NOT EXISTS categories (

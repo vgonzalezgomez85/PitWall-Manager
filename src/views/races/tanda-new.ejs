@@ -46,7 +46,11 @@
               <%
                 const slotLane = i < laneSequence.length ? laneSequence[i] : 0;
                 const slotColor = slotLane > 0 ? LANE_COLORS[(slotLane - 1) % LANE_COLORS.length] : '#30363d';
-                const slotLabel = slotLane > 0 ? slotLane : (lang === 'es' ? 'DSC' : 'REST');
+                // Rest slots: DSC1 = first to start racing (rests least at start)
+                const restIdx = slotLane === 0 ? (initD - i) : 0;
+                const slotLabel = slotLane > 0
+                  ? slotLane
+                  : ((lang === 'es' ? 'DSC' : 'REST') + (restIdx > 0 ? restIdx : ''));
               %>
               <span class="lane-badge participant-badge" style="background:<%= slotColor %>;<%= slotLane === 0 ? 'color:#8b949e;font-size:.65rem' : '' %>" data-index="<%= i %>"><%= slotLabel %></span>
               <div class="driver-field participant-fields">
@@ -153,7 +157,12 @@ const LANES     = <%= laneSequence.length %>;
 const LANE_SEQ  = <%- JSON.stringify(laneSequence) %>;
 const LANG      = "<%= lang %>";
 const COLORS    = <%- JSON.stringify(LANE_COLORS) %>;
-function slotLabel(i){ return (i < LANE_SEQ.length && LANE_SEQ[i] > 0) ? LANE_SEQ[i] : (LANG==='es'?'DSC':'REST'); }
+function slotLabel(i, total){
+  if (i < LANE_SEQ.length && LANE_SEQ[i] > 0) return LANE_SEQ[i];
+  const t = total ?? document.querySelectorAll('.participant-row').length;
+  const restIdx = t - i;
+  return (LANG==='es'?'DSC':'REST') + (restIdx > 0 ? restIdx : '');
+}
 function slotColor(i){ const l = i < LANE_SEQ.length ? LANE_SEQ[i] : 0; return l > 0 ? COLORS[(l-1) % COLORS.length] : '#30363d'; }
 const DRIVER_PH = "<%= t('wizard.driver_name_ph') %>";
 const TEAM_PH   = "<%= t('wizard.team_name_ph') %>";
@@ -322,6 +331,8 @@ document.getElementById('addDriver')?.addEventListener('click', () => {
       title="${LANG === 'es' ? 'Eliminar' : 'Remove'}">✕</button>`;
   grid.appendChild(div);
   div.querySelector('.participant-name').focus();
+  // Relabel existing rest slots since total just increased
+  renumber('driversGrid');
   updateRestInfo();
 });
 

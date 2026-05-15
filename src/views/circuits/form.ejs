@@ -75,6 +75,35 @@
     </div>
 
     <div class="form-group">
+      <label class="form-label">
+        <%= lang === 'es' ? 'Secuencia de carriles (rotación)' : 'Lane rotation sequence' %>
+      </label>
+      <p class="form-hint" style="margin-bottom:.5rem">
+        <%= lang === 'es'
+          ? 'Arrastra para reordenar. Esta secuencia determina la rotación de pilotos entre mangas. Cualquier carrera asignada a este circuito la heredará automáticamente.'
+          : 'Drag to reorder. This sequence drives the lane rotation between heats. Any race assigned to this circuit inherits it.' %>
+      </p>
+      <div id="seqLanes" class="seq-lanes-edit" style="display:flex;flex-wrap:wrap;gap:.5rem;padding:.6rem;background:#0d1117;border:1px solid #21262d;border-radius:6px;min-height:3.5rem"></div>
+      <input type="hidden" name="lane_sequence" id="laneSequenceInput" value="<%= body.lane_sequence || '' %>">
+      <div style="display:flex;gap:.5rem;margin-top:.5rem;flex-wrap:wrap">
+        <button type="button" id="btnAddRest" class="btn btn--ghost btn--sm">
+          + <%= lang === 'es' ? 'Añadir descanso (DSC)' : 'Add rest (DSC)' %>
+        </button>
+        <button type="button" id="btnSmartSeq" class="btn btn--ghost btn--sm">
+          ⚡ <%= lang === 'es' ? 'Distribución automática' : 'Auto distribute' %>
+        </button>
+        <button type="button" id="btnResetSeq" class="btn btn--ghost btn--sm">
+          ↺ <%= lang === 'es' ? 'Restablecer' : 'Reset' %>
+        </button>
+      </div>
+      <p class="form-hint" style="margin-top:.4rem">
+        <%= lang === 'es'
+          ? 'Los descansos (DSC) se usan cuando una carrera tiene más pilotos que carriles. Arrástralos a la posición donde quieras que ocurra el reposo dentro de la rotación.'
+          : 'Rest slots (DSC) apply when a race has more drivers than lanes. Drag them where you want the rest to happen within the rotation.' %>
+      </p>
+    </div>
+
+    <div class="form-group">
       <label class="form-label" for="minLapS">
         <%= lang === 'es' ? 'Vuelta mínima por defecto (segundos)' : 'Default minimum lap (seconds)' %>
       </label>
@@ -169,8 +198,193 @@ circPills.addEventListener('click', e => {
   if (btn) setCircuitCount(parseInt(btn.dataset.n));
 });
 
-circGrid.addEventListener('input', updateTotal);
+circGrid.addEventListener('input', () => { updateTotal(); rebuildSeqIfMismatch(); });
 updateTotal();
+
+// ── Lane sequence (drag-to-reorder) ────────────────────────────────────────
+const LANE_COLORS = ['#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4','#ff5722','#607d8b','#795548','#e91e63','#3f51b5','#009688'];
+const seqEl   = document.getElementById('seqLanes');
+const seqHidd = document.getElementById('laneSequenceInput');
+
+function totalLanesNow() {
+  const n = parseInt(circCount.value, 10);
+  let t = 0;
+  for (let i = 1; i <= n; i++) t += parseInt(document.getElementById('circLanes_' + i)?.value || 0, 10) || 0;
+  return t;
+}
+
+// Compute which sub-circuit a global lane belongs to (1-based).
+function laneToCircuit(lane) {
+  if (lane <= 0) return 0;
+  const sizes = getCircuitSizes();
+  let acc = 0;
+  for (let i = 0; i < sizes.length; i++) {
+    acc += sizes[i];
+    if (lane <= acc) return i + 1;
+  }
+  return sizes.length;
+}
+
+function renderSeq(seq) {
+  seqEl.innerHTML = '';
+  // Walk sequence to assign DSC labels per sub-circuit
+  const sizesCount = getCircuitSizes().length;
+  let currentCircuit = 1;
+  const restCounters = Array(sizesCount + 1).fill(0); // 1-based
+  seq.forEach((lane, idx) => {
+    const chip = document.createElement('div');
+    chip.className = 'seq-chip';
+    chip.draggable = true;
+    chip.dataset.lane = lane;
+    chip.dataset.idx  = idx;
+    const isRest = lane === 0;
+
+    let label = '';
+    if (isRest) {
+      restCounters[currentCircuit] = (restCounters[currentCircuit] || 0) + 1;
+      label = sizesCount > 1
+        ? `DSC${restCounters[currentCircuit]}-C${currentCircuit}`
+        : `DSC${restCounters[currentCircuit]}`;
+    } else {
+      currentCircuit = laneToCircuit(lane);
+      label = String(lane);
+    }
+
+    const minW = isRest && sizesCount > 1 ? '4.2rem' : '2.4rem';
+    chip.style.cssText = `
+      display:inline-flex;align-items:center;justify-content:center;
+      min-width:${minW};height:2.4rem;padding:0 .4rem;border-radius:6px;font-weight:700;
+      cursor:grab;user-select:none;font-family:'Rajdhani',sans-serif;font-size:${isRest ? '.7rem' : '1rem'};
+      ${isRest ? 'background:#30363d;color:#8b949e' : 'background:'+LANE_COLORS[(lane-1)%LANE_COLORS.length]+';color:#0d1117'}
+    `;
+    chip.textContent = label;
+    seqEl.appendChild(chip);
+  });
+  syncHidden();
+}
+
+function syncHidden() {
+  const arr = [...seqEl.children].map(c => parseInt(c.dataset.lane, 10));
+  seqHidd.value = arr.join(',');
+}
+
+function defaultSeq(total) {
+  const odds = [], evens = [];
+  for (let i = 1; i <= total; i++) (i % 2 ? odds : evens).push(i);
+  return [...odds, ...evens.reverse()];
+}
+function parseSeqFromValue(val, total) {
+  if (!val) return defaultSeq(total);
+  const arr = val.split(',').map(s => parseInt(s.trim(), 10)).filter(n => Number.isFinite(n) && n >= 0);
+  return arr.length ? arr : defaultSeq(total);
+}
+
+function rebuildSeqIfMismatch() {
+  const total = totalLanesNow();
+  const current = [...seqEl.children].map(c => parseInt(c.dataset.lane, 10));
+  const nonRestCurrent = current.filter(n => n > 0).sort((a,b)=>a-b);
+  const expectedLanes = Array.from({length: total}, (_, i) => i + 1);
+  // Only rebuild if non-rest lanes don't match the expected set
+  if (nonRestCurrent.length !== expectedLanes.length || nonRestCurrent.some((v,i)=>v!==expectedLanes[i])) {
+    renderSeq(defaultSeq(total));
+  }
+}
+
+// Drag-and-drop
+let dragSrc = null;
+seqEl.addEventListener('dragstart', e => {
+  const chip = e.target.closest('.seq-chip');
+  if (!chip) return;
+  dragSrc = chip;
+  chip.style.opacity = '.4';
+});
+seqEl.addEventListener('dragend', e => {
+  const chip = e.target.closest('.seq-chip');
+  if (chip) chip.style.opacity = '1';
+  dragSrc = null;
+});
+seqEl.addEventListener('dragover', e => {
+  e.preventDefault();
+  const chip = e.target.closest('.seq-chip');
+  if (!chip || chip === dragSrc) return;
+  const rect = chip.getBoundingClientRect();
+  const after = (e.clientX - rect.left) > rect.width / 2;
+  seqEl.insertBefore(dragSrc, after ? chip.nextSibling : chip);
+});
+seqEl.addEventListener('drop', e => {
+  e.preventDefault();
+  // Re-render so DSC labels (DSCn-Cm) reflect the new positions
+  const arr = [...seqEl.children].map(c => parseInt(c.dataset.lane, 10));
+  renderSeq(arr);
+});
+
+// ── DSC slot management ───────────────────────────────────────────────────
+function getCircuitSizes() {
+  const n = parseInt(circCount.value, 10);
+  const sizes = [];
+  for (let i = 1; i <= n; i++) sizes.push(parseInt(document.getElementById('circLanes_' + i)?.value || 0, 10) || 0);
+  return sizes;
+}
+
+// Smart distribution: in each sub-circuit, place rest slot after local lane 2
+// (odd Cs) or after lane M-1 (even Cs). Mirrors the old wizard logic.
+function buildSmartSeq(numRests) {
+  const sizes = getCircuitSizes();
+  const total = sizes.reduce((a,b)=>a+b, 0);
+  if (total === 0) return [];
+  const totalRests = Math.max(0, numRests);
+  const numCircuits = sizes.length;
+  const perCircuit = Array(numCircuits).fill(Math.floor(totalRests / numCircuits));
+  for (let i = 0; i < totalRests % numCircuits; i++) perCircuit[i]++;
+
+  const seq = [];
+  let globalStart = 1;
+  sizes.forEach((M, ci) => {
+    const isEven = (ci + 1) % 2 === 0;
+    const restAfterLocal = isEven ? (M - 1) : 2;
+    const rests = perCircuit[ci];
+    for (let local = 1; local <= M; local++) {
+      seq.push(globalStart + local - 1);
+      if (local === restAfterLocal) {
+        for (let r = 0; r < rests; r++) seq.push(0);
+      }
+    }
+    globalStart += M;
+  });
+  return seq;
+}
+
+document.getElementById('btnAddRest')?.addEventListener('click', () => {
+  const chips = [...seqEl.children].map(c => parseInt(c.dataset.lane, 10));
+  chips.push(0);
+  renderSeq(chips);
+});
+
+document.getElementById('btnSmartSeq')?.addEventListener('click', () => {
+  // Preserve the current rest count if any; otherwise default to 1 per sub-circuit.
+  const currentRests = [...seqEl.children].filter(c => parseInt(c.dataset.lane, 10) === 0).length;
+  const sizes = getCircuitSizes();
+  const numRests = currentRests > 0 ? currentRests : sizes.length;
+  renderSeq(buildSmartSeq(numRests));
+});
+
+document.getElementById('btnResetSeq')?.addEventListener('click', () => {
+  renderSeq(defaultSeq(totalLanesNow()));
+});
+
+// Remove a DSC chip by click (besides drag)
+seqEl.addEventListener('click', e => {
+  const chip = e.target.closest('.seq-chip');
+  if (!chip) return;
+  if (parseInt(chip.dataset.lane, 10) === 0) {
+    chip.remove();
+    const arr = [...seqEl.children].map(c => parseInt(c.dataset.lane, 10));
+    renderSeq(arr); // renumber remaining DSCs
+  }
+});
+
+// Initial render: from saved value or default rotation
+renderSeq(parseSeqFromValue(seqHidd.value, totalLanesNow()));
 </script>
 
 <%- include('../partials/footer') %>

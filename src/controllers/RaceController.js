@@ -120,10 +120,24 @@ class RaceController {
       return res.redirect('/races/new/step2');
     }
     req.session.wizard.format = format;
-    res.redirect('/races/new/step3');
+
+    // Lane sequence now comes from the assigned circuit (or natural order
+    // as fallback). The dedicated step3 form is no longer shown.
+    const w = req.session.wizard;
+    let seq = null;
+    if (w.circuit_id) {
+      const Circuit = require('../models/Circuit');
+      const c = Circuit.findById(w.circuit_id);
+      if (c) seq = Circuit.getLaneSequence(c);
+    }
+    if (!seq || seq.length === 0) seq = defaultSequence(w.lanes_count);
+    w.lane_sequence = seq;
+
+    if (w.has_pole) return res.redirect('/races/new/step4');
+    return res.redirect('/races/new/confirm');
   }
 
-  // ─── Step 3: lane rotation sequence ──────────────────────────────────────
+  // ─── Step 3: lane rotation sequence (legacy — kept for races without circuit) ─
 
   static newStep3(req, res) {
     if (!req.session.wizard?.format) return res.redirect('/races/new');

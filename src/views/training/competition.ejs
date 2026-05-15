@@ -11,6 +11,30 @@
 
   <form action="/training/competition/start" method="POST" id="compForm">
 
+    <!-- Circuit selector -->
+    <div class="card" style="margin-bottom:1.25rem">
+      <h3 class="form-label" style="margin-bottom:.6rem">
+        🏁 <%= lang === 'es' ? 'Circuito' : 'Circuit' %>
+      </h3>
+      <div style="display:flex;gap:.5rem;align-items:center">
+        <select name="circuit_id" id="circuitSelect" class="form-input" style="flex:1">
+          <option value=""><%= lang === 'es' ? '— Por defecto (de ajustes) —' : '— Default (from settings) —' %></option>
+          <% (circuits || []).forEach(c => { %>
+            <option value="<%= c.id %>" data-lanes="<%= c.lanes_count %>"
+              <%= defaultCircuitId === c.id ? 'selected' : '' %>>
+              <%= c.name %> (<%= c.lanes_count %> <%= lang === 'es' ? 'carriles' : 'lanes' %>)
+            </option>
+          <% }) %>
+        </select>
+        <span id="circuitLanesHint" class="form-hint" style="white-space:nowrap"></span>
+      </div>
+      <p class="form-hint" style="margin-top:.4rem">
+        <%= lang === 'es'
+          ? 'Cambia aquí el circuito de la sesión sin tener que ir a ajustes.'
+          : 'Switch the circuit for this session without going to settings.' %>
+      </p>
+    </div>
+
     <!-- Participants list -->
     <div class="card" style="margin-bottom:1.25rem">
       <h3 class="form-label" style="margin-bottom:1rem">
@@ -49,6 +73,18 @@
 
 <%- include('../partials/footer') %>
 <script>
+// Circuit hint
+(function () {
+  const sel = document.getElementById('circuitSelect');
+  const hint = document.getElementById('circuitLanesHint');
+  function update() {
+    const opt = sel.options[sel.selectedIndex];
+    const lanes = opt?.dataset?.lanes;
+    hint.textContent = lanes ? `→ ${lanes} carriles` : '';
+  }
+  sel.addEventListener('change', update);
+  update();
+})();
 const COLORS = [
   '#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4',
   '#ff5722','#607d8b','#795548','#e91e63','#3f51b5','#009688',
