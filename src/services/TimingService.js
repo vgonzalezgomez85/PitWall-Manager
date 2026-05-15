@@ -89,7 +89,7 @@ class TimingServiceClass {
 
     Manga.updateStatus(manga.id, 'active');
     SocketService.emit('manga:started', { mangaId: manga.id, ...this.getStandings() });
-    console.log(`[TimingService] Manga ${manga.number} started — ${activeLanes.length} active lanes — ${race.manga_duration_minutes}min`);
+    console.log(`[TimingService] Manga ${manga.number} started @ ${Date.now()} — ${activeLanes.length} active lanes — ${race.manga_duration_minutes}min`);
   }
 
   // ── Stop manga ────────────────────────────────────────────────────────────
@@ -264,10 +264,39 @@ class TimingServiceClass {
     // Debounce only applies to timestamp-based measurements (not device-timed)
     if (!deviceLapTimeMs && lapTimeMs < DEBOUNCE_MS) return;
 
-    // First crossing from device may have null lapTimeMs (no valid lap yet)
+    // First crossing from device (no device-reported lap time): count it as
+    // lap 1 with elapsed time from race start → first crossing.
     if (deviceLapTimeMs === null) {
+      const firstLapMs = Math.max(0, Math.round(timestamp - this.session.startTime));
+      ld.lapCount++;
+      ld.lastLapMs    = firstLapMs;
       ld.lastCrossing = timestamp;
+      // No best/avg update — first crossing isn't a true racing lap.
+
+      const race    = this.session.race;
+      const manga   = this.session.manga;
+      const teamId  = ld.teamId;
+      const driverId = ld.driverId;
+      const lapNum  = ld.lapCount;
+      setImmediate(() => {
+        try {
+          Lap.create({
+            race_id: race.id, manga_id: manga.id,
+            team_id: teamId, driver_id: driverId,
+            lane, lap_number: lapNum,
+            lap_time_ms: firstLapMs, elapsed_ms: firstLapMs,
+            is_exit: 0,
+          });
+        } catch (err) { console.error('[TimingService] DB error:', err.message); }
+      });
+
       SocketService.emit('lane:on_track', { lane, color: ld.color, name: ld.name });
+      SocketService.emit('lap', {
+        lane, color: ld.color, name: ld.name,
+        lapNumber: ld.lapCount, lapTimeMs: firstLapMs, bestLapMs: ld.bestLapMs,
+        elapsedMs: firstLapMs, isExit: false, isFirstCrossing: true,
+      });
+      SocketService.emit('standings', this.getStandings());
       return;
     }
 

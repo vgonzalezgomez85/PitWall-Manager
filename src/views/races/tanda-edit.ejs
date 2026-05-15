@@ -60,9 +60,13 @@
         </p>
 
         <div id="driversGrid" class="drivers-grid">
-          <% drivers.forEach((d, i) => { %>
+          <% drivers.forEach((d, i) => {
+               const slotLane = i < laneSequence.length ? laneSequence[i] : 0;
+               const slotColor = slotLane > 0 ? LANE_COLORS[(slotLane - 1) % LANE_COLORS.length] : '#30363d';
+               const slotLabel = slotLane > 0 ? slotLane : (lang === 'es' ? 'DSC' : 'REST');
+          %>
             <div class="driver-row participant-row" data-row="<%= i %>">
-              <span class="lane-badge participant-badge" style="background:<%= LANE_COLORS[i % LANE_COLORS.length] %>" data-index="<%= i %>"><%= i + 1 %></span>
+              <span class="lane-badge participant-badge" style="background:<%= slotColor %>;<%= slotLane === 0 ? 'color:#8b949e;font-size:.65rem' : '' %>" data-index="<%= i %>"><%= slotLabel %></span>
               <div class="driver-field participant-fields">
                 <% if (canRestructure) { %><span class="drag-handle" draggable="true" title="<%= lang === 'es' ? 'Arrastrar para reordenar' : 'Drag to reorder' %>">⠿</span><% } %>
                 <% if (!canRestructure) { %>
@@ -103,10 +107,14 @@
         </p>
 
         <div id="teamsContainer" class="teams-container">
-          <% teams.forEach((team, i) => { %>
+          <% teams.forEach((team, i) => {
+               const slotLane = i < laneSequence.length ? laneSequence[i] : 0;
+               const slotColor = slotLane > 0 ? LANE_COLORS[(slotLane - 1) % LANE_COLORS.length] : '#30363d';
+               const slotLabel = slotLane > 0 ? slotLane : (lang === 'es' ? 'DSC' : 'REST');
+          %>
             <div class="team-block participant-row" data-row="<%= i %>">
-              <div class="team-block__header" style="border-left-color:<%= LANE_COLORS[i % LANE_COLORS.length] %>">
-                <span class="lane-badge participant-badge" style="background:<%= LANE_COLORS[i % LANE_COLORS.length] %>" data-index="<%= i %>"><%= i + 1 %></span>
+              <div class="team-block__header" style="border-left-color:<%= slotColor %>">
+                <span class="lane-badge participant-badge" style="background:<%= slotColor %>;<%= slotLane === 0 ? 'color:#8b949e;font-size:.65rem' : '' %>" data-index="<%= i %>"><%= slotLabel %></span>
                 <% if (canRestructure) { %><span class="drag-handle" draggable="true" title="<%= lang === 'es' ? 'Arrastrar para reordenar' : 'Drag to reorder' %>">⠿</span><% } %>
                 <% if (!canRestructure) { %>
                   <input type="hidden" name="teams[<%= i %>][id]" value="<%= team.id %>">
@@ -170,8 +178,11 @@
 <% if (canRestructure) { %>
 <script>
 const LANES     = <%= laneSequence.length %>;
+const LANE_SEQ  = <%- JSON.stringify(laneSequence) %>;
 const LANG      = "<%= lang %>";
 const COLORS    = <%- JSON.stringify(LANE_COLORS) %>;
+function slotLabel(i){ return (i < LANE_SEQ.length && LANE_SEQ[i] > 0) ? LANE_SEQ[i] : (LANG==='es'?'DSC':'REST'); }
+function slotColor(i){ const l = i < LANE_SEQ.length ? LANE_SEQ[i] : 0; return l > 0 ? COLORS[(l-1) % COLORS.length] : '#30363d'; }
 const DRIVER_PH = "<%= t('wizard.driver_name_ph') %>";
 const TEAM_PH   = "<%= t('wizard.team_name_ph') %>";
 const MEMBER_PH = "<%= t('wizard.member_ph') %>";
@@ -236,7 +247,7 @@ function renumber(containerId) {
   container.querySelectorAll('.participant-row').forEach((row, i) => {
     row.dataset.row = i;
     const badge = row.querySelector('.participant-badge');
-    if (badge) { badge.dataset.index = i; badge.textContent = i + 1; const color = COLORS[i % COLORS.length]; badge.style.background = color; if (isTeams) { const hdr = row.querySelector('.team-block__header'); if (hdr) hdr.style.borderLeftColor = color; } }
+    if (badge) { badge.dataset.index = i; badge.textContent = slotLabel(i); const color = slotColor(i); badge.style.background = color; if (isTeams) { const hdr = row.querySelector('.team-block__header'); if (hdr) hdr.style.borderLeftColor = color; } }
     if (isTeams) {
       const nameInp = row.querySelector('.team-name-input');
       if (nameInp) nameInp.name = `teams[${i}][name]`;
@@ -249,10 +260,10 @@ function renumber(containerId) {
 document.getElementById('addDriver')?.addEventListener('click', () => {
   const grid = document.getElementById('driversGrid');
   const idx  = grid.querySelectorAll('.participant-row').length;
-  const color = COLORS[idx % COLORS.length];
+  const color = slotColor(idx);
   const div  = document.createElement('div');
   div.className = 'driver-row participant-row'; div.dataset.row = idx;
-  div.innerHTML = `<span class="lane-badge participant-badge" style="background:${color}" data-index="${idx}">${idx+1}</span>
+  div.innerHTML = `<span class="lane-badge participant-badge" style="background:${color}" data-index="${idx}">${slotLabel(idx)}</span>
     <div class="driver-field participant-fields" style="display:flex;flex:1;align-items:center;gap:.5rem">
       <span class="drag-handle" draggable="true" title="${LANG==='es'?'Arrastrar para reordenar':'Drag to reorder'}">⠿</span>
       <input class="form-input participant-name" type="text" name="drivers[]" placeholder="${DRIVER_PH}" autocomplete="off" style="flex:1">
@@ -269,12 +280,12 @@ document.getElementById('driversGrid')?.addEventListener('click', e => {
 document.getElementById('addTeam')?.addEventListener('click', () => {
   const container = document.getElementById('teamsContainer');
   const idx = container.querySelectorAll('.participant-row').length;
-  const color = COLORS[idx % COLORS.length];
+  const color = slotColor(idx);
   const members = [0,1,2,3].map(m => `<div class="member-row"><span class="member-num">${m+1}</span><input class="form-input participant-name" type="text" name="teams[${idx}][members][]" placeholder="${MEMBER_PH} ${m+1}${m>0?' ('+OPT_LBL+')':''}" autocomplete="off"></div>`).join('');
   const block = document.createElement('div');
   block.className = 'team-block participant-row'; block.dataset.row = idx;
   block.innerHTML = `<div class="team-block__header" style="border-left-color:${color}">
-    <span class="lane-badge participant-badge" style="background:${color}" data-index="${idx}">${idx+1}</span>
+    <span class="lane-badge participant-badge" style="background:${color}" data-index="${idx}">${slotLabel(idx)}</span>
     <span class="drag-handle" draggable="true" title="${LANG==='es'?'Arrastrar para reordenar':'Drag to reorder'}">⠿</span>
     <input class="form-input team-name-input" type="text" name="teams[${idx}][name]" placeholder="${TEAM_PH}" autocomplete="off">
     <button type="button" class="btn btn--danger btn--sm remove-row" style="margin-left:.5rem" title="${LANG==='es'?'Eliminar':'Remove'}">✕</button>

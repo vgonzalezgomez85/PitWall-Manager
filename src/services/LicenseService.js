@@ -35,85 +35,35 @@ function sign(payload) {
   return crypto.createHmac('sha256', SIGN_SECRET).update(JSON.stringify(sorted)).digest('hex');
 }
 
+// ── Licensing disabled ────────────────────────────────────────────────────────
+// All devices run as PRO. No license file, signature or hardware check.
+// Kept the API surface intact so callers don't break.
 class LicenseServiceClass {
   constructor() {
-    this._license = null;  // null = basic (no file)
+    this._license = null;
     this._error   = null;
   }
 
-  // Call once at startup with the data directory path
-  load(dataDir) {
-    const filePath = path.join(dataDir, 'slotime.license');
-    if (!fs.existsSync(filePath)) {
-      this._license = null;
-      return;
-    }
-    try {
-      const raw     = fs.readFileSync(filePath, 'utf8');
-      const license = JSON.parse(raw);
-      const { signature, ...payload } = license;
-
-      // Verify signature
-      if (sign(payload) !== signature) {
-        this._error = 'Licencia inválida (firma incorrecta)';
-        this._license = null;
-        return;
-      }
-
-      // Check hardware ID (wildcard '*' skips check)
-      if (payload.hardwareId !== '*' && payload.hardwareId !== hardwareId()) {
-        this._error = 'Licencia no válida para este equipo';
-        this._license = null;
-        return;
-      }
-
-      // Check expiry
-      if (payload.expiresAt && new Date(payload.expiresAt) < new Date()) {
-        this._error = `Licencia expirada el ${payload.expiresAt}`;
-        this._license = null;
-        return;
-      }
-
-      this._license = license;
-      this._error   = null;
-      console.log(`[License] ${payload.tier.toUpperCase()} — ${payload.licensee} — válida hasta ${payload.expiresAt}`);
-    } catch (e) {
-      this._error   = 'Fichero de licencia corrupto';
-      this._license = null;
-    }
+  load(/* dataDir */) {
+    console.log('[License] PRO — licenciamiento desactivado (todos los módulos activos)');
   }
 
-  // Active tier: 'basic' | 'club' | 'pro'
-  get tier() {
-    return this._license?.tier ?? 'basic';
-  }
-
-  get tierRank() {
-    return TIER_RANK[this.tier] ?? 0;
-  }
-
-  // Check if a specific module is enabled
-  has(module) {
-    const rank = this.tierRank;
-    for (const [tier, modules] of Object.entries(TIER_MODULES)) {
-      if (modules.includes(module) && TIER_RANK[tier] <= rank) return true;
-    }
-    return false;
-  }
+  get tier()      { return 'pro'; }
+  get tierRank()  { return TIER_RANK.pro; }
+  has(/* module */) { return true; }
 
   get info() {
     return {
-      tier:      this.tier,
-      licensee:  this._license?.licensee ?? 'Sin licencia',
-      expiresAt: this._license?.expiresAt ?? null,
-      error:     this._error,
+      tier:       'pro',
+      licensee:   'Voltrace Manager',
+      expiresAt:  null,
+      error:      null,
       hardwareId: hardwareId(),
     };
   }
 
-  // Basic tier limits
-  get maxTandasPerRace() { return this.has('races_unlimited') ? Infinity : 1; }
-  get maxMangasPerRace() { return this.has('races_unlimited') ? Infinity : 1; }
+  get maxTandasPerRace() { return Infinity; }
+  get maxMangasPerRace() { return Infinity; }
 }
 
 module.exports = new LicenseServiceClass();

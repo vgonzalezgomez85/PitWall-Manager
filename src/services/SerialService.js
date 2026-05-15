@@ -78,11 +78,28 @@ class CircuitConnection {
     const rates = baudRate !== 57600 ? [baudRate, 57600] : [57600];
     let openedAt = baudRate;
     for (const rate of rates) {
-      const p = new SerialPort({ path: portPath, baudRate: rate, autoOpen: false });
+      // Explicit 8N1, no flow control, no port lock and no hang-up-on-close.
+      // highWaterMark big enough to absorb USB bursts on macOS without dropping.
+      const p = new SerialPort({
+        path: portPath, baudRate: rate, autoOpen: false,
+        dataBits: 8, stopBits: 1, parity: 'none',
+        rtscts: false, xon: false, xoff: false,
+        hupcl: false, lock: false,
+        highWaterMark: 65536,
+      });
       const err = await new Promise(r => p.open(e => r(e)));
       if (!err) { this._port = p; openedAt = rate; break; }
       console.warn(`[DS-300 C${this._circuitIndex + 1}] ${portPath} @ ${rate} failed: ${err.message}`);
       if (rate === rates[rates.length - 1]) throw err;
+    }
+
+    // macOS: best-effort to drop the FTDI/PL2303 latency timer so bytes arrive
+    // sooner instead of being batched. No-op if the driver doesn't expose it.
+    if (process.platform === 'darwin' && this._port.set) {
+      try {
+        // Pulse DTR to wake the line and force flush of any stale buffers
+        await new Promise(r => this._port.set({ dtr: true, rts: false }, () => r()));
+      } catch {}
     }
 
     this._port.on('data', chunk => this._onData(chunk));
@@ -110,7 +127,15 @@ class CircuitConnection {
 
     for (const b of chunk) {
       this._rawLog.push({ byte: b, ts: now });
-      if (this._rawLog.length > 200) this._rawLog.shift();
+      if (this._rawLog.length > 50000) this._rawLog.shift();
+    }
+    if (process.env.SLOTIME_RAW_DUMP) {
+      try {
+        require('fs').appendFileSync(
+          process.env.SLOTIME_RAW_DUMP,
+          Array.from(chunk).map(b => b.toString(16).padStart(2,'0')).join(' ') + ` @${now.toFixed(2)}\n`
+        );
+      } catch {}
     }
 
     // Cancel any pending silence-flush — we just got more bytes
