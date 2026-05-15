@@ -19,6 +19,10 @@ const FRAME_GAP_MS    = 75;    // gap > 75ms between bytes → new frame starts
 const MIN_CROSSING_MS = 500;   // minimum ms between two crossings on the same lane
 const MAX_LAP_MS      = 240000; // elapsed > 240s → car stopped; reset ref, skip recording
 
+// DS-300 emits a heartbeat frame every 60s while a manga is running (byte7=0x00 byte8=0xC0).
+// If we don't see one for HEARTBEAT_TIMEOUT_MS, the DS is probably unplugged or off.
+const HEARTBEAT_TIMEOUT_MS = 75000;
+
 // DS-300 lap time is encoded in bytes 14-17 (0-based) as decimal-in-hex:
 //   byte14 = minutes, byte15 = seconds, byte16 = hundredths, byte17 = ten-thousandths
 //   e.g. 0x13 → read hex digits as decimal → 13 seconds
@@ -63,6 +67,9 @@ class CircuitConnection {
     this._lastByteTs    = null;
     this._flushTimer    = null;
     this._raceState     = null;
+    this._watchdogTimer = null;
+    this._connected     = true;   // optimistic until we have reason to think otherwise
+    this._lastHeartbeatTs = null;
   }
 
   async connect(portPath, baudRate = 56000) {
@@ -109,14 +116,42 @@ class CircuitConnection {
         console.error('[DS-300] Linux: sudo usermod -a -G dialout $USER  then log out/in');
       }
     });
+    this._port.on('close', () => {
+      console.warn(`[DS-300 C${this._circuitIndex + 1}] Port closed`);
+      this._setConnected(false);
+    });
 
     console.log(`[DS-300 C${this._circuitIndex + 1}] Connected to ${portPath} @ ${openedAt} baud (lane offset: ${this._laneOffset})`);
   }
 
   async close() {
+    if (this._watchdogTimer) { clearTimeout(this._watchdogTimer); this._watchdogTimer = null; }
     if (!this._port) return;
     await new Promise(r => this._port.close(r));
     this._port = null;
+  }
+
+  // Mark the link as alive and (re)arm the heartbeat watchdog.
+  _pingAlive() {
+    if (!this._connected) this._setConnected(true);
+    if (this._watchdogTimer) clearTimeout(this._watchdogTimer);
+    this._watchdogTimer = setTimeout(() => {
+      // Only flag as disconnected if the DS should be talking to us right now.
+      const racing = this._raceState === 'running' || this._raceState === 'resumed';
+      if (racing) this._setConnected(false);
+    }, HEARTBEAT_TIMEOUT_MS);
+  }
+
+  _setConnected(connected) {
+    if (this._connected === connected) return;
+    this._connected = connected;
+    console.log(`[DS-300 C${this._circuitIndex + 1}] Link → ${connected ? 'connected' : 'DISCONNECTED'}`);
+    const SocketService = require('./SocketService');
+    SocketService.emit('serial:status', {
+      circuit:    this._circuitIndex + 1,
+      connected,
+      lastHeartbeatTs: this._lastHeartbeatTs,
+    });
   }
 
   get path()   { return this._port?.path ?? null; }
@@ -183,6 +218,19 @@ class CircuitConnection {
 
   _processFrame(frame, ts) {
     if (frame.length < 2) return;
+
+    // Any well-formed frame means the DS is alive; refresh the watchdog.
+    this._pingAlive();
+
+    // ── Heartbeat frame (DS sends one every 60s while running) ────────────────
+    // Signature: frame[7]=0x00, frame[8]=0xC0. Byte 14 = minute counter.
+    if (frame.length >= 15 && frame[7] === 0x00 && frame[8] === 0xC0) {
+      const minute = frame[14];
+      this._lastHeartbeatTs = ts;
+      const SocketService = require('./SocketService');
+      SocketService.emit('serial:heartbeat', { circuit: this._circuitIndex + 1, minute, ts });
+      return;
+    }
 
     const laneByte = frame.length >= 11 ? frame[10] : 0;
 
