@@ -45,9 +45,10 @@ function showSemaphore() {
   ov.innerHTML = `<div class="semaphore-panel">${[1,2,3].map(i =>
     `<div class="s-light" id="sl${i}"></div>`).join('')}</div>`;
   document.body.appendChild(ov);
-  // 3 luces rojas progresivas sobre los ~3.1s de la secuencia GO. La verde se
-  // dispara con la trama 3 (manga:started) vía semaphoreGo().
-  [0, 700, 1400].forEach((delay, i) =>
+  // Sincronizado con los deltas reales del DS-300 (capturados a 2500/2953ms):
+  // 1ª roja al recibir trama 1, 2ª roja a +1250ms, 3ª roja a +2500ms (= trama 2),
+  // verde a +2953ms con manga:started vía semaphoreGo().
+  [0, 1250, 2500].forEach((delay, i) =>
     setTimeout(() => document.getElementById(`sl${i + 1}`)?.classList.add('lit'), delay)
   );
   _semaphoreFallback = setTimeout(() => semaphoreGo(null), 6000);

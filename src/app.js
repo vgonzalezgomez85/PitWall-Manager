@@ -31,6 +31,7 @@ const TrainingService = require('./services/TrainingService');
 let _pendingGoDurationMs = null;
 
 SerialService.on('race_go', ({ durationMs }) => {
+  console.log(`[DS-300] race_go received (duration=${durationMs}ms) — emit race:semaphore @ ${Date.now()}`);
   if (TimingService._tandaBoundary) {
     console.log('[DS-300] GO ignored — tanda boundary, waiting for user to start next tanda');
     return;
@@ -40,7 +41,7 @@ SerialService.on('race_go', ({ durationMs }) => {
 });
 
 SerialService.on('race_started', () => {
-  console.log('[DS-300] race_started → emit training:autostart');
+  console.log(`[DS-300] race_started @ ${Date.now()} → emit training:autostart`);
   SocketService.emit('training:autostart');
   if (TimingService.isRunning) return;
   if (TimingService._tandaBoundary) {
