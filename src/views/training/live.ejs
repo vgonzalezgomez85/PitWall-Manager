@@ -50,6 +50,27 @@
   <!-- ── Lane cards ────────────────────────────────────────────────────────── -->
   <div class="training-grid" id="trainingGrid" style="--lanes: <%= lanes.length %>"></div>
 
+  <!-- ── Resting participants (competition only, when P > N) ───────────────── -->
+  <% if (typeof resting !== 'undefined' && resting && resting.length > 0) { %>
+  <div id="restingBar" class="resting-bar">
+    <div class="resting-bar__title">💤 <%= lang === 'es' ? 'En descanso' : 'Resting' %></div>
+    <div class="resting-bar__items" id="restingItems">
+      <% resting.forEach(r => { %>
+        <div class="resting-chip">
+          <span class="resting-chip__num">DSC<%= r.restNum %></span>
+          <span class="resting-chip__dot" style="background:<%= r.color %>"></span>
+          <span class="resting-chip__name"><%= r.name %></span>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+  <% } else { %>
+  <div id="restingBar" class="resting-bar" style="display:none">
+    <div class="resting-bar__title">💤 <%= lang === 'es' ? 'En descanso' : 'Resting' %></div>
+    <div class="resting-bar__items" id="restingItems"></div>
+  </div>
+  <% } %>
+
   <script>
     const TRAINING_DATA = <%- JSON.stringify({
       startedAt:      startedAt,

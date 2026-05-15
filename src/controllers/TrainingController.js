@@ -51,7 +51,9 @@ class TrainingController {
   // GET /training/competition — setup form (or live if active)
   static competition(req, res) {
     if (CompetitionService.isReady) return res.redirect('/training/competition/live');
-    res.render('training/competition', { t: req.t });
+    const circuits = Circuit.findAll();
+    const defaultCircuitId = parseInt(Settings.get('training_circuit_id', '') || '0', 10) || null;
+    res.render('training/competition', { t: req.t, circuits, defaultCircuitId });
   }
 
   // POST /training/competition/start
@@ -67,8 +69,11 @@ class TrainingController {
 
     if (participants.length < 2) return res.redirect('/training/competition');
 
-    const circuitId = Settings.get('training_circuit_id', '');
-    const circuit   = circuitId ? Circuit.findById(parseInt(circuitId, 10)) : null;
+    // Circuit picked in the form takes precedence; falls back to settings default
+    const pickedId = parseInt(req.body.circuit_id || '0', 10);
+    const fallbackId = parseInt(Settings.get('training_circuit_id', '') || '0', 10);
+    const circuitId = pickedId || fallbackId;
+    const circuit   = circuitId ? Circuit.findById(circuitId) : null;
     const numLanes  = circuit ? circuit.lanes_count : Math.max(participants.length, parseInt(Settings.get('sim_lanes', '6'), 10) || 6);
 
     CompetitionService.setup(participants, numLanes);
@@ -81,6 +86,7 @@ class TrainingController {
     res.render('training/live', {
       t:          req.t,
       lanes:      CompetitionService.getLanes(),
+      resting:    CompetitionService.getResting(),
       startedAt:  CompetitionService.startedAt,
       durationMs: CompetitionService.durationMs,
       standby:    CompetitionService.isStandby,

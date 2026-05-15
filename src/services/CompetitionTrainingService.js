@@ -65,6 +65,13 @@ class CompetitionTrainingServiceClass {
   }
 
   // ── Prepare next heat (assign lanes) ─────────────────────────────────────
+  //
+  // Rotation rules (different from race rotation):
+  //   - Slots 0..N-1 are physical lanes (1..N). Slots N..P-1 are rest slots
+  //     (where P = total participants).
+  //   - Each heat, every participant advances 1 position: lane k → lane k+1,
+  //     last lane → rest 1, last rest → lane 1.
+  //   - For lane L in heat H: participant index = (L − H + P) mod P.
   _prepareHeat() {
     this._heatNumber++;
     this._active    = false;
@@ -73,10 +80,11 @@ class CompetitionTrainingServiceClass {
     this._durationMs = null;
     this._laneMap   = new Map();
 
-    const N = Math.min(this._participants.length, this._numLanes);
-    for (let lane = 1; lane <= this._numLanes; lane++) {
-      // In heat H, lane L has participant at index (L-1 + H-1) % N
-      const pIdx = lane <= N ? ((lane - 1 + this._heatNumber - 1) % N) : null;
+    const P = this._participants.length;
+    const N = this._numLanes;
+
+    for (let lane = 1; lane <= N; lane++) {
+      const pIdx = P > 0 ? (((lane - this._heatNumber) % P) + P) % P : null;
       this._laneMap.set(lane, {
         participantIdx: pIdx,
         count: 0, sum: 0, lastMs: null,
@@ -84,10 +92,29 @@ class CompetitionTrainingServiceClass {
       });
     }
 
-    console.log(`[CompetitionTraining] Heat ${this._heatNumber} prepared — standby`);
+    // Compute who is currently resting (for UI), in rotation order:
+    // rest slot R (1..P-N) → participant at slot (N + R - 1)
+    // → participant index = (N + R − H + P) mod P
+    this._restingIdx = [];
+    for (let r = 1; r <= Math.max(0, P - N); r++) {
+      const pIdx = (((N + r - this._heatNumber) % P) + P) % P;
+      this._restingIdx.push(pIdx);
+    }
+
+    console.log(`[CompetitionTraining] Heat ${this._heatNumber} prepared — standby (${P} pilots / ${N} lanes / ${this._restingIdx.length} rest)`);
     SocketService.emit('training:standby', this.getLanes());
-    SocketService.emit('competition:heat', { heat: this._heatNumber });
+    SocketService.emit('competition:heat', { heat: this._heatNumber, resting: this._restingNames() });
   }
+
+  _restingNames() {
+    return (this._restingIdx || []).map((idx, i) => {
+      const p = this._participants[idx];
+      return p ? { restNum: i + 1, name: p.name, color: p.color } : null;
+    }).filter(Boolean);
+  }
+
+  // Public getter for rest slot info (used by views and live updates)
+  getResting() { return this._restingNames(); }
 
   // ── Activate (start recording) ────────────────────────────────────────────
   _activate() {

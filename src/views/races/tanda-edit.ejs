@@ -63,7 +63,11 @@
           <% drivers.forEach((d, i) => {
                const slotLane = i < laneSequence.length ? laneSequence[i] : 0;
                const slotColor = slotLane > 0 ? LANE_COLORS[(slotLane - 1) % LANE_COLORS.length] : '#30363d';
-               const slotLabel = slotLane > 0 ? slotLane : (lang === 'es' ? 'DSC' : 'REST');
+               // DSC1 = first to start racing (rests least at start)
+               const restIdx = slotLane === 0 ? (drivers.length - i) : 0;
+               const slotLabel = slotLane > 0
+                 ? slotLane
+                 : ((lang === 'es' ? 'DSC' : 'REST') + (restIdx > 0 ? restIdx : ''));
           %>
             <div class="driver-row participant-row" data-row="<%= i %>">
               <span class="lane-badge participant-badge" style="background:<%= slotColor %>;<%= slotLane === 0 ? 'color:#8b949e;font-size:.65rem' : '' %>" data-index="<%= i %>"><%= slotLabel %></span>
@@ -110,7 +114,10 @@
           <% teams.forEach((team, i) => {
                const slotLane = i < laneSequence.length ? laneSequence[i] : 0;
                const slotColor = slotLane > 0 ? LANE_COLORS[(slotLane - 1) % LANE_COLORS.length] : '#30363d';
-               const slotLabel = slotLane > 0 ? slotLane : (lang === 'es' ? 'DSC' : 'REST');
+               const restIdx = slotLane === 0 ? (teams.length - i) : 0;
+               const slotLabel = slotLane > 0
+                 ? slotLane
+                 : ((lang === 'es' ? 'DSC' : 'REST') + (restIdx > 0 ? restIdx : ''));
           %>
             <div class="team-block participant-row" data-row="<%= i %>">
               <div class="team-block__header" style="border-left-color:<%= slotColor %>">
@@ -181,7 +188,12 @@ const LANES     = <%= laneSequence.length %>;
 const LANE_SEQ  = <%- JSON.stringify(laneSequence) %>;
 const LANG      = "<%= lang %>";
 const COLORS    = <%- JSON.stringify(LANE_COLORS) %>;
-function slotLabel(i){ return (i < LANE_SEQ.length && LANE_SEQ[i] > 0) ? LANE_SEQ[i] : (LANG==='es'?'DSC':'REST'); }
+function slotLabel(i, total){
+  if (i < LANE_SEQ.length && LANE_SEQ[i] > 0) return LANE_SEQ[i];
+  const t = total ?? document.querySelectorAll('.participant-row').length;
+  const restIdx = t - i;
+  return (LANG==='es'?'DSC':'REST') + (restIdx > 0 ? restIdx : '');
+}
 function slotColor(i){ const l = i < LANE_SEQ.length ? LANE_SEQ[i] : 0; return l > 0 ? COLORS[(l-1) % COLORS.length] : '#30363d'; }
 const DRIVER_PH = "<%= t('wizard.driver_name_ph') %>";
 const TEAM_PH   = "<%= t('wizard.team_name_ph') %>";
@@ -271,6 +283,7 @@ document.getElementById('addDriver')?.addEventListener('click', () => {
     <button type="button" class="btn btn--danger btn--sm remove-row" title="${LANG==='es'?'Eliminar':'Remove'}">✕</button>`;
   grid.appendChild(div);
   div.querySelector('.participant-name').focus();
+  renumber('driversGrid');
   updateRestInfo();
 });
 document.getElementById('driversGrid')?.addEventListener('click', e => {
@@ -292,6 +305,7 @@ document.getElementById('addTeam')?.addEventListener('click', () => {
   </div><div class="team-members">${members}</div>`;
   container.appendChild(block);
   block.querySelector('input').focus();
+  renumber('teamsContainer');
   updateRestInfo();
 });
 document.getElementById('teamsContainer')?.addEventListener('click', e => {

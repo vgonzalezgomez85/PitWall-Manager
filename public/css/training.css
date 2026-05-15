@@ -316,3 +316,33 @@
   padding: .1rem .5rem;
   font-weight: 900;
 }
+
+/* ── Resting participants bar (competition mode, P > N) ──────────────────── */
+.resting-bar {
+  background: #0d1117;
+  border-top: 1px solid #21262d;
+  padding: .6rem 1rem .75rem;
+  display: flex; flex-direction: column; gap: .4rem;
+}
+.resting-bar__title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: .85rem; font-weight: 700; letter-spacing: .08em;
+  color: #8b949e; text-transform: uppercase;
+}
+.resting-bar__items {
+  display: flex; flex-wrap: wrap; gap: .5rem;
+}
+.resting-chip {
+  display: inline-flex; align-items: center; gap: .45rem;
+  background: #161b22; border: 1px solid #21262d;
+  padding: .35rem .75rem; border-radius: 18px;
+  font-size: .85rem; color: #c9d1d9;
+}
+.resting-chip__num {
+  font-family: 'Rajdhani', sans-serif; font-size: .75rem; font-weight: 700;
+  color: #6e7681; letter-spacing: .04em;
+}
+.resting-chip__dot {
+  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+}
+.resting-chip__name { font-weight: 600; }

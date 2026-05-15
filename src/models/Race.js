@@ -49,6 +49,16 @@ class Race {
   }
 
   static getLaneSequence(race) {
+    // Prefer the assigned circuit's lane sequence (single source of truth).
+    // Fall back to the race's own column for legacy races without a circuit.
+    if (race.circuit_id) {
+      try {
+        const Circuit = require('./Circuit');
+        const c = Circuit.findById(race.circuit_id);
+        const seq = c ? Circuit.getLaneSequence(c) : [];
+        if (seq.length > 0) return seq;
+      } catch {}
+    }
     try { return JSON.parse(race.lane_sequence || '[]'); } catch { return []; }
   }
 
