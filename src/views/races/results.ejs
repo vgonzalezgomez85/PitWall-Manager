@@ -1,5 +1,60 @@
 <%- include('../partials/header', { pageTitle: (lang === 'es' ? 'Resultados' : 'Results') + ' — ' + race.name }) %>
 <style>
+/* ── Race fastest lap banner ── */
+.race-best-banner {
+  display: flex; align-items: center; gap: 1rem;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: #1a1a1a; padding: 1rem 1.25rem; border-radius: 12px;
+  margin-bottom: 1.25rem; box-shadow: 0 4px 16px rgba(245,158,11,0.25);
+}
+.race-best-banner__icon { font-size: 2rem; line-height: 1; }
+.race-best-banner__label { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; opacity: .8; }
+.race-best-banner__value strong { font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.race-best-banner__meta { margin-left: .75rem; font-size: .9rem; opacity: .85; }
+
+/* ── Comparison matrix table ── */
+.matrix-wrapper { overflow-x: auto; border-radius: 12px; border: 1px solid #21262d; background: #0d1117; }
+.matrix-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: .85rem; }
+.matrix-table th, .matrix-table td { padding: .55rem .7rem; text-align: center; }
+.matrix-table thead th {
+  background: #161b22; color: #c9d1d9; font-weight: 600; font-size: .75rem;
+  text-transform: uppercase; letter-spacing: .05em; border-bottom: 2px solid #30363d;
+  position: sticky; top: 0; z-index: 1;
+}
+.matrix-table .matrix-name { text-align: left; min-width: 180px; }
+.matrix-table .matrix-pos { width: 3rem; }
+.matrix-lane__label { font-size: .65rem; color: #8b949e; margin-top: 4px; font-weight: 500; }
+.lane-pill {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.8rem; height: 1.8rem; border-radius: 6px; color: #fff;
+  font-weight: 700; font-size: .8rem;
+}
+.matrix-entity { border-top: 2px solid #30363d; background: #161b22; }
+.matrix-entity .matrix-name { padding-top: .7rem; padding-bottom: .25rem; }
+.matrix-entity .matrix-total { font-size: 1.15rem; font-weight: 800; color: #58a6ff; }
+.matrix-entity .matrix-lane-laps { font-size: 1rem; font-weight: 700; color: #c9d1d9; }
+.matrix-entity.top-1 .matrix-total { color: #fbbf24; }
+.matrix-entity.top-2 .matrix-total { color: #d1d5db; }
+.matrix-entity.top-3 .matrix-total { color: #d97706; }
+.matrix-stat { background: #0d1117; }
+.matrix-stat td { padding: .35rem .7rem; color: #c9d1d9; }
+.matrix-stat__label { text-align: left !important; color: #8b949e !important; font-size: .75rem; font-weight: 500; padding-left: 1rem !important; }
+.matrix-stat__total { color: #8b949e !important; font-size: .8rem; }
+.matrix-stat--best td { color: #7ee787; font-weight: 600; }
+.matrix-stat--avg td { color: #c9d1d9; }
+.matrix-stat--worst td { color: #8b949e; font-size: .78rem; }
+.matrix-stat--worst .exit-count { color: #f85149; font-weight: 600; margin-right: 3px; }
+.matrix-stat--worst .exit-count:not(.has-exits) { color: #484f58; }
+.exit-total { color: #f85149; font-weight: 600; margin-left: 4px; }
+
+.race-best {
+  background: linear-gradient(135deg, rgba(251,191,36,0.2), rgba(245,158,11,0.15)) !important;
+  color: #fbbf24 !important; font-weight: 800 !important;
+  position: relative;
+  border-radius: 4px;
+}
+.race-best-star { color: #fbbf24; margin-left: 2px; }
+
 @media print {
   .navbar, .page-header__actions, .results-tabs, .back-link,
   .results-panel:not(.active) { display: none !important; }
@@ -66,6 +121,9 @@
       </button>
       <button class="results-tab" data-tab="lanes">
         🗂 <%= lang === 'es' ? 'Por carril' : 'Per lane' %>
+      </button>
+      <button class="results-tab" data-tab="matrix">
+        🏁 <%= lang === 'es' ? 'Comparativa' : 'Comparison' %>
       </button>
     </div>
 
@@ -214,6 +272,124 @@
           <% } %>
         </div>
       <% }) %>
+    </div>
+
+    <!-- ── Comparison matrix (PDF-style, modern) ── -->
+    <div class="results-panel" id="tab-matrix">
+      <%
+        const orderedLanes = (laneSequence || []).filter(l => l > 0);
+        const byTotalM = [...results].sort((a,b) => b.total_laps - a.total_laps || (a.best_lap_ms||Infinity) - (b.best_lap_ms||Infinity));
+
+        function fmtSec(ms) {
+          if (ms == null) return '—';
+          return (ms / 1000).toFixed(3).replace('.', ',');
+        }
+      %>
+
+      <% if (raceBestLapMs != null) { %>
+        <div class="race-best-banner">
+          <span class="race-best-banner__icon">⚡</span>
+          <div>
+            <div class="race-best-banner__label"><%= lang === 'es' ? 'Vuelta rápida de la carrera' : 'Race fastest lap' %></div>
+            <div class="race-best-banner__value">
+              <strong><%= fmtSec(raceBestLapMs) %>s</strong>
+              <span class="race-best-banner__meta"><%= raceBestEntity %> · <%= lang === 'es' ? 'Pista' : 'Lane' %> <%= raceBestLane %></span>
+            </div>
+          </div>
+        </div>
+      <% } %>
+
+      <div class="matrix-wrapper">
+        <table class="matrix-table">
+          <thead>
+            <tr>
+              <th class="matrix-pos">#</th>
+              <th class="matrix-name"><%= lang === 'es' ? 'Equipo / Piloto' : 'Team / Driver' %></th>
+              <th class="matrix-laps"><%= lang === 'es' ? 'Vueltas' : 'Laps' %></th>
+              <% orderedLanes.forEach(lane => { %>
+                <th class="matrix-lane">
+                  <span class="lane-pill" style="background:<%= LANE_COLORS[lane-1] || '#8b949e' %>"><%= lane %></span>
+                  <div class="matrix-lane__label"><%= lang === 'es' ? 'Pista' : 'Lane' %> <%= lane %></div>
+                </th>
+              <% }) %>
+            </tr>
+          </thead>
+          <tbody>
+            <% byTotalM.forEach((r, i) => {
+                 const laneMap = new Map((r.perLane||[]).map(pl => [pl.lane, pl]));
+            %>
+              <!-- Entity header row -->
+              <tr class="matrix-entity <%= i < 3 ? 'top-' + (i+1) : '' %>">
+                <td class="matrix-pos" rowspan="4">
+                  <span class="pos-badge pos-<%= i+1 %>"><%= i+1 %></span>
+                </td>
+                <td class="matrix-name">
+                  <% if (r.color) { %>
+                    <span class="lane-dot" style="background:<%= r.color %>; width:10px; height:10px; display:inline-block; border-radius:3px; margin-right:6px;"></span>
+                  <% } %>
+                  <strong><%= r.entity_name %></strong>
+                </td>
+                <td class="matrix-laps matrix-total"><%= r.total_laps %></td>
+                <% orderedLanes.forEach(lane => {
+                     const pl = laneMap.get(lane);
+                %>
+                  <td class="matrix-lane-cell matrix-lane-laps">
+                    <%= pl ? pl.laps : '—' %>
+                  </td>
+                <% }) %>
+              </tr>
+
+              <!-- Fastest lap row -->
+              <tr class="matrix-stat matrix-stat--best">
+                <td class="matrix-stat__label">⚡ <%= lang === 'es' ? 'Rápida' : 'Fast' %></td>
+                <td class="matrix-stat__total"><%= fmtSec(r.best_lap_ms) %></td>
+                <% orderedLanes.forEach(lane => {
+                     const pl = laneMap.get(lane);
+                     const isRaceBest = pl && pl.best_ms != null && pl.best_ms === raceBestLapMs;
+                %>
+                  <td class="matrix-lane-cell <%= isRaceBest ? 'race-best' : '' %>">
+                    <% if (pl && pl.best_ms != null) { %>
+                      <%= fmtSec(pl.best_ms) %><% if (isRaceBest) { %> <span class="race-best-star">★</span><% } %>
+                    <% } else { %>—<% } %>
+                  </td>
+                <% }) %>
+              </tr>
+
+              <!-- Average row -->
+              <tr class="matrix-stat matrix-stat--avg">
+                <td class="matrix-stat__label"><%= lang === 'es' ? 'Media' : 'Avg' %></td>
+                <td class="matrix-stat__total"><%= fmtSec(Math.round(r.avg_lap_ms)) %></td>
+                <% orderedLanes.forEach(lane => {
+                     const pl = laneMap.get(lane);
+                %>
+                  <td class="matrix-lane-cell">
+                    <%= pl && pl.avg_ms != null ? fmtSec(Math.round(pl.avg_ms)) : '—' %>
+                  </td>
+                <% }) %>
+              </tr>
+
+              <!-- Slowest + exits row -->
+              <tr class="matrix-stat matrix-stat--worst">
+                <td class="matrix-stat__label">
+                  <%= lang === 'es' ? 'Salidas' : 'Exits' %>
+                  <span class="exit-total">(<%= (r.perLane||[]).reduce((s,pl)=>s+(pl.exit_count||0),0) %>)</span>
+                </td>
+                <td class="matrix-stat__total">—</td>
+                <% orderedLanes.forEach(lane => {
+                     const pl = laneMap.get(lane);
+                %>
+                  <td class="matrix-lane-cell">
+                    <% if (pl && pl.worst_ms != null) { %>
+                      <span class="exit-count <%= pl.exit_count > 0 ? 'has-exits' : '' %>">(<%= pl.exit_count || 0 %>)</span>
+                      <%= fmtSec(pl.worst_ms) %>
+                    <% } else { %>—<% } %>
+                  </td>
+                <% }) %>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
     </div>
 
   <% } %>

@@ -7,7 +7,7 @@ const Driver         = require('../models/Driver');
 const DriverShift    = require('../models/DriverShift');
 const SocketService  = require('../services/SocketService');
 const TimingService  = require('../services/TimingService');
-const XLSX           = require('xlsx');
+const ExcelJS        = require('exceljs');
 
 const LANE_COLORS = [
   '#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4',
@@ -430,67 +430,323 @@ class SessionController {
       perLane: Lap.perLaneByEntity(race.id, row.entity_id, row.entity_type)
     }));
 
+    // Race overall fastest lap (across all entities & lanes) — for highlight
+    let raceBestLapMs = null, raceBestEntity = null, raceBestLane = null;
+    for (const r of results) {
+      for (const pl of r.perLane) {
+        if (pl.best_ms != null && (raceBestLapMs == null || pl.best_ms < raceBestLapMs)) {
+          raceBestLapMs = pl.best_ms;
+          raceBestEntity = r.entity_name;
+          raceBestLane = pl.lane;
+        }
+      }
+    }
+
     const tandasRaw = Tanda.findByRace(race.id);
     const tandas = tandasRaw.map(t => ({
       ...t,
       mangas: Manga.findByTanda(t.id)
     }));
 
-    res.render('races/results', { t: req.t, race, results, laneSequence, tandas, LANE_COLORS });
+    res.render('races/results', {
+      t: req.t, race, results, laneSequence, tandas, LANE_COLORS,
+      raceBestLapMs, raceBestEntity, raceBestLane
+    });
   }
 
   // GET /races/:id/results/xlsx
-  static excel(req, res) {
+  static async excel(req, res) {
     const race = Race.findById(req.params.id);
     if (!race) return res.status(404).send('Not found');
 
     const aggregate = Lap.aggregateByRace(race.id);
     const isEs      = (req.query.lang || 'es') === 'es';
 
-    function fmtMs(ms) {
+    const fmtMs = (ms) => {
       if (ms == null) return '';
       const s = Math.floor(ms / 1000);
       const h = Math.floor((ms % 1000) / 10);
       const m = Math.floor(s / 60);
       return (m > 0 ? m + ':' : '') + String(s % 60).padStart(m > 0 ? 2 : 1, '0') + '.' + String(h).padStart(2,'0');
+    };
+    const fmtSec = (ms) => ms == null ? '' : (ms / 1000).toFixed(3).replace('.', ',');
+
+    // ── Style palette ────────────────────────────────────────────────────────
+    const COL = {
+      header:    'FF161B22',   // dark slate
+      headerFg:  'FFFFFFFF',
+      gold:      'FFFBBF24',
+      silver:    'FFD1D5DB',
+      bronze:    'FFD97706',
+      best:      'FF7EE787',   // green for fastest cells
+      worstBg:   'FFFFF1F0',
+      raceBest:  'FFFEF3C7',   // highlight for global fastest
+      band:      'FFF6F8FA',
+      rowTotal:  'FFEEF1F4',   // light gray — entity total row
+      rowBest:   'FFE7F8EC',   // light green — fastest row
+      rowAvg:    'FFFFFBE6',   // light yellow — average row
+      rowExits:  'FFFDECEC',   // light red — exits row
+      muted:     'FF6E7681',
+      exit:      'FFF85149',
+      border:    'FFD0D7DE',
+    };
+    const thinBorder = {
+      top:    { style: 'thin', color: { argb: COL.border } },
+      left:   { style: 'thin', color: { argb: COL.border } },
+      bottom: { style: 'thin', color: { argb: COL.border } },
+      right:  { style: 'thin', color: { argb: COL.border } },
+    };
+    const fillSolid = (argb) => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
+    const headerStyle = {
+      font: { bold: true, color: { argb: COL.headerFg }, size: 11 },
+      fill: fillSolid(COL.header),
+      alignment: { horizontal: 'center', vertical: 'middle' },
+      border: thinBorder,
+    };
+    const podiumFill = (pos) => pos === 1 ? fillSolid(COL.gold) : pos === 2 ? fillSolid(COL.silver) : pos === 3 ? fillSolid(COL.bronze) : null;
+    const applyBorder = (ws, range) => {
+      ws.getCell(range).border = thinBorder;
+    };
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'SloTime';
+    wb.created = new Date();
+
+    // Date shown in header: prefer finished_at, fall back to started_at, then created_at
+    const raceDateRaw = race.finished_at || race.started_at || race.created_at;
+    const raceDate = raceDateRaw ? new Date(raceDateRaw) : null;
+    const raceDateStr = raceDate
+      ? raceDate.toLocaleString(isEs ? 'es-ES' : 'en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : '';
+    const titleLabel = isEs ? 'Carrera' : 'Race';
+    const dateLabel  = isEs ? 'Fecha'   : 'Date';
+
+    // Adds 2 header rows (title + date) to a sheet across `cols` columns
+    function addRaceHeader(ws, cols) {
+      const r1 = ws.addRow([`🏁 ${race.name}`]);
+      r1.height = 24;
+      ws.mergeCells(r1.number, 1, r1.number, cols);
+      const c1 = r1.getCell(1);
+      c1.font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
+      c1.fill = fillSolid(COL.header);
+      c1.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+
+      if (raceDateStr) {
+        const r2 = ws.addRow([`${dateLabel}: ${raceDateStr}`]);
+        r2.height = 18;
+        ws.mergeCells(r2.number, 1, r2.number, cols);
+        const c2 = r2.getCell(1);
+        c2.font = { italic: true, size: 10, color: { argb: COL.muted } };
+        c2.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+      }
+      ws.addRow([]);
     }
 
-    // Sheet 1 — total laps ranking
+    // ── Sheet 1 — Clasificación ─────────────────────────────────────────────
     const byTotal = [...aggregate].sort((a,b) => b.total_laps - a.total_laps || (a.best_lap_ms||Infinity)-(b.best_lap_ms||Infinity));
-    const sheet1 = XLSX.utils.aoa_to_sheet([
-      ['#', isEs ? 'Piloto / Equipo' : 'Driver / Team', isEs ? 'Total vueltas' : 'Total laps', isEs ? 'Mejor vuelta' : 'Best lap', isEs ? 'Vuelta media' : 'Avg lap', isEs ? 'Mangas' : 'Heats'],
-      ...byTotal.map((r, i) => [i+1, r.entity_name, r.total_laps, fmtMs(r.best_lap_ms), fmtMs(Math.round(r.avg_lap_ms)), r.mangas_raced])
-    ]);
+    const s1 = wb.addWorksheet(isEs ? 'Clasificación' : 'Standings');
+    s1.columns = [{ width: 5 }, { width: 30 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 10 }];
+    addRaceHeader(s1, 6);
+    const s1Header = s1.addRow(['#', isEs ? 'Piloto / Equipo' : 'Driver / Team', isEs ? 'Total vueltas' : 'Total laps', isEs ? 'Mejor vuelta' : 'Best lap', isEs ? 'Vuelta media' : 'Avg lap', isEs ? 'Mangas' : 'Heats']);
+    s1Header.height = 22;
+    s1Header.eachCell(c => Object.assign(c, headerStyle));
+    s1.views = [{ state: 'frozen', ySplit: s1Header.number }];
+    byTotal.forEach((r, i) => {
+      const row = s1.addRow([i+1, r.entity_name, r.total_laps, fmtMs(r.best_lap_ms), fmtMs(Math.round(r.avg_lap_ms)), r.mangas_raced]);
+      const fill = podiumFill(i+1);
+      row.eachCell(c => {
+        c.border = thinBorder;
+        if (fill) c.fill = fill;
+        if (fill && i < 3) c.font = { bold: true };
+      });
+      row.getCell(3).font = { bold: true };
+      if (i % 2 === 1 && !fill) row.eachCell(c => c.fill = fillSolid(COL.band));
+    });
 
-    // Sheet 2 — best lap ranking
+    // ── Sheet 2 — Mejor vuelta ──────────────────────────────────────────────
     const byBest = [...aggregate].filter(r => r.best_lap_ms).sort((a,b) => a.best_lap_ms - b.best_lap_ms);
-    const sheet2 = XLSX.utils.aoa_to_sheet([
-      ['#', isEs ? 'Piloto / Equipo' : 'Driver / Team', isEs ? 'Mejor vuelta' : 'Best lap', isEs ? 'Total vueltas' : 'Total laps'],
-      ...byBest.map((r, i) => [i+1, r.entity_name, fmtMs(r.best_lap_ms), r.total_laps])
-    ]);
+    const s2 = wb.addWorksheet(isEs ? 'Mejor vuelta' : 'Best lap');
+    s2.columns = [{ width: 5 }, { width: 30 }, { width: 14 }, { width: 14 }];
+    addRaceHeader(s2, 4);
+    const s2Header = s2.addRow(['#', isEs ? 'Piloto / Equipo' : 'Driver / Team', isEs ? 'Mejor vuelta' : 'Best lap', isEs ? 'Total vueltas' : 'Total laps']);
+    s2Header.height = 22;
+    s2Header.eachCell(c => Object.assign(c, headerStyle));
+    s2.views = [{ state: 'frozen', ySplit: s2Header.number }];
+    byBest.forEach((r, i) => {
+      const row = s2.addRow([i+1, r.entity_name, fmtMs(r.best_lap_ms), r.total_laps]);
+      const fill = podiumFill(i+1);
+      row.eachCell(c => {
+        c.border = thinBorder;
+        if (fill) c.fill = fill;
+        if (fill) c.font = { bold: true };
+      });
+      row.getCell(3).font = { bold: true, color: { argb: 'FF1A7F37' } };
+      if (i % 2 === 1 && !fill) row.eachCell(c => c.fill = fillSolid(COL.band));
+    });
 
-    // Sheet 3 — per-lane breakdown
-    const perLaneRows = [
-      [isEs ? 'Piloto / Equipo' : 'Driver / Team', isEs ? 'Carril' : 'Lane', isEs ? 'Vueltas' : 'Laps', isEs ? 'Mejor' : 'Best', isEs ? 'Media' : 'Avg', isEs ? 'Salidas' : 'Exits']
-    ];
+    // ── Sheet 3 — Por carril ────────────────────────────────────────────────
+    const s3 = wb.addWorksheet(isEs ? 'Por carril' : 'Per lane');
+    s3.columns = [{ width: 30 }, { width: 8 }, { width: 10 }, { width: 12 }, { width: 12 }, { width: 10 }];
+    addRaceHeader(s3, 6);
+    const s3Header = s3.addRow([isEs ? 'Piloto / Equipo' : 'Driver / Team', isEs ? 'Carril' : 'Lane', isEs ? 'Vueltas' : 'Laps', isEs ? 'Mejor' : 'Best', isEs ? 'Media' : 'Avg', isEs ? 'Salidas' : 'Exits']);
+    s3Header.height = 22;
+    s3Header.eachCell(c => Object.assign(c, headerStyle));
+    s3.views = [{ state: 'frozen', ySplit: s3Header.number }];
     aggregate.forEach(r => {
       const perLane = Lap.perLaneByEntity(race.id, r.entity_id, r.entity_type);
       perLane.forEach(pl => {
-        perLaneRows.push([r.entity_name, pl.lane, pl.laps, fmtMs(pl.best_ms), fmtMs(Math.round(pl.avg_ms)), pl.exit_count || 0]);
+        const row = s3.addRow([r.entity_name, pl.lane, pl.laps, fmtMs(pl.best_ms), fmtMs(Math.round(pl.avg_ms)), pl.exit_count || 0]);
+        row.eachCell(c => c.border = thinBorder);
+        row.getCell(4).font = { color: { argb: 'FF1A7F37' }, bold: true };
+        if (pl.exit_count > 0) row.getCell(6).font = { color: { argb: COL.exit }, bold: true };
       });
     });
-    const sheet3 = XLSX.utils.aoa_to_sheet(perLaneRows);
 
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, sheet1, isEs ? 'Clasificación' : 'Standings');
-    XLSX.utils.book_append_sheet(wb, sheet2, isEs ? 'Mejor vuelta' : 'Best lap');
-    XLSX.utils.book_append_sheet(wb, sheet3, isEs ? 'Por carril' : 'Per lane');
+    // ── Sheet 4 — Comparativa (PDF style with colors) ───────────────────────
+    const laneSeq = (Race.getLaneSequence(race) || []).filter(l => l > 0);
+    const entityData = aggregate.map(r => ({
+      ...r,
+      perLane: Lap.perLaneByEntity(race.id, r.entity_id, r.entity_type)
+    }));
+    let raceBestLapMs = null, raceBestEntity = null, raceBestLane = null;
+    for (const r of entityData) {
+      for (const pl of r.perLane) {
+        if (pl.best_ms != null && (raceBestLapMs == null || pl.best_ms < raceBestLapMs)) {
+          raceBestLapMs = pl.best_ms; raceBestEntity = r.entity_name; raceBestLane = pl.lane;
+        }
+      }
+    }
+    const byTotalM = [...entityData].sort((a,b) => b.total_laps - a.total_laps || (a.best_lap_ms||Infinity)-(b.best_lap_ms||Infinity));
 
-    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    const s4 = wb.addWorksheet(isEs ? 'Comparativa' : 'Comparison', {
+      properties: { outlineProperties: { summaryBelow: false, summaryRight: false } }
+    });
+    const numLaneCols = laneSeq.length;
+    s4.columns = [
+      { width: 5 },   // #
+      { width: 28 },  // name / label
+      { width: 12 },  // total / per-row value
+      ...laneSeq.map(() => ({ width: 12 })),
+    ];
+    addRaceHeader(s4, 3 + numLaneCols);
+
+    // Banner row
+    if (raceBestLapMs != null) {
+      s4.addRow([`⚡ ${isEs ? 'Vuelta rápida de la carrera' : 'Race fastest lap'}`,
+                 `${fmtSec(raceBestLapMs)}s — ${raceBestEntity} (${isEs ? 'Pista' : 'Lane'} ${raceBestLane})`]);
+      const r = s4.lastRow;
+      r.height = 26;
+      r.eachCell(c => {
+        c.fill = fillSolid(COL.gold);
+        c.font = { bold: true, size: 12, color: { argb: 'FF1A1A1A' } };
+        c.alignment = { vertical: 'middle' };
+      });
+      s4.mergeCells(r.number, 2, r.number, 3 + numLaneCols);
+      s4.addRow([]);
+    }
+
+    // Header
+    const headerRow = s4.addRow(['#', isEs ? 'Equipo / Piloto' : 'Team / Driver', isEs ? 'Vueltas' : 'Laps', ...laneSeq.map(l => `${isEs ? 'Pista' : 'Lane'} ${l}`)]);
+    headerRow.height = 22;
+    headerRow.eachCell(c => Object.assign(c, headerStyle));
+    s4.views = [{ state: 'frozen', ySplit: headerRow.number }];
+
+    byTotalM.forEach((r, i) => {
+      const laneMap = new Map(r.perLane.map(pl => [pl.lane, pl]));
+      const totalExits = r.perLane.reduce((s,pl)=>s+(pl.exit_count||0),0);
+      const pos = i+1;
+      const podium = podiumFill(pos);
+
+      // Entity header row (light gray on lane cells)
+      const rowA = s4.addRow([pos, r.entity_name, r.total_laps, ...laneSeq.map(l => laneMap.get(l)?.laps ?? '')]);
+      rowA.height = 20;
+      rowA.eachCell(c => {
+        c.border = thinBorder;
+        c.font = { bold: true, size: 11 };
+        c.alignment = { horizontal: 'center', vertical: 'middle' };
+        c.fill = fillSolid(COL.rowTotal);
+      });
+      rowA.getCell(2).alignment = { horizontal: 'left', vertical: 'middle' };
+      if (podium) {
+        rowA.getCell(1).fill = podium;
+        rowA.getCell(2).fill = podium;
+        rowA.getCell(3).fill = podium;
+      }
+      rowA.getCell(3).font = { bold: true, size: 12, color: { argb: pos === 1 ? 'FF8A6D00' : pos === 2 ? 'FF374151' : pos === 3 ? 'FFFFFFFF' : 'FF0969DA' } };
+
+      // Fastest row
+      const fastestVals = laneSeq.map(l => {
+        const pl = laneMap.get(l); return (pl && pl.best_ms != null) ? fmtSec(pl.best_ms) : '';
+      });
+      const rowB = s4.addRow(['', `⚡ ${isEs ? 'Vuelta rápida' : 'Fastest'}`, fmtSec(r.best_lap_ms), ...fastestVals]);
+      rowB.outlineLevel = 1;
+      rowB.eachCell(c => {
+        c.border = thinBorder;
+        c.font = { color: { argb: 'FF1A7F37' }, bold: true };
+        c.alignment = { horizontal: 'center' };
+        c.fill = fillSolid(COL.rowBest);
+      });
+      rowB.getCell(2).alignment = { horizontal: 'left' };
+      rowB.getCell(2).font = { color: { argb: COL.muted }, italic: true };
+      // Highlight race-best cell (overrides green row bg)
+      laneSeq.forEach((l, idx) => {
+        const pl = laneMap.get(l);
+        if (pl && pl.best_ms != null && pl.best_ms === raceBestLapMs) {
+          const cell = rowB.getCell(4 + idx);
+          cell.fill = fillSolid(COL.raceBest);
+          cell.font = { bold: true, color: { argb: 'FF8A6D00' }, size: 12 };
+          cell.value = `${fmtSec(pl.best_ms)} ★`;
+        }
+      });
+
+      // Average row
+      const avgVals = laneSeq.map(l => {
+        const pl = laneMap.get(l); return (pl && pl.avg_ms != null) ? fmtSec(Math.round(pl.avg_ms)) : '';
+      });
+      const rowC = s4.addRow(['', isEs ? 'Vuelta media' : 'Average', fmtSec(Math.round(r.avg_lap_ms)), ...avgVals]);
+      rowC.outlineLevel = 1;
+      rowC.eachCell(c => {
+        c.border = thinBorder;
+        c.alignment = { horizontal: 'center' };
+        c.fill = fillSolid(COL.rowAvg);
+      });
+      rowC.getCell(2).alignment = { horizontal: 'left' };
+      rowC.getCell(2).font = { color: { argb: COL.muted }, italic: true };
+
+      // Exits row
+      const exitVals = laneSeq.map(l => {
+        const pl = laneMap.get(l);
+        if (!pl || pl.worst_ms == null) return '';
+        return `(${pl.exit_count||0}) ${fmtSec(pl.worst_ms)}`;
+      });
+      const rowD = s4.addRow(['', `${isEs ? 'Salidas' : 'Exits'} (${totalExits})`, '', ...exitVals]);
+      rowD.outlineLevel = 1;
+      rowD.eachCell(c => {
+        c.border = thinBorder;
+        c.alignment = { horizontal: 'center' };
+        c.font = { size: 10, color: { argb: COL.muted } };
+        c.fill = fillSolid(COL.rowExits);
+      });
+      rowD.getCell(2).alignment = { horizontal: 'left' };
+      rowD.getCell(2).font = { color: { argb: totalExits > 0 ? COL.exit : COL.muted }, italic: true, bold: totalExits > 0 };
+      // Highlight cells with exits in red
+      laneSeq.forEach((l, idx) => {
+        const pl = laneMap.get(l);
+        if (pl && pl.exit_count > 0) {
+          const cell = rowD.getCell(4 + idx);
+          cell.font = { size: 10, color: { argb: COL.exit }, bold: true };
+        }
+      });
+
+      // Spacer
+      s4.addRow([]);
+    });
+
+    const buf = await wb.xlsx.writeBuffer();
     const filename = `${race.name.replace(/[^a-zA-Z0-9_-]/g, '_')}_resultados.xlsx`;
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.send(buf);
+    res.send(Buffer.from(buf));
   }
   // POST /races/:id/mangas/:mangaId/checkin
   // Body: { qr_code } or { driver_id, lane } (manual override)

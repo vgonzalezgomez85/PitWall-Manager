@@ -111,8 +111,9 @@ class Lap {
     return db.prepare(`
       SELECT l.lane,
         COUNT(l.id)        AS laps,
-        MIN(l.lap_time_ms) AS best_ms,
-        AVG(l.lap_time_ms) AS avg_ms,
+        MIN(CASE WHEN l.is_exit = 0 AND l.lap_number > 1 THEN l.lap_time_ms END) AS best_ms,
+        AVG(CASE WHEN l.is_exit = 0 AND l.lap_number > 1 THEN l.lap_time_ms END) AS avg_ms,
+        MAX(CASE WHEN l.lap_number > 1 THEN l.lap_time_ms END) AS worst_ms,
         SUM(l.is_exit)     AS exit_count
       FROM laps l
       WHERE l.race_id = ? AND ${col} = ? AND l.is_ghost = 0

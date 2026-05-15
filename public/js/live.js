@@ -758,6 +758,29 @@ function announce(text) {
   socket.on('connect', () => socket.emit('race:live:join'));
   window.addEventListener('beforeunload', () => socket.emit('race:live:leave'));
 
+  // ── DS-300 link status banner ─────────────────────────────────────────────
+  const banner      = document.getElementById('serialBanner');
+  const bannerSince = document.getElementById('serialBannerSince');
+  let serialDownSince = null;
+  socket.on('serial:status', ({ connected, lastHeartbeatTs }) => {
+    if (!banner) return;
+    if (connected) {
+      banner.hidden = true;
+      serialDownSince = null;
+    } else {
+      serialDownSince = lastHeartbeatTs || Date.now();
+      banner.hidden = false;
+      updateSerialSince();
+    }
+  });
+  function updateSerialSince() {
+    if (!banner || banner.hidden || !bannerSince || !serialDownSince) return;
+    const secs = Math.max(0, Math.floor((Date.now() - serialDownSince) / 1000));
+    const mins = Math.floor(secs / 60);
+    bannerSince.textContent = mins > 0 ? `· ${mins}m ${secs % 60}s` : `· ${secs}s`;
+  }
+  setInterval(updateSerialSince, 1000);
+
   if (RACE_DATA.isActive) {
     socket.on('connect', () => socket.emit('standings:request'));
 

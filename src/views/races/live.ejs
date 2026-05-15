@@ -68,6 +68,17 @@
     </div>
   </header>
 
+  <!-- DS-300 link-down banner (hidden until socket fires serial:status) -->
+  <div id="serialBanner" class="serial-banner" hidden>
+    <span class="serial-banner__icon">⚠️</span>
+    <span class="serial-banner__text">
+      <%= lang === 'es'
+        ? 'Sin señal del DS-300. Las vueltas que ocurran ahora no se registrarán.'
+        : 'No signal from DS-300. Laps occurring now will not be recorded.' %>
+    </span>
+    <span id="serialBannerSince" class="serial-banner__since"></span>
+  </div>
+
   <!-- ── Main layout ───────────────────────────────────────────────────────── -->
   <div class="live-layout">
 
