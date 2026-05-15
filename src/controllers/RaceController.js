@@ -6,6 +6,7 @@ const Manga        = require('../models/Manga');
 const Lap          = require('../models/Lap');
 const PoleSession  = require('../models/PoleSession');
 const Circuit      = require('../models/Circuit');
+const Settings     = require('../models/Settings');
 const TimingService = require('../services/TimingService');
 
 const LANE_COLORS = [
@@ -39,7 +40,16 @@ class RaceController {
 
   static newStep1(req, res) {
     req.session.wizard = {};
-    res.render('races/new-step1', { t: req.t, errors: [], body: {}, savedCircuits: Circuit.findAll() });
+    // Preselect the circuit assigned to the DS-300 in settings (if any).
+    // Looks at circuits_serial[].circuit_id; first entry with a circuit wins.
+    let defaultCircuitId = '';
+    try {
+      const cfg = JSON.parse(Settings.get('circuits_serial', '[]')) || [];
+      const found = cfg.find(c => c && c.circuit_id);
+      if (found) defaultCircuitId = String(found.circuit_id);
+    } catch {}
+    const body = defaultCircuitId ? { circuit_id: defaultCircuitId } : {};
+    res.render('races/new-step1', { t: req.t, errors: [], body, savedCircuits: Circuit.findAll() });
   }
 
   static postStep1(req, res) {
