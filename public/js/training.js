@@ -32,11 +32,33 @@ let elapsedMs  = TRAINING_DATA.startedAt ? Date.now() - TRAINING_DATA.startedAt 
 let standby    = TRAINING_DATA.standby || false;
 let heatNumber = TRAINING_DATA.heatNumber || null;
 
+let warned60 = false;
+let warned30 = false;
+
+function announceWarning(text) {
+  if (!window.speechSynthesis) return;
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = LANG === 'es' ? 'es-ES' : 'en-US';
+  u.rate = 1;
+  speechSynthesis.speak(u);
+}
+
 function updateTimer() {
   if (standby) { timerEl.textContent = '--:--'; return; }
-  timerEl.textContent = durationMs > 0
-    ? formatElapsed(Math.max(0, durationMs - elapsedMs))
-    : formatElapsed(elapsedMs);
+  if (durationMs > 0) {
+    const remaining = Math.max(0, durationMs - elapsedMs);
+    timerEl.textContent = formatElapsed(remaining);
+    if (!warned60 && remaining > 0 && remaining <= 60000) {
+      warned60 = true;
+      announceWarning(LANG === 'es' ? 'Queda 1 minuto' : 'One minute remaining');
+    }
+    if (!warned30 && remaining > 0 && remaining <= 30000) {
+      warned30 = true;
+      announceWarning(LANG === 'es' ? 'Quedan 30 segundos' : '30 seconds remaining');
+    }
+  } else {
+    timerEl.textContent = formatElapsed(elapsedMs);
+  }
 }
 
 updateTimer();
@@ -231,6 +253,8 @@ socket.on('training:lap', (data) => {
 
 socket.on('training:activated', (lanes) => {
   elapsedMs = 0;
+  warned60 = false;
+  warned30 = false;
   setStandby(false);
   lanes.forEach(lane => updateCard(lane));
 });
