@@ -148,6 +148,15 @@ router.post('/training/free/reset',           TrainingController.freeReset);
 router.get( '/settings',           SettingsController.index);
 router.post('/settings',           SettingsController.save);
 router.get( '/api/settings/ports', SettingsController.listPorts);
+router.get( '/api/serial/status', (req, res) => {
+  const SerialService = require('../services/SerialService');
+  res.json(SerialService.getLinkStatus());
+});
+router.post('/api/serial/close', async (req, res) => {
+  const SerialService = require('../services/SerialService');
+  await SerialService.closeAll();
+  res.json(SerialService.getLinkStatus());
+});
 
 // ── Mobile API ────────────────────────────────────────────────────────────────
 router.get('/api/mobile/session', MobileController.session);

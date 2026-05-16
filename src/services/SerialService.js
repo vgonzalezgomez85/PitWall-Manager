@@ -9,7 +9,7 @@ const _PERF_OFFSET = Date.now() - performance.now();
 
 const REPLAY_FILE = path.join(__dirname, '../data/RegistroCarrera.txt');
 
-// DS-300 protocol: frame-based at 56000 baud
+// DS-300 protocol: frame-based — baud rate configured per circuit in DB (Settings)
 //
 // Each crossing event = 1 frame of ~19 bytes.
 // Frame boundaries are detected by silence gaps > FRAME_GAP_MS between bytes.
@@ -70,9 +70,27 @@ class CircuitConnection {
     this._watchdogTimer = null;
     this._connected     = true;   // optimistic until we have reason to think otherwise
     this._lastHeartbeatTs = null;
+    // Last DS-300 lap counter (B12) seen per local lane. Used to detect missed
+    // crossings when the serial link drops temporarily: if the next frame for
+    // the lane jumps from N to N+k (k>1), the gap is emitted as k-1 phantom
+    // crossings filled with the lane's average lap time so the totals stay
+    // consistent and the averages aren't skewed by null values.
+    this._lastLapByLane = new Map();
+    // Running stats of REAL lap times per lane (sum + count), used to estimate
+    // phantom lap times. Phantom laps never feed back into these stats.
+    this._lapStatsByLane = new Map();
   }
 
-  async connect(portPath, baudRate = 56000) {
+  async connect(portPath, baudRate, opts = {}) {
+    if (!baudRate) throw new Error('baudRate required (configure in Settings)');
+    const dataBits    = opts.dataBits    || 8;
+    const parity      = opts.parity      || 'none';
+    const stopBits    = opts.stopBits    || 1;
+    const flowControl = opts.flowControl || 'none';
+    const rtscts = flowControl === 'rtscts';
+    const xon    = flowControl === 'xonxoff';
+    const xoff   = flowControl === 'xonxoff';
+
     const { SerialPort } = require('serialport');
     if (this._port) await new Promise(r => this._port.close(r));
     if (this._flushTimer) { clearTimeout(this._flushTimer); this._flushTimer = null; }
@@ -85,12 +103,11 @@ class CircuitConnection {
     const rates = baudRate !== 57600 ? [baudRate, 57600] : [57600];
     let openedAt = baudRate;
     for (const rate of rates) {
-      // Explicit 8N1, no flow control, no port lock and no hang-up-on-close.
       // highWaterMark big enough to absorb USB bursts on macOS without dropping.
       const p = new SerialPort({
         path: portPath, baudRate: rate, autoOpen: false,
-        dataBits: 8, stopBits: 1, parity: 'none',
-        rtscts: false, xon: false, xoff: false,
+        dataBits, stopBits, parity,
+        rtscts, xon, xoff,
         hupcl: false, lock: false,
         highWaterMark: 65536,
       });
@@ -122,6 +139,9 @@ class CircuitConnection {
     });
 
     console.log(`[DS-300 C${this._circuitIndex + 1}] Connected to ${portPath} @ ${openedAt} baud (lane offset: ${this._laneOffset})`);
+    // Port opened successfully — mark link as up so the UI doesn't show
+    // "Sin señal del DS-300" before any traffic has been exchanged.
+    this._setConnected(true);
   }
 
   async close() {
@@ -135,11 +155,11 @@ class CircuitConnection {
   _pingAlive() {
     if (!this._connected) this._setConnected(true);
     if (this._watchdogTimer) clearTimeout(this._watchdogTimer);
-    this._watchdogTimer = setTimeout(() => {
-      // Only flag as disconnected if the DS should be talking to us right now.
-      const racing = this._raceState === 'running' || this._raceState === 'resumed';
-      if (racing) this._setConnected(false);
-    }, HEARTBEAT_TIMEOUT_MS);
+    // Watchdog is kept for future use (could emit a separate "stale heartbeat"
+    // warning), but it must NOT flip `_connected` to false: the link state
+    // tracks the OS-level port, not whether the DS chose to send a frame in
+    // the last N seconds. Idle mangas can legitimately be silent.
+    this._watchdogTimer = setTimeout(() => {}, HEARTBEAT_TIMEOUT_MS);
   }
 
   _setConnected(connected) {
@@ -227,6 +247,7 @@ class CircuitConnection {
     if (frame.length >= 15 && frame[7] === 0x00 && frame[8] === 0xC0) {
       const minute = frame[14];
       this._lastHeartbeatTs = ts;
+      console.log(`[DS-300 C${this._circuitIndex + 1}] ♥ heartbeat (min ${minute})`);
       const SocketService = require('./SocketService');
       SocketService.emit('serial:heartbeat', { circuit: this._circuitIndex + 1, minute, ts });
       return;
@@ -240,6 +261,9 @@ class CircuitConnection {
     //    Trama 3: byte7=0x00 byte8=0xA3                            → current ON, race starts (countdown)
     if (frame.length >= 11 && frame[7] === 0x3e && frame[8] === 0xa1) {
       const mins = ds300Byte(frame[10]) ?? 0;
+      // New manga → reset per-lane lap counters and stats for gap detection.
+      this._lastLapByLane.clear();
+      this._lapStatsByLane.clear();
       this._onGoSignal(mins * 60000);
       this._pendingGoStart = true;
       if (this._goFallbackTimer) clearTimeout(this._goFallbackTimer);
@@ -277,11 +301,16 @@ class CircuitConnection {
         this._setRaceState('finished');
         return;
       }
-      const stateByte = frame[1];
-      if      (stateByte === 0x06) this._setRaceState('running');
-      else if (stateByte === 0x0f) this._setRaceState('resumed');
-      else if (stateByte === 0x0c) this._setRaceState('paused');
-      else if (stateByte === 0x08) this._setRaceState('stopped');
+      // Pause / resume per DS-300 protocol (B8=0xA5 pause, B8=0xA6 resume).
+      // See DS300-protocolo.md §"Control de estado".
+      if (frame[8] === 0xa5) {
+        this._setRaceState('paused');
+        return;
+      }
+      if (frame[8] === 0xa6) {
+        this._setRaceState('resumed');
+        return;
+      }
       return;
     }
 
@@ -289,11 +318,32 @@ class CircuitConnection {
     // Read lap time directly from DS-300 frame bytes 14-17.
     // null → first crossing (bytes contain non-decimal nibbles, no previous reference).
     const lapTimeMs = readLapTimeMs(frame);
+    // B12 = lap counter (BCD). DS-300 increments it monotonically per lane within a manga.
+    const lapCounter = ds300Byte(frame[12]);
 
     for (const [mask, localLane] of LANE_MAP) {
       if (!(laneByte & mask)) continue;
 
       const globalLane = localLane + this._laneOffset;
+
+      // Reconciliation: if B12 jumped by more than 1 since the previous frame
+      // for this lane (link was down, we missed crossings), emit the missing
+      // laps as phantom crossings. Each phantom is filled with the lane's
+      // average real lap time so totals stay consistent and averages aren't
+      // distorted by null values.
+      if (lapCounter !== null) {
+        const prev = this._lastLapByLane.get(localLane);
+        if (prev != null && lapCounter > prev + 1) {
+          const missed = lapCounter - prev - 1;
+          const stats  = this._lapStatsByLane.get(localLane);
+          const avgMs  = (stats && stats.count > 0) ? (stats.sum / stats.count) : null;
+          console.warn(`[DS-300 C${this._circuitIndex + 1}] Lane ${localLane} → global ${globalLane} — gap detected (prev B12=${prev}, now B12=${lapCounter}, ${missed} laps missing, avg=${avgMs ? avgMs.toFixed(1) + 'ms' : 'n/a'})`);
+          for (let k = 0; k < missed; k++) {
+            this._onCrossing({ lane: globalLane, timestamp: ts, lapTimeMs: avgMs, missed: true });
+          }
+        }
+        this._lastLapByLane.set(localLane, lapCounter);
+      }
 
       if (lapTimeMs === null) {
         console.log(`[DS-300 C${this._circuitIndex + 1}] Lane ${localLane} → global ${globalLane} — first crossing`);
@@ -304,6 +354,12 @@ class CircuitConnection {
       if (lapTimeMs < MIN_CROSSING_MS || lapTimeMs > MAX_LAP_MS) continue;
 
       console.log(`[DS-300 C${this._circuitIndex + 1}] Lane ${localLane} → global ${globalLane} — ${lapTimeMs.toFixed(1)}ms`);
+      // Feed real lap times into the running stats so future phantom laps can
+      // estimate a realistic value. Phantoms themselves are NOT fed back.
+      const stats = this._lapStatsByLane.get(localLane) || { sum: 0, count: 0 };
+      stats.sum += lapTimeMs;
+      stats.count += 1;
+      this._lapStatsByLane.set(localLane, stats);
       this._onCrossing({ lane: globalLane, timestamp: ts, lapTimeMs });
     }
   }
@@ -343,8 +399,8 @@ class SerialServiceClass extends EventEmitter {
 
       // Legacy single-port config
       const portPath = Settings.get('serial_port', '');
-      const baudRate = parseInt(Settings.get('serial_baud', '56000'), 10);
-      if (portPath) {
+      const baudRate = parseInt(Settings.get('serial_baud', ''), 10);
+      if (portPath && baudRate) {
         this.connectMultiple([{ port: portPath, baud: baudRate, lanes: 8 }]).catch(() => this._startSim());
         return;
       }
@@ -362,7 +418,8 @@ class SerialServiceClass extends EventEmitter {
     const connections = [];
 
     for (let i = 0; i < circuitConfigs.length; i++) {
-      const { port, baud = 56000, lanes = 8 } = circuitConfigs[i];
+      const { port, baud, lanes = 8, dataBits, parity, stopBits, flowControl } = circuitConfigs[i];
+      if (!baud) throw new Error(`Circuit ${i + 1}: baud rate missing in DB config`);
       const conn = new CircuitConnection(
         i,
         laneOffset,
@@ -374,15 +431,17 @@ class SerialServiceClass extends EventEmitter {
         ms   => this.emit('race_go', { durationMs: ms }),
         ()   => this.emit('race_finished'),
       );
-      await conn.connect(port, baud);
+      await conn.connect(port, baud, { dataBits, parity, stopBits, flowControl });
       connections.push(conn);
       laneOffset += lanes;
     }
 
     this._connections = connections;
+    this._broadcastLinkStatus();
   }
 
-  async connectSerial(portPath, baudRate = 56000) {
+  async connectSerial(portPath, baudRate) {
+    if (!baudRate) throw new Error('baudRate required (configure in Settings)');
     await this.connectMultiple([{ port: portPath, baud: baudRate, lanes: 8 }]);
   }
 
@@ -391,6 +450,14 @@ class SerialServiceClass extends EventEmitter {
       await conn.close().catch(() => {});
     }
     this._connections = [];
+    this._broadcastLinkStatus();
+  }
+
+  _broadcastLinkStatus() {
+    try {
+      const SocketService = require('./SocketService');
+      SocketService.emit('serial:status', this.getLinkStatus());
+    } catch {}
   }
 
   async closeSerial() { await this.closeAll(); }
@@ -451,6 +518,7 @@ class SerialServiceClass extends EventEmitter {
   startFileReplay(filePath) {
     this.stopSimulation();
     this._simRunning = true;
+    this._broadcastLinkStatus();
 
     let content;
     try { content = fs.readFileSync(filePath, 'utf8'); }
@@ -499,6 +567,7 @@ class SerialServiceClass extends EventEmitter {
   startSimulation(lanesCount = 6, avgLapMs = 12000) {
     this.stopSimulation();
     this._simRunning = true;
+    this._broadcastLinkStatus();
     for (let lane = 1; lane <= lanesCount; lane++) {
       const stagger = Math.random() * avgLapMs;
       const t = setTimeout(() => this._simLap(lane, avgLapMs), stagger);
@@ -517,9 +586,11 @@ class SerialServiceClass extends EventEmitter {
   }
 
   stopSimulation() {
+    const was = this._simRunning;
     this._simRunning = false;
     this._simTimers.forEach(t => clearTimeout(t));
     this._simTimers.clear();
+    if (was) this._broadcastLinkStatus();
   }
 
   // ── Utilities ────────────────────────────────────────────────────────────
@@ -540,6 +611,19 @@ class SerialServiceClass extends EventEmitter {
   get isSimulating()   { return this._simRunning; }
   get connectedPort()  { return this._connections[0]?.path ?? null; }
   get connectedPorts() { return this._connections.map(c => c.path).filter(Boolean); }
+
+  // Link status using the same criterion as the Settings page:
+  //   - simulation mode running → connected (UI doesn't need to warn)
+  //   - at least one serial port open → connected
+  //   - otherwise → disconnected
+  getLinkStatus() {
+    const connected = this._simRunning || this._connections.length > 0;
+    return {
+      connected,
+      simulating: this._simRunning,
+      ports:      this.connectedPorts,
+    };
+  }
 }
 
 module.exports = new SerialServiceClass();

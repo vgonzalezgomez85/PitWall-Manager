@@ -71,6 +71,18 @@
         </a>
       </div>
       <input type="hidden" name="circuit_id" id="circuitId" value="<%= body.circuit_id || '' %>">
+
+      <!-- Category selector (shown only if the chosen circuit has per-category Pt overrides) -->
+      <div id="categoryWrap" style="margin-top:.75rem;display:none;align-items:center;gap:.6rem;flex-wrap:wrap">
+        <span class="form-hint" style="flex-shrink:0">
+          <%= lang === 'es' ? 'Categoría:' : 'Category:' %>
+        </span>
+        <select id="categorySelect" class="form-input form-input--sm" style="max-width:14rem">
+          <option value=""><%= lang === 'es' ? '— por defecto —' : '— default —' %></option>
+        </select>
+        <input type="hidden" name="category_id" id="categoryId" value="<%= body.category_id || '' %>">
+        <span class="form-hint" id="categoryHint" style="color:#9aa0a6"></span>
+      </div>
     </div>
 
     <!-- Circuit configuration -->
@@ -182,6 +194,12 @@ const totalDisplay = document.getElementById('totalLanesDisplay');
 const circuitIdEl  = document.getElementById('circuitId');
 const minLapInput  = document.getElementById('minLapS');
 const minLapHint   = document.getElementById('minLapHint');
+const categoryWrap   = document.getElementById('categoryWrap');
+const categorySelect = document.getElementById('categorySelect');
+const categoryIdEl   = document.getElementById('categoryId');
+const categoryHint   = document.getElementById('categoryHint');
+// Map<circuitId, [{ category_id, category_name, min_lap_ms }]>
+const CIRCUIT_CATEGORY_TIMES = <%- JSON.stringify(circuitCategoryTimes || {}) %>;
 
 function getActiveCount() { return parseInt(circCount.value, 10); }
 
@@ -221,6 +239,7 @@ function applyCircuit(id) {
   if (!id || !opt) {
     setReadonly(false);
     minLapHint.textContent = '';
+    populateCategories(null);
     return;
   }
 
@@ -243,7 +262,61 @@ function applyCircuit(id) {
     minLapHint.textContent = '';
   }
   setReadonly(true);
+
+  populateCategories(id);
 }
+
+// Rellena el selector de categoría con las que tengan Pt configurado para
+// este circuito. Si no hay ninguna, oculta el selector.
+function populateCategories(circuitId) {
+  // Limpiar opciones (mantener la primera "— por defecto —")
+  while (categorySelect.options.length > 1) categorySelect.remove(1);
+  const list = circuitId ? (CIRCUIT_CATEGORY_TIMES[circuitId] || []) : [];
+  if (!list.length) {
+    categoryWrap.style.display = 'none';
+    categoryIdEl.value = '';
+    categoryHint.textContent = '';
+    return;
+  }
+  for (const cat of list) {
+    const opt = document.createElement('option');
+    opt.value = cat.category_id;
+    opt.textContent = `${cat.category_name} (${(cat.min_lap_ms/1000).toFixed(2)}s)`;
+    opt.dataset.minMs = cat.min_lap_ms;
+    if (String(categoryIdEl.value) === String(cat.category_id)) opt.selected = true;
+    categorySelect.appendChild(opt);
+  }
+  categoryWrap.style.display = 'flex';
+  applyCategoryFromSelect();
+}
+
+function applyCategoryFromSelect() {
+  const opt = categorySelect.selectedOptions[0];
+  const id  = opt && opt.value ? opt.value : '';
+  categoryIdEl.value = id;
+  if (!id) {
+    // "— por defecto —": vuelve al Pt del circuito.
+    const cOpt = document.querySelector(`#circuitSelect option[value="${circuitIdEl.value}"]`);
+    const cMs  = cOpt ? (parseInt(cOpt.dataset.minMs, 10) || 0) : 0;
+    if (cMs > 0) {
+      minLapInput.value = (cMs / 1000).toFixed(2);
+      minLapHint.textContent = '<%= lang === "es" ? "← del circuito" : "← from circuit" %>';
+    } else {
+      minLapInput.value = '';
+      minLapHint.textContent = '';
+    }
+    categoryHint.textContent = '';
+    return;
+  }
+  const ms = parseInt(opt.dataset.minMs, 10) || 0;
+  if (ms > 0) {
+    minLapInput.value = (ms / 1000).toFixed(2);
+    minLapHint.textContent = '<%= lang === "es" ? "← de la categoría" : "← from category" %>';
+  }
+  categoryHint.textContent = opt.textContent;
+}
+
+categorySelect.addEventListener('change', applyCategoryFromSelect);
 
 circPills.addEventListener('click', e => {
   const btn = e.target.closest('.circ-pill');

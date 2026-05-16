@@ -125,7 +125,39 @@
               </div>
               <div class="circuit-row__field circuit-row__field--baud">
                 <label class="form-label">Baud</label>
-                <input class="form-input" type="number" name="circuit_baud" value="<%= c.baud || 4800 %>">
+                <input class="form-input" type="number" name="circuit_baud" value="<%= c.baud || 57600 %>">
+              </div>
+              <div class="circuit-row__field">
+                <label class="form-label">Data bits</label>
+                <select class="form-input" name="circuit_databits">
+                  <% [7, 8].forEach(v => { %>
+                    <option value="<%= v %>" <%= (c.dataBits || 8) == v ? 'selected' : '' %>><%= v %></option>
+                  <% }) %>
+                </select>
+              </div>
+              <div class="circuit-row__field">
+                <label class="form-label">Parity</label>
+                <select class="form-input" name="circuit_parity">
+                  <% ['none','even','odd'].forEach(v => { %>
+                    <option value="<%= v %>" <%= (c.parity || 'none') === v ? 'selected' : '' %>><%= v %></option>
+                  <% }) %>
+                </select>
+              </div>
+              <div class="circuit-row__field">
+                <label class="form-label">Stop bits</label>
+                <select class="form-input" name="circuit_stopbits">
+                  <% [1, 2].forEach(v => { %>
+                    <option value="<%= v %>" <%= (c.stopBits || 1) == v ? 'selected' : '' %>><%= v %></option>
+                  <% }) %>
+                </select>
+              </div>
+              <div class="circuit-row__field">
+                <label class="form-label">Flow control</label>
+                <select class="form-input" name="circuit_flow">
+                  <% ['none','rtscts','xonxoff'].forEach(v => { %>
+                    <option value="<%= v %>" <%= (c.flowControl || 'none') === v ? 'selected' : '' %>><%= v %></option>
+                  <% }) %>
+                </select>
               </div>
               <div class="circuit-row__field circuit-row__field--circuit">
                 <label class="form-label"><%= lang === 'es' ? 'Circuito' : 'Circuit' %></label>
@@ -294,7 +326,23 @@ document.getElementById('addCircuit')?.addEventListener('click', () => {
       </div>
       <div class="circuit-row__field circuit-row__field--baud">
         <label class="form-label">Baud</label>
-        <input class="form-input" type="number" name="circuit_baud" value="4800">
+        <input class="form-input" type="number" name="circuit_baud" value="57600">
+      </div>
+      <div class="circuit-row__field">
+        <label class="form-label">Data bits</label>
+        <select class="form-input" name="circuit_databits"><option value="7">7</option><option value="8" selected>8</option></select>
+      </div>
+      <div class="circuit-row__field">
+        <label class="form-label">Parity</label>
+        <select class="form-input" name="circuit_parity"><option value="none" selected>none</option><option value="even">even</option><option value="odd">odd</option></select>
+      </div>
+      <div class="circuit-row__field">
+        <label class="form-label">Stop bits</label>
+        <select class="form-input" name="circuit_stopbits"><option value="1" selected>1</option><option value="2">2</option></select>
+      </div>
+      <div class="circuit-row__field">
+        <label class="form-label">Flow control</label>
+        <select class="form-input" name="circuit_flow"><option value="none" selected>none</option><option value="rtscts">rtscts</option><option value="xonxoff">xonxoff</option></select>
       </div>
       <div class="circuit-row__field circuit-row__field--circuit">
         <label class="form-label">Circuito</label>

@@ -100,6 +100,8 @@
                         <span style="color:#58a6ff;font-size:.78rem;font-weight:600">
                           ↔ <%= lang === 'es' ? 'de Carril' : 'from Lane' %> <%= lap.transferred_from_lane %>
                         </span>
+                      <% } else if (lap.is_pit_stop) { %>
+                        <span style="color:var(--text-muted);font-size:.78rem">🔧 <%= lang === 'es' ? 'Pit-stop' : 'Pit-stop' %></span>
                       <% } else if (lap.is_exit) { %>
                         <span style="color:var(--text-muted);font-size:.78rem">⚠ <%= lang === 'es' ? 'Salida' : 'Exit' %></span>
                       <% } else { %>

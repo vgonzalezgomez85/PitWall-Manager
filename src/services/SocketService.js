@@ -22,6 +22,14 @@ module.exports = {
       const remote = socket.handshake.address;
       const local  = isLocalAddress(remote);
 
+      // Push current DS-300 link status to the freshly connected client so the
+      // "Sin señal del DS-300" banner reflects reality from the first render.
+      // Same criterion as the Settings page: simulation OR port open → OK.
+      try {
+        const SerialService = require('./SerialService');
+        socket.emit('serial:status', SerialService.getLinkStatus());
+      } catch {}
+
       socket.on('standings:request', () => {
         const TimingService = require('./TimingService');
         const data = TimingService.getStandings();

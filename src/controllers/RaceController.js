@@ -49,7 +49,16 @@ class RaceController {
       if (found) defaultCircuitId = String(found.circuit_id);
     } catch {}
     const body = defaultCircuitId ? { circuit_id: defaultCircuitId } : {};
-    res.render('races/new-step1', { t: req.t, errors: [], body, savedCircuits: Circuit.findAll() });
+    const savedCircuits = Circuit.findAll();
+    // Map<circuitId, [{ category_id, category_name, min_lap_ms }]> so the
+    // wizard can offer a category selector when the chosen circuit has
+    // per-category Pt overrides configured.
+    const circuitCategoryTimes = {};
+    for (const c of savedCircuits) {
+      const times = Circuit.getCategoryTimes(c.id);
+      if (times.length) circuitCategoryTimes[c.id] = times;
+    }
+    res.render('races/new-step1', { t: req.t, errors: [], body, savedCircuits, circuitCategoryTimes });
   }
 
   static postStep1(req, res) {
@@ -64,14 +73,16 @@ class RaceController {
 
     // Parse circuit configuration
     const circuitId = parseInt(req.body.circuit_id, 10) || null;
+    const categoryId = parseInt(req.body.category_id, 10) || null;
     let circuits = [];
     let minLapMs = 0;
 
     if (circuitId) {
       const savedCircuit = Circuit.findById(circuitId);
       if (savedCircuit) {
-        circuits  = Circuit.getConfig(savedCircuit);
-        minLapMs  = savedCircuit.min_lap_ms || 0;
+        circuits = Circuit.getConfig(savedCircuit);
+        // Pt hierarchy: per-category override > circuit default.
+        minLapMs = Circuit.getMinLapMsForCategory(circuitId, categoryId);
       }
     }
 
@@ -92,7 +103,13 @@ class RaceController {
     }
 
     if (errors.length) {
-      return res.render('races/new-step1', { t: req.t, errors, body: req.body, savedCircuits: Circuit.findAll() });
+      const savedCircuits = Circuit.findAll();
+      const circuitCategoryTimes = {};
+      for (const c of savedCircuits) {
+        const times = Circuit.getCategoryTimes(c.id);
+        if (times.length) circuitCategoryTimes[c.id] = times;
+      }
+      return res.render('races/new-step1', { t: req.t, errors, body: req.body, savedCircuits, circuitCategoryTimes });
     }
 
     req.session.wizard = {
@@ -102,6 +119,7 @@ class RaceController {
       manga_duration_minutes: duration,
       has_pole: req.body.has_pole === '1' ? 1 : 0,
       circuit_id: circuitId,
+      category_id: categoryId,
       min_lap_ms: minLapMs,
     };
     res.redirect('/races/new/step2');

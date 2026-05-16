@@ -160,6 +160,9 @@ function buildCard(lane) {
           <span class="lane-card__trend-down"></span>
         </span>
         <span class="lane-card__name">${lane.name}</span>
+        <span class="lane-card__pit" id="card-pit-${lane.lane}" hidden title="Pit-stop">
+          🔧<span class="lane-card__pit-count" id="card-pit-count-${lane.lane}"></span>
+        </span>
       </div>
       <div class="lane-card__driver-row" id="card-driver-${lane.lane}"></div>
     </div>
@@ -280,6 +283,22 @@ function flashCard(lane, isExit) {
   el.classList.remove('flash', 'exit-flash');
   void el.offsetWidth;
   el.classList.add(isExit ? 'exit-flash' : 'flash');
+}
+
+// Show 🔧 next to the lane name once a pit-stop happens. The icon stays
+// visible for the rest of the manga; if more than one pit-stop occurs, an
+// "+N" suffix is appended where N = total pit-stops − 1.
+function updatePitIndicator(lane, count) {
+  const wrap = document.getElementById(`card-pit-${lane}`);
+  const num  = document.getElementById(`card-pit-count-${lane}`);
+  if (!wrap || !num) return;
+  if (!count || count <= 0) {
+    wrap.hidden = true;
+    num.textContent = '';
+    return;
+  }
+  wrap.hidden = false;
+  num.textContent = count > 1 ? `+${count - 1}` : '';
 }
 
 // ── Sidebar standings ─────────────────────────────────────────────────────────
@@ -429,6 +448,7 @@ function renderStandings(data) {
   }).join('');
 
   data.standings.forEach(r => updateCard(r.lane, r.lapCount, r.lastLapMs, r.bestLapMs, r.avgLapMs, r.exitCount));
+  data.standings.forEach(r => updatePitIndicator(r.lane, r.pitStopCount ?? 0));
   sortCards(data.standings);
 
   updateRaceBestLaps(data.raceBestLaps);
@@ -635,11 +655,13 @@ function addTick(lap) {
   const el = document.createElement('div');
   el.className = 'ticker-item';
   el.style.borderLeftColor = lap.color;
+  // Pit-stop takes precedence over plain exit (it's also an exit).
+  const badge = lap.isPitStop ? '🔧' : (lap.isExit ? '⚠️' : '');
   el.innerHTML = `
     <span class="ticker-dot" style="background:${lap.color}">${lap.lane}</span>
     <span class="ticker-name">${lap.name}</span>
     <span class="ticker-lapn">V${lap.lapNumber}</span>
-    <span class="ticker-time">${formatMs(lap.lapTimeMs)}</span>`;
+    <span class="ticker-time">${badge ? badge + ' ' : ''}${formatMs(lap.lapTimeMs)}</span>`;
   ticker.insertBefore(el, ticker.firstChild);
   setTimeout(() => el.classList.add('visible'), 10);
   const items = ticker.querySelectorAll('.ticker-item');
@@ -762,13 +784,15 @@ function announce(text) {
   const banner      = document.getElementById('serialBanner');
   const bannerSince = document.getElementById('serialBannerSince');
   let serialDownSince = null;
-  socket.on('serial:status', ({ connected, lastHeartbeatTs }) => {
+  socket.on('serial:status', (data) => {
+    console.log('[live] serial:status received', data);
     if (!banner) return;
+    const connected = !!data.connected;
     if (connected) {
       banner.hidden = true;
       serialDownSince = null;
     } else {
-      serialDownSince = lastHeartbeatTs || Date.now();
+      serialDownSince = data.lastHeartbeatTs || Date.now();
       banner.hidden = false;
       updateSerialSince();
     }
@@ -812,6 +836,11 @@ function announce(text) {
       addTick(lap);
       flashCard(lap.lane, lap.isExit);
 
+      // Pit-stop indicator next to the lane name. Stays visible once a lane
+      // has had any pit-stop in the manga. If there's more than one, show
+      // "+N" suffix so spectators can tell how many extra pit-stops it had.
+      updatePitIndicator(lap.lane, lap.pitStopCount ?? 0);
+
       // Announce new best lap (skip exits and the very first lap of each lane)
       if (!lap.isExit && lap.lapNumber > 1 && lap.lapTimeMs === lap.bestLapMs) {
         const time = formatMsForSpeech(lap.lapTimeMs);
@@ -820,6 +849,23 @@ function announce(text) {
           : `${lap.name}, fast lap, ${time}`;
         announce(text);
       }
+    });
+
+    // Ghost lap discarded by Pt: TTS announcement so the race director hears it
+    // and can review/correct from the corrections screen.
+    socket.on('lap:ghost', ({ lane }) => {
+      announce(LANG === 'es' ? `Vuelta descartada pista ${lane}` : `Lap discarded lane ${lane}`);
+    });
+
+    // Ghost lap auto-reassigned to its real lane.
+    socket.on('lap:reassigned', ({ toLane }) => {
+      announce(LANG === 'es' ? `Vuelta asignada pista ${toLane}` : `Lap assigned to lane ${toLane}`);
+    });
+
+    // Retroactive crash: lap 1 turned out to be an exit once we saw lap 2.
+    // Announce so the director hears it; standings will refresh on the next lap.
+    socket.on('lap:retro_exit', ({ lane }) => {
+      announce(LANG === 'es' ? `Salida pista ${lane}` : `Exit lane ${lane}`);
     });
 
     socket.on('tick', ({ elapsedMs }) => {
@@ -877,6 +923,12 @@ function announce(text) {
           actions.prepend(btn);
         }
       }
+
+      // Refresh the page after a short delay so the server-rendered
+      // "Repetir" button (which only appears when manga.status='finished')
+      // is shown. The delay lets the director see the "Finalizada" badge
+      // and next-lane indicators before the reload.
+      setTimeout(() => location.reload(), 2000);
     });
 
     socket.on('manga:cancelled', (data) => {
