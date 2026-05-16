@@ -1,12 +1,12 @@
 const db = require('../config/database');
 
 class Lap {
-  static create({ race_id, manga_id, team_id, driver_id, lane, lap_number, lap_time_ms, elapsed_ms, is_exit = 0, is_ghost = 0, ghost_from_lane = null }) {
+  static create({ race_id, manga_id, team_id, driver_id, lane, lap_number, lap_time_ms, elapsed_ms, is_exit = 0, is_ghost = 0, is_pit_stop = 0, ghost_from_lane = null }) {
     const { lastInsertRowid } = db.prepare(`
-      INSERT INTO laps (race_id, manga_id, team_id, driver_id, lane, lap_number, lap_time_ms, elapsed_ms, is_exit, is_ghost, ghost_from_lane)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO laps (race_id, manga_id, team_id, driver_id, lane, lap_number, lap_time_ms, elapsed_ms, is_exit, is_ghost, is_pit_stop, ghost_from_lane)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(race_id, manga_id ?? null, team_id ?? null, driver_id ?? null,
-           lane, lap_number, lap_time_ms, elapsed_ms ?? 0, is_exit, is_ghost, ghost_from_lane ?? null);
+           lane, lap_number, lap_time_ms, elapsed_ms ?? 0, is_exit, is_ghost, is_pit_stop, ghost_from_lane ?? null);
     return lastInsertRowid;
   }
 
@@ -114,7 +114,9 @@ class Lap {
         MIN(CASE WHEN l.is_exit = 0 AND l.lap_number > 1 THEN l.lap_time_ms END) AS best_ms,
         AVG(CASE WHEN l.is_exit = 0 AND l.lap_number > 1 THEN l.lap_time_ms END) AS avg_ms,
         MAX(CASE WHEN l.lap_number > 1 THEN l.lap_time_ms END) AS worst_ms,
-        SUM(l.is_exit)     AS exit_count
+        SUM(l.is_exit)     AS exit_count,
+        SUM(CASE WHEN l.is_pit_stop = 1 THEN 1 ELSE 0 END) AS pit_stop_count,
+        GROUP_CONCAT(CASE WHEN l.is_pit_stop = 1 THEN l.lap_number END) AS pit_stop_laps
       FROM laps l
       WHERE l.race_id = ? AND ${col} = ? AND l.is_ghost = 0
       GROUP BY l.lane

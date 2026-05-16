@@ -45,7 +45,11 @@
 .matrix-stat--worst td { color: #8b949e; font-size: .78rem; }
 .matrix-stat--worst .exit-count { color: #f85149; font-weight: 600; margin-right: 3px; }
 .matrix-stat--worst .exit-count:not(.has-exits) { color: #484f58; }
+.matrix-stat--pit td { color: #c9d1d9; font-size: .78rem; }
+.matrix-stat--pit .exit-count { color: #ff9800; font-weight: 600; margin-right: 3px; }
+.matrix-stat--pit .pit-laps { color: #8b949e; font-family: 'Share Tech Mono', monospace; }
 .exit-total { color: #f85149; font-weight: 600; margin-left: 4px; }
+.matrix-stat--pit .exit-total { color: #ff9800; }
 
 .race-best {
   background: linear-gradient(135deg, rgba(251,191,36,0.2), rgba(245,158,11,0.15)) !important;
@@ -320,7 +324,7 @@
             %>
               <!-- Entity header row -->
               <tr class="matrix-entity <%= i < 3 ? 'top-' + (i+1) : '' %>">
-                <td class="matrix-pos" rowspan="4">
+                <td class="matrix-pos" rowspan="5">
                   <span class="pos-badge pos-<%= i+1 %>"><%= i+1 %></span>
                 </td>
                 <td class="matrix-name">
@@ -382,6 +386,31 @@
                     <% if (pl && pl.worst_ms != null) { %>
                       <span class="exit-count <%= pl.exit_count > 0 ? 'has-exits' : '' %>">(<%= pl.exit_count || 0 %>)</span>
                       <%= fmtSec(pl.worst_ms) %>
+                    <% } else { %>—<% } %>
+                  </td>
+                <% }) %>
+              </tr>
+
+              <!-- Pit-stops row -->
+              <%
+                const totalPitStops = (r.perLane||[]).reduce((s,pl)=>s+(pl.pit_stop_count||0),0);
+              %>
+              <tr class="matrix-stat matrix-stat--pit">
+                <td class="matrix-stat__label">
+                  🔧 <%= lang === 'es' ? 'Pit-stops' : 'Pit-stops' %>
+                  <span class="exit-total">(<%= totalPitStops %>)</span>
+                </td>
+                <td class="matrix-stat__total">—</td>
+                <% orderedLanes.forEach(lane => {
+                     const pl = laneMap.get(lane);
+                     const lapsList = (pl && pl.pit_stop_laps)
+                       ? pl.pit_stop_laps.split(',').filter(Boolean).map(n => 'V' + n).join(', ')
+                       : '';
+                %>
+                  <td class="matrix-lane-cell">
+                    <% if (pl && pl.pit_stop_count > 0) { %>
+                      <span class="exit-count has-exits">(<%= pl.pit_stop_count %>)</span>
+                      <span class="pit-laps"><%= lapsList %></span>
                     <% } else { %>—<% } %>
                   </td>
                 <% }) %>

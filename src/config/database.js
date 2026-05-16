@@ -148,6 +148,9 @@ const migrations = [
   `ALTER TABLE races ADD COLUMN circuit_id INTEGER REFERENCES circuits(id) ON DELETE SET NULL`,
   `ALTER TABLE races ADD COLUMN min_lap_ms INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE laps ADD COLUMN ghost_from_lane INTEGER`,
+  // A pit-stop is a special kind of exit: lap_time ≥ 2 × avg (the car wasn't
+  // just out, it stopped for a long-enough fix that we display a wrench icon).
+  `ALTER TABLE laps ADD COLUMN is_pit_stop INTEGER NOT NULL DEFAULT 0`,
 
   // ── Teams catalog ──────────────────────────────────────────────────────────
   `CREATE TABLE IF NOT EXISTS teams_catalog (

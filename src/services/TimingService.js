@@ -7,7 +7,17 @@ const SerialService = require('./SerialService');
 const SocketService = require('./SocketService');
 
 const DEBOUNCE_MS    = 3000;
-const EXIT_THRESHOLD = 2.5; // lap > 2.5× running avg → salida de pista
+// Salida de pista (crash): a single lap is flagged as "exit" when it exceeds
+// the lane's running average by at least EXIT_MARGIN_MS. The threshold is
+// absolute (not a multiplier) because a crash adds a fixed recovery overhead
+// regardless of how fast the lane normally laps.
+//   lap_time ≥ avg + EXIT_MARGIN_MS  → exit (salida)
+//
+// Pit-stop: a much longer outlier (lap_time ≥ avg × PIT_STOP_MULTIPLIER) is
+// flagged as pit-stop instead of a plain exit. Same in-memory treatment
+// (doesn't pollute the average), different DB flag and UI icon (🔧).
+const EXIT_MARGIN_MS     = 3000;
+const PIT_STOP_MULTIPLIER = 2;
 
 class TimingServiceClass {
   constructor() {
@@ -15,9 +25,14 @@ class TimingServiceClass {
     this._tickInt        = null;
     this._autoStopTimer  = null;
     this._lapHandler     = null;
-    this._recentCrossings = new Map(); // lane → {timestamp, lapTimeMs}
     this._pendingSetup   = null; // manga queued for DS hardware GO
     this._tandaBoundary  = false; // true when last manga of a tanda just ended — blocks auto-GO
+  }
+
+  // Allow controllers (e.g. SessionController.repeat) to clear the boundary
+  // when the user explicitly reactivates the last manga of a finished tanda.
+  clearTandaBoundary() {
+    this._tandaBoundary = false;
   }
 
   // Queue a manga to be started by DS hardware GO button
@@ -54,6 +69,7 @@ class TimingServiceClass {
         lapsMsSum:     0,
         lapAvgMs:      0,
         exitCount:     0,
+        pitStopCount:  0,
         raceBestLapMs:    null,
         raceBestEntity:   null,
       };
@@ -105,7 +121,6 @@ class TimingServiceClass {
       SerialService.off('lane_crossing', this._lapHandler);
       this._lapHandler = null;
     }
-    this._recentCrossings.clear();
     this._pendingSetup = null;
 
     let nextMangaId  = null;
@@ -232,7 +247,6 @@ class TimingServiceClass {
       SerialService.off('lane_crossing', this._lapHandler);
       this._lapHandler = null;
     }
-    this._recentCrossings.clear();
 
     const mangaId = this.session.manga.id;
     const raceId  = this.session.race.id;
@@ -301,114 +315,180 @@ class TimingServiceClass {
     }
 
     // ── Auto-ghost detection ─────────────────────────────────────────────────
-
-    // Case 1: lap is below the circuit's minimum lap time
+    // Per DS-300 manual: a ghost lap is one whose time is below the configured
+    // Pt (minimum lap time). The effective Pt comes from
+    // category override > circuit default > 0 (already resolved at race creation
+    // time into `race.min_lap_ms`).
     const minLapMs = this.session.race.min_lap_ms || 0;
-    let autoGhost = minLapMs > 0 && lapTimeMs < minLapMs;
+    const autoGhost = minLapMs > 0 && lapTimeMs < minLapMs;
+    if (autoGhost) {
+      console.log(`[TimingService] Ghost lap: lane ${lane} (${lapTimeMs}ms < Pt ${minLapMs}ms)`);
+      const elapsedMs = timestamp - this.session.startTime;
+      const race    = this.session.race;
+      const manga   = this.session.manga;
+      const teamId  = ld.teamId;
+      const driverId = ld.driverId;
 
-    // Case 2: nearly simultaneous crossing on another lane (sensor interference)
-    // If another lane crossed within 200ms AND this lap is less than half that
-    // lane's lap time, this crossing is likely a ghost of the other lane's car
-    let ghostFromLane = null;
-    if (!autoGhost) {
-      const SIMUL_WINDOW_MS = 200;
-      for (const [otherLane, rec] of this._recentCrossings) {
-        if (otherLane === lane) continue;
-        if (timestamp - rec.timestamp < SIMUL_WINDOW_MS && lapTimeMs < rec.lapTimeMs * 0.5) {
-          autoGhost    = true;
-          ghostFromLane = otherLane;
-          console.log(`[TimingService] Auto-ghost: lane ${lane} (${lapTimeMs}ms) — caused by lane ${otherLane} (${rec.lapTimeMs}ms)`);
-          break;
+      // Persist the ghost on the originating lane (synchronously so we can
+      // optionally transfer it to another lane below using its id).
+      let ghostId = null;
+      try {
+        ghostId = Lap.create({
+          race_id: race.id, manga_id: manga.id,
+          team_id: teamId, driver_id: driverId,
+          lane, lap_number: 0,
+          lap_time_ms: lapTimeMs, elapsed_ms: elapsedMs,
+          is_exit: 0, is_ghost: 1,
+        });
+      } catch (err) { console.error('[TimingService] DB error (ghost lap):', err.message); }
+
+      // Heuristic auto-reassignment: pick the lane that is most "overdue"
+      // (silent for longer than its own average). If found, transfer the lap
+      // there using the same flow as a manual correction.
+      const targetLane = this._findOverdueLane(lane, timestamp);
+      if (targetLane != null && ghostId) {
+        const tld = this.session.laneMap[targetLane];
+        console.log(`[TimingService] Auto-reassign: lap from lane ${lane} → lane ${targetLane} (${tld?.name})`);
+        try {
+          Lap.transfer(ghostId, targetLane, manga.id, race.id);
+        } catch (err) { console.error('[TimingService] DB error (transfer):', err.message); }
+
+        // Mirror the lap into the destination lane's in-memory state so the
+        // standings emitted right after reflect the new count immediately.
+        if (tld) {
+          tld.lapCount++;
+          tld.lastLapMs    = lapTimeMs;
+          tld.lastCrossing = timestamp;
+          if (!tld.bestLapMs || lapTimeMs < tld.bestLapMs) tld.bestLapMs = lapTimeMs;
+          tld.validLapCount++;
+          tld.lapsMsSum += lapTimeMs;
+          tld.lapAvgMs   = tld.lapsMsSum / tld.validLapCount;
         }
-      }
-    }
 
-    // Clean up stale recent-crossings entries
-    for (const [l, r] of this._recentCrossings) {
-      if (timestamp - r.timestamp > 1000) this._recentCrossings.delete(l);
-    }
-
-    // ── Update in-memory state (only for non-ghost laps) ────────────────────
-
-    if (!autoGhost) {
-      const isExit = ld.lapAvgMs > 0 && lapTimeMs > ld.lapAvgMs * EXIT_THRESHOLD;
-
-      ld.lapCount++;
-      ld.lastLapMs    = lapTimeMs;
-      ld.lastCrossing = timestamp;
-      if (!ld.bestLapMs || lapTimeMs < ld.bestLapMs) ld.bestLapMs = lapTimeMs;
-      if (!ld.raceBestLapMs || lapTimeMs < ld.raceBestLapMs) {
-        ld.raceBestLapMs  = lapTimeMs;
-        ld.raceBestEntity = ld.name;
+        SocketService.emit('lap:reassigned', {
+          fromLane: lane, toLane: targetLane,
+          color: tld?.color, name: tld?.name,
+          lapTimeMs, elapsedMs,
+        });
+        SocketService.emit('standings', this.getStandings());
+        return;
       }
 
-      if (isExit) {
-        ld.exitCount++;
-      } else {
-        ld.validLapCount++;
-        ld.lapsMsSum += lapTimeMs;
-        ld.lapAvgMs   = ld.lapsMsSum / ld.validLapCount;
-      }
-
-      this._recentCrossings.set(lane, { timestamp, lapTimeMs });
-
-      const elapsedMs = timestamp - this.session.startTime;
-      const race    = this.session.race;
-      const manga   = this.session.manga;
-      const teamId  = ld.teamId;
-      const driverId = ld.driverId;
-      const lapNum  = ld.lapCount;
-
-      setImmediate(() => {
-        try {
-          Lap.create({
-            race_id: race.id, manga_id: manga.id,
-            team_id: teamId, driver_id: driverId,
-            lane, lap_number: lapNum,
-            lap_time_ms: lapTimeMs, elapsed_ms: elapsedMs,
-            is_exit: isExit ? 1 : 0,
-          });
-        } catch (err) { console.error('[TimingService] DB error:', err.message); }
-      });
-
-      SocketService.emit('lap', {
+      // No reasonable destination — keep it as a ghost for manual review.
+      SocketService.emit('lap:ghost', {
         lane, color: ld.color, name: ld.name,
-        lapNumber: ld.lapCount, lapTimeMs, bestLapMs: ld.bestLapMs,
-        elapsedMs, isExit,
+        lapTimeMs, ptMs: minLapMs, elapsedMs,
       });
-      SocketService.emit('standings', this.getStandings());
+      return;
+    }
 
-    } else {
-      // Ghost lap: write to DB (for manual review) but don't update live standings
-      ld.lastCrossing = timestamp;
-      const elapsedMs = timestamp - this.session.startTime;
-      const race    = this.session.race;
-      const manga   = this.session.manga;
-      const teamId  = ld.teamId;
-      const driverId = ld.driverId;
+    // ── Normal (non-ghost) lap: update in-memory state and persist ───────────
 
-      const fromLane = ghostFromLane;
+    // Retroactive crash detection: when the 2nd valid lap arrives, check
+    // whether the 1st lap was actually a crash. If lap1 − lap2 ≥ EXIT_MARGIN_MS
+    // then lap1 was the salida; flip its is_exit in DB and rebase the running
+    // average on lap2. This lets us flag in-race crashes that happened on the
+    // very first lap (when there was no average to compare against yet).
+    if (ld.lapCount === 1 && ld.validLapCount === 1 &&
+        ld.lastLapMs - lapTimeMs >= EXIT_MARGIN_MS && ld.lastLapId) {
+      const prevId = ld.lastLapId;
+      const prevMs = ld.lastLapMs;
+      console.log(`[TimingService] Retro-exit on lane ${lane}: lap1 ${prevMs}ms was a crash (lap2 ${lapTimeMs}ms)`);
+      // DB: flip the previous lap to is_exit=1
       setImmediate(() => {
         try {
-          const ghostId = Lap.create({
-            race_id: race.id, manga_id: manga.id,
-            team_id: teamId, driver_id: driverId,
-            lane, lap_number: 0,
-            lap_time_ms: lapTimeMs, elapsed_ms: elapsedMs,
-            is_exit: 0, is_ghost: 1,
-            ghost_from_lane: fromLane,
-          });
-          // Case 2: link ghost to the real lap on the triggering lane so the
-          // corrections view shows the bidirectional "→ / ↔ de" relationship
-          if (fromLane) {
-            Lap.linkGhostToRealLap(ghostId, manga.id, fromLane);
-          }
-        } catch (err) { console.error('[TimingService] DB ghost error:', err.message); }
+          require('../config/database').prepare('UPDATE laps SET is_exit = 1 WHERE id = ?').run(prevId);
+        } catch (err) { console.error('[TimingService] DB error (retro exit):', err.message); }
       });
-
-      console.log(`[TimingService] Ghost lap recorded: lane ${lane} ${lapTimeMs}ms`);
-      SocketService.emit('ghost_lap', { lane, lapTimeMs });
+      // In-memory: undo the average that lap1 had populated.
+      ld.validLapCount = 0;
+      ld.lapsMsSum     = 0;
+      ld.lapAvgMs      = 0;
+      ld.exitCount++;
+      // Tell clients to repaint lap1 as a salida.
+      SocketService.emit('lap:retro_exit', {
+        lane, color: ld.color, name: ld.name,
+        lapNumber: 1, lapTimeMs: prevMs,
+      });
     }
+
+    const isExit    = ld.lapAvgMs > 0 && lapTimeMs - ld.lapAvgMs >= EXIT_MARGIN_MS;
+    // A pit-stop is a *very* long outlier: at least 2× the lane's avg. It also
+    // satisfies the isExit condition (treat as exit for averages) but is
+    // recorded with a different flag so the UI can show 🔧 instead of the
+    // generic exit icon.
+    const isPitStop = isExit && lapTimeMs >= ld.lapAvgMs * PIT_STOP_MULTIPLIER;
+
+    ld.lapCount++;
+    ld.lastLapMs    = lapTimeMs;
+    ld.lastCrossing = timestamp;
+    if (!ld.bestLapMs || lapTimeMs < ld.bestLapMs) ld.bestLapMs = lapTimeMs;
+    if (!ld.raceBestLapMs || lapTimeMs < ld.raceBestLapMs) {
+      ld.raceBestLapMs  = lapTimeMs;
+      ld.raceBestEntity = ld.name;
+    }
+
+    if (isExit) {
+      ld.exitCount++;
+      if (isPitStop) ld.pitStopCount++;
+    } else {
+      ld.validLapCount++;
+      ld.lapsMsSum += lapTimeMs;
+      ld.lapAvgMs   = ld.lapsMsSum / ld.validLapCount;
+    }
+
+    const elapsedMs = timestamp - this.session.startTime;
+    const race    = this.session.race;
+    const manga   = this.session.manga;
+    const teamId  = ld.teamId;
+    const driverId = ld.driverId;
+    const lapNum  = ld.lapCount;
+
+    // Synchronous create so we can remember the new row id on `ld.lastLapId`
+    // — needed by the retro-exit check on the *next* lap.
+    try {
+      ld.lastLapId = Lap.create({
+        race_id: race.id, manga_id: manga.id,
+        team_id: teamId, driver_id: driverId,
+        lane, lap_number: lapNum,
+        lap_time_ms: lapTimeMs, elapsed_ms: elapsedMs,
+        is_exit: isExit ? 1 : 0,
+        is_pit_stop: isPitStop ? 1 : 0,
+      });
+    } catch (err) { console.error('[TimingService] DB error:', err.message); }
+
+    SocketService.emit('lap', {
+      lane, color: ld.color, name: ld.name,
+      lapNumber: ld.lapCount, lapTimeMs, bestLapMs: ld.bestLapMs,
+      elapsedMs, isExit, isPitStop,
+      pitStopCount: ld.pitStopCount,
+    });
+    SocketService.emit('standings', this.getStandings());
+  }
+
+  // Pick the lane (other than `skipLane`) that's "most overdue": the one whose
+  // time since its last crossing exceeds its own average lap time by the
+  // largest margin. Returns the lane number or null if nobody is overdue.
+  //
+  // Lanes without an average yet (haven't completed any valid lap) are skipped:
+  // we can't tell whether they're late or just slow on their first attempt.
+  _findOverdueLane(skipLane, timestamp) {
+    if (!this.session) return null;
+    let best = null;
+    let bestDebt = 0;
+    for (const ld of Object.values(this.session.laneMap)) {
+      if (ld.lane === skipLane) continue;
+      if (!ld.lapAvgMs || ld.lapAvgMs <= 0) continue;
+      const elapsedSinceLast = timestamp - ld.lastCrossing;
+      const debt = elapsedSinceLast - ld.lapAvgMs;
+      // Require a meaningful margin (20% of the lane's avg) so we don't grab
+      // a lap from a lane that's just a tick behind schedule.
+      if (debt > ld.lapAvgMs * 0.2 && debt > bestDebt) {
+        best = ld.lane;
+        bestDebt = debt;
+      }
+    }
+    return best;
   }
 
   // ── Standings ─────────────────────────────────────────────────────────────
@@ -422,6 +502,7 @@ class TimingServiceClass {
         lane: l.lane, color: l.color, name: l.name,
         lapCount: l.lapCount, lastLapMs: l.lastLapMs, bestLapMs: l.bestLapMs,
         exitCount: l.exitCount,
+        pitStopCount: l.pitStopCount || 0,
         avgLapMs: l.lapAvgMs > 0 ? Math.round(l.lapAvgMs) : null,
       }))
       .sort((a, b) => b.lapCount - a.lapCount || (a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity));

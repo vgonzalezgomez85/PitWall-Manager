@@ -28,7 +28,7 @@ class SettingsController {
 
     let circuits = [];
     try { circuits = JSON.parse(cfg.circuits_serial || '[]'); } catch {}
-    if (circuits.length === 0) circuits = [{ port: '', baud: 4800, lanes: 8 }];
+    if (circuits.length === 0) circuits = [{ port: '', baud: 57600, lanes: 8, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none' }];
 
     const multiCircuit = LicenseService.has('multi_circuit');
     if (!multiCircuit && circuits.length > 1) circuits = circuits.slice(0, 1);
@@ -58,6 +58,10 @@ class SettingsController {
     const baudArr  = [].concat(req.body['circuit_baud']  || []);
     const lanesArr = [].concat(req.body['circuit_lanes'] || []);
     const refArr   = [].concat(req.body['circuit_ref']   || []);
+    const dbArr    = [].concat(req.body['circuit_databits'] || []);
+    const parArr   = [].concat(req.body['circuit_parity']   || []);
+    const sbArr    = [].concat(req.body['circuit_stopbits'] || []);
+    const flowArr  = [].concat(req.body['circuit_flow']     || []);
 
     let circuits = portArr
       .map((port, i) => {
@@ -71,7 +75,11 @@ class SettingsController {
         }
         return {
           port:  port.trim(),
-          baud:  parseInt(baudArr[i] || '4800', 10),
+          baud:  parseInt(baudArr[i] || '57600', 10),
+          dataBits:    parseInt(dbArr[i] || '8', 10),
+          parity:      parArr[i]  || 'none',
+          stopBits:    parseInt(sbArr[i] || '1', 10),
+          flowControl: flowArr[i] || 'none',
           lanes,
           ...(circuit_id ? { circuit_id } : {}),
         };

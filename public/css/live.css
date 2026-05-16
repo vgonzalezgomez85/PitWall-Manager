@@ -156,6 +156,15 @@
   font-size: 1.25rem; font-weight: 600; color: #e6edf3;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+.lane-card__pit {
+  font-size: 1.1rem; margin-left: .35rem; line-height: 1;
+  display: inline-flex; align-items: baseline; gap: .15rem;
+}
+.lane-card__pit[hidden] { display: none; }
+.lane-card__pit-count {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .85rem; font-weight: 700; color: #ff9800;
+}
 .lane-card__laps {
   font-family: 'Share Tech Mono', monospace;
   font-size: 5rem; font-weight: 700; color: #f6c90e;
@@ -636,6 +645,7 @@ body.resizing-sidebar * { cursor: col-resize !important; }
   border-bottom: 2px solid #7f1d1d;
   animation: serial-pulse 1.6s ease-in-out infinite;
 }
+.serial-banner[hidden] { display: none; }
 .serial-banner__icon { font-size: 1.3rem; }
 .serial-banner__text { flex: 1; }
 .serial-banner__since { font-weight: 400; opacity: .85; font-variant-numeric: tabular-nums; }

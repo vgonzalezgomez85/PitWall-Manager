@@ -92,6 +92,9 @@ class SessionController {
     const tanda = Tanda.findById(manga.tanda_id);
     if (tanda?.status === 'finished') Tanda.updateStatus(tanda.id, 'active');
 
+    // Clear the tanda boundary so the hardware GO is accepted again.
+    TimingService.clearTandaBoundary();
+
     res.redirect(`/races/${race.id}/mangas/${manga.id}/live`);
   }
 
