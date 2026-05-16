@@ -945,10 +945,8 @@ function announce(text) {
     });
 
     // Retroactive crash: lap 1 turned out to be an exit once we saw lap 2.
-    // Announce so the director hears it; standings will refresh on the next lap.
-    socket.on('lap:retro_exit', ({ lane }) => {
-      announce(LANG === 'es' ? `Salida pista ${lane}` : `Exit lane ${lane}`);
-    });
+    // No voice announcement — the UI will re-classify V1 on the next standings.
+    socket.on('lap:retro_exit', () => {});
 
     socket.on('tick', ({ elapsedMs }) => {
       // durationMs is set from standings data; this fires only if standings was missed
