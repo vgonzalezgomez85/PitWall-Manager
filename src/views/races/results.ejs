@@ -51,6 +51,21 @@
 .exit-total { color: #f85149; font-weight: 600; margin-left: 4px; }
 .matrix-stat--pit .exit-total { color: #ff9800; }
 
+/* Starting lane highlight: subtle left border + tinted background, applied to
+   the entity header cell and the 4 stat cells of that lane so the column
+   reads as a single visual block. */
+.matrix-lane-cell--start {
+  background: rgba(88, 166, 255, 0.10) !important;
+  box-shadow: inset 3px 0 0 #58a6ff;
+}
+.start-lane-tag {
+  display: inline-block; margin-left: 8px;
+  padding: 2px 7px; border-radius: 10px;
+  background: rgba(88,166,255,.16); color: #58a6ff;
+  font-size: .7rem; font-weight: 700; letter-spacing: .03em;
+  vertical-align: middle;
+}
+
 .race-best {
   background: linear-gradient(135deg, rgba(251,191,36,0.2), rgba(245,158,11,0.15)) !important;
   color: #fbbf24 !important; font-weight: 800 !important;
@@ -128,6 +143,12 @@
       </button>
       <button class="results-tab" data-tab="matrix">
         🏁 <%= lang === 'es' ? 'Comparativa' : 'Comparison' %>
+      </button>
+      <button class="results-tab" data-tab="progression">
+        📊 <%= lang === 'es' ? 'Progresión' : 'Progression' %>
+      </button>
+      <button class="results-tab" data-tab="positions">
+        🏁 <%= lang === 'es' ? 'Posiciones' : 'Positions' %>
       </button>
     </div>
 
@@ -321,6 +342,8 @@
           <tbody>
             <% byTotalM.forEach((r, i) => {
                  const laneMap = new Map((r.perLane||[]).map(pl => [pl.lane, pl]));
+                 const startKey = `${r.entity_type}_${r.entity_id}`;
+                 const startLane = (startLaneByEntity || {})[startKey];
             %>
               <!-- Entity header row -->
               <tr class="matrix-entity <%= i < 3 ? 'top-' + (i+1) : '' %>">
@@ -332,12 +355,16 @@
                     <span class="lane-dot" style="background:<%= r.color %>; width:10px; height:10px; display:inline-block; border-radius:3px; margin-right:6px;"></span>
                   <% } %>
                   <strong><%= r.entity_name %></strong>
+                  <% if (startLane) { %>
+                    <span class="start-lane-tag" title="<%= lang === 'es' ? 'Carril de inicio' : 'Starting lane' %>">🚦 P<%= startLane %></span>
+                  <% } %>
                 </td>
                 <td class="matrix-laps matrix-total"><%= r.total_laps %></td>
                 <% orderedLanes.forEach(lane => {
                      const pl = laneMap.get(lane);
+                     const isStart = lane === startLane;
                 %>
-                  <td class="matrix-lane-cell matrix-lane-laps">
+                  <td class="matrix-lane-cell matrix-lane-laps <%= isStart ? 'matrix-lane-cell--start' : '' %>">
                     <%= pl ? pl.laps : '—' %>
                   </td>
                 <% }) %>
@@ -350,8 +377,9 @@
                 <% orderedLanes.forEach(lane => {
                      const pl = laneMap.get(lane);
                      const isRaceBest = pl && pl.best_ms != null && pl.best_ms === raceBestLapMs;
+                     const isStart = lane === startLane;
                 %>
-                  <td class="matrix-lane-cell <%= isRaceBest ? 'race-best' : '' %>">
+                  <td class="matrix-lane-cell <%= isRaceBest ? 'race-best' : '' %> <%= isStart ? 'matrix-lane-cell--start' : '' %>">
                     <% if (pl && pl.best_ms != null) { %>
                       <%= fmtSec(pl.best_ms) %><% if (isRaceBest) { %> <span class="race-best-star">★</span><% } %>
                     <% } else { %>—<% } %>
@@ -365,8 +393,9 @@
                 <td class="matrix-stat__total"><%= fmtSec(Math.round(r.avg_lap_ms)) %></td>
                 <% orderedLanes.forEach(lane => {
                      const pl = laneMap.get(lane);
+                     const isStart = lane === startLane;
                 %>
-                  <td class="matrix-lane-cell">
+                  <td class="matrix-lane-cell <%= isStart ? 'matrix-lane-cell--start' : '' %>">
                     <%= pl && pl.avg_ms != null ? fmtSec(Math.round(pl.avg_ms)) : '—' %>
                   </td>
                 <% }) %>
@@ -381,8 +410,9 @@
                 <td class="matrix-stat__total">—</td>
                 <% orderedLanes.forEach(lane => {
                      const pl = laneMap.get(lane);
+                     const isStart = lane === startLane;
                 %>
-                  <td class="matrix-lane-cell">
+                  <td class="matrix-lane-cell <%= isStart ? 'matrix-lane-cell--start' : '' %>">
                     <% if (pl && pl.worst_ms != null) { %>
                       <span class="exit-count <%= pl.exit_count > 0 ? 'has-exits' : '' %>">(<%= pl.exit_count || 0 %>)</span>
                       <%= fmtSec(pl.worst_ms) %>
@@ -406,8 +436,9 @@
                      const lapsList = (pl && pl.pit_stop_laps)
                        ? pl.pit_stop_laps.split(',').filter(Boolean).map(n => 'V' + n).join(', ')
                        : '';
+                     const isStart = lane === startLane;
                 %>
-                  <td class="matrix-lane-cell">
+                  <td class="matrix-lane-cell <%= isStart ? 'matrix-lane-cell--start' : '' %>">
                     <% if (pl && pl.pit_stop_count > 0) { %>
                       <span class="exit-count has-exits">(<%= pl.pit_stop_count %>)</span>
                       <span class="pit-laps"><%= lapsList %></span>
@@ -458,6 +489,335 @@
   <% } %>
 
 </div>
+
+    <!-- ── Progression chart ── -->
+    <div class="results-panel" id="tab-progression">
+      <div class="progression-controls">
+        <div class="prog-control prog-control--wide">
+          <label><%= lang === 'es' ? 'Equipos / Pilotos (compara)' : 'Teams / Drivers (compare)' %></label>
+          <div id="progEntities" class="prog-entities"></div>
+        </div>
+        <div class="prog-control">
+          <label for="progManga"><%= lang === 'es' ? 'Manga' : 'Heat' %></label>
+          <select id="progManga" class="prog-select"><option value="all"><%= lang === 'es' ? 'Todas' : 'All' %></option></select>
+        </div>
+        <div class="prog-control">
+          <label for="progDriver"><%= lang === 'es' ? 'Piloto' : 'Driver' %></label>
+          <select id="progDriver" class="prog-select"><option value="all"><%= lang === 'es' ? 'Todos' : 'All' %></option></select>
+        </div>
+        <div class="prog-control">
+          <label><%= lang === 'es' ? 'Carriles' : 'Lanes' %></label>
+          <div id="progLanes" class="prog-lanes"></div>
+        </div>
+        <div class="prog-subtabs">
+          <button class="prog-subtab active" data-prog="abs">⏱ <%= lang === 'es' ? 'Tiempo' : 'Time' %></button>
+          <button class="prog-subtab" data-prog="delta">Δ <%= lang === 'es' ? 'Delta vs media' : 'Delta vs avg' %></button>
+        </div>
+      </div>
+      <div class="prog-chart-wrap">
+        <canvas id="progChart"></canvas>
+      </div>
+      <p class="prog-hint">
+        <%= lang === 'es'
+          ? 'Incluye todas las vueltas (incluyendo salidas y pit-stops). Los puntos rojos son salidas, los naranjas son pit-stops.'
+          : 'Includes every lap (exits and pit-stops too). Red dots = exits, orange = pit-stops.' %>
+      </p>
+    </div>
+
+<style>
+  .progression-controls { display:flex; gap:1rem; align-items:flex-end; flex-wrap:wrap; margin-bottom:1rem; }
+  .prog-control { display:flex; flex-direction:column; gap:.25rem; }
+  .prog-control > label { color:#8b949e; font-size:.75rem; text-transform:uppercase; letter-spacing:.05em; }
+  .prog-select { background:#161b22; color:#c9d1d9; border:1px solid #30363d; border-radius:6px; padding:.45rem .7rem; font-size:.9rem; min-width:140px; }
+  .prog-control--wide { flex:1 1 100%; }
+  .prog-entities { display:flex; gap:.4rem; flex-wrap:wrap; padding:.3rem 0; max-height:120px; overflow-y:auto; }
+  .prog-entity-chip { display:inline-flex; align-items:center; gap:.35rem; padding:.3rem .7rem; border:1px solid #30363d; border-radius:14px; background:#161b22; color:#c9d1d9; font-size:.85rem; cursor:pointer; user-select:none; }
+  .prog-entity-chip.active { border-color:#1f6feb; color:#fff; font-weight:600; box-shadow:0 0 0 2px rgba(31,111,235,.18) inset; }
+  .prog-entity-chip__dot { width:9px; height:9px; border-radius:50%; }
+  .prog-lanes { display:flex; gap:.4rem; flex-wrap:wrap; padding:.3rem 0; }
+  .prog-lane-chip { display:inline-flex; align-items:center; gap:.3rem; padding:.25rem .55rem; border:1px solid #30363d; border-radius:14px; background:#161b22; color:#c9d1d9; font-size:.8rem; cursor:pointer; user-select:none; }
+  .prog-lane-chip.active { background:rgba(31,111,235,.2); border-color:#1f6feb; color:#58a6ff; font-weight:600; }
+  .prog-lane-chip__dot { width:8px; height:8px; border-radius:50%; }
+  .prog-subtabs { display:inline-flex; gap:.3rem; margin-left:auto; }
+  .prog-subtab { background:#161b22; color:#8b949e; border:1px solid #30363d; padding:.45rem .8rem; border-radius:6px; cursor:pointer; font-size:.85rem; }
+  .prog-subtab.active { background:#1f6feb; color:#fff; border-color:#1f6feb; }
+  .prog-chart-wrap { background:#0d1117; border:1px solid #21262d; border-radius:12px; padding:1rem; height: 480px; }
+  .prog-hint { color:#6e7681; font-size:.78rem; margin-top:.6rem; font-style:italic; }
+</style>
+
+    <!-- ── Position timeline ── -->
+    <div class="results-panel" id="tab-positions">
+      <div class="prog-chart-wrap" style="height: 560px;">
+        <canvas id="positionsChart"></canvas>
+      </div>
+      <p class="prog-hint">
+        <%= lang === 'es'
+          ? 'Cada línea muestra la posición de un equipo/piloto a lo largo de la carrera. P1 está arriba. El eje X es el orden cronológico de las vueltas (cada cruce es un punto).'
+          : 'Each line shows a team/driver position throughout the race. P1 is at the top. X axis is chronological lap order (each crossing is a point).' %>
+      </p>
+    </div>
+
+<script id="positionsData" type="application/json"><%- JSON.stringify(positionData || {}) %></script>
+<script id="progressionData" type="application/json"><%- JSON.stringify(progressionByEntity || {}) %></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+  (function() {
+    const data = JSON.parse(document.getElementById('progressionData').textContent || '{}');
+    const entitiesBox = document.getElementById('progEntities');
+    const selManga    = document.getElementById('progManga');
+    const selDriver   = document.getElementById('progDriver');
+    const lanesBox    = document.getElementById('progLanes');
+    const canvas      = document.getElementById('progChart');
+    if (!entitiesBox || !canvas) return;
+    const ENTITY_PALETTE = ['#58a6ff','#f6c90e','#7ee787','#ff6b9d','#a371f7','#56d4dd','#f97316','#e63946','#fbbf24','#34d399'];
+    // Lane variation: solid for first lane, dashed for second, dotted for third...
+    const LANE_DASH = [[], [8,4], [2,4], [12,3,2,3]];
+    let chart = null;
+    let mode  = 'abs';
+    const enabledLanes = new Set();
+    const selectedEntities = new Set();
+    const entityColor = {};
+
+    function renderEntities() {
+      const entries = Object.entries(data);
+      entries.forEach(([key], i) => { entityColor[key] = ENTITY_PALETTE[i % ENTITY_PALETTE.length]; });
+      entitiesBox.innerHTML = entries.map(([key, e]) => {
+        const active = selectedEntities.has(key) ? 'active' : '';
+        const color = entityColor[key];
+        return `<span class="prog-entity-chip ${active}" data-key="${key}" style="${selectedEntities.has(key) ? 'background:' + color + '22;' : ''}">
+          <span class="prog-entity-chip__dot" style="background:${color}"></span>${e.name}
+        </span>`;
+      }).join('');
+      entitiesBox.querySelectorAll('.prog-entity-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          const key = chip.dataset.key;
+          if (selectedEntities.has(key)) selectedEntities.delete(key);
+          else selectedEntities.add(key);
+          renderEntities();
+          refreshFilters();
+          build();
+        });
+      });
+    }
+
+    function collectLaps() {
+      const out = [];
+      selectedEntities.forEach(key => {
+        const e = data[key];
+        if (e) e.laps.forEach(l => out.push({ ...l, _entity: key, _entityName: e.name }));
+      });
+      return out;
+    }
+
+    function refreshFilters() {
+      const laps = collectLaps();
+      // Manga options
+      const mangas = [...new Set(laps.map(l => l.manga))].sort((a,b)=>a-b);
+      const prevManga = selManga.value;
+      selManga.innerHTML = '<option value="all">Todas</option>' +
+        mangas.map(m => `<option value="${m}">Manga ${m}</option>`).join('');
+      if ([...selManga.options].some(o => o.value === prevManga)) selManga.value = prevManga;
+      // Driver options
+      const drivers = [...new Set(laps.map(l => l.driver).filter(d => d && d !== '—'))].sort();
+      const prevDriver = selDriver.value;
+      selDriver.innerHTML = '<option value="all">Todos</option>' +
+        drivers.map(d => `<option value="${d}">${d}</option>`).join('');
+      if ([...selDriver.options].some(o => o.value === prevDriver)) selDriver.value = prevDriver;
+      selDriver.parentElement.style.display = drivers.length > 0 ? '' : 'none';
+      // Lanes chips
+      const lanes = [...new Set(laps.map(l => l.lane))].sort((a,b)=>a-b);
+      // Keep previously enabled lanes that still exist; default-enable any new ones
+      const prevEnabled = new Set(enabledLanes);
+      enabledLanes.clear();
+      lanes.forEach(l => { if (prevEnabled.size === 0 || prevEnabled.has(l)) enabledLanes.add(l); });
+      if (enabledLanes.size === 0) lanes.forEach(l => enabledLanes.add(l));
+      lanesBox.innerHTML = lanes.map(lane => {
+        const cls = enabledLanes.has(lane) ? 'active' : '';
+        return `<span class="prog-lane-chip ${cls}" data-lane="${lane}">P${lane}</span>`;
+      }).join('');
+      lanesBox.querySelectorAll('.prog-lane-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          const lane = Number(chip.dataset.lane);
+          if (enabledLanes.has(lane)) { enabledLanes.delete(lane); chip.classList.remove('active'); }
+          else { enabledLanes.add(lane); chip.classList.add('active'); }
+          build();
+        });
+      });
+    }
+
+    function build() {
+      if (selectedEntities.size === 0) {
+        if (chart) { chart.destroy(); chart = null; }
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        return;
+      }
+      const mangaFilter  = selManga.value;
+      const driverFilter = selDriver.value;
+      const lanes = [...enabledLanes].sort((a,b)=>a-b);
+      const datasets = [];
+
+      [...selectedEntities].forEach(key => {
+        const entity = data[key];
+        if (!entity) return;
+        const color = entityColor[key];
+        lanes.forEach((lane, laneIdx) => {
+          const filtered = entity.laps.filter(l =>
+            l.lane === lane
+            && (mangaFilter === 'all' || String(l.manga) === mangaFilter)
+            && (driverFilter === 'all' || l.driver === driverFilter)
+          );
+          if (filtered.length === 0) return;
+          const avg = filtered.reduce((s, l) => s + l.ms, 0) / filtered.length;
+          const points = filtered.map((l, idx) => ({
+            x: idx + 1,
+            y: mode === 'abs' ? l.ms / 1000 : (l.ms - avg) / 1000,
+            _meta: l, _entityName: entity.name,
+          }));
+          const pointColors = filtered.map(l =>
+            l.isPitStop ? '#ff9800' :
+            l.isExit    ? '#e63946' : color);
+          const pointRadius = filtered.map(l => (l.isPitStop || l.isExit) ? 5 : 2.5);
+          datasets.push({
+            label: entity.name + ' · P' + lane,
+            data: points,
+            borderColor: color,
+            backgroundColor: color + '22',
+            borderDash: LANE_DASH[laneIdx % LANE_DASH.length],
+            pointBackgroundColor: pointColors,
+            pointBorderColor:     pointColors,
+            pointRadius, pointHoverRadius: pointRadius.map(r => r + 2),
+            tension: 0.2, borderWidth: 2,
+          });
+        });
+      });
+
+      if (chart) chart.destroy();
+      chart = new Chart(canvas, {
+        type: 'line',
+        data: { datasets },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: '#c9d1d9', boxWidth: 14 } },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const v = ctx.parsed.y;
+                  const m = ctx.raw._meta;
+                  const sign = mode === 'delta' && v > 0 ? '+' : '';
+                  let s = ctx.dataset.label + ': ' + sign + v.toFixed(3) + 's';
+                  if (m?.driver && m.driver !== '—') s += ' · ' + m.driver;
+                  if (m?.manga) s += ' · M' + m.manga;
+                  if (m?.isPitStop) s += ' · 🔧 pit-stop';
+                  else if (m?.isExit) s += ' · ⚠️ salida';
+                  return s;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              type: 'linear',
+              title: { display: true, text: 'Vuelta (orden cronológico)', color: '#8b949e' },
+              ticks: { color: '#8b949e', stepSize: 1 },
+              grid:  { color: '#21262d' },
+            },
+            y: {
+              title: { display: true,
+                text: mode === 'abs' ? 'Segundos' : 'Δ vs media (s)', color: '#8b949e' },
+              ticks: { color: '#8b949e' },
+              grid:  { color: '#21262d',
+                       drawBorder: false,
+                       lineWidth: (ctx) => (mode === 'delta' && ctx.tick.value === 0) ? 2 : 1,
+                       color:     (ctx) => (mode === 'delta' && ctx.tick.value === 0) ? '#58a6ff' : '#21262d' },
+            }
+          }
+        }
+      });
+    }
+
+    selManga.addEventListener('change', build);
+    selDriver.addEventListener('change', build);
+    document.querySelectorAll('.prog-subtab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.prog-subtab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        mode = btn.dataset.prog;
+        build();
+      });
+    });
+
+    // Pre-select the first entity so the chart shows something on first visit
+    const firstKey = Object.keys(data)[0];
+    if (firstKey) selectedEntities.add(firstKey);
+    renderEntities();
+    refreshFilters();
+
+    document.querySelector('[data-tab="progression"]')?.addEventListener('click', () => {
+      setTimeout(() => { renderEntities(); refreshFilters(); build(); }, 50);
+    });
+  })();
+
+  // ── Position timeline chart ────────────────────────────────────────────
+  (function() {
+    const data = JSON.parse(document.getElementById('positionsData').textContent || '{}');
+    const canvas = document.getElementById('positionsChart');
+    if (!canvas) return;
+    const PALETTE = ['#1F6FEB','#F6C90E','#2DA44E','#FB6A6B','#A371F7','#16BDCA','#F97316','#E63946','#FBBF24','#34D399','#FF6B9D','#56D4DD'];
+    let chart = null;
+
+    function build() {
+      const entries = Object.entries(data);
+      if (entries.length === 0) return;
+      const totalEntities = entries.length;
+      const datasets = entries.map(([key, e], i) => ({
+        label: e.name,
+        data: e.points,
+        borderColor: e.color || PALETTE[i % PALETTE.length],
+        backgroundColor: (e.color || PALETTE[i % PALETTE.length]) + '22',
+        tension: 0, stepped: 'before',
+        pointRadius: 0, pointHoverRadius: 4, borderWidth: 2.5,
+      }));
+      if (chart) chart.destroy();
+      chart = new Chart(canvas, {
+        type: 'line',
+        data: { datasets },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          interaction: { mode: 'nearest', intersect: false },
+          plugins: {
+            legend: { position: 'right', labels: { color: '#c9d1d9', boxWidth: 14 } },
+            tooltip: {
+              callbacks: {
+                title: (items) => 'Cruce #' + items[0].parsed.x,
+                label: (ctx) => ctx.dataset.label + ': P' + ctx.parsed.y,
+              }
+            }
+          },
+          scales: {
+            x: {
+              type: 'linear',
+              title: { display: true, text: 'Vueltas acumuladas (orden cronológico)', color: '#8b949e' },
+              ticks: { color: '#8b949e' }, grid: { color: '#21262d' },
+            },
+            y: {
+              reverse: true, // P1 at top
+              min: 1, max: totalEntities,
+              title: { display: true, text: 'Posición', color: '#8b949e' },
+              ticks: { color: '#8b949e', stepSize: 1, callback: (v) => 'P' + v },
+              grid: { color: '#21262d' },
+            }
+          }
+        }
+      });
+    }
+
+    document.querySelector('[data-tab="positions"]')?.addEventListener('click', () => {
+      setTimeout(build, 50);
+    });
+  })();
+</script>
 
 <script>
   document.querySelectorAll('.results-tab').forEach(btn => {

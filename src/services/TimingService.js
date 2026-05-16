@@ -62,10 +62,12 @@ class TimingServiceClass {
         driverId:     ml.driver_id || null,
         color:        ml.team_color || '#8b949e',
         lapCount:      0,
-        validLapCount: 0,
         bestLapMs:     null,
         lastLapMs:     null,
         lastCrossing:  startTime,
+        avgLapCount:   0,   // # of laps that contribute to the average (every
+                            //   racing lap counts, including exits & pit-stops;
+                            //   only the first-crossing rolling start is excluded)
         lapsMsSum:     0,
         lapAvgMs:      0,
         exitCount:     0,
@@ -360,9 +362,9 @@ class TimingServiceClass {
           tld.lastLapMs    = lapTimeMs;
           tld.lastCrossing = timestamp;
           if (!tld.bestLapMs || lapTimeMs < tld.bestLapMs) tld.bestLapMs = lapTimeMs;
-          tld.validLapCount++;
+          tld.avgLapCount++;
           tld.lapsMsSum += lapTimeMs;
-          tld.lapAvgMs   = tld.lapsMsSum / tld.validLapCount;
+          tld.lapAvgMs   = tld.lapsMsSum / tld.avgLapCount;
         }
 
         SocketService.emit('lap:reassigned', {
@@ -386,29 +388,29 @@ class TimingServiceClass {
 
     // Retroactive crash detection: when the 2nd valid lap arrives, check
     // whether the 1st lap was actually a crash. If lap1 − lap2 ≥ EXIT_MARGIN_MS
-    // then lap1 was the salida; flip its is_exit in DB and rebase the running
-    // average on lap2. This lets us flag in-race crashes that happened on the
-    // very first lap (when there was no average to compare against yet).
-    if (ld.lapCount === 1 && ld.validLapCount === 1 &&
+    // then lap1 was the salida; flip its is_exit (and is_pit_stop, if ratio≥2)
+    // in DB so it shows up in /corrections. The average is NOT touched: exits
+    // and pit-stops contribute to the lane average just like normal laps, so
+    // that the projected total laps for the race reflects reality.
+    if (ld.lapCount === 1 && ld.avgLapCount === 1 &&
         ld.lastLapMs - lapTimeMs >= EXIT_MARGIN_MS && ld.lastLapId) {
       const prevId = ld.lastLapId;
       const prevMs = ld.lastLapMs;
-      console.log(`[TimingService] Retro-exit on lane ${lane}: lap1 ${prevMs}ms was a crash (lap2 ${lapTimeMs}ms)`);
-      // DB: flip the previous lap to is_exit=1
+      const wasPit = lapTimeMs > 0 && prevMs >= lapTimeMs * PIT_STOP_MULTIPLIER;
+      console.log(`[TimingService] Retro-exit on lane ${lane}: lap1 ${prevMs}ms was a ${wasPit ? 'pit-stop' : 'crash'} (lap2 ${lapTimeMs}ms)`);
       setImmediate(() => {
         try {
-          require('../config/database').prepare('UPDATE laps SET is_exit = 1 WHERE id = ?').run(prevId);
+          require('../config/database')
+            .prepare('UPDATE laps SET is_exit = 1, is_pit_stop = ? WHERE id = ?')
+            .run(wasPit ? 1 : 0, prevId);
         } catch (err) { console.error('[TimingService] DB error (retro exit):', err.message); }
       });
-      // In-memory: undo the average that lap1 had populated.
-      ld.validLapCount = 0;
-      ld.lapsMsSum     = 0;
-      ld.lapAvgMs      = 0;
       ld.exitCount++;
+      if (wasPit) ld.pitStopCount++;
       // Tell clients to repaint lap1 as a salida.
       SocketService.emit('lap:retro_exit', {
         lane, color: ld.color, name: ld.name,
-        lapNumber: 1, lapTimeMs: prevMs,
+        lapNumber: 1, lapTimeMs: prevMs, isPitStop: wasPit,
       });
     }
 
@@ -431,11 +433,12 @@ class TimingServiceClass {
     if (isExit) {
       ld.exitCount++;
       if (isPitStop) ld.pitStopCount++;
-    } else {
-      ld.validLapCount++;
-      ld.lapsMsSum += lapTimeMs;
-      ld.lapAvgMs   = ld.lapsMsSum / ld.validLapCount;
     }
+    // Every racing lap (including exits and pit-stops) contributes to the
+    // running average so that projected total laps stays realistic.
+    ld.avgLapCount++;
+    ld.lapsMsSum += lapTimeMs;
+    ld.lapAvgMs   = ld.lapsMsSum / ld.avgLapCount;
 
     const elapsedMs = timestamp - this.session.startTime;
     const race    = this.session.race;
@@ -513,6 +516,28 @@ class TimingServiceClass {
     const raceBestLaps = {};
     Object.values(laneMap).forEach(l => {
       raceBestLaps[l.lane] = { bestLapMs: l.raceBestLapMs, entityName: l.raceBestEntity };
+    });
+
+    // Race-wide running average per lane: combines all prior mangas (from DB)
+    // with the current manga's in-memory state, so the sidebar can show a
+    // race-wide projected average that updates lap by lap.
+    const db = require('../config/database');
+    const priorStats = db.prepare(`
+      SELECT lane, COUNT(*) AS cnt, AVG(lap_time_ms) AS avg_ms
+      FROM laps
+      WHERE race_id = ? AND manga_id != ? AND is_ghost = 0 AND lap_number > 0
+      GROUP BY lane
+    `).all(race.id, manga.id);
+    const priorByLane = {};
+    priorStats.forEach(p => { priorByLane[p.lane] = { count: p.cnt, avg: p.avg_ms }; });
+    rows.forEach(r => {
+      const prior = priorByLane[r.lane];
+      const priorCount = prior?.count || 0;
+      const priorSum   = prior ? prior.avg * prior.count : 0;
+      const currCount  = r.lapCount;
+      const currSum    = laneMap[r.lane].lapsMsSum || 0;
+      const totalCount = priorCount + currCount;
+      r.raceAvgLapMs = totalCount > 0 ? Math.round((priorSum + currSum) / totalCount) : null;
     });
 
     return {

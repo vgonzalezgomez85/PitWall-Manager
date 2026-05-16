@@ -14,6 +14,7 @@ const TeamCatalogController       = require('../controllers/TeamCatalogControlle
 const TrainingController          = require('../controllers/TrainingController');
 const MobileController            = require('../controllers/MobileController');
 const LicenseController           = require('../controllers/LicenseController');
+const DiagnosticsController       = require('../controllers/DiagnosticsController');
 const { requireModule }           = require('../middleware/licenseGuard');
 
 router.get('/', (req, res) => res.render('home', { t: req.t }));
@@ -145,6 +146,13 @@ router.post('/training/stop',                 TrainingController.stop);
 router.post('/training/free/reset',           TrainingController.freeReset);
 
 // ── Settings ──────────────────────────────────────────────────────────────────
+router.get( '/diagnostico',                       DiagnosticsController.index);
+router.post('/diagnostico/clear-boundary',        DiagnosticsController.clearBoundary);
+router.post('/diagnostico/cancel-active',         DiagnosticsController.cancelActive);
+router.post('/diagnostico/clear-pending',         DiagnosticsController.clearPending);
+router.post('/diagnostico/reset-manga/:mangaId',  DiagnosticsController.resetManga);
+router.post('/diagnostico/reconnect-serial',      DiagnosticsController.reconnectSerial);
+
 router.get( '/settings',           SettingsController.index);
 router.post('/settings',           SettingsController.save);
 router.get( '/api/settings/ports', SettingsController.listPorts);

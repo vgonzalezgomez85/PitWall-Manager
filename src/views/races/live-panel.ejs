@@ -157,6 +157,7 @@
       standings:        standings,
       lanes:            Object.values(laneInit2),
       allParticipants:  allParticipants || [],
+      prevLapsByLane:   prevLapsByLane || {},
     }) %>;
     const LANG = "<%= lang %>";
   </script>
@@ -190,12 +191,17 @@
     }
     window.addEventListener('resize', fitTable);
 
-    // Projected total laps for the WHOLE race for every participant of every tanda:
-    //   totalRaceMs = lanes_count × manga_duration_minutes
-    //   projected   = floor(totalRaceMs / avgLapMs) if avg available, else 0
-    // Live overrides for the active manga come from `standings` (avg in real time).
+    // Projected total laps for the WHOLE race for every participant. Uses the
+    // same formula as live.js so that this popup panel shows identical values
+    // to the sidebar in the main /live view:
+    //
+    //   Active in this manga:  prevLaps + projThisManga + projFutureMangas
+    //     prevLaps        = race-wide laps before this manga (from prevLapsByLane)
+    //     projThisManga   = floor(totalMangaDuration / avgLapMs) — extrapolate the current manga
+    //     projFutureMangas= remaining_mangas × (historical avg laps per manga)
+    //
+    //   Resting / different tanda:  total_laps + projFutureMangas
     function buildRows(data) {
-      const totalRaceMs = PANEL_DATA.totalRaceMs;
       const liveByName = new Map();
       if (data?.standings) {
         data.standings.forEach(s => {
@@ -203,17 +209,61 @@
         });
       }
 
-      const rows = (PANEL_DATA.allParticipants || []).map(p => {
-        const live = liveByName.get(p.entity_name);
-        const total   = (p.total_laps || 0) + (live?.lapCount || 0);
-        const avg     = live?.avgLapMs ?? (p.avg_lap_ms != null ? Math.round(p.avg_lap_ms) : null);
-        const projected = avg ? Math.floor(totalRaceMs / avg) : 0;
-        return {
-          name: p.entity_name,
-          total, avgLapMs: avg, projectedTotal: projected,
-          hasData: total > 0 || avg != null,
-        };
+      const elapsed   = data?.elapsedMs ?? 0;
+      const remaining = data?.remainingMs ?? PANEL_DATA.mangaDurationMs;
+      const totalMangaDuration = elapsed + remaining || PANEL_DATA.mangaDurationMs;
+      const allPMap = new Map();
+      (PANEL_DATA.allParticipants || []).forEach(p => allPMap.set(p.entity_name, p));
+
+      function projFutureMangas(p, extraMangas) {
+        if (!p || !extraMangas) return 0;
+        const avgPerManga = p.mangas_raced > 0 ? p.total_laps / p.mangas_raced : 0;
+        return Math.round(extraMangas * avgPerManga);
+      }
+
+      // Active (in this manga) participants — overlay live standings on DB totals
+      const activeByName = new Map();
+      if (data?.standings) {
+        data.standings.forEach(r => {
+          const p          = allPMap.get(r.name);
+          const prevLaps   = (PANEL_DATA.prevLapsByLane || {})[r.lane] || 0;
+          const total      = prevLaps + (r.lapCount || 0);
+          const avg        = r.lapCount > 1 ? (elapsed / r.lapCount) : (r.avgLapMs || null);
+          const projThis   = avg && totalMangaDuration > 0
+            ? Math.floor(totalMangaDuration / avg) : (r.lapCount || 0);
+          const projFuture = projFutureMangas(p, p?.remaining_mangas || 0);
+          activeByName.set(r.name, {
+            name: r.name,
+            total,
+            avgLapMs: r.avgLapMs ?? (avg ? Math.round(avg) : null),
+            projectedTotal: prevLaps + projThis + projFuture,
+            hasData: true,
+          });
+        });
+      }
+
+      // Merge active + non-active participants (different tanda / resting now)
+      const seen = new Set();
+      const rows = [];
+      (PANEL_DATA.allParticipants || []).forEach(p => {
+        const name = p.entity_name;
+        if (seen.has(name)) return;
+        seen.add(name);
+        if (activeByName.has(name)) {
+          rows.push(activeByName.get(name));
+        } else {
+          const projFuture = projFutureMangas(p, p.remaining_mangas || 0);
+          rows.push({
+            name,
+            total: p.total_laps || 0,
+            avgLapMs: p.avg_lap_ms != null ? Math.round(p.avg_lap_ms) : null,
+            projectedTotal: (p.total_laps || 0) + projFuture,
+            hasData: (p.total_laps || 0) > 0 || p.avg_lap_ms != null,
+          });
+        }
       });
+      // Active participants that are not yet in allParticipants (first manga ever)
+      activeByName.forEach((r, name) => { if (!seen.has(name)) { rows.push(r); seen.add(name); } });
 
       rows.sort((a, b) =>
         b.projectedTotal - a.projectedTotal ||

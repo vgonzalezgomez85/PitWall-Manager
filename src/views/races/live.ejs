@@ -115,6 +115,24 @@
         </div>
       </div>
 
+      <div class="live-panel live-panel--compact">
+        <div class="live-panel__title">
+          ⚡ <%= lang === 'es' ? 'VUELTAS RÁPIDAS POR PISTA' : 'FASTEST LAPS BY LANE' %>
+        </div>
+        <div class="live-panel__body">
+        <table class="sidebar-table sidebar-table--auto">
+          <thead>
+            <tr>
+              <th class="sr-center"><%= lang === 'es' ? 'Pista' : 'Lane' %></th>
+              <th><%= lang === 'es' ? 'Participante' : 'Participant' %></th>
+              <th class="sr-right"><%= lang === 'es' ? 'Mejor' : 'Best' %></th>
+            </tr>
+          </thead>
+          <tbody id="bestLapsBody"></tbody>
+        </table>
+        </div>
+      </div>
+
     </aside>
   </div>
 
