@@ -1,0 +1,111 @@
+<%- include('../partials/header', { lang, pageTitle: 'Solución de problemas' }) %>
+<div class="container container--narrow">
+
+  <div class="page-header">
+    <h1 class="page-title">🛠️ Solución de problemas</h1>
+    <p style="color:#8b949e; margin-top:.3rem">Estado actual del sistema y acciones de recuperación. <strong style="color:#e6a817">Cuidado:</strong> las acciones eliminan datos.</p>
+  </div>
+
+  <% if (flash) { %>
+    <div class="flash flash--<%= flash.type %>" style="margin-bottom:1rem"><%- flash.text %></div>
+  <% } %>
+
+  <!-- ── Estado TimingService ───────────────────────────────────────────── -->
+  <div class="form-card" style="margin-top:1.5rem">
+    <h2 class="section-title" style="margin-top:0">⏱️ Timing</h2>
+    <table class="diag-table">
+      <tr><th>En carrera</th>
+          <td><%= timing.isRunning ? '✅ Sí' : '⛔ No' %></td></tr>
+      <tr><th>Manga activa</th>
+          <td><%= timing.activeMangaLabel || '—' %></td></tr>
+      <tr><th>Tanda boundary</th>
+          <td><%= timing.tandaBoundary ? '🚧 ACTIVO (bloquea GO)' : '✅ libre' %></td></tr>
+      <tr><th>Pending setup</th>
+          <td><%= timing.pendingSetup ? timing.pendingSetup.label : '— (ninguno)' %></td></tr>
+    </table>
+
+    <div class="diag-actions">
+      <% if (timing.tandaBoundary) { %>
+        <form action="/diagnostico/clear-boundary" method="POST" style="display:inline" onsubmit="return confirm('¿Limpiar el boundary de tanda? El próximo GO del DS-300 será aceptado.');">
+          <button class="btn btn--primary" type="submit">Limpiar boundary</button>
+        </form>
+      <% } %>
+      <% if (timing.isRunning) { %>
+        <form action="/diagnostico/cancel-active" method="POST" style="display:inline" onsubmit="return confirm('¿Cancelar la manga activa? Se ELIMINARÁN todas sus vueltas y volverá a pending.');">
+          <button class="btn btn--danger" type="submit">Cancelar manga activa</button>
+        </form>
+      <% } %>
+      <% if (timing.pendingSetup && !timing.isRunning) { %>
+        <form action="/diagnostico/clear-pending" method="POST" style="display:inline" onsubmit="return confirm('¿Eliminar el pending setup? El GO del DS-300 quedará sin destino hasta que se vuelva a abrir una vista live.');">
+          <button class="btn" type="submit">Limpiar pending</button>
+        </form>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- ── Estado Serial ──────────────────────────────────────────────────── -->
+  <div class="form-card" style="margin-top:1.5rem">
+    <h2 class="section-title" style="margin-top:0">🔌 Serial / DS-300</h2>
+    <table class="diag-table">
+      <tr><th>Conectado</th>
+          <td><%= link.connected ? '✅ Sí' : '⛔ No' %></td></tr>
+      <tr><th>Modo</th>
+          <td><%= link.simulating ? '🎮 Simulación' : '🔌 Serial' %></td></tr>
+      <tr><th>Puertos</th>
+          <td><%= link.ports && link.ports.length ? link.ports.join(', ') : '—' %></td></tr>
+    </table>
+
+    <div class="diag-actions">
+      <form action="/diagnostico/reconnect-serial" method="POST" style="display:inline" onsubmit="return confirm('¿Forzar reconexión del Serial / Simulación?');">
+        <button class="btn btn--primary" type="submit">Reconectar Serial</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Mangas colgadas ────────────────────────────────────────────────── -->
+  <div class="form-card" style="margin-top:1.5rem">
+    <h2 class="section-title" style="margin-top:0">⚠️ Mangas atascadas <span style="color:#8b949e; font-weight:400">(en DB con status=active pero no corriendo)</span></h2>
+    <% if (stuck.length === 0) { %>
+      <p style="color:#8b949e">No hay mangas colgadas. ✨</p>
+    <% } else { %>
+      <table class="diag-table diag-table--rows">
+        <thead>
+          <tr>
+            <th>Manga</th><th>Race</th><th>Tanda</th><th>Iniciada</th><th>Vueltas</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% stuck.forEach(m => { %>
+            <tr>
+              <td>#<%= m.id %> (M<%= m.number %>)</td>
+              <td><a href="/races/<%= m.race_id %>">R<%= m.race_id %></a></td>
+              <td>T<%= m.tanda_number %></td>
+              <td><%= m.started_at || '—' %></td>
+              <td><%= m.lap_count %></td>
+              <td>
+                <form action="/diagnostico/reset-manga/<%= m.id %>" method="POST" onsubmit="return confirm('¿Resetear manga <%= m.id %>? Se eliminarán <%= m.lap_count %> vueltas y volverá a pending.');">
+                  <button class="btn btn--danger" type="submit">Resetear</button>
+                </form>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+
+  <div style="margin-top:1.5rem">
+    <a href="/" class="btn">← Inicio</a>
+  </div>
+
+</div>
+
+<style>
+  .diag-table { width:100%; border-collapse:collapse; margin-top:.5rem }
+  .diag-table th, .diag-table td { padding:.5rem .7rem; text-align:left; border-bottom:1px solid #21262d; vertical-align:middle }
+  .diag-table th { color:#8b949e; font-weight:500; width:30% }
+  .diag-table--rows th { width:auto; color:#6e7681; font-size:.85rem; text-transform:uppercase; letter-spacing:.05em }
+  .diag-actions { margin-top:1rem; display:flex; gap:.6rem; flex-wrap:wrap }
+</style>
+
+<%- include('../partials/footer') %>

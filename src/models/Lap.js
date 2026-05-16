@@ -15,9 +15,11 @@ class Lap {
     const col = teamId ? 'team_id' : 'driver_id';
     const id  = teamId || driverId;
     if (!id) return 0;
+    // Count every recorded lap (exits and pit-stops are still laps, just
+    // slow ones); only ghosts are excluded.
     const row = db.prepare(
       `SELECT COUNT(*) AS n FROM laps
-       WHERE race_id = ? AND ${col} = ? AND manga_id != ? AND is_ghost = 0 AND is_exit = 0`
+       WHERE race_id = ? AND ${col} = ? AND manga_id != ? AND is_ghost = 0`
     ).get(raceId, id, excludeMangaId);
     return row?.n ?? 0;
   }
@@ -84,6 +86,8 @@ class Lap {
 
   // Aggregate results per entity (team or driver) across all mangas of a race
   static aggregateByRace(raceId) {
+    // total_laps counts every recorded lap (including exits and pit-stops);
+    // best_lap_ms still excludes exits so a crashed lap can't become "best".
     return db.prepare(`
       SELECT
         COALESCE(t.id,   d.id)   AS entity_id,
@@ -91,8 +95,8 @@ class Lap {
         CASE WHEN t.id IS NOT NULL THEN 'team' ELSE 'driver' END AS entity_type,
         t.color,
         COUNT(l.id)                              AS total_laps,
-        MIN(CASE WHEN l.is_exit=0 THEN l.lap_time_ms END) AS best_lap_ms,
-        AVG(CASE WHEN l.is_exit=0 THEN l.lap_time_ms END) AS avg_lap_ms,
+        MIN(CASE WHEN l.is_exit = 0 THEN l.lap_time_ms END) AS best_lap_ms,
+        AVG(l.lap_time_ms)                       AS avg_lap_ms,
         SUM(l.lap_time_ms)                       AS total_time_ms,
         COUNT(DISTINCT l.manga_id)               AS mangas_raced,
         SUM(l.is_exit)                           AS exit_count
@@ -112,7 +116,7 @@ class Lap {
       SELECT l.lane,
         COUNT(l.id)        AS laps,
         MIN(CASE WHEN l.is_exit = 0 AND l.lap_number > 1 THEN l.lap_time_ms END) AS best_ms,
-        AVG(CASE WHEN l.is_exit = 0 AND l.lap_number > 1 THEN l.lap_time_ms END) AS avg_ms,
+        AVG(CASE WHEN l.lap_number > 1 THEN l.lap_time_ms END) AS avg_ms,
         MAX(CASE WHEN l.lap_number > 1 THEN l.lap_time_ms END) AS worst_ms,
         SUM(l.is_exit)     AS exit_count,
         SUM(CASE WHEN l.is_pit_stop = 1 THEN 1 ELSE 0 END) AS pit_stop_count,

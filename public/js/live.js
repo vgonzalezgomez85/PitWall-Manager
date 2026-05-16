@@ -305,6 +305,73 @@ function updatePitIndicator(lane, count) {
 const standingsBody = document.getElementById('standingsBody');
 const projectedBody = document.getElementById('projectedBody');
 
+// Carousel: when more rows than fit, rotate visible window every N seconds.
+const STANDINGS_PAGE_MS = 20000;
+let standingsPage = 0;
+let standingsTimer = null;
+
+// Compute how many rows fit in the visible area without scrolling. Returns
+// `null` when there's no overflow at all (i.e. carousel is not needed).
+function computeStandingsPageSize() {
+  if (!projectedBody) return null;
+  const container = projectedBody.closest('.live-panel__body') || projectedBody.parentElement;
+  if (!container) return null;
+  const rows = Array.from(projectedBody.querySelectorAll('tr.srow'));
+  rows.forEach(r => { r.style.display = ''; });
+  if (rows.length === 0) return null;
+  if (container.scrollHeight <= container.clientHeight + 1) return null;
+  const rowH = rows[0]?.offsetHeight || 0;
+  const thead = projectedBody.parentElement.querySelector('thead');
+  const headerH = thead ? thead.offsetHeight : 0;
+  const usableH = Math.max(0, container.clientHeight - headerH);
+  const pageSize = rowH > 0 ? Math.max(1, Math.floor(usableH / rowH)) : 0;
+  return pageSize > 0 && pageSize < rows.length ? pageSize : null;
+}
+
+function paintStandingsPage() {
+  const rows = Array.from(projectedBody.querySelectorAll('tr.srow'));
+  const pageSize = computeStandingsPageSize();
+  if (pageSize == null) {
+    rows.forEach(r => { r.style.display = ''; });
+    if (standingsTimer) { clearInterval(standingsTimer); standingsTimer = null; }
+    standingsPage = 0;
+    return false;
+  }
+  const pages = Math.ceil(rows.length / pageSize);
+  if (standingsPage >= pages) standingsPage = 0;
+  const start = standingsPage * pageSize;
+  const end = start + pageSize;
+  rows.forEach((r, i) => { r.style.display = (i >= start && i < end) ? '' : 'none'; });
+  return true;
+}
+
+function applyStandingsCarousel() {
+  if (!projectedBody) return;
+  // Defer so the freshly-set innerHTML has been laid out; otherwise
+  // scrollHeight/offsetHeight may read stale values.
+  setTimeout(() => {
+    const active = paintStandingsPage();
+    if (active && !standingsTimer) {
+      standingsTimer = setInterval(() => {
+        const rows = Array.from(projectedBody.querySelectorAll('tr.srow'));
+        const pageSize = computeStandingsPageSize();
+        if (pageSize == null) {
+          rows.forEach(r => { r.style.display = ''; });
+          clearInterval(standingsTimer); standingsTimer = null; standingsPage = 0;
+          return;
+        }
+        const pages = Math.ceil(rows.length / pageSize);
+        standingsPage = (standingsPage + 1) % pages;
+        paintStandingsPage();
+      }, STANDINGS_PAGE_MS);
+    }
+  }, 50);
+}
+
+window.addEventListener('resize', () => {
+  if (projectedBody) paintStandingsPage();
+});
+
 function posClass(pos) {
   return ['p1','p2','p3'][pos - 1] || 'pn';
 }
@@ -417,7 +484,7 @@ function renderStandings(data) {
     }
   });
 
-  if (standingsBody) standingsBody.innerHTML = rows.map((r, i) => {
+  if (projectedBody) projectedBody.innerHTML = rows.map((r, i) => {
     if (r.isRest) {
       return `
       <tr class="srow srow--rest" id="srow-rest-${i}">
@@ -446,6 +513,8 @@ function renderStandings(data) {
       <td class="sr-right"><span class="sr-delta">${gapSecDisplay}</span></td>
     </tr>`;
   }).join('');
+
+  applyStandingsCarousel();
 
   data.standings.forEach(r => updateCard(r.lane, r.lapCount, r.lastLapMs, r.bestLapMs, r.avgLapMs, r.exitCount));
   data.standings.forEach(r => updatePitIndicator(r.lane, r.pitStopCount ?? 0));
@@ -488,11 +557,15 @@ function renderProjected(data) {
     const p = allPMap.get(r.name);
     const futureMangas = p?.remaining_mangas || 0;
     const projFuture   = projFutureMangas(r.name, futureMangas);
+    // Sidebar "Media" = race-wide running average across every manga the
+    // driver has raced (server combines DB history with current manga's
+    // in-memory state so it updates lap-by-lap).
+    const raceAvg = r.raceAvgLapMs ?? r.avgLapMs;
     activeMap.set(r.name, {
       name: r.name, color: r.color,
       total,
       projectedTotal: prevLaps + projThisManga + projFuture,
-      bestLapMs: r.bestLapMs, avgLapMs: r.avgLapMs,
+      bestLapMs: r.bestLapMs, avgLapMs: raceAvg,
     });
   });
 
@@ -637,8 +710,13 @@ function updateRaceBestLaps(raceBestLaps) {
   if (!raceBestLaps) return;
   let changed = false;
   Object.entries(raceBestLaps).forEach(([lane, info]) => {
+    if (!info || info.bestLapMs == null) return;
     const prev = _raceBestLaps[lane];
-    if (!prev || info.bestLapMs < prev.bestLapMs) {
+    // Trust the server: if value or entity differs, accept the update. The
+    // server already enforces "best across the race"; the client just mirrors.
+    if (!prev
+        || prev.bestLapMs !== info.bestLapMs
+        || prev.entityName !== info.entityName) {
       _raceBestLaps[lane] = info;
       changed = true;
     }
@@ -840,6 +918,10 @@ function announce(text) {
       // has had any pit-stop in the manga. If there's more than one, show
       // "+N" suffix so spectators can tell how many extra pit-stops it had.
       updatePitIndicator(lap.lane, lap.pitStopCount ?? 0);
+
+      // The "fastest laps by lane" panel updates via the `standings` event
+      // that fires right after this lap (server emits both back-to-back), and
+      // that payload carries the race-wide best — not just this manga's best.
 
       // Announce new best lap (skip exits and the very first lap of each lane)
       if (!lap.isExit && lap.lapNumber > 1 && lap.lapTimeMs === lap.bestLapMs) {

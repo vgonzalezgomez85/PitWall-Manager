@@ -153,7 +153,7 @@
   line-height: 1;
 }
 .lane-card__name {
-  font-size: 1.25rem; font-weight: 600; color: #e6edf3;
+  font-size: 1.7rem; font-weight: 600; color: #e6edf3;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .lane-card__pit {
@@ -196,19 +196,21 @@
   line-height: 1; margin: 0;
 }
 .lane-card__col-label {
-  font-size: .8rem; color: #6e7681; letter-spacing: .1em;
+  font-size: 1.05rem; color: #6e7681; letter-spacing: .1em;
   text-transform: uppercase; font-weight: 600;
 }
+/* Match the VLT counter size for all numeric columns so TOTAL/ÚLTIMA/MEJOR/
+   MEDIA/SALIDAS/Δ read as prominently as the lap count itself. */
 .lane-card__col-val {
   font-family: 'Share Tech Mono', monospace;
-  font-size: 1.9rem; font-weight: 700; color: #c9d1d9;
-  line-height: 1.1;
+  font-size: 3.4rem; font-weight: 700; color: #c9d1d9;
+  line-height: 1;
 }
 .lane-card__col-val--best         { color: #58a6ff; }
 .lane-card__col-val--avg          { color: #e6a817; }
 .lane-card__col-val--exits        { color: #8b949e; }
 .lane-card__col-val--exits-active { color: #e63946; font-weight: 800; }
-.lane-card__col-val--delta        { color: #f97316; font-size: 1.5rem; }
+.lane-card__col-val--delta        { color: #f97316; }
 
 
 /* Flash on new lap */
@@ -289,7 +291,7 @@ body.resizing-sidebar * { cursor: col-resize !important; }
 .sidebar-table thead th { position: sticky; top: 0; z-index: 2; }
 
 .live-panel__title {
-  font-size: .58rem; font-weight: 700; letter-spacing: .14em;
+  font-size: .9rem; font-weight: 700; letter-spacing: .14em;
   color: #6e7681; padding: .4rem .7rem .3rem;
   background: #080b10; border-bottom: 1px solid #161b22;
   flex-shrink: 0;
@@ -304,20 +306,20 @@ body.resizing-sidebar * { cursor: col-resize !important; }
 
 /* Sidebar table */
 .sidebar-table {
-  width: 100%; border-collapse: collapse; font-size: .95rem; table-layout: fixed;
+  width: 100%; border-collapse: collapse; font-size: 1.55rem; table-layout: fixed;
 }
-.sidebar-table thead th { font-size: .72rem; }
-.sidebar-table td { padding: .42rem .6rem; }
+.sidebar-table thead th { font-size: 1rem; }
+.sidebar-table td { padding: .55rem .7rem; }
 .sidebar-table--auto { table-layout: auto; }
 .sidebar-table--auto th, .sidebar-table--auto td { white-space: nowrap; }
 .sidebar-table--auto td:nth-child(2) { max-width: none; }
 .sidebar-table thead th {
-  padding: .28rem .5rem; font-size: .6rem; font-weight: 700;
+  padding: .35rem .6rem; font-size: .72rem; font-weight: 700;
   letter-spacing: .07em; color: #4e555e; text-transform: uppercase;
   background: #0a0d13; border-bottom: 1px solid #161b22; text-align: left;
 }
 .sidebar-table td {
-  padding: .3rem .5rem; border-bottom: 1px solid #0f1419; vertical-align: middle;
+  padding: .55rem .7rem; border-bottom: 1px solid #0f1419; vertical-align: middle;
 }
 .sr-right { text-align: right !important; }
 
@@ -345,11 +347,11 @@ body.resizing-sidebar * { cursor: col-resize !important; }
 .sr-name--rest { color: #8b949e; font-style: italic; }
 .sr-laps    { font-family: 'Share Tech Mono', monospace; color: #f6c90e; font-weight: 700; }
 .sr-total   { font-family: 'Share Tech Mono', monospace; color: #c9d1d9; font-weight: 700; }
-.sr-best    { font-family: 'Share Tech Mono', monospace; color: #58a6ff; font-size: .88rem; }
-.sr-avg     { font-family: 'Share Tech Mono', monospace; color: #e6a817; font-size: .88rem; }
-.sr-delta      { font-family: 'Share Tech Mono', monospace; color: #f97316; font-size: .88rem; }
+.sr-best    { font-family: 'Share Tech Mono', monospace; color: #58a6ff; font-size: 1.4rem; }
+.sr-avg     { font-family: 'Share Tech Mono', monospace; color: #e6a817; font-size: 1.4rem; }
+.sr-delta      { font-family: 'Share Tech Mono', monospace; color: #f97316; font-size: 1.4rem; }
 .sr-center { text-align: center; }
-.sr-arrows              { text-align: center; white-space: nowrap; line-height: 1.1; font-size: .95rem; }
+.sr-arrows              { text-align: center; white-space: nowrap; line-height: 1.1; font-size: 1.4rem; }
 .sr-arrow-up            { color: #30363d; font-weight: 700; display: block; }
 .sr-arrow-up.good       { color: #3fb950; }   /* closing on the one above */
 .sr-arrow-up.bad        { color: #e63946; }   /* losing distance to the one above */
@@ -357,11 +359,19 @@ body.resizing-sidebar * { cursor: col-resize !important; }
 .sr-arrow-down.bad      { color: #e63946; }   /* the one below is closing in */
 .sr-arrow-down.good     { color: #3fb950; }   /* opening gap on the one below */
 .sr-proj    { font-family: 'Share Tech Mono', monospace; color: #e6edf3; font-weight: 700; }
-.sr-ontrack { font-family: 'Share Tech Mono', monospace; color: #f6c90e; font-size: .88rem; }
+.sr-ontrack { font-family: 'Share Tech Mono', monospace; color: #f6c90e; font-size: 1.4rem; }
 
 /* ── Best laps panel ────────────────────────────────────────────────────── */
 .best-lap-row--gold { background: rgba(246,201,14,.06) !important; }
 .best-lap-row--gold:hover { background: rgba(246,201,14,.1) !important; }
+/* "Fastest laps by lane" panel — bigger rows so spectators read them easily. */
+.best-lap-row td { padding: .55rem .7rem !important; font-size: 1.55rem; line-height: 1.1; }
+.best-lap-row .sr-best { font-size: 1.55rem; font-weight: 700; }
+.best-lap-row .sr-name { font-size: 1.25rem; }
+.best-lap-row .ticker-dot { width: 30px !important; height: 30px !important; font-size: 1rem !important; }
+.live-panel--compact { flex: 0 0 auto; }
+.live-panel--compact .live-panel__body { overflow: visible; }
+.live-panel--compact .live-panel__title { font-size: .75rem; padding: .55rem .8rem .45rem; }
 
 /* ── Lap ticker (in sidebar) ─────────────────────────────────────────────── */
 .ticker-list { overflow-y: auto; flex: 1; padding: .2rem 0; }

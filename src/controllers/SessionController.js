@@ -120,6 +120,14 @@ class SessionController {
     if (manga.status === 'pending' && !TimingService.isRunning) {
       const teams   = Team.findByTanda(manga.tanda_id);
       const drivers = Driver.findByTanda(manga.tanda_id);
+      // If the in-memory tanda boundary was set by a previous race/tanda
+      // that has no finished mangas in this race's current tanda, clear it
+      // so the hardware GO is accepted again.
+      const db = require('../config/database');
+      const hasFinishedInTanda = db.prepare(
+        `SELECT 1 FROM mangas WHERE tanda_id = ? AND status = 'finished' LIMIT 1`
+      ).get(manga.tanda_id);
+      if (!hasFinishedInTanda) TimingService.clearTandaBoundary();
       TimingService.setPendingManga(manga, race, lanes, teams, drivers);
     }
 
@@ -302,7 +310,17 @@ class SessionController {
       p.planned_mangas   = a.planned_mangas || 0;
     });
 
-    res.render('races/live-panel', { t: req.t, race, manga, tanda, lanes, laps, isActive, standings, allParticipants });
+    // Previous race-wide laps per lane (excludes this manga) — same data the
+    // live view uses to project totals; the panel needs it to match exactly.
+    const prevLapsByLane = {};
+    lanes.filter(l => !l.is_rest && (l.team_id || l.driver_id)).forEach(l => {
+      prevLapsByLane[l.lane] = Lap.raceCountByEntity(race.id, manga.id, l.team_id, l.driver_id);
+    });
+
+    res.render('races/live-panel', {
+      t: req.t, race, manga, tanda, lanes, laps, isActive, standings,
+      allParticipants, prevLapsByLane,
+    });
   }
 
   // GET /races/:id/mangas/:mangaId/tv  (fullscreen TV projection)
@@ -433,6 +451,24 @@ class SessionController {
       perLane: Lap.perLaneByEntity(race.id, row.entity_id, row.entity_type)
     }));
 
+    // Starting lane per entity: first non-rest assignment in tanda+manga order.
+    // Teams/drivers that start resting will pick up the lane of the manga where
+    // they first actually race (works correctly even with multi-circuit rest).
+    const db = require('../config/database');
+    const startRows = db.prepare(`
+      SELECT ml.lane, ml.team_id, ml.driver_id
+      FROM manga_lanes ml
+      JOIN mangas m ON m.id = ml.manga_id
+      JOIN tandas t ON t.id = m.tanda_id
+      WHERE t.race_id = ? AND ml.is_rest = 0
+      ORDER BY t.number ASC, m.number ASC, ml.lane ASC
+    `).all(race.id);
+    const startLaneByEntity = {};
+    startRows.forEach(r => {
+      const key = r.team_id ? `team_${r.team_id}` : `driver_${r.driver_id}`;
+      if (startLaneByEntity[key] == null) startLaneByEntity[key] = r.lane;
+    });
+
     // Race overall fastest lap (across all entities & lanes) — for highlight
     let raceBestLapMs = null, raceBestEntity = null, raceBestLane = null;
     for (const r of results) {
@@ -451,9 +487,136 @@ class SessionController {
       mangas: Manga.findByTanda(t.id)
     }));
 
+    // ── Progression chart data ─────────────────────────────────────────────
+    // For each entity collect every racing lap with enough context to filter
+    // by lane / manga / driver later in the UI. Exits & pit-stops are kept
+    // (flagged) so the user can choose whether to include them.
+    const progressionRows = db.prepare(`
+      SELECT l.id, l.lane, l.lap_number, l.lap_time_ms, l.elapsed_ms,
+             l.team_id, l.driver_id, l.is_exit, l.is_pit_stop,
+             l.manga_id, m.number AS manga_number, m.started_at AS manga_started_at,
+             d.name AS lap_driver_name
+      FROM laps l
+      JOIN mangas m ON m.id = l.manga_id
+      JOIN tandas t ON t.id = m.tanda_id
+      LEFT JOIN drivers d ON d.id = l.driver_id
+      WHERE l.race_id = ? AND l.is_ghost = 0 AND l.lap_number > 0
+      ORDER BY t.number ASC, m.number ASC, l.lane ASC, l.lap_number ASC
+    `).all(race.id);
+
+    // For team races, resolve which driver was driving each lap from driver_shifts
+    let shiftsByMangaLane = {};
+    if (race.format === 'team') {
+      const shifts = db.prepare(`
+        SELECT manga_id, lane, driver_name, started_at
+        FROM driver_shifts WHERE race_id = ?
+        ORDER BY manga_id, lane, started_at ASC
+      `).all(race.id);
+      shifts.forEach(s => {
+        const k = `${s.manga_id}_${s.lane}`;
+        if (!shiftsByMangaLane[k]) shiftsByMangaLane[k] = [];
+        shiftsByMangaLane[k].push({ driver: s.driver_name, ts: new Date(s.started_at).getTime() });
+      });
+    }
+    function resolveDriver(row) {
+      if (row.lap_driver_name) return row.lap_driver_name;
+      if (race.format !== 'team') return null;
+      const k = `${row.manga_id}_${row.lane}`;
+      const shifts = shiftsByMangaLane[k];
+      if (!shifts || shifts.length === 0) return null;
+      const mangaStart = new Date(row.manga_started_at).getTime();
+      const lapTs = mangaStart + (row.elapsed_ms || 0);
+      let driver = shifts[0].driver;
+      for (const s of shifts) {
+        if (s.ts <= lapTs) driver = s.driver; else break;
+      }
+      return driver;
+    }
+
+    const progressionByEntity = {};
+    results.forEach(r => {
+      progressionByEntity[`${r.entity_type}_${r.entity_id}`] = {
+        name: r.entity_name, color: r.color, laps: [],
+      };
+    });
+    progressionRows.forEach(row => {
+      const key = row.team_id ? `team_${row.team_id}` : `driver_${row.driver_id}`;
+      const e = progressionByEntity[key];
+      if (!e) return;
+      e.laps.push({
+        lane:      row.lane,
+        ms:        row.lap_time_ms,
+        manga:     row.manga_number,
+        driver:    resolveDriver(row) || '—',
+        isExit:    !!row.is_exit,
+        isPitStop: !!row.is_pit_stop,
+      });
+    });
+
+    // ── Position timeline ────────────────────────────────────────────────
+    // For each lap inserted in chronological order, recompute the standings
+    // of every entity (active or resting) and record their position. Result:
+    // one polyline per entity = position over time of the race.
+    const allLapsOrdered = db.prepare(`
+      SELECT l.team_id, l.driver_id, l.lap_time_ms
+      FROM laps l
+      JOIN mangas m ON m.id = l.manga_id
+      JOIN tandas t ON t.id = m.tanda_id
+      WHERE l.race_id = ? AND l.is_ghost = 0 AND l.lap_number > 0
+      ORDER BY t.number ASC, m.number ASC, l.elapsed_ms ASC, l.id ASC
+    `).all(race.id);
+
+    const entityKeys = results.map(r => `${r.entity_type}_${r.entity_id}`);
+    const entityState = {};
+    results.forEach(r => {
+      const k = `${r.entity_type}_${r.entity_id}`;
+      entityState[k] = { totalLaps: 0, bestMs: null, name: r.entity_name, color: r.color };
+    });
+    const positionTimeline = {};
+    entityKeys.forEach(k => { positionTimeline[k] = []; });
+
+    function snapshotPositions(tick) {
+      const sorted = entityKeys
+        .map(key => ({ key, ...entityState[key] }))
+        .sort((a, b) =>
+          b.totalLaps - a.totalLaps ||
+          (a.bestMs ?? Infinity) - (b.bestMs ?? Infinity)
+        );
+      sorted.forEach((row, idx) => {
+        const series = positionTimeline[row.key];
+        const last = series[series.length - 1];
+        if (!last || last.y !== idx + 1) series.push({ x: tick, y: idx + 1 });
+      });
+    }
+
+    allLapsOrdered.forEach((lap, idx) => {
+      const k = lap.team_id ? `team_${lap.team_id}` : `driver_${lap.driver_id}`;
+      const s = entityState[k];
+      if (!s) return;
+      s.totalLaps += 1;
+      if (s.bestMs == null || lap.lap_time_ms < s.bestMs) s.bestMs = lap.lap_time_ms;
+      snapshotPositions(idx + 1);
+    });
+    // Add a final point at the last tick for every entity so lines terminate
+    // cleanly even if their position hasn't changed in a while.
+    const lastTick = allLapsOrdered.length;
+    entityKeys.forEach(k => {
+      const series = positionTimeline[k];
+      const last = series[series.length - 1];
+      if (last && last.x < lastTick) series.push({ x: lastTick, y: last.y });
+    });
+
+    const positionData = {};
+    entityKeys.forEach(k => {
+      const s = entityState[k];
+      positionData[k] = { name: s.name, color: s.color, points: positionTimeline[k] };
+    });
+
     res.render('races/results', {
       t: req.t, race, results, laneSequence, tandas, LANE_COLORS,
-      raceBestLapMs, raceBestEntity, raceBestLane
+      raceBestLapMs, raceBestEntity, raceBestLane, startLaneByEntity,
+      progressionByEntity, positionData,
+      totalLapEvents: allLapsOrdered.length,
     });
   }
 
@@ -621,6 +784,22 @@ class SessionController {
     }
     const byTotalM = [...entityData].sort((a,b) => b.total_laps - a.total_laps || (a.best_lap_ms||Infinity)-(b.best_lap_ms||Infinity));
 
+    // Starting lane per entity — first non-rest assignment in tanda+manga order
+    const db = require('../config/database');
+    const startRows = db.prepare(`
+      SELECT ml.lane, ml.team_id, ml.driver_id
+      FROM manga_lanes ml
+      JOIN mangas m ON m.id = ml.manga_id
+      JOIN tandas t ON t.id = m.tanda_id
+      WHERE t.race_id = ? AND ml.is_rest = 0
+      ORDER BY t.number ASC, m.number ASC, ml.lane ASC
+    `).all(race.id);
+    const startLaneByEntity = {};
+    startRows.forEach(r => {
+      const key = r.team_id ? `team_${r.team_id}` : `driver_${r.driver_id}`;
+      if (startLaneByEntity[key] == null) startLaneByEntity[key] = r.lane;
+    });
+
     const s4 = wb.addWorksheet(isEs ? 'Comparativa' : 'Comparison', {
       properties: { outlineProperties: { summaryBelow: false, summaryRight: false } }
     });
@@ -654,16 +833,27 @@ class SessionController {
     headerRow.eachCell(c => Object.assign(c, headerStyle));
     s4.views = [{ state: 'frozen', ySplit: headerRow.number }];
 
+    const startLaneFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } }; // light blue
+    const startLaneBorder = {
+      top:    { style: 'thin',   color: { argb: COL.border } },
+      left:   { style: 'medium', color: { argb: 'FF58A6FF' } },
+      bottom: { style: 'thin',   color: { argb: COL.border } },
+      right:  { style: 'thin',   color: { argb: COL.border } },
+    };
+
     byTotalM.forEach((r, i) => {
       const laneMap = new Map(r.perLane.map(pl => [pl.lane, pl]));
       const totalExits = r.perLane.reduce((s,pl)=>s+(pl.exit_count||0),0);
+      const totalPits  = r.perLane.reduce((s,pl)=>s+(pl.pit_stop_count||0),0);
+      const startLane  = startLaneByEntity[`${r.entity_type}_${r.entity_id}`];
       const pos = i+1;
       const podium = podiumFill(pos);
 
       // Entity header row (light gray on lane cells)
-      const rowA = s4.addRow([pos, r.entity_name, r.total_laps, ...laneSeq.map(l => laneMap.get(l)?.laps ?? '')]);
+      const nameDisplay = startLane ? `${r.entity_name}   🚦 P${startLane}` : r.entity_name;
+      const rowA = s4.addRow([pos, nameDisplay, r.total_laps, ...laneSeq.map(l => laneMap.get(l)?.laps ?? '')]);
       rowA.height = 20;
-      rowA.eachCell(c => {
+      rowA.eachCell({ includeEmpty: true }, c => {
         c.border = thinBorder;
         c.font = { bold: true, size: 11 };
         c.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -677,13 +867,23 @@ class SessionController {
       }
       rowA.getCell(3).font = { bold: true, size: 12, color: { argb: pos === 1 ? 'FF8A6D00' : pos === 2 ? 'FF374151' : pos === 3 ? 'FFFFFFFF' : 'FF0969DA' } };
 
+      // Mark the starting-lane cell on the entity header row
+      if (startLane) {
+        const idx = laneSeq.indexOf(startLane);
+        if (idx >= 0) {
+          const cell = rowA.getCell(4 + idx);
+          cell.fill   = startLaneFill;
+          cell.border = startLaneBorder;
+        }
+      }
+
       // Fastest row
       const fastestVals = laneSeq.map(l => {
         const pl = laneMap.get(l); return (pl && pl.best_ms != null) ? fmtSec(pl.best_ms) : '';
       });
       const rowB = s4.addRow(['', `⚡ ${isEs ? 'Vuelta rápida' : 'Fastest'}`, fmtSec(r.best_lap_ms), ...fastestVals]);
       rowB.outlineLevel = 1;
-      rowB.eachCell(c => {
+      rowB.eachCell({ includeEmpty: true }, c => {
         c.border = thinBorder;
         c.font = { color: { argb: 'FF1A7F37' }, bold: true };
         c.alignment = { horizontal: 'center' };
@@ -701,6 +901,10 @@ class SessionController {
           cell.value = `${fmtSec(pl.best_ms)} ★`;
         }
       });
+      if (startLane) {
+        const idx = laneSeq.indexOf(startLane);
+        if (idx >= 0) rowB.getCell(4 + idx).border = startLaneBorder;
+      }
 
       // Average row
       const avgVals = laneSeq.map(l => {
@@ -708,13 +912,17 @@ class SessionController {
       });
       const rowC = s4.addRow(['', isEs ? 'Vuelta media' : 'Average', fmtSec(Math.round(r.avg_lap_ms)), ...avgVals]);
       rowC.outlineLevel = 1;
-      rowC.eachCell(c => {
+      rowC.eachCell({ includeEmpty: true }, c => {
         c.border = thinBorder;
         c.alignment = { horizontal: 'center' };
         c.fill = fillSolid(COL.rowAvg);
       });
       rowC.getCell(2).alignment = { horizontal: 'left' };
       rowC.getCell(2).font = { color: { argb: COL.muted }, italic: true };
+      if (startLane) {
+        const idx = laneSeq.indexOf(startLane);
+        if (idx >= 0) rowC.getCell(4 + idx).border = startLaneBorder;
+      }
 
       // Exits row
       const exitVals = laneSeq.map(l => {
@@ -724,7 +932,7 @@ class SessionController {
       });
       const rowD = s4.addRow(['', `${isEs ? 'Salidas' : 'Exits'} (${totalExits})`, '', ...exitVals]);
       rowD.outlineLevel = 1;
-      rowD.eachCell(c => {
+      rowD.eachCell({ includeEmpty: true }, c => {
         c.border = thinBorder;
         c.alignment = { horizontal: 'center' };
         c.font = { size: 10, color: { argb: COL.muted } };
@@ -740,10 +948,401 @@ class SessionController {
           cell.font = { size: 10, color: { argb: COL.exit }, bold: true };
         }
       });
+      if (startLane) {
+        const idx = laneSeq.indexOf(startLane);
+        if (idx >= 0) rowD.getCell(4 + idx).border = startLaneBorder;
+      }
+
+      // Pit-stops row
+      const pitVals = laneSeq.map(l => {
+        const pl = laneMap.get(l);
+        if (!pl || !pl.pit_stop_count) return '';
+        const laps = pl.pit_stop_laps
+          ? pl.pit_stop_laps.split(',').filter(Boolean).map(n => 'V' + n).join(', ')
+          : '';
+        return `(${pl.pit_stop_count}) ${laps}`;
+      });
+      const rowE = s4.addRow(['', `🔧 ${isEs ? 'Pit-stops' : 'Pit-stops'} (${totalPits})`, '', ...pitVals]);
+      rowE.outlineLevel = 1;
+      rowE.eachCell({ includeEmpty: true }, c => {
+        c.border = thinBorder;
+        c.alignment = { horizontal: 'center' };
+        c.font = { size: 10, color: { argb: COL.muted } };
+        c.fill = fillSolid('FFFFF4E5'); // light orange
+      });
+      rowE.getCell(2).alignment = { horizontal: 'left' };
+      rowE.getCell(2).font = { color: { argb: totalPits > 0 ? 'FFFF9800' : COL.muted }, italic: true, bold: totalPits > 0 };
+      laneSeq.forEach((l, idx) => {
+        const pl = laneMap.get(l);
+        if (pl && pl.pit_stop_count > 0) {
+          const cell = rowE.getCell(4 + idx);
+          cell.font = { size: 10, color: { argb: 'FFFF9800' }, bold: true };
+        }
+      });
+      if (startLane) {
+        const idx = laneSeq.indexOf(startLane);
+        if (idx >= 0) rowE.getCell(4 + idx).border = startLaneBorder;
+      }
 
       // Spacer
       s4.addRow([]);
     });
+
+    // ── One sheet per entity with lap-by-lap progression ───────────────────
+    const progressionRows = db.prepare(`
+      SELECT l.lane, l.lap_time_ms, l.team_id, l.driver_id, l.is_exit, l.is_pit_stop
+      FROM laps l
+      JOIN mangas m ON m.id = l.manga_id
+      JOIN tandas t ON t.id = m.tanda_id
+      WHERE l.race_id = ? AND l.is_ghost = 0 AND l.lap_number > 0
+      ORDER BY t.number ASC, m.number ASC, l.lane ASC, l.lap_number ASC
+    `).all(race.id);
+    const progByEntity = {};
+    entityData.forEach(e => {
+      progByEntity[`${e.entity_type}_${e.entity_id}`] = { name: e.entity_name, lanes: {}, laneAvg: {} };
+    });
+    progressionRows.forEach(row => {
+      const key = row.team_id ? `team_${row.team_id}` : `driver_${row.driver_id}`;
+      const e = progByEntity[key];
+      if (!e) return;
+      if (!e.lanes[row.lane]) e.lanes[row.lane] = [];
+      e.lanes[row.lane].push({ ms: row.lap_time_ms, isExit: !!row.is_exit, isPitStop: !!row.is_pit_stop });
+    });
+    Object.values(progByEntity).forEach(e => {
+      Object.entries(e.lanes).forEach(([lane, arr]) => {
+        if (arr.length === 0) return;
+        e.laneAvg[lane] = Math.round(arr.reduce((s,v)=>s+v.ms,0) / arr.length);
+      });
+    });
+
+    // ── Chart renderer (PNG via Chart.js on server) ──────────────────────
+    const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
+    const LANE_DASH = [[], [8,4], [2,4], [12,3,2,3]];
+    const ENTITY_PALETTE = ['#1F6FEB','#F6C90E','#2DA44E','#FB6A6B','#A371F7','#16BDCA','#F97316','#E63946','#FBBF24','#34D399'];
+    async function renderProgressionChart({ width, height, entities, mode = 'abs' }) {
+      // entities: [{ name, color, lanes: { laneNumber: [{ms, isExit, isPitStop}] } }]
+      const datasets = [];
+      entities.forEach((ent, ei) => {
+        const color = ent.color || ENTITY_PALETTE[ei % ENTITY_PALETTE.length];
+        const lanes = Object.keys(ent.lanes).map(Number).sort((a,b)=>a-b);
+        lanes.forEach((lane, li) => {
+          const laps = ent.lanes[lane];
+          if (!laps || laps.length === 0) return;
+          const avg = laps.reduce((s,l)=>s+l.ms,0) / laps.length;
+          const points = laps.map((l, idx) => ({
+            x: idx + 1,
+            y: mode === 'abs' ? l.ms / 1000 : (l.ms - avg) / 1000
+          }));
+          const pointColors = laps.map(l =>
+            l.isPitStop ? '#ff9800' :
+            l.isExit    ? '#e63946' : color);
+          const pointRadius = laps.map(l => (l.isPitStop || l.isExit) ? 5 : 2);
+          datasets.push({
+            label: (entities.length > 1 ? ent.name + ' · ' : '') + 'P' + lane,
+            data: points,
+            borderColor: color,
+            backgroundColor: color + '22',
+            borderDash: LANE_DASH[li % LANE_DASH.length],
+            pointBackgroundColor: pointColors,
+            pointBorderColor: pointColors,
+            pointRadius, tension: 0.2, borderWidth: 2, fill: false,
+          });
+        });
+      });
+      const canvas = new ChartJSNodeCanvas({
+        width, height,
+        backgroundColour: '#FFFFFF',
+        chartCallback: (ChartJS) => {
+          ChartJS.defaults.font.family = 'Arial';
+        },
+      });
+      return canvas.renderToBuffer({
+        type: 'line',
+        data: { datasets },
+        options: {
+          responsive: false, animation: false,
+          plugins: {
+            legend: { position: 'top', labels: { color: '#1F2328', font: { size: 11 } } },
+            title: { display: true, color: '#1F2328',
+              text: mode === 'abs' ? 'Tiempo absoluto por vuelta (s)' : 'Δ vs media de carril (s)' },
+          },
+          scales: {
+            x: { type: 'linear', title: { display: true, text: 'Vuelta', color: '#57606A' },
+                 ticks: { color: '#57606A', stepSize: 1 }, grid: { color: '#D8DEE4' } },
+            y: { title: { display: true, color: '#57606A',
+                  text: mode === 'abs' ? 'Segundos' : 'Δ (s)' },
+                 ticks: { color: '#57606A' }, grid: { color: '#D8DEE4' } },
+          },
+        },
+      }, 'image/png');
+    }
+
+    function sanitizeSheetName(name) {
+      // Excel: max 31 chars, no \ / ? * [ ] :
+      let n = String(name).replace(/[\\\/\?\*\[\]:]/g, '_').slice(0, 28);
+      return n.length ? n : 'Equipo';
+    }
+    const usedNames = new Set();
+    for (let idx = 0; idx < byTotalM.length; idx++) {
+      const entity = byTotalM[idx];
+      const key = `${entity.entity_type}_${entity.entity_id}`;
+      const prog = progByEntity[key];
+      if (!prog) continue;
+      const lanes = Object.keys(prog.lanes).map(Number).sort((a,b)=>a-b);
+      if (lanes.length === 0) continue;
+
+      let base = sanitizeSheetName((idx+1).toString().padStart(2,'0') + '_' + entity.entity_name);
+      let nm = base, i = 2;
+      while (usedNames.has(nm)) { nm = base.slice(0, 26) + '_' + (i++); }
+      usedNames.add(nm);
+
+      const sE = wb.addWorksheet(nm);
+      sE.columns = [{ width: 8 }, ...lanes.map(() => ({ width: 14 }))];
+      addRaceHeader(sE, 1 + lanes.length);
+
+      // Title row for entity
+      const tRow = sE.addRow([`${idx+1}. ${entity.entity_name}`]);
+      tRow.height = 22;
+      sE.mergeCells(tRow.number, 1, tRow.number, 1 + lanes.length);
+      const tc = tRow.getCell(1);
+      tc.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+      tc.fill = fillSolid(COL.header);
+      tc.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+      sE.addRow([]);
+
+      // ── Section: Absolute times ─────────────────────────────────────────
+      const absTitle = sE.addRow([isEs ? '⏱ Tiempo absoluto (s)' : '⏱ Absolute time (s)']);
+      sE.mergeCells(absTitle.number, 1, absTitle.number, 1 + lanes.length);
+      absTitle.getCell(1).font = { bold: true, size: 11, color: { argb: 'FF1F6FEB' } };
+      absTitle.getCell(1).alignment = { vertical: 'middle', indent: 1 };
+
+      const absHeader = sE.addRow([isEs ? 'Vuelta' : 'Lap', ...lanes.map(l => `${isEs ? 'Pista' : 'Lane'} ${l}`)]);
+      absHeader.height = 20;
+      absHeader.eachCell({ includeEmpty: true }, c => Object.assign(c, headerStyle));
+
+      const maxLapCount = Math.max(...lanes.map(l => prog.lanes[l].length));
+      const absStartRow = sE.lastRow.number + 1;
+      for (let li = 0; li < maxLapCount; li++) {
+        const values = [li + 1, ...lanes.map(l => {
+          const lap = prog.lanes[l][li];
+          return lap != null ? Number((lap.ms / 1000).toFixed(3)) : '';
+        })];
+        const row = sE.addRow(values);
+        row.eachCell({ includeEmpty: true }, (c, colNum) => {
+          c.border = thinBorder;
+          c.alignment = { horizontal: 'center' };
+          if (colNum === 1) {
+            c.font = { color: { argb: COL.muted }, size: 10 };
+            c.fill = fillSolid(COL.band);
+          }
+        });
+        // Tint exit/pit-stop cells so they stand out in the absolute table
+        lanes.forEach((l, ci) => {
+          const lap = prog.lanes[l][li];
+          if (!lap) return;
+          const c = row.getCell(2 + ci);
+          if (lap.isPitStop) {
+            c.font = { bold: true, color: { argb: 'FFFF9800' } };
+            c.fill = fillSolid('FFFFF4E5');
+          } else if (lap.isExit) {
+            c.font = { bold: true, color: { argb: COL.exit } };
+            c.fill = fillSolid('FFFDECEC');
+          } else if (li % 2 === 1) {
+            c.fill = fillSolid(COL.band);
+          }
+        });
+      }
+
+      // Avg row at the bottom of absolute section
+      const avgRow = sE.addRow([isEs ? 'Media' : 'Avg', ...lanes.map(l => {
+        const v = prog.laneAvg[l];
+        return v != null ? Number((v / 1000).toFixed(3)) : '';
+      })]);
+      avgRow.eachCell({ includeEmpty: true }, (c, colNum) => {
+        c.border = thinBorder;
+        c.alignment = { horizontal: 'center' };
+        c.font = { bold: true, color: { argb: 'FF8A6D00' } };
+        c.fill = fillSolid(COL.rowAvg);
+      });
+
+      sE.addRow([]);
+
+      // ── Section: Delta vs lane average ─────────────────────────────────
+      const dTitle = sE.addRow([isEs ? 'Δ Delta vs media de carril (s)' : 'Δ Delta vs lane avg (s)']);
+      sE.mergeCells(dTitle.number, 1, dTitle.number, 1 + lanes.length);
+      dTitle.getCell(1).font = { bold: true, size: 11, color: { argb: 'FF1F6FEB' } };
+      dTitle.getCell(1).alignment = { vertical: 'middle', indent: 1 };
+
+      const dHeader = sE.addRow([isEs ? 'Vuelta' : 'Lap', ...lanes.map(l => `${isEs ? 'Pista' : 'Lane'} ${l}`)]);
+      dHeader.height = 20;
+      dHeader.eachCell({ includeEmpty: true }, c => Object.assign(c, headerStyle));
+
+      for (let li = 0; li < maxLapCount; li++) {
+        const values = [li + 1, ...lanes.map(l => {
+          const lap = prog.lanes[l][li];
+          if (lap == null) return '';
+          const avg = prog.laneAvg[l] || 0;
+          return Number(((lap.ms - avg) / 1000).toFixed(3));
+        })];
+        const row = sE.addRow(values);
+        row.eachCell({ includeEmpty: true }, (c, colNum) => {
+          c.border = thinBorder;
+          c.alignment = { horizontal: 'center' };
+          if (colNum === 1) {
+            c.font = { color: { argb: COL.muted }, size: 10 };
+            c.fill = fillSolid(COL.band);
+          } else if (typeof c.value === 'number') {
+            if (c.value < -0.05) {
+              c.font = { bold: true, color: { argb: 'FF1A7F37' } };
+              c.fill = fillSolid('FFE7F8EC');
+            } else if (c.value > 0.05) {
+              c.font = { bold: true, color: { argb: COL.exit } };
+              c.fill = fillSolid('FFFDECEC');
+            }
+          }
+        });
+      }
+
+      // ── Embedded chart (absolute time) at the right of the tables ──────
+      try {
+        const chartPng = await renderProgressionChart({
+          width: 900, height: 500, mode: 'abs',
+          entities: [{ name: entity.entity_name, color: entity.color, lanes: prog.lanes }],
+        });
+        const imgId = wb.addImage({ buffer: chartPng, extension: 'png' });
+        const startRow = absStartRow - 2; // anchor above the absolute table
+        const startCol = 2 + lanes.length; // first empty column to the right
+        sE.addImage(imgId, {
+          tl: { col: startCol, row: startRow },
+          ext: { width: 900, height: 500 },
+        });
+        const chartPngDelta = await renderProgressionChart({
+          width: 900, height: 500, mode: 'delta',
+          entities: [{ name: entity.entity_name, color: entity.color, lanes: prog.lanes }],
+        });
+        const imgIdD = wb.addImage({ buffer: chartPngDelta, extension: 'png' });
+        sE.addImage(imgIdD, {
+          tl: { col: startCol, row: startRow + 28 },
+          ext: { width: 900, height: 500 },
+        });
+      } catch (err) {
+        console.error('[results.xlsx] chart render error:', err.message);
+      }
+    }
+
+    // ── Final sheet: multi-entity comparison chart ──────────────────────────
+    try {
+      const top = byTotalM.slice(0, 6).map(e => ({
+        name: e.entity_name,
+        color: e.color,
+        lanes: progByEntity[`${e.entity_type}_${e.entity_id}`]?.lanes || {},
+      })).filter(e => Object.keys(e.lanes).length > 0);
+      if (top.length > 0) {
+        const sC = wb.addWorksheet(isEs ? '📊 Comparativa gráfica' : '📊 Chart comparison');
+        sC.columns = [{ width: 2 }];
+        addRaceHeader(sC, 16);
+        const t = sC.addRow([isEs ? 'Top 6 — Tiempo absoluto por vuelta' : 'Top 6 — Absolute time per lap']);
+        sC.mergeCells(t.number, 1, t.number, 16);
+        t.getCell(1).font = { bold: true, size: 12, color: { argb: 'FF1F6FEB' } };
+        const png1 = await renderProgressionChart({ width: 1400, height: 700, mode: 'abs', entities: top });
+        const id1 = wb.addImage({ buffer: png1, extension: 'png' });
+        sC.addImage(id1, { tl: { col: 0, row: t.number }, ext: { width: 1400, height: 700 } });
+
+        const t2 = sC.getRow(t.number + 38);
+        t2.getCell(1).value = isEs ? 'Top 6 — Δ vs media de carril' : 'Top 6 — Δ vs lane avg';
+        sC.mergeCells(t2.number, 1, t2.number, 16);
+        t2.getCell(1).font = { bold: true, size: 12, color: { argb: 'FF1F6FEB' } };
+        const png2 = await renderProgressionChart({ width: 1400, height: 700, mode: 'delta', entities: top });
+        const id2 = wb.addImage({ buffer: png2, extension: 'png' });
+        sC.addImage(id2, { tl: { col: 0, row: t2.number }, ext: { width: 1400, height: 700 } });
+      }
+    } catch (err) {
+      console.error('[results.xlsx] comparison chart error:', err.message);
+    }
+
+    // ── Position timeline sheet ─────────────────────────────────────────────
+    try {
+      const allLapsOrdered = db.prepare(`
+        SELECT l.team_id, l.driver_id, l.lap_time_ms
+        FROM laps l
+        JOIN mangas m ON m.id = l.manga_id
+        JOIN tandas t ON t.id = m.tanda_id
+        WHERE l.race_id = ? AND l.is_ghost = 0 AND l.lap_number > 0
+        ORDER BY t.number ASC, m.number ASC, l.elapsed_ms ASC, l.id ASC
+      `).all(race.id);
+      const eKeys = entityData.map(r => `${r.entity_type}_${r.entity_id}`);
+      const eState = {};
+      entityData.forEach(r => {
+        eState[`${r.entity_type}_${r.entity_id}`] = { totalLaps: 0, bestMs: null, name: r.entity_name, color: r.color };
+      });
+      const timeline = {};
+      eKeys.forEach(k => { timeline[k] = []; });
+      allLapsOrdered.forEach((lap, idx) => {
+        const k = lap.team_id ? `team_${lap.team_id}` : `driver_${lap.driver_id}`;
+        const s = eState[k];
+        if (!s) return;
+        s.totalLaps += 1;
+        if (s.bestMs == null || lap.lap_time_ms < s.bestMs) s.bestMs = lap.lap_time_ms;
+        const sorted = eKeys.map(key => ({ key, ...eState[key] }))
+          .sort((a,b) => b.totalLaps - a.totalLaps || (a.bestMs ?? Infinity) - (b.bestMs ?? Infinity));
+        sorted.forEach((row, pi) => {
+          const series = timeline[row.key];
+          const last = series[series.length - 1];
+          if (!last || last.y !== pi + 1) series.push({ x: idx + 1, y: pi + 1 });
+        });
+      });
+      const lastTick = allLapsOrdered.length;
+      eKeys.forEach(k => {
+        const series = timeline[k];
+        const last = series[series.length - 1];
+        if (last && last.x < lastTick) series.push({ x: lastTick, y: last.y });
+      });
+      const datasets = eKeys.map((k, i) => {
+        const s = eState[k];
+        const color = s.color || ['#1F6FEB','#F6C90E','#2DA44E','#FB6A6B','#A371F7','#16BDCA','#F97316','#E63946','#FBBF24','#34D399'][i % 10];
+        return {
+          label: s.name,
+          data: timeline[k],
+          borderColor: color,
+          backgroundColor: color + '22',
+          tension: 0, stepped: 'before',
+          pointRadius: 0, borderWidth: 2.5, fill: false,
+        };
+      });
+      const canvasPos = new (require('chartjs-node-canvas').ChartJSNodeCanvas)({
+        width: 1500, height: 800, backgroundColour: '#FFFFFF',
+      });
+      const png = await canvasPos.renderToBuffer({
+        type: 'line',
+        data: { datasets },
+        options: {
+          responsive: false, animation: false,
+          plugins: {
+            legend: { position: 'right', labels: { color: '#1F2328', font: { size: 11 } } },
+            title: { display: true, color: '#1F2328', text: isEs ? 'Evolución de posiciones durante la carrera' : 'Position evolution through the race' },
+          },
+          scales: {
+            x: { type: 'linear', title: { display: true, text: isEs ? 'Vueltas acumuladas' : 'Cumulative laps', color: '#57606A' },
+                 ticks: { color: '#57606A' }, grid: { color: '#D8DEE4' } },
+            y: { reverse: true, min: 1, max: eKeys.length,
+                 title: { display: true, text: isEs ? 'Posición' : 'Position', color: '#57606A' },
+                 ticks: { color: '#57606A', stepSize: 1, callback: (v) => 'P' + v },
+                 grid: { color: '#D8DEE4' } },
+          }
+        }
+      }, 'image/png');
+
+      const sP = wb.addWorksheet(isEs ? '🏁 Posiciones' : '🏁 Positions');
+      sP.columns = [{ width: 2 }];
+      addRaceHeader(sP, 16);
+      const tH = sP.addRow([isEs ? 'Evolución de posiciones' : 'Position evolution']);
+      sP.mergeCells(tH.number, 1, tH.number, 16);
+      tH.getCell(1).font = { bold: true, size: 12, color: { argb: 'FF1F6FEB' } };
+      const imgId = wb.addImage({ buffer: png, extension: 'png' });
+      sP.addImage(imgId, { tl: { col: 0, row: tH.number }, ext: { width: 1500, height: 800 } });
+    } catch (err) {
+      console.error('[results.xlsx] positions chart error:', err.message);
+    }
 
     const buf = await wb.xlsx.writeBuffer();
     const filename = `${race.name.replace(/[^a-zA-Z0-9_-]/g, '_')}_resultados.xlsx`;
