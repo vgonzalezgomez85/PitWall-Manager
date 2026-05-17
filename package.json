@@ -126,7 +126,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Voltrace Manager"
+      "shortcutName": "Voltrace Manager",
+      "include": "build/installer.nsh"
     },
     "linux": {
       "target": [
