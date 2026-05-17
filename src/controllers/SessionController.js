@@ -6,6 +6,7 @@ const Team           = require('../models/Team');
 const Driver         = require('../models/Driver');
 const DriverShift    = require('../models/DriverShift');
 const SocketService  = require('../services/SocketService');
+const SerialService  = require('../services/SerialService');
 const TimingService  = require('../services/TimingService');
 const ExcelJS        = require('exceljs');
 
@@ -259,7 +260,8 @@ class SessionController {
     const hasBestLaps  = LicenseService.has('best_laps');
     const hasQrCheckin = LicenseService.has('qr_checkin');
 
-    res.render('races/live', { t: req.t, race, manga, tanda, lanes, laps, isActive, standings, prevLapsByLane, totalMangas, totalTandas, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, allParticipants, nextLaneByLane, nextMangaInfo });
+    const isSimulating = SerialService.isSimulating;
+    res.render('races/live', { t: req.t, race, manga, tanda, lanes, laps, isActive, standings, prevLapsByLane, totalMangas, totalTandas, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, allParticipants, nextLaneByLane, nextMangaInfo, isSimulating });
   }
 
   // GET /races/:id/mangas/:mangaId/panel/:type  (standalone popup)

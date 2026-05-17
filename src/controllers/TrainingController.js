@@ -1,6 +1,7 @@
 const TrainingService     = require('../services/TrainingService');
 const CompetitionService  = require('../services/CompetitionTrainingService');
 const TimingService       = require('../services/TimingService');
+const SerialService       = require('../services/SerialService');
 const Settings            = require('../models/Settings');
 const Circuit             = require('../models/Circuit');
 
@@ -44,6 +45,13 @@ class TrainingController {
       TrainingService.prepare(expected);
     } else if (!TrainingService.isReady) {
       TrainingService.prepare(expected);
+    }
+    // If the DS-300 is already mid-manga (someone pressed GO before opening
+    // this view), skip standby and start recording immediately so the user
+    // doesn't have to press GO again.
+    if (!TrainingService.isActive && SerialService.isDSRunning()) {
+      TrainingService.activate();
+      console.log('[TrainingController] /training/free entered with DS already running → auto-activated');
     }
     res.redirect('/training/live');
   }

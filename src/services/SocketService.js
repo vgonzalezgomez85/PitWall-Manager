@@ -14,6 +14,33 @@ function isLocalAddress(addr) {
       || addr.startsWith('::ffff:127.');
 }
 
+// ── Adaptive standings throttle ───────────────────────────────────────────────
+// Standings payload (~3-5 KB) is broadcast to every socket on each lap. With
+// few clients we emit per lap for snappy UX; as clients pile up we coalesce
+// emits to protect bandwidth and CPU. Delay is recomputed on every call so it
+// adapts in real time as people connect/disconnect.
+let _standingsLatest = null;
+let _standingsTimer  = null;
+let _standingsLastEmit = 0;
+
+function adaptiveDelay() {
+  if (!io) return 0;
+  const n = io.engine.clientsCount || 0;
+  if (n <= 10)  return 0;     // small club: emit per lap, no batching
+  if (n <= 30)  return 150;   // ~6/s
+  if (n <= 80)  return 300;   // ~3/s
+  if (n <= 150) return 450;   // ~2/s
+  return 600;                 // huge event: ~1.6/s
+}
+
+function flushStandings() {
+  if (!io || !_standingsLatest) return;
+  io.emit('standings', _standingsLatest);
+  _standingsLatest = null;
+  _standingsLastEmit = Date.now();
+  _standingsTimer = null;
+}
+
 module.exports = {
   init(httpServer) {
     io = new Server(httpServer, { cors: { origin: '*' } });
@@ -59,6 +86,25 @@ module.exports = {
 
   emit(event, data) {
     if (io) io.emit(event, data);
+  },
+
+  // Coalescing emit for `standings`: keeps only the latest payload and fires
+  // at a frequency adapted to the number of connected clients. Use this
+  // instead of emit('standings', ...) so the system auto-throttles.
+  emitStandings(data) {
+    if (!io) return;
+    _standingsLatest = data;
+    const delay = adaptiveDelay();
+    if (delay === 0) {
+      // Immediate path for small clubs — emit and reset state.
+      if (_standingsTimer) { clearTimeout(_standingsTimer); _standingsTimer = null; }
+      flushStandings();
+      return;
+    }
+    if (_standingsTimer) return; // already scheduled — latest payload will be used
+    const sinceLast = Date.now() - _standingsLastEmit;
+    const wait = Math.max(0, delay - sinceLast);
+    _standingsTimer = setTimeout(flushStandings, wait);
   },
 
   get io() {

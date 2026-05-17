@@ -167,7 +167,15 @@ router.post('/api/serial/close', async (req, res) => {
 });
 
 // ── Mobile API ────────────────────────────────────────────────────────────────
-router.get('/api/mobile/session', MobileController.session);
+// IMPORTANT: las rutas específicas (`current`, `active`) deben ir ANTES
+// de la genérica `:id` para que Express las matchee primero.
+router.get('/api/mobile/session',            MobileController.session);
+router.get('/api/mobile/training',           MobileController.training);
+router.get('/api/mobile/races/current',      MobileController.racesCurrent);
+router.get('/api/mobile/races/active',       MobileController.racesActive);
+router.get('/api/mobile/races',              MobileController.racesList);
+router.get('/api/mobile/races/:id/results',  MobileController.racesResults);
+router.get('/api/mobile/races/:id',          MobileController.racesShow);
 
 // ── Test: simulate DS-300 events ─────────────────────────────────────────────
 router.get('/api/test/go', (req, res) => {

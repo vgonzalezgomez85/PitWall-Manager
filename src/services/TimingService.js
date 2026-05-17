@@ -74,6 +74,11 @@ class TimingServiceClass {
         pitStopCount:  0,
         raceBestLapMs:    null,
         raceBestEntity:   null,
+        pendingPauseAdjustMs: 0,  // ms to subtract from the next reported lap_time
+                                  //   so the first crossing post-resume reflects
+                                  //   only real driving time (accumulates if
+                                  //   several pause cycles happen with no crossing
+                                  //   in between).
       };
     });
 
@@ -97,7 +102,9 @@ class TimingServiceClass {
     SerialService.on('lane_crossing', this._lapHandler);
 
     this._tickInt = setInterval(() => {
-      SocketService.emit('tick', { elapsedMs: Date.now() - startTime });
+      const elapsedMs   = Date.now() - startTime;
+      const remainingMs = Math.max(0, sessionDurationMs - elapsedMs);
+      SocketService.emit('tick', { elapsedMs, remainingMs });
     }, 1000);
 
     this._autoStopTimer = setTimeout(() => {
@@ -223,8 +230,19 @@ class TimingServiceClass {
     this.session.status     = 'running';
     this.session.pauseStart = null;
 
+    // Accumulate pause duration into every active lane so the first crossing
+    // post-resume per lane subtracts the pause time from the DS-reported
+    // lap_time (the DS keeps counting during the pause and includes it in the
+    // first reported lap after resume).
+    for (const ld of Object.values(this.session.laneMap)) {
+      ld.pendingPauseAdjustMs = (ld.pendingPauseAdjustMs || 0) + pausedMs;
+    }
+    console.log(`[TimingService] Manga ${this.session.manga.number} resumed after ${pausedMs}ms pause`);
+
     this._tickInt = setInterval(() => {
-      SocketService.emit('tick', { elapsedMs: Date.now() - this.session.startTime });
+      const elapsedMs   = Date.now() - this.session.startTime;
+      const remainingMs = Math.max(0, this.session.durationMs - elapsedMs);
+      SocketService.emit('tick', { elapsedMs, remainingMs });
     }, 1000);
 
     const remaining = this.session.durationMs - (Date.now() - this.session.startTime);
@@ -275,7 +293,19 @@ class TimingServiceClass {
     if (!ld) return;
 
     // Use device-reported lap time when available; fall back to timestamp diff
-    const lapTimeMs = deviceLapTimeMs ?? (timestamp - ld.lastCrossing);
+    let lapTimeMs = deviceLapTimeMs ?? (timestamp - ld.lastCrossing);
+
+    // Post-resume compensation: the DS-300 reports the first lap_time after a
+    // resume including the pause duration. Subtract it so the lane continues
+    // from the elapsed time it had when paused (real driving time only).
+    if (ld.pendingPauseAdjustMs > 0 && lapTimeMs != null) {
+      const adjusted = lapTimeMs - ld.pendingPauseAdjustMs;
+      if (adjusted > 0) {
+        console.log(`[TimingService] Lane ${lane} post-resume: ${lapTimeMs}ms - ${ld.pendingPauseAdjustMs}ms pause = ${adjusted}ms`);
+        lapTimeMs = adjusted;
+      }
+      ld.pendingPauseAdjustMs = 0;
+    }
 
     // Debounce only applies to timestamp-based measurements (not device-timed)
     if (!deviceLapTimeMs && lapTimeMs < DEBOUNCE_MS) return;
@@ -312,7 +342,7 @@ class TimingServiceClass {
         lapNumber: ld.lapCount, lapTimeMs: firstLapMs, bestLapMs: ld.bestLapMs,
         elapsedMs: firstLapMs, isExit: false, isFirstCrossing: true,
       });
-      SocketService.emit('standings', this.getStandings());
+      SocketService.emitStandings(this.getStandings());
       return;
     }
 
@@ -372,7 +402,7 @@ class TimingServiceClass {
           color: tld?.color, name: tld?.name,
           lapTimeMs, elapsedMs,
         });
-        SocketService.emit('standings', this.getStandings());
+        SocketService.emitStandings(this.getStandings());
         return;
       }
 
@@ -466,7 +496,7 @@ class TimingServiceClass {
       elapsedMs, isExit, isPitStop,
       pitStopCount: ld.pitStopCount,
     });
-    SocketService.emit('standings', this.getStandings());
+    SocketService.emitStandings(this.getStandings());
   }
 
   // Pick the lane (other than `skipLane`) that's "most overdue": the one whose
