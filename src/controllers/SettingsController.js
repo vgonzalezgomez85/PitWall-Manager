@@ -51,7 +51,7 @@ class SettingsController {
   }
 
   static async save(req, res) {
-    const { serial_mode, sim_lanes, sim_avg_ms } = req.body;
+    const { serial_mode, sim_lanes, sim_avg_ms, serial_frame_gap_ms } = req.body;
 
     // Parse multi-circuit config from form arrays
     const portArr  = [].concat(req.body['circuit_port']  || []);
@@ -95,18 +95,22 @@ class SettingsController {
     // circuit. Falls back to '' (none) if no DS-300 has one assigned.
     const trainingCircuitId = (circuits.find(c => c.circuit_id) || {}).circuit_id || '';
 
+    // Clamp parser tuning: invalid values fall back to default 75
+    const fg = parseInt(serial_frame_gap_ms, 10);
+    const fgClean = (Number.isFinite(fg) && fg >= 10 && fg <= 500) ? fg : 75;
+
     Settings.setMany({
       serial_mode:          serial_mode || 'simulation',
       circuits_serial:      JSON.stringify(circuits),
       sim_lanes:            sim_lanes   || '6',
       sim_avg_ms:           sim_avg_ms  || '12000',
       training_circuit_id:  String(trainingCircuitId),
+      serial_frame_gap_ms:  String(fgClean),
     });
 
     if (serial_mode === 'serial' && circuits.length > 0) {
-      SerialService.connectMultiple(circuits).catch(err => {
-        console.error('[Settings] Serial connect error:', err.message);
-      });
+      await SerialService.closeAll();
+      SerialService.init(); // re-reads frame gap + reconnects
     } else {
       await SerialService.closeAll();
       SerialService.startSimulation(

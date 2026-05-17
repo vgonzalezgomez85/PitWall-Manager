@@ -110,6 +110,13 @@ SerialService.on('race_paused', () => {
   if (TimingService.isRunning) TimingService.pauseManga();
 });
 
+// Trama 1 of the resume sequence (0xA6): show the same semaphore animation
+// used on GO so users see the ~3s countdown before the track is unlocked.
+SerialService.on('race_resume_signal', () => {
+  console.log(`[DS-300] race_resume_signal received — emit race:semaphore @ ${Date.now()}`);
+  SocketService.emit('race:semaphore');
+});
+
 SerialService.on('race_resumed', () => {
   TimingService.resumeManga();
 });

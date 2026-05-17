@@ -369,8 +369,22 @@ class RaceController {
   // ─── POST /races/:id/complete ─────────────────────────────────────────────
 
   static complete(req, res) {
-    Race.updateStatus(req.params.id, 'finished');
-    res.redirect(`/races/${req.params.id}`);
+    const raceId = req.params.id;
+    Race.updateStatus(raceId, 'finished');
+
+    // Push a full stats dossier to all connected mobile clients so they can
+    // persist a local copy and view the history offline. Wrapped in try/
+    // catch so a snapshot failure can never block the redirect.
+    try {
+      const MobileController = require('./MobileController');
+      const SocketService    = require('../services/SocketService');
+      const snapshot = MobileController.buildStatsSnapshot(raceId);
+      if (snapshot) SocketService.emit('race:stats-snapshot', snapshot);
+    } catch (err) {
+      console.error('[RaceController] stats-snapshot emit failed:', err.message);
+    }
+
+    res.redirect(`/races/${raceId}`);
   }
 }
 

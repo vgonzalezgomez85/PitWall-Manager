@@ -1032,6 +1032,9 @@ function announce(text) {
 
     socket.on('manga:resumed', () => {
       document.getElementById('pause-overlay')?.remove();
+      // If the resume semaphore is on screen (lit during the 3s A6→A3 window),
+      // flip it to green and dismiss — same flow as the GO countdown.
+      if (document.getElementById('semaphore-overlay')) semaphoreGo(null);
     });
   }
 

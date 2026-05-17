@@ -15,7 +15,11 @@ const REPLAY_FILE = path.join(__dirname, '../data/RegistroCarrera.txt');
 // Frame boundaries are detected by silence gaps > FRAME_GAP_MS between bytes.
 // Lane identity is encoded in byte index 10 (0-based) using a non-sequential bitmask.
 
-const FRAME_GAP_MS    = 75;    // gap > 75ms between bytes → new frame starts
+// FRAME_GAP_MS can be overridden via Settings ("serial_frame_gap_ms") so the
+// operator can tune the parser without redeploying — useful when a particular
+// DS-300 unit emits frames with different timing.
+const FRAME_GAP_MS_DEFAULT = 75;
+let   FRAME_GAP_MS         = FRAME_GAP_MS_DEFAULT;
 const MIN_CROSSING_MS = 500;   // minimum ms between two crossings on the same lane
 const MAX_LAP_MS      = 240000; // elapsed > 240s → car stopped; reset ref, skip recording
 
@@ -50,16 +54,17 @@ const LANE_MAP = [
 
 // ── Per-circuit connection ────────────────────────────────────────────────────
 class CircuitConnection {
-  constructor(circuitIndex, laneOffset, onCrossing, onGo, onStop, onPause, onResume, onGoSignal, onFinish) {
-    this._circuitIndex  = circuitIndex;
-    this._laneOffset    = laneOffset;
-    this._onCrossing    = onCrossing;
-    this._onGo          = onGo;
-    this._onStop        = onStop;
-    this._onPause       = onPause;
-    this._onResume      = onResume;
-    this._onGoSignal    = onGoSignal;
-    this._onFinish      = onFinish;
+  constructor(circuitIndex, laneOffset, onCrossing, onGo, onStop, onPause, onResume, onGoSignal, onFinish, onResumeSignal) {
+    this._circuitIndex     = circuitIndex;
+    this._laneOffset       = laneOffset;
+    this._onCrossing       = onCrossing;
+    this._onGo             = onGo;
+    this._onStop           = onStop;
+    this._onPause          = onPause;
+    this._onResume         = onResume;
+    this._onGoSignal       = onGoSignal;
+    this._onFinish         = onFinish;
+    this._onResumeSignal   = onResumeSignal || (() => {});
     this._port          = null;
     this._rawLog        = [];
     this._frameBuf      = [];
@@ -264,6 +269,11 @@ class CircuitConnection {
       // New manga → reset per-lane lap counters and stats for gap detection.
       this._lastLapByLane.clear();
       this._lapStatsByLane.clear();
+      // Reset cached race state so the next transition to 'running' actually
+      // fires the callback. Some DS-300 units don't emit 0xA4/0xA7 between
+      // mangas, so without this reset _raceState stays 'running' and the new
+      // GO is silently ignored by _setRaceState's same-state short-circuit.
+      this._raceState = null;
       this._onGoSignal(mins * 60000);
       this._pendingGoStart = true;
       if (this._goFallbackTimer) clearTimeout(this._goFallbackTimer);
@@ -277,15 +287,26 @@ class CircuitConnection {
       return;
     }
 
-    if (this._pendingGoStart && frame.length >= 9 && frame[7] === 0x00 && frame[8] === 0xa3) {
-      this._pendingGoStart = false;
-      if (this._goFallbackTimer) { clearTimeout(this._goFallbackTimer); this._goFallbackTimer = null; }
-      this._setRaceState('running');
+    // Trama 3 (0xA3) is shared by GO and Resume sequences. Whoever has a
+    // pending latch (go or resume) gets resolved here; otherwise it's ignored.
+    if (frame.length >= 9 && frame[7] === 0x00 && frame[8] === 0xa3) {
+      if (this._pendingGoStart) {
+        this._pendingGoStart = false;
+        if (this._goFallbackTimer) { clearTimeout(this._goFallbackTimer); this._goFallbackTimer = null; }
+        this._setRaceState('running');
+        return;
+      }
+      if (this._pendingResumeStart) {
+        this._pendingResumeStart = false;
+        if (this._resumeFallbackTimer) { clearTimeout(this._resumeFallbackTimer); this._resumeFallbackTimer = null; }
+        this._setRaceState('resumed');
+        return;
+      }
       return;
     }
 
     // Trama 2 (0xA2) is consumed silently — only relevant for hardware-driven LED panels
-    if (this._pendingGoStart && frame.length >= 9 && frame[7] === 0x00 && frame[8] === 0xa2) {
+    if ((this._pendingGoStart || this._pendingResumeStart) && frame.length >= 9 && frame[7] === 0x00 && frame[8] === 0xa2) {
       return;
     }
 
@@ -301,14 +322,27 @@ class CircuitConnection {
         this._setRaceState('finished');
         return;
       }
-      // Pause / resume per DS-300 protocol (B8=0xA5 pause, B8=0xA6 resume).
-      // See DS300-protocolo.md §"Control de estado".
+      // Pause: single frame B8=0xA5 → state changes immediately.
       if (frame[8] === 0xa5) {
         this._setRaceState('paused');
         return;
       }
+      // Resume: 3-frame sequence (0xA6 → 0xA2 → 0xA3), same shape as GO. Don't
+      // flip state on 0xA6 — wait until trama 3 (0xA3) arrives so the resume
+      // event coincides with the DS-300 actually unlocking the track current.
+      // Fallback after 5s in case trama 3 never arrives. We also fire
+      // _onResumeSignal so the UI can show a semaphore animation during the
+      // ~3s wait (identical to the GO countdown).
       if (frame[8] === 0xa6) {
-        this._setRaceState('resumed');
+        this._pendingResumeStart = true;
+        this._onResumeSignal();
+        if (this._resumeFallbackTimer) clearTimeout(this._resumeFallbackTimer);
+        this._resumeFallbackTimer = setTimeout(() => {
+          if (this._pendingResumeStart) {
+            this._pendingResumeStart = false;
+            this._setRaceState('resumed');
+          }
+        }, 5000);
         return;
       }
       return;
@@ -377,6 +411,11 @@ class SerialServiceClass extends EventEmitter {
   // ── Startup ──────────────────────────────────────────────────────────────
 
   init() {
+    // Refresh tunable parser params from Settings on every (re)init.
+    const fg = parseInt(Settings.get('serial_frame_gap_ms', String(FRAME_GAP_MS_DEFAULT)), 10);
+    FRAME_GAP_MS = (Number.isFinite(fg) && fg >= 10 && fg <= 500) ? fg : FRAME_GAP_MS_DEFAULT;
+    console.log(`[SerialService] FRAME_GAP_MS = ${FRAME_GAP_MS} ms`);
+
     const mode = Settings.get('serial_mode', 'simulation');
     if (mode === 'serial') {
       const circuitsJson = Settings.get('circuits_serial', '[]');
@@ -430,6 +469,7 @@ class SerialServiceClass extends EventEmitter {
         ()   => this.emit('race_resumed'),
         ms   => this.emit('race_go', { durationMs: ms }),
         ()   => this.emit('race_finished'),
+        ()   => this.emit('race_resume_signal'),
       );
       await conn.connect(port, baud, { dataBits, parity, stopBits, flowControl });
       connections.push(conn);
@@ -611,6 +651,14 @@ class SerialServiceClass extends EventEmitter {
   get isSimulating()   { return this._simRunning; }
   get connectedPort()  { return this._connections[0]?.path ?? null; }
   get connectedPorts() { return this._connections.map(c => c.path).filter(Boolean); }
+
+  // True if any connected DS-300 circuit is currently in 'running' state. Used
+  // so free training can skip standby when entering while the DS is mid-manga.
+  // Simulation mode is excluded — it always streams crossings, so the standby
+  // → GO flow stays useful there.
+  isDSRunning() {
+    return this._connections.some(c => c._raceState === 'running');
+  }
 
   // Link status using the same criterion as the Settings page:
   //   - simulation mode running → connected (UI doesn't need to warn)

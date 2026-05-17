@@ -203,6 +203,12 @@ class TrainingServiceClass {
     this._activate();
   }
 
+  // Public activation — used when entering /training/free while the DS-300 is
+  // already running a manga, so the operator doesn't have to press GO again.
+  activate() {
+    this._activate();
+  }
+
   getLanes() {
     return this._lanes.map(lane => {
       const ld = this._laneData.get(lane) || { laps: [], chronoLaps: [], sum: 0, count: 0, lastMs: null };

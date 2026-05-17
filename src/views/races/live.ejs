@@ -41,6 +41,18 @@
     </div>
 
     <div class="live-header__actions">
+      <% if (isSimulating) { %>
+        <% if (manga.status === 'pending' && !isActive) { %>
+          <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/start" method="POST" style="display:inline">
+            <button class="lbtn lbtn--go" type="submit" title="<%= lang === 'es' ? 'Arrancar simulación' : 'Start simulation' %>">▶ GO</button>
+          </form>
+        <% } else if (isActive) { %>
+          <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/stop" method="POST" style="display:inline"
+            onsubmit="return confirm('<%= lang === 'es' ? '¿Parar la manga y borrar las vueltas registradas?' : 'Stop the heat and delete recorded laps?' %>')">
+            <button class="lbtn lbtn--repeat" type="submit" title="<%= lang === 'es' ? 'Parar simulación' : 'Stop simulation' %>">■ STOP</button>
+          </form>
+        <% } %>
+      <% } %>
       <% if (typeof nextTanda !== 'undefined' && nextTanda) { %>
         <button id="next-tanda-btn" class="lbtn lbtn--go"
                 data-race-id="<%= race.id %>"
