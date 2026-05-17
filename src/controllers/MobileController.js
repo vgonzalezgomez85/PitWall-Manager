@@ -329,6 +329,10 @@ const MobileController = {
       startedAt:   race.started_at,
       finishedAt:  race.finished_at,
       standings,
+      // Ruta relativa al export Excel comparativa. La app móvil la
+      // combina con la baseUrl del servidor al que está conectada para
+      // formar la URL completa de descarga.
+      excelPath:   `/races/${race.id}/results/xlsx`,
     };
   },
 };

@@ -76,13 +76,34 @@ function startServer(userData) {
   });
 }
 
+// ── Load packaged icon (build/icon.png) with fallback to generated solid ─────
+// In production (asar-packed), the file is at process.resourcesPath/../build.
+// In dev, it's at <repo>/build/icon.png.
+function loadAppIcon() {
+  const candidates = [
+    path.join(__dirname, '..', 'build', 'icon.png'),
+    path.join(process.resourcesPath || '', 'build', 'icon.png'),
+    path.join(process.resourcesPath || '', 'app', 'build', 'icon.png'),
+  ];
+  for (const p of candidates) {
+    try {
+      if (fs.existsSync(p)) {
+        const img = nativeImage.createFromPath(p);
+        if (!img.isEmpty()) return img;
+      }
+    } catch {}
+  }
+  // Fallback: solid colour PNG generated in pure Node (legacy behaviour)
+  return nativeImage.createFromBuffer(createAppIcon(256));
+}
+
 // ── Main window ───────────────────────────────────────────────────────────────
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400, height: 900, minWidth: 900, minHeight: 600,
-    title: 'Slot Timer Pro',
+    title: 'Voltrace Manager',
     backgroundColor: '#0a0d13',
-    icon: createAppIcon(256),
+    icon: loadAppIcon(),
     webPreferences: { nodeIntegration: false, contextIsolation: true },
   });
   mainWindow.setMenuBarVisibility(false);
@@ -93,15 +114,15 @@ function createWindow() {
 
 // ── Tray ──────────────────────────────────────────────────────────────────────
 function createTray() {
-  const sz  = process.platform === 'darwin' ? 16 : 32;
-  const icon = createAppIcon(sz);
+  const sz   = process.platform === 'darwin' ? 22 : 32;
+  const icon = loadAppIcon().resize({ width: sz, height: sz });
   tray = new Tray(icon);
-  tray.setToolTip('Slot Timer Pro');
+  tray.setToolTip('Voltrace Manager');
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Abrir Slot Timer Pro',      click: () => mainWindow ? (mainWindow.show(), mainWindow.focus()) : createWindow() },
-    { label: 'Abrir en navegador', click: () => shell.openExternal(`http://127.0.0.1:${PORT}`) },
+    { label: 'Abrir Voltrace Manager', click: () => mainWindow ? (mainWindow.show(), mainWindow.focus()) : createWindow() },
+    { label: 'Abrir en navegador',     click: () => shell.openExternal(`http://127.0.0.1:${PORT}`) },
     { type: 'separator' },
-    { label: 'Salir',              click: () => { app.isQuiting = true; app.quit(); } },
+    { label: 'Salir',                  click: () => { app.isQuiting = true; app.quit(); } },
   ]));
   tray.on('double-click', () => mainWindow ? (mainWindow.show(), mainWindow.focus()) : createWindow());
 }

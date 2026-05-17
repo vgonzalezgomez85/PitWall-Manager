@@ -46,6 +46,8 @@
       "electron/**/*",
       "src/**/*",
       "public/**/*",
+      "build/icon.png",
+      "build/icon.svg",
       "package.json",
       "!database/**",
       "!dist-app/**",
@@ -78,7 +80,8 @@
         }
       ],
       "category": "public.app-category.sports-games",
-      "identity": null
+      "identity": null,
+      "icon": "build/icon.png"
     },
     "dmg": {
       "title": "Instalar Voltrace Manager",
@@ -110,7 +113,12 @@
             "x64"
           ]
         }
-      ]
+      ],
+      "icon": "build/icon.png"
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "category": "Game"
     },
     "nsis": {
       "oneClick": false,

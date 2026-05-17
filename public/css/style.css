@@ -42,6 +42,7 @@ input, button, select { font-family: inherit; }
 .navbar--slim { padding: .55rem 1.4rem; }
 .navbar--slim .brand { font-size: 1.2rem; gap: .5rem; }
 .navbar--slim .brand-flag { width: 20px; height: 20px; }
+.navbar--slim .brand-logo { height: 95px; }
 .brand {
   display: flex; align-items: center; gap: .6rem;
   font-family: var(--font-race); font-size: 1.7rem; font-weight: 700;
@@ -50,7 +51,7 @@ input, button, select { font-family: inherit; }
 .brand:hover { text-decoration: none; }
 .brand-flag { width: 24px; height: 24px; flex-shrink: 0; }
 .brand-name { color: var(--gold); }
-.brand-logo { height: 44px; width: auto; object-fit: contain; }
+.brand-logo { height: 110px; width: auto; object-fit: contain; }
 .nav-links { display: flex; align-items: center; gap: .25rem; margin-left: auto; }
 .nav-link {
   padding: .55rem 1.1rem; border-radius: var(--radius);

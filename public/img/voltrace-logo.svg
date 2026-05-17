@@ -1,0 +1,65 @@
+<svg width="100%" viewBox="0 0 680 260" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>Voltrace Manager Logo</title>
+  <desc>Logo con circuito cerrado de dos carriles y tipografía racing</desc>
+
+  <!-- Capa 1: borde exterior total -->
+  <path d="M 90,45 L 148,45 Q 172,45 172,68 L 172,90 Q 172,105 158,112 L 145,118 Q 158,124 172,132 L 172,155 Q 172,178 148,178 L 90,178 Q 66,178 66,155 L 66,68 Q 66,45 90,45 Z" fill="none" stroke="#D3D1C7" stroke-width="32" stroke-linejoin="round"/>
+
+  <!-- Capa 2: asfalto negro -->
+  <path d="M 90,45 L 148,45 Q 172,45 172,68 L 172,90 Q 172,105 158,112 L 145,118 Q 158,124 172,132 L 172,155 Q 172,178 148,178 L 90,178 Q 66,178 66,155 L 66,68 Q 66,45 90,45 Z" fill="none" stroke="#111111" stroke-width="26" stroke-linejoin="round"/>
+
+  <!-- Capa 3: separadora central -->
+  <path d="M 90,45 L 148,45 Q 172,45 172,68 L 172,90 Q 172,105 158,112 L 145,118 Q 158,124 172,132 L 172,155 Q 172,178 148,178 L 90,178 Q 66,178 66,155 L 66,68 Q 66,45 90,45 Z" fill="none" stroke="#ffffff" stroke-width="1" stroke-linejoin="round" stroke-dasharray="7 5" opacity="0.6"/>
+
+  <!-- Kerbs -->
+  <path d="M 148,45 Q 172,45 172,68" fill="none" stroke="#E24B4A" stroke-width="26" stroke-dasharray="5 5" opacity="0.7"/>
+  <path d="M 172,155 Q 172,178 148,178" fill="none" stroke="#E24B4A" stroke-width="26" stroke-dasharray="5 5" opacity="0.7"/>
+  <path d="M 90,178 Q 66,178 66,155 L 66,68 Q 66,45 90,45" fill="none" stroke="#E24B4A" stroke-width="26" stroke-dasharray="5 5" opacity="0.5"/>
+
+  <!-- Re-pinto asfalto en rectas para tapar kerbs -->
+  <line x1="90" y1="45" x2="148" y2="45" stroke="#111111" stroke-width="26"/>
+  <line x1="90" y1="178" x2="148" y2="178" stroke="#111111" stroke-width="26"/>
+  <line x1="66" y1="80" x2="66" y2="145" stroke="#111111" stroke-width="26"/>
+  <line x1="172" y1="68" x2="172" y2="90" stroke="#111111" stroke-width="26"/>
+  <line x1="172" y1="132" x2="172" y2="155" stroke="#111111" stroke-width="26"/>
+
+  <!-- Línea de meta -->
+  <rect x="58" y="108" width="16" height="7" fill="white"/>
+  <rect x="58" y="108" width="4" height="3.5" fill="#111"/>
+  <rect x="66" y="108" width="4" height="3.5" fill="#111"/>
+  <rect x="62" y="111.5" width="4" height="3.5" fill="#111"/>
+  <rect x="70" y="111.5" width="4" height="3.5" fill="#111"/>
+
+  <!-- Coche rojo -->
+  <g transform="translate(108,45)">
+    <rect x="-9" y="-5.5" width="18" height="8" rx="2" fill="#E24B4A"/>
+    <rect x="3" y="-4" width="5" height="5" rx="1" fill="#F09595"/>
+    <rect x="-11" y="-2" width="3" height="4" rx="1" fill="#0a0a0a"/>
+    <rect x="8" y="-2" width="3" height="4" rx="1" fill="#0a0a0a"/>
+  </g>
+
+  <!-- Coche blanco -->
+  <g transform="translate(126,45)">
+    <rect x="-9" y="-5.5" width="18" height="8" rx="2" fill="#F1EFE8"/>
+    <rect x="3" y="-4" width="5" height="5" rx="1" fill="white"/>
+    <rect x="-11" y="-2" width="3" height="4" rx="1" fill="#0a0a0a"/>
+    <rect x="8" y="-2" width="3" height="4" rx="1" fill="#0a0a0a"/>
+  </g>
+
+  <!-- Texto -->
+  <text x="207" y="126" fill="#F1EFE8" font-family="Rajdhani, sans-serif" font-size="66" font-weight="700">VOL<tspan fill="#E24B4A">T</tspan>RACE</text>
+  <rect x="207" y="136" width="420" height="1.5" rx="1" fill="#BA7517" opacity="0.6"/>
+  <text x="210" y="166" fill="#888780" font-family="'Barlow Condensed', sans-serif" font-size="20" font-weight="300">MANAGER</text>
+
+  <!-- Bandera a cuadros -->
+  <g opacity="0.2" transform="translate(612,44)">
+    <rect x="0" y="0" width="9" height="9" fill="#F1EFE8"/>
+    <rect x="9" y="0" width="9" height="9" fill="#2C2C2A"/>
+    <rect x="0" y="9" width="9" height="9" fill="#2C2C2A"/>
+    <rect x="9" y="9" width="9" height="9" fill="#F1EFE8"/>
+    <rect x="0" y="18" width="9" height="9" fill="#F1EFE8"/>
+    <rect x="9" y="18" width="9" height="9" fill="#2C2C2A"/>
+    <rect x="0" y="27" width="9" height="9" fill="#2C2C2A"/>
+    <rect x="9" y="27" width="9" height="9" fill="#F1EFE8"/>
+  </g>
+</svg>
