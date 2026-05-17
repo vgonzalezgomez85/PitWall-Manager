@@ -207,6 +207,21 @@ class TimingServiceClass {
 
     SocketService.emit('manga:stopped', { mangaId: this.session.manga.id, nextMangaId, nextLanes, isTandaEnd, nextTandaId, nextTandaNumber });
     console.log(`[TimingService] Manga ${this.session.manga.number} stopped`);
+
+    // Cuando se cierra la ÚLTIMA manga de una tanda, empujamos el dossier
+    // de stats acumulado a los clientes móviles para que actualicen su
+    // histórico local. El móvil ve resultados parciales tras cada tanda
+    // (no sólo al cerrar la carrera entera).
+    if (isTandaEnd) {
+      try {
+        const MobileController = require('../controllers/MobileController');
+        const snapshot = MobileController.buildStatsSnapshot(this.session.race.id);
+        if (snapshot) SocketService.emit('race:stats-snapshot', snapshot);
+      } catch (err) {
+        console.error('[TimingService] stats-snapshot emit failed:', err.message);
+      }
+    }
+
     this.session = null;
   }
 

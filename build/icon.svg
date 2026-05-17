@@ -1,0 +1,53 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Fondo redondeado oscuro -->
+  <rect width="1024" height="1024" rx="180" ry="180" fill="#0D1117"/>
+
+  <!-- Acento dorado de borde -->
+  <rect x="20" y="20" width="984" height="984" rx="170" ry="170" fill="none" stroke="#BA7517" stroke-width="4" opacity="0.4"/>
+
+  <!-- Circuito (mismo shape que el logo, escalado y centrado) -->
+  <g transform="translate(512,512) scale(4.4) translate(-119,-111.5)">
+
+    <!-- Borde exterior -->
+    <path d="M 90,45 L 148,45 Q 172,45 172,68 L 172,90 Q 172,105 158,112 L 145,118 Q 158,124 172,132 L 172,155 Q 172,178 148,178 L 90,178 Q 66,178 66,155 L 66,68 Q 66,45 90,45 Z" fill="none" stroke="#D3D1C7" stroke-width="32" stroke-linejoin="round"/>
+
+    <!-- Asfalto negro -->
+    <path d="M 90,45 L 148,45 Q 172,45 172,68 L 172,90 Q 172,105 158,112 L 145,118 Q 158,124 172,132 L 172,155 Q 172,178 148,178 L 90,178 Q 66,178 66,155 L 66,68 Q 66,45 90,45 Z" fill="none" stroke="#111111" stroke-width="26" stroke-linejoin="round"/>
+
+    <!-- Separadora discontinua -->
+    <path d="M 90,45 L 148,45 Q 172,45 172,68 L 172,90 Q 172,105 158,112 L 145,118 Q 158,124 172,132 L 172,155 Q 172,178 148,178 L 90,178 Q 66,178 66,155 L 66,68 Q 66,45 90,45 Z" fill="none" stroke="#ffffff" stroke-width="1" stroke-linejoin="round" stroke-dasharray="7 5" opacity="0.6"/>
+
+    <!-- Kerbs -->
+    <path d="M 148,45 Q 172,45 172,68" fill="none" stroke="#E24B4A" stroke-width="26" stroke-dasharray="5 5" opacity="0.7"/>
+    <path d="M 172,155 Q 172,178 148,178" fill="none" stroke="#E24B4A" stroke-width="26" stroke-dasharray="5 5" opacity="0.7"/>
+    <path d="M 90,178 Q 66,178 66,155 L 66,68 Q 66,45 90,45" fill="none" stroke="#E24B4A" stroke-width="26" stroke-dasharray="5 5" opacity="0.5"/>
+
+    <!-- Tapar kerbs en rectas -->
+    <line x1="90" y1="45" x2="148" y2="45" stroke="#111111" stroke-width="26"/>
+    <line x1="90" y1="178" x2="148" y2="178" stroke="#111111" stroke-width="26"/>
+    <line x1="66" y1="80" x2="66" y2="145" stroke="#111111" stroke-width="26"/>
+    <line x1="172" y1="68" x2="172" y2="90" stroke="#111111" stroke-width="26"/>
+    <line x1="172" y1="132" x2="172" y2="155" stroke="#111111" stroke-width="26"/>
+
+    <!-- Línea de meta -->
+    <rect x="58" y="108" width="16" height="7" fill="white"/>
+    <rect x="58" y="108" width="4" height="3.5" fill="#111"/>
+    <rect x="66" y="108" width="4" height="3.5" fill="#111"/>
+    <rect x="62" y="111.5" width="4" height="3.5" fill="#111"/>
+    <rect x="70" y="111.5" width="4" height="3.5" fill="#111"/>
+
+    <!-- Coches -->
+    <g transform="translate(108,45)">
+      <rect x="-9" y="-5.5" width="18" height="8" rx="2" fill="#E24B4A"/>
+      <rect x="3" y="-4" width="5" height="5" rx="1" fill="#F09595"/>
+      <rect x="-11" y="-2" width="3" height="4" rx="1" fill="#0a0a0a"/>
+      <rect x="8" y="-2" width="3" height="4" rx="1" fill="#0a0a0a"/>
+    </g>
+    <g transform="translate(126,45)">
+      <rect x="-9" y="-5.5" width="18" height="8" rx="2" fill="#F1EFE8"/>
+      <rect x="3" y="-4" width="5" height="5" rx="1" fill="white"/>
+      <rect x="-11" y="-2" width="3" height="4" rx="1" fill="#0a0a0a"/>
+      <rect x="8" y="-2" width="3" height="4" rx="1" fill="#0a0a0a"/>
+    </g>
+  </g>
+</svg>
