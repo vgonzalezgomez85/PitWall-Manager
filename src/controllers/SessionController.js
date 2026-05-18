@@ -614,11 +614,79 @@ class SessionController {
       positionData[k] = { name: s.name, color: s.color, points: positionTimeline[k] };
     });
 
+    // ── Advanced stats por entidad (race-wide) ────────────────────────────
+    // Repite el cálculo de LiveStatsController.buildEntityStats pero a nivel
+    // de carrera completa (no de una manga), y añade evolución por manga.
+    const advancedLaps = db.prepare(`
+      SELECT l.team_id, l.driver_id, l.manga_id,
+             l.lap_time_ms, l.elapsed_ms, l.is_exit, l.is_pit_stop, l.is_ghost,
+             m.number AS manga_number
+      FROM laps l
+      JOIN mangas m ON m.id = l.manga_id
+      JOIN tandas t ON t.id = m.tanda_id
+      WHERE t.race_id = ? AND l.is_ghost = 0
+      ORDER BY t.number ASC, m.number ASC, l.elapsed_ms ASC
+    `).all(race.id);
+
+    const advByEntity = new Map();
+    results.forEach(r => {
+      advByEntity.set(`${r.entity_type}_${r.entity_id}`, {
+        key:    `${r.entity_type}_${r.entity_id}`,
+        name:   r.entity_name,
+        color:  r.color,
+        mangas: new Map(),   // mangaNumber -> [laps]
+        all:    [],
+      });
+    });
+    advancedLaps.forEach(l => {
+      const key = l.team_id ? `team_${l.team_id}` : `driver_${l.driver_id}`;
+      const e = advByEntity.get(key);
+      if (!e) return;
+      e.all.push(l);
+      if (!e.mangas.has(l.manga_number)) e.mangas.set(l.manga_number, []);
+      e.mangas.get(l.manga_number).push(l);
+    });
+
+    function stats(laps) {
+      const racing = laps;
+      const clean  = racing.filter(l => !l.is_exit);
+      const exits  = racing.filter(l => !!l.is_exit);
+      const sum  = a => a.reduce((s,l) => s + l.lap_time_ms, 0);
+      const min  = a => a.length ? Math.min(...a.map(l => l.lap_time_ms)) : null;
+      const avg  = a => a.length ? Math.round(sum(a) / a.length) : null;
+      const bestMs   = min(clean);
+      const avgAll   = avg(racing);
+      const avgClean = avg(clean);
+      const ref      = avgClean ?? avgAll ?? 0;
+      let lostMs = 0;
+      for (const l of exits) { const o = l.lap_time_ms - ref; if (o > 0) lostMs += o; }
+      return {
+        totalLaps:    racing.length,
+        cleanLaps:    clean.length,
+        exitCount:    exits.filter(l => !l.is_pit_stop).length,
+        pitStopCount: exits.filter(l => l.is_pit_stop).length,
+        bestMs, avgAll, avgClean,
+        deltaAll:   (bestMs && avgAll  ) ? avgAll   - bestMs : null,
+        deltaClean: (bestMs && avgClean) ? avgClean - bestMs : null,
+        lostMs,
+        lostLapsEquiv: ref > 0 ? +(lostMs / ref).toFixed(2) : 0,
+      };
+    }
+
+    const advancedStats = [...advByEntity.values()].map(e => {
+      const s = stats(e.all);
+      const perManga = [...e.mangas.entries()]
+        .sort((a,b) => a[0] - b[0])
+        .map(([mn, laps]) => ({ manga: mn, ...stats(laps) }));
+      return { key: e.key, entityName: e.name, color: e.color, ...s, perManga };
+    });
+
     res.render('races/results', {
       t: req.t, race, results, laneSequence, tandas, LANE_COLORS,
       raceBestLapMs, raceBestEntity, raceBestLane, startLaneByEntity,
       progressionByEntity, positionData,
       totalLapEvents: allLapsOrdered.length,
+      advancedStats,
     });
   }
 

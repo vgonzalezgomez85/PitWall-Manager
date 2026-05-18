@@ -15,6 +15,7 @@ const TrainingController          = require('../controllers/TrainingController')
 const MobileController            = require('../controllers/MobileController');
 const LicenseController           = require('../controllers/LicenseController');
 const DiagnosticsController       = require('../controllers/DiagnosticsController');
+const LiveStatsController         = require('../controllers/LiveStatsController');
 const { requireModule }           = require('../middleware/licenseGuard');
 
 router.get('/', (req, res) => res.render('home', { t: req.t }));
@@ -146,6 +147,10 @@ router.post('/training/stop',                 TrainingController.stop);
 router.post('/training/free/reset',           TrainingController.freeReset);
 
 // ── Settings ──────────────────────────────────────────────────────────────────
+router.get( '/race-stats',                        LiveStatsController.index);
+router.get( '/races/:id/live-stats',              LiveStatsController.show);
+router.get( '/races/:id/live-stats.json',         LiveStatsController.json);
+
 router.get( '/diagnostico',                       DiagnosticsController.index);
 router.post('/diagnostico/clear-boundary',        DiagnosticsController.clearBoundary);
 router.post('/diagnostico/cancel-active',         DiagnosticsController.cancelActive);

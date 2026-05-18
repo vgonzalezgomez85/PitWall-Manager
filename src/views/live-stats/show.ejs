@@ -1,0 +1,389 @@
+<%- include('../partials/header', { pageTitle: race.name + ' — Estadísticas en vivo' }) %>
+
+<div class="ls-wrap">
+
+  <!-- ── Barra superior: selección ────────────────────────────────────── -->
+  <div class="ls-bar">
+    <div class="ls-bar__title">
+      <strong><%= race.name %></strong>
+      <% if (isActive) { %>
+        <span class="ls-badge ls-badge--live">EN DIRECTO</span>
+      <% } %>
+    </div>
+    <div class="ls-bar__controls">
+      <select id="lsManga" class="ls-select" title="Manga">
+        <% allMangas.forEach(m => { %>
+          <option value="<%= m.id %>" <%= m.id === selectedMangaId ? 'selected' : '' %>>
+            T<%= m.tandaNumber %> · M<%= m.number %> (<%= m.status %>)
+          </option>
+        <% }) %>
+      </select>
+      <select id="lsEntity" class="ls-select" title="Yo soy…">
+        <option value=""><%= lang === 'es' ? '— Elige tu equipo/piloto —' : '— Pick your team/driver —' %></option>
+        <% entityRows.forEach(e => { %>
+          <option value="<%= e.entity_type %>_<%= e.entity_id %>"><%= e.entity_name %></option>
+        <% }) %>
+      </select>
+      <label class="ls-toggle" title="Δ y media incluyen vueltas con salida/pit-stop">
+        <input type="checkbox" id="lsIncludeOutliers"> <%= lang === 'es' ? 'Con salidas' : 'With exits' %>
+      </label>
+    </div>
+  </div>
+
+  <!-- ── Cronómetro ─────────────────────────────────────────────────────── -->
+  <div class="ls-clock" id="lsClock">
+    <div class="ls-clock__remaining" id="lsClockRemaining">--:--</div>
+    <div class="ls-clock__meta" id="lsClockMeta">—</div>
+  </div>
+
+  <!-- ── Panel del piloto (modo B) ──────────────────────────────────────── -->
+  <section class="ls-section" id="lsMeSection" hidden>
+    <h2 class="ls-section__title">🏁 <span id="lsMeName">—</span></h2>
+    <div class="ls-grid ls-grid--4">
+      <div class="ls-card">
+        <div class="ls-card__label">Posición</div>
+        <div class="ls-card__big" id="lsMePos">—</div>
+      </div>
+      <div class="ls-card">
+        <div class="ls-card__label">Vueltas manga</div>
+        <div class="ls-card__big" id="lsMeLaps">—</div>
+      </div>
+      <div class="ls-card">
+        <div class="ls-card__label">Mejor</div>
+        <div class="ls-card__big" id="lsMeBest">—</div>
+      </div>
+      <div class="ls-card">
+        <div class="ls-card__label">Media</div>
+        <div class="ls-card__big" id="lsMeAvg">—</div>
+      </div>
+      <div class="ls-card">
+        <div class="ls-card__label">Δ (consistencia)</div>
+        <div class="ls-card__big" id="lsMeDelta">—</div>
+        <div class="ls-card__hint" id="lsMeDeltaHint">avg - best</div>
+      </div>
+      <div class="ls-card">
+        <div class="ls-card__label">Salidas / pit-stops</div>
+        <div class="ls-card__big" id="lsMeExits">—</div>
+      </div>
+      <div class="ls-card ls-card--wide">
+        <div class="ls-card__label">⏱ Tiempo perdido en salidas</div>
+        <div class="ls-card__big" id="lsMeLost">—</div>
+        <div class="ls-card__hint" id="lsMeLostEquiv">≈ — vueltas</div>
+      </div>
+      <div class="ls-card ls-card--wide">
+        <div class="ls-card__label">📈 Tramos (pace por minuto)</div>
+        <div class="ls-sectors" id="lsMeSectors">—</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Predicción de adelantamiento ───────────────────────────────────── -->
+  <section class="ls-section" id="lsPredSection" hidden>
+    <h2 class="ls-section__title">🔮 <%= lang === 'es' ? 'Predicción de adelantamiento' : 'Overtake prediction' %></h2>
+    <div class="ls-bar__controls" style="margin-bottom:.8rem">
+      <select id="lsCompare" class="ls-select">
+        <option value=""><%= lang === 'es' ? '— Compárate con… —' : '— Compare with… —' %></option>
+      </select>
+      <button class="ls-btn" id="lsAuto" type="button"><%= lang === 'es' ? 'Mi rival más cercano' : 'My closest rival' %></button>
+    </div>
+    <div class="ls-pred" id="lsPredBox" hidden>
+      <div class="ls-pred__names">
+        <span id="lsPredMe">—</span>
+        <span class="ls-pred__vs">vs</span>
+        <span id="lsPredRival">—</span>
+      </div>
+      <div class="ls-pred__verdict" id="lsPredVerdict">—</div>
+      <div class="ls-pred__grid">
+        <div>
+          <div class="ls-card__label">Diferencia actual</div>
+          <div class="ls-card__big" id="lsPredGapNow">—</div>
+        </div>
+        <div>
+          <div class="ls-card__label">Al final de la manga</div>
+          <div class="ls-card__big" id="lsPredGapManga">—</div>
+        </div>
+        <div>
+          <div class="ls-card__label">Al final de la carrera</div>
+          <div class="ls-card__big" id="lsPredGapRace">—</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Dashboard general (modo A) ─────────────────────────────────────── -->
+  <section class="ls-section">
+    <h2 class="ls-section__title">📋 <%= lang === 'es' ? 'Clasificación general' : 'Overall standings' %></h2>
+    <div class="ls-table-wrap">
+      <table class="ls-table" id="lsTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th><%= lang === 'es' ? 'Participante' : 'Participant' %></th>
+            <th>V</th>
+            <th>Mejor</th>
+            <th>Media</th>
+            <th>Δ</th>
+            <th>Salidas</th>
+            <th><%= lang === 'es' ? '⏱ Perdido' : '⏱ Lost' %></th>
+          </tr>
+        </thead>
+        <tbody id="lsTableBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <a href="/race-stats" class="ls-back">← <%= lang === 'es' ? 'Cambiar carrera' : 'Change race' %></a>
+</div>
+
+<style>
+  .ls-wrap { max-width: 1100px; margin: 0 auto; padding: 1rem }
+  .ls-bar { display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1rem }
+  .ls-bar__title { font-size:1.4rem; color:#e6edf3 }
+  .ls-bar__controls { display:flex; gap:.5rem; flex-wrap:wrap; align-items:center }
+  .ls-select { background:#161b22; color:#c9d1d9; border:1px solid #30363d; border-radius:6px; padding:.5rem .7rem; font-size:.95rem; min-width:160px }
+  .ls-toggle { display:inline-flex; align-items:center; gap:.4rem; color:#8b949e; font-size:.85rem; cursor:pointer; user-select:none }
+  .ls-toggle input { transform: scale(1.2) }
+  .ls-badge { display:inline-block; padding:2px 9px; border-radius:10px; font-size:.7rem; font-weight:700; letter-spacing:.06em; margin-left:.5rem }
+  .ls-badge--live { background:#e63946; color:#fff; animation: pulse 1.5s infinite }
+  @keyframes pulse { 50% { opacity:.7 } }
+
+  .ls-clock { display:flex; align-items:baseline; gap:1rem; background:#0d1117; border:1px solid #30363d; border-radius:12px; padding:1rem 1.4rem; margin-bottom:1.2rem }
+  .ls-clock__remaining { font-family:'Share Tech Mono', monospace; font-size:2.6rem; color:#f6c90e; font-weight:700; line-height:1 }
+  .ls-clock__meta { color:#8b949e; font-size:.9rem }
+
+  .ls-section { margin-bottom:1.6rem; background:#0d1117; border:1px solid #21262d; border-radius:12px; padding:1rem 1.1rem }
+  .ls-section__title { color:#e6edf3; font-size:1.1rem; margin:0 0 .8rem }
+
+  .ls-grid { display:grid; gap:.7rem }
+  .ls-grid--4 { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)) }
+  .ls-card { background:#161b22; border:1px solid #30363d; border-radius:10px; padding:.7rem .9rem }
+  .ls-card--wide { grid-column: 1 / -1 }
+  .ls-card__label { color:#8b949e; font-size:.72rem; text-transform:uppercase; letter-spacing:.05em }
+  .ls-card__big { font-family:'Share Tech Mono', monospace; color:#e6edf3; font-size:1.7rem; font-weight:700; margin-top:.15rem }
+  .ls-card__hint { color:#6e7681; font-size:.75rem; margin-top:.15rem }
+
+  .ls-sectors { display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.3rem }
+  .ls-sector { flex:1; min-width:90px; background:#0d1117; border:1px solid #21262d; border-radius:8px; padding:.5rem .6rem }
+  .ls-sector__lbl { color:#6e7681; font-size:.7rem; text-transform:uppercase; letter-spacing:.05em }
+  .ls-sector__val { font-family:'Share Tech Mono', monospace; color:#c9d1d9; font-weight:700; font-size:1.1rem }
+  .ls-sector__meta { color:#6e7681; font-size:.7rem }
+
+  .ls-pred { background:#161b22; border:1px solid #30363d; border-radius:10px; padding:.9rem 1rem }
+  .ls-pred__names { display:flex; justify-content:center; align-items:center; gap:.7rem; font-size:1.1rem; color:#e6edf3; margin-bottom:.5rem }
+  .ls-pred__vs { color:#8b949e; font-size:.85rem }
+  .ls-pred__verdict { text-align:center; font-size:1.15rem; font-weight:600; padding:.6rem; border-radius:8px; margin-bottom:.7rem }
+  .ls-pred__verdict--win    { background:rgba(46,160,67,.18); color:#3fb950 }
+  .ls-pred__verdict--loss   { background:rgba(248,81,73,.16); color:#f85149 }
+  .ls-pred__verdict--ahead  { background:rgba(31,111,235,.16); color:#58a6ff }
+  .ls-pred__verdict--behind { background:rgba(187,128,9,.18); color:#e6a817 }
+  .ls-pred__grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:.5rem }
+
+  .ls-table-wrap { overflow-x:auto }
+  .ls-table { width:100%; border-collapse:collapse; font-size:.92rem }
+  .ls-table th { color:#8b949e; font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; text-align:left; padding:.45rem .55rem; background:#0a0d13 }
+  .ls-table td { padding:.45rem .55rem; border-bottom:1px solid #21262d; color:#c9d1d9 }
+  .ls-table tr.is-me { background:rgba(31,111,235,.12); color:#fff }
+  .ls-table tr.is-me td:first-child::before { content:'▶ '; color:#58a6ff }
+
+  .ls-btn { background:#161b22; color:#c9d1d9; border:1px solid #30363d; border-radius:6px; padding:.5rem .8rem; cursor:pointer; font-size:.85rem }
+  .ls-btn:hover { border-color:#58a6ff }
+
+  .ls-back { display:inline-block; margin-top:1rem; color:#58a6ff; text-decoration:none }
+</style>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const RACE_ID = <%= race.id %>;
+  let MANGA_ID = <%= selectedMangaId %>;
+  let myKey = localStorage.getItem('ls_entity_' + RACE_ID) || '';
+  let includeOutliers = localStorage.getItem('ls_include_outliers') === '1';
+
+  const $ = id => document.getElementById(id);
+  const fmtMs = (ms) => {
+    if (ms == null) return '—';
+    return (ms / 1000).toFixed(3).replace('.', ',') + 's';
+  };
+  const fmtSec = (ms) => {
+    if (ms == null) return '—';
+    return (ms / 1000).toFixed(2).replace('.', ',') + 's';
+  };
+  const fmtElapsed = (ms) => {
+    if (ms == null || ms < 0) return '--:--';
+    const s = Math.floor(ms / 1000);
+    const m = Math.floor(s / 60);
+    return String(m).padStart(2,'0') + ':' + String(s % 60).padStart(2,'0');
+  };
+
+  // Initialise UI from localStorage
+  $('lsEntity').value = myKey;
+  $('lsIncludeOutliers').checked = includeOutliers;
+
+  // ── Fetch + render ────────────────────────────────────────────────────
+  let latestData = null;
+  async function fetchData() {
+    const params = new URLSearchParams({ mangaId: MANGA_ID });
+    if (myKey) params.append('entity', myKey);
+    const compareKey = $('lsCompare').value;
+    if (compareKey) params.append('compareWith', compareKey);
+    params.append('usePaceClean', includeOutliers ? '0' : '1');
+    try {
+      const r = await fetch(`/races/${RACE_ID}/live-stats.json?` + params.toString());
+      latestData = await r.json();
+      render(latestData);
+    } catch (err) { console.error('[live-stats]', err); }
+  }
+
+  function render(data) {
+    // Clock
+    $('lsClockRemaining').textContent = data.isActive
+      ? fmtElapsed(data.remainingMs)
+      : (data.mangaStatus === 'finished' ? '00:00' : '--:--');
+    $('lsClockMeta').textContent = data.isActive
+      ? `Manga ${data.mangaNumber} en curso · ${data.remainingMangas} mangas pendientes después`
+      : `Manga ${data.mangaNumber} ${data.mangaStatus}`;
+
+    const useAvgKey = includeOutliers ? 'avgAll' : 'avgClean';
+    const useDeltaKey = includeOutliers ? 'deltaAll' : 'deltaClean';
+
+    // Tabla general
+    const tbody = $('lsTableBody');
+    tbody.innerHTML = data.entities.map(e => `
+      <tr class="${e.key === myKey ? 'is-me' : ''}">
+        <td>${e.position}</td>
+        <td><strong>${e.entityName}</strong></td>
+        <td>${e.totalLaps}</td>
+        <td>${fmtMs(e.bestMs)}</td>
+        <td>${fmtMs(e[useAvgKey])}</td>
+        <td>${e[useDeltaKey] != null ? '+' + fmtSec(e[useDeltaKey]) : '—'}</td>
+        <td>${e.exitCount + (e.pitStopCount ? ' / ' + e.pitStopCount + '🔧' : '')}</td>
+        <td>${fmtSec(e.lostMs)} <span style="color:#6e7681">(≈${e.lostLapsEquiv}v)</span></td>
+      </tr>
+    `).join('');
+
+    // Compare select options
+    const sel = $('lsCompare');
+    const prevCompare = sel.value;
+    sel.innerHTML = '<option value="">— Compárate con… —</option>' +
+      data.entities.filter(e => e.key !== myKey)
+        .map(e => `<option value="${e.key}">P${e.position} · ${e.entityName}</option>`).join('');
+    if ([...sel.options].some(o => o.value === prevCompare)) sel.value = prevCompare;
+
+    // Mi panel
+    const me = data.entities.find(e => e.key === myKey);
+    if (me) {
+      $('lsMeSection').hidden = false;
+      $('lsPredSection').hidden = false;
+      $('lsMeName').textContent = me.entityName + ' · P' + me.position;
+      $('lsMePos').textContent = 'P' + me.position;
+      $('lsMeLaps').textContent = me.totalLaps;
+      $('lsMeBest').textContent = fmtMs(me.bestMs);
+      $('lsMeAvg').textContent  = fmtMs(me[useAvgKey]);
+      $('lsMeDelta').textContent = me[useDeltaKey] != null ? '+' + fmtSec(me[useDeltaKey]) : '—';
+      $('lsMeDeltaHint').textContent = includeOutliers ? 'avg (con salidas) − best' : 'avg limpio − best';
+      $('lsMeExits').textContent = `${me.exitCount} salidas · ${me.pitStopCount} pit`;
+      $('lsMeLost').textContent  = fmtSec(me.lostMs);
+      $('lsMeLostEquiv').textContent = `≈ ${me.lostLapsEquiv} vueltas perdidas`;
+      $('lsMeSectors').innerHTML = me.sectors.map(s => `
+        <div class="ls-sector">
+          <div class="ls-sector__lbl">${s.label}</div>
+          <div class="ls-sector__val">${fmtMs(includeOutliers ? s.avgAll : s.avgClean)}</div>
+          <div class="ls-sector__meta">${s.laps}v · ${s.exits} salidas</div>
+        </div>
+      `).join('');
+    } else {
+      $('lsMeSection').hidden = true;
+      $('lsPredSection').hidden = true;
+    }
+
+    // Predicción
+    renderPrediction(data);
+  }
+
+  function renderPrediction(data) {
+    const p = data.prediction;
+    if (!p) { $('lsPredBox').hidden = true; return; }
+    $('lsPredBox').hidden = false;
+    $('lsPredMe').textContent    = p.myName;
+    $('lsPredRival').textContent = p.rivalName;
+    $('lsPredGapNow').textContent   = (p.gapNow >= 0 ? '+' : '') + p.gapNow + ' v';
+    $('lsPredGapManga').textContent = (p.gapEndOfManga >= 0 ? '+' : '') + p.gapEndOfManga.toFixed(2) + ' v';
+    $('lsPredGapRace').textContent  = (p.gapEndOfRace  >= 0 ? '+' : '') + p.gapEndOfRace.toFixed(2)  + ' v';
+
+    const v = $('lsPredVerdict');
+    v.className = 'ls-pred__verdict';
+    let text = '';
+    if (p.willPassInManga) {
+      v.classList.add('ls-pred__verdict--win');
+      text = `🚀 Vas a adelantarle EN ESTA MANGA. Ganarás ${Math.abs(p.gapEndOfManga).toFixed(2)} vueltas de ventaja.`;
+    } else if (p.willPassInRace) {
+      v.classList.add('ls-pred__verdict--win');
+      text = `🏁 Le adelantarás durante la carrera. Margen final estimado: +${p.gapEndOfRace.toFixed(2)} vueltas.`;
+    } else if (p.willBePassedManga) {
+      v.classList.add('ls-pred__verdict--loss');
+      text = `⚠️ Te va a adelantar EN ESTA MANGA si sigue así. Defenderás cuando le saques al menos ${Math.abs(p.gapEndOfManga).toFixed(2)} vueltas más.`;
+    } else if (p.willBePassedRace) {
+      v.classList.add('ls-pred__verdict--loss');
+      text = `⚠️ Te alcanzará en la carrera. Para mantenerle detrás necesitas mejorar.`;
+    } else if (p.gapNow < 0) {
+      v.classList.add('ls-pred__verdict--behind');
+      text = `🔻 Vas por detrás y a este ritmo no le adelantas. Te faltan ${Math.abs(p.gapEndOfRace).toFixed(2)} vueltas al final.`;
+    } else if (p.gapNow > 0) {
+      v.classList.add('ls-pred__verdict--ahead');
+      text = `🟢 Vas por delante y mantienes ventaja: +${p.gapEndOfRace.toFixed(2)} vueltas al final.`;
+    } else {
+      v.classList.add('ls-pred__verdict--ahead');
+      text = `🟰 Empate técnico. Diferencia final estimada: ${p.gapEndOfRace.toFixed(2)} vueltas.`;
+    }
+    v.textContent = text;
+  }
+
+  // ── Events ────────────────────────────────────────────────────────────
+  $('lsManga').addEventListener('change', () => {
+    MANGA_ID = parseInt($('lsManga').value, 10);
+    fetchData();
+  });
+  $('lsEntity').addEventListener('change', () => {
+    myKey = $('lsEntity').value;
+    localStorage.setItem('ls_entity_' + RACE_ID, myKey);
+    fetchData();
+  });
+  $('lsCompare').addEventListener('change', fetchData);
+  $('lsIncludeOutliers').addEventListener('change', () => {
+    includeOutliers = $('lsIncludeOutliers').checked;
+    localStorage.setItem('ls_include_outliers', includeOutliers ? '1' : '0');
+    fetchData();
+  });
+  $('lsAuto').addEventListener('click', () => {
+    if (!latestData || !myKey) return;
+    const me = latestData.entities.find(e => e.key === myKey);
+    if (!me) return;
+    // Más cercano = el de delante si lo hay, si no el de atrás.
+    const ahead = latestData.entities.find(e => e.position === me.position - 1);
+    const behind = latestData.entities.find(e => e.position === me.position + 1);
+    const rival = ahead || behind;
+    if (rival) {
+      $('lsCompare').value = rival.key;
+      fetchData();
+    }
+  });
+
+  // ── Initial + socket live updates ─────────────────────────────────────
+  fetchData();
+
+  // Refresh clock every second locally
+  setInterval(() => {
+    if (latestData?.isActive && latestData.remainingMs != null) {
+      latestData.remainingMs = Math.max(0, latestData.remainingMs - 1000);
+      $('lsClockRemaining').textContent = fmtElapsed(latestData.remainingMs);
+    }
+  }, 1000);
+
+  // Refresh data when laps/standings arrive
+  const socket = io();
+  socket.on('standings', fetchData);
+  socket.on('lap', fetchData);
+  socket.on('manga:started', fetchData);
+  socket.on('manga:stopped', fetchData);
+</script>
+
+<%- include('../partials/footer') %>
