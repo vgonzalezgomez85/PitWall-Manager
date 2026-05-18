@@ -117,6 +117,13 @@ SerialService.on('race_resume_signal', () => {
   SocketService.emit('race:semaphore');
 });
 
+// Trama 2 (0xA2) of GO or resume: intermediate step of the DS semaphore.
+// Re-emitted so the on-screen semaphore lights its "all reds" stage exactly
+// when the physical DS does — keeps both in sync regardless of firmware timing.
+SerialService.on('semaphore_step', () => {
+  SocketService.emit('race:semaphore_step');
+});
+
 SerialService.on('race_resumed', () => {
   TimingService.resumeManga();
 });
