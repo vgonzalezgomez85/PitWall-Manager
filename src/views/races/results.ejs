@@ -150,6 +150,9 @@
       <button class="results-tab" data-tab="positions">
         🏁 <%= lang === 'es' ? 'Posiciones' : 'Positions' %>
       </button>
+      <button class="results-tab" data-tab="advanced">
+        📊 <%= lang === 'es' ? 'Estadísticas avanzadas' : 'Advanced stats' %>
+      </button>
     </div>
 
     <!-- ── Total laps ranking ── -->
@@ -452,44 +455,6 @@
       </div>
     </div>
 
-  <% } %>
-
-  <!-- Lap corrections per manga -->
-  <% if (tandas.some(t => t.mangas && t.mangas.length > 0)) { %>
-    <div style="margin-top:2.5rem">
-      <h2 class="section-title">
-        🔧 <%= lang === 'es' ? 'Corrección de vueltas' : 'Lap Corrections' %>
-      </h2>
-      <p class="form-hint" style="margin-bottom:1rem">
-        <%= lang === 'es'
-          ? 'Elimina vueltas fantasma, transfiere vueltas entre carriles o añade vueltas manualmente.'
-          : 'Remove ghost laps, transfer laps between lanes, or add laps manually.' %>
-      </p>
-      <div style="display:flex;flex-direction:column;gap:.5rem">
-        <% tandas.forEach(t => { %>
-          <% if (t.mangas && t.mangas.length > 0) { %>
-            <div class="tanda-block" style="padding:.75rem 1rem">
-              <span class="tanda-num"><%= lang === 'es' ? 'Tanda' : 'Round' %> <%= t.number %></span>
-              <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.5rem">
-                <% t.mangas.forEach(m => { %>
-                  <a href="/races/<%= race.id %>/mangas/<%= m.id %>/corrections"
-                     class="btn btn--ghost btn--sm">
-                    <%= lang === 'es' ? 'Manga' : 'Heat' %> <%= m.number %>
-                    <span class="badge badge--<%= m.status %>" style="font-size:.65rem;margin-left:.3rem">
-                      <%= {pending: lang==='es'?'Pend.':'Pend.', active: lang==='es'?'Activa':'Active', finished: '✓'}[m.status] %>
-                    </span>
-                  </a>
-                <% }) %>
-              </div>
-            </div>
-          <% } %>
-        <% }) %>
-      </div>
-    </div>
-  <% } %>
-
-</div>
-
     <!-- ── Progression chart ── -->
     <div class="results-panel" id="tab-progression">
       <div class="progression-controls">
@@ -556,6 +521,183 @@
           : 'Each line shows a team/driver position throughout the race. P1 is at the top. X axis is chronological lap order (each crossing is a point).' %>
       </p>
     </div>
+
+    <!-- ── Advanced stats (per-pilot deep dive + head-to-head) ── -->
+    <div class="results-panel" id="tab-advanced">
+      <div class="adv-controls">
+        <label>
+          <%= lang === 'es' ? 'Equipo/piloto:' : 'Team/driver:' %>
+          <select id="advEntity" class="prog-select"></select>
+        </label>
+        <label>
+          <%= lang === 'es' ? 'Comparar con:' : 'Compare with:' %>
+          <select id="advCompare" class="prog-select">
+            <option value=""><%= lang === 'es' ? '— Sin comparar —' : '— None —' %></option>
+          </select>
+        </label>
+        <label style="cursor:pointer; user-select:none">
+          <input type="checkbox" id="advIncludeOutliers"> <%= lang === 'es' ? 'Con salidas/pit-stops' : 'With exits/pit-stops' %>
+        </label>
+      </div>
+
+      <div class="adv-panels" id="advPanels"></div>
+
+      <div class="adv-section" id="advCompareSection" hidden>
+        <h3 style="color:#e6edf3; margin:1.5rem 0 .8rem"><%= lang === 'es' ? 'Comparativa head-to-head' : 'Head-to-head' %></h3>
+        <table class="adv-compare-table" id="advCompareTable">
+          <thead>
+            <tr>
+              <th></th>
+              <th id="advCompA"></th>
+              <th></th>
+              <th id="advCompB"></th>
+              <th><%= lang === 'es' ? 'Diferencia' : 'Difference' %></th>
+            </tr>
+          </thead>
+          <tbody id="advCompareBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <style>
+      .adv-controls { display:flex; gap:1.2rem; align-items:center; flex-wrap:wrap; margin-bottom:1.2rem }
+      .adv-controls label { color:#8b949e; font-size:.85rem; display:flex; align-items:center; gap:.4rem }
+      .adv-panels { display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:.7rem }
+      .adv-card { background:#161b22; border:1px solid #30363d; border-radius:10px; padding:.8rem 1rem }
+      .adv-card__label { color:#8b949e; font-size:.72rem; text-transform:uppercase; letter-spacing:.05em }
+      .adv-card__big { font-family:'Share Tech Mono', monospace; color:#e6edf3; font-size:1.6rem; font-weight:700; margin-top:.15rem }
+      .adv-card__hint { color:#6e7681; font-size:.75rem; margin-top:.15rem }
+      .adv-card--wide { grid-column: 1 / -1 }
+      .adv-mangas { display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.3rem }
+      .adv-manga { flex:0 0 auto; background:#0d1117; border:1px solid #21262d; border-radius:8px; padding:.5rem .7rem; min-width:100px }
+      .adv-manga__lbl { color:#6e7681; font-size:.7rem; text-transform:uppercase; letter-spacing:.05em }
+      .adv-manga__val { font-family:'Share Tech Mono', monospace; color:#c9d1d9; font-weight:700; font-size:1rem }
+      .adv-manga__meta { color:#6e7681; font-size:.7rem }
+      .adv-compare-table { width:100%; border-collapse:collapse; font-size:.92rem }
+      .adv-compare-table th, .adv-compare-table td { padding:.5rem .7rem; border-bottom:1px solid #21262d; color:#c9d1d9 }
+      .adv-compare-table th { color:#8b949e; font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; background:#0a0d13 }
+      .adv-diff--better { color:#3fb950; font-weight:700 }
+      .adv-diff--worse  { color:#f85149; font-weight:700 }
+    </style>
+
+    <script id="advancedStatsData" type="application/json"><%- JSON.stringify(advancedStats || []) %></script>
+    <script>
+      (function() {
+        const data = JSON.parse(document.getElementById('advancedStatsData').textContent || '[]');
+        if (data.length === 0) return;
+        const selEntity  = document.getElementById('advEntity');
+        const selCompare = document.getElementById('advCompare');
+        const cbOutliers = document.getElementById('advIncludeOutliers');
+        const panels     = document.getElementById('advPanels');
+        const cmpSection = document.getElementById('advCompareSection');
+        let includeOutliers = false;
+
+        // Populate selects
+        data.forEach(e => {
+          selEntity.innerHTML  += `<option value="${e.key}">${e.entityName}</option>`;
+          selCompare.innerHTML += `<option value="${e.key}">${e.entityName}</option>`;
+        });
+        selEntity.value = data[0].key;
+
+        function fmtMs(ms) { return ms == null ? '—' : (ms/1000).toFixed(3).replace('.', ',') + 's'; }
+        function fmtSec(ms) { return ms == null ? '—' : (ms/1000).toFixed(2).replace('.', ',') + 's'; }
+        function getStat(e, key) {
+          if (key === 'avg')   return includeOutliers ? e.avgAll   : e.avgClean;
+          if (key === 'delta') return includeOutliers ? e.deltaAll : e.deltaClean;
+          return e[key];
+        }
+
+        function renderEntity(e) {
+          const avg   = getStat(e, 'avg');
+          const delta = getStat(e, 'delta');
+          panels.innerHTML = `
+            <div class="adv-card">
+              <div class="adv-card__label">Total vueltas</div>
+              <div class="adv-card__big">${e.totalLaps}</div>
+              <div class="adv-card__hint">${e.cleanLaps} limpias</div>
+            </div>
+            <div class="adv-card">
+              <div class="adv-card__label">Mejor vuelta</div>
+              <div class="adv-card__big">${fmtMs(e.bestMs)}</div>
+            </div>
+            <div class="adv-card">
+              <div class="adv-card__label">Media ${includeOutliers ? '(con salidas)' : 'limpia'}</div>
+              <div class="adv-card__big">${fmtMs(avg)}</div>
+            </div>
+            <div class="adv-card">
+              <div class="adv-card__label">Δ consistencia</div>
+              <div class="adv-card__big">${delta != null ? '+' + fmtSec(delta) : '—'}</div>
+              <div class="adv-card__hint">avg − best</div>
+            </div>
+            <div class="adv-card">
+              <div class="adv-card__label">Salidas · pit-stops</div>
+              <div class="adv-card__big">${e.exitCount} · ${e.pitStopCount}</div>
+            </div>
+            <div class="adv-card">
+              <div class="adv-card__label">⏱ Tiempo perdido</div>
+              <div class="adv-card__big">${fmtSec(e.lostMs)}</div>
+              <div class="adv-card__hint">≈ ${e.lostLapsEquiv} vueltas</div>
+            </div>
+            <div class="adv-card adv-card--wide">
+              <div class="adv-card__label">📈 Evolución por manga</div>
+              <div class="adv-mangas">
+                ${e.perManga.map(p => `
+                  <div class="adv-manga">
+                    <div class="adv-manga__lbl">Manga ${p.manga}</div>
+                    <div class="adv-manga__val">${fmtMs(includeOutliers ? p.avgAll : p.avgClean)}</div>
+                    <div class="adv-manga__meta">${p.totalLaps}v · ${p.exitCount} salidas</div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }
+
+        function renderCompare(a, b) {
+          if (!b) { cmpSection.hidden = true; return; }
+          cmpSection.hidden = false;
+          document.getElementById('advCompA').textContent = a.entityName;
+          document.getElementById('advCompB').textContent = b.entityName;
+          const rows = [
+            ['Total vueltas',         a.totalLaps,             b.totalLaps,             'higher'],
+            ['Mejor vuelta',          fmtMs(a.bestMs),         fmtMs(b.bestMs),         'lowerMs', a.bestMs, b.bestMs],
+            ['Media',                 fmtMs(getStat(a,'avg')), fmtMs(getStat(b,'avg')), 'lowerMs', getStat(a,'avg'), getStat(b,'avg')],
+            ['Δ consistencia',        fmtSec(getStat(a,'delta')), fmtSec(getStat(b,'delta')), 'lowerMs', getStat(a,'delta'), getStat(b,'delta')],
+            ['Salidas',               a.exitCount,             b.exitCount,             'lower'],
+            ['Pit-stops',             a.pitStopCount,          b.pitStopCount,          'lower'],
+            ['Tiempo perdido',        fmtSec(a.lostMs),        fmtSec(b.lostMs),        'lowerMs', a.lostMs, b.lostMs],
+          ];
+          document.getElementById('advCompareBody').innerHTML = rows.map(r => {
+            const [label, va, vb, cmp, na, nb] = r;
+            const aN = na != null ? na : (typeof va === 'number' ? va : null);
+            const bN = nb != null ? nb : (typeof vb === 'number' ? vb : null);
+            let cls = '';
+            let diff = '';
+            if (aN != null && bN != null) {
+              const d = aN - bN;
+              if (cmp === 'higher')  { cls = d > 0 ? 'adv-diff--better' : (d < 0 ? 'adv-diff--worse' : ''); diff = (d > 0 ? '+' : '') + d; }
+              if (cmp === 'lower')   { cls = d < 0 ? 'adv-diff--better' : (d > 0 ? 'adv-diff--worse' : ''); diff = (d > 0 ? '+' : '') + d; }
+              if (cmp === 'lowerMs') { cls = d < 0 ? 'adv-diff--better' : (d > 0 ? 'adv-diff--worse' : ''); diff = (d > 0 ? '+' : '') + (d/1000).toFixed(2).replace('.',',') + 's'; }
+            }
+            return `<tr><td>${label}</td><td>${va}</td><td>vs</td><td>${vb}</td><td class="${cls}">${diff || '—'}</td></tr>`;
+          }).join('');
+        }
+
+        function update() {
+          const a = data.find(e => e.key === selEntity.value);
+          const b = data.find(e => e.key === selCompare.value);
+          if (a) renderEntity(a);
+          renderCompare(a, b);
+        }
+
+        selEntity.addEventListener('change',  update);
+        selCompare.addEventListener('change', update);
+        cbOutliers.addEventListener('change', () => { includeOutliers = cbOutliers.checked; update(); });
+
+        document.querySelector('[data-tab="advanced"]')?.addEventListener('click', () => setTimeout(update, 50));
+        update();
+      })();
+    </script>
 
 <script id="positionsData" type="application/json"><%- JSON.stringify(positionData || {}) %></script>
 <script id="progressionData" type="application/json"><%- JSON.stringify(progressionByEntity || {}) %></script>
@@ -818,6 +960,44 @@
     });
   })();
 </script>
+
+    <!-- Lap corrections per manga -->
+    <% if (tandas.some(t => t.mangas && t.mangas.length > 0)) { %>
+      <div style="margin-top:2.5rem">
+        <h2 class="section-title">
+          🔧 <%= lang === 'es' ? 'Corrección de vueltas' : 'Lap Corrections' %>
+        </h2>
+        <p class="form-hint" style="margin-bottom:1rem">
+          <%= lang === 'es'
+            ? 'Elimina vueltas fantasma, transfiere vueltas entre carriles o añade vueltas manualmente.'
+            : 'Remove ghost laps, transfer laps between lanes, or add laps manually.' %>
+        </p>
+        <div style="display:flex;flex-direction:column;gap:.5rem">
+          <% tandas.forEach(t => { %>
+            <% if (t.mangas && t.mangas.length > 0) { %>
+              <div class="tanda-block" style="padding:.75rem 1rem">
+                <span class="tanda-num"><%= lang === 'es' ? 'Tanda' : 'Round' %> <%= t.number %></span>
+                <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.5rem">
+                  <% t.mangas.forEach(m => { %>
+                    <a href="/races/<%= race.id %>/mangas/<%= m.id %>/corrections"
+                       class="btn btn--ghost btn--sm">
+                      <%= lang === 'es' ? 'Manga' : 'Heat' %> <%= m.number %>
+                      <span class="badge badge--<%= m.status %>" style="font-size:.65rem;margin-left:.3rem">
+                        <%= {pending: lang==='es'?'Pend.':'Pend.', active: lang==='es'?'Activa':'Active', finished: '✓'}[m.status] %>
+                      </span>
+                    </a>
+                  <% }) %>
+                </div>
+              </div>
+            <% } %>
+          <% }) %>
+        </div>
+      </div>
+    <% } %>
+
+  <% } %>
+
+</div>
 
 <script>
   document.querySelectorAll('.results-tab').forEach(btn => {
