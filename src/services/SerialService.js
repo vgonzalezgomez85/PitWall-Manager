@@ -54,7 +54,7 @@ const LANE_MAP = [
 
 // ── Per-circuit connection ────────────────────────────────────────────────────
 class CircuitConnection {
-  constructor(circuitIndex, laneOffset, onCrossing, onGo, onStop, onPause, onResume, onGoSignal, onFinish, onResumeSignal) {
+  constructor(circuitIndex, laneOffset, onCrossing, onGo, onStop, onPause, onResume, onGoSignal, onFinish, onResumeSignal, onSemaphoreStep) {
     this._circuitIndex     = circuitIndex;
     this._laneOffset       = laneOffset;
     this._onCrossing       = onCrossing;
@@ -65,6 +65,7 @@ class CircuitConnection {
     this._onGoSignal       = onGoSignal;
     this._onFinish         = onFinish;
     this._onResumeSignal   = onResumeSignal || (() => {});
+    this._onSemaphoreStep  = onSemaphoreStep || (() => {});
     this._port          = null;
     this._rawLog        = [];
     this._frameBuf      = [];
@@ -305,13 +306,20 @@ class CircuitConnection {
       return;
     }
 
-    // Trama 2 (0xA2) is consumed silently — only relevant for hardware-driven LED panels
+    // Trama 2 (0xA2) is consumed silently for state machine, but used to drive
+    // the on-screen semaphore in real time so it matches the physical DS lights.
     if ((this._pendingGoStart || this._pendingResumeStart) && frame.length >= 9 && frame[7] === 0x00 && frame[8] === 0xa2) {
+      this._onSemaphoreStep();
       return;
     }
 
     // ── Control frame (no lane crossing) ──────────────────────────────────────
     if (!laneByte) {
+      // TEMPORARY: dump every control frame to capture pause sequence
+      console.log(`[DS-300 C${this._circuitIndex + 1}] CTRL frame @ ${Date.now()}: ` +
+        frame.map(b => b.toString(16).padStart(2,'0')).join(' ') +
+        `  (B7=0x${frame[7]?.toString(16)} B8=0x${frame[8]?.toString(16)})`);
+
       // Forced stop: byte8=0xa7
       if (frame[8] === 0xa7) {
         this._setRaceState('stopped');
@@ -470,6 +478,7 @@ class SerialServiceClass extends EventEmitter {
         ms   => this.emit('race_go', { durationMs: ms }),
         ()   => this.emit('race_finished'),
         ()   => this.emit('race_resume_signal'),
+        ()   => this.emit('semaphore_step'),
       );
       await conn.connect(port, baud, { dataBits, parity, stopBits, flowControl });
       connections.push(conn);

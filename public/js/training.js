@@ -203,6 +203,10 @@ function announce(text) {
 }
 
 // ── Semaphore ─────────────────────────────────────────────────────────────────
+let _semaphoreL2Timer = null;
+let _semaphoreL3Timer = null;
+let _semaphoreStartedAt = 0;
+const SEMAPHORE_TOTAL_MS = 3000;
 function showSemaphore() {
   if (document.getElementById('semaphore-overlay')) return;
   const ov = document.createElement('div');
@@ -211,22 +215,42 @@ function showSemaphore() {
   ov.innerHTML = `<div class="semaphore-panel">${[1,2,3].map(i =>
     `<div class="s-light" id="sl${i}"></div>`).join('')}</div>`;
   document.body.appendChild(ov);
-  // 3 luces rojas progresivas sobre los ~3.1s de la secuencia GO. La verde se
-  // dispara con la trama 3 (race_started → training:autostart) en semaphoreGo().
-  [0, 700, 1400].forEach((delay, i) =>
-    setTimeout(() => document.getElementById(`sl${i + 1}`)?.classList.add('lit'), delay)
-  );
+  _semaphoreStartedAt = Date.now();
+  // Secuencia DS-300:
+  //   A1 (t=0)    → roja 1
+  //   t=833       → roja 2
+  //   t=1666      → roja 3
+  //   A2 (t=2500) → todas → verde
+  //   A3 (t=2953) → overlay desaparece a t=3000ms (50ms de verde extra)
+  document.getElementById('sl1')?.classList.add('lit');
+  _semaphoreL2Timer = setTimeout(() => document.getElementById('sl2')?.classList.add('lit'), 833);
+  _semaphoreL3Timer = setTimeout(() => document.getElementById('sl3')?.classList.add('lit'), 1666);
 }
-function semaphoreGo() {
-  const ov = document.getElementById('semaphore-overlay');
-  if (!ov) return;
+function semaphoreStep() {
+  if (_semaphoreL2Timer) { clearTimeout(_semaphoreL2Timer); _semaphoreL2Timer = null; }
+  if (_semaphoreL3Timer) { clearTimeout(_semaphoreL3Timer); _semaphoreL3Timer = null; }
   [1,2,3].forEach(n => {
     const el = document.getElementById(`sl${n}`);
     if (!el) return;
     el.classList.remove('lit');
     el.classList.add('go');
   });
-  setTimeout(() => ov.remove(), 700);
+}
+function semaphoreGo() {
+  const ov = document.getElementById('semaphore-overlay');
+  if (!ov) return;
+  if (_semaphoreL2Timer) { clearTimeout(_semaphoreL2Timer); _semaphoreL2Timer = null; }
+  if (_semaphoreL3Timer) { clearTimeout(_semaphoreL3Timer); _semaphoreL3Timer = null; }
+  // Si A2 no llegó (firmware antiguo), forzamos verde antes de quitar.
+  [1,2,3].forEach(n => {
+    const el = document.getElementById(`sl${n}`);
+    if (!el) return;
+    el.classList.remove('lit');
+    el.classList.add('go');
+  });
+  const elapsed = Date.now() - _semaphoreStartedAt;
+  const wait = Math.max(0, SEMAPHORE_TOTAL_MS - elapsed);
+  setTimeout(() => ov.remove(), wait);
 }
 
 // ── Socket.io ─────────────────────────────────────────────────────────────────
@@ -234,6 +258,7 @@ const socket = io();
 
 socket.on('connect', () => socket.emit('training:request'));
 socket.on('race:semaphore', () => showSemaphore());
+socket.on('race:semaphore_step', () => semaphoreStep());
 socket.on('training:autostart', () => semaphoreGo());
 
 socket.on('training:data', (lanes) => {
