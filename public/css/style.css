@@ -1,7 +1,7 @@
 /* ── Variables ─────────────────────────────────────────────────────────── */
 :root {
-  --bg:          #0d1117;
-  --bg-card:     #161b22;
+  --bg:          #000000;
+  --bg-card:     #0a0a0a;
   --bg-input:    #21262d;
   --bg-hover:    #1c2128;
   --border:      #30363d;
@@ -35,7 +35,7 @@ input, button, select { font-family: inherit; }
   position: sticky; top: 0; z-index: 100;
   display: flex; align-items: center; gap: 1.5rem;
   padding: 1.5rem 2rem;
-  background: rgba(13,17,23,.9);
+  background: rgba(0, 0, 0,.9);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
 }
@@ -992,7 +992,7 @@ input, button, select { font-family: inherit; }
   margin: 0 auto;
 }
 .training-mode-card {
-  background: #0d1520;
+  background: #0a0a0a;
   border: 2px solid #21262d;
   border-radius: 12px;
   padding: 2rem 1.5rem;
@@ -1044,7 +1044,7 @@ input, button, select { font-family: inherit; }
 .home-card--hero .home-card__title { font-size: 1.7rem; }
 .home-card--hero .home-card__desc  { font-size: .95rem; }
 .home-card {
-  background: #0d1520;
+  background: #0a0a0a;
   border: 2px solid #21262d;
   border-radius: 14px;
   padding: 2rem 1.75rem;
@@ -1083,7 +1083,7 @@ input, button, select { font-family: inherit; }
 .lane-slot {
   display: flex; align-items: center; gap: .6rem;
   padding: .5rem .65rem;
-  background: #0d1117; border: 1px dashed #30363d; border-radius: 6px;
+  background: #000000; border: 1px dashed #30363d; border-radius: 6px;
   min-height: 42px; transition: border-color .15s, background .15s;
 }
 .lane-slot.slot--over {

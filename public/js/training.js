@@ -149,6 +149,19 @@ function toggleView() {
   btn.classList.toggle('active', expanded);
 }
 
+// Modo TV: fuentes/elementos grandes para lectura desde ~4m. Persiste en localStorage.
+function applyTvMode(on) {
+  document.body.classList.toggle('tv-mode', !!on);
+  const btn = document.getElementById('tvBtn');
+  if (btn) btn.classList.toggle('active', !!on);
+}
+function toggleTvMode() {
+  const next = !document.body.classList.contains('tv-mode');
+  applyTvMode(next);
+  try { localStorage.setItem('slotime.training.tvMode', next ? '1' : '0'); } catch {}
+}
+applyTvMode(localStorage.getItem('slotime.training.tvMode') === '1');
+
 function flashCard(laneNum) {
   const el = document.getElementById(`tr-card-${laneNum}`);
   if (!el) return;
