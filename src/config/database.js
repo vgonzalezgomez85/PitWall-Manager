@@ -184,6 +184,11 @@ const migrations = [
   `ALTER TABLE driver_profiles ADD COLUMN qr_code TEXT UNIQUE`,
   `ALTER TABLE circuits ADD COLUMN lane_sequence TEXT NOT NULL DEFAULT '[]'`,
 
+  // Track minimap: imagen del circuito (base64 data URL) + polilínea relativa
+  // (array JSON de [x, y] en coords 0..1 sobre el ancho/alto de la imagen).
+  `ALTER TABLE circuits ADD COLUMN track_image_b64    TEXT`,
+  `ALTER TABLE circuits ADD COLUMN track_outline_json TEXT NOT NULL DEFAULT '[]'`,
+
   // ── Categories & cars ──────────────────────────────────────────────────────
   `CREATE TABLE IF NOT EXISTS categories (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,

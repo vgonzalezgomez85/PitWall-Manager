@@ -9,23 +9,32 @@ class Circuit {
     return db.prepare('SELECT * FROM circuits WHERE id = ?').get(id);
   }
 
-  static create({ name, circuits_count, circuits_config, lanes_count, min_lap_ms, description, lane_sequence }) {
+  static create({ name, circuits_count, circuits_config, lanes_count, min_lap_ms, description, lane_sequence, track_image_b64, track_outline_json }) {
     const cfg = Array.isArray(circuits_config) ? JSON.stringify(circuits_config) : (circuits_config || '[]');
     const seq = Array.isArray(lane_sequence) ? JSON.stringify(lane_sequence) : (lane_sequence || '[]');
+    const outline = Array.isArray(track_outline_json) ? JSON.stringify(track_outline_json) : (track_outline_json || '[]');
     const { lastInsertRowid } = db.prepare(`
-      INSERT INTO circuits (name, circuits_count, circuits_config, lanes_count, min_lap_ms, description, lane_sequence)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(name, circuits_count || 1, cfg, lanes_count || 6, min_lap_ms || 0, description || null, seq);
+      INSERT INTO circuits (name, circuits_count, circuits_config, lanes_count, min_lap_ms, description, lane_sequence, track_image_b64, track_outline_json)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(name, circuits_count || 1, cfg, lanes_count || 6, min_lap_ms || 0, description || null, seq, track_image_b64 || null, outline);
     return lastInsertRowid;
   }
 
-  static update(id, { name, circuits_count, circuits_config, lanes_count, min_lap_ms, description, lane_sequence }) {
+  static update(id, { name, circuits_count, circuits_config, lanes_count, min_lap_ms, description, lane_sequence, track_image_b64, track_outline_json }) {
     const cfg = Array.isArray(circuits_config) ? JSON.stringify(circuits_config) : (circuits_config || '[]');
     const seq = Array.isArray(lane_sequence) ? JSON.stringify(lane_sequence) : (lane_sequence || '[]');
+    const outline = Array.isArray(track_outline_json) ? JSON.stringify(track_outline_json) : (track_outline_json || '[]');
     db.prepare(`
-      UPDATE circuits SET name=?, circuits_count=?, circuits_config=?, lanes_count=?, min_lap_ms=?, description=?, lane_sequence=?
+      UPDATE circuits SET name=?, circuits_count=?, circuits_config=?, lanes_count=?, min_lap_ms=?, description=?, lane_sequence=?, track_image_b64=?, track_outline_json=?
       WHERE id=?
-    `).run(name, circuits_count || 1, cfg, lanes_count || 6, min_lap_ms || 0, description || null, seq, id);
+    `).run(name, circuits_count || 1, cfg, lanes_count || 6, min_lap_ms || 0, description || null, seq, track_image_b64 || null, outline, id);
+  }
+
+  static getTrackOutline(circuit) {
+    try {
+      const o = JSON.parse(circuit.track_outline_json || '[]');
+      return Array.isArray(o) ? o : [];
+    } catch { return []; }
   }
 
   static getLaneSequence(circuit) {
