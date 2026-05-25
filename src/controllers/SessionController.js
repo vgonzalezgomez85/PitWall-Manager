@@ -1420,6 +1420,113 @@ class SessionController {
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.send(Buffer.from(buf));
   }
+
+  // ── Puntos de clasificación ─────────────────────────────────────────────
+  // Tabla fija (pos 1..64). Posiciones por encima de 64 → 0 puntos.
+  static _pointsFor(position) {
+    const T = SessionController._POINTS_TABLE;
+    if (position < 1 || position > T.length) return 0;
+    return T[position - 1];
+  }
+
+  // GET /races/:id/results/points.xlsx
+  static async pointsExcel(req, res) {
+    const race = Race.findById(req.params.id);
+    if (!race) return res.status(404).send('Not found');
+
+    const isEs = (req.query.lang || 'es') === 'es';
+    const rows = SessionController._buildPointsRanking(race.id);
+
+    const fmtMs = (ms) => {
+      if (ms == null) return '';
+      const s = Math.floor(ms / 1000);
+      const h = Math.floor((ms % 1000) / 10);
+      const m = Math.floor(s / 60);
+      return (m > 0 ? m + ':' : '') + String(s % 60).padStart(m > 0 ? 2 : 1, '0') + '.' + String(h).padStart(2,'0');
+    };
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'SloTime';
+    wb.created = new Date();
+    const ws = wb.addWorksheet(isEs ? 'Puntos' : 'Points');
+    ws.columns = [{ width: 5 }, { width: 30 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 10 }, { width: 12 }];
+
+    const hdr = ws.addRow(['#', isEs ? 'Piloto / Equipo' : 'Driver / Team',
+                           isEs ? 'Total vueltas' : 'Total laps',
+                           isEs ? 'Mejor vuelta'  : 'Best lap',
+                           isEs ? 'Vuelta media'  : 'Avg lap',
+                           isEs ? 'Mangas'        : 'Heats',
+                           isEs ? 'Puntos'        : 'Points']);
+    hdr.height = 22;
+    hdr.eachCell(c => {
+      c.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF161B22' } };
+      c.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+    ws.views = [{ state: 'frozen', ySplit: hdr.number }];
+
+    const podium = (p) => p === 1 ? 'FFFBBF24' : p === 2 ? 'FFD1D5DB' : p === 3 ? 'FFD97706' : null;
+    rows.forEach((r, i) => {
+      const row = ws.addRow([r.position, r.entity_name, r.total_laps, fmtMs(r.best_lap_ms),
+                             fmtMs(Math.round(r.avg_lap_ms || 0)), r.mangas_raced, r.points]);
+      const fill = podium(r.position);
+      row.eachCell(c => {
+        if (fill) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fill } };
+      });
+      row.getCell(7).font = { bold: true };
+    });
+
+    const buf = await wb.xlsx.writeBuffer();
+    const filename = `${race.name.replace(/[^a-zA-Z0-9_-]/g, '_')}_puntos.xlsx`;
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(Buffer.from(buf));
+  }
+
+  // GET /races/:id/results/points.csv
+  static pointsCsv(req, res) {
+    const race = Race.findById(req.params.id);
+    if (!race) return res.status(404).send('Not found');
+
+    const isEs = (req.query.lang || 'es') === 'es';
+    const rows = SessionController._buildPointsRanking(race.id);
+
+    const head = isEs
+      ? ['Posicion','Piloto/Equipo','TotalVueltas','MejorVueltaMs','VueltaMediaMs','Mangas','Puntos']
+      : ['Position','DriverTeam','TotalLaps','BestLapMs','AvgLapMs','Heats','Points'];
+
+    const esc = (v) => {
+      const s = v == null ? '' : String(v);
+      return /[",;\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const lines = [head.join(';')];
+    for (const r of rows) {
+      lines.push([
+        r.position, r.entity_name, r.total_laps,
+        r.best_lap_ms ?? '', r.avg_lap_ms != null ? Math.round(r.avg_lap_ms) : '',
+        r.mangas_raced, r.points,
+      ].map(esc).join(';'));
+    }
+
+    const filename = `${race.name.replace(/[^a-zA-Z0-9_-]/g, '_')}_puntos.csv`;
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    // BOM para que Excel detecte UTF-8 al abrir el CSV directamente
+    res.send('﻿' + lines.join('\r\n') + '\r\n');
+  }
+
+  static _buildPointsRanking(raceId) {
+    const aggregate = Lap.aggregateByRace(raceId);
+    const sorted = [...aggregate].sort((a, b) =>
+      b.total_laps - a.total_laps
+      || (a.best_lap_ms || Infinity) - (b.best_lap_ms || Infinity));
+    return sorted.map((r, i) => ({
+      ...r,
+      position: i + 1,
+      points:   SessionController._pointsFor(i + 1),
+    }));
+  }
+
   // POST /races/:id/mangas/:mangaId/checkin
   // Body: { qr_code } or { driver_id, lane } (manual override)
   static driverCheckin(req, res) {
@@ -1522,5 +1629,13 @@ class SessionController {
     return res.json({ ok: true, mangaId: manga.id, tandaId: nextTanda.id, tandaNumber: nextTanda.number });
   }
 }
+
+// Tabla de puntos por posición final (1..64). Posiciones 53-64 = 1 pt; >64 = 0.
+SessionController._POINTS_TABLE = [
+  70,64,59,55,52,50,48,46,44,43,42,41,40,39,38,37,36,35,34,33,
+  32,31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,
+  12,11,10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+   1, 1, 1, 1,
+];
 
 module.exports = SessionController;

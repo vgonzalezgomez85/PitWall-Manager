@@ -21,6 +21,10 @@ const server = http.createServer(app);
 const SocketService = require('./services/SocketService');
 SocketService.init(server);
 
+const SettingsModel = require('./models/Settings');
+const DebugLogger   = require('./services/DebugLogger');
+DebugLogger.setEnabled(SettingsModel.get('debug_mode', '0') === '1');
+
 const SerialService = require('./services/SerialService');
 SerialService.init(); // start with saved settings (or simulation if not configured)
 

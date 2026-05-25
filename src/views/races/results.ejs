@@ -101,6 +101,12 @@
       <a href="/races/<%= race.id %>/results/xlsx?lang=<%= lang %>" class="btn btn--ghost btn--sm" title="<%= lang === 'es' ? 'Exportar a Excel' : 'Export to Excel' %>">
         📊 Excel
       </a>
+      <a href="/races/<%= race.id %>/results/points.xlsx?lang=<%= lang %>" class="btn btn--ghost btn--sm" title="<%= lang === 'es' ? 'Exportar puntos de clasificación (Excel)' : 'Export classification points (Excel)' %>">
+        🏆 <%= lang === 'es' ? 'Puntos (xlsx)' : 'Points (xlsx)' %>
+      </a>
+      <a href="/races/<%= race.id %>/results/points.csv?lang=<%= lang %>" class="btn btn--ghost btn--sm" title="<%= lang === 'es' ? 'Exportar puntos (CSV)' : 'Export points (CSV)' %>">
+        📄 <%= lang === 'es' ? 'Puntos (csv)' : 'Points (csv)' %>
+      </a>
       <button class="btn btn--ghost btn--sm" onclick="window.print()" title="<%= lang === 'es' ? 'Guardar como PDF' : 'Save as PDF' %>">
         🖨 PDF
       </button>

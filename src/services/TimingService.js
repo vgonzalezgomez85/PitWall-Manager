@@ -5,6 +5,7 @@ const Team          = require('../models/Team');
 const Driver        = require('../models/Driver');
 const SerialService = require('./SerialService');
 const SocketService = require('./SocketService');
+const DebugLogger   = require('./DebugLogger');
 
 const DEBOUNCE_MS    = 3000;
 // Salida de pista (crash): a single lap is flagged as "exit" when it exceeds
@@ -113,6 +114,8 @@ class TimingServiceClass {
     }, sessionDurationMs);
 
     Manga.updateStatus(manga.id, 'active');
+    DebugLogger.startMangaLog(manga, race);
+    DebugLogger.log('manga', { event: 'start', mangaNumber: manga.number, durationMs: sessionDurationMs, activeLanes });
     SocketService.emit('manga:started', { mangaId: manga.id, ...this.getStandings() });
     console.log(`[TimingService] Manga ${manga.number} started @ ${Date.now()} — ${activeLanes.length} active lanes — ${race.manga_duration_minutes}min`);
   }
@@ -205,6 +208,8 @@ class TimingServiceClass {
       }
     }
 
+    DebugLogger.log('manga', { event: 'stop', mangaNumber: this.session.manga.number, isTandaEnd, nextMangaId });
+    DebugLogger.endMangaLog();
     SocketService.emit('manga:stopped', { mangaId: this.session.manga.id, nextMangaId, nextLanes, isTandaEnd, nextTandaId, nextTandaNumber });
     console.log(`[TimingService] Manga ${this.session.manga.number} stopped`);
 
@@ -234,6 +239,7 @@ class TimingServiceClass {
     clearInterval(this._tickInt);
     clearTimeout(this._autoStopTimer);
     this._tickInt = this._autoStopTimer = null;
+    DebugLogger.log('manga', { event: 'pause', mangaNumber: this.session.manga.number });
     SocketService.emit('manga:paused');
     console.log(`[TimingService] Manga ${this.session.manga.number} paused`);
   }
@@ -265,6 +271,7 @@ class TimingServiceClass {
       this._autoStopTimer = setTimeout(() => this.stopManga(true), remaining);
     }
 
+    DebugLogger.log('manga', { event: 'resume', mangaNumber: this.session.manga.number, pausedMs });
     SocketService.emit('manga:resumed');
     console.log(`[TimingService] Manga ${this.session.manga.number} resumed`);
   }
@@ -294,6 +301,8 @@ class TimingServiceClass {
     const { manga, race, lanes, teams, drivers } = this.session;
     this._pendingSetup = { manga: { ...manga, status: 'pending' }, race, lanes, teams, drivers };
 
+    DebugLogger.log('manga', { event: 'cancel', mangaNumber: this.session.manga.number, mangaId, raceId });
+    DebugLogger.endMangaLog();
     SocketService.emit('manga:cancelled', { mangaId, raceId });
     console.log(`[TimingService] Manga ${this.session.manga.number} cancelled — reset to pending`);
     this.session = null;
@@ -302,10 +311,18 @@ class TimingServiceClass {
   // ── Lap crossing ──────────────────────────────────────────────────────────
 
   _onCrossing(lane, timestamp, deviceLapTimeMs) {
-    if (!this.session || this.session.status !== 'running') return;
+    if (!this.session || this.session.status !== 'running') {
+      DebugLogger.log('crossing_dropped', { lane, deviceLapTimeMs, reason: this.session ? 'not_running' : 'no_session' });
+      return;
+    }
 
     const ld = this.session.laneMap[lane];
-    if (!ld) return;
+    if (!ld) {
+      DebugLogger.log('crossing_dropped', { lane, deviceLapTimeMs, reason: 'lane_not_in_manga' });
+      return;
+    }
+
+    DebugLogger.log('crossing', { lane, timestamp, deviceLapTimeMs, lapCountBefore: ld.lapCount, pendingPauseAdjustMs: ld.pendingPauseAdjustMs || 0 });
 
     // Use device-reported lap time when available; fall back to timestamp diff
     let lapTimeMs = deviceLapTimeMs ?? (timestamp - ld.lastCrossing);
@@ -369,6 +386,7 @@ class TimingServiceClass {
     const minLapMs = this.session.race.min_lap_ms || 0;
     const autoGhost = minLapMs > 0 && lapTimeMs < minLapMs;
     if (autoGhost) {
+      DebugLogger.log('ghost_lap', { lane, lapTimeMs, minLapMs });
       console.log(`[TimingService] Ghost lap: lane ${lane} (${lapTimeMs}ms < Pt ${minLapMs}ms)`);
       const elapsedMs = timestamp - this.session.startTime;
       const race    = this.session.race;
