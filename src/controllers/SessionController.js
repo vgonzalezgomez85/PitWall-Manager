@@ -324,10 +324,44 @@ class SessionController {
     const raceBestLaps = {};
     raceBestLapsArr.forEach(r => { raceBestLaps[r.lane] = { bestLapMs: r.bestLapMs, entityName: r.entityName }; });
 
-    const view = req.params.type === 'fastest' ? 'races/live-panel-fastest' : 'races/live-panel';
+    // Minimapa: para el panel `track` necesitamos el trazado del circuito
+    // (imagen base64 + polilínea) y, por carril, la última vuelta para
+    // calcular la posición inicial al abrir la ventana.
+    let circuit = null, trackOutline = [], lastLapByLane = {};
+    if (req.params.type === 'track') {
+      const Circuit = require('../models/Circuit');
+      circuit = race.circuit_id ? Circuit.findById(race.circuit_id) : null;
+      if (circuit) trackOutline = Circuit.getTrackOutline(circuit);
+
+      const db = require('../config/database');
+      // Última vuelta no-fantasma por carril en esta manga
+      const rows = db.prepare(`
+        SELECT l.lane, l.lap_time_ms, l.timestamp
+        FROM laps l
+        INNER JOIN (
+          SELECT lane, MAX(id) AS maxId FROM laps
+          WHERE manga_id = ? AND is_ghost = 0
+          GROUP BY lane
+        ) m ON m.lane = l.lane AND m.maxId = l.id
+        WHERE l.manga_id = ?
+      `).all(manga.id, manga.id);
+      rows.forEach(r => {
+        lastLapByLane[r.lane] = {
+          lapTimeMs:    r.lap_time_ms,
+          timestampMs:  r.timestamp ? Date.parse(r.timestamp + 'Z') || Date.parse(r.timestamp) : null,
+        };
+      });
+    }
+
+    let view;
+    if (req.params.type === 'fastest')      view = 'races/live-panel-fastest';
+    else if (req.params.type === 'track')   view = 'races/live-panel-track';
+    else                                    view = 'races/live-panel';
+
     res.render(view, {
       t: req.t, race, manga, tanda, lanes, laps, isActive, standings,
       allParticipants, prevLapsByLane, raceBestLaps,
+      circuit, trackOutline, lastLapByLane,
     });
   }
 

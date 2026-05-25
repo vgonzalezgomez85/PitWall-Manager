@@ -22,6 +22,31 @@ function defaultLaneSequence(n) {
 // Parse a comma-separated lane sequence like "1,3,5,6,4,2" or "1,3,5,0,6,4,2".
 // 0 means "explicit rest slot". Returns array. Falls back to slot-rotation
 // default when empty or malformed. Lanes must be in [0..totalLanes].
+// Parse track minimap fields from body. Imagen como data URL base64;
+// outline como JSON `[[x,y], ...]` con coords relativas 0..1.
+// Si `track_image_b64` no llega y existe un circuito previo, se conserva
+// la imagen existente (evita perderla al editar otros campos).
+function parseTrackFields(body, prevCircuit) {
+  let img = (body.track_image_b64 || '').trim();
+  if (!img && prevCircuit) img = prevCircuit.track_image_b64 || '';
+  if (img === '__CLEAR__') img = '';   // permite borrar explícitamente
+
+  let outline = [];
+  try {
+    const parsed = JSON.parse(body.track_outline_json || '[]');
+    if (Array.isArray(parsed)) {
+      outline = parsed
+        .filter(p => Array.isArray(p) && p.length === 2
+                  && Number.isFinite(p[0]) && Number.isFinite(p[1]))
+        .map(([x, y]) => [
+          Math.max(0, Math.min(1, +x)),
+          Math.max(0, Math.min(1, +y)),
+        ]);
+    }
+  } catch {}
+  return { trackImageB64: img || null, trackOutlineJson: outline };
+}
+
 function parseLaneSequence(raw, totalLanes) {
   const fallback = defaultLaneSequence(totalLanes);
   if (!raw || typeof raw !== 'string') return fallback;
@@ -73,6 +98,7 @@ class CircuitController {
     if (errors.length) return res.render('circuits/form', { t: req.t, circuit: null, errors, body: req.body, categories, categoryTimes: parseCategoryTimes(req.body, categories) });
 
     const laneSequence = parseLaneSequence(req.body.lane_sequence, totalLanes);
+    const { trackImageB64, trackOutlineJson } = parseTrackFields(req.body);
 
     const newId = Circuit.create({
       name: trimName,
@@ -82,6 +108,8 @@ class CircuitController {
       min_lap_ms: minLapMs,
       description: (description || '').trim() || null,
       lane_sequence: laneSequence,
+      track_image_b64: trackImageB64,
+      track_outline_json: trackOutlineJson,
     });
     Circuit.setCategoryTimes(newId, parseCategoryTimes(req.body, categories));
     res.redirect('/circuits');
@@ -136,6 +164,7 @@ class CircuitController {
     if (errors.length) return res.render('circuits/form', { t: req.t, circuit, errors, body: req.body, categories, categoryTimes: parseCategoryTimes(req.body, categories) });
 
     const laneSequence = parseLaneSequence(req.body.lane_sequence, totalLanes);
+    const { trackImageB64, trackOutlineJson } = parseTrackFields(req.body, circuit);
 
     Circuit.update(req.params.id, {
       name: trimName,
@@ -145,6 +174,8 @@ class CircuitController {
       min_lap_ms: minLapMs,
       description: (description || '').trim() || null,
       lane_sequence: laneSequence,
+      track_image_b64: trackImageB64,
+      track_outline_json: trackOutlineJson,
     });
     Circuit.setCategoryTimes(parseInt(req.params.id, 10), parseCategoryTimes(req.body, categories));
     res.redirect('/circuits');

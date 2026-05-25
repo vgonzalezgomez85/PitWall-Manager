@@ -77,6 +77,8 @@
         onclick="window.open('/races/<%= race.id %>/mangas/<%= manga.id %>/panel/standings','_blank','width=620,height=780')">📊</button>
       <button class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Vueltas rápidas por pista (ventana)' : 'Fastest laps by lane (window)' %>"
         onclick="window.open('/races/<%= race.id %>/mangas/<%= manga.id %>/panel/fastest','_blank','width=480,height=560')">⚡</button>
+      <button class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Minimapa del circuito (ventana)' : 'Track minimap (window)' %>"
+        onclick="window.open('/races/<%= race.id %>/mangas/<%= manga.id %>/panel/track','_blank','width=900,height=600')">🗺</button>
       <a href="/races/<%= race.id %>/mangas/<%= manga.id %>/tv" target="_blank" class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Pantalla TV' : 'TV display' %>">📺</a>
       <% if (race.format === 'team' && totalMangas > 1 && license.tier === 'pro') { %>
         <a href="/races/<%= race.id %>/lemans" target="_blank" class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Clasificación Le Mans' : 'Le Mans standings' %>">🏁</a>
@@ -104,16 +106,13 @@
     <div class="live-lanes" id="lanesGrid"></div>
 
     <!-- Resizer -->
-    <div id="sidebarResizer" class="sidebar-resizer" style="display:none" title="<%= lang === 'es' ? 'Arrastra para redimensionar' : 'Drag to resize' %>"></div>
+    <div id="sidebarResizer" class="sidebar-resizer" title="<%= lang === 'es' ? 'Arrastra para redimensionar' : 'Drag to resize' %>"></div>
 
-    <!-- Sidebar — ocultado: la clasificación general y las vueltas rápidas
-         se abren ahora en ventanas independientes con los botones 📊 / ⚡ del
-         header. Mantenemos los IDs en el DOM para que live.js no rompa. -->
-    <aside class="live-sidebar" id="liveSidebar" style="display:none">
-
+    <!-- Sidebar: clasificación estimada (las vueltas rápidas viven ahora en el footer) -->
+    <aside class="live-sidebar" id="liveSidebar">
       <div class="live-panel">
         <div class="live-panel__title">
-          <%= lang === 'es' ? 'CLASIFICACIÓN GENERAL' : 'OVERALL STANDINGS' %>
+          <%= lang === 'es' ? 'CLASIFICACIÓN ESTIMADA' : 'PROJECTED STANDINGS' %>
           <a href="/races/<%= race.id %>/mangas/<%= manga.id %>/panel/standings" target="_blank" class="panel-expand" title="<%= lang === 'es' ? 'Abrir en ventana' : 'Open in window' %>">⤢</a>
         </div>
         <div class="live-panel__body">
@@ -134,27 +133,17 @@
         </table>
         </div>
       </div>
-
-      <div class="live-panel live-panel--compact">
-        <div class="live-panel__title">
-          ⚡ <%= lang === 'es' ? 'VUELTAS RÁPIDAS POR PISTA' : 'FASTEST LAPS BY LANE' %>
-        </div>
-        <div class="live-panel__body">
-        <table class="sidebar-table sidebar-table--auto">
-          <thead>
-            <tr>
-              <th class="sr-center"><%= lang === 'es' ? 'Pista' : 'Lane' %></th>
-              <th><%= lang === 'es' ? 'Participante' : 'Participant' %></th>
-              <th class="sr-right"><%= lang === 'es' ? 'Mejor' : 'Best' %></th>
-            </tr>
-          </thead>
-          <tbody id="bestLapsBody"></tbody>
-        </table>
-        </div>
-      </div>
-
     </aside>
   </div>
+
+  <!-- ── Footer: vueltas rápidas por pista ───────────────────────────────── -->
+  <footer class="live-footer" id="liveFooter">
+    <div class="live-footer__label">
+      ⚡ <%= lang === 'es' ? 'VUELTAS RÁPIDAS' : 'FASTEST LAPS' %>
+      <a href="/races/<%= race.id %>/mangas/<%= manga.id %>/panel/fastest" target="_blank" class="panel-expand" title="<%= lang === 'es' ? 'Abrir en ventana' : 'Open in window' %>">⤢</a>
+    </div>
+    <div class="live-footer__items" id="bestLapsFooter"></div>
+  </footer>
 
   <%
     // Compute initial lane state from DB laps

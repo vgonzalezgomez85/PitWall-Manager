@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="<%= lang %>">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>
+    <%= lang === 'es' ? 'Minimapa' : 'Minimap' %> — <%= race.name %>
+  </title>
+  <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+      background: #000; color: #e6edf3; font-family: 'Inter', system-ui, sans-serif;
+    }
+    .tk-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: .55rem 1.2rem;
+      background: #000; border-bottom: 2px solid #161b22; flex-shrink: 0;
+    }
+    .tk-title {
+      font-size: .68rem; font-weight: 700; letter-spacing: .15em;
+      color: #6e7681; text-transform: uppercase;
+    }
+    .tk-manga {
+      font-family: 'Rajdhani', sans-serif; font-size: 1rem; font-weight: 700;
+      color: #e6edf3; letter-spacing: .04em;
+    }
+    .tk-race { font-size: .72rem; color: #6e7681; }
+
+    .tk-stage { flex: 1; position: relative; min-height: 0; overflow: hidden; }
+    #trackCanvas { display: block; width: 100%; height: 100%; }
+    .tk-empty {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      color: #6e7681; text-align: center; padding: 2rem;
+    }
+    .tk-empty b { color: #c9d1d9; display: block; margin-bottom: .4rem; }
+  </style>
+</head>
+<body>
+
+  <header class="tk-header">
+    <div>
+      <div class="tk-title">🗺 <%= lang === 'es' ? 'Minimapa' : 'Track minimap' %></div>
+      <div class="tk-manga">
+        <% if (tanda) { %><%= lang === 'es' ? 'Tanda' : 'Round' %> <%= tanda.number %> · <% } %>
+        <%= lang === 'es' ? 'Manga' : 'Heat' %> #<%= manga.number %>
+      </div>
+    </div>
+    <span class="tk-race"><%= race.name %></span>
+  </header>
+
+  <div class="tk-stage">
+    <canvas id="trackCanvas"></canvas>
+    <% if (!circuit || trackOutline.length < 3) { %>
+      <div class="tk-empty">
+        <div>
+          <b>⚠️ <%= lang === 'es' ? 'Sin trazado configurado' : 'No outline configured' %></b>
+          <%= lang === 'es'
+            ? 'Edita el circuito de esta carrera y dibuja el trazado en la sección "🗺 Trazado del circuito" para activar el minimapa.'
+            : 'Edit this race\'s circuit and draw an outline in the "🗺 Track outline" section to enable the minimap.' %>
+        </div>
+      </div>
+    <% } %>
+  </div>
+
+  <%
+    const LC = ['#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4','#ff5722','#607d8b','#795548','#e91e63','#3f51b5','#009688','#cddc39','#ffc107','#f44336','#673ab7','#03a9f4','#8bc34a','#ff6f00','#880e4f','#1a237e','#b71c1c','#004d40','#f57f17','#311b92','#0d47a1','#1b5e20','#33691e','#bf360c','#4a148c','#006064','#827717'];
+    const laneRows = lanes
+      .filter(l => !l.is_rest)
+      .map(l => ({
+        lane:  l.lane,
+        color: LC[l.lane - 1] || '#8b949e',
+        name:  l.team_name || l.driver_name || ('Lane ' + l.lane),
+      }));
+  %>
+
+  <script>
+    const PANEL_DATA = <%- JSON.stringify({
+      raceId:           race.id,
+      mangaId:          manga.id,
+      lanes:            laneRows,
+      trackImage:       (circuit && circuit.track_image_b64) ? circuit.track_image_b64 : null,
+      trackOutline:     trackOutline,
+      lastLapByLane:    lastLapByLane,
+      isActive:         isActive,
+    }) %>;
+    const LANG = "<%= lang %>";
+  </script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+  (function () {
+    const canvas  = document.getElementById('trackCanvas');
+    if (!canvas) return;
+    const ctx     = canvas.getContext('2d');
+    const outline = PANEL_DATA.trackOutline || [];
+    const hasTrack = outline.length >= 3;
+
+    // ── Carga imagen de fondo si existe ─────────────────────────────────
+    let bgImg = null;
+    if (PANEL_DATA.trackImage) {
+      const i = new Image();
+      i.onload = () => { bgImg = i; };
+      i.src = PANEL_DATA.trackImage;
+    }
+
+    // ── Pre-calcular longitud del polígono cerrado para interpolar progreso
+    function polyLen(pts) {
+      let total = 0;
+      const seg = [];
+      for (let i = 0; i < pts.length; i++) {
+        const a = pts[i], b = pts[(i + 1) % pts.length];
+        const d = Math.hypot(b[0] - a[0], b[1] - a[1]);
+        seg.push(d);
+        total += d;
+      }
+      return { total, seg };
+    }
+    const { total: PERIM, seg: SEG } = hasTrack ? polyLen(outline) : { total: 0, seg: [] };
+
+    // Devuelve [x, y] (relativos 0..1) para un progreso 0..1 sobre la polilínea cerrada
+    function pointAtProgress(p) {
+      if (!hasTrack) return [0.5, 0.5];
+      p = ((p % 1) + 1) % 1;     // wrap 0..1
+      const target = p * PERIM;
+      let acc = 0;
+      for (let i = 0; i < outline.length; i++) {
+        const len = SEG[i];
+        if (acc + len >= target) {
+          const t = len > 0 ? (target - acc) / len : 0;
+          const a = outline[i];
+          const b = outline[(i + 1) % outline.length];
+          return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+        }
+        acc += len;
+      }
+      return outline[0];
+    }
+
+    // ── Estado por carril ───────────────────────────────────────────────
+    const laneState = {};
+    PANEL_DATA.lanes.forEach(l => {
+      const last = (PANEL_DATA.lastLapByLane || {})[l.lane];
+      laneState[l.lane] = {
+        ...l,
+        lastCrossingTs: last && last.timestampMs ? last.timestampMs : null,
+        lapTimeMs:      last && last.lapTimeMs   ? last.lapTimeMs   : null,
+      };
+    });
+
+    // ── Render loop ─────────────────────────────────────────────────────
+    function resize() {
+      const r = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width  = Math.round(r.width  * dpr);
+      canvas.height = Math.round(r.height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Calcula el rectángulo en pantalla donde se ajusta el contenido del track
+    // (imagen o polilínea) manteniendo la proporción original. Coords relativas
+    // 0..1 se mapean a este rectángulo, así el aspect ratio del trazado se
+    // respeta independientemente del tamaño de la ventana.
+    function getStage() {
+      const W = canvas.clientWidth, H = canvas.clientHeight;
+      const PAD = 20;
+      let aspect = 1;
+      if (bgImg) {
+        aspect = bgImg.naturalWidth / bgImg.naturalHeight;
+      } else if (hasTrack) {
+        // bounding box del trazado
+        let minX = 1, minY = 1, maxX = 0, maxY = 0;
+        outline.forEach(([x, y]) => { if (x < minX) minX = x; if (y < minY) minY = y; if (x > maxX) maxX = x; if (y > maxY) maxY = y; });
+        aspect = Math.max(.1, (maxX - minX) / Math.max(.001, (maxY - minY)));
+      }
+      const availW = W - PAD * 2, availH = H - PAD * 2;
+      let w = availW, h = availW / aspect;
+      if (h > availH) { h = availH; w = availH * aspect; }
+      return { x: (W - w) / 2, y: (H - h) / 2, w, h };
+    }
+
+    function relToScreen(rx, ry, stage) {
+      return [stage.x + rx * stage.w, stage.y + ry * stage.h];
+    }
+
+    function draw() {
+      const W = canvas.clientWidth, H = canvas.clientHeight;
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, W, H);
+
+      const stage = getStage();
+
+      // 1) imagen de fondo si la hay
+      if (bgImg) ctx.drawImage(bgImg, stage.x, stage.y, stage.w, stage.h);
+      else {
+        // lienzo en negro con un borde sutil para enmarcar
+        ctx.strokeStyle = '#161b22';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(stage.x, stage.y, stage.w, stage.h);
+      }
+
+      // 2) polilínea del trazado
+      if (hasTrack) {
+        ctx.beginPath();
+        outline.forEach(([rx, ry], i) => {
+          const [px, py] = relToScreen(rx, ry, stage);
+          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        });
+        ctx.closePath();
+        ctx.lineWidth   = Math.max(2, Math.min(stage.w, stage.h) / 250);
+        ctx.strokeStyle = 'rgba(251,191,36,.45)';   // gold tenue
+        ctx.stroke();
+
+        // 3) bolitas — coches
+        const now = Date.now();
+        Object.values(laneState).forEach(l => {
+          let prog = 0;
+          if (l.lastCrossingTs && l.lapTimeMs > 0) {
+            prog = (now - l.lastCrossingTs) / l.lapTimeMs;
+            if (prog > 1.5) prog = 1.5;   // si lleva sin pasar > 1.5 vueltas, se queda quieto al final
+          }
+          const [rx, ry] = pointAtProgress(prog);
+          const [px, py] = relToScreen(rx, ry, stage);
+          const dotR = Math.max(8, Math.min(stage.w, stage.h) / 40);
+
+          // sombra
+          ctx.beginPath();
+          ctx.arc(px, py + 1, dotR, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(0,0,0,.6)';
+          ctx.fill();
+
+          // bolita coloreada
+          ctx.beginPath();
+          ctx.arc(px, py, dotR, 0, Math.PI * 2);
+          ctx.fillStyle = l.color;
+          ctx.fill();
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = '#0a0a0a';
+          ctx.stroke();
+
+          // número del carril
+          ctx.fillStyle = '#fff';
+          ctx.font = `700 ${Math.round(dotR * 1.1)}px Rajdhani, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(String(l.lane), px, py + 1);
+
+          // nombre debajo
+          ctx.font = `600 ${Math.round(dotR * 0.85)}px Inter, sans-serif`;
+          ctx.fillStyle = '#fff';
+          ctx.fillText(l.name, px, py + dotR + Math.round(dotR * 0.9));
+        });
+      }
+    }
+
+    function loop() {
+      draw();
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+
+    // ── Socket: actualiza estado al cruzar línea ────────────────────────
+    const socket = io({ transports: ['websocket', 'polling'] });
+    socket.on('connect', () => socket.emit('race:live:join'));
+
+    socket.on('lap', (lap) => {
+      if (!lap || !lap.lane) return;
+      const l = laneState[lap.lane];
+      if (!l) return;
+      // Cruce nuevo: el coche acaba de pasar la línea → reinicia progreso a 0
+      l.lastCrossingTs = Date.now();
+      if (lap.lapTimeMs && lap.lapTimeMs > 0) l.lapTimeMs = lap.lapTimeMs;
+    });
+
+    socket.on('manga:stopped', () => { /* deja el último estado en pantalla */ });
+  })();
+  </script>
+</body>
+</html>

@@ -32,6 +32,7 @@ function toggleView() {
   btn.title        = isVertical
     ? (LANG === 'es' ? 'Vista horizontal' : 'Horizontal view')
     : (LANG === 'es' ? 'Vista vertical'   : 'Vertical view');
+  if (typeof fitLaneCards === 'function') requestAnimationFrame(() => fitLaneCards());
 }
 
 // ── Semaphore ─────────────────────────────────────────────────────────────────
@@ -284,6 +285,8 @@ function initCards() {
     if (lane.activeDriver) setActiveDriver(lane.lane, lane.activeDriver);
   });
   if (RACE_DATA.mangaStatus === 'finished') renderNextLaneHints();
+  // Defer una vez para que el layout esté listo
+  requestAnimationFrame(() => fitLaneCards());
 }
 
 function updateCard(lane, lapCount, lastLapMs, bestLapMs, avgLapMs, exitCount) {
@@ -379,6 +382,7 @@ function applyStandingsCarousel() {
   // Defer so the freshly-set innerHTML has been laid out; otherwise
   // scrollHeight/offsetHeight may read stale values.
   setTimeout(() => {
+    fitSidebarTable();
     const active = paintStandingsPage();
     if (active && !standingsTimer) {
       standingsTimer = setInterval(() => {
@@ -398,8 +402,113 @@ function applyStandingsCarousel() {
 }
 
 window.addEventListener('resize', () => {
-  if (projectedBody) paintStandingsPage();
+  if (projectedBody) { fitSidebarTable(); paintStandingsPage(); }
+  fitLaneCards();
 });
+
+// ── Autofit lane cards (área central) ────────────────────────────────────────
+// Calcula los tamaños de fuente de las tarjetas para que TODO el contenido
+// quepa horizontal y verticalmente dentro de #lanesGrid. Toma el mínimo entre
+// el factor altura (alto disponible / nº carriles) y el factor ancho (cada
+// columna numérica debe caber tipo "11.06" / "+0.00").
+function fitLaneCards() {
+  if (!lanesGrid) return;
+  const root = document.documentElement;
+  const W = lanesGrid.clientWidth;
+  const H = lanesGrid.clientHeight;
+  if (W <= 0 || H <= 0) return;
+
+  // Carriles activos (los que tienen tarjeta visible)
+  const nLanes = Math.max(1, RACE_DATA.lanes.filter(l => !l.isRest).length);
+  // Modo vertical (>8 carriles): el grid pasa a columnas, no apliquemos autofit
+  // — el CSS por defecto ya se encarga. Limpiamos vars por si quedaron.
+  if (lanesGrid.classList.contains('live-lanes--vertical')) {
+    root.style.removeProperty('--ln-font-num');
+    root.style.removeProperty('--ln-font-label');
+    root.style.removeProperty('--ln-font-name');
+    root.style.removeProperty('--ln-font-lanenum');
+    root.style.removeProperty('--ln-font-track');
+    return;
+  }
+
+  // Modo horizontal: una tarjeta por carril, una fila por carril.
+  // Card height ≈ H / nLanes  (descontando pequeño gap)
+  const cardH = Math.max(40, (H / nLanes) - 8);
+  // En la tarjeta hay 2 filas (label arriba + valor abajo). El número grande
+  // toma ~55% de la altura de la card.
+  const fontByHeight = cardH * 0.50;
+
+  // Ancho de tarjeta = W - paddings
+  const cardW = Math.max(200, W - 24);
+  // grid: name(1.4fr) + laps(.8fr) + 6 × num(1fr) → unidades = 1.4 + .8 + 6 = 8.2
+  // Una columna numérica = cardW / 8.2 - gap(~6px)
+  const colW = (cardW / 8.2) - 6;
+  // Tipos: el contenido más ancho suele ser "+11.06" o "12345" → ~5 chars.
+  // En Share Tech Mono (monospace), char ≈ 0.6 * fontSize. Margen interno ~6px.
+  const fontByWidth = (colW - 6) / (5 * 0.6);
+
+  let fontPx  = Math.min(fontByHeight, fontByWidth);
+  fontPx      = Math.max(14, Math.min(60, fontPx));   // clamp 14..60px
+
+  const labelPx   = Math.max(9,  Math.min(20, fontPx * 0.32));
+  const namePx    = Math.max(12, Math.min(34, fontPx * 0.55));
+  const lanenumPx = Math.max(14, Math.min(46, fontPx * 0.75));
+  const trackPx   = Math.max(9,  Math.min(22, fontPx * 0.42));
+
+  root.style.setProperty('--ln-font-num',     fontPx.toFixed(1)  + 'px');
+  root.style.setProperty('--ln-font-label',   labelPx.toFixed(1) + 'px');
+  root.style.setProperty('--ln-font-name',    namePx.toFixed(1)  + 'px');
+  root.style.setProperty('--ln-font-lanenum', lanenumPx.toFixed(1) + 'px');
+  root.style.setProperty('--ln-font-track',   trackPx.toFixed(1)   + 'px');
+}
+
+// Reaplica fitLaneCards cuando el contenedor cambia (p. ej. arrastrar el
+// resizer del sidebar). El window resize no se dispara en ese caso.
+if (lanesGrid && 'ResizeObserver' in window) {
+  let _rafId = 0;
+  const ro = new ResizeObserver(() => {
+    if (_rafId) cancelAnimationFrame(_rafId);
+    _rafId = requestAnimationFrame(() => { _rafId = 0; fitLaneCards(); });
+  });
+  ro.observe(lanesGrid);
+}
+
+// ── Autofit sidebar standings table ──────────────────────────────────────────
+// Calcula el tamaño de fuente y padding óptimos para que las N filas quepan
+// vertical Y horizontalmente sin scroll/overflow. Toma el mínimo entre el
+// factor de altura (filas vs alto disponible) y el factor de ancho (suma de
+// columnas vs ancho del contenedor).
+function fitSidebarTable() {
+  if (!projectedBody) return;
+  const container = projectedBody.closest('.live-panel__body') || projectedBody.parentElement;
+  const root = document.documentElement;
+  const rows = projectedBody.querySelectorAll('tr.srow');
+  if (!container || rows.length === 0) return;
+  const thead = projectedBody.parentElement.querySelector('thead');
+  const headerH = thead ? thead.offsetHeight : 28;
+  // Altura disponible para el cuerpo, descontando cabecera
+  const usableH = Math.max(60, container.clientHeight - headerH);
+  // Altura objetivo por fila
+  const targetRowH = usableH / rows.length;
+  // Factor por altura: font ≈ rowH / 38 (empírico).
+  const fontByHeight = targetRowH / 38;
+  // Factor por ancho: la tabla tiene ~8 columnas y necesita ~440px a 1rem.
+  // Se descuentan ~24px de paddings/borders del contenedor.
+  const nCols = (projectedBody.parentElement.querySelector('thead tr')?.children.length) || 8;
+  const minWidthPerColAt1rem = 440 / 8;        // ≈55px por columna a 1rem
+  const fontByWidth = Math.max(0, (container.clientWidth - 24)) / (nCols * minWidthPerColAt1rem);
+
+  let fontRem = Math.min(fontByHeight, fontByWidth) * 0.85;
+  fontRem     = Math.min(1.1, Math.max(0.5, fontRem));   // clamp 0.5..1.1rem
+  const subRem = Math.max(0.5, fontRem * 0.92);
+  const padRem = Math.max(0.05, fontRem * 0.30);
+  const thRem  = Math.max(0.55, fontRem * 0.55);
+
+  root.style.setProperty('--sb-font',     fontRem.toFixed(3) + 'rem');
+  root.style.setProperty('--sb-sub-font', subRem.toFixed(3)  + 'rem');
+  root.style.setProperty('--sb-pad',      padRem.toFixed(3)  + 'rem');
+  root.style.setProperty('--sb-th-font',  thRem.toFixed(3)   + 'rem');
+}
 
 function posClass(pos) {
   return ['p1','p2','p3'][pos - 1] || 'pn';
@@ -580,8 +689,12 @@ function renderProjected(data) {
     const prevLaps  = prevLapCountMap[r.lane] || 0;
     const total     = prevLaps + r.lapCount;
     const avgLapMs  = r.lapCount > 1 ? elapsed / r.lapCount : (r.avgLapMs || null);
+    // Versión fraccional (sin floor) — sirve para calcular el gap con decimales.
+    const projThisMangaRaw = avgLapMs && totalMangaDuration > 0
+      ? (totalMangaDuration / avgLapMs)
+      : r.lapCount;
     const projThisManga = avgLapMs && totalMangaDuration > 0
-      ? Math.floor(totalMangaDuration / avgLapMs)
+      ? Math.floor(projThisMangaRaw)
       : r.lapCount;
     const p = allPMap.get(r.name);
     const futureMangas = p?.remaining_mangas || 0;
@@ -593,7 +706,8 @@ function renderProjected(data) {
     activeMap.set(r.name, {
       name: r.name, color: r.color,
       total,
-      projectedTotal: prevLaps + projThisManga + projFuture,
+      projectedTotal:    prevLaps + projThisManga    + projFuture,
+      projectedTotalRaw: prevLaps + projThisMangaRaw + projFuture,
       bestLapMs: r.bestLapMs, avgLapMs: raceAvg,
     });
   });
@@ -611,11 +725,13 @@ function renderProjected(data) {
     } else {
       // Not racing this manga (resting or different tanda): use DB total + project future
       const avgPerManga  = p.mangas_raced > 0 ? p.total_laps / p.mangas_raced : 0;
-      const projFuture   = Math.round((p.remaining_mangas || 0) * avgPerManga);
+      const projFutureRaw = (p.remaining_mangas || 0) * avgPerManga;
+      const projFuture   = Math.round(projFutureRaw);
       rows.push({
         name, color: p.color || '#8b949e',
         total: p.total_laps,
-        projectedTotal: p.total_laps + projFuture,
+        projectedTotal:    p.total_laps + projFuture,
+        projectedTotalRaw: p.total_laps + projFutureRaw,
         bestLapMs: p.best_lap_ms ?? null,
         avgLapMs:  p.avg_lap_ms  != null ? Math.round(p.avg_lap_ms) : null,
       });
@@ -627,7 +743,9 @@ function renderProjected(data) {
     if (!seen.has(name)) rows.push(r);
   });
 
-  rows.sort((a, b) => b.projectedTotal - a.projectedTotal || (a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity));
+  rows.sort((a, b) =>
+    (b.projectedTotalRaw ?? b.projectedTotal) - (a.projectedTotalRaw ?? a.projectedTotal)
+    || (a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity));
 
   // Calculate projected gaps en vueltas + a numeric score for trend tracking
   // score = projectedTotal*BIG - avgLapMs (so closer to leader = higher; avg as tiebreaker)
@@ -645,9 +763,12 @@ function renderProjected(data) {
       gapAboveNow[r.name] = null;        // leader: no one above
     } else {
       const above = rows[i-1];
-      const gapLaps = above.projectedTotal - r.projectedTotal;
+      // Versión fraccional para mostrar con decimales; si raw no está, cae al int.
+      const aboveRaw = above.projectedTotalRaw ?? above.projectedTotal;
+      const rRaw     = r.projectedTotalRaw     ?? r.projectedTotal;
+      const gapLaps  = aboveRaw - rRaw;
       projGapInLaps[r.name] = gapLaps;
-      projGapInMs[r.name] = (gapLaps === 0 && r.avgLapMs != null && above.avgLapMs != null)
+      projGapInMs[r.name] = (Math.abs(gapLaps) < 0.5 && r.avgLapMs != null && above.avgLapMs != null)
         ? above.avgLapMs - r.avgLapMs : 0;
       gapAboveNow[r.name] = scoreOf(above) - scoreOf(r);
     }
@@ -678,7 +799,9 @@ function renderProjected(data) {
   });
 
   if (projectedBody) projectedBody.innerHTML = rows.map((r, i) => {
-    const gapLapDisplay = projGapInLaps[r.name] !== 0 ? `-${projGapInLaps[r.name]}` : '—';
+    const gapL = projGapInLaps[r.name];
+    const gapLapDisplay = (gapL && Math.abs(gapL) >= 0.01)
+      ? `-${gapL.toFixed(2)}` : '—';
     const gapSecDisplay = projGapInMs[r.name] > 0 ? `+${formatMs(projGapInMs[r.name])}` : '—';
     const tr = trend[r.name];
     const upCls   = tr.up === 'good' ? ' good' : tr.up === 'bad' ? ' bad' : '';
@@ -701,10 +824,13 @@ function renderProjected(data) {
       <td class="sr-right"><span class="sr-delta">${gapSecDisplay}</span></td>
     </tr>`;
   }).join('');
+
+  applyStandingsCarousel();
 }
 
 // ── Best laps panel ──────────────────────────────────────────────────────────
-const bestLapsBody = document.getElementById('bestLapsBody');
+const bestLapsBody   = document.getElementById('bestLapsBody');   // sidebar/popup (table rows)
+const bestLapsFooter = document.getElementById('bestLapsFooter'); // footer ticker (pills)
 let   _raceBestLaps = { ...(RACE_DATA.raceBestLaps || {}) };
 
 function renderBestLaps() {
@@ -720,19 +846,38 @@ function renderBestLaps() {
     .filter(r => r.bestLapMs != null)
     .sort((a, b) => a.bestLapMs - b.bestLapMs);
 
-  if (!bestLapsBody) return;
-  if (rows.length === 0) { bestLapsBody.innerHTML = ''; return; }
+  // Versión tabla (sidebar/popup)
+  if (bestLapsBody) {
+    if (rows.length === 0) {
+      bestLapsBody.innerHTML = '';
+    } else {
+      bestLapsBody.innerHTML = rows.map((r, i) => {
+        const cls = i === 0 ? 'best-lap-row--gold' : '';
+        const dot = `<span class="ticker-dot" style="background:${r.color};display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;font-size:10px;color:#fff;font-weight:700">${r.lane}</span>`;
+        return `<tr class="srow best-lap-row ${cls}">
+          <td class="sr-center">${dot}</td>
+          <td style="max-width:90px"><span class="sr-name" title="${r.entityName || r.name}">${r.entityName || r.name}</span></td>
+          <td class="sr-right"><span class="sr-best" style="${i===0?'color:#ffd700;font-weight:700':''}">${formatMs(r.bestLapMs)}</span></td>
+        </tr>`;
+      }).join('');
+    }
+  }
 
-  const fastest = rows[0].bestLapMs;
-  bestLapsBody.innerHTML = rows.map((r, i) => {
-    const cls = i === 0 ? 'best-lap-row--gold' : '';
-    const dot = `<span class="ticker-dot" style="background:${r.color};display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;font-size:10px;color:#fff;font-weight:700">${r.lane}</span>`;
-    return `<tr class="srow best-lap-row ${cls}">
-      <td class="sr-center">${dot}</td>
-      <td style="max-width:90px"><span class="sr-name" title="${r.entityName || r.name}">${r.entityName || r.name}</span></td>
-      <td class="sr-right"><span class="sr-best" style="${i===0?'color:#ffd700;font-weight:700':''}">${formatMs(r.bestLapMs)}</span></td>
-    </tr>`;
-  }).join('');
+  // Versión footer ticker (pills horizontales para TV)
+  if (bestLapsFooter) {
+    if (rows.length === 0) {
+      bestLapsFooter.innerHTML = `<span class="bl-footer__empty">${LANG === 'es' ? 'Sin vueltas registradas' : 'No laps yet'}</span>`;
+    } else {
+      bestLapsFooter.innerHTML = rows.map((r, i) => {
+        const cls = i === 0 ? ' bl-pill--gold' : '';
+        return `<div class="bl-pill${cls}">
+          <span class="bl-pill__lane" style="background:${r.color}">${r.lane}</span>
+          <span class="bl-pill__name" title="${r.entityName || r.name}">${r.entityName || r.name}</span>
+          <span class="bl-pill__time">${formatMs(r.bestLapMs)}</span>
+        </div>`;
+      }).join('');
+    }
+  }
 }
 
 function updateRaceBestLaps(raceBestLaps) {

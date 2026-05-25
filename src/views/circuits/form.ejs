@@ -157,6 +157,58 @@
              value="<%= body.description || '' %>">
     </div>
 
+    <!-- ── Trazado del circuito (opcional) ─────────────────────────────── -->
+    <details class="form-group" <%= (isEdit && circuit && circuit.track_image_b64) ? 'open' : '' %>>
+      <summary style="cursor:pointer; padding:.6rem 0; font-weight:600; color:#c9d1d9">
+        🗺 <%= lang === 'es' ? 'Trazado del circuito (minimapa)' : 'Track outline (minimap)' %>
+      </summary>
+      <p class="form-hint" style="margin:.4rem 0 .8rem">
+        <%= lang === 'es'
+          ? 'Sube una foto cenital del circuito y clicka sobre el trazado para marcar puntos. Se conectarán con líneas para mostrar la posición estimada de los coches en la vista de carrera.'
+          : 'Upload an overhead photo and click along the track to mark points. They are connected to estimate car positions during a race.' %>
+      </p>
+
+      <input type="file" id="trackImageInput" accept="image/*" style="position:absolute;left:-9999px">
+      <div style="display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:.6rem; align-items:center">
+        <button type="button" id="trackBtnUpload" class="btn btn--primary btn--sm">
+          📷 <%= lang === 'es' ? 'Subir foto del circuito' : 'Upload circuit photo' %>
+        </button>
+        <button type="button" id="trackBtnBlank" class="btn btn--ghost btn--sm">
+          ✏️ <%= lang === 'es' ? 'Dibujar sin foto' : 'Draw without photo' %>
+        </button>
+        <button type="button" id="trackBtnUndo" class="btn btn--ghost btn--sm" title="<%= lang === 'es' ? 'Deshacer último punto' : 'Undo last point' %>" disabled>↶ <%= lang === 'es' ? 'Deshacer' : 'Undo' %></button>
+        <button type="button" id="trackBtnClose" class="btn btn--ghost btn--sm" disabled><%= lang === 'es' ? 'Cerrar/abrir trazado' : 'Toggle closed loop' %></button>
+        <button type="button" id="trackBtnClear" class="btn btn--ghost btn--sm" disabled><%= lang === 'es' ? 'Limpiar puntos' : 'Clear points' %></button>
+        <button type="button" id="trackBtnRemoveImg" class="btn btn--ghost btn--sm" style="color:#e63946" disabled><%= lang === 'es' ? 'Quitar imagen' : 'Remove image' %></button>
+        <span id="trackPointCount" class="form-hint" style="margin-left:auto"></span>
+      </div>
+
+      <div id="trackCanvasWrap" style="position:relative; max-width:760px; border:1px dashed #30363d; border-radius:8px; background:#000; display:flex; align-items:center; justify-content:center; min-height:200px; overflow:hidden">
+        <canvas id="trackCanvas" style="display:block; max-width:100%; height:auto; cursor:crosshair"></canvas>
+        <div id="trackPlaceholder" style="color:#c9d1d9; padding:2.5rem 1rem; text-align:center">
+          <div style="font-size:2.5rem; opacity:.5; margin-bottom:.6rem">📷</div>
+          <div style="font-size:1rem; font-weight:600">
+            <%= lang === 'es' ? 'Elige cómo crear el trazado' : 'Choose how to create the outline' %>
+          </div>
+          <div style="font-size:.85rem; color:#8b949e; margin-top:.4rem; line-height:1.5">
+            <%= lang === 'es' ? '• "Subir foto" — pon una imagen cenital de fondo' : '• "Upload photo" — drop an overhead image as background' %><br>
+            <%= lang === 'es' ? '• "Dibujar sin foto" — empieza con un lienzo en negro' : '• "Draw without photo" — start with a blank canvas' %>
+          </div>
+        </div>
+      </div>
+
+      <p class="form-hint" style="margin-top:.5rem; font-size:.8rem">
+        <%= lang === 'es'
+          ? 'Click izquierdo: añadir punto · Click derecho sobre un punto: borrarlo · Arrastrar un punto: moverlo'
+          : 'Left click: add point · Right click on a point: delete · Drag a point: move' %>
+      </p>
+
+      <input type="hidden" name="track_image_b64" id="trackImageB64Input"
+             value="<%= (isEdit && circuit) ? (circuit.track_image_b64 || '') : '' %>">
+      <input type="hidden" name="track_outline_json" id="trackOutlineJsonInput"
+             value='<%= (isEdit && circuit) ? (circuit.track_outline_json || "[]") : "[]" %>'>
+    </details>
+
     <div class="form-actions">
       <a href="/circuits" class="btn btn--ghost"><%= lang === 'es' ? 'Cancelar' : 'Cancel' %></a>
       <button type="submit" class="btn btn--primary">
@@ -166,6 +218,226 @@
 
   </form>
 </div>
+
+<!-- ── Track outline editor — vanilla JS, autoinit cuando el details se abre ──── -->
+<script>
+(function () {
+  const canvas       = document.getElementById('trackCanvas');
+  const wrap         = document.getElementById('trackCanvasWrap');
+  const placeholder  = document.getElementById('trackPlaceholder');
+  const fileInput    = document.getElementById('trackImageInput');
+  const imgInput     = document.getElementById('trackImageB64Input');
+  const outlineInput = document.getElementById('trackOutlineJsonInput');
+  const btnUpload    = document.getElementById('trackBtnUpload');
+  const btnUndo      = document.getElementById('trackBtnUndo');
+  const btnClose     = document.getElementById('trackBtnClose');
+  const btnClear     = document.getElementById('trackBtnClear');
+  const btnRemoveImg = document.getElementById('trackBtnRemoveImg');
+  const countLabel   = document.getElementById('trackPointCount');
+  if (!canvas) return;
+
+  const ctx = canvas.getContext('2d');
+  let img      = null;            // Image obj cargada (null en modo lienzo blanco)
+  let blank    = false;           // true → lienzo sin imagen
+  const BLANK_W = 1000, BLANK_H = 600;  // dimensiones del lienzo cuando no hay foto
+  let points   = [];              // [[x_rel, y_rel], ...]   0..1
+  let closed   = true;            // ¿polilínea cerrada?
+  let dragIdx  = -1;
+  const HIT_R  = 12;              // radio de hit en px CSS para mover/borrar
+  const LANG   = "<%= lang %>";
+
+  function hasCanvas() { return !!img || blank; }
+
+  function setPlaceholderVisible(visible) {
+    placeholder.style.display = visible ? 'block' : 'none';
+    canvas.style.display      = visible ? 'none'  : 'block';
+    // Habilitar/deshabilitar el resto de controles según haya canvas o no
+    [btnUndo, btnClose, btnClear, btnRemoveImg].forEach(b => { if (b) b.disabled = visible; });
+  }
+
+  function updateCount() {
+    countLabel.textContent = points.length + ' ' + (LANG === 'es' ? 'puntos' : 'points');
+  }
+
+  function sync() {
+    outlineInput.value = JSON.stringify(points);
+    updateCount();
+  }
+
+  function draw() {
+    if (!hasCanvas()) return;
+    if (img) {
+      canvas.width  = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      ctx.drawImage(img, 0, 0);
+    } else {
+      // Lienzo en blanco: fondo negro con rejilla sutil para orientarse
+      canvas.width  = BLANK_W;
+      canvas.height = BLANK_H;
+      ctx.fillStyle = '#0a0a0a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = 'rgba(255,255,255,.05)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < canvas.width;  x += 50) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke(); }
+      for (let y = 0; y < canvas.height; y += 50) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width,  y); ctx.stroke(); }
+    }
+
+    if (points.length === 0) return;
+    // Polilínea
+    ctx.lineWidth   = Math.max(3, canvas.width / 400);
+    ctx.strokeStyle = '#fbbf24';
+    ctx.fillStyle   = '#fbbf24';
+    ctx.beginPath();
+    points.forEach(([x, y], i) => {
+      const px = x * canvas.width;
+      const py = y * canvas.height;
+      if (i === 0) ctx.moveTo(px, py);
+      else         ctx.lineTo(px, py);
+    });
+    if (closed && points.length > 2) ctx.closePath();
+    ctx.stroke();
+
+    // Puntos
+    const r = Math.max(4, canvas.width / 220);
+    points.forEach(([x, y], i) => {
+      const px = x * canvas.width;
+      const py = y * canvas.height;
+      ctx.beginPath();
+      ctx.arc(px, py, r, 0, Math.PI * 2);
+      ctx.fillStyle = (i === 0) ? '#3fb950' : '#fbbf24';   // primer punto verde
+      ctx.fill();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = '#000';
+      ctx.stroke();
+    });
+  }
+
+  function eventToPx(e) {
+    const rect = canvas.getBoundingClientRect();
+    const sx = canvas.width  / rect.width;
+    const sy = canvas.height / rect.height;
+    return { x: (e.clientX - rect.left) * sx, y: (e.clientY - rect.top) * sy, rect };
+  }
+
+  function pickPoint(e) {
+    const { x, y, rect } = eventToPx(e);
+    const sx = canvas.width  / rect.width;
+    const hitRpx = HIT_R * sx;
+    for (let i = points.length - 1; i >= 0; i--) {
+      const px = points[i][0] * canvas.width;
+      const py = points[i][1] * canvas.height;
+      if (Math.hypot(px - x, py - y) <= hitRpx) return i;
+    }
+    return -1;
+  }
+
+  canvas.addEventListener('mousedown', (e) => {
+    if (!hasCanvas() || e.button !== 0) return;
+    const idx = pickPoint(e);
+    if (idx >= 0) {
+      dragIdx = idx;
+      return;
+    }
+    // Añadir punto nuevo
+    const { x, y } = eventToPx(e);
+    points.push([x / canvas.width, y / canvas.height]);
+    sync(); draw();
+  });
+  canvas.addEventListener('mousemove', (e) => {
+    if (dragIdx < 0) return;
+    const { x, y } = eventToPx(e);
+    points[dragIdx] = [
+      Math.max(0, Math.min(1, x / canvas.width)),
+      Math.max(0, Math.min(1, y / canvas.height)),
+    ];
+    sync(); draw();
+  });
+  function endDrag() { dragIdx = -1; }
+  canvas.addEventListener('mouseup',   endDrag);
+  canvas.addEventListener('mouseleave', endDrag);
+
+  canvas.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    if (!hasCanvas()) return;
+    const idx = pickPoint(e);
+    if (idx >= 0) {
+      points.splice(idx, 1);
+      sync(); draw();
+    }
+  });
+
+  // Disparar el file picker desde el botón visible (más fiable que el label)
+  btnUpload.addEventListener('click', () => fileInput.click());
+
+  // Modo lienzo en blanco (sin foto)
+  document.getElementById('trackBtnBlank').addEventListener('click', () => {
+    img = null;
+    blank = true;
+    imgInput.value = '__CLEAR__';
+    setPlaceholderVisible(false);
+    draw();
+  });
+
+  btnUndo.addEventListener('click', () => {
+    if (points.length === 0) return;
+    points.pop();
+    sync(); draw();
+  });
+  btnClose.addEventListener('click', () => { closed = !closed; draw(); });
+  btnClear.addEventListener('click', () => {
+    if (points.length === 0) return;
+    if (!confirm(LANG === 'es' ? '¿Borrar todos los puntos del trazado?' : 'Clear all outline points?')) return;
+    points = []; sync(); draw();
+  });
+  btnRemoveImg.addEventListener('click', () => {
+    if (!confirm(LANG === 'es' ? '¿Quitar la imagen y el trazado?' : 'Remove image and outline?')) return;
+    img = null; blank = false; points = []; imgInput.value = '__CLEAR__';
+    sync(); setPlaceholderVisible(true);
+  });
+
+  fileInput.addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      imgInput.value = dataUrl;
+      loadImage(dataUrl, /*resetPoints=*/false);
+    };
+    reader.readAsDataURL(f);
+  });
+
+  function loadImage(src, resetPoints) {
+    const i = new Image();
+    i.onload = () => {
+      img = i;
+      if (resetPoints) { points = []; sync(); }
+      setPlaceholderVisible(false);
+      draw();
+    };
+    i.onerror = () => { img = null; setPlaceholderVisible(true); };
+    i.src = src;
+  }
+
+  // Init
+  try {
+    const initialOutline = JSON.parse(outlineInput.value || '[]');
+    if (Array.isArray(initialOutline)) points = initialOutline.filter(p => Array.isArray(p) && p.length === 2);
+  } catch {}
+  updateCount();
+  const initialImg = imgInput.value;
+  if (initialImg && initialImg !== '__CLEAR__') {
+    loadImage(initialImg, false);
+  } else if (points.length > 0) {
+    // Hay trazado guardado pero no imagen → entrar directo en modo lienzo blanco
+    blank = true;
+    setPlaceholderVisible(false);
+    draw();
+  } else {
+    setPlaceholderVisible(true);
+  }
+})();
+</script>
 
 <script>
 const circPills    = document.getElementById('circPills');
