@@ -1,6 +1,7 @@
 const Settings       = require('../models/Settings');
 const SerialService  = require('../services/SerialService');
 const LicenseService = require('../services/LicenseService');
+const DebugLogger    = require('../services/DebugLogger');
 const Circuit        = require('../models/Circuit');
 
 class SettingsController {
@@ -51,7 +52,8 @@ class SettingsController {
   }
 
   static async save(req, res) {
-    const { serial_mode, sim_lanes, sim_avg_ms, serial_frame_gap_ms } = req.body;
+    const { serial_mode, sim_lanes, sim_avg_ms, serial_frame_gap_ms, debug_mode } = req.body;
+    const debugOn = debug_mode === '1' || debug_mode === 'on' || debug_mode === 'true';
 
     // Parse multi-circuit config from form arrays
     const portArr  = [].concat(req.body['circuit_port']  || []);
@@ -106,7 +108,9 @@ class SettingsController {
       sim_avg_ms:           sim_avg_ms  || '12000',
       training_circuit_id:  String(trainingCircuitId),
       serial_frame_gap_ms:  String(fgClean),
+      debug_mode:           debugOn ? '1' : '0',
     });
+    DebugLogger.setEnabled(debugOn);
 
     if (serial_mode === 'serial' && circuits.length > 0) {
       await SerialService.closeAll();

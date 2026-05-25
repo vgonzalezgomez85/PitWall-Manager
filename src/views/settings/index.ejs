@@ -182,6 +182,20 @@
         <% }) %>
       </div>
 
+      <!-- ── Debug mode ─────────────────────────────────────────────────── -->
+      <div class="form-group" style="margin-top:1rem; padding:.8rem; border:1px solid var(--border, #30363d); border-radius:6px">
+        <label class="form-label" style="display:flex; align-items:center; gap:.5rem; cursor:pointer; margin:0">
+          <input type="checkbox" name="debug_mode" value="1"
+                 <%= cfg.debug_mode === '1' ? 'checked' : '' %>>
+          <span><%= lang === 'es' ? '🐞 Modo debug' : '🐞 Debug mode' %></span>
+        </label>
+        <div class="form-hint" style="margin-top:.4rem">
+          <%= lang === 'es'
+            ? 'Registra tramas DS-300 crudas, cruces de carril, eventos de manga y errores en ficheros (.jsonl + .log) bajo logs/debug/. Un par de ficheros por manga.'
+            : 'Logs raw DS-300 frames, lane crossings, manga events and errors to files (.jsonl + .log) under logs/debug/. One pair per manga.' %>
+        </div>
+      </div>
+
       <!-- ── Advanced parser tuning ─────────────────────────────────────── -->
       <details style="margin-top:1rem">
         <summary class="form-hint" style="cursor:pointer">

@@ -3,6 +3,7 @@ const path         = require('path');
 const { performance } = require('perf_hooks');
 const EventEmitter = require('events');
 const Settings     = require('../models/Settings');
+const DebugLogger  = require('./DebugLogger');
 
 // Fixed offset so performance.now() (relative) maps to epoch ms (float, ~0.01ms precision)
 const _PERF_OFFSET = Date.now() - performance.now();
@@ -233,8 +234,10 @@ class CircuitConnection {
 
   _setRaceState(newState) {
     if (newState === this._raceState) return;
+    const prev = this._raceState;
     this._raceState = newState;
     console.log(`[DS-300 C${this._circuitIndex + 1}] Race state → ${newState}`);
+    DebugLogger.log('ds_state', { circuit: this._circuitIndex + 1, from: prev, to: newState });
     if      (newState === 'running')  this._onGo();
     else if (newState === 'resumed')  this._onResume();
     else if (newState === 'paused')   this._onPause();
@@ -244,6 +247,12 @@ class CircuitConnection {
 
   _processFrame(frame, ts) {
     if (frame.length < 2) return;
+
+    if (DebugLogger.isEnabled()) {
+      const hex = Array.from(frame).map(b => b.toString(16).padStart(2, '0')).join(' ');
+      const b7 = frame[7], b8 = frame[8];
+      DebugLogger.log('frame', { circuit: this._circuitIndex + 1, len: frame.length, hex, b7, b8, frame_ts: ts });
+    }
 
     // Any well-formed frame means the DS is alive; refresh the watchdog.
     this._pingAlive();
@@ -470,7 +479,7 @@ class SerialServiceClass extends EventEmitter {
       const conn = new CircuitConnection(
         i,
         laneOffset,
-        data => this.emit('lane_crossing', data),
+        data => { DebugLogger.log('crossing_raw', { source: 'ds300', ...data }); this.emit('lane_crossing', data); },
         ()   => this.emit('race_started'),
         ()   => this.emit('race_stopped'),
         ()   => this.emit('race_paused'),
@@ -607,6 +616,7 @@ class SerialServiceClass extends EventEmitter {
   _replayLap(lane, laps, idx) {
     if (!this._simRunning) return;
     const lapTimeMs = laps[idx];
+    DebugLogger.log('crossing_raw', { source: 'replay', lane, timestamp: Date.now(), lapTimeMs });
     this.emit('lane_crossing', { lane, timestamp: Date.now(), lapTimeMs });
     const next = (idx + 1) % laps.length;
     const t = setTimeout(() => this._replayLap(lane, laps, next), lapTimeMs);
@@ -629,6 +639,7 @@ class SerialServiceClass extends EventEmitter {
     if (!this._simRunning) return;
     const variation = avgLapMs * 0.2;
     const lapTimeMs = Math.round(avgLapMs + (Math.random() * variation * 2 - variation));
+    DebugLogger.log('crossing_raw', { source: 'sim', lane, timestamp: Date.now(), lapTimeMs });
     this.emit('lane_crossing', { lane, timestamp: Date.now(), lapTimeMs });
     const t = setTimeout(() => this._simLap(lane, avgLapMs), lapTimeMs);
     this._simTimers.set(lane, t);
