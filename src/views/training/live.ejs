@@ -32,6 +32,7 @@
     <div class="training-header__actions">
       <button id="voiceBtn" class="tr-btn tr-btn--voice" onclick="toggleVoice()" title="<%= lang === 'es' ? 'Activar/silenciar voz' : 'Toggle voice' %>">🔊</button>
       <button id="viewBtn" class="tr-btn tr-btn--view" onclick="toggleView()" title="<%= lang === 'es' ? 'Cambiar vista' : 'Toggle view' %>">⊞</button>
+      <button id="tvBtn" class="tr-btn tr-btn--tv" onclick="toggleTvMode()" title="<%= lang === 'es' ? 'Modo TV (fuentes grandes para pantalla a distancia)' : 'TV mode (large fonts for distant screen)' %>">📺</button>
       <% if (typeof heatNumber !== 'undefined' && heatNumber !== null) { %>
         <form action="/training/competition/stop" method="POST" style="display:inline"
           onsubmit="return confirm('<%= lang === 'es' ? '¿Reiniciar sesión? Se perderán todos los datos.' : 'Reset session? All data will be lost.' %>')">

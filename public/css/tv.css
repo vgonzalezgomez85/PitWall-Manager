@@ -5,7 +5,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; }
 
 .tv-body {
   display: flex; flex-direction: column; height: 100vh;
-  background: #080b10;
+  background: #000000;
   font-family: 'Inter', system-ui, sans-serif;
   color: #e6edf3;
 }
@@ -14,7 +14,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; }
 .tv-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: .6vh 2vw;
-  background: #0d1117;
+  background: #000000;
   border-bottom: 3px solid #161b22;
   flex-shrink: 0;
   height: 12vh;
@@ -66,7 +66,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; }
 .tv-panel-title {
   font-size: 1.2vh; font-weight: 700; letter-spacing: .16em; color: #4e555e;
   text-transform: uppercase; padding: .8vh 2vw .4vh;
-  background: #0a0d13; border-bottom: 1px solid #161b22;
+  background: #000000; border-bottom: 1px solid #161b22;
   flex-shrink: 0;
 }
 
@@ -81,7 +81,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; }
 .tv-table thead th {
   padding: .8vh 1.2vw; font-size: 1.4vh; font-weight: 700;
   letter-spacing: .1em; color: #4e555e; text-transform: uppercase;
-  background: #0a0d13; border-bottom: 2px solid #161b22;
+  background: #000000; border-bottom: 2px solid #161b22;
   text-align: left;
 }
 .tv-table thead .tv-right { text-align: right; }
@@ -104,8 +104,8 @@ html, body { width: 100%; height: 100%; overflow: hidden; }
   width: 4.5vh; height: 4.5vh; border-radius: 50%;
   font-family: 'Rajdhani', sans-serif; font-size: 2.4vh; font-weight: 700;
 }
-.tv-pos.p1 { background: #f6c90e; color: #080b10; }
-.tv-pos.p2 { background: #b0b8c0; color: #080b10; }
+.tv-pos.p1 { background: #f6c90e; color: #000000; }
+.tv-pos.p2 { background: #b0b8c0; color: #000000; }
 .tv-pos.p3 { background: #a0674a; color: #fff; }
 .tv-pos.pn { background: #21262d; color: #8b949e; }
 
@@ -151,7 +151,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; }
 /* ── Bottom ticker ───────────────────────────────────────────────────────── */
 .tv-ticker {
   height: 5vh; flex-shrink: 0;
-  background: #0d1117; border-top: 2px solid #161b22;
+  background: #000000; border-top: 2px solid #161b22;
   display: flex; align-items: center; overflow: hidden;
   padding: 0 1.5vw; gap: 1.5vw;
 }

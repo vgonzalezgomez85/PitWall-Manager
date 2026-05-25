@@ -83,7 +83,7 @@
           ? 'Arrastra para reordenar. Esta secuencia determina la rotación de pilotos entre mangas. Cualquier carrera asignada a este circuito la heredará automáticamente.'
           : 'Drag to reorder. This sequence drives the lane rotation between heats. Any race assigned to this circuit inherits it.' %>
       </p>
-      <div id="seqLanes" class="seq-lanes-edit" style="display:flex;flex-wrap:wrap;gap:.5rem;padding:.6rem;background:#0d1117;border:1px solid #21262d;border-radius:6px;min-height:3.5rem"></div>
+      <div id="seqLanes" class="seq-lanes-edit" style="display:flex;flex-wrap:wrap;gap:.5rem;padding:.6rem;background:#000000;border:1px solid #21262d;border-radius:6px;min-height:3.5rem"></div>
       <input type="hidden" name="lane_sequence" id="laneSequenceInput" value="<%= body.lane_sequence || '' %>">
       <div style="display:flex;gap:.5rem;margin-top:.5rem;flex-wrap:wrap">
         <button type="button" id="btnAddRest" class="btn btn--ghost btn--sm">
@@ -133,7 +133,7 @@
       </p>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.6rem">
         <% categories.forEach(cat => { %>
-          <div style="display:flex;align-items:center;gap:.5rem;background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:.5rem .7rem">
+          <div style="display:flex;align-items:center;gap:.5rem;background:#000000;border:1px solid #21262d;border-radius:6px;padding:.5rem .7rem">
             <span style="flex:1;font-weight:600;font-size:.95rem"><%= cat.name %></span>
             <input class="form-input form-input--sm"
                    type="number" step="0.01" min="0" max="999"

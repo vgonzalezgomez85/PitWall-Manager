@@ -3,7 +3,7 @@
 
 .training-body {
   display: flex; flex-direction: column; min-height: 100vh;
-  background: #0a0d13;
+  background: #000000;
   font-family: 'Inter', system-ui, sans-serif;
   color: #e6edf3;
 }
@@ -12,7 +12,7 @@
 .training-header {
   display: flex; align-items: center; gap: 1.5rem;
   padding: .6rem 1.4rem;
-  background: #0d1117;
+  background: #000000;
   border-bottom: 2px solid #161b22;
   flex-shrink: 0; height: 96px;
 }
@@ -67,7 +67,7 @@
 
 /* ── Lane card ───────────────────────────────────────────────────────────── */
 .tr-card {
-  background: #0d1520;
+  background: #0a0a0a;
   border: 2px solid var(--card-color, #21262d);
   border-radius: 10px;
   display: flex; flex-direction: column;
@@ -140,7 +140,7 @@
 /* Flash on new lap */
 @keyframes trFlash {
   0%   { background: rgba(246,201,14,.18); border-color: #f6c90e; }
-  100% { background: #0d1520; }
+  100% { background: #0a0a0a; }
 }
 .tr-card.tr-flash { animation: trFlash .7s ease-out forwards; }
 
@@ -254,7 +254,7 @@
 .tr-records-bar {
   display: flex; align-items: center; gap: 1rem;
   padding: .5rem 1rem;
-  background: #0d1117;
+  background: #000000;
   border-bottom: 1px solid #161b22;
   flex-wrap: wrap;
 }
@@ -268,7 +268,7 @@
 }
 .tr-record-item {
   display: inline-flex; align-items: center; gap: .3rem;
-  background: #0d1520;
+  background: #0a0a0a;
   border: 1px solid var(--card-color, #21262d);
   border-radius: 6px;
   padding: .2rem .55rem;
@@ -305,13 +305,13 @@
 
 @keyframes trRecordFlash {
   0%   { background: rgba(246,201,14,.25); }
-  100% { background: #0d1520; }
+  100% { background: #0a0a0a; }
 }
 .tr-card.tr-record-flash { animation: trRecordFlash 1.5s ease-out forwards; }
 
 .tr-card__lane-num {
   background: var(--card-color, #21262d);
-  color: #0a0d13;
+  color: #000000;
   border-radius: 6px;
   padding: .1rem .5rem;
   font-weight: 900;
@@ -319,7 +319,7 @@
 
 /* ── Resting participants bar (competition mode, P > N) ──────────────────── */
 .resting-bar {
-  background: #0d1117;
+  background: #000000;
   border-top: 1px solid #21262d;
   padding: .6rem 1rem .75rem;
   display: flex; flex-direction: column; gap: .4rem;
@@ -346,3 +346,145 @@
   width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
 }
 .resting-chip__name { font-weight: 600; }
+
+.tr-btn--tv { background: #21262d; color: #8b949e; font-size: 1.05rem; }
+.tr-btn--tv.active { background: #f59e0b; color: #000000; }
+
+/* ── Modo TV — pantalla grande a ~4m ─────────────────────────────────────── */
+/* Se activa al hacer toggle desde el botón 📺. Todo escala con vw para que
+   funcione bien en 720p, 1080p y 4K manteniendo proporciones.            */
+body.tv-mode .training-header { height: clamp(120px, 14vh, 200px); padding: .8rem 2rem; }
+body.tv-mode .tr-timer        { font-size: clamp(5rem, 11vw, 12rem); }
+body.tv-mode .tr-timer-label  { font-size: clamp(1.2rem, 1.8vw, 2rem); letter-spacing: .2em; }
+body.tv-mode .tr-title        { font-size: clamp(2rem, 3.5vw, 4rem); letter-spacing: .12em; }
+body.tv-mode .tr-subtitle     { font-size: clamp(1.2rem, 1.8vw, 2.2rem); }
+body.tv-mode .tr-btn          { padding: .8rem 1.6rem; font-size: clamp(1.2rem, 1.8vw, 2rem); }
+
+body.tv-mode .training-grid {
+  height: calc(100vh - clamp(120px, 14vh, 200px));
+  gap: clamp(.6rem, 1.2vw, 1.5rem);
+  padding: clamp(.6rem, 1.2vw, 1.5rem);
+}
+
+body.tv-mode .tr-card { border-width: 4px; border-radius: 16px; }
+
+body.tv-mode .tr-card__header { padding: clamp(.6rem, 1.4vh, 1.4rem) clamp(.8rem, 1.2vw, 1.6rem) clamp(.3rem, .7vh, .7rem); }
+body.tv-mode .tr-card__label  { font-size: clamp(1.8rem, 3vw, 4.5rem); letter-spacing: .14em; }
+body.tv-mode .tr-card__lane-num { padding: .2rem .8rem; border-radius: 10px; }
+body.tv-mode .tr-card__count  { font-size: clamp(1.6rem, 2.5vw, 3.5rem); }
+body.tv-mode .tr-card__name   { font-size: clamp(1.6rem, 2.6vw, 4rem); padding: 0 clamp(.8rem, 1.2vw, 1.6rem) .2rem; }
+
+/* La mejor vuelta — el dato MÁS importante, mucho mayor */
+body.tv-mode .tr-card__best   {
+  font-size: clamp(3.5rem, 7vw, 11rem);
+  padding: clamp(.3rem, 1vh, 1rem) clamp(.8rem, 1.2vw, 1.6rem);
+  line-height: .9;
+}
+
+body.tv-mode .tr-card__avg-row    { padding: .3rem clamp(.8rem, 1.2vw, 1.6rem) .8rem; gap: .35rem; }
+body.tv-mode .tr-card__avg-label  { font-size: clamp(1.1rem, 1.8vw, 2.2rem); }
+body.tv-mode .tr-card__avg-val    { font-size: clamp(1.6rem, 2.5vw, 3.4rem); }
+
+body.tv-mode .tr-card__session-record { padding: .4rem clamp(.8rem, 1.2vw, 1.6rem) .35rem; }
+body.tv-mode .tr-srec-label { font-size: clamp(1.1rem, 1.8vw, 2rem); }
+body.tv-mode .tr-srec-time  { font-size: clamp(1.7rem, 2.7vw, 3.6rem); }
+
+/* Lista de vueltas: pocas pero MUY visibles */
+body.tv-mode .tr-card__laps  { padding: .6rem clamp(.8rem, 1.2vw, 1.6rem) 1rem; gap: .25rem; }
+body.tv-mode .tr-lap-item    { font-size: clamp(1.3rem, 2vw, 2.6rem); padding: .25rem 0; }
+body.tv-mode .tr-lap-item--best { font-size: clamp(1.5rem, 2.2vw, 3rem); }
+body.tv-mode .tr-lap-empty   { font-size: clamp(1.1rem, 1.7vw, 2rem); }
+
+body.tv-mode .resting-bar__title { font-size: clamp(1.2rem, 1.8vw, 2rem); }
+body.tv-mode .resting-chip      { font-size: clamp(1.1rem, 1.7vw, 2rem); padding: .5rem 1rem; }
+body.tv-mode .resting-chip__num { font-size: clamp(.9rem, 1.4vw, 1.5rem); }
+body.tv-mode .resting-chip__dot { width: 16px; height: 16px; }
+
+body.tv-mode .tr-standby-badge { font-size: clamp(1.5rem, 2.5vw, 3rem); }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   REDISEÑO MINIMAL
+   - Paleta reducida: fondo oscuro neutro, blanco para texto, gold (#fbbf24)
+     como único acento, el color del carril para borde/nombre.
+   - Jerarquía visual: NOMBRE + ÚLTIMA VUELTA dominan. Lo accesorio se demota.
+   - Labels con alto contraste (no más gris-sobre-gris).
+   ───────────────────────────────────────────────────────────────────────── */
+
+.training-body { background: #000000; }
+
+/* Header: timer en blanco (no naranja), más limpio */
+.training-header { background: #000000; border-bottom: 1px solid #2a2f3a; }
+.tr-timer        { color: #ffffff; }
+.tr-timer-label  { color: #c9d1d9; }
+.tr-title        { color: #ffffff; }
+.tr-subtitle     { color: #c9d1d9; }
+
+/* Card: fondo plano, borde color carril más visible */
+.tr-card {
+  background: #0a0a0a;
+  border-width: 3px;
+}
+
+/* Header de tarjeta: número de carril prominente, contador sutil */
+.tr-card__lane-num {
+  background: var(--card-color, #2a2f3a);
+  color: #000000;
+  font-size: 1.4em;
+  padding: .15rem .7rem;
+}
+.tr-card__count { color: #c9d1d9; }
+
+/* NOMBRE del piloto: dato dominante */
+.tr-card__name {
+  color: #ffffff;
+  font-size: clamp(1.4rem, 2.5vw, 3rem);
+  font-weight: 700;
+  padding: .3rem clamp(.6rem, 1vw, 1rem) .4rem;
+  letter-spacing: .02em;
+}
+
+/* ÚLTIMA VUELTA (el número gigante): gold sobre fondo plano */
+.tr-card__best {
+  color: #fbbf24;
+  font-size: clamp(2.5rem, 6vw, 8rem);
+  line-height: 1;
+  font-weight: 700;
+  padding: .2rem clamp(.6rem, 1vw, 1rem);
+}
+
+/* Avg/Best secundarios: visibles pero pequeños, sin amarillo (resta jerarquía) */
+.tr-card__avg-label { color: #c9d1d9; font-size: .95rem; }
+.tr-card__avg-val   { color: #ffffff; font-size: 1.1rem; font-weight: 600; }
+
+/* Session record bar: muy sutil, sin marco amarillo que compite con el grande */
+.tr-card__session-record {
+  background: transparent;
+  border-top: none;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  padding: .15rem clamp(.6rem, 1vw, 1rem);
+}
+.tr-srec-label { color: #c9d1d9; }
+.tr-srec-time  { color: #fbbf24; font-size: 1.15rem; }
+
+/* Lista de vueltas: compacta, sólo las más recientes son legibles */
+.tr-card__laps { gap: 0; padding: .3rem clamp(.6rem, 1vw, 1rem) .5rem; }
+.tr-lap-item {
+  color: #8b949e;
+  font-size: .95rem;
+  padding: .15rem 0;
+  border-bottom: none;
+}
+.tr-lap-item--best { color: #fbbf24; font-weight: 700; }
+.tr-lap-empty      { color: #6e7681; }
+.tr-card__divider  { background: rgba(255,255,255,.06); }
+
+/* Botones del header con mejor contraste */
+.tr-btn--voice, .tr-btn--view, .tr-btn--tv, .tr-btn--back, .tr-btn--reset {
+  color: #ffffff;
+}
+.tr-btn--voice, .tr-btn--view, .tr-btn--tv, .tr-btn--back {
+  background: #2a2f3a;
+}
+.tr-btn--reset { background: #2a2f3a; border-color: #e63946aa; }
+.tr-btn--view.active { background: #2563eb; }
+.tr-btn--tv.active   { background: #fbbf24; color: #000000; }

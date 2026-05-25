@@ -116,7 +116,7 @@ function renderList() {
   list.innerHTML = participants.length === 0
     ? `<p style="color:#6e7681;font-size:.85rem">${'<%= lang === "es" ? "Sin participantes aún." : "No participants yet." %>'}</p>`
     : participants.map((p, i) => `
-        <div style="display:flex;align-items:center;gap:.75rem;padding:.5rem .75rem;background:#0d1520;border-radius:8px;border:1px solid #21262d">
+        <div style="display:flex;align-items:center;gap:.75rem;padding:.5rem .75rem;background:#0a0a0a;border-radius:8px;border:1px solid #21262d">
           <span style="width:14px;height:14px;border-radius:50%;background:${p.color};flex-shrink:0"></span>
           <span style="flex:1;font-weight:600">${p.name}</span>
           <span style="font-size:.75rem;color:#6e7681"><%= lang === 'es' ? 'Carril' : 'Lane' %> ${i + 1}</span>

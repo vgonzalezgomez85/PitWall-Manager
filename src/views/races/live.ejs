@@ -73,8 +73,10 @@
       <% } %>
       <button id="voiceBtn" class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Activar/silenciar voz' : 'Toggle voice' %>" onclick="toggleVoice()">🔊</button>
       <button id="viewBtn" class="lbtn lbtn--view" title="<%= lang === 'es' ? 'Cambiar vista' : 'Toggle view' %>" onclick="toggleView()">⊞</button>
-      <button class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Clasificación en ventana' : 'Standings window' %>"
+      <button class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Clasificación general (ventana)' : 'Overall standings (window)' %>"
         onclick="window.open('/races/<%= race.id %>/mangas/<%= manga.id %>/panel/standings','_blank','width=620,height=780')">📊</button>
+      <button class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Vueltas rápidas por pista (ventana)' : 'Fastest laps by lane (window)' %>"
+        onclick="window.open('/races/<%= race.id %>/mangas/<%= manga.id %>/panel/fastest','_blank','width=480,height=560')">⚡</button>
       <a href="/races/<%= race.id %>/mangas/<%= manga.id %>/tv" target="_blank" class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Pantalla TV' : 'TV display' %>">📺</a>
       <% if (race.format === 'team' && totalMangas > 1 && license.tier === 'pro') { %>
         <a href="/races/<%= race.id %>/lemans" target="_blank" class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Clasificación Le Mans' : 'Le Mans standings' %>">🏁</a>
@@ -102,10 +104,12 @@
     <div class="live-lanes" id="lanesGrid"></div>
 
     <!-- Resizer -->
-    <div id="sidebarResizer" class="sidebar-resizer" title="<%= lang === 'es' ? 'Arrastra para redimensionar' : 'Drag to resize' %>"></div>
+    <div id="sidebarResizer" class="sidebar-resizer" style="display:none" title="<%= lang === 'es' ? 'Arrastra para redimensionar' : 'Drag to resize' %>"></div>
 
-    <!-- Sidebar -->
-    <aside class="live-sidebar" id="liveSidebar">
+    <!-- Sidebar — ocultado: la clasificación general y las vueltas rápidas
+         se abren ahora en ventanas independientes con los botones 📊 / ⚡ del
+         header. Mantenemos los IDs en el DOM para que live.js no rompa. -->
+    <aside class="live-sidebar" id="liveSidebar" style="display:none">
 
       <div class="live-panel">
         <div class="live-panel__title">

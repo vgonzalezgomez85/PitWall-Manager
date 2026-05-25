@@ -60,7 +60,7 @@
       <% if (currentPhoto) { %>
         <div id="currentPhotoWrap" style="margin-bottom:.6rem;display:flex;align-items:center;gap:.75rem">
           <img src="<%= currentPhoto %>" alt="car"
-               style="height:56px;border-radius:6px;object-fit:contain;background:#0d1117;border:1px solid #30363d;padding:2px">
+               style="height:56px;border-radius:6px;object-fit:contain;background:#000000;border:1px solid #30363d;padding:2px">
           <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-size:.82rem;color:#8b949e">
             <input type="checkbox" name="remove_car_photo" value="1" id="removePhotoChk"
                    onchange="document.getElementById('currentPhotoWrap').style.opacity=this.checked?'0.3':'1'">
@@ -75,7 +75,7 @@
                id="carUploadLabel"
                onmouseover="this.style.borderColor='#58a6ff'" onmouseout="this.style.borderColor='#30363d'">
           <img id="carPreview" src="#" alt=""
-               style="display:none;height:64px;object-fit:contain;border-radius:4px;background:#0d1117">
+               style="display:none;height:64px;object-fit:contain;border-radius:4px;background:#000000">
           <span id="carUploadHint" style="font-size:.82rem;color:#8b949e">
             <%= lang === 'es' ? '📁 Seleccionar imagen (JPG, PNG, WebP — máx 4MB)' : '📁 Select image (JPG, PNG, WebP — max 4MB)' %>
           </span>

@@ -319,9 +319,15 @@ class SessionController {
       prevLapsByLane[l.lane] = Lap.raceCountByEntity(race.id, manga.id, l.team_id, l.driver_id);
     });
 
-    res.render('races/live-panel', {
+    // Mejor vuelta por carril (race-wide) — necesario para el panel fastest
+    const raceBestLapsArr = Lap.raceBestByLane(race.id);
+    const raceBestLaps = {};
+    raceBestLapsArr.forEach(r => { raceBestLaps[r.lane] = { bestLapMs: r.bestLapMs, entityName: r.entityName }; });
+
+    const view = req.params.type === 'fastest' ? 'races/live-panel-fastest' : 'races/live-panel';
+    res.render(view, {
       t: req.t, race, manga, tanda, lanes, laps, isActive, standings,
-      allParticipants, prevLapsByLane,
+      allParticipants, prevLapsByLane, raceBestLaps,
     });
   }
 
