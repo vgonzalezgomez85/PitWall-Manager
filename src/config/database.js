@@ -9,8 +9,18 @@ const DB_PATH = process.env.SLOTIME_DATA
 fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 
 const db = new Database(DB_PATH);
+
+// ── PRAGMAs de rendimiento ────────────────────────────────────────────────
+// WAL + synchronous=NORMAL es la combinación recomendada para apps de
+// escritura concurrente moderada y lecturas frecuentes (caso típico
+// SloTime: writes ~1-5/s desde TimingService, reads ~100s/s desde clientes).
 db.pragma('journal_mode = WAL');
+db.pragma('synchronous = NORMAL');     // antes FULL — same WAL safety, ~2-3× faster writes
+db.pragma('temp_store  = MEMORY');     // sorts/temp en RAM
+db.pragma('cache_size  = -65536');     // 64 MB cache (antes 16 MB) — cabe casi todo
+db.pragma('mmap_size   = 268435456');  // 256 MB memory-map para reads paralelos
 db.pragma('foreign_keys = ON');
+db.pragma('busy_timeout = 5000');      // espera 5s antes de SQLITE_BUSY (mejor que fail rápido)
 
 // ── Base schema (idempotent) ───────────────────────────────────────────────
 db.exec(`
@@ -241,6 +251,39 @@ const migrations = [
   `CREATE INDEX IF NOT EXISTS idx_laps_manga             ON laps(manga_id)`,
   `CREATE INDEX IF NOT EXISTS idx_laps_race_flags        ON laps(race_id, is_ghost, is_exit, lap_number)`,
   `CREATE INDEX IF NOT EXISTS idx_laps_race_team_driver  ON laps(race_id, team_id, driver_id)`,
+  // ORDER BY elapsed_ms es la consulta de "última vuelta por carril en manga"
+  `CREATE INDEX IF NOT EXISTS idx_laps_manga_lane_elapsed ON laps(manga_id, lane, elapsed_ms)`,
+  // source_lap_id usado para vincular vueltas reasignadas / restore
+  `CREATE INDEX IF NOT EXISTS idx_laps_source            ON laps(source_lap_id)`,
+
+  // ── Índices sobre el resto de tablas relacionales ────────────────────────
+  // FKs muy consultadas en JOINs y filtros (CADA standings/live page lo usa)
+  `CREATE INDEX IF NOT EXISTS idx_tandas_race            ON tandas(race_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_mangas_tanda           ON mangas(tanda_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_mangas_race            ON mangas(race_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_mangas_race_status     ON mangas(race_id, status)`,
+
+  `CREATE INDEX IF NOT EXISTS idx_manga_lanes_manga      ON manga_lanes(manga_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_manga_lanes_team       ON manga_lanes(team_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_manga_lanes_driver     ON manga_lanes(driver_id)`,
+
+  `CREATE INDEX IF NOT EXISTS idx_teams_race             ON teams(race_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_teams_tanda            ON teams(tanda_id)`,
+
+  `CREATE INDEX IF NOT EXISTS idx_drivers_race           ON drivers(race_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_drivers_tanda          ON drivers(tanda_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_drivers_team           ON drivers(team_id)`,
+
+  `CREATE INDEX IF NOT EXISTS idx_cars_category          ON cars(category_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_pole_sessions_race     ON pole_sessions(race_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_pole_entries_session   ON pole_entries(pole_session_id, order_idx)`,
+  `CREATE INDEX IF NOT EXISTS idx_race_categories_race   ON race_categories(race_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_race_categories_cat    ON race_categories(category_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_tc_members_team        ON teams_catalog_members(team_id, position)`,
+  `CREATE INDEX IF NOT EXISTS idx_ctr_session            ON competition_training_results(session_id, heat_number)`,
+  `CREATE INDEX IF NOT EXISTS idx_driver_shifts_manga    ON driver_shifts(manga_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_driver_shifts_race     ON driver_shifts(race_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_circuit_cat_times_circuit ON circuit_category_times(circuit_id, category_id)`,
 ];
 for (const sql of migrations) {
   try { db.exec(sql); } catch { /* already exists */ }
