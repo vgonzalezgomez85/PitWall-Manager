@@ -86,10 +86,21 @@ class CircuitConnection {
     // Running stats of REAL lap times per lane (sum + count), used to estimate
     // phantom lap times. Phantom laps never feed back into these stats.
     this._lapStatsByLane = new Map();
+
+    // ── Auto-reconnect state ────────────────────────────────────────────────
+    this._lastConfig     = null;   // { portPath, baudRate, opts } saved en cada connect()
+    this._reconnectTimer = null;
+    this._reconnectMs    = 1500;   // delay actual; sube con backoff hasta MAX
+    this._explicitClose  = false;  // true cuando el usuario llama close() — desactiva retry
   }
 
   async connect(portPath, baudRate, opts = {}) {
     if (!baudRate) throw new Error('baudRate required (configure in Settings)');
+    // Guardamos la última config para el reintento automático
+    this._lastConfig    = { portPath, baudRate, opts };
+    this._explicitClose = false;
+    if (this._reconnectTimer) { clearTimeout(this._reconnectTimer); this._reconnectTimer = null; }
+
     const dataBits    = opts.dataBits    || 8;
     const parity      = opts.parity      || 'none';
     const stopBits    = opts.stopBits    || 1;
@@ -143,16 +154,54 @@ class CircuitConnection {
     this._port.on('close', () => {
       console.warn(`[DS-300 C${this._circuitIndex + 1}] Port closed`);
       this._setConnected(false);
+      this._scheduleReconnect();
     });
 
     console.log(`[DS-300 C${this._circuitIndex + 1}] Connected to ${portPath} @ ${openedAt} baud (lane offset: ${this._laneOffset})`);
     // Port opened successfully — mark link as up so the UI doesn't show
     // "Sin señal del DS-300" before any traffic has been exchanged.
     this._setConnected(true);
+    // Reapertura exitosa: reseteamos el delay de backoff
+    this._reconnectMs = 1500;
+  }
+
+  // ── Auto-reconnect ──────────────────────────────────────────────────────
+  // Programa un reintento cuando el puerto se cierra de forma inesperada
+  // (DS-300 desconectado físicamente, USB suspendido, etc.). Backoff lineal
+  // 1.5 → 3 → 6 → 10s tope. Se desactiva si close() fue llamado por el usuario.
+  _scheduleReconnect() {
+    if (this._explicitClose) return;          // cierre voluntario: no reintentamos
+    if (!this._lastConfig)   return;
+    if (this._reconnectTimer) return;         // ya hay uno programado
+    // Si ya hay un puerto vivo (p. ej. el close fue de un port anterior
+    // descartado durante un reconnect en curso), no reintentamos
+    if (this._port && this._port.isOpen) return;
+
+    const RECONNECT_MAX_MS = 10000;
+    const delay = this._reconnectMs;
+    console.warn(`[DS-300 C${this._circuitIndex + 1}] Reintentando en ${delay}ms…`);
+    this._reconnectTimer = setTimeout(async () => {
+      this._reconnectTimer = null;
+      if (this._explicitClose || !this._lastConfig) return;
+      if (this._port && this._port.isOpen) return;   // ya estamos conectados
+      const { portPath, baudRate, opts } = this._lastConfig;
+      try {
+        await this.connect(portPath, baudRate, opts);
+        console.log(`[DS-300 C${this._circuitIndex + 1}] Reconectado ✓`);
+      } catch (err) {
+        // Falló: subir backoff y reintentar
+        console.warn(`[DS-300 C${this._circuitIndex + 1}] Reconexión falló: ${err.message}`);
+        this._reconnectMs = Math.min(RECONNECT_MAX_MS, Math.round(this._reconnectMs * 2));
+        this._scheduleReconnect();
+      }
+    }, delay);
   }
 
   async close() {
-    if (this._watchdogTimer) { clearTimeout(this._watchdogTimer); this._watchdogTimer = null; }
+    // Cierre solicitado por el usuario: cancelamos cualquier reintento pendiente
+    this._explicitClose = true;
+    if (this._reconnectTimer) { clearTimeout(this._reconnectTimer); this._reconnectTimer = null; }
+    if (this._watchdogTimer)  { clearTimeout(this._watchdogTimer);  this._watchdogTimer  = null; }
     if (!this._port) return;
     await new Promise(r => this._port.close(r));
     this._port = null;
