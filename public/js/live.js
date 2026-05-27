@@ -1108,9 +1108,9 @@ function announce(text) {
     });
 
     // Ghost lap discarded by Pt: TTS announcement so the race director hears it
-    // and can review/correct from the corrections screen.
+    // y pueda revisar/corregir desde la pantalla de correcciones.
     socket.on('lap:ghost', ({ lane }) => {
-      announce(LANG === 'es' ? `Vuelta descartada pista ${lane}` : `Lap discarded lane ${lane}`);
+      announce(LANG === 'es' ? `Vuelta ignorada pista ${lane}` : `Lap ignored lane ${lane}`);
     });
 
     // Ghost lap auto-reassigned to its real lane.

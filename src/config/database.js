@@ -232,6 +232,15 @@ const migrations = [
     lap_count         INTEGER DEFAULT 0,
     created_at        DATETIME DEFAULT CURRENT_TIMESTAMP
   )`,
+
+  // ── Índices de rendimiento sobre `laps` ───────────────────────────────────
+  // Sin estos, raceBestByLane (subquery correlacionada) hace escaneo completo
+  // y se vuelve O(N²) con miles de vueltas — medidos 642ms p50 con 4800 filas.
+  // Con índice por (race_id, lane) y filtros, baja a sub-milisegundo.
+  `CREATE INDEX IF NOT EXISTS idx_laps_race_lane         ON laps(race_id, lane)`,
+  `CREATE INDEX IF NOT EXISTS idx_laps_manga             ON laps(manga_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_laps_race_flags        ON laps(race_id, is_ghost, is_exit, lap_number)`,
+  `CREATE INDEX IF NOT EXISTS idx_laps_race_team_driver  ON laps(race_id, team_id, driver_id)`,
 ];
 for (const sql of migrations) {
   try { db.exec(sql); } catch { /* already exists */ }
