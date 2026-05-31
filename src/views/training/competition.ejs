@@ -61,24 +61,15 @@
         <div class="vt-card-h">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9.5" r="2.3"/><path d="M3 20v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1"/><path d="M16 14a4 4 0 0 1 5 4v1"/></svg>
           <%= lang === 'es' ? 'Participantes' : 'Participants' %>
-          <span class="vt-cnt" id="partCount" style="margin-left:auto">0</span>
+          <span class="vt-cnt" id="partCount" style="margin-left:auto">0 / 0</span>
         </div>
 
-        <div id="participantList" class="tc-part-list" style="margin-top:14px;margin-bottom:16px"></div>
+        <div id="participantList" class="tc-part-list" style="margin-top:14px;margin-bottom:6px"></div>
 
-        <div class="tc-add-row">
-          <input type="text" id="newName" class="vt-inp"
-            placeholder="<%= lang === 'es' ? 'Nombre del piloto / equipo' : 'Pilot / team name' %>"
-            maxlength="30">
-          <button type="button" class="vt-btn vt-btn--ghost" onclick="addParticipant()">
-            <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-            <%= lang === 'es' ? 'Añadir' : 'Add' %>
-          </button>
-        </div>
         <p class="vt-hint" style="margin-top:10px">
           <%= lang === 'es'
-            ? 'Los participantes se asignan a los carriles en el orden en que los añades.'
-            : 'Participants are assigned to lanes in the order you add them.' %>
+            ? 'Rellena el nombre del piloto o equipo en cada carril. Deja en blanco los carriles que no se vayan a usar.'
+            : 'Fill in the pilot or team name for each lane. Leave blank any lane you don\'t want to use.' %>
         </p>
       </div>
 
@@ -99,8 +90,115 @@
 
 <script>
 const LANG = "<%= lang %>";
+const FALLBACK_LANES = <%= typeof fallbackLanes !== 'undefined' ? fallbackLanes : 6 %>;
+const COLORS = [
+  '#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4',
+  '#ff5722','#607d8b','#795548','#e91e63','#3f51b5','#009688',
+  '#cddc39','#ffc107','#f44336','#673ab7','#03a9f4','#8bc34a',
+];
 
-/* Circuit hint */
+/* Estado: una entrada por carril; '' significa carril vacío */
+let slots = [];
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function currentLaneCount() {
+  const sel = document.getElementById('circuitSelect');
+  const opt = sel.options[sel.selectedIndex];
+  const lanes = parseInt(opt?.dataset?.lanes || '', 10);
+  return lanes > 0 ? lanes : FALLBACK_LANES;
+}
+
+function syncSlotsToLaneCount() {
+  const n = currentLaneCount();
+  if (slots.length === n) return;
+  if (slots.length < n) {
+    while (slots.length < n) slots.push('');
+  } else {
+    slots = slots.slice(0, n);
+  }
+}
+
+function renderSlots() {
+  const list   = document.getElementById('participantList');
+  const hidden = document.getElementById('hiddenInputs');
+  const btn    = document.getElementById('startBtn');
+  const count  = document.getElementById('partCount');
+
+  syncSlotsToLaneCount();
+
+  list.innerHTML = slots.map((name, i) => {
+    const color = COLORS[i % COLORS.length];
+    const v = escapeHtml(name);
+    return `
+      <div class="tc-slot-row">
+        <span class="tc-slot-row__lane">${LANG === 'es' ? 'Carril' : 'Lane'} ${i + 1}</span>
+        <span class="tc-slot-row__color" style="background:${color}"></span>
+        <input type="text" class="vt-inp tc-slot-row__inp" data-idx="${i}"
+               maxlength="30" autocomplete="off"
+               value="${v}"
+               placeholder="${LANG === 'es' ? 'Nombre del piloto / equipo…' : 'Pilot / team name…'}">
+        <button type="button" class="vt-icon-btn tc-slot-row__clear" data-idx="${i}"
+                title="${LANG === 'es' ? 'Vaciar' : 'Clear'}" ${name ? '' : 'style="visibility:hidden"'}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>`;
+  }).join('');
+
+  /* hidden inputs sólo para los slots con nombre, con su índice de carril */
+  hidden.innerHTML = slots.map((name, i) => {
+    const v = name.trim();
+    if (!v) return '';
+    return `<input type="hidden" name="participants[${i}][name]" value="${escapeHtml(v)}">
+            <input type="hidden" name="participants[${i}][color]" value="${COLORS[i % COLORS.length]}">
+            <input type="hidden" name="participants[${i}][lane]" value="${i + 1}">`;
+  }).join('');
+
+  const filled = slots.filter(n => n.trim()).length;
+  count.textContent = `${filled} / ${slots.length}`;
+  btn.disabled = filled < 2;
+}
+
+/* listeners delegados sobre la lista */
+document.getElementById('participantList').addEventListener('input', e => {
+  const inp = e.target.closest('.tc-slot-row__inp');
+  if (!inp) return;
+  const idx = parseInt(inp.dataset.idx, 10);
+  slots[idx] = inp.value;
+  /* Actualizar X y contador sin destruir el foco */
+  const row = inp.closest('.tc-slot-row');
+  const clear = row.querySelector('.tc-slot-row__clear');
+  clear.style.visibility = slots[idx].trim() ? '' : 'hidden';
+  const filled = slots.filter(n => n.trim()).length;
+  document.getElementById('partCount').textContent = `${filled} / ${slots.length}`;
+  document.getElementById('startBtn').disabled = filled < 2;
+  /* hidden inputs */
+  const v = slots[idx].trim();
+  const hidden = document.getElementById('hiddenInputs');
+  /* Reconstruir todos los hidden (es O(n) y n suele ser <= 16) */
+  hidden.innerHTML = slots.map((name, i) => {
+    const val = name.trim();
+    if (!val) return '';
+    return `<input type="hidden" name="participants[${i}][name]" value="${escapeHtml(val)}">
+            <input type="hidden" name="participants[${i}][color]" value="${COLORS[i % COLORS.length]}">
+            <input type="hidden" name="participants[${i}][lane]" value="${i + 1}">`;
+  }).join('');
+});
+
+document.getElementById('participantList').addEventListener('click', e => {
+  const btn = e.target.closest('.tc-slot-row__clear');
+  if (!btn) return;
+  const idx = parseInt(btn.dataset.idx, 10);
+  slots[idx] = '';
+  renderSlots();
+  /* devolver foco al input vaciado */
+  const inp = document.querySelector(`.tc-slot-row__inp[data-idx="${idx}"]`);
+  if (inp) inp.focus();
+});
+
+/* Circuit hint + re-render de slots al cambiar circuito */
 (function () {
   const sel = document.getElementById('circuitSelect');
   const hint = document.getElementById('circuitLanesHint');
@@ -111,74 +209,12 @@ const LANG = "<%= lang %>";
       hint.innerHTML = `<span class="vt-badge__d"></span> ${lanes} ${LANG === 'es' ? 'carriles' : 'lanes'}`;
       hint.style.display = '';
     } else {
-      hint.style.display = 'none';
+      hint.innerHTML = `<span class="vt-badge__d"></span> ${FALLBACK_LANES} ${LANG === 'es' ? 'carriles' : 'lanes'} (def.)`;
+      hint.style.display = '';
     }
+    renderSlots();
   }
   sel.addEventListener('change', update);
   update();
 })();
-
-const COLORS = [
-  '#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4',
-  '#ff5722','#607d8b','#795548','#e91e63','#3f51b5','#009688',
-  '#cddc39','#ffc107','#f44336','#673ab7','#03a9f4','#8bc34a',
-];
-let participants = [];
-
-function addParticipant() {
-  const input = document.getElementById('newName');
-  const name  = input.value.trim();
-  if (!name) return;
-  participants.push({ name, color: COLORS[participants.length % COLORS.length] });
-  input.value = '';
-  renderList();
-  input.focus();
-}
-
-function removeParticipant(i) {
-  participants.splice(i, 1);
-  participants = participants.map((p, idx) => ({ ...p, color: COLORS[idx % COLORS.length] }));
-  renderList();
-}
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
-function renderList() {
-  const list   = document.getElementById('participantList');
-  const hidden = document.getElementById('hiddenInputs');
-  const btn    = document.getElementById('startBtn');
-  const countEl = document.getElementById('partCount');
-
-  countEl.textContent = participants.length;
-
-  if (participants.length === 0) {
-    list.innerHTML = `<div class="tc-part-empty">${LANG === 'es' ? 'Sin participantes aún. Añade el primero abajo.' : 'No participants yet. Add the first one below.'}</div>`;
-  } else {
-    list.innerHTML = participants.map((p, i) => `
-      <div class="tc-part-row">
-        <span class="tc-part-row__color" style="background:${p.color}"></span>
-        <span class="tc-part-row__name">${escapeHtml(p.name)}</span>
-        <span class="tc-part-row__lane">${LANG === 'es' ? 'Carril' : 'Lane'} ${i + 1}</span>
-        <button type="button" class="vt-icon-btn is-danger" onclick="removeParticipant(${i})" title="${LANG === 'es' ? 'Quitar' : 'Remove'}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
-        </button>
-      </div>
-    `).join('');
-  }
-
-  hidden.innerHTML = participants.map((p, i) =>
-    `<input type="hidden" name="participants[${i}][name]" value="${escapeHtml(p.name)}">
-     <input type="hidden" name="participants[${i}][color]" value="${p.color}">`
-  ).join('');
-
-  btn.disabled = participants.length < 2;
-}
-
-document.getElementById('newName').addEventListener('keydown', e => {
-  if (e.key === 'Enter') { e.preventDefault(); addParticipant(); }
-});
-
-renderList();
 </script>
