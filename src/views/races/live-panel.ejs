@@ -171,8 +171,12 @@
       mangaId:          manga.id,
       isActive:         isActive,
       lanesCount:       race.lanes_count,
-      mangaDurationMs:  race.manga_duration_minutes * 60 * 1000,
-      totalRaceMs:      race.lanes_count * race.manga_duration_minutes * 60 * 1000,
+      mangaDurationMs:  (typeof effectiveMangaDurationMs !== 'undefined' && effectiveMangaDurationMs > 0)
+                          ? effectiveMangaDurationMs
+                          : (race.manga_duration_minutes * 60 * 1000),
+      totalRaceMs:      race.lanes_count * ((typeof effectiveMangaDurationMs !== 'undefined' && effectiveMangaDurationMs > 0)
+                                            ? effectiveMangaDurationMs
+                                            : (race.manga_duration_minutes * 60 * 1000)),
       standings:        standings,
       lanes:            Object.values(laneInit2),
       allParticipants:  allParticipants || [],

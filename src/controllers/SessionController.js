@@ -21,6 +21,25 @@ const LANE_COLORS = [
 
 class SessionController {
 
+  // Devuelve la duración EFECTIVA de una manga en ms:
+  //   - Si TimingService está gestionando esta manga ahora mismo, usa su
+  //     `session.durationMs` (refleja la trama race_go del DS-300).
+  //   - En su defecto, usa `race.manga_duration_minutes` de BD. Este valor
+  //     es habitualmente el placeholder 99 que pone el wizard porque la
+  //     duración real la marca el DS-300 al pulsar GO, así que la proyección
+  //     basada en este fallback será inflada si no se ha corregido.
+  //
+  // Pendiente: idealmente cada manga debería persistir su duración real en
+  // BD cuando arranca, para que las vistas históricas/post-carrera también
+  // calculen bien la proyección. De momento solo el live (mientras está
+  // activo) usa la duración real.
+  static _getEffectiveMangaDurationMs(race, manga) {
+    if (TimingService.activeMangaId === manga.id && TimingService.session?.durationMs > 0) {
+      return TimingService.session.durationMs;
+    }
+    return (race.manga_duration_minutes || 0) * 60000;
+  }
+
   // POST /races/:id/mangas/:mangaId/start
   static start(req, res) {
     const race  = Race.findById(req.params.id);
@@ -140,7 +159,13 @@ class SessionController {
     const totalRaceMangas = require('../config/database').prepare(
       'SELECT COUNT(*) c FROM mangas m JOIN tandas t ON t.id = m.tanda_id WHERE t.race_id = ?'
     ).get(race.id).c;
-    const totalRaceMs = totalRaceMangas * race.manga_duration_minutes * 60000;
+    // Duración EFECTIVA por manga: si el TimingService está gestionando
+    // esta manga ahora mismo, usar su durationMs (refleja el valor que el
+    // DS-300 envió en el race_go). En su defecto, fallback al valor de BD
+    // (manga_duration_minutes, normalmente el placeholder por defecto 99
+    // que no es realista — ver memoria "Log duración manga engañoso").
+    const effectiveMangaDurationMs = SessionController._getEffectiveMangaDurationMs(race, manga);
+    const totalRaceMs = totalRaceMangas * effectiveMangaDurationMs;
 
     // Team-race extras: members per lane + current active drivers
     let teamMembersByLane = {};
@@ -268,7 +293,7 @@ class SessionController {
     const hasQrCheckin = LicenseService.has('qr_checkin');
 
     const isSimulating = SerialService.isSimulating;
-    res.render('races/live', { t: req.t, race, manga, tanda, lanes, laps, isActive, standings, prevLapsByLane, totalMangas, totalTandas, totalRaceMs, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, allParticipants, nextLaneByLane, nextMangaInfo, isSimulating });
+    res.render('races/live', { t: req.t, race, manga, tanda, lanes, laps, isActive, standings, prevLapsByLane, totalMangas, totalTandas, totalRaceMs, effectiveMangaDurationMs, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, allParticipants, nextLaneByLane, nextMangaInfo, isSimulating });
   }
 
   // GET /races/:id/mangas/:mangaId/panel/:type  (standalone popup)
@@ -420,10 +445,13 @@ class SessionController {
     else if (req.params.type === 'track')   view = 'races/live-panel-track';
     else                                    view = 'races/live-panel';
 
+    const effectiveMangaDurationMs = SessionController._getEffectiveMangaDurationMs(race, manga);
+
     res.render(view, {
       t: req.t, race, manga, tanda, lanes, laps, isActive, standings,
       allParticipants, prevLapsByLane, raceBestLaps,
       circuit, trackOutline, lastLapByLane,
+      effectiveMangaDurationMs,
     });
   }
 
