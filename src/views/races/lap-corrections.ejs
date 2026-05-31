@@ -1,183 +1,675 @@
 <%- include('../partials/header', { pageTitle: (lang === 'es' ? 'Corrección de vueltas' : 'Lap Corrections') }) %>
-<div class="container">
 
-  <a href="/races/<%= race.id %>/mangas/<%= manga.id %>/live" class="back-link">
-    ← <%= lang === 'es' ? 'Volver a la manga' : 'Back to heat' %>
-  </a>
-  <h1 class="page-title">
-    🔧 <%= lang === 'es' ? 'Corrección de vueltas' : 'Lap Corrections' %>
-  </h1>
-  <p class="page-subtitle">
-    <%= race.name %>
-    <% if (tanda) { %> · <%= lang === 'es' ? 'Tanda' : 'Round' %> <%= tanda.number %><% } %>
-    · <%= lang === 'es' ? 'Manga' : 'Heat' %> <%= manga.number %>
-    <span class="badge badge--<%= manga.status %>" style="margin-left:.4rem">
-      <%= {pending: lang==='es'?'Pendiente':'Pending', active: lang==='es'?'En curso':'Active', finished: lang==='es'?'Finalizada':'Finished'}[manga.status] %>
-    </span>
-  </p>
+<%
+function fmtMs(ms) {
+  if (ms == null) return '—';
+  const totalSec   = Math.floor(ms / 1000);
+  const hundredths = Math.floor((ms % 1000) / 10);
+  const secs = totalSec % 60;
+  const mins = Math.floor(totalSec / 60);
+  return (mins > 0 ? mins + ':' : '') + String(secs).padStart(mins > 0 ? 2 : 1, '0') + '.' + String(hundredths).padStart(2, '0');
+}
+function fmtS(ms) {
+  if (ms == null) return '—';
+  return (ms / 1000).toFixed(3);
+}
 
-  <%
-    function fmtMs(ms) {
-      if (ms == null) return '—';
-      const totalSec   = Math.floor(ms / 1000);
-      const hundredths = Math.floor((ms % 1000) / 10);
-      const secs = totalSec % 60;
-      const mins = Math.floor(totalSec / 60);
-      return (mins > 0 ? mins + ':' : '') + String(secs).padStart(mins > 0 ? 2 : 1, '0') + '.' + String(hundredths).padStart(2, '0');
-    }
-  %>
+// Cuenta total de vueltas "marcadas" (ghost) en toda la manga
+const totalFlagged = laneGroups.reduce((acc, g) => acc + g.laps.filter(l => l.is_ghost).length, 0);
 
-  <% if (laneGroups.length === 0) { %>
-    <div class="empty-state" style="padding:3rem">
-      <p class="empty-state__text">
-        <%= lang === 'es' ? 'Esta manga no tiene carriles activos.' : 'This heat has no active lanes.' %>
-      </p>
-    </div>
-  <% } else { %>
+// Stats por carril para la sidebar
+const laneStats = laneGroups.map(g => {
+  const valid     = g.laps.filter(l => !l.is_ghost);
+  const flags     = g.laps.filter(l =>  l.is_ghost).length;
+  const validNoEx = g.laps.filter(l => !l.is_ghost && !l.is_exit && l.lap_time_ms > 500);
+  const avgMs     = validNoEx.length ? Math.round(validNoEx.reduce((s,l) => s + l.lap_time_ms, 0) / validNoEx.length) : null;
+  const bestMs    = valid.length ? Math.min(...valid.map(l => l.lap_time_ms)) : null;
+  return {
+    info: g.info,
+    laps: g.laps,
+    validCount: valid.length,
+    flagCount:  flags,
+    avgMs, bestMs,
+    entityName: g.info.team_name || g.info.driver_name || ('Lane ' + g.info.lane),
+  };
+});
 
-    <!-- Per-lane lap tables -->
-    <% laneGroups.forEach(group => {
-         const validLaps = group.laps.filter(l => !l.is_ghost).length;
-         const ghostLaps = group.laps.filter(l =>  l.is_ghost).length;
-         const entityName = group.info.team_name || group.info.driver_name || ('Lane ' + group.info.lane);
-         const otherLanes = activeLanes.filter(l => l !== group.info.lane);
-         const validForAvg = group.laps.filter(l => !l.is_ghost && !l.is_exit && l.lap_time_ms > 500);
-         const avgMs  = validForAvg.length ? Math.round(validForAvg.reduce((s,l) => s + l.lap_time_ms, 0) / validForAvg.length) : null;
-         const avgS   = avgMs ? (avgMs / 1000).toFixed(2) : '';
-    %>
-      <div class="tanda-block" style="margin-bottom:1.5rem">
-        <div class="tanda-header">
-          <div class="tanda-header__left">
-            <span class="lane-dot" style="background:<%= LANE_COLORS[group.info.lane - 1] %>;width:2rem;height:2rem;font-size:.9rem;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;font-weight:700;color:#fff;flex-shrink:0">
-              <%= group.info.lane %>
-            </span>
-            <span style="font-weight:600"><%= entityName %></span>
-            <span class="form-hint">
-              <%= validLaps %> <%= lang === 'es' ? 'válidas' : 'valid' %>
-              <% if (ghostLaps > 0) { %>
-                · <span style="color:#ff9800"><%= ghostLaps %> <%= lang === 'es' ? 'fantasma' : 'ghost' %></span>
-              <% } %>
-            </span>
+// Carril inicial activo: el primero con ghost laps si lo hay; si no, el primero
+let initActive = 0;
+const firstFlagged = laneStats.findIndex(s => s.flagCount > 0);
+if (firstFlagged >= 0) initActive = firstFlagged;
+%>
+
+<div class="vt-page vt-page--corrections">
+  <div class="lc-shell">
+
+    <!-- ── TOPBAR ──────────────────────────────────────────────────── -->
+    <div class="lc-topbar">
+      <div class="lc-title">
+        <div class="lc-title__icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4.5l5 5M3 21l1-5L16 4l4 4L8 20l-5 1z"/></svg>
+        </div>
+        <div>
+          <h1><%= lang === 'es' ? 'Corrección de vueltas' : 'Lap corrections' %></h1>
+          <div class="lc-title__sub">
+            <%= race.name %>
+            <% if (tanda) { %> · <%= lang === 'es' ? 'Tanda' : 'Round' %> <b><%= tanda.number %></b><% } %>
+            · <%= lang === 'es' ? 'Manga' : 'Heat' %> <b><%= manga.number %></b>
           </div>
         </div>
+      </div>
 
-        <% if (group.laps.length === 0) { %>
-          <p class="form-hint" style="padding:.75rem 1rem">
-            <%= lang === 'es' ? 'Sin vueltas registradas en este carril.' : 'No laps recorded on this lane.' %>
-          </p>
-        <% } else { %>
-          <div style="overflow-x:auto">
-            <table class="schedule-table" style="min-width:520px">
-              <thead>
-                <tr>
-                  <th style="width:3rem">#</th>
-                  <th style="width:6rem"><%= lang === 'es' ? 'Tiempo' : 'Time' %></th>
-                  <th style="width:6rem"><%= lang === 'es' ? 'Acumulado' : 'Elapsed' %></th>
-                  <th style="width:6rem"><%= lang === 'es' ? 'Estado' : 'Status' %></th>
-                  <th><%= lang === 'es' ? 'Acciones' : 'Actions' %></th>
-                </tr>
-              </thead>
-              <tbody>
-                <% group.laps.forEach(lap => { %>
-                  <tr class="<%= lap.is_ghost ? 'corr-ghost-row' : '' %>">
-                    <td style="font-family:monospace;color:var(--text-muted)"><%= lap.lap_number %></td>
-                    <td style="font-family:monospace;font-weight:600"><%= fmtMs(lap.lap_time_ms) %></td>
-                    <td style="font-family:monospace;color:var(--text-muted)"><%= fmtMs(lap.elapsed_ms) %></td>
-                    <td>
-                      <% if (lap.is_ghost && lap.transferred_to_lane) { %>
-                        <span style="color:#ff9800;font-size:.78rem;font-weight:600">
-                          👻 → <%= lang === 'es' ? 'Carril' : 'Lane' %> <%= lap.transferred_to_lane %>
-                        </span>
-                      <% } else if (lap.is_ghost && lap.ghost_from_lane) { %>
-                        <span style="color:#ff9800;font-size:.78rem;font-weight:600">
-                          👻 ← <%= lang === 'es' ? 'Carril' : 'Lane' %> <%= lap.ghost_from_lane %>
-                        </span>
-                      <% } else if (lap.is_ghost) { %>
-                        <span style="color:#ff9800;font-size:.78rem;font-weight:600">
-                          👻 <%= lang === 'es' ? 'Fantasma' : 'Ghost' %>
-                        </span>
-                      <% } else if (lap.transferred_from_lane) { %>
-                        <span style="color:#58a6ff;font-size:.78rem;font-weight:600">
-                          ↔ <%= lang === 'es' ? 'de Carril' : 'from Lane' %> <%= lap.transferred_from_lane %>
-                        </span>
-                      <% } else if (lap.is_pit_stop) { %>
-                        <span style="color:var(--text-muted);font-size:.78rem">🔧 <%= lang === 'es' ? 'Pit-stop' : 'Pit-stop' %></span>
-                      <% } else if (lap.is_exit) { %>
-                        <span style="color:var(--text-muted);font-size:.78rem">⚠ <%= lang === 'es' ? 'Salida' : 'Exit' %></span>
-                      <% } else { %>
-                        <span style="color:#4caf50;font-size:.8rem;font-weight:600">✓ <%= lang === 'es' ? 'Válida' : 'Valid' %></span>
-                      <% } %>
-                    </td>
-                    <td>
-                      <% const delMsg = lang === 'es' ? '¿Eliminar vuelta permanentemente?' : 'Delete lap permanently?'; %>
-                      <div style="display:flex;flex-wrap:wrap;gap:.4rem;align-items:center">
-                        <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/corrections/delete/<%= lap.id %>" method="POST"
-                              onsubmit="return confirm('<%= delMsg %>')">
-                          <button type="submit" class="btn btn--danger btn--sm" title="<%= lang === 'es' ? 'Eliminar vuelta' : 'Delete lap' %>">✕</button>
-                        </form>
+      <% if (totalFlagged > 0) { %>
+        <span class="lc-meta-pill">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M10.3 3.8 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.8a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+          <b><%= totalFlagged %></b> <%= lang === 'es' ? 'vueltas fantasma' : 'ghost laps' %>
+        </span>
+      <% } %>
+
+      <div class="lc-tools">
+        <a href="/races/<%= race.id %>/mangas/<%= manga.id %>/live" class="vt-btn vt-btn--ghost vt-btn--sm">
+          <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          <%= lang === 'es' ? 'Volver' : 'Back' %>
+        </a>
+      </div>
+    </div>
+
+    <% if (laneGroups.length === 0) { %>
+      <div class="lc-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
+        <div class="lc-empty__t"><%= lang === 'es' ? 'Sin carriles activos' : 'No active lanes' %></div>
+      </div>
+    <% } else { %>
+
+      <div class="lc-main">
+
+        <!-- ── LISTA DE CARRILES ─────────────────────────────────────── -->
+        <aside class="lc-lanes">
+          <div class="lc-lanes__h"><%= lang === 'es' ? 'Carriles de la manga' : 'Lanes in this heat' %></div>
+          <% laneStats.forEach((s, idx) => {
+               const color = LANE_COLORS[s.info.lane - 1] || '#8b949e';
+               const active = idx === initActive;
+          %>
+            <div class="lc-lane <%= active ? 'is-active' : '' %>"
+                 data-idx="<%= idx %>"
+                 data-lane="<%= s.info.lane %>"
+                 style="--lane-color:<%= color %>">
+              <span class="lc-lane__chip"><%= s.info.lane %></span>
+              <span class="lc-lane__meta">
+                <span class="lc-lane__name"><%= s.entityName %></span>
+                <span class="lc-lane__sub">
+                  <%= s.validCount %> <%= lang === 'es' ? 'vueltas' : 'laps' %>
+                  <% if (s.bestMs) { %> · <%= lang === 'es' ? 'mejor' : 'best' %> <%= fmtS(s.bestMs) %>s<% } %>
+                </span>
+              </span>
+              <% if (s.flagCount > 0) { %>
+                <span class="lc-lane__warn"><%= s.flagCount %>⚠</span>
+              <% } %>
+            </div>
+          <% }) %>
+        </aside>
+
+        <!-- ── DETALLE (vuelta a vuelta) ─────────────────────────────── -->
+        <section class="lc-detail">
+          <% laneStats.forEach((s, idx) => {
+               const color = LANE_COLORS[s.info.lane - 1] || '#8b949e';
+               // Vuelta más rápida (no ghost) — la marcamos como FL
+               let fastestId = null, fastestMs = Infinity;
+               s.laps.forEach(l => {
+                 if (!l.is_ghost && !l.is_exit && l.lap_time_ms > 500 && l.lap_time_ms < fastestMs) {
+                   fastestMs = l.lap_time_ms; fastestId = l.id;
+                 }
+               });
+               const otherLanes = activeLanes.filter(l => l !== s.info.lane);
+          %>
+            <div class="lc-detail__pane <%= idx === initActive ? 'is-active' : '' %>"
+                 data-idx="<%= idx %>" style="--lane-color:<%= color %>">
+
+              <!-- Header del carril -->
+              <div class="lc-detail__head">
+                <div class="lc-detail__chip"><%= s.info.lane %></div>
+                <div>
+                  <div class="lc-detail__name"><%= s.entityName %></div>
+                  <div class="lc-detail__sub">
+                    <%= lang === 'es' ? 'Carril' : 'Lane' %> <%= s.info.lane %>
+                    · <%= s.laps.length %> <%= lang === 'es' ? 'vueltas registradas' : 'laps recorded' %>
+                  </div>
+                </div>
+                <div class="lc-kpis">
+                  <div class="lc-kpi">
+                    <div class="lc-kpi__l"><%= lang === 'es' ? 'Vueltas' : 'Laps' %></div>
+                    <div class="lc-kpi__v"><%= s.validCount %></div>
+                  </div>
+                  <div class="lc-kpi">
+                    <div class="lc-kpi__l"><%= lang === 'es' ? 'Mejor' : 'Best' %></div>
+                    <div class="lc-kpi__v lc-kpi__v--best"><%= s.bestMs ? fmtS(s.bestMs) : '—' %></div>
+                  </div>
+                  <div class="lc-kpi">
+                    <div class="lc-kpi__l"><%= lang === 'es' ? 'Media' : 'Avg' %></div>
+                    <div class="lc-kpi__v"><%= s.avgMs ? fmtS(s.avgMs) : '—' %></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tabla vuelta a vuelta -->
+              <div class="lc-laps">
+                <div class="lc-laps__bar">
+                  <span class="lc-laps__lbl"><%= lang === 'es' ? 'Vuelta a vuelta' : 'Lap by lap' %></span>
+                </div>
+
+                <% if (s.laps.length === 0) { %>
+                  <p class="lc-laps__empty"><%= lang === 'es' ? 'Sin vueltas registradas en este carril.' : 'No laps recorded in this lane.' %></p>
+                <% } else { %>
+                  <div class="lc-lhead">
+                    <div><%= lang === 'es' ? 'Vlt' : 'Lap' %></div>
+                    <div><%= lang === 'es' ? 'Tiempo' : 'Time' %></div>
+                    <div class="r"><%= lang === 'es' ? 'Reloj' : 'Clock' %></div>
+                    <div class="r">Δ ant.</div>
+                    <div class="r"><%= lang === 'es' ? 'Acciones' : 'Actions' %></div>
+                  </div>
+
+                  <% s.laps.forEach((lap, i) => {
+                       const prev = i > 0 ? s.laps[i-1].lap_time_ms : null;
+                       const delta = prev != null ? (lap.lap_time_ms - prev) : null;
+                       const dCls = delta == null ? 'zero' : (delta < 0 ? 'up' : 'dn');
+                       const dTxt = delta == null ? '—' : (delta > 0 ? '+' : '') + (delta/1000).toFixed(3);
+                       const isFastest = lap.id === fastestId;
+                       const flagClass = lap.is_ghost ? 'is-flag' : '';
+                       const fastClass = isFastest ? 'is-fastest' : '';
+                  %>
+                    <div class="lc-lap <%= flagClass %> <%= fastClass %>">
+                      <div class="lc-lap__n">
+                        <%= lap.lap_number %>
+                        <% if (isFastest) { %><span class="lc-lap__fl">FL</span><% } %>
+                      </div>
+                      <div class="lc-lap__time">
+                        <%= fmtS(lap.lap_time_ms) %>s
+                        <% if (lap.is_ghost) { %>
+                          <span class="lc-flagtag">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.8 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.8a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+                            <% if (lap.transferred_to_lane) { %>
+                              <%= lang === 'es' ? 'Movida a C' : 'Moved to L' %><%= lap.transferred_to_lane %>
+                            <% } else if (lap.ghost_from_lane) { %>
+                              <%= lang === 'es' ? 'Desde C' : 'From L' %><%= lap.ghost_from_lane %>
+                            <% } else { %>
+                              <%= lang === 'es' ? 'Fantasma' : 'Ghost' %>
+                            <% } %>
+                          </span>
+                        <% } else if (lap.transferred_from_lane) { %>
+                          <span class="lc-flagtag is-info">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 16l-4-4 4-4M3 12h18M17 8l4 4-4 4"/></svg>
+                            <%= lang === 'es' ? 'Desde C' : 'From L' %><%= lap.transferred_from_lane %>
+                          </span>
+                        <% } else if (lap.is_pit_stop) { %>
+                          <span class="lc-flagtag is-pit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg> Pit</span>
+                        <% } else if (lap.is_exit) { %>
+                          <span class="lc-flagtag is-exit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.3 3.8 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.8a2 2 0 0 0-3.4 0z"/></svg> <%= lang === 'es' ? 'Salida' : 'Exit' %></span>
+                        <% } %>
+                      </div>
+                      <div class="lc-lap__clock">@ <%= fmtS(lap.elapsed_ms) %>s</div>
+                      <div class="lc-lap__delta <%= dCls %>"><%= dTxt %></div>
+                      <div class="lc-lap__actions">
                         <% if (lap.is_ghost) { %>
                           <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/corrections/restore/<%= lap.id %>" method="POST">
-                            <button type="submit" class="btn btn--ghost btn--sm">
-                              ↩ <%= lang === 'es' ? 'Restaurar' : 'Restore' %>
+                            <button class="lc-iconbtn" type="submit" title="<%= lang === 'es' ? 'Restaurar' : 'Restore' %>">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.5-6.4M21 3v6h-6"/></svg>
                             </button>
                           </form>
-                        <% } else if (!lap.transferred_from_lane) { %>
-                          <%# Primary action: move to another lane %>
-                          <% if (otherLanes.length > 0) { %>
-                            <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/corrections/transfer/<%= lap.id %>" method="POST"
-                                  style="display:flex;align-items:center;gap:.3rem">
-                              <select name="to_lane" class="form-input" style="padding:.2rem .4rem;font-size:.78rem;width:auto;height:auto">
-                                <% otherLanes.forEach(l => { %>
-                                  <option value="<%= l %>"><%= lang === 'es' ? 'Carril' : 'Lane' %> <%= l %></option>
-                                <% }) %>
-                              </select>
-                              <button type="submit" class="btn btn--primary btn--sm">
-                                ↔ <%= lang === 'es' ? 'Mover a carril' : 'Move to lane' %>
-                              </button>
-                            </form>
-                          <% } %>
-                          <%# Secondary action: mark ghost without transfer (false positive) %>
-                          <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/corrections/ghost/<%= lap.id %>" method="POST">
-                            <button type="submit" class="btn btn--sm" style="background:transparent;color:var(--text-muted);border:1px solid var(--border-color);font-size:.72rem"
-                                    title="<%= lang === 'es' ? 'Cruce falso del sensor — nadie recibe esta vuelta' : 'False sensor crossing — nobody receives this lap' %>">
-                              👻 <%= lang === 'es' ? 'Falso positivo' : 'False positive' %>
+                        <% } else if (!lap.transferred_from_lane && otherLanes.length > 0) { %>
+                          <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/corrections/transfer/<%= lap.id %>" method="POST" class="lc-mv">
+                            <select name="to_lane" class="lc-mini-select" title="<%= lang === 'es' ? 'Mover a carril' : 'Move to lane' %>">
+                              <% otherLanes.forEach(l => { %>
+                                <option value="<%= l %>"><%= l %></option>
+                              <% }) %>
+                            </select>
+                            <button class="lc-iconbtn" type="submit" title="<%= lang === 'es' ? 'Mover a otro carril' : 'Move to another lane' %>">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16l-4-4 4-4M3 12h18M17 8l4 4-4 4"/></svg>
+                            </button>
+                          </form>
+                          <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/corrections/ghost/<%= lap.id %>" method="POST"
+                                onsubmit="return confirm('<%= lang === 'es' ? '¿Marcar como falso positivo (nadie recibe esta vuelta)?' : 'Mark as false positive (no driver gets this lap)?' %>')">
+                            <button class="lc-iconbtn" type="submit" title="<%= lang === 'es' ? 'Falso positivo' : 'False positive' %>">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 9a3 3 0 1 1 6 0M9 18h6M9 12h6"/></svg>
                             </button>
                           </form>
                         <% } %>
+                        <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/corrections/delete/<%= lap.id %>" method="POST"
+                              onsubmit="return confirm('<%= lang === 'es' ? '¿Eliminar vuelta permanentemente?' : 'Delete lap permanently?' %>')">
+                          <button class="lc-iconbtn lc-iconbtn--del" type="submit" title="<%= lang === 'es' ? 'Eliminar' : 'Delete' %>">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/></svg>
+                          </button>
+                        </form>
                       </div>
-                    </td>
-                  </tr>
-                <% }) %>
-              </tbody>
-            </table>
-          </div>
-        <% } %>
-        <!-- Add lap inline form for this lane -->
-        <div style="padding:.6rem 1rem;border-top:1px solid var(--border-color);display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
-          <span style="font-size:.78rem;color:var(--text-muted)">
-            + <%= lang === 'es' ? 'Añadir' : 'Add' %>
-          </span>
-          <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/corrections/add" method="POST"
-                style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
-            <input type="hidden" name="lane" value="<%= group.info.lane %>">
-            <input type="number" name="count" value="1" min="1" max="20"
-                   class="form-input" style="width:3.8rem;padding:.25rem .4rem;font-size:.82rem"
-                   title="<%= lang === 'es' ? 'Número de vueltas' : 'Number of laps' %>">
-            <span style="font-size:.78rem;color:var(--text-muted)"><%= lang === 'es' ? 'vuelta(s) ·' : 'lap(s) ·' %></span>
-            <input type="number" name="lap_time_s" step="0.01" min="0.1" max="999"
-                   value="<%= avgS %>" placeholder="s"
-                   class="form-input" style="width:5.5rem;padding:.25rem .4rem;font-size:.82rem" required
-                   title="<%= lang === 'es' ? 'Tiempo por vuelta (segundos)' : 'Lap time (seconds)' %>">
-            <span style="font-size:.78rem;color:var(--text-muted)">s
-              <% if (avgS) { %><span style="color:var(--text-muted);font-size:.7rem">(media <%= avgS %>s)</span><% } %>
-            </span>
-            <button type="submit" class="btn btn--ghost btn--sm">+ <%= lang === 'es' ? 'Añadir' : 'Add' %></button>
-          </form>
-        </div>
+                    </div>
+                  <% }) %>
+
+                  <!-- Insertar vuelta -->
+                  <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/corrections/add" method="POST" class="lc-insert">
+                    <input type="hidden" name="lane" value="<%= s.info.lane %>">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+                    <input type="number" name="count" value="1" min="1" max="20" class="lc-mini-input lc-mini-input--n">
+                    <span><%= lang === 'es' ? 'vuelta(s) de' : 'lap(s) of' %></span>
+                    <input type="number" name="lap_time_s" step="0.001" min="0.1" max="999"
+                           value="<%= s.avgMs ? (s.avgMs/1000).toFixed(3) : '' %>"
+                           placeholder="s"
+                           class="lc-mini-input lc-mini-input--t" required>
+                    <span>s</span>
+                    <% if (s.avgMs) { %><span class="lc-insert__hint">(media)</span><% } %>
+                    <button type="submit" class="vt-btn vt-btn--ghost vt-btn--sm" style="margin-left:auto">
+                      <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                      <%= lang === 'es' ? 'Añadir' : 'Add' %>
+                    </button>
+                  </form>
+                <% } %>
+              </div>
+            </div>
+          <% }) %>
+        </section>
       </div>
-    <% }) %>
+    <% } %>
 
-  <% } %>
-
+  </div>
 </div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+// ── Master-detail: cambio de carril (no recarga) ──────────────────────
+document.querySelectorAll('.lc-lane').forEach(el => {
+  el.addEventListener('click', () => {
+    const idx = el.dataset.idx;
+    document.querySelectorAll('.lc-lane').forEach(l => l.classList.toggle('is-active', l === el));
+    document.querySelectorAll('.lc-detail__pane').forEach(p => p.classList.toggle('is-active', p.dataset.idx === idx));
+  });
+});
+
+// ── Auto-refresh por socket cuando llegan nuevas vueltas ──────────────
+// Cuando arriva un evento `lap` o `manga:*`, hacemos un fetch silencioso
+// del propio URL, parseamos la respuesta y sustituimos el bloque
+// `.lc-main` por la versión fresca. Conservamos el carril activo.
+// Si el usuario está escribiendo en un input o tiene un select abierto,
+// posponemos el refresh hasta que pierda el foco — así no le interrumpe.
+(function () {
+  const RACE_ID  = <%= race.id %>;
+  const MANGA_ID = <%= manga.id %>;
+  let refreshPending = false;
+  let refreshTimer = null;
+  const REFRESH_DEBOUNCE_MS = 800;
+
+  function isUserBusy() {
+    const a = document.activeElement;
+    if (!a) return false;
+    const tag = (a.tagName || '').toLowerCase();
+    return tag === 'input' || tag === 'select' || tag === 'textarea';
+  }
+
+  async function refreshNow() {
+    if (isUserBusy()) {
+      refreshPending = true;
+      return;
+    }
+    refreshPending = false;
+    try {
+      const res  = await fetch(window.location.href, { credentials: 'same-origin', headers: { 'X-Requested-With': 'fetch' } });
+      if (!res.ok) return;
+      const html = await res.text();
+      const doc  = new DOMParser().parseFromString(html, 'text/html');
+
+      // Recordar carril activo por nº de lane (no por idx — el orden no cambia)
+      const activeLaneEl = document.querySelector('.lc-lane.is-active');
+      const activeLane   = activeLaneEl ? activeLaneEl.dataset.lane : null;
+
+      // Reemplazar sidebar + panes
+      const newMain = doc.querySelector('.lc-main');
+      const oldMain = document.querySelector('.lc-main');
+      if (!newMain || !oldMain) return;
+      oldMain.replaceWith(newMain);
+
+      // Reactivar handlers del master-detail (los nuevos elementos no los tienen)
+      document.querySelectorAll('.lc-lane').forEach(el => {
+        el.addEventListener('click', () => {
+          const idx = el.dataset.idx;
+          document.querySelectorAll('.lc-lane').forEach(l => l.classList.toggle('is-active', l === el));
+          document.querySelectorAll('.lc-detail__pane').forEach(p => p.classList.toggle('is-active', p.dataset.idx === idx));
+        });
+      });
+
+      // Restaurar carril activo si todavía existe
+      if (activeLane) {
+        const same = document.querySelector(`.lc-lane[data-lane="${activeLane}"]`);
+        if (same) {
+          const idx = same.dataset.idx;
+          document.querySelectorAll('.lc-lane').forEach(l => l.classList.remove('is-active'));
+          document.querySelectorAll('.lc-detail__pane').forEach(p => p.classList.remove('is-active'));
+          same.classList.add('is-active');
+          document.querySelector(`.lc-detail__pane[data-idx="${idx}"]`)?.classList.add('is-active');
+        }
+      }
+
+      // Refrescar también la meta-pill superior (vueltas marcadas)
+      const newPill = doc.querySelector('.lc-meta-pill');
+      const oldPill = document.querySelector('.lc-meta-pill');
+      if (newPill && oldPill) oldPill.replaceWith(newPill);
+      else if (newPill && !oldPill) document.querySelector('.lc-tools')?.before(newPill);
+      else if (!newPill && oldPill) oldPill.remove();
+    } catch (err) {
+      console.warn('[corrections] refresh error', err.message || err);
+    }
+  }
+
+  function schedule() {
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(refreshNow, REFRESH_DEBOUNCE_MS);
+  }
+
+  // Si el usuario suelta un input que tenía focus y había refresh pendiente, ejecútalo
+  document.addEventListener('focusout', () => {
+    if (refreshPending) setTimeout(refreshNow, 100);
+  }, true);
+
+  // ── Socket ──────────────────────────────────────────────────────────
+  const socket = io({ transports: ['websocket', 'polling'] });
+  socket.on('connect', () => {});
+  socket.on('lap', data => {
+    // Solo refrescamos si la vuelta es de NUESTRA manga
+    if (!data || data.mangaId == null) {
+      // Algunos eventos legacy no traen mangaId pero asumimos la activa
+      schedule();
+      return;
+    }
+    if (data.mangaId === MANGA_ID) schedule();
+  });
+  ['manga:started', 'manga:paused', 'manga:cancelled', 'manga:stopped', 'manga:resumed'].forEach(ev => {
+    socket.on(ev, () => schedule());
+  });
+})();
+</script>
+
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   LAP CORRECTIONS — master-detail layout
+   ═══════════════════════════════════════════════════════════════ */
+.vt-page--corrections { padding: 0; min-height: 100%; display: flex; flex-direction: column; }
+.lc-shell { display: flex; flex-direction: column; height: 100%; min-height: 0; flex: 1; }
+
+/* ── Topbar ─────────────────────────────────────────────────── */
+.lc-topbar {
+  display: flex; align-items: center; gap: 18px;
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--vt-border);
+  background: linear-gradient(180deg, #101015, #0c0c10);
+  flex: none;
+}
+.lc-title { display: flex; align-items: center; gap: 12px; }
+.lc-title__icon {
+  width: 40px; height: 40px; border-radius: 11px;
+  display: grid; place-items: center;
+  background: rgba(250,204,21,.12); color: var(--vt-amber);
+}
+.lc-title__icon svg { width: 22px; height: 22px; }
+.lc-title h1 {
+  font-family: 'Saira Condensed', sans-serif;
+  font-weight: 800; font-size: 22px; line-height: 1;
+  text-transform: uppercase; color: #fff;
+}
+.lc-title__sub { font-size: 12.5px; color: var(--vt-mute); margin-top: 3px; }
+.lc-title__sub b { color: var(--vt-text); }
+
+.lc-meta-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 12px; border-radius: 8px;
+  background: rgba(255,138,60,.13);
+  border: 1px solid rgba(255,138,60,.32);
+  color: #ffcaa0; font-size: 12.5px;
+}
+.lc-meta-pill b { color: #fff; }
+
+.lc-tools { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+/* ── Layout ─────────────────────────────────────────────────── */
+.lc-main {
+  flex: 1; display: grid;
+  grid-template-columns: 300px 1fr;
+  min-height: 0;
+}
+@media (max-width: 760px) { .lc-main { grid-template-columns: 1fr; } }
+
+/* ── Sidebar lanes ──────────────────────────────────────────── */
+.lc-lanes {
+  border-right: 1px solid var(--vt-border);
+  overflow-y: auto; padding: 12px;
+}
+.lc-lanes__h {
+  font-size: 11px; font-weight: 700; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--vt-mute-2);
+  padding: 6px 8px 12px;
+}
+.lc-lane {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 12px; border-radius: 11px; cursor: pointer;
+  position: relative; transition: background .14s;
+  border: 1px solid transparent;
+}
+.lc-lane + .lc-lane { margin-top: 4px; }
+.lc-lane:hover { background: rgba(255,255,255,.03); }
+.lc-lane.is-active {
+  background: var(--vt-surface);
+  border-color: var(--vt-border-2);
+}
+.lc-lane.is-active::before {
+  content: ''; position: absolute; left: 0; top: 10px; bottom: 10px;
+  width: 3px; border-radius: 3px;
+  background: var(--lane-color);
+}
+.lc-lane__chip {
+  width: 32px; height: 32px; border-radius: 9px;
+  display: grid; place-items: center;
+  color: #fff; font-weight: 800; font-size: 15px;
+  font-family: 'IBM Plex Mono', monospace;
+  background: var(--lane-color);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.25);
+  flex: none;
+}
+.lc-lane__meta { flex: 1; min-width: 0; }
+.lc-lane__name {
+  display: block; font-weight: 600; font-size: 14.5px;
+  color: var(--vt-text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lc-lane__sub {
+  display: block;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11.5px; color: var(--vt-mute-2); margin-top: 1px;
+}
+.lc-lane__warn {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px; font-weight: 700;
+  color: #ffcaa0;
+  background: rgba(255,138,60,.16);
+  padding: 2px 8px; border-radius: 6px; flex: none;
+}
+
+/* ── Detail pane ────────────────────────────────────────────── */
+.lc-detail { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.lc-detail__pane { display: none; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+.lc-detail__pane.is-active { display: flex; }
+
+.lc-detail__head {
+  display: flex; align-items: center; gap: 16px;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--vt-border);
+  flex: none;
+}
+.lc-detail__chip {
+  width: 44px; height: 44px; border-radius: 11px;
+  display: grid; place-items: center;
+  color: #fff; font-weight: 800; font-size: 20px;
+  font-family: 'IBM Plex Mono', monospace;
+  background: var(--lane-color);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.25);
+  flex: none;
+}
+.lc-detail__name {
+  font-family: 'Saira Condensed', sans-serif;
+  font-weight: 700; font-size: 22px; line-height: 1;
+  text-transform: uppercase; color: #fff;
+}
+.lc-detail__sub { font-size: 12.5px; color: var(--vt-mute); margin-top: 3px; }
+
+.lc-kpis { margin-left: auto; display: flex; gap: 10px; flex-wrap: wrap; }
+.lc-kpi {
+  text-align: center;
+  background: var(--vt-panel); border: 1px solid var(--vt-border);
+  border-radius: 10px; padding: 8px 16px; min-width: 78px;
+}
+.lc-kpi__l {
+  font-size: 9.5px; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--vt-mute-2);
+}
+.lc-kpi__v {
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 700; font-size: 17px; margin-top: 2px; color: var(--vt-text);
+}
+.lc-kpi__v--best { color: var(--vt-purple); }
+
+/* ── Laps table ─────────────────────────────────────────────── */
+.lc-laps { flex: 1; overflow-y: auto; padding: 14px 24px 24px; }
+.lc-laps__bar { margin-bottom: 12px; }
+.lc-laps__lbl {
+  font-size: 11px; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--vt-mute-2);
+}
+.lc-laps__empty { color: var(--vt-mute); font-size: 14px; padding: 10px 0; }
+
+.lc-lhead, .lc-lap {
+  display: grid;
+  grid-template-columns: 64px 1fr 130px 110px 220px;
+  align-items: center; gap: 14px;
+}
+.lc-lhead {
+  padding: 0 14px 9px;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--vt-mute-2);
+}
+.lc-lhead .r { text-align: right; }
+
+.lc-lap {
+  padding: 11px 14px; border-radius: 11px;
+  background: var(--vt-panel); border: 1px solid var(--vt-border);
+  transition: border-color .14s, background .14s;
+}
+.lc-lap + .lc-lap { margin-top: 7px; }
+.lc-lap:hover { border-color: var(--vt-border-2); }
+.lc-lap__n {
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 700; font-size: 16px; color: var(--vt-mute);
+}
+.lc-lap__fl {
+  display: inline-block; margin-left: 4px;
+  font-size: 9.5px; font-weight: 800;
+  color: var(--vt-purple); vertical-align: super;
+}
+.lc-lap__time {
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 700; font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  color: var(--vt-text);
+}
+.lc-lap__clock {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px; color: var(--vt-mute-2); text-align: right;
+}
+.lc-lap__delta {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px; text-align: right;
+}
+.lc-lap__delta.up   { color: var(--vt-green); }
+.lc-lap__delta.dn   { color: var(--vt-red); }
+.lc-lap__delta.zero { color: var(--vt-mute-2); }
+
+.lc-lap__actions { display: flex; justify-content: flex-end; gap: 6px; align-items: center; }
+.lc-lap__actions form { display: inline-flex; align-items: center; gap: 4px; margin: 0; }
+
+.lc-iconbtn {
+  width: 32px; height: 32px; border-radius: 8px;
+  display: grid; place-items: center;
+  cursor: pointer; border: none;
+  background: var(--vt-surface); color: var(--vt-mute);
+  box-shadow: inset 0 0 0 1px var(--vt-border);
+  transition: all .14s;
+}
+.lc-iconbtn svg { width: 15px; height: 15px; }
+.lc-iconbtn:hover { background: var(--vt-surface-2); color: var(--vt-text); }
+.lc-iconbtn--del:hover { background: var(--vt-red); color: #fff; box-shadow: none; }
+
+.lc-mini-select {
+  background: var(--vt-surface); color: var(--vt-text);
+  border: 1px solid var(--vt-border); border-radius: 7px;
+  padding: 5px 8px; font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+  height: 32px; min-width: 50px;
+}
+
+/* Estados marcados */
+.lc-lap.is-flag {
+  border-color: rgba(255,138,60,.4);
+  background: linear-gradient(90deg, rgba(255,138,60,.07), transparent 60%);
+}
+.lc-lap.is-flag .lc-lap__time { color: #ff8a3c; }
+.lc-lap.is-fastest .lc-lap__time { color: var(--vt-purple); }
+
+.lc-flagtag {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin-left: 10px;
+  font-size: 11px; font-weight: 600;
+  color: #ffcaa0; vertical-align: middle;
+}
+.lc-flagtag svg { width: 13px; height: 13px; }
+.lc-flagtag.is-info { color: var(--vt-blue); }
+.lc-flagtag.is-pit  { color: var(--vt-amber); }
+.lc-flagtag.is-exit { color: var(--vt-red); }
+
+/* Insertar vuelta */
+.lc-insert {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 10px; padding: 10px 14px; border-radius: 11px;
+  border: 1.5px dashed var(--vt-border);
+  color: var(--vt-mute); font-size: 13px;
+  transition: all .15s;
+}
+.lc-insert:hover { border-color: var(--vt-border-2); color: var(--vt-text); }
+.lc-insert svg { width: 15px; height: 15px; flex: none; color: var(--vt-mute); }
+.lc-insert__hint { font-size: 11.5px; color: var(--vt-mute-2); }
+.lc-mini-input {
+  background: var(--vt-surface); color: var(--vt-text);
+  border: 1px solid var(--vt-border); border-radius: 7px;
+  padding: 5px 8px; font-family: 'IBM Plex Mono', monospace; font-size: 13px;
+  height: 30px; outline: none;
+}
+.lc-mini-input:focus { border-color: rgba(239,70,81,.5); }
+.lc-mini-input--n { width: 60px; }
+.lc-mini-input--t { width: 80px; }
+
+/* Empty state */
+.lc-empty {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 12px; padding: 60px 20px;
+  color: var(--vt-mute-2); text-align: center;
+}
+.lc-empty svg { width: 48px; height: 48px; color: var(--vt-mute-2); }
+.lc-empty__t {
+  font-family: 'Saira Condensed', sans-serif;
+  font-weight: 700; font-size: 20px;
+  text-transform: uppercase; color: var(--vt-mute);
+}
+
+@media (max-width: 1100px) {
+  .lc-lhead, .lc-lap { grid-template-columns: 56px 1fr 110px 90px 180px; gap: 10px; }
+  .lc-lap__time { font-size: 17px; }
+}
+@media (max-width: 760px) {
+  .lc-lanes { max-height: 220px; }
+  .lc-detail__head { flex-wrap: wrap; }
+  .lc-kpis { margin-left: 0; width: 100%; }
+}
+</style>
+
 <%- include('../partials/footer') %>
