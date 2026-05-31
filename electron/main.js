@@ -11,6 +11,12 @@ let mainWindow = null;
 let tray       = null;
 let serverProc = null;
 
+// ── Permitir audio sin gesto del usuario ──────────────────────────────────────
+// Necesario para que el semáforo F1 (showSemaphore + beeps) suene aunque
+// el GO entre por el DS-300 sin que se haya tocado nada en la ventana.
+// IMPORTANTE: este flag debe aplicarse ANTES de app.whenReady().
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
+
 // ── Single instance ───────────────────────────────────────────────────────────
 if (!app.requestSingleInstanceLock()) { app.quit(); process.exit(0); }
 app.on('second-instance', () => { mainWindow?.show(); mainWindow?.focus(); });
@@ -104,7 +110,14 @@ function createWindow() {
     title: 'Voltrace Manager',
     backgroundColor: '#0a0d13',
     icon: loadAppIcon(),
-    webPreferences: { nodeIntegration: false, contextIsolation: true },
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      // Permite que el AudioContext / <audio>.play() arranquen sin gesto del
+      // usuario. Combinado con app.commandLine.appendSwitch arriba garantiza
+      // que los pitidos del semáforo suenen al primer GO de la sesión.
+      autoplayPolicy: 'no-user-gesture-required',
+    },
   });
   mainWindow.setMenuBarVisibility(false);
   mainWindow.loadURL(`http://127.0.0.1:${PORT}`);

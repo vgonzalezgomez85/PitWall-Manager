@@ -17,6 +17,8 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
 
 <!-- Fuentes específicas para la estética broadcast de la pole -->
 <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700;800&family=Saira:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/semaphore.css">
+<script src="/js/semaphore.js"></script>
 
 <div class="pole-broadcast">
   <div class="pole-bcast-wrap">
@@ -378,35 +380,8 @@ function updateChrono(currentLapMs) {
   renderTower();
 }
 
-// ── Semáforo (igual que live/training) ───────────────────────────────────
-let _semL2 = null, _semL3 = null, _semFb = null, _semStart = 0;
-const SEM_TOTAL_MS = 3000;
-function showSemaphore() {
-  if (document.getElementById('semaphore-overlay')) return;
-  const ov = document.createElement('div');
-  ov.id = 'semaphore-overlay'; ov.className = 'semaphore-overlay';
-  ov.innerHTML = `<div class="semaphore-panel">${[1,2,3].map(i => `<div class="s-light" id="sl${i}"></div>`).join('')}</div>`;
-  document.body.appendChild(ov);
-  _semStart = Date.now();
-  document.getElementById('sl1')?.classList.add('lit');
-  _semL2 = setTimeout(() => document.getElementById('sl2')?.classList.add('lit'), 833);
-  _semL3 = setTimeout(() => document.getElementById('sl3')?.classList.add('lit'), 1666);
-  _semFb = setTimeout(() => semaphoreGo(null), 6000);
-}
-function semaphoreStep() {
-  if (_semL2) { clearTimeout(_semL2); _semL2 = null; }
-  if (_semL3) { clearTimeout(_semL3); _semL3 = null; }
-  [1,2,3].forEach(n => { const el = document.getElementById('sl'+n); if (el) { el.classList.remove('lit'); el.classList.add('go'); } });
-}
-function semaphoreGo(cb) {
-  if (_semFb) { clearTimeout(_semFb); _semFb = null; }
-  if (_semL2) { clearTimeout(_semL2); _semL2 = null; }
-  if (_semL3) { clearTimeout(_semL3); _semL3 = null; }
-  [1,2,3].forEach(n => { const el = document.getElementById('sl'+n); if (el) { el.classList.remove('lit'); el.classList.add('go'); } });
-  const elapsed = Date.now() - _semStart;
-  const wait = Math.max(0, SEM_TOTAL_MS - elapsed);
-  setTimeout(() => { document.getElementById('semaphore-overlay')?.remove(); if (cb) cb(); }, wait);
-}
+// Semáforo: showSemaphore / semaphoreStep / semaphoreGo viven en
+// /js/semaphore.js (cargado en el header). No dupliques aquí.
 
 // ── API + sockets ────────────────────────────────────────────────────────
 async function startTiming() {

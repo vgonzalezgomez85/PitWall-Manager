@@ -203,6 +203,8 @@ const migrations = [
   // (array JSON de [x, y] en coords 0..1 sobre el ancho/alto de la imagen).
   `ALTER TABLE circuits ADD COLUMN track_image_b64    TEXT`,
   `ALTER TABLE circuits ADD COLUMN track_outline_json TEXT NOT NULL DEFAULT '[]'`,
+  // Sentido del circuito para la simulación del minimapa: 'cw' (horario) o 'ccw' (antihorario)
+  `ALTER TABLE circuits ADD COLUMN track_direction TEXT NOT NULL DEFAULT 'cw'`,
 
   // ── Categories & cars ──────────────────────────────────────────────────────
   `CREATE TABLE IF NOT EXISTS categories (
