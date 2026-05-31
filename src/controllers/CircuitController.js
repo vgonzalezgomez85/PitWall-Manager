@@ -110,6 +110,7 @@ class CircuitController {
       lane_sequence: laneSequence,
       track_image_b64: trackImageB64,
       track_outline_json: trackOutlineJson,
+      track_direction: (req.body.track_direction === 'ccw') ? 'ccw' : 'cw',
     });
     Circuit.setCategoryTimes(newId, parseCategoryTimes(req.body, categories));
     res.redirect('/circuits');
@@ -129,6 +130,7 @@ class CircuitController {
       circuits_count: circuit.circuits_count,
       min_lap_s: circuit.min_lap_ms > 0 ? (circuit.min_lap_ms / 1000).toFixed(2) : '',
       lane_sequence: Circuit.getLaneSequence(circuit).join(','),
+      track_direction: circuit.track_direction || 'cw',
     };
     for (let i = 0; i < config.length; i++) body[`circuit_lanes_${i + 1}`] = config[i];
     for (const cat of categories) {
@@ -176,6 +178,7 @@ class CircuitController {
       lane_sequence: laneSequence,
       track_image_b64: trackImageB64,
       track_outline_json: trackOutlineJson,
+      track_direction: (req.body.track_direction === 'ccw') ? 'ccw' : 'cw',
     });
     Circuit.setCategoryTimes(parseInt(req.params.id, 10), parseCategoryTimes(req.body, categories));
     res.redirect('/circuits');

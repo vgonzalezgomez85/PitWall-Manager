@@ -85,6 +85,7 @@
       lanes:            laneRows,
       trackImage:       (circuit && circuit.track_image_b64) ? circuit.track_image_b64 : null,
       trackOutline:     trackOutline,
+      trackDirection:   (circuit && circuit.track_direction === 'ccw') ? 'ccw' : 'cw',
       lastLapByLane:    lastLapByLane,
       isActive:         isActive,
     }) %>;
@@ -155,10 +156,17 @@
     }
     const { total: PERIM, seg: SEG } = hasTrack ? polyLen(trackPath) : { total: 0, seg: [] };
 
+    // Sentido del circuito: 'cw' (default, sigue el orden en que se dibujaron
+    // los puntos) o 'ccw' (recorre la curva al revés). Si los puntos del
+    // editor van en sentido contrario al real, se selecciona 'ccw' para que
+    // las bolitas avancen en el sentido correcto del minimapa.
+    const TRACK_DIR = (PANEL_DATA.trackDirection === 'ccw') ? 'ccw' : 'cw';
+
     // Devuelve [x, y] (relativos 0..1) para un progreso 0..1 sobre la curva
     function pointAtProgress(p) {
       if (!hasTrack) return [0.5, 0.5];
       p = ((p % 1) + 1) % 1;     // wrap 0..1
+      if (TRACK_DIR === 'ccw') p = 1 - p;   // invertir sentido si procede
       const target = p * PERIM;
       let acc = 0;
       for (let i = 0; i < trackPath.length; i++) {

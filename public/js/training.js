@@ -288,56 +288,9 @@ function announce(text) {
 // Inicializa icono/título al cargar
 refreshVoiceBtn();
 
-// ── Semaphore ─────────────────────────────────────────────────────────────────
-let _semaphoreL2Timer = null;
-let _semaphoreL3Timer = null;
-let _semaphoreStartedAt = 0;
-const SEMAPHORE_TOTAL_MS = 3000;
-function showSemaphore() {
-  if (document.getElementById('semaphore-overlay')) return;
-  const ov = document.createElement('div');
-  ov.id = 'semaphore-overlay';
-  ov.className = 'semaphore-overlay';
-  ov.innerHTML = `<div class="semaphore-panel">${[1,2,3].map(i =>
-    `<div class="s-light" id="sl${i}"></div>`).join('')}</div>`;
-  document.body.appendChild(ov);
-  _semaphoreStartedAt = Date.now();
-  // Secuencia DS-300:
-  //   A1 (t=0)    → roja 1
-  //   t=833       → roja 2
-  //   t=1666      → roja 3
-  //   A2 (t=2500) → todas → verde
-  //   A3 (t=2953) → overlay desaparece a t=3000ms (50ms de verde extra)
-  document.getElementById('sl1')?.classList.add('lit');
-  _semaphoreL2Timer = setTimeout(() => document.getElementById('sl2')?.classList.add('lit'), 833);
-  _semaphoreL3Timer = setTimeout(() => document.getElementById('sl3')?.classList.add('lit'), 1666);
-}
-function semaphoreStep() {
-  if (_semaphoreL2Timer) { clearTimeout(_semaphoreL2Timer); _semaphoreL2Timer = null; }
-  if (_semaphoreL3Timer) { clearTimeout(_semaphoreL3Timer); _semaphoreL3Timer = null; }
-  [1,2,3].forEach(n => {
-    const el = document.getElementById(`sl${n}`);
-    if (!el) return;
-    el.classList.remove('lit');
-    el.classList.add('go');
-  });
-}
-function semaphoreGo() {
-  const ov = document.getElementById('semaphore-overlay');
-  if (!ov) return;
-  if (_semaphoreL2Timer) { clearTimeout(_semaphoreL2Timer); _semaphoreL2Timer = null; }
-  if (_semaphoreL3Timer) { clearTimeout(_semaphoreL3Timer); _semaphoreL3Timer = null; }
-  // Si A2 no llegó (firmware antiguo), forzamos verde antes de quitar.
-  [1,2,3].forEach(n => {
-    const el = document.getElementById(`sl${n}`);
-    if (!el) return;
-    el.classList.remove('lit');
-    el.classList.add('go');
-  });
-  const elapsed = Date.now() - _semaphoreStartedAt;
-  const wait = Math.max(0, SEMAPHORE_TOTAL_MS - elapsed);
-  setTimeout(() => ov.remove(), wait);
-}
+// ── Semaphore ─────────────────────────────────────────────────────────────
+// La lógica del semáforo (showSemaphore/semaphoreStep/semaphoreGo + beeps)
+// está en /js/semaphore.js. La vista debe cargarlo ANTES de training.js.
 
 // ── Socket.io ─────────────────────────────────────────────────────────────────
 const socket = io();

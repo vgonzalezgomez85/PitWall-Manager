@@ -194,6 +194,8 @@
         <button type="button" id="trackBtnBlank" class="btn btn--ghost btn--sm">
           ✏️ <%= lang === 'es' ? 'Dibujar sin foto' : 'Draw without photo' %>
         </button>
+        <button type="button" id="trackBtnTrace" class="btn btn--ghost btn--sm" title="<%= lang === 'es' ? 'Mantén el ratón pulsado y arrastra para trazar curvas con muchos puntos automáticamente' : 'Hold mouse and drag to auto-trace curves with many points' %>" disabled>✏️ <%= lang === 'es' ? 'Trazar a mano alzada' : 'Free-hand trace' %></button>
+        <button type="button" id="trackBtnSmooth" class="btn btn--ghost btn--sm" title="<%= lang === 'es' ? 'Mostrar curva suave (Catmull-Rom) para previsualizar cómo se verá en la simulación' : 'Show smooth curve preview' %>" disabled>~ <%= lang === 'es' ? 'Vista suave' : 'Smooth preview' %></button>
         <button type="button" id="trackBtnUndo" class="btn btn--ghost btn--sm" title="<%= lang === 'es' ? 'Deshacer último punto' : 'Undo last point' %>" disabled>↶ <%= lang === 'es' ? 'Deshacer' : 'Undo' %></button>
         <button type="button" id="trackBtnClose" class="btn btn--ghost btn--sm" disabled><%= lang === 'es' ? 'Cerrar/abrir trazado' : 'Toggle closed loop' %></button>
         <button type="button" id="trackBtnClear" class="btn btn--ghost btn--sm" disabled><%= lang === 'es' ? 'Limpiar puntos' : 'Clear points' %></button>
@@ -215,11 +217,56 @@
         </div>
       </div>
 
-      <p class="form-hint" style="margin-top:.5rem; font-size:.8rem">
-        <%= lang === 'es'
-          ? 'Click izquierdo: añadir punto · Click derecho sobre un punto: borrarlo · Arrastrar un punto: moverlo'
-          : 'Left click: add point · Right click on a point: delete · Drag a point: move' %>
+      <p class="form-hint" style="margin-top:.5rem; font-size:.8rem; line-height:1.55">
+        <%= lang === 'es' ? '<b>Click izquierdo</b>: añadir punto · Si haces click <b>sobre la línea</b>, el punto se inserta entre los dos puntos vecinos · <b>Click derecho</b> sobre un punto: borrarlo · <b>Arrastrar</b> un punto: moverlo · El primer punto (verde) marca la salida.'
+          : '<b>Left click</b>: add point · Clicking <b>on the line</b> inserts a point between the two neighbors · <b>Right click</b> on a point: delete · <b>Drag</b> a point: move · The first point (green) marks the start.' %>
       </p>
+      <p class="form-hint" style="margin-top:.3rem; font-size:.8rem; line-height:1.55">
+        <%= lang === 'es'
+          ? '💡 Para curvas: pulsa <b>"Vista suave"</b> para ver cómo se redondearán los puntos. Con 3-4 puntos por curva basta. O usa <b>"Trazar a mano alzada"</b> y arrastra el ratón siguiendo el trazado.'
+          : '💡 For curves: hit <b>"Smooth preview"</b> to see how points get rounded — 3-4 points per curve are enough. Or use <b>"Free-hand trace"</b> and drag along the track.' %>
+      </p>
+
+      <!-- ── Sentido del circuito ─────────────────────────────────────── -->
+      <%
+        const trackDir = (typeof body !== 'undefined' && body && body.track_direction)
+          ? body.track_direction
+          : ((isEdit && circuit && circuit.track_direction) ? circuit.track_direction : 'cw');
+      %>
+      <div class="form-group" style="margin-top:1.1rem">
+        <label class="form-label" style="display:block;margin-bottom:.6rem">
+          <%= lang === 'es' ? 'Sentido del circuito' : 'Track direction' %>
+        </label>
+        <div class="dir-opts">
+          <label class="dir-opt <%= trackDir !== 'ccw' ? 'is-sel' : '' %>" data-dir="cw">
+            <input type="radio" name="track_direction" value="cw" <%= trackDir !== 'ccw' ? 'checked' : '' %>>
+            <svg class="dir-opt__ico" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M40 24a16 16 0 1 1-4.7-11.3"/>
+              <path d="M40 6v8h-8"/>
+            </svg>
+            <div class="dir-opt__txt">
+              <div class="dir-opt__t"><%= lang === 'es' ? 'Horario' : 'Clockwise' %></div>
+              <div class="dir-opt__d"><%= lang === 'es' ? 'Sentido de las agujas del reloj' : 'Same as clock hands' %></div>
+            </div>
+          </label>
+          <label class="dir-opt <%= trackDir === 'ccw' ? 'is-sel' : '' %>" data-dir="ccw">
+            <input type="radio" name="track_direction" value="ccw" <%= trackDir === 'ccw' ? 'checked' : '' %>>
+            <svg class="dir-opt__ico" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 24a16 16 0 1 0 4.7-11.3"/>
+              <path d="M8 6v8h8"/>
+            </svg>
+            <div class="dir-opt__txt">
+              <div class="dir-opt__t"><%= lang === 'es' ? 'Antihorario' : 'Counter-clockwise' %></div>
+              <div class="dir-opt__d"><%= lang === 'es' ? 'Contra las agujas del reloj' : 'Against clock hands' %></div>
+            </div>
+          </label>
+        </div>
+        <p class="form-hint" style="margin-top:.5rem">
+          <%= lang === 'es'
+            ? 'Indica en qué sentido recorren los coches el trazado. La simulación del minimapa mueve las bolitas siguiendo este sentido.'
+            : 'Sets the direction cars travel along the outline. The minimap animation follows this direction.' %>
+        </p>
+      </div>
 
       <input type="hidden" name="track_image_b64" id="trackImageB64Input"
              value="<%= (isEdit && circuit) ? (circuit.track_image_b64 || '') : '' %>">
@@ -252,17 +299,24 @@
   const btnClose     = document.getElementById('trackBtnClose');
   const btnClear     = document.getElementById('trackBtnClear');
   const btnRemoveImg = document.getElementById('trackBtnRemoveImg');
+  const btnTrace     = document.getElementById('trackBtnTrace');
+  const btnSmooth    = document.getElementById('trackBtnSmooth');
   const countLabel   = document.getElementById('trackPointCount');
   if (!canvas) return;
 
   const ctx = canvas.getContext('2d');
   let img      = null;            // Image obj cargada (null en modo lienzo blanco)
   let blank    = false;           // true → lienzo sin imagen
-  const BLANK_W = 1000, BLANK_H = 600;  // dimensiones del lienzo cuando no hay foto
+  const BLANK_W = 1000, BLANK_H = 600;
   let points   = [];              // [[x_rel, y_rel], ...]   0..1
-  let closed   = true;            // ¿polilínea cerrada?
+  let closed   = true;
   let dragIdx  = -1;
-  const HIT_R  = 12;              // radio de hit en px CSS para mover/borrar
+  let traceMode = false;          // trazado a mano alzada (drag continuo)
+  let showSmooth = true;          // preview Catmull-Rom
+  let isTracing = false;          // mouse pulsado en modo trace
+  const HIT_R   = 12;             // radio de hit en px CSS para puntos
+  const SEG_HIT_R = 8;            // distancia para insertar sobre un segmento
+  const TRACE_MIN_DIST_PX = 22;   // distancia mínima entre puntos en modo trace
   const LANG   = "<%= lang %>";
 
   function hasCanvas() { return !!img || blank; }
@@ -270,8 +324,7 @@
   function setPlaceholderVisible(visible) {
     placeholder.style.display = visible ? 'block' : 'none';
     canvas.style.display      = visible ? 'none'  : 'block';
-    // Habilitar/deshabilitar el resto de controles según haya canvas o no
-    [btnUndo, btnClose, btnClear, btnRemoveImg].forEach(b => { if (b) b.disabled = visible; });
+    [btnUndo, btnClose, btnClear, btnRemoveImg, btnTrace, btnSmooth].forEach(b => { if (b) b.disabled = visible; });
   }
 
   function updateCount() {
@@ -283,6 +336,30 @@
     updateCount();
   }
 
+  // ── Catmull-Rom centrípeto para previsualización ─────────────────────
+  const SAMPLES_PER_SEG = 14;
+  function catmullRom(p0, p1, p2, p3, t) {
+    const t2 = t * t, t3 = t2 * t;
+    return [
+      0.5 * ((2 * p1[0]) + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3),
+      0.5 * ((2 * p1[1]) + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3),
+    ];
+  }
+  function smoothPath(pts, isClosed) {
+    if (pts.length < 3) return pts.slice();
+    const N = pts.length;
+    const out = [];
+    const upto = isClosed ? N : N - 1;
+    for (let i = 0; i < upto; i++) {
+      const p0 = pts[isClosed ? (i - 1 + N) % N : Math.max(0, i - 1)];
+      const p1 = pts[i];
+      const p2 = pts[isClosed ? (i + 1) % N : Math.min(N - 1, i + 1)];
+      const p3 = pts[isClosed ? (i + 2) % N : Math.min(N - 1, i + 2)];
+      for (let s = 0; s < SAMPLES_PER_SEG; s++) out.push(catmullRom(p0, p1, p2, p3, s / SAMPLES_PER_SEG));
+    }
+    return out;
+  }
+
   function draw() {
     if (!hasCanvas()) return;
     if (img) {
@@ -290,7 +367,6 @@
       canvas.height = img.naturalHeight;
       ctx.drawImage(img, 0, 0);
     } else {
-      // Lienzo en blanco: fondo negro con rejilla sutil para orientarse
       canvas.width  = BLANK_W;
       canvas.height = BLANK_H;
       ctx.fillStyle = '#0a0a0a';
@@ -302,10 +378,25 @@
     }
 
     if (points.length === 0) return;
-    // Polilínea
-    ctx.lineWidth   = Math.max(3, canvas.width / 400);
-    ctx.strokeStyle = '#fbbf24';
-    ctx.fillStyle   = '#fbbf24';
+
+    // 1) Curva suave (preview de cómo se verá en la simulación)
+    if (showSmooth && points.length >= 3) {
+      const sm = smoothPath(points, closed);
+      ctx.beginPath();
+      sm.forEach(([x, y], i) => {
+        const px = x * canvas.width, py = y * canvas.height;
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      });
+      if (closed) ctx.closePath();
+      ctx.lineWidth   = Math.max(5, canvas.width / 220);
+      ctx.strokeStyle = 'rgba(56,189,248,.55)';
+      ctx.stroke();
+    }
+
+    // 2) Polilínea de control (rectos entre puntos)
+    ctx.lineWidth   = Math.max(2, canvas.width / 600);
+    ctx.strokeStyle = showSmooth ? 'rgba(251,191,36,.6)' : '#fbbf24';
+    ctx.setLineDash(showSmooth ? [6, 5] : []);
     ctx.beginPath();
     points.forEach(([x, y], i) => {
       const px = x * canvas.width;
@@ -315,15 +406,16 @@
     });
     if (closed && points.length > 2) ctx.closePath();
     ctx.stroke();
+    ctx.setLineDash([]);
 
-    // Puntos
+    // 3) Puntos
     const r = Math.max(4, canvas.width / 220);
     points.forEach(([x, y], i) => {
       const px = x * canvas.width;
       const py = y * canvas.height;
       ctx.beginPath();
       ctx.arc(px, py, r, 0, Math.PI * 2);
-      ctx.fillStyle = (i === 0) ? '#3fb950' : '#fbbf24';   // primer punto verde
+      ctx.fillStyle = (i === 0) ? '#3fb950' : '#fbbf24';
       ctx.fill();
       ctx.lineWidth = 1.5;
       ctx.strokeStyle = '#000';
@@ -350,19 +442,79 @@
     return -1;
   }
 
+  // Devuelve { index, t } del segmento más cercano si está dentro de SEG_HIT_R,
+  // o null. `index` = índice del segmento i→i+1; nuevo punto se inserta en i+1.
+  function pickSegment(e) {
+    if (points.length < 2) return null;
+    const { x, y, rect } = eventToPx(e);
+    const sx = canvas.width  / rect.width;
+    const limitPx = SEG_HIT_R * sx;
+    let best = null;
+    const N = points.length;
+    const maxI = closed ? N : N - 1;
+    for (let i = 0; i < maxI; i++) {
+      const ax = points[i][0] * canvas.width;
+      const ay = points[i][1] * canvas.height;
+      const bx = points[(i + 1) % N][0] * canvas.width;
+      const by = points[(i + 1) % N][1] * canvas.height;
+      const dx = bx - ax, dy = by - ay;
+      const len2 = dx * dx + dy * dy;
+      if (len2 < 1) continue;
+      let t = ((x - ax) * dx + (y - ay) * dy) / len2;
+      t = Math.max(0, Math.min(1, t));
+      const cx = ax + t * dx, cy = ay + t * dy;
+      const d = Math.hypot(cx - x, cy - y);
+      if (d <= limitPx && (!best || d < best.d)) best = { index: i, t, d, cx, cy };
+    }
+    return best;
+  }
+
+  let lastTracePx = null;
   canvas.addEventListener('mousedown', (e) => {
     if (!hasCanvas() || e.button !== 0) return;
-    const idx = pickPoint(e);
-    if (idx >= 0) {
-      dragIdx = idx;
+
+    // Modo trace: arrastrar pintando puntos a intervalos
+    if (traceMode) {
+      isTracing = true;
+      const { x, y } = eventToPx(e);
+      points.push([x / canvas.width, y / canvas.height]);
+      lastTracePx = { x, y };
+      sync(); draw();
       return;
     }
-    // Añadir punto nuevo
+
+    // Click sobre punto existente → arrastrar para mover
+    const idx = pickPoint(e);
+    if (idx >= 0) { dragIdx = idx; return; }
+
+    // Click sobre la línea entre dos puntos → insertar ahí
+    const seg = pickSegment(e);
+    if (seg) {
+      points.splice(seg.index + 1, 0, [seg.cx / canvas.width, seg.cy / canvas.height]);
+      sync(); draw();
+      return;
+    }
+
+    // Sino → añadir al final
     const { x, y } = eventToPx(e);
     points.push([x / canvas.width, y / canvas.height]);
     sync(); draw();
   });
+
   canvas.addEventListener('mousemove', (e) => {
+    // Modo trace activo
+    if (isTracing) {
+      const { x, y } = eventToPx(e);
+      const sx = canvas.width / canvas.getBoundingClientRect().width;
+      const minDistPx = TRACE_MIN_DIST_PX * sx;
+      if (!lastTracePx || Math.hypot(x - lastTracePx.x, y - lastTracePx.y) >= minDistPx) {
+        points.push([x / canvas.width, y / canvas.height]);
+        lastTracePx = { x, y };
+        sync(); draw();
+      }
+      return;
+    }
+    // Arrastre de punto
     if (dragIdx < 0) return;
     const { x, y } = eventToPx(e);
     points[dragIdx] = [
@@ -371,9 +523,15 @@
     ];
     sync(); draw();
   });
-  function endDrag() { dragIdx = -1; }
+  function endDrag() { dragIdx = -1; isTracing = false; lastTracePx = null; }
   canvas.addEventListener('mouseup',   endDrag);
   canvas.addEventListener('mouseleave', endDrag);
+
+  // Cursor dinámico según modo
+  function updateCursor() {
+    canvas.style.cursor = traceMode ? 'crosshair' : 'crosshair';
+  }
+  updateCursor();
 
   canvas.addEventListener('contextmenu', (e) => {
     e.preventDefault();
@@ -385,10 +543,8 @@
     }
   });
 
-  // Disparar el file picker desde el botón visible (más fiable que el label)
   btnUpload.addEventListener('click', () => fileInput.click());
 
-  // Modo lienzo en blanco (sin foto)
   document.getElementById('trackBtnBlank').addEventListener('click', () => {
     img = null;
     blank = true;
@@ -408,11 +564,37 @@
     if (!confirm(LANG === 'es' ? '¿Borrar todos los puntos del trazado?' : 'Clear all outline points?')) return;
     points = []; sync(); draw();
   });
+
+  // Quitar imagen — SOLO la imagen. Los puntos se conservan: pasamos a
+  // modo "lienzo en blanco" para que el trazado siga visible y editable.
   btnRemoveImg.addEventListener('click', () => {
-    if (!confirm(LANG === 'es' ? '¿Quitar la imagen y el trazado?' : 'Remove image and outline?')) return;
-    img = null; blank = false; points = []; imgInput.value = '__CLEAR__';
-    sync(); setPlaceholderVisible(true);
+    if (!confirm(LANG === 'es' ? '¿Quitar la imagen del circuito? (el trazado se conserva)' : 'Remove the circuit image? (outline is kept)')) return;
+    img = null;
+    blank = true;             // mantener canvas activo con fondo neutro
+    imgInput.value = '__CLEAR__';
+    setPlaceholderVisible(false);
+    draw();
   });
+
+  // Modo trace toggle
+  btnTrace.addEventListener('click', () => {
+    traceMode = !traceMode;
+    btnTrace.classList.toggle('btn--primary', traceMode);
+    btnTrace.classList.toggle('btn--ghost', !traceMode);
+    updateCursor();
+  });
+
+  // Preview curva suave toggle
+  function refreshSmoothBtn() {
+    btnSmooth.classList.toggle('btn--primary', showSmooth);
+    btnSmooth.classList.toggle('btn--ghost', !showSmooth);
+  }
+  btnSmooth.addEventListener('click', () => {
+    showSmooth = !showSmooth;
+    refreshSmoothBtn();
+    draw();
+  });
+  refreshSmoothBtn();
 
   fileInput.addEventListener('change', (e) => {
     const f = e.target.files && e.target.files[0];
@@ -739,6 +921,16 @@ renderSeq(parseSeqFromValue(seqHidd.value, totalLanesNow()));
     if (e.key === 'Enter') { e.preventDefault(); createCategory(); }
   });
 })();
+</script>
+
+<script>
+/* Sentido del circuito — sync visual al cambiar el radio */
+document.querySelectorAll('.dir-opt[data-dir]').forEach(opt => {
+  opt.addEventListener('click', () => {
+    document.querySelectorAll('.dir-opt[data-dir]').forEach(o => o.classList.remove('is-sel'));
+    opt.classList.add('is-sel');
+  });
+});
 </script>
 
 <%- include('../partials/footer') %>

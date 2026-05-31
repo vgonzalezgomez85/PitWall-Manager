@@ -190,68 +190,9 @@ if (document.readyState === 'loading') {
   _initViewPicker();
 }
 
-// ── Semaphore ─────────────────────────────────────────────────────────────────
-let _semaphoreFallback = null;
-
-let _semaphoreL2Timer = null;
-let _semaphoreL3Timer = null;
-let _semaphoreStartedAt = 0;
-const SEMAPHORE_TOTAL_MS = 3000;
-function showSemaphore() {
-  if (document.getElementById('semaphore-overlay')) return;
-  const ov = document.createElement('div');
-  ov.id = 'semaphore-overlay';
-  ov.className = 'semaphore-overlay';
-  ov.innerHTML = `<div class="semaphore-panel">${[1,2,3].map(i =>
-    `<div class="s-light" id="sl${i}"></div>`).join('')}</div>`;
-  document.body.appendChild(ov);
-  _semaphoreStartedAt = Date.now();
-  // Secuencia DS-300:
-  //   A1 (t=0)    → roja 1
-  //   t=833       → roja 2
-  //   t=1666      → roja 3   (3 rojas visibles)
-  //   A2 (t=2500) → todas → verde
-  //   A3 (t=2953) → overlay desaparece a t=3000ms (50ms de verde extra)
-  document.getElementById('sl1')?.classList.add('lit');
-  _semaphoreL2Timer = setTimeout(() => document.getElementById('sl2')?.classList.add('lit'), 833);
-  _semaphoreL3Timer = setTimeout(() => document.getElementById('sl3')?.classList.add('lit'), 1666);
-  // Fallback duro: si A3 no llega a los 6s, forzamos GO igualmente.
-  _semaphoreFallback = setTimeout(() => semaphoreGo(null), 6000);
-}
-
-// Trama A2 llegó: cambia las 3 rojas a verde inmediatamente.
-function semaphoreStep() {
-  if (_semaphoreL2Timer) { clearTimeout(_semaphoreL2Timer); _semaphoreL2Timer = null; }
-  if (_semaphoreL3Timer) { clearTimeout(_semaphoreL3Timer); _semaphoreL3Timer = null; }
-  [1,2,3].forEach(n => {
-    const el = document.getElementById(`sl${n}`);
-    if (!el) return;
-    el.classList.remove('lit');
-    el.classList.add('go');
-  });
-}
-
-// Trama A3 llegó: arranca cuenta atrás. El overlay ya está en verde (semaphoreStep
-// lo cambió en A2). Lo quitamos en t=3000ms desde el inicio del semáforo para
-// que el verde quede visible los últimos ~50ms y la salida no sea instantánea.
-function semaphoreGo(callback) {
-  if (_semaphoreFallback) { clearTimeout(_semaphoreFallback); _semaphoreFallback = null; }
-  if (_semaphoreL2Timer) { clearTimeout(_semaphoreL2Timer); _semaphoreL2Timer = null; }
-  if (_semaphoreL3Timer) { clearTimeout(_semaphoreL3Timer); _semaphoreL3Timer = null; }
-  // Si A2 no llegó (firmware antiguo), forzamos el verde aquí.
-  [1,2,3].forEach(n => {
-    const el = document.getElementById(`sl${n}`);
-    if (!el) return;
-    el.classList.remove('lit');
-    el.classList.add('go');
-  });
-  const elapsed = Date.now() - _semaphoreStartedAt;
-  const wait = Math.max(0, SEMAPHORE_TOTAL_MS - elapsed);
-  setTimeout(() => {
-    document.getElementById('semaphore-overlay')?.remove();
-    if (callback) callback();
-  }, wait);
-}
+// ── Semaphore ─────────────────────────────────────────────────────────────
+// La lógica del semáforo (showSemaphore/semaphoreStep/semaphoreGo + beeps)
+// está en /js/semaphore.js. La vista debe cargarlo ANTES de live.js.
 
 // ── Countdown timer ───────────────────────────────────────────────────────────
 let remainingMs = RACE_DATA.durationMs;
