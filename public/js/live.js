@@ -16,6 +16,29 @@ function formatDelta(bestMs, avgMs) {
   return '+' + formatMs(d);
 }
 
+// Color para ÚLTIMA: verde si ≤ mejor, blanco si ≤ media, ámbar si ≤ mejor*1.05, rojo si peor.
+function ultColor(lastMs, bestMs, avgMs) {
+  if (lastMs == null || bestMs == null) return null;
+  if (lastMs <= bestMs + 1)      return 'green';
+  if (avgMs != null && lastMs <= avgMs) return 'white';
+  if (lastMs <= bestMs * 1.05)   return 'amber';
+  return 'red';
+}
+// Color para Δ por % (med-mej)/mej*100: <1.5 verde, <3 blanco, <5 ámbar, ≥5 rojo.
+function deltaColor(bestMs, avgMs) {
+  if (bestMs == null || avgMs == null || avgMs < bestMs) return null;
+  const pct = ((avgMs - bestMs) / bestMs) * 100;
+  if (pct < 1.5) return 'green';
+  if (pct < 3)   return 'white';
+  if (pct < 5)   return 'amber';
+  return 'red';
+}
+function _setLvColor(el, color) {
+  if (!el) return;
+  el.classList.remove('lv-color-green', 'lv-color-white', 'lv-color-amber', 'lv-color-red');
+  if (color) el.classList.add('lv-color-' + color);
+}
+
 function formatRemaining(ms) {
   const totalSec = Math.ceil(Math.max(0, ms) / 1000);
   const m = Math.floor(totalSec / 60);
@@ -23,16 +46,148 @@ function formatRemaining(ms) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-// ── View toggle: horizontal (filas anchas) ↔ vertical (columnas) ──────────────
-function toggleView() {
+// ── View picker: modal con 4 layouts (V1 horizontal, V2 compacta, V3/V4 soon) ─
+function _viewStorageKey() {
+  return `voltrace.liveView.race-${RACE_DATA.raceId}`;
+}
+function openViewPicker() {
+  const ov = document.getElementById('viewPickerOverlay');
+  if (!ov) return;
+  ov.hidden = false;
+  // Marcar la opción activa
+  const current = localStorage.getItem(_viewStorageKey()) || '1';
+  ov.querySelectorAll('.vp-opt').forEach(b => {
+    b.classList.toggle('is-active', b.dataset.mode === current);
+  });
+}
+function closeViewPicker() {
+  const ov = document.getElementById('viewPickerOverlay');
+  if (ov) ov.hidden = true;
+}
+function selectView(mode) {
   const grid = document.getElementById('lanesGrid');
-  const btn  = document.getElementById('viewBtn');
-  const isVertical = grid.classList.toggle('live-lanes--vertical');
-  btn.textContent  = isVertical ? '☰' : '⊞';
-  btn.title        = isVertical
-    ? (LANG === 'es' ? 'Vista horizontal' : 'Horizontal view')
-    : (LANG === 'es' ? 'Vista vertical'   : 'Vertical view');
+  if (!grid) return;
+  const m = String(mode);
+  grid.classList.toggle('live-lanes--vertical', m === '2');
+  grid.classList.toggle('live-lanes--detailed', m === '3');
+  // V3 también activa el layout de cuadrícula compacta como base.
+  if (m === '3') grid.classList.add('live-lanes--vertical');
+  localStorage.setItem(_viewStorageKey(), m);
+  closeViewPicker();
   if (typeof fitLaneCards === 'function') requestAnimationFrame(() => fitLaneCards());
+  // Re-evaluar paginación de V1 al cambiar de vista
+  requestAnimationFrame(_v1ApplyPaging);
+}
+
+// ── Paginación rotatoria de V1 (filas) cuando hay overflow ───────────────
+let _v1PageTimer = null;
+let _v1Page = 0;
+let _v1ScheduledRAF = false;
+const V1_PAGE_MS = 30000;
+
+function _v1ResetPaging(grid) {
+  if (_v1PageTimer) { clearInterval(_v1PageTimer); _v1PageTimer = null; }
+  _v1Page = 0;
+  if (grid) {
+    grid.querySelectorAll('.lane-card').forEach(c => { c.style.display = ''; });
+  }
+}
+
+function _v1ApplyPaging() {
+  const grid = document.getElementById('lanesGrid');
+  if (!grid) return;
+  // Solo aplica en V1 (no V2 ni V3, que usan cuadrícula compacta)
+  if (grid.classList.contains('live-lanes--vertical')) {
+    return _v1ResetPaging(grid);
+  }
+  const cards = Array.from(grid.querySelectorAll('.lane-card'));
+  if (cards.length === 0) return _v1ResetPaging(grid);
+  // Mostrar todo para medir
+  cards.forEach(c => { c.style.display = ''; });
+  // ¿Cabe sin scroll? Si sí, no paginar.
+  if (grid.scrollHeight <= grid.clientHeight + 1) {
+    return _v1ResetPaging(grid);
+  }
+  // Ordenar visualmente por style.order (set por renderStandings)
+  const orderedCards = cards.slice().sort((a, b) => {
+    return (parseInt(a.style.order || '0', 10)) - (parseInt(b.style.order || '0', 10));
+  });
+  // Partir en páginas según altura
+  const containerH = grid.clientHeight;
+  const cs = getComputedStyle(grid);
+  const gap = parseFloat(cs.rowGap || cs.gap) || 0;
+  const padding = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+  const available = containerH - padding;
+  const pages = [];
+  let page = [];
+  let usedH = 0;
+  orderedCards.forEach(c => {
+    const h = c.getBoundingClientRect().height + (page.length > 0 ? gap : 0);
+    if (usedH + h > available && page.length > 0) {
+      pages.push(page);
+      page = [];
+      usedH = 0;
+    }
+    page.push(c);
+    usedH += h;
+  });
+  if (page.length > 0) pages.push(page);
+  if (pages.length <= 1) return _v1ResetPaging(grid);
+  function showPage(idx) {
+    cards.forEach(c => { c.style.display = 'none'; });
+    pages[idx % pages.length].forEach(c => { c.style.display = ''; });
+  }
+  _v1Page = _v1Page % pages.length;
+  showPage(_v1Page);
+  if (_v1PageTimer) clearInterval(_v1PageTimer);
+  _v1PageTimer = setInterval(() => {
+    _v1Page = (_v1Page + 1) % pages.length;
+    showPage(_v1Page);
+  }, V1_PAGE_MS);
+}
+
+function _v1SchedulePaging() {
+  if (_v1ScheduledRAF) return;
+  _v1ScheduledRAF = true;
+  requestAnimationFrame(() => {
+    _v1ScheduledRAF = false;
+    _v1ApplyPaging();
+  });
+}
+
+window.addEventListener('resize', _v1SchedulePaging);
+
+// ── Swap meta/stats ↔ next-lane cada 10s cuando manga finalizada ────────
+let _swapRotationTimer = null;
+const SWAP_INTERVAL_MS = 10000;
+function _startSwapRotation() {
+  if (_swapRotationTimer) return;
+  document.body.classList.add('swap-show-stats');
+  _swapRotationTimer = setInterval(() => {
+    const showingNext = document.body.classList.contains('swap-show-next');
+    document.body.classList.toggle('swap-show-next', !showingNext);
+    document.body.classList.toggle('swap-show-stats', showingNext);
+  }, SWAP_INTERVAL_MS);
+}
+function _stopSwapRotation() {
+  if (_swapRotationTimer) { clearInterval(_swapRotationTimer); _swapRotationTimer = null; }
+  document.body.classList.remove('swap-show-stats', 'swap-show-next');
+}
+// Restaurar la vista guardada. El botón siempre se muestra.
+function _initViewPicker() {
+  const nonRest = (RACE_DATA.lanes || []).filter(l => !l.isRest).length;
+  const saved = localStorage.getItem(_viewStorageKey());
+  if (saved) selectView(saved);
+  else if (nonRest > 8) selectView('2');  // default sensato para muchos carriles
+  // Cerrar con Escape
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeViewPicker();
+  });
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', _initViewPicker);
+} else {
+  _initViewPicker();
 }
 
 // ── Semaphore ─────────────────────────────────────────────────────────────────
@@ -141,6 +296,8 @@ function startCountdown(remaining) {
       clearInterval(timerInt);
       timerInt = null;
       statusEl.innerHTML = `<span class="status-text status-text--finished">${LANG === 'es' ? 'Finalizada' : 'Finished'}</span>`;
+      document.body.classList.add('manga-finished');
+      _startSwapRotation();
     }
   }, 250);
 }
@@ -197,37 +354,37 @@ function buildCard(lane) {
       <div class="lane-card__driver-row" id="card-driver-${lane.lane}"></div>
     </div>
 
-    <div class="lane-card__col lane-card__col--laps">
+    <div class="lane-card__col lane-card__col--laps" data-col="vlt">
       <div class="lane-card__col-label">${LANG === 'es' ? 'VLT' : 'LAP'}</div>
       <div class="lane-card__laps" id="card-laps-${lane.lane}">${lane.lapCount ?? 0}</div>
     </div>
 
-    <div class="lane-card__col">
+    <div class="lane-card__col lane-card__col--total" data-col="total">
       <div class="lane-card__col-label">${LANG === 'es' ? 'Total' : 'Total'}</div>
       <div class="lane-card__col-val" id="card-total-${lane.lane}">${initTotal}</div>
     </div>
 
-    <div class="lane-card__col">
+    <div class="lane-card__col lane-card__col--last" data-col="ultima">
       <div class="lane-card__col-label">${LANG === 'es' ? 'Última' : 'Last'}</div>
       <div class="lane-card__col-val" id="card-last-${lane.lane}">${formatMs(lane.lastLapMs)}</div>
     </div>
 
-    <div class="lane-card__col">
+    <div class="lane-card__col lane-card__col--best" data-col="mejor">
       <div class="lane-card__col-label">${LANG === 'es' ? 'Mejor' : 'Best'}</div>
       <div class="lane-card__col-val lane-card__col-val--best" id="card-best-${lane.lane}">${formatMs(lane.bestLapMs)}</div>
     </div>
 
-    <div class="lane-card__col">
+    <div class="lane-card__col lane-card__col--avg" data-col="media">
       <div class="lane-card__col-label">${LANG === 'es' ? 'Media' : 'Avg'}</div>
       <div class="lane-card__col-val lane-card__col-val--avg" id="card-avg-${lane.lane}">${formatMs(lane.avgLapMs)}</div>
     </div>
 
-    <div class="lane-card__col">
+    <div class="lane-card__col lane-card__col--exits" data-col="salidas">
       <div class="lane-card__col-label">${LANG === 'es' ? 'Salidas' : 'Exits'}</div>
       <div class="lane-card__col-val lane-card__col-val--exits" id="card-exits-${lane.lane}">${lane.exitCount ?? 0}</div>
     </div>
 
-    <div class="lane-card__col">
+    <div class="lane-card__col lane-card__col--delta" data-col="delta">
       <div class="lane-card__col-label">Δ</div>
       <div class="lane-card__col-val lane-card__col-val--delta" id="card-delta-${lane.lane}">${formatDelta(lane.bestLapMs, lane.avgLapMs)}</div>
     </div>
@@ -271,12 +428,10 @@ function appendNextLaneBadge(card, info) {
 function initCards() {
   const activeLaneCount = RACE_DATA.lanes.filter(l => !l.isRest).length;
   // Por defecto: hasta 8 carriles → vista horizontal (filas anchas).
-  //              más de 8         → vista vertical (columnas).
-  // El botón ⊞/☰ del header permite alternar manualmente.
+  //              más de 8         → vista compacta (cuadrícula).
+  // El botón "🖼 Vista" del header abre el picker para cambiarlo.
   if (activeLaneCount > 8) {
     lanesGrid.classList.add('live-lanes--vertical');
-    const btn = document.getElementById('viewBtn');
-    if (btn) { btn.textContent = '☰'; btn.title = LANG === 'es' ? 'Vista horizontal' : 'Horizontal view'; }
   }
   lanesGrid.style.setProperty('--lanes', activeLaneCount);
 
@@ -284,7 +439,11 @@ function initCards() {
     lanesGrid.appendChild(buildCard(lane));
     if (lane.activeDriver) setActiveDriver(lane.lane, lane.activeDriver);
   });
-  if (RACE_DATA.mangaStatus === 'finished') renderNextLaneHints();
+  if (RACE_DATA.mangaStatus === 'finished') {
+    document.body.classList.add('manga-finished');
+    renderNextLaneHints();
+    _startSwapRotation();
+  }
   // Defer una vez para que el layout esté listo
   requestAnimationFrame(() => fitLaneCards());
 }
@@ -307,6 +466,9 @@ function updateCard(lane, lapCount, lastLapMs, bestLapMs, avgLapMs, exitCount) {
     exitsEl.classList.toggle('lane-card__col-val--exits-active', (exitCount ?? 0) > 0);
   }
   if (deltaEl) deltaEl.textContent = formatDelta(bestLapMs, avgLapMs);
+  // Colores condicionales (V1 los muestra; en V2 se imponen los del mockup B vía CSS)
+  _setLvColor(lastEl,  ultColor(lastLapMs, bestLapMs, avgLapMs));
+  _setLvColor(deltaEl, deltaColor(bestLapMs, avgLapMs));
 }
 
 function flashCard(lane, isExit) {
@@ -432,8 +594,11 @@ function fitLaneCards() {
   }
 
   // Modo horizontal: una tarjeta por carril, una fila por carril.
-  // Card height ≈ H / nLanes  (descontando pequeño gap)
-  const cardH = Math.max(40, (H / nLanes) - 8);
+  // Card height ≈ H / nLanes  (descontando pequeño gap), pero NUNCA por
+  // debajo del min-height CSS (clamp(60px, 10vh, 120px)). Si la suma de
+  // mínimos supera el viewport, el contenedor scrollea verticalmente.
+  const cssMinH = Math.max(60, Math.min(120, window.innerHeight * 0.10));
+  const cardH = Math.max(cssMinH, (H / nLanes) - 8);
   // En la tarjeta hay 2 filas (label arriba + valor abajo). El número grande
   // toma ~55% de la altura de la card.
   const fontByHeight = cardH * 0.50;
@@ -539,7 +704,7 @@ function sortCards(rows) {
     if (card) card.style.order = i;
     const posEl = document.getElementById(`card-pos-${r.lane}`);
     if (posEl) {
-      posEl.textContent = `P${i + 1}`;
+      posEl.textContent = `P.${i + 1}`;
       posEl.className = `lane-card__pos lane-card__pos--${['1','2','3'][i] ?? 'n'}`;
     }
 
@@ -660,62 +825,50 @@ function renderStandings(data) {
 
   updateRaceBestLaps(data.raceBestLaps);
   renderProjected(data);
+  // Re-evaluar paginación tras reordenar cards en V1
+  _v1SchedulePaging();
 }
 
 let prevProjGap = {};
 
 function renderProjected(data) {
   if (!data?.standings) return;
-  const elapsed   = data.elapsedMs   ?? 0;
-  const remaining = data.remainingMs ?? 0;
 
-  // Build lookup of allParticipants by name for quick access
+  // ── Fórmula (estilo Tic Tac, media sucia, por piloto) ───────────────────
+  //   projectedTotal = (planned_mangas_del_piloto × manga_duration) / avgLapMs
+  //
+  // - planned_mangas: número de mangas que tiene asignadas el piloto en BD
+  //   (lo que realmente correrá; depende del rotation: si hay más pilotos
+  //    que carriles, algunos pilotos descansan en algunas mangas).
+  // - manga_duration: ms por manga.
+  // - avgLapMs: media SUCIA (incluye salidas, excluye warmup) a través de
+  //   todas las mangas que ha corrido el piloto hasta ahora.
+  //
+  // Es un pronóstico HONESTO: "si mantienes este ritmo (con salidas) durante
+  // las mangas que te tocan, harás N vueltas al final de la carrera".
+  const MANGA_DURATION_MS = RACE_DATA.mangaDurationMs || 0;
+
   const allPMap = new Map();
   (RACE_DATA.allParticipants || []).forEach(p => allPMap.set(p.entity_name, p));
 
-  const totalMangaDuration = elapsed + remaining;
-
-  // Helper: project remaining mangas based on historical avg laps/manga
-  function projFutureMangas(name, extraMangas) {
-    const p = allPMap.get(name);
-    if (!p || !extraMangas) return 0;
-    const avgPerManga = p.mangas_raced > 0 ? p.total_laps / p.mangas_raced : 0;
-    return Math.round(extraMangas * avgPerManga);
-  }
-
-  // Active lanes: project this manga to completion + remaining pending mangas
+  // Activo en esta manga: usa raceAvgLapMs (combina histórico BD + manga actual
+  // en memoria, ya excluye warmup). Total acumulado = prevLaps + lapCount.
   const activeMap = new Map();
   data.standings.forEach(r => {
-    const prevLaps  = prevLapCountMap[r.lane] || 0;
-    const total     = prevLaps + r.lapCount;
-    const avgLapMs  = r.lapCount > 1 ? elapsed / r.lapCount : (r.avgLapMs || null);
-    // Versión fraccional (sin floor) — sirve para calcular el gap con decimales.
-    const projThisMangaRaw = avgLapMs && totalMangaDuration > 0
-      ? (totalMangaDuration / avgLapMs)
-      : r.lapCount;
-    const projThisManga = avgLapMs && totalMangaDuration > 0
-      ? Math.floor(projThisMangaRaw)
-      : r.lapCount;
-    const p = allPMap.get(r.name);
-    const futureMangas = p?.remaining_mangas || 0;
-    const projFuture   = projFutureMangas(r.name, futureMangas);
-    // Sidebar "Media" = race-wide running average across every manga the
-    // driver has raced (server combines DB history with current manga's
-    // in-memory state so it updates lap-by-lap).
-    const raceAvg = r.raceAvgLapMs ?? r.avgLapMs;
+    const prevLaps = prevLapCountMap[r.lane] || 0;
+    const total    = prevLaps + r.lapCount;
+    const avgLapMs = r.raceAvgLapMs ?? r.avgLapMs ?? null;
     activeMap.set(r.name, {
       name: r.name, color: r.color,
       total,
-      projectedTotal:    prevLaps + projThisManga    + projFuture,
-      projectedTotalRaw: prevLaps + projThisMangaRaw + projFuture,
-      bestLapMs: r.bestLapMs, avgLapMs: raceAvg,
+      avgLapMs,
+      bestLapMs: r.bestLapMs,
     });
   });
 
-  // Merge: all race participants (DB totals + future mangas) + active overrides
+  // Combinar todos los participantes de la carrera
   const seen = new Set();
   const rows = [];
-
   (RACE_DATA.allParticipants || []).forEach(p => {
     const name = p.entity_name;
     if (seen.has(name)) return;
@@ -723,29 +876,39 @@ function renderProjected(data) {
     if (activeMap.has(name)) {
       rows.push(activeMap.get(name));
     } else {
-      // Not racing this manga (resting or different tanda): use DB total + project future
-      const avgPerManga  = p.mangas_raced > 0 ? p.total_laps / p.mangas_raced : 0;
-      const projFutureRaw = (p.remaining_mangas || 0) * avgPerManga;
-      const projFuture   = Math.round(projFutureRaw);
+      // No corre esta manga (descanso o tanda futura): usa media de BD
       rows.push({
         name, color: p.color || '#8b949e',
         total: p.total_laps,
-        projectedTotal:    p.total_laps + projFuture,
-        projectedTotalRaw: p.total_laps + projFutureRaw,
+        avgLapMs: p.avg_lap_ms != null ? Math.round(p.avg_lap_ms) : null,
         bestLapMs: p.best_lap_ms ?? null,
-        avgLapMs:  p.avg_lap_ms  != null ? Math.round(p.avg_lap_ms) : null,
       });
     }
   });
+  activeMap.forEach((r, name) => { if (!seen.has(name)) rows.push(r); });
 
-  // Active participants not yet in DB (first manga ever)
-  activeMap.forEach((r, name) => {
-    if (!seen.has(name)) rows.push(r);
+  // Aplica la fórmula a cada fila, usando las mangas asignadas DE ESE PILOTO
+  rows.forEach(r => {
+    const p = allPMap.get(r.name);
+    const plannedMangas = p?.planned_mangas || 0;
+    const pilotRaceMs   = plannedMangas * MANGA_DURATION_MS;
+    if (pilotRaceMs > 0 && r.avgLapMs && r.avgLapMs > 0) {
+      r.projectedTotalRaw = pilotRaceMs / r.avgLapMs;        // float, para gap con decimales
+      r.projectedTotal    = Math.round(r.projectedTotalRaw); // int, para display principal
+    } else {
+      r.projectedTotalRaw = null;
+      r.projectedTotal    = null;
+    }
   });
 
-  rows.sort((a, b) =>
-    (b.projectedTotalRaw ?? b.projectedTotal) - (a.projectedTotalRaw ?? a.projectedTotal)
-    || (a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity));
+  // Sort: con proyección desc, sin proyección al final, desempate por mejor vuelta
+  rows.sort((a, b) => {
+    if (a.projectedTotalRaw == null && b.projectedTotalRaw == null) return 0;
+    if (a.projectedTotalRaw == null) return 1;
+    if (b.projectedTotalRaw == null) return -1;
+    return b.projectedTotalRaw - a.projectedTotalRaw
+        || (a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity);
+  });
 
   // Calculate projected gaps en vueltas + a numeric score for trend tracking
   // score = projectedTotal*BIG - avgLapMs (so closer to leader = higher; avg as tiebreaker)
@@ -766,14 +929,21 @@ function renderProjected(data) {
       // Versión fraccional para mostrar con decimales; si raw no está, cae al int.
       const aboveRaw = above.projectedTotalRaw ?? above.projectedTotal;
       const rRaw     = r.projectedTotalRaw     ?? r.projectedTotal;
-      const gapLaps  = aboveRaw - rRaw;
+      // Si cualquiera de los dos no tiene proyección (null), no se puede
+      // calcular un gap significativo → marcar como null para que se muestre
+      // "—" en la UI. Antes esto se traducía implícitamente a "leader − 0"
+      // dando gaps falsos enormes (p.ej. -252.00 para CAPEL).
+      const gapLaps = (aboveRaw == null || rRaw == null) ? null : (aboveRaw - rRaw);
       projGapInLaps[r.name] = gapLaps;
-      projGapInMs[r.name] = (Math.abs(gapLaps) < 0.5 && r.avgLapMs != null && above.avgLapMs != null)
+      projGapInMs[r.name] = (gapLaps != null && Math.abs(gapLaps) < 0.5
+                             && r.avgLapMs != null && above.avgLapMs != null)
         ? above.avgLapMs - r.avgLapMs : 0;
-      gapAboveNow[r.name] = scoreOf(above) - scoreOf(r);
+      gapAboveNow[r.name] = (r.projectedTotal == null || above.projectedTotal == null)
+        ? null : scoreOf(above) - scoreOf(r);
     }
     const below = rows[i+1];
-    gapBelowNow[r.name] = below ? (scoreOf(r) - scoreOf(below)) : null;
+    gapBelowNow[r.name] = (below && r.projectedTotal != null && below.projectedTotal != null)
+      ? scoreOf(r) - scoreOf(below) : null;
   });
 
   // Compare with previous render to determine trend arrows
@@ -813,7 +983,7 @@ function renderProjected(data) {
     <tr class="srow">
       <td><span class="sr-pos ${posClass(i+1)}">${i+1}</span></td>
       <td><span class="sr-name" title="${r.name}">${r.name}</span></td>
-      <td class="sr-right"><span class="sr-proj">${r.projectedTotal || '—'}</span></td>
+      <td class="sr-right"><span class="sr-proj">${r.projectedTotalRaw != null ? r.projectedTotalRaw.toFixed(1) : '—'}</span></td>
       <td class="sr-right"><span class="sr-ontrack">${r.total}</span></td>
       <td class="sr-right"><span class="sr-avg">${formatMs(r.avgLapMs)}</span></td>
       <td class="sr-arrows">
@@ -863,10 +1033,11 @@ function renderBestLaps() {
     }
   }
 
-  // Versión footer ticker (pills horizontales para TV)
+  // Versión footer ticker (pills horizontales para TV) con paginación 30s
   if (bestLapsFooter) {
     if (rows.length === 0) {
       bestLapsFooter.innerHTML = `<span class="bl-footer__empty">${LANG === 'es' ? 'Sin vueltas registradas' : 'No laps yet'}</span>`;
+      _bestLapsResetPager();
     } else {
       bestLapsFooter.innerHTML = rows.map((r, i) => {
         const cls = i === 0 ? ' bl-pill--gold' : '';
@@ -876,9 +1047,73 @@ function renderBestLaps() {
           <span class="bl-pill__time">${formatMs(r.bestLapMs)}</span>
         </div>`;
       }).join('');
+      // Mide al siguiente frame para que el DOM ya esté pintado
+      requestAnimationFrame(_bestLapsApplyPaging);
     }
   }
 }
+
+// ── Paginación rotatoria del ticker de vueltas rápidas ───────────────────
+let _bestLapsPageTimer = null;
+let _bestLapsCurrentPage = 0;
+const BEST_LAPS_PAGE_MS = 30000;
+
+function _bestLapsResetPager() {
+  if (_bestLapsPageTimer) { clearInterval(_bestLapsPageTimer); _bestLapsPageTimer = null; }
+  _bestLapsCurrentPage = 0;
+}
+
+function _bestLapsApplyPaging() {
+  if (!bestLapsFooter) return;
+  const pills = Array.from(bestLapsFooter.querySelectorAll('.bl-pill'));
+  if (pills.length === 0) { _bestLapsResetPager(); return; }
+  // Restaurar todos para medir el ancho natural
+  pills.forEach(p => { p.style.display = ''; });
+  const containerW = bestLapsFooter.clientWidth;
+  // ¿Caben todos? Si scrollWidth <= clientWidth no hay overflow → sin paginación.
+  if (bestLapsFooter.scrollWidth <= containerW + 1) {
+    _bestLapsResetPager();
+    return;
+  }
+  // Repartir en páginas según cuántas pills caben en el ancho disponible
+  const pages = [];
+  let page = [];
+  let usedW = 0;
+  // gap real del flex container
+  const gap = parseFloat(getComputedStyle(bestLapsFooter).gap) || 0;
+  pills.forEach((p) => {
+    const w = p.getBoundingClientRect().width + gap;
+    if (usedW + w > containerW && page.length > 0) {
+      pages.push(page);
+      page = [];
+      usedW = 0;
+    }
+    page.push(p);
+    usedW += w;
+  });
+  if (page.length > 0) pages.push(page);
+  if (pages.length <= 1) { _bestLapsResetPager(); return; }
+  // Estado: ocultar todas y mostrar solo la página actual
+  function showPage(idx) {
+    pills.forEach(p => { p.style.display = 'none'; });
+    pages[idx % pages.length].forEach(p => { p.style.display = ''; });
+  }
+  _bestLapsCurrentPage = _bestLapsCurrentPage % pages.length;
+  showPage(_bestLapsCurrentPage);
+  // (re)arrancar timer de rotación
+  if (_bestLapsPageTimer) clearInterval(_bestLapsPageTimer);
+  _bestLapsPageTimer = setInterval(() => {
+    _bestLapsCurrentPage = (_bestLapsCurrentPage + 1) % pages.length;
+    showPage(_bestLapsCurrentPage);
+  }, BEST_LAPS_PAGE_MS);
+}
+
+// Re-paginar al redimensionar la ventana
+window.addEventListener('resize', () => {
+  if (bestLapsFooter && bestLapsFooter.querySelector('.bl-pill')) {
+    requestAnimationFrame(_bestLapsApplyPaging);
+  }
+});
 
 function updateRaceBestLaps(raceBestLaps) {
   if (!raceBestLaps) return;
@@ -943,13 +1178,12 @@ function addTick(lap) {
 
 // ── Initialize ────────────────────────────────────────────────────────────────
 initCards();
+// Primera evaluación de paginación en V1 una vez pintadas las tarjetas
+requestAnimationFrame(_v1ApplyPaging);
 
-// Default view: expanded for ≤8 lanes; hide button for >8
+// Default view: expanded para ≤8 carriles. El botón Vista lo gestiona el picker.
 if (RACE_DATA.lanes.filter(l => !l.isRest).length <= 8) {
   lanesGrid.classList.add('live-lanes--expanded');
-  document.getElementById('viewBtn')?.classList.add('active');
-} else {
-  document.getElementById('viewBtn')?.style.setProperty('display', 'none');
 }
 
 if (RACE_DATA.standings) {
@@ -980,17 +1214,51 @@ if (RACE_DATA.standings) {
 // ── Voice announcements ───────────────────────────────────────────────────────
 const speechQueue = [];
 let   speechBusy  = false;
-let   voiceMuted  = false;
 
-function toggleVoice() {
-  voiceMuted = !voiceMuted;
+// 3 modos: 'all' = canta cada cruce, 'best' = solo nueva vuelta rápida del
+// carril, 'off' = silenciado. Default: 'best' (comportamiento histórico).
+const RACE_VOICE_KEY = 'slotime.race.voiceMode';
+const RACE_VOICE_MODES = ['all', 'best', 'off'];
+let voiceMode = localStorage.getItem(RACE_VOICE_KEY) || 'best';
+
+function voiceLabel() {
+  const isES = LANG === 'es';
+  if (voiceMode === 'off')  return isES ? '🔇 Sin voz'     : '🔇 No voice';
+  if (voiceMode === 'best') return isES ? '⚡ Sólo rápidas' : '⚡ Fast only';
+  return                              isES ? '🔊 Todas'       : '🔊 All';
+}
+function voiceTitle() {
+  if (LANG === 'es') {
+    return voiceMode === 'off'  ? 'Voz desactivada — clic: cantar todas las vueltas' :
+           voiceMode === 'best' ? 'Solo se cantan vueltas rápidas — clic: silenciar' :
+                                  'Se cantan todas las vueltas — clic: solo vueltas rápidas';
+  }
+  return voiceMode === 'off'  ? 'Voice off — click: announce all laps' :
+         voiceMode === 'best' ? 'Only fast laps — click: mute' :
+                                'All laps — click: only fast laps';
+}
+function refreshVoiceBtn() {
   const btn = document.getElementById('voiceBtn');
-  if (btn) btn.textContent = voiceMuted ? '🔇' : '🔊';
-  if (voiceMuted) {
+  if (!btn) return;
+  btn.textContent = voiceLabel();
+  btn.title       = voiceTitle();
+}
+function toggleVoice() {
+  const idx = RACE_VOICE_MODES.indexOf(voiceMode);
+  voiceMode = RACE_VOICE_MODES[(idx + 1) % RACE_VOICE_MODES.length];
+  try { localStorage.setItem(RACE_VOICE_KEY, voiceMode); } catch {}
+  if (voiceMode === 'off') {
     speechQueue.length = 0;
     window.speechSynthesis?.cancel();
     speechBusy = false;
   }
+  refreshVoiceBtn();
+}
+// Inicializa el botón al cargar
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', refreshVoiceBtn);
+} else {
+  refreshVoiceBtn();
 }
 
 function formatMsForSpeech(ms) {
@@ -1016,7 +1284,7 @@ function drainSpeech() {
 }
 
 function announce(text) {
-  if (!window.speechSynthesis || voiceMuted) return;
+  if (!window.speechSynthesis || voiceMode === 'off') return;
   speechQueue.push(text);
   if (!speechBusy) drainSpeech();
 }
@@ -1097,13 +1365,23 @@ function announce(text) {
       // that fires right after this lap (server emits both back-to-back), and
       // that payload carries the race-wide best — not just this manga's best.
 
-      // Announce new best lap (skip exits and the very first lap of each lane)
-      if (!lap.isExit && lap.lapNumber > 1 && lap.lapTimeMs === lap.bestLapMs) {
-        const time = formatMsForSpeech(lap.lapTimeMs);
-        const text = LANG === 'es'
-          ? `${lap.name}, vuelta rápida, ${time}`
-          : `${lap.name}, fast lap, ${time}`;
-        announce(text);
+      // Voz según modo:
+      //   off  → nunca
+      //   best → solo nueva vuelta rápida del carril (skip exits y vuelta 1)
+      //   all  → cada cruce no-exit
+      if (!lap.isExit) {
+        const isLaneBest = lap.lapNumber > 1 && lap.lapTimeMs === lap.bestLapMs;
+        if (voiceMode === 'all') {
+          const time = formatMsForSpeech(lap.lapTimeMs);
+          const text = LANG === 'es' ? `${lap.name}, ${time}` : `${lap.name}, ${time}`;
+          announce(text);
+        } else if (voiceMode === 'best' && isLaneBest) {
+          const time = formatMsForSpeech(lap.lapTimeMs);
+          const text = LANG === 'es'
+            ? `${lap.name}, vuelta rápida, ${time}`
+            : `${lap.name}, fast lap, ${time}`;
+          announce(text);
+        }
       }
     });
 
@@ -1134,6 +1412,8 @@ function announce(text) {
       RACE_DATA.isActive = false;
       if (timerInt) { clearInterval(timerInt); timerInt = null; }
       statusEl.innerHTML = `<span class="status-text status-text--finished">${LANG === 'es' ? 'Finalizada' : 'Finished'}</span>`;
+      document.body.classList.add('manga-finished');
+      _startSwapRotation();
       timerEl.textContent = '00:00';
 
       // Show next-lane indicator on each card
@@ -1362,3 +1642,86 @@ if (RACE_DATA.isTeam && RACE_DATA.hasQrCheckin) {
     });
   }
 }
+
+// ── Toolbar: columnas visibles + zoom ─────────────────────────────────────────
+(function () {
+  const COLS = ['vlt', 'total', 'ultima', 'mejor', 'media', 'salidas', 'delta'];
+  const body = document.body;
+  const LS_COLS = 'slotime.live.cols';
+  const LS_ZOOM = 'slotime.live.zoom';
+
+  // Estado inicial
+  let cols = {};
+  try {
+    const saved = JSON.parse(localStorage.getItem(LS_COLS) || '{}');
+    COLS.forEach(c => { cols[c] = saved[c] !== false; });   // true por defecto
+  } catch { COLS.forEach(c => { cols[c] = true; }); }
+
+  let zoom = parseFloat(localStorage.getItem(LS_ZOOM) || '1');
+  if (!isFinite(zoom) || zoom < 0.5 || zoom > 2.0) zoom = 1;
+
+  function applyCols() {
+    COLS.forEach(c => body.classList.toggle('hide-col-' + c, !cols[c]));
+    document.querySelectorAll('.live-toolbar__cb').forEach(cb => {
+      const k = cb.dataset.col;
+      if (k && cols[k] !== undefined) cb.checked = !!cols[k];
+    });
+    try { localStorage.setItem(LS_COLS, JSON.stringify(cols)); } catch {}
+    // Refit cards porque el ancho efectivo por columna cambia al ocultar
+    if (typeof fitLaneCards === 'function') requestAnimationFrame(() => fitLaneCards());
+    setTimeout(() => window.refreshLaneMarquees?.(), 50);
+  }
+
+  function applyZoom() {
+    zoom = Math.max(0.5, Math.min(2.0, zoom));
+    body.style.setProperty('--ln-zoom', String(zoom));
+    const lbl = document.getElementById('zoomVal');
+    if (lbl) lbl.textContent = Math.round(zoom * 100) + '%';
+    try { localStorage.setItem(LS_ZOOM, String(zoom)); } catch {}
+    setTimeout(() => window.refreshLaneMarquees?.(), 50);
+  }
+
+  // Bind eventos
+  document.querySelectorAll('.live-toolbar__cb').forEach(cb => {
+    cb.addEventListener('change', () => {
+      cols[cb.dataset.col] = cb.checked;
+      applyCols();
+    });
+  });
+  document.getElementById('zoomPlus') ?.addEventListener('click', () => { zoom = Math.min(2.0, Math.round((zoom + 0.1) * 10) / 10); applyZoom(); });
+  document.getElementById('zoomMinus')?.addEventListener('click', () => { zoom = Math.max(0.5, Math.round((zoom - 0.1) * 10) / 10); applyZoom(); });
+  document.getElementById('zoomReset')?.addEventListener('click', () => { zoom = 1; applyZoom(); });
+
+  applyCols();
+  applyZoom();
+})();
+
+// ── Marquee automático para nombres de piloto que no caben en su columna ────
+// Detecta overflow del span .lane-card__name dentro de su contenedor y activa
+// la animación CSS que lo desplaza. Recalcula al cargar, al cambiar zoom y al
+// redimensionar la ventana.
+(function () {
+  function refreshMarquees() {
+    document.querySelectorAll('.lane-card__name').forEach(el => {
+      const container = el.parentElement;
+      if (!container) return;
+      // Quitamos el flag para medir el ancho real
+      el.classList.remove('lane-card__name--overflow');
+      el.style.removeProperty('--lane-name-shift');
+      const overflow = el.scrollWidth - container.clientWidth;
+      if (overflow > 4) {
+        // shift = -(overflow + un pequeño margen para que se vea el final)
+        const shiftPx = -(overflow + 8);
+        el.style.setProperty('--lane-name-shift', shiftPx + 'px');
+        el.classList.add('lane-card__name--overflow');
+      }
+    });
+  }
+  // Expone globalmente por si lo necesita otro código
+  window.refreshLaneMarquees = refreshMarquees;
+
+  // Recalcula tras cualquier cambio relevante
+  window.addEventListener('resize', refreshMarquees);
+  // Inicial — defer para que el layout esté calculado
+  requestAnimationFrame(() => requestAnimationFrame(refreshMarquees));
+})();

@@ -121,12 +121,31 @@ function buildCard(lane) {
   return card;
 }
 
+const TR_HISTORY_MAX = 20;
 function renderLapList(laps) {
   if (!laps || laps.length === 0) return `<div class="tr-lap-empty">—</div>`;
   const best = Math.min(...laps);
-  return laps.map(ms =>
+  // Solo las últimas TR_HISTORY_MAX vueltas (la mejor sigue resaltada si
+  // entra en la ventana visible).
+  const recent = laps.slice(-TR_HISTORY_MAX);
+  return recent.map(ms =>
     `<div class="tr-lap-item${ms === best ? ' tr-lap-item--best' : ''}">${formatMs(ms)}</div>`
   ).join('');
+}
+
+// Color condicional para la última vuelta (mismo criterio que en carreras):
+// verde si ≤ mejor, blanco si ≤ media, ámbar si ≤ mejor*1.05, rojo en otro caso.
+function ultColorMs(lastMs, bestMs, avgMs) {
+  if (lastMs == null || bestMs == null) return null;
+  if (lastMs <= bestMs + 1)             return 'green';
+  if (avgMs != null && lastMs <= avgMs) return 'white';
+  if (lastMs <= bestMs * 1.05)          return 'amber';
+  return 'red';
+}
+function applyLvColor(el, color) {
+  if (!el) return;
+  el.classList.remove('lv-color-green', 'lv-color-white', 'lv-color-amber', 'lv-color-red');
+  if (color) el.classList.add('lv-color-' + color);
 }
 
 function updateCard(data) {
@@ -136,31 +155,53 @@ function updateCard(data) {
   const lapsEl  = document.getElementById(`tr-laps-${data.lane}`);
   const recordEl = document.getElementById(`tr-record-${data.lane}`);
   if (countEl)  countEl.textContent  = `${data.count} ${LANG === 'es' ? 'vlt' : 'lps'}`;
-  if (bestEl)   bestEl.textContent   = formatMs(data.lastMs ?? data.lapTimeMs);
+  const lastMs = data.lastMs ?? data.lapTimeMs;
+  if (bestEl) {
+    bestEl.textContent = formatMs(lastMs);
+    applyLvColor(bestEl, ultColorMs(lastMs, data.bestMs, data.avgMs));
+  }
   if (avgEl)    avgEl.textContent    = formatMs(data.avgMs);
   if (recordEl) recordEl.textContent = formatMs(data.bestMs);
   if (lapsEl)   lapsEl.innerHTML     = renderLapList(data.laps);
 }
 
-function toggleView() {
+// ── View picker (modal) — 2 modos: historial (default) / compacta ─────────
+const TR_VIEW_KEY = 'slotime.training.view';
+function openTrainingPicker() {
+  const ov = document.getElementById('trainingPickerOverlay');
+  if (!ov) return;
+  ov.hidden = false;
+  const current = localStorage.getItem(TR_VIEW_KEY) || 'history';
+  ov.querySelectorAll('.vp-opt').forEach(b => {
+    b.classList.toggle('is-active', b.dataset.mode === current);
+  });
+}
+function closeTrainingPicker() {
+  const ov = document.getElementById('trainingPickerOverlay');
+  if (ov) ov.hidden = true;
+}
+function selectTrainingView(mode) {
   const grid = document.getElementById('trainingGrid');
-  const btn  = document.getElementById('viewBtn');
-  const expanded = grid.classList.toggle('training-grid--expanded');
-  btn.classList.toggle('active', expanded);
+  if (!grid) return;
+  grid.classList.toggle('training-grid--compact', mode === 'compact');
+  try { localStorage.setItem(TR_VIEW_KEY, mode); } catch {}
+  closeTrainingPicker();
 }
-
-// Modo TV: fuentes/elementos grandes para lectura desde ~4m. Persiste en localStorage.
-function applyTvMode(on) {
-  document.body.classList.toggle('tv-mode', !!on);
-  const btn = document.getElementById('tvBtn');
-  if (btn) btn.classList.toggle('active', !!on);
-}
-function toggleTvMode() {
-  const next = !document.body.classList.contains('tv-mode');
-  applyTvMode(next);
-  try { localStorage.setItem('slotime.training.tvMode', next ? '1' : '0'); } catch {}
-}
-applyTvMode(localStorage.getItem('slotime.training.tvMode') === '1');
+// Restaurar elección guardada. Si no hay preferencia y hay muchos carriles,
+// arrancar en compacta para que entren bien (la vista con historial requiere
+// alto por tarjeta y se queda corta a partir de ~16 carriles).
+(function _initTrainingPicker() {
+  const saved = localStorage.getItem(TR_VIEW_KEY);
+  if (saved) {
+    selectTrainingView(saved);
+  } else {
+    const laneCount = (TRAINING_DATA?.lanes || []).length;
+    if (laneCount >= 16) selectTrainingView('compact');
+  }
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeTrainingPicker();
+  });
+})();
 
 function flashCard(laneNum) {
   const el = document.getElementById(`tr-card-${laneNum}`);
@@ -176,27 +217,57 @@ let sessionRecords = { ...TRAINING_DATA.sessionRecords };
 // ── Initialize cards ──────────────────────────────────────────────────────────
 TRAINING_DATA.lanes.forEach(lane => grid.appendChild(buildCard(lane)));
 
-// Vista por defecto:
-//   ≤8 carriles → expandida (tarjetas grandes), botón activo para alternar.
-//   >8 carriles → también expandida (tarjetas en varias filas con buen tamaño),
-//                  botón visible para compactar a una sola fila de columnas.
-grid.classList.add('training-grid--expanded');
-document.getElementById('viewBtn')?.classList.add('active');
+// Vista por defecto: ahora la maneja el picker (historial / compacta). No
+// añadimos clases extra en init.
 
 // ── Voice announcements ───────────────────────────────────────────────────────
 const speechQueue = [];
 let   speechBusy  = false;
-let   voiceMuted  = false;
 
-function toggleVoice() {
-  voiceMuted = !voiceMuted;
+// Modos: 'all' = canta cada cruce (default), 'best' = solo cuando es nueva
+// vuelta rápida de la tanda actual, 'off' = silenciado.
+const VOICE_KEY = 'slotime.training.voiceMode';
+const VOICE_MODES = ['all', 'best', 'off'];
+// Default: en competición arranca silenciado (hay muchos pilotos y cantar
+// todo es ruido); en libre arranca con todas las vueltas.
+const _isCompetition = !!(window.TRAINING_DATA && TRAINING_DATA.isCompetition);
+let voiceMode = localStorage.getItem(VOICE_KEY) || (_isCompetition ? 'off' : 'all');
+
+function voiceLabel() {
+  const isES = LANG === 'es';
+  if (voiceMode === 'off')  return isES ? '🔇 Sin voz'      : '🔇 No voice';
+  if (voiceMode === 'best') return isES ? '⚡ Sólo rápidas'  : '⚡ Fast only';
+  return                              isES ? '🔊 Todas'        : '🔊 All';
+}
+function voiceTitle() {
+  if (LANG === 'es') {
+    return voiceMode === 'off'  ? 'Voz desactivada — clic: cantar todas las vueltas' :
+           voiceMode === 'best' ? 'Solo se cantan vueltas rápidas — clic: silenciar' :
+                                  'Se cantan todas las vueltas — clic: solo vueltas rápidas';
+  }
+  return voiceMode === 'off'  ? 'Voice off — click: announce all laps' :
+         voiceMode === 'best' ? 'Only fast laps — click: mute' :
+                                'All laps — click: only fast laps';
+}
+function refreshVoiceBtn() {
   const btn = document.getElementById('voiceBtn');
-  if (btn) btn.textContent = voiceMuted ? '🔇' : '🔊';
-  if (voiceMuted) {
+  if (!btn) return;
+  btn.textContent = voiceLabel();
+  btn.title       = voiceTitle();
+  btn.classList.toggle('tr-btn--voice-off',  voiceMode === 'off');
+  btn.classList.toggle('tr-btn--voice-best', voiceMode === 'best');
+  btn.classList.toggle('tr-btn--voice-all',  voiceMode === 'all');
+}
+function toggleVoice() {
+  const idx = VOICE_MODES.indexOf(voiceMode);
+  voiceMode = VOICE_MODES[(idx + 1) % VOICE_MODES.length];
+  try { localStorage.setItem(VOICE_KEY, voiceMode); } catch {}
+  if (voiceMode === 'off') {
     speechQueue.length = 0;
     window.speechSynthesis?.cancel();
     speechBusy = false;
   }
+  refreshVoiceBtn();
 }
 
 function drainSpeech() {
@@ -210,10 +281,12 @@ function drainSpeech() {
 }
 
 function announce(text) {
-  if (!window.speechSynthesis || voiceMuted) return;
+  if (!window.speechSynthesis || voiceMode === 'off') return;
   speechQueue.push(text);
   if (!speechBusy) drainSpeech();
 }
+// Inicializa icono/título al cargar
+refreshVoiceBtn();
 
 // ── Semaphore ─────────────────────────────────────────────────────────────────
 let _semaphoreL2Timer = null;
@@ -282,10 +355,22 @@ socket.on('training:lap', (data) => {
   updateCard(data);
   flashCard(data.lane);
 
+  // ¿Es nueva vuelta rápida del carril en esta tanda? data.bestMs es la
+  // mejor del carril tras incluir este cruce, así que si la última vuelta
+  // coincide con ella → es la nueva mejor del carril.
+  const isLaneBest = data.bestMs != null && data.lapTimeMs <= data.bestMs;
+
+  // Cantar según modo de voz
+  if (voiceMode === 'off') return;
+  if (voiceMode === 'best' && !isLaneBest) return;
+
   const time = formatMsForSpeech(data.lapTimeMs);
+  const prefix = voiceMode === 'best' && isLaneBest
+    ? (LANG === 'es' ? 'Vuelta rápida, ' : 'Fast lap, ')
+    : '';
   const text = LANG === 'es'
-    ? `Carril ${data.lane}, ${time}`
-    : `Lane ${data.lane}, ${time}`;
+    ? `${prefix}carril ${data.lane}, ${time}`
+    : `${prefix}lane ${data.lane}, ${time}`;
   announce(text);
 });
 

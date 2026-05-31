@@ -71,6 +71,20 @@ class TimingServiceClass {
                             //   only the first-crossing rolling start is excluded)
         lapsMsSum:     0,
         lapAvgMs:      0,
+        // Media "limpia" — solo vueltas no-exit. Se usa ÚNICAMENTE para decidir
+        // si una vuelta nueva es salida. Evita que las salidas previas suban
+        // la media y "escondan" a las siguientes. La UI sigue mostrando
+        // lapAvgMs (la otra) y la proyección usa esa también.
+        cleanAvgCount: 0,
+        cleanLapsSum:  0,
+        cleanAvgMs:    0,
+        // La primera vuelta REAL (la primera que entra en la rama "normal" con
+        // un lap_time_ms del DS, sin contar el rolling start / first crossing)
+        // se marca como "warmup" y NO cuenta para mejor vuelta. Muchas mangas
+        // arrancan con un cruce inicial que infla/desinfla artificialmente
+        // ese primer tiempo; ignorarlo evita que aparezca como vuelta rápida
+        // espuria. Sí cuenta para totales, media y proyección.
+        firstRealLapDone: false,
         exitCount:     0,
         pitStopCount:  0,
         raceBestLapMs:    null,
@@ -470,6 +484,13 @@ class TimingServiceClass {
       });
       ld.exitCount++;
       if (wasPit) ld.pitStopCount++;
+      // Lap 1 fue añadida a la "media limpia" en su procesamiento normal
+      // (no era exit en ese momento). Ahora que la reclasificamos como exit
+      // retroactivamente, la sacamos de las cuentas limpias para que el
+      // umbral siguiente vuelva a basarse en pace real.
+      ld.cleanAvgCount = Math.max(0, ld.cleanAvgCount - 1);
+      ld.cleanLapsSum  = Math.max(0, ld.cleanLapsSum  - prevMs);
+      ld.cleanAvgMs    = ld.cleanAvgCount > 0 ? ld.cleanLapsSum / ld.cleanAvgCount : 0;
       // Tell clients to repaint lap1 as a salida.
       SocketService.emit('lap:retro_exit', {
         lane, color: ld.color, name: ld.name,
@@ -477,31 +498,50 @@ class TimingServiceClass {
       });
     }
 
-    const isExit    = ld.lapAvgMs > 0 && lapTimeMs - ld.lapAvgMs >= EXIT_MARGIN_MS;
-    // A pit-stop is a *very* long outlier: at least 2× the lane's avg. It also
-    // satisfies the isExit condition (treat as exit for averages) but is
-    // recorded with a different flag so the UI can show 🔧 instead of the
-    // generic exit icon.
-    const isPitStop = isExit && lapTimeMs >= ld.lapAvgMs * PIT_STOP_MULTIPLIER;
+    // Para decidir si una vuelta es salida usamos la MEDIA LIMPIA (que excluye
+    // salidas previas). Si aún no hay vueltas limpias (primeras vueltas o
+    // piloto que solo ha salido), caemos a la media total como fallback.
+    const refAvg = ld.cleanAvgMs > 0 ? ld.cleanAvgMs : ld.lapAvgMs;
+    const isExit    = refAvg > 0 && lapTimeMs - refAvg >= EXIT_MARGIN_MS;
+    // A pit-stop is a *very* long outlier: at least 2× la media limpia.
+    const isPitStop = isExit && lapTimeMs >= refAvg * PIT_STOP_MULTIPLIER;
 
     ld.lapCount++;
     ld.lastLapMs    = lapTimeMs;
     ld.lastCrossing = timestamp;
-    if (!ld.bestLapMs || lapTimeMs < ld.bestLapMs) ld.bestLapMs = lapTimeMs;
-    if (!ld.raceBestLapMs || lapTimeMs < ld.raceBestLapMs) {
-      ld.raceBestLapMs  = lapTimeMs;
-      ld.raceBestEntity = ld.name;
+    // Primera vuelta real de la manga: NO compite por mejor vuelta. Se marca
+    // como warmup y se persiste con is_warmup=1 para que tampoco salga del DB
+    // como best en mangas futuras.
+    const isWarmup = !ld.firstRealLapDone;
+    ld.firstRealLapDone = true;
+    if (!isWarmup) {
+      if (!ld.bestLapMs || lapTimeMs < ld.bestLapMs) ld.bestLapMs = lapTimeMs;
+      if (!ld.raceBestLapMs || lapTimeMs < ld.raceBestLapMs) {
+        ld.raceBestLapMs  = lapTimeMs;
+        ld.raceBestEntity = ld.name;
+      }
     }
 
     if (isExit) {
       ld.exitCount++;
       if (isPitStop) ld.pitStopCount++;
     }
-    // Every racing lap (including exits and pit-stops) contributes to the
-    // running average so that projected total laps stays realistic.
-    ld.avgLapCount++;
-    ld.lapsMsSum += lapTimeMs;
-    ld.lapAvgMs   = ld.lapsMsSum / ld.avgLapCount;
+    // Every racing lap (including exits and pit-stops, EXCLUDING warmup)
+    // contributes a la media. La warmup tiene artefactos (countdown del
+    // semáforo, cruce inicial) que no representan el ritmo real, así que
+    // queda fuera. La proyección "vueltas estimadas al final de la carrera"
+    // usa esta media — coherente con la fórmula `totalRaceMs / lapAvgMs`.
+    if (!isWarmup) {
+      ld.avgLapCount++;
+      ld.lapsMsSum += lapTimeMs;
+      ld.lapAvgMs   = ld.lapsMsSum / ld.avgLapCount;
+    }
+    // Media limpia: solo vueltas no-exit. Usada para detectar salidas futuras.
+    if (!isExit) {
+      ld.cleanAvgCount++;
+      ld.cleanLapsSum += lapTimeMs;
+      ld.cleanAvgMs    = ld.cleanLapsSum / ld.cleanAvgCount;
+    }
 
     const elapsedMs = timestamp - this.session.startTime;
     const race    = this.session.race;
@@ -520,6 +560,7 @@ class TimingServiceClass {
         lap_time_ms: lapTimeMs, elapsed_ms: elapsedMs,
         is_exit: isExit ? 1 : 0,
         is_pit_stop: isPitStop ? 1 : 0,
+        is_warmup: isWarmup ? 1 : 0,
       });
     } catch (err) { console.error('[TimingService] DB error:', err.message); }
 
@@ -588,7 +629,8 @@ class TimingServiceClass {
     const priorStats = db.prepare(`
       SELECT lane, COUNT(*) AS cnt, AVG(lap_time_ms) AS avg_ms
       FROM laps
-      WHERE race_id = ? AND manga_id != ? AND is_ghost = 0 AND lap_number > 0
+      WHERE race_id = ? AND manga_id != ?
+        AND is_ghost = 0 AND is_warmup = 0 AND lap_number > 0
       GROUP BY lane
     `).all(race.id, manga.id);
     const priorByLane = {};

@@ -1,53 +1,70 @@
 <%- include('../partials/header', { pageTitle: lang === 'es' ? 'Editar piloto' : 'Edit driver' }) %>
-<div class="container container--narrow">
 
-  <a href="/drivers" class="back-link">← <%= lang === 'es' ? 'Volver a pilotos' : 'Back to drivers' %></a>
-  <h1 class="page-title"><%= lang === 'es' ? 'Editar piloto' : 'Edit driver' %></h1>
+<%
+const CATS = [
+  { key: 'platino', label_es: 'Platino', label_en: 'Platinum' },
+  { key: 'oro',     label_es: 'Oro',     label_en: 'Gold' },
+  { key: 'plata',   label_es: 'Plata',   label_en: 'Silver' },
+  { key: 'bronce',  label_es: 'Bronce',  label_en: 'Bronze' },
+];
+const selectedCat = body.category ?? profile.category;
+const nameVal = body.name ?? profile.name;
+%>
 
-  <% if (errors.length > 0) { %>
-    <div class="alert alert--error">
-      <% errors.forEach(e => { %><p><%= t('errors.' + e) %></p><% }) %>
-    </div>
-  <% } %>
+<div class="vt-page">
+  <div class="vt-wrap vt-wrap--narrow">
 
-  <form action="/drivers/<%= profile.id %>" method="POST" class="form-card">
+    <a href="/drivers" class="vt-back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      <%= lang === 'es' ? 'Volver a pilotos' : 'Back to drivers' %>
+    </a>
+    <h1><%= lang === 'es' ? 'Editar piloto' : 'Edit driver' %></h1>
 
-    <div class="form-group">
-      <label class="form-label" for="name"><%= lang === 'es' ? 'Nombre del piloto' : 'Driver name' %></label>
-      <input
-        class="form-input <%= errors.includes('name_required') ? 'form-input--error' : '' %>"
-        type="text" id="name" name="name"
-        value="<%= body.name ?? profile.name %>"
-        autocomplete="off" autofocus required>
-    </div>
-
-    <div class="form-group">
-      <label class="form-label"><%= lang === 'es' ? 'Categoría' : 'Category' %></label>
-      <div class="option-cards" style="grid-template-columns: repeat(4, 1fr)">
-        <% [['platino','💎'],['oro','🥇'],['plata','🥈'],['bronce','🥉']].forEach(([cat,icon]) => { %>
-          <label class="option-card">
-            <input type="radio" name="category" value="<%= cat %>"
-              <%= (body.category ?? profile.category) === cat ? 'checked' : '' %> required>
-            <div class="option-card__body" style="align-items:center;text-align:center;padding:.9rem .5rem">
-              <span class="option-card__icon"><%= icon %></span>
-              <span class="option-card__title cat-text--<%= cat %>">
-                <%= lang === 'es'
-                  ? {platino:'Platino',oro:'Oro',plata:'Plata',bronce:'Bronce'}[cat]
-                  : {platino:'Platinum',oro:'Gold',plata:'Silver',bronce:'Bronze'}[cat] %>
-              </span>
-            </div>
-          </label>
-        <% }) %>
+    <% if (errors.length > 0) { %>
+      <div class="vt-alert" style="margin-top:16px">
+        <% errors.forEach(e => { %><p><%= t('errors.' + e) %></p><% }) %>
       </div>
-    </div>
+    <% } %>
 
-    <div class="form-actions">
-      <a href="/drivers" class="btn btn--ghost">← <%= lang === 'es' ? 'Cancelar' : 'Cancel' %></a>
-      <button type="submit" class="btn btn--primary">
-        <%= lang === 'es' ? 'Guardar cambios' : 'Save changes' %>
-      </button>
-    </div>
+    <form action="/drivers/<%= profile.id %>" method="POST" class="vt-panel">
 
-  </form>
+      <div class="vt-form-group">
+        <label class="vt-form-group__label" for="name"><%= lang === 'es' ? 'Nombre del piloto' : 'Driver name' %></label>
+        <input class="vt-inp" type="text" id="name" name="name" value="<%= nameVal %>" autocomplete="off" autofocus required>
+      </div>
+
+      <div class="vt-form-group">
+        <label class="vt-form-group__label"><%= lang === 'es' ? 'Categoría' : 'Category' %></label>
+        <div class="vt-opts vt-opts--4">
+          <% CATS.forEach(c => { %>
+            <label class="vt-opt vt-opt--compact <%= selectedCat === c.key ? 'is-sel' : '' %>" data-cat="<%= c.key %>">
+              <input type="radio" name="category" value="<%= c.key %>" <%= selectedCat === c.key ? 'checked' : '' %> required>
+              <div class="vt-opt__radio"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></div>
+              <div class="vt-opt__ico" style="background:rgba(255,255,255,.04)">
+                <span class="vt-cat-dot vt-cat--<%= c.key %>" style="width:18px;height:18px"></span>
+              </div>
+              <div class="vt-opt__t vt-cat--<%= c.key %>"><%= lang === 'es' ? c.label_es : c.label_en %></div>
+            </label>
+          <% }) %>
+        </div>
+      </div>
+
+      <div class="vt-form-actions">
+        <a href="/drivers" class="vt-btn vt-btn--ghost"><%= lang === 'es' ? 'Cancelar' : 'Cancel' %></a>
+        <button type="submit" class="vt-btn vt-btn--primary"><%= lang === 'es' ? 'Guardar cambios' : 'Save changes' %></button>
+      </div>
+    </form>
+  </div>
 </div>
+
+<script>
+document.querySelectorAll('.vt-opt[data-cat]').forEach(opt => {
+  opt.addEventListener('click', () => {
+    document.querySelectorAll('.vt-opt[data-cat]').forEach(o => o.classList.remove('is-sel'));
+    opt.classList.add('is-sel');
+    opt.querySelector('input[type="radio"]').checked = true;
+  });
+});
+</script>
+
 <%- include('../partials/footer') %>

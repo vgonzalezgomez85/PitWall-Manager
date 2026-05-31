@@ -10,15 +10,26 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/img/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@500;600;700&family=Barlow+Condensed:wght@300;400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@500;600;700&family=Barlow+Condensed:wght@300;400;600&family=Saira+Condensed:wght@600;700;800;900&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-  <nav class="navbar navbar--slim">
-    <a href="/" class="brand">
-      <img src="/img/voltrace-logo.svg" alt="Voltrace Manager" class="brand-logo">
+  <% if (typeof hideNavbar === 'undefined' || !hideNavbar) { %>
+  <nav class="navbar navbar--slim navbar--brand">
+    <a href="/" class="vh-brand vh-brand--nav" aria-label="Voltrace Manager">
+      <svg class="vh-mark" viewBox="0 0 44 44" aria-hidden="true">
+        <rect x="6" y="3" width="32" height="38" rx="11" fill="none" stroke="currentColor" stroke-width="2.2"/>
+        <path d="M14 14 L22 22 L14 30" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="29" cy="14" r="1.6" fill="currentColor"/>
+        <circle cx="29" cy="30" r="1.6" fill="currentColor"/>
+      </svg>
+      <span class="vh-wordmark">
+        <span class="vh-nm">VOL<span class="vh-nm-t">T</span>RACE</span>
+        <span class="vh-sub">MANAGER</span>
+      </span>
     </a>
   </nav>
+  <% } %>
   <% if (typeof flash !== 'undefined' && flash) { %>
     <div class="flash flash--<%= flash.type %>"><%- flash.text %></div>
   <% } %>

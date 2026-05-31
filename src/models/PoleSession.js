@@ -19,26 +19,27 @@ class PoleSession {
     `).run(poleSessionId, entityType, entityName, membersJson ?? null).lastInsertRowid;
   }
 
-  // Shuffle entries into random order and set lane; transition to 'in_progress'
-  static startPole(sessionId, lane) {
-    const entries = db.prepare(
-      'SELECT id FROM pole_entries WHERE pole_session_id = ?'
-    ).all(sessionId);
-
-    // Fisher-Yates shuffle
-    const ids = entries.map(e => e.id);
-    for (let i = ids.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [ids[i], ids[j]] = [ids[j], ids[i]];
-    }
-
-    const updateOrder = db.prepare(
-      'UPDATE pole_entries SET order_idx = ? WHERE id = ?'
+  // Persist an explicit order for the entries (array of IDs).
+  // Ignora IDs ajenos a la sesión por seguridad.
+  static setEntryOrder(sessionId, orderedIds) {
+    const valid = new Set(
+      db.prepare('SELECT id FROM pole_entries WHERE pole_session_id = ?')
+        .all(sessionId).map(r => r.id)
     );
+    const ids = (orderedIds || []).map(n => parseInt(n, 10)).filter(n => valid.has(n));
+    if (ids.length === 0) return;
+    const update = db.prepare('UPDATE pole_entries SET order_idx = ? WHERE id = ?');
     db.transaction(() => {
-      ids.forEach((id, idx) => updateOrder.run(idx, id));
+      ids.forEach((id, idx) => update.run(idx, id));
     })();
+  }
 
+  // Start pole: persists order if provided, sets lane, transitions to 'in_progress'.
+  // Si no se proporciona order, se respeta el order_idx ya guardado.
+  static startPole(sessionId, lane, orderedIds) {
+    if (Array.isArray(orderedIds) && orderedIds.length > 0) {
+      this.setEntryOrder(sessionId, orderedIds);
+    }
     db.prepare(
       "UPDATE pole_sessions SET lane = ?, status = 'in_progress', current_idx = 0 WHERE id = ?"
     ).run(lane, sessionId);

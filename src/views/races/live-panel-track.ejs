@@ -107,7 +107,41 @@
       i.src = PANEL_DATA.trackImage;
     }
 
-    // ── Pre-calcular longitud del polígono cerrado para interpolar progreso
+    // ── Suavizado Catmull-Rom del trazado ───────────────────────────────
+    // Resamplea la polilínea original a un polígono cerrado con muchos más
+    // puntos siguiendo una curva Catmull-Rom centrípeta. Sirve tanto para
+    // DIBUJAR el trazado (curvas redondas en vez de ángulos) como para
+    // INTERPOLAR la posición de los coches a lo largo del mismo.
+    const SAMPLES_PER_SEG = 16;
+    function catmullRom(p0, p1, p2, p3, t) {
+      const t2 = t * t, t3 = t2 * t;
+      return [
+        0.5 * ((2 * p1[0]) + (-p0[0] + p2[0]) * t
+             + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2
+             + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3),
+        0.5 * ((2 * p1[1]) + (-p0[1] + p2[1]) * t
+             + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2
+             + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3),
+      ];
+    }
+    function smoothOutline(pts) {
+      if (pts.length < 3) return pts;
+      const N = pts.length;
+      const out = [];
+      for (let i = 0; i < N; i++) {
+        const p0 = pts[(i - 1 + N) % N];
+        const p1 = pts[i];
+        const p2 = pts[(i + 1) % N];
+        const p3 = pts[(i + 2) % N];
+        for (let s = 0; s < SAMPLES_PER_SEG; s++) {
+          out.push(catmullRom(p0, p1, p2, p3, s / SAMPLES_PER_SEG));
+        }
+      }
+      return out;
+    }
+    // Versión suave usada para todo (dibujar + posicionar coches)
+    const trackPath = hasTrack ? smoothOutline(outline) : [];
+
     function polyLen(pts) {
       let total = 0;
       const seg = [];
@@ -119,25 +153,25 @@
       }
       return { total, seg };
     }
-    const { total: PERIM, seg: SEG } = hasTrack ? polyLen(outline) : { total: 0, seg: [] };
+    const { total: PERIM, seg: SEG } = hasTrack ? polyLen(trackPath) : { total: 0, seg: [] };
 
-    // Devuelve [x, y] (relativos 0..1) para un progreso 0..1 sobre la polilínea cerrada
+    // Devuelve [x, y] (relativos 0..1) para un progreso 0..1 sobre la curva
     function pointAtProgress(p) {
       if (!hasTrack) return [0.5, 0.5];
       p = ((p % 1) + 1) % 1;     // wrap 0..1
       const target = p * PERIM;
       let acc = 0;
-      for (let i = 0; i < outline.length; i++) {
+      for (let i = 0; i < trackPath.length; i++) {
         const len = SEG[i];
         if (acc + len >= target) {
           const t = len > 0 ? (target - acc) / len : 0;
-          const a = outline[i];
-          const b = outline[(i + 1) % outline.length];
+          const a = trackPath[i];
+          const b = trackPath[(i + 1) % trackPath.length];
           return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
         }
         acc += len;
       }
-      return outline[0];
+      return trackPath[0];
     }
 
     // ── Estado por carril ───────────────────────────────────────────────
@@ -173,9 +207,9 @@
       if (bgImg) {
         aspect = bgImg.naturalWidth / bgImg.naturalHeight;
       } else if (hasTrack) {
-        // bounding box del trazado
+        // bounding box del trazado (de la versión suave para que cuadre exacto)
         let minX = 1, minY = 1, maxX = 0, maxY = 0;
-        outline.forEach(([x, y]) => { if (x < minX) minX = x; if (y < minY) minY = y; if (x > maxX) maxX = x; if (y > maxY) maxY = y; });
+        trackPath.forEach(([x, y]) => { if (x < minX) minX = x; if (y < minY) minY = y; if (x > maxX) maxX = x; if (y > maxY) maxY = y; });
         aspect = Math.max(.1, (maxX - minX) / Math.max(.001, (maxY - minY)));
       }
       const availW = W - PAD * 2, availH = H - PAD * 2;
@@ -205,10 +239,10 @@
         ctx.strokeRect(stage.x, stage.y, stage.w, stage.h);
       }
 
-      // 2) polilínea del trazado
+      // 2) trazado suave (Catmull-Rom resampleado)
       if (hasTrack) {
         ctx.beginPath();
-        outline.forEach(([rx, ry], i) => {
+        trackPath.forEach(([rx, ry], i) => {
           const [px, py] = relToScreen(rx, ry, stage);
           if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
         });
@@ -219,15 +253,48 @@
 
         // 3) bolitas — coches
         const now = Date.now();
+        // Suavizado temporal: la posición renderizada persigue al target con
+        // un factor (interpolación exponencial). Hace el movimiento más
+        // fluido y absorbe pequeños saltos en cálculo.
+        const SMOOTH = 0.25;
+        // Detección de "atascado": si lleva > 1.3 veces su lapTime sin cruzar,
+        // probablemente está fuera de pista o parado → parpadea.
+        const STUCK_RATIO = 1.3;
+
         Object.values(laneState).forEach(l => {
           let prog = 0;
+          let stuckness = 0;   // 0..1, fuerza del "atasco" para el parpadeo
           if (l.lastCrossingTs && l.lapTimeMs > 0) {
-            prog = (now - l.lastCrossingTs) / l.lapTimeMs;
-            if (prog > 1.5) prog = 1.5;   // si lleva sin pasar > 1.5 vueltas, se queda quieto al final
+            const ratio = (now - l.lastCrossingTs) / l.lapTimeMs;
+            prog = ratio;
+            if (ratio > STUCK_RATIO) {
+              stuckness = Math.min(1, (ratio - STUCK_RATIO) / 0.5);
+              prog = 1.5;     // se "estaciona" al final del recorrido teórico
+            }
+            if (prog > 1.5) prog = 1.5;
           }
-          const [rx, ry] = pointAtProgress(prog);
-          const [px, py] = relToScreen(rx, ry, stage);
+
+          // Posición objetivo en el trazado
+          const [trx, tryY] = pointAtProgress(prog);
+
+          // Suavizado: persigue al target con inercia. En el primer frame
+          // se inicializa al target (sin "drift" inicial desde 0,0).
+          if (l.renderedRx == null) { l.renderedRx = trx; l.renderedRy = tryY; }
+          else {
+            l.renderedRx += (trx - l.renderedRx) * SMOOTH;
+            l.renderedRy += (tryY - l.renderedRy) * SMOOTH;
+          }
+
+          const [px, py] = relToScreen(l.renderedRx, l.renderedRy, stage);
           const dotR = Math.max(8, Math.min(stage.w, stage.h) / 40);
+
+          // Parpadeo si está atascado (oscilación senoidal de opacidad)
+          let alpha = 1;
+          if (stuckness > 0) {
+            const blink = 0.5 + 0.5 * Math.sin(now / 150);  // 0..1
+            alpha = 1 - stuckness * (1 - blink) * 0.7;       // mín ~0.3 cuando atascado
+          }
+          ctx.globalAlpha = alpha;
 
           // sombra
           ctx.beginPath();
@@ -241,7 +308,8 @@
           ctx.fillStyle = l.color;
           ctx.fill();
           ctx.lineWidth = 2;
-          ctx.strokeStyle = '#0a0a0a';
+          // Si está atascado, borde rojo para alertar visualmente
+          ctx.strokeStyle = stuckness > 0 ? '#e63946' : '#0a0a0a';
           ctx.stroke();
 
           // número del carril
@@ -255,6 +323,8 @@
           ctx.font = `600 ${Math.round(dotR * 0.85)}px Inter, sans-serif`;
           ctx.fillStyle = '#fff';
           ctx.fillText(l.name, px, py + dotR + Math.round(dotR * 0.9));
+
+          ctx.globalAlpha = 1;
         });
       }
     }

@@ -133,6 +133,14 @@ class TrainingController {
     res.redirect('/training/free');
   }
 
+  // POST /training/exit — botón "Volver" del header: para y resetea todo
+  // (libre y competición) y vuelve a la home.
+  static exit(req, res) {
+    if (CompetitionService.isReady) CompetitionService.stop();
+    TrainingService.resetSession();
+    res.redirect('/');
+  }
+
   // GET /training/live
   static live(req, res) {
     if (!TrainingService.isReady) return res.redirect('/training');

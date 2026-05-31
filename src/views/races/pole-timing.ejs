@@ -5,186 +5,343 @@ function formatMs(ms) {
   const s = ((ms % 60000) / 1000).toFixed(3).padStart(6, '0');
   return m > 0 ? m + ':' + s : s + 's';
 }
+function fmtSeconds3(ms) {
+  if (ms == null) return '—';
+  return (ms / 1000).toFixed(3);
+}
+const completed = session.current_idx;
+const total     = entries.length;
+const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
 %>
 <%- include('../partials/header', { pageTitle: lang === 'es' ? 'Pole Position — Cronometraje' : 'Pole Position — Timing' }) %>
-<div class="container container--narrow">
 
-  <a href="/races/<%= race.id %>" class="back-link">← <%= t('race.back_to_list') %></a>
-  <h1 class="page-title">🏁 Pole Position</h1>
-  <p class="page-subtitle">
-    <%= race.name %> ·
-    <%= lang === 'es' ? 'Carril de pole:' : 'Pole lane:' %>
-    <span class="lane-dot-inline" style="background:<%= LANE_COLORS[session.lane - 1] %>"><%= session.lane %></span>
-    · <span id="js-progress"><%= session.current_idx %></span> / <%= entries.length %>
-    <%= lang === 'es' ? 'completados' : 'done' %>
-  </p>
+<!-- Fuentes específicas para la estética broadcast de la pole -->
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700;800&family=Saira:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-  <div class="pole-timing-layout">
+<div class="pole-broadcast">
+  <div class="pole-bcast-wrap">
 
-    <!-- Current participant (big card) -->
-    <% if (current) { %>
-      <div class="pole-current-card" id="js-current-card">
+    <!-- ── Cabecera ──────────────────────────────────────────────────── -->
+    <a href="/races/<%= race.id %>" class="pole-back">← <%= t('race.back_to_list') %></a>
 
-        <div class="pole-current-label">
+    <div class="pole-title-row">
+      <div class="pole-flag" aria-hidden="true"></div>
+      <h1 class="pole-h1">Pole Position</h1>
+    </div>
+
+    <div class="pole-meta">
+      <span class="pole-meta-club"><%= race.name %></span>
+      <span class="pole-dot"></span>
+      <span>1c–<%= race.lanes_count %>c</span>
+      <span class="pole-dot"></span>
+      <span class="pole-lane-badge">
+        <%= lang === 'es' ? 'Carril de pole' : 'Pole lane' %>
+        <span class="pole-lane-num"><%= session.lane %></span>
+      </span>
+    </div>
+
+    <div class="pole-progress">
+      <div class="pole-progress-head">
+        <span class="pole-progress-lbl"><%= lang === 'es' ? 'Progreso de la sesión' : 'Session progress' %></span>
+        <span class="pole-progress-val"><b><%= completed %></b> / <%= total %> <%= lang === 'es' ? 'completados' : 'completed' %></span>
+      </div>
+      <div class="pole-bar"><div class="pole-bar-fill" style="width: <%= progressPct %>%"></div></div>
+    </div>
+
+    <!-- ── Grid principal ────────────────────────────────────────────── -->
+    <div class="pole-bcast-grid">
+
+      <!-- ── TARJETA EN PISTA ──────────────────────────────────────── -->
+      <% if (current) { %>
+      <section class="pole-bcast-card pole-live" id="js-current-card" aria-label="<%= lang === 'es' ? 'Piloto en pista' : 'Pilot on track' %>">
+
+        <div class="pole-live-status">
+          <span class="pole-pulse" aria-hidden="true"></span>
           🚦 <%= lang === 'es' ? 'En pista ahora' : 'On track now' %>
         </div>
-        <div class="pole-current-name" id="js-current-name"><%= current.entity_name %></div>
-        <% if (race.format === 'team') { %>
-          <% let members = []; try { members = JSON.parse(current.members_json || '[]'); } catch {} %>
-          <% if (members.length > 0) { %>
-            <div class="pole-current-members">
-              <% members.forEach(m => { %><span class="badge badge--neutral"><%= m %></span><% }) %>
-            </div>
-          <% } %>
-        <% } %>
+        <div class="pole-live-sub" id="js-state-sub"><%= lang === 'es' ? 'Cronometrando vuelta' : 'Timing lap' %></div>
 
-        <!-- Countdown -->
-        <div id="js-countdown-wrap" style="margin-top:1.25rem;display:none">
-          <div id="js-countdown" class="pole-countdown">00:00</div>
-          <div id="js-best-live" style="margin-top:.6rem;text-align:center;display:none">
-            <span class="pole-best-label"><%= lang === 'es' ? 'Mejor vuelta:' : 'Best lap:' %></span>
-            <span id="js-best-val" class="pole-best-val">—</span>
+        <div class="pole-driver-big" id="js-current-name"><%= current.entity_name %></div>
+        <div class="pole-driver-lane">
+          <%= lang === 'es' ? 'Carril' : 'Lane' %>
+          <b><%= session.lane %></b> ·
+          <%= lang === 'es' ? 'Salida P' : 'Start P' %><%= session.current_idx + 1 %>
+        </div>
+
+        <!-- Chrono live (oculto hasta running) -->
+        <div id="js-chrono-wrap" class="pole-chrono-wrap" style="display:none">
+          <div class="pole-chrono" id="js-chrono">0.000</div>
+          <div class="pole-chrono-delta" id="js-chrono-delta"></div>
+        </div>
+
+        <!-- Countdown discreto + mejor del piloto actual -->
+        <div id="js-countdown-wrap" class="pole-countdown-row" style="display:none">
+          <div class="pole-countdown-cell">
+            <span class="pole-cell-lbl"><%= lang === 'es' ? 'Tiempo restante' : 'Time left' %></span>
+            <span id="js-countdown" class="pole-countdown-val">00:00</span>
+          </div>
+          <div class="pole-countdown-cell">
+            <span class="pole-cell-lbl"><%= lang === 'es' ? 'Mejor del piloto' : 'Pilot\'s best' %></span>
+            <span id="js-best-val" class="pole-countdown-val pole-countdown-val--best">—</span>
           </div>
         </div>
 
-        <!-- Lap list -->
-        <div id="js-lap-list-wrap" style="margin-top:1rem;display:none">
-          <p class="pole-section-title" style="text-align:center">
-            <%= lang === 'es' ? 'Vueltas' : 'Laps' %>
-          </p>
-          <div id="js-lap-list" class="pole-lap-list"></div>
+        <!-- Historial de vueltas (la más reciente arriba; la mejor en morado) -->
+        <div id="js-laps-wrap" class="pole-laps" style="display:none">
+          <div class="pole-laps-title"><%= lang === 'es' ? 'Vueltas' : 'Laps' %></div>
+          <div id="js-laps-list" class="pole-laps-list"></div>
         </div>
 
-        <!-- Finished result -->
-        <div id="js-finished-result" style="display:none;margin-top:1.25rem;text-align:center">
-          <div class="pole-best-final">
-            <span><%= lang === 'es' ? 'Mejor vuelta:' : 'Best lap:' %></span>
-            <strong id="js-final-best" style="font-size:1.5rem;font-family:monospace;margin-left:.5rem">—</strong>
-          </div>
-          <div id="js-final-laps" class="form-hint" style="margin-top:.4rem"></div>
+        <!-- Resultado al finalizar -->
+        <div id="js-finished-result" class="pole-finished" style="display:none">
+          <span><%= lang === 'es' ? 'Mejor vuelta' : 'Best lap' %></span>
+          <strong id="js-final-best">—</strong>
+          <span class="pole-finished-laps" id="js-final-laps"></span>
         </div>
 
-        <!-- Action buttons -->
-        <div id="js-btn-idle" style="margin-top:1.5rem;text-align:center">
-          <button id="js-btn-start" class="btn btn--primary btn--lg" onclick="startTiming()">
-            ▶ <%= lang === 'es' ? 'Iniciar' : 'Start' %>
+        <!-- Botones -->
+        <div id="js-btn-idle" class="pole-btn-row" style="display:none">
+          <button id="js-btn-start" class="pole-btn-start" onclick="startTiming()">
+            <span class="pole-btn-tri">▶</span> <%= lang === 'es' ? 'Iniciar' : 'Start' %>
           </button>
         </div>
 
-        <div id="js-btn-running" style="margin-top:1.5rem;text-align:center;display:none">
-          <button id="js-btn-stop" class="btn btn--ghost" onclick="stopTiming()">
+        <div id="js-btn-running" class="pole-btn-row" style="display:none">
+          <button id="js-btn-stop" class="pole-btn-stop" onclick="stopTiming()">
             ⏹ <%= lang === 'es' ? 'Parar' : 'Stop' %>
           </button>
         </div>
 
-        <div id="js-btn-finished" style="margin-top:1.5rem;text-align:center;display:none">
+        <div id="js-btn-finished" class="pole-btn-row" style="display:none">
           <form action="/races/<%= race.id %>/pole/next" method="POST">
-            <button type="submit" class="btn btn--primary btn--lg">
-              <%= lang === 'es' ? 'Siguiente →' : 'Next →' %>
+            <button type="submit" class="pole-btn-next">
+              <%= lang === 'es' ? 'Siguiente piloto →' : 'Next pilot →' %>
             </button>
           </form>
         </div>
 
-      </div>
-    <% } %>
+        <!-- Siguiente piloto (chip al pie) -->
+        <% if (next) { %>
+          <div class="pole-next-chip">
+            <span class="pole-next-chip-lbl">⏭ <%= lang === 'es' ? 'Siguiente' : 'Next' %></span>
+            <span class="pole-next-chip-name"><%= next.entity_name %></span>
+          </div>
+        <% } %>
 
-    <!-- Side panel: live classification + next + pending -->
-    <div class="pole-timing-side">
-
-      <!-- Live classification -->
-      <div>
-        <p class="pole-section-title">
-          🏆 <%= lang === 'es' ? 'Clasificación en vivo' : 'Live standings' %>
-        </p>
-        <div id="js-standings" class="pole-standings-list">
-          <!-- populated by JS -->
-        </div>
-      </div>
-
-      <% if (next) { %>
-        <div class="pole-next-card" style="margin-top:1rem">
-          <div class="pole-next-label">⏭ <%= lang === 'es' ? 'Siguiente' : 'Next' %></div>
-          <div class="pole-next-name"><%= next.entity_name %></div>
-        </div>
+      </section>
       <% } %>
 
-    </div>
-  </div>
+      <!-- ── ORDEN DE SALIDA ───────────────────────────────────────── -->
+      <section class="pole-bcast-card" aria-label="<%= lang === 'es' ? 'Orden de salida' : 'Start order' %>">
+        <div class="pole-bcast-title">
+          <span class="pole-bcast-ico">▶</span>
+          <%= lang === 'es' ? 'Orden de salida' : 'Start order' %>
+        </div>
+        <div class="pole-bcast-list">
+          <% entries.forEach((e, i) => {
+            const isCurrent = i === session.current_idx;
+            const isDone    = i < session.current_idx;
+            const cls = isCurrent ? 'pole-bcast-row pole-bcast-row--now'
+                     : isDone    ? 'pole-bcast-row pole-bcast-row--done'
+                     :             'pole-bcast-row';
+          %>
+            <div class="<%= cls %>">
+              <span class="pole-bcast-pos"><%= i + 1 %></span>
+              <span class="pole-bcast-name"><%= e.entity_name %></span>
+              <% if (isCurrent) { %>
+                <span class="pole-bcast-tag pole-bcast-tag--now"><%= lang === 'es' ? '● En pista' : '● On track' %></span>
+              <% } else if (isDone) { %>
+                <span class="pole-bcast-tag pole-bcast-tag--done">✓ <%= lang === 'es' ? 'Hecho' : 'Done' %></span>
+              <% } %>
+            </div>
+          <% }) %>
+        </div>
+      </section>
 
+      <!-- ── CLASIFICACIÓN EN VIVO ─────────────────────────────────── -->
+      <section class="pole-bcast-card" aria-label="<%= lang === 'es' ? 'Clasificación en vivo' : 'Live standings' %>">
+        <div class="pole-bcast-title">
+          <span class="pole-bcast-ico">🏆</span>
+          <%= lang === 'es' ? 'Clasificación en vivo' : 'Live standings' %>
+        </div>
+        <div class="pole-tower" id="js-tower">
+          <!-- populated by JS / renderTower -->
+        </div>
+      </section>
+
+    </div><!-- /grid -->
+
+    <div class="pole-bcast-foot">
+      <%= lang === 'es' ? 'SI POLE · clasificación a vuelta única · el más rápido elige carril' : 'Single-lap qualifying · fastest picks lane' %>
+    </div>
+
+  </div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
-const RACE_ID     = '<%= race.id %>';
-const IS_RUNNING  = <%- isTimingRunning ? 'true' : 'false' %>;
-const DURATION_MS = <%= durationMs %>;
-const LANG_ES     = '<%= lang %>' === 'es';
+const RACE_ID      = '<%= race.id %>';
+const IS_RUNNING   = <%- isTimingRunning ? 'true' : 'false' %>;
+const DURATION_MS  = <%= durationMs %>;
+const LANG_ES      = '<%= lang %>' === 'es';
+let   poleBestMs   = <%- poleBestMs != null ? poleBestMs : 'null' %>; // tiempo a batir (ms)
+let   poleHolder   = <%- poleHolder ? JSON.stringify(poleHolder.entity_name) : 'null' %>;
+const CURRENT_NAME = <%- current ? JSON.stringify(current.entity_name) : 'null' %>;
 
-// Seed classification from server data
-// done = already timed, current = on track, waiting = not yet
-const seedClassification = [
-  <% entries.forEach(e => { %>
-  {
-    name:      <%- JSON.stringify(e.entity_name) %>,
-    bestLapMs: <%- e.lap_time_ms != null ? e.lap_time_ms : 'null' %>,
-    isCurrent: <%- e.order_idx === session.current_idx ? 'true' : 'false' %>,
-    isDone:    <%- e.order_idx < session.current_idx ? 'true' : 'false' %>,
-  },
+// Seed de la torre (entries con su mejor tiempo + flags)
+const seedEntries = [
+  <% entries.forEach((e, i) => { %>
+    {
+      name:      <%- JSON.stringify(e.entity_name) %>,
+      bestLapMs: <%- e.lap_time_ms != null ? e.lap_time_ms : 'null' %>,
+      isCurrent: <%= i === session.current_idx ? 'true' : 'false' %>,
+      isDone:    <%= i < session.current_idx ? 'true' : 'false' %>,
+    },
   <% }) %>
 ];
 
-// Classification state: map name → { bestLapMs, isCurrent, isDone }
-const clsMap = {};
-seedClassification.forEach(e => {
-  clsMap[e.name] = { bestLapMs: e.bestLapMs, isCurrent: e.isCurrent, isDone: e.isDone };
-});
+// ── Helpers ──────────────────────────────────────────────────────────────
+function formatMs(ms) {
+  if (ms == null) return '—';
+  const m = Math.floor(ms / 60000);
+  const s = ((ms % 60000) / 1000).toFixed(3).padStart(6, '0');
+  return m > 0 ? m + ':' + s : s + 's';
+}
+function fmtSeconds3(ms) { if (ms == null) return '—'; return (ms / 1000).toFixed(3); }
+function fmtDelta(ms) {
+  if (ms == null) return '';
+  const sign = ms >= 0 ? '+' : '−';
+  return sign + (Math.abs(ms) / 1000).toFixed(3);
+}
+function show(id) { const el = document.getElementById(id); if (el) el.style.display = ''; }
+function hide(id) { const el = document.getElementById(id); if (el) el.style.display = 'none'; }
 
-function renderStandings() {
-  const list = document.getElementById('js-standings');
-  if (!list) return;
+// ── Torre de tiempos ─────────────────────────────────────────────────────
+function renderTower() {
+  // Mezcla el piloto en pista con los timed según su mejor vuelta actual.
+  // Si aún no tiene tiempo, se muestra al final con "En pista".
+  const current        = seedEntries.find(e => e.isCurrent);
+  const timedAll       = seedEntries.filter(e => e.bestLapMs != null)
+                                    .slice()
+                                    .sort((a, b) => a.bestLapMs - b.bestLapMs);
+  const pending        = seedEntries.filter(e => e.bestLapMs == null && !e.isCurrent && !e.isDone);
+  const currentNoTime  = current && current.bestLapMs == null ? current : null;
 
-  const timed   = Object.entries(clsMap).filter(([, v]) => v.bestLapMs != null).sort((a, b) => a[1].bestLapMs - b[1].bestLapMs);
-  const untimed = Object.entries(clsMap).filter(([, v]) => v.bestLapMs == null);
+  const leaderMs = timedAll.length > 0 ? timedAll[0].bestLapMs : null;
 
-  const rows = [...timed, ...untimed];
-  let html = '';
-  rows.forEach(([name, v], i) => {
-    const pos    = v.bestLapMs != null ? i + 1 : '—';
-    const time   = v.bestLapMs != null ? formatMs(v.bestLapMs) : (v.isCurrent ? '⏱' : '—');
-    const cls    = v.isCurrent ? ' pole-std-row--current' : (v.isDone ? '' : ' pole-std-row--waiting');
-    html += `<div class="pole-std-row${cls}">
-      <span class="pole-std-pos">${pos}</span>
-      <span class="pole-std-name">${name}</span>
-      <span class="pole-std-time">${time}</span>
-    </div>`;
+  const tower = document.getElementById('js-tower');
+  if (!tower) return;
+  const rows = [];
+
+  timedAll.forEach((e, i) => {
+    const isP1     = i === 0;
+    const isLive   = e.isCurrent;
+    const gapMs    = isP1 ? null : (e.bestLapMs - leaderMs);
+    const cls = [
+      'pole-tower-row',
+      isP1   ? 'pole-tower-row--p1'      : '',
+      isLive ? 'pole-tower-row--running' : ''
+    ].filter(Boolean).join(' ');
+    const nameSuffix = isP1
+      ? ' <span class="pole-tower-fastest">' + (LANG_ES ? 'Vuelta rápida' : 'Fast lap') + '</span>'
+      : '';
+    const liveTag = isLive
+      ? ' <span class="pole-tower-livetag">' + (LANG_ES ? '● En pista' : '● On track') + '</span>'
+      : '';
+    rows.push(`
+      <div class="${cls}">
+        <div class="pole-tower-pos">${i + 1}</div>
+        <div class="pole-tower-name">${e.name}${nameSuffix}${liveTag}</div>
+        <div class="pole-tower-time">
+          ${fmtSeconds3(e.bestLapMs)}
+          ${isP1
+            ? '<span class="pole-tower-gap">' + (LANG_ES ? 'Líder' : 'Leader') + '</span>'
+            : '<span class="pole-tower-gap">+' + (gapMs / 1000).toFixed(3) + '</span>'}
+        </div>
+      </div>`);
   });
-  list.innerHTML = html || '<p class="form-hint" style="padding:.5rem">—</p>';
+
+  if (currentNoTime) {
+    const liveMs = window._currentLiveMs ?? null;
+    const liveTxt = liveMs != null ? fmtSeconds3(liveMs) : (LANG_ES ? 'En pista' : 'On track');
+    rows.push(`
+      <div class="pole-tower-row pole-tower-row--running">
+        <div class="pole-tower-pos">●</div>
+        <div class="pole-tower-name">${currentNoTime.name}</div>
+        <div class="pole-tower-time">${liveTxt}</div>
+      </div>`);
+  }
+
+  pending.forEach(e => {
+    rows.push(`
+      <div class="pole-tower-row pole-tower-row--pending">
+        <div class="pole-tower-pos">—</div>
+        <div class="pole-tower-name">${e.name}</div>
+        <div class="pole-tower-time">—</div>
+      </div>`);
+  });
+
+  tower.innerHTML = rows.join('');
 }
 
-// State: 'idle' | 'running' | 'finished'
+// Actualiza un entry y re-renderiza
+function updateEntryTime(name, bestLapMs) {
+  const e = seedEntries.find(x => x.name === name);
+  if (!e) return;
+  e.bestLapMs = bestLapMs;
+  // actualizar poleBestMs si supera
+  if (poleBestMs == null || bestLapMs < poleBestMs) {
+    poleBestMs = bestLapMs;
+    poleHolder = name;
+  }
+  renderTower();
+}
+
+// ── Estados ──────────────────────────────────────────────────────────────
 let state = IS_RUNNING ? 'running' : 'idle';
+
+function setStateSub(text) {
+  const el = document.getElementById('js-state-sub');
+  if (el) el.textContent = text;
+}
 
 function enterIdle() {
   state = 'idle';
   show('js-btn-idle'); hide('js-btn-running'); hide('js-btn-finished');
-  hide('js-countdown-wrap'); hide('js-best-live'); hide('js-lap-list-wrap'); hide('js-finished-result');
+  hide('js-chrono-wrap'); hide('js-countdown-wrap'); hide('js-finished-result');
+  setStateSub(LANG_ES ? 'Preparado' : 'Ready');
 }
-
+function enterStandby() {
+  state = 'standby';
+  hide('js-btn-idle'); show('js-btn-running'); hide('js-btn-finished');
+  hide('js-chrono-wrap'); hide('js-countdown-wrap'); hide('js-laps-wrap'); hide('js-finished-result');
+  setStateSub(LANG_ES ? '⏳ Esperando GO del DS-300…' : '⏳ Waiting for DS-300 GO…');
+  // Limpiar historial al entrar en standby (nuevo intento)
+  const list = document.getElementById('js-laps-list');
+  if (list) list.innerHTML = '';
+}
 function enterRunning() {
   state = 'running';
   hide('js-btn-idle'); show('js-btn-running'); hide('js-btn-finished');
-  show('js-countdown-wrap'); show('js-lap-list-wrap'); hide('js-finished-result');
+  show('js-chrono-wrap'); show('js-countdown-wrap'); show('js-laps-wrap'); hide('js-finished-result');
+  setStateSub(LANG_ES ? 'Cronometrando vuelta' : 'Timing lap');
   setCountdown(DURATION_MS);
+  updateChrono(0);
 }
-
+function enterPaused() {
+  state = 'paused';
+  setStateSub(LANG_ES ? '⏸ Pausa' : '⏸ Paused');
+}
 function enterFinished(bestLapMs, lapCount) {
   state = 'finished';
   hide('js-btn-idle'); hide('js-btn-running'); show('js-btn-finished');
-  hide('js-countdown-wrap'); show('js-finished-result');
+  hide('js-chrono-wrap');
+  show('js-finished-result');
+  setStateSub(LANG_ES ? 'Intento terminado' : 'Attempt finished');
   document.getElementById('js-final-best').textContent = formatMs(bestLapMs);
   const n = lapCount || 0;
   document.getElementById('js-final-laps').textContent =
-    n === 1 ? (LANG_ES ? '1 vuelta' : '1 lap') : (LANG_ES ? n + ' vueltas' : n + ' laps');
+    n === 0 ? '' : (n === 1 ? (LANG_ES ? '· 1 vuelta' : '· 1 lap') : (LANG_ES ? '· ' + n + ' vueltas' : '· ' + n + ' laps'));
 }
 
 function setCountdown(remainingMs) {
@@ -194,100 +351,155 @@ function setCountdown(remainingMs) {
   const m = Math.floor(total / 60000);
   const s = Math.floor((total % 60000) / 1000);
   el.textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
-  el.className = 'pole-countdown' + (total <= 10000 ? ' pole-countdown--urgent' : '');
+  el.classList.toggle('pole-countdown-val--urgent', total <= 10000);
 }
 
-function formatMs(ms) {
-  if (ms == null) return '—';
-  const m = Math.floor(ms / 60000);
-  const s = ((ms % 60000) / 1000).toFixed(3).padStart(6, '0');
-  return m > 0 ? m + ':' + s : s + 's';
+function updateChrono(currentLapMs) {
+  window._currentLiveMs = currentLapMs;
+  const el = document.getElementById('js-chrono');
+  const delta = document.getElementById('js-chrono-delta');
+  if (el) el.textContent = (currentLapMs / 1000).toFixed(3);
+  // color y delta vs pole
+  let cls = '';
+  let dtxt = '';
+  if (poleBestMs != null) {
+    const diff = currentLapMs - poleBestMs;
+    cls = diff <= 0 ? 'pole-chrono--ahead' : 'pole-chrono--behind';
+    dtxt = (diff <= 0 ? '−' : '+') + (Math.abs(diff) / 1000).toFixed(3) + ' vs pole';
+  } else {
+    dtxt = LANG_ES ? 'Sin referencia' : 'No reference';
+  }
+  if (el) el.className = 'pole-chrono ' + cls;
+  if (delta) {
+    delta.textContent = dtxt;
+    delta.className = 'pole-chrono-delta ' + cls;
+  }
+  // re-render torre cada tick para refrescar el live row
+  renderTower();
 }
 
-function show(id) { const el = document.getElementById(id); if (el) el.style.display = ''; }
-function hide(id) { const el = document.getElementById(id); if (el) el.style.display = 'none'; }
+// ── Semáforo (igual que live/training) ───────────────────────────────────
+let _semL2 = null, _semL3 = null, _semFb = null, _semStart = 0;
+const SEM_TOTAL_MS = 3000;
+function showSemaphore() {
+  if (document.getElementById('semaphore-overlay')) return;
+  const ov = document.createElement('div');
+  ov.id = 'semaphore-overlay'; ov.className = 'semaphore-overlay';
+  ov.innerHTML = `<div class="semaphore-panel">${[1,2,3].map(i => `<div class="s-light" id="sl${i}"></div>`).join('')}</div>`;
+  document.body.appendChild(ov);
+  _semStart = Date.now();
+  document.getElementById('sl1')?.classList.add('lit');
+  _semL2 = setTimeout(() => document.getElementById('sl2')?.classList.add('lit'), 833);
+  _semL3 = setTimeout(() => document.getElementById('sl3')?.classList.add('lit'), 1666);
+  _semFb = setTimeout(() => semaphoreGo(null), 6000);
+}
+function semaphoreStep() {
+  if (_semL2) { clearTimeout(_semL2); _semL2 = null; }
+  if (_semL3) { clearTimeout(_semL3); _semL3 = null; }
+  [1,2,3].forEach(n => { const el = document.getElementById('sl'+n); if (el) { el.classList.remove('lit'); el.classList.add('go'); } });
+}
+function semaphoreGo(cb) {
+  if (_semFb) { clearTimeout(_semFb); _semFb = null; }
+  if (_semL2) { clearTimeout(_semL2); _semL2 = null; }
+  if (_semL3) { clearTimeout(_semL3); _semL3 = null; }
+  [1,2,3].forEach(n => { const el = document.getElementById('sl'+n); if (el) { el.classList.remove('lit'); el.classList.add('go'); } });
+  const elapsed = Date.now() - _semStart;
+  const wait = Math.max(0, SEM_TOTAL_MS - elapsed);
+  setTimeout(() => { document.getElementById('semaphore-overlay')?.remove(); if (cb) cb(); }, wait);
+}
 
+// ── API + sockets ────────────────────────────────────────────────────────
 async function startTiming() {
   const btn = document.getElementById('js-btn-start');
-  btn.disabled = true;
+  if (btn) btn.disabled = true;
   try {
-    const r = await fetch(`/races/${RACE_ID}/pole/participant/start`, { method: 'POST' });
+    const r = await fetch('/races/' + RACE_ID + '/pole/participant/start', { method: 'POST' });
     if (!r.ok) throw new Error('start failed');
-    enterRunning();
+    enterStandby();
   } catch(e) {
-    btn.disabled = false;
-    alert(LANG_ES ? 'Error al iniciar el cronómetro' : 'Failed to start timer');
+    if (btn) btn.disabled = false;
+    enterIdle();
   }
 }
 
 async function stopTiming() {
+  if (!confirm(LANG_ES
+    ? '¿Reiniciar la pole de este piloto? Se descartará el tiempo de este intento.'
+    : 'Restart this pilot\'s pole? Current attempt time will be discarded.')) return;
   const btn = document.getElementById('js-btn-stop');
-  btn.disabled = true;
+  if (btn) btn.disabled = true;
   try {
-    const r = await fetch(`/races/${RACE_ID}/pole/participant/stop`, { method: 'POST' });
-    const data = await r.json();
-    enterFinished(data.bestLapMs, 0);
+    await fetch('/races/' + RACE_ID + '/pole/participant/stop', { method: 'POST' });
+    // Tras abortar, volvemos automáticamente a standby
+    await startTiming();
   } catch(e) {
-    btn.disabled = false;
+    if (btn) btn.disabled = false;
   }
 }
 
-// Socket.io
 const socket = io();
+socket.on('race:semaphore',      () => showSemaphore());
+socket.on('race:semaphore_step', () => semaphoreStep());
 
-socket.on('pole:tick', ({ remainingMs }) => {
-  if (state !== 'running') return;
+socket.on('pole:standby', () => { if (state !== 'standby') enterStandby(); });
+socket.on('pole:started', () => {
+  if (document.getElementById('semaphore-overlay')) semaphoreGo(null);
+  if (state !== 'running') enterRunning();
+});
+socket.on('pole:paused',  () => { if (state === 'running') enterPaused(); });
+socket.on('pole:resumed', () => {
+  if (document.getElementById('semaphore-overlay')) semaphoreGo(null);
+  if (state === 'paused') { state = 'running'; setStateSub(LANG_ES ? 'Cronometrando vuelta' : 'Timing lap'); }
+});
+socket.on('pole:aborted', () => {
+  document.getElementById('js-final-laps') && (document.getElementById('js-final-laps').textContent = '');
+  enterIdle();
+});
+
+socket.on('pole:tick', ({ remainingMs, currentLapMs }) => {
+  // Si recibimos ticks pero la UI no está en running, recuperamos el estado.
+  if (state === 'idle' || state === 'standby') {
+    if (document.getElementById('semaphore-overlay')) semaphoreGo(null);
+    enterRunning();
+  }
+  if (state === 'paused') return;
   setCountdown(remainingMs);
+  updateChrono(currentLapMs);
 });
 
 socket.on('pole:lap', ({ lapNumber, lapTimeMs, bestLapMs, improved }) => {
-  if (state !== 'running') return;
-
-  // Update best lap in classification for current participant
-  const currentName = document.getElementById('js-current-name')?.textContent?.trim();
-  if (currentName && clsMap[currentName]) {
-    clsMap[currentName].bestLapMs = bestLapMs;
-    renderStandings();
-  }
-
-  // Update best lap badge
   const bestEl = document.getElementById('js-best-val');
-  if (bestEl) { bestEl.textContent = formatMs(bestLapMs); show('js-best-live'); }
-
-  // Add lap row
-  const listEl = document.getElementById('js-lap-list');
-  if (listEl) {
+  if (bestEl) bestEl.textContent = formatMs(bestLapMs);
+  if (improved && CURRENT_NAME) updateEntryTime(CURRENT_NAME, bestLapMs);
+  // Añadir fila de vuelta al historial (más reciente arriba)
+  const list = document.getElementById('js-laps-list');
+  if (list) {
+    // marcar la fila anterior "best" como no-best si ahora hay una mejor
+    if (improved) list.querySelectorAll('.pole-lap-row--best').forEach(r => r.classList.remove('pole-lap-row--best'));
     const row = document.createElement('div');
     row.className = 'pole-lap-row' + (improved ? ' pole-lap-row--best' : '');
     row.innerHTML =
-      `<span class="pole-lap-num">${LANG_ES ? 'Vuelta' : 'Lap'} ${lapNumber}</span>` +
-      `<span class="pole-lap-time">${formatMs(lapTimeMs)}${improved ? ' ★' : ''}</span>`;
-    listEl.prepend(row);
+      '<span class="pole-lap-num">' + (LANG_ES ? 'Vuelta' : 'Lap') + ' ' + lapNumber + '</span>' +
+      '<span class="pole-lap-time">' + fmtSeconds3(lapTimeMs) + (improved ? ' ★' : '') + '</span>';
+    list.prepend(row);
   }
 });
 
 socket.on('pole:finished', ({ entryName, bestLapMs, lapCount }) => {
-  // Mark as done in classification
-  if (clsMap[entryName]) {
-    clsMap[entryName].isCurrent = false;
-    clsMap[entryName].isDone    = true;
-    clsMap[entryName].bestLapMs = bestLapMs;
-    renderStandings();
-  }
+  if (entryName && bestLapMs != null) updateEntryTime(entryName, bestLapMs);
   enterFinished(bestLapMs, lapCount);
 });
 
-socket.on('pole:started', () => {
-  if (state !== 'running') enterRunning();
-});
-
-// Init
+// ── Init ─────────────────────────────────────────────────────────────────
+renderTower();
 if (IS_RUNNING) {
   enterRunning();
-} else {
+} else if (!current) {
   enterIdle();
+} else {
+  enterStandby();
+  startTiming();
 }
-renderStandings();
 </script>
 
 <%- include('../partials/footer') %>

@@ -94,8 +94,14 @@
   display: flex; flex-direction: column;
   gap: clamp(.2rem, .5vh, .6rem);
   padding: clamp(.3rem, .6vh, .8rem);
-  overflow: hidden;
+  /* Si las tarjetas, respetando su min-height, no caben en el viewport,
+     aparece scroll vertical. */
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
+.live-lanes::-webkit-scrollbar { width: 6px; }
+.live-lanes::-webkit-scrollbar-thumb { background: #21262d; border-radius: 3px; }
 .live-lanes > .lane-card { transition: order 0s; }
 
 .lane-card {
@@ -104,13 +110,23 @@
   border-radius: 10px;
   padding: clamp(.25rem, .8vh, .8rem) clamp(.5rem, 1vw, 1.2rem);
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(180px, 1.4fr) minmax(80px, .8fr) repeat(6, minmax(80px, 1fr));
-  align-items: center; gap: clamp(.3rem, .8vw, 1rem) clamp(.3rem, .6vw, .8rem);
-  row-gap: clamp(.2rem, .5vh, .5rem);
-  flex: 1 1 0; min-height: 0; overflow: hidden;
+  /* Flex en lugar de grid: si una columna se oculta con display:none, las
+     demás reabsorben su espacio automáticamente sin dejar hueco. */
+  display: flex;
+  align-items: center;
+  gap: clamp(.3rem, .8vw, 1rem);
+  /* Las tarjetas crecen para llenar si hay sitio, pero NUNCA bajan de un
+     mínimo razonable para que las fuentes sean legibles. Si la suma supera
+     el viewport, el contenedor scrollea. */
+  flex: 1 1 auto;
+  min-height: clamp(60px, 10vh, 120px);
+  overflow: hidden;
   transition: border-color .3s;
 }
+/* Pesos relativos por columna — equivalente al grid-template-columns previo */
+.lane-card > .lane-card__col            { flex: 1 1 0; min-width: 0; }
+.lane-card > .lane-card__col--name      { flex: 0 0 auto; min-width: 90px; max-width: 22%; }
+.lane-card > .lane-card__col--laps      { flex: 0.8 1 70px; }
 
 .lane-card.is-rest {
   border-color: #30363d !important;
@@ -518,85 +534,197 @@ body.resizing-sidebar * { cursor: col-resize !important; }
 
 /* ── Vista expandida ─────────────────────────────────────────────────────── */
 /* ── Vista VERTICAL: una columna por carril, ancho auto al contenido ───── */
+/* ── V2 · Cuadrícula compacta — estilo mockup B ─────────────────────────────
+   Tarjeta con header (POS · nombre · PISTA) y 2×2 de stats (TOT/ÚLT/MED/MEJ).
+   Fuente Inter 800 y colores ámbar/blanco/gris/verde. */
 .live-lanes--vertical {
-  flex-direction: row;
   display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(min-content, max-content);
-  justify-content: start;
-  align-content: start;
+  /* Aprovecha todo el ancho disponible: 1fr hace que las tarjetas estiren
+     para llenar la pantalla; el min de 180px define cuántas columnas caben. */
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  /* min reducido a 55px: la fila que solo contiene tarjetas de descanso
+     se auto-compacta, liberando alto para las filas de activos. */
+  grid-auto-rows: minmax(55px, 160px);
+  align-content: center;
+  justify-content: stretch;
   gap: .5rem;
+  padding: .5rem;
+  overflow: auto;
 }
 .live-lanes--vertical .lane-card {
-  display: flex; flex-direction: column;
-  padding: .7rem .9rem;
-  gap: .45rem;
-  height: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto 1fr 1fr;
+  grid-template-areas:
+    "head head"
+    "tot  ult"
+    "med  mej";
+  gap: .3rem;
+  padding: .4rem;
+  min-height: 0;
   align-items: stretch;
+  overflow: hidden;
+  background: #0a0a0a;
+  border: 2px solid var(--card-color, #21262d);
+  border-radius: 10px;
+  position: relative; /* contenedor para la insignia del carril absoluta */
+}
+/* Insignia del carril (badge rojo "1"): posicionada en la esquina superior
+   derecha de la TARJETA. P.1 se queda donde estaba. */
+.live-lanes--vertical .lane-card__label {
+  position: absolute !important;
+  top: .4rem;
+  right: .4rem;
+  grid-column: auto !important;
+  grid-row: auto !important;
+  z-index: 2;
 }
 
-/* Cabecera: PISTA + nombre apilados, ALINEADOS A LA IZQUIERDA */
+/* ── Header de tarjeta V2 (grid 3 cols × 2 filas):
+   Fila 1: pos (col 1) · espacio (col 2 = 1fr) · lane (col 3)
+   Fila 2: nombre ocupa las 3 columnas (full width) */
 .live-lanes--vertical .lane-card__col--name {
-  align-items: flex-start; gap: .35rem;
-  padding-bottom: .55rem;
-  border-bottom: 1px solid #21262d;
+  grid-area: head;
+  display: grid !important;
+  grid-template-columns: auto 1fr auto !important;
+  grid-template-rows: auto auto !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center;
+  column-gap: .3rem;
+  row-gap: .15rem;
+  padding: 0;
+  border-bottom: none;
+  min-width: 0;
+  width: 100%;
 }
 .live-lanes--vertical .lane-card__label {
-  align-self: flex-start;
-  padding: .2rem .65rem;
+  grid-column: 3 !important;
+  grid-row: 1 !important;
+  justify-self: end !important;
+  background: var(--card-color, #21262d) !important;
+  color: #fff !important;
+  border-radius: 6px;
+  min-width: 1.7rem; height: 1.7rem;
+  padding: 0 .35rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
 }
+.live-lanes--vertical .lane-card__track-text { display: none !important; }
+.live-lanes--vertical .lane-card__lane-num {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 1rem !important;
+  font-weight: 800 !important;
+  color: #fff !important;
+  margin: 0 !important;
+  line-height: 1 !important;
+}
+/* name-row vuelve transparente: pos, trend, name, pit pasan a ser hijos
+   directos del flex container col--name → los order:1/2/3 sí aplican. */
 .live-lanes--vertical .lane-card__name-row {
-  display: flex; align-items: center; gap: .35rem;
-  justify-content: flex-start; width: 100%;
+  display: contents !important;
 }
+/* Ocultar elementos que solo molestan en V2 */
+.live-lanes--vertical .lane-card__trend,
+.live-lanes--vertical .lane-card__driver-row { display: none !important; }
+.live-lanes--vertical .lane-card__pit { order: 4; }
 .live-lanes--vertical .lane-card__name {
+  grid-column: 1 / -1 !important;
+  grid-row: 2 !important;
+  min-width: 0;
+  width: 100%;
+  font-family: 'Inter', system-ui, sans-serif;
   font-size: .95rem;
+  font-weight: 700;
+  color: #fff;
   text-align: left;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  /* Anula el marquee de V1 que hace flotar el nombre por encima */
+  animation: none !important;
+  transform: none !important;
+  position: static !important;
 }
-.live-lanes--vertical .lane-card__lane-num   { font-size: 1.8rem; }
-.live-lanes--vertical .lane-card__track-text { font-size: .95rem; }
+.live-lanes--vertical .lane-card__name--overflow {
+  animation: none !important;
+  transform: none !important;
+}
+.live-lanes--vertical .lane-card__pos {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  justify-self: start !important;
+  min-width: 2.1rem; height: 1.7rem;
+  border-radius: 6px;
+  background: #f6c90e !important;
+  color: #000 !important;
+  margin: 0; padding: 0 .35rem;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: .95rem;
+  font-weight: 800;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.live-lanes--vertical .lane-card__pos--1,
+.live-lanes--vertical .lane-card__pos--2,
+.live-lanes--vertical .lane-card__pos--3 { background: #f6c90e !important; color: #000 !important; }
 
-/* Vueltas: label arriba a la izquierda, número grande alineado a la izquierda */
-.live-lanes--vertical .lane-card__col--laps {
+/* ── Stats 2×2: TOT (ámbar), ÚLT (blanco), MED (gris), MEJ (verde) ──────── */
+.live-lanes--vertical .lane-card__col--total { grid-area: tot; }
+.live-lanes--vertical .lane-card__col--last  { grid-area: ult; }
+.live-lanes--vertical .lane-card__col--avg   { grid-area: med; }
+.live-lanes--vertical .lane-card__col--best  { grid-area: mej; }
+.live-lanes--vertical .lane-card__col--laps,
+.live-lanes--vertical .lane-card__col--exits,
+.live-lanes--vertical .lane-card__col--delta { display: none !important; }
+
+.live-lanes--vertical .lane-card__col--total,
+.live-lanes--vertical .lane-card__col--last,
+.live-lanes--vertical .lane-card__col--avg,
+.live-lanes--vertical .lane-card__col--best {
+  background: #161b22;
+  border-radius: 6px;
+  padding: .1rem .45rem;
+  display: flex;
+  flex-direction: column;
   align-items: flex-start;
-  padding: .2rem 0 .5rem;
-  border-bottom: 1px solid #21262d;
-}
-.live-lanes--vertical .lane-card__col--laps .lane-card__col-label {
-  font-size: .7rem; margin-bottom: .1rem;
-}
-.live-lanes--vertical .lane-card__laps {
-  font-size: 2.6rem; margin: 0;
-  text-align: left;
-}
-
-/* Resto de columnas: label + valor pegados a la izquierda, label con ancho fijo
-   para que los valores formen una columna vertical alineada entre ellos. */
-.live-lanes--vertical .lane-card__col {
-  flex-direction: row;
-  align-items: baseline;
-  justify-content: flex-start;
-  gap: .75rem;
-  padding: .05rem 0;
-  text-align: left;
+  justify-content: center;
+  gap: 0;
+  min-width: 0; min-height: 0;
+  overflow: hidden;
+  flex: none;
 }
 .live-lanes--vertical .lane-card__col-label {
-  font-size: .72rem;
-  color: #6e7681;
-  letter-spacing: .08em;
-  font-weight: 600;
-  flex-shrink: 0;
-  width: 5rem;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: .58rem;
+  font-weight: 700;
+  color: #8b949e;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  line-height: 1;
+  width: auto;
   text-align: left;
 }
 .live-lanes--vertical .lane-card__col-val {
-  font-size: 1.05rem;
-  font-weight: 700;
-  text-align: left;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: clamp(.95rem, 2.2vh, 1.5rem) !important;
+  font-weight: 800 !important;
+  letter-spacing: -.02em;
+  line-height: 1.05 !important;
+  color: #c9d1d9;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left !important;
+  flex: none !important;
   font-variant-numeric: tabular-nums;
+  width: 100%;
+  margin: 0 !important;
 }
+.live-lanes--vertical .lane-card__col--total .lane-card__col-val { color: #f59e0b; }
+.live-lanes--vertical .lane-card__col--last  .lane-card__col-val { color: #ffffff; }
+.live-lanes--vertical .lane-card__col--avg   .lane-card__col-val { color: #9ca3af; }
+.live-lanes--vertical .lane-card__col--best  .lane-card__col-val { color: #22c55e; }
 
 .lbtn--view       { background: #21262d; color: #8b949e; font-size: 1.1rem; }
 .lbtn--view.active { background: #1f6feb; color: #fff; }
@@ -743,3 +871,863 @@ body.resizing-sidebar * { cursor: col-resize !important; }
   font-size: clamp(.8rem, 1.2vh, 1rem);
   font-style: italic;
 }
+
+/* ── Toolbar de opciones de vista (columnas visibles + zoom) ──────────────── */
+.live-toolbar {
+  flex-shrink: 0;
+  display: flex; align-items: center; gap: .4rem;
+  padding: .35rem .8rem;
+  background: #000;
+  border-bottom: 1px solid #161b22;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  font-size: .85rem;
+}
+.live-toolbar::-webkit-scrollbar { height: 4px; }
+.live-toolbar::-webkit-scrollbar-thumb { background: #21262d; border-radius: 2px; }
+
+.live-toolbar__label {
+  flex-shrink: 0;
+  color: #c9d1d9;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  font-size: .72rem;
+}
+.live-toolbar__sep {
+  width: 1px;
+  height: 1.4rem;
+  background: #21262d;
+  margin: 0 .5rem;
+  flex-shrink: 0;
+}
+
+.live-toolbar__chip {
+  display: inline-flex; align-items: center; gap: .3rem;
+  padding: .25rem .55rem;
+  background: #0a0a0a;
+  border: 1px solid #21262d;
+  border-radius: 20px;
+  cursor: pointer;
+  color: #c9d1d9;
+  font-weight: 600;
+  user-select: none;
+  flex-shrink: 0;
+  transition: border-color .15s, background .15s;
+}
+.live-toolbar__chip:hover { border-color: #58a6ff; }
+.live-toolbar__chip input { accent-color: #f6c90e; cursor: pointer; }
+.live-toolbar__chip:has(input:not(:checked)) {
+  opacity: .45;
+  color: #6e7681;
+}
+
+.live-toolbar__zoom-btn,
+.live-toolbar__zoom-reset {
+  flex-shrink: 0;
+  width: 1.8rem; height: 1.8rem;
+  border-radius: 6px;
+  background: #21262d;
+  border: 1px solid #30363d;
+  color: #c9d1d9;
+  font-weight: 700; font-size: 1rem;
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: background .15s, border-color .15s;
+}
+.live-toolbar__zoom-btn:hover,
+.live-toolbar__zoom-reset:hover { background: #30363d; border-color: #58a6ff; }
+.live-toolbar__zoom-val {
+  flex-shrink: 0;
+  min-width: 3rem;
+  text-align: center;
+  font-family: 'Share Tech Mono', monospace;
+  font-weight: 700;
+  color: #f6c90e;
+}
+
+/* Ocultar columnas via clases en body. Aplica a todos los lane-card a la vez. */
+.live-body.hide-col-vlt     .lane-card__col--laps,
+.live-body.hide-col-total   .lane-card__col--total,
+.live-body.hide-col-ultima  .lane-card__col--last,
+.live-body.hide-col-mejor   .lane-card__col--best,
+.live-body.hide-col-media   .lane-card__col--avg,
+.live-body.hide-col-salidas .lane-card__col--exits,
+.live-body.hide-col-delta   .lane-card__col--delta {
+  display: none !important;
+}
+
+/* Zoom global del lane-card: multiplica los tamaños de fuente que
+   fitLaneCards() inyecta vía --ln-font-*. Si el valor base no existe (p.ej.
+   antes de que corra el autofit), cae al fallback clamp de cada elemento. */
+.live-body { --ln-zoom: 1; }
+.live-body .lane-card__col-label    { font-size: calc(var(--ln-font-label,   .9rem)  * var(--ln-zoom)); }
+.live-body .lane-card__col-val      { font-size: calc(var(--ln-font-num,     2.5rem) * var(--ln-zoom)); }
+.live-body .lane-card__col--laps .lane-card__laps {
+  font-size: calc(var(--ln-font-num, 2.5rem) * var(--ln-zoom));
+}
+.live-body .lane-card__lane-num     { font-size: calc(var(--ln-font-lanenum, 1.8rem) * var(--ln-zoom)); }
+.live-body .lane-card__name         { font-size: calc(var(--ln-font-name,    1.2rem) * var(--ln-zoom)); }
+.live-body .lane-card__track-text   { font-size: calc(var(--ln-font-track,    1rem)  * var(--ln-zoom)); }
+
+/* ── Marquee para nombres de pilotos que no caben ────────────────────────── */
+.lane-card__name--overflow {
+  overflow: visible !important;
+  text-overflow: clip !important;
+  animation: lane-name-scroll 8s linear infinite;
+  transform-origin: left center;
+}
+@keyframes lane-name-scroll {
+  0%,  15%  { transform: translateX(0); }
+  85%, 100% { transform: translateX(var(--lane-name-shift, -50%)); }
+}
+.lane-card__col--name .lane-card__name-row {
+  overflow: hidden;
+}
+
+/* ── View picker modal ───────────────────────────────────────────────────── */
+.vp-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, .82);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+  padding: 1.5rem;
+}
+.vp-overlay[hidden] { display: none; }
+.vp-modal {
+  background: #0a0a0a;
+  border: 1px solid #21262d;
+  border-radius: 14px;
+  max-width: 920px; width: 100%;
+  max-height: 90vh; overflow: auto;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .8);
+  padding: 1.4rem 1.4rem 1.6rem;
+}
+.vp-header {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; margin-bottom: 1.2rem;
+}
+.vp-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.5rem; font-weight: 700; color: #fff;
+  letter-spacing: .03em;
+}
+.vp-x {
+  background: #21262d; color: #c9d1d9;
+  border: none; border-radius: 8px;
+  width: 2.2rem; height: 2.2rem;
+  font-size: 1rem; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.vp-x:hover { background: #30363d; color: #fff; }
+.vp-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: .9rem;
+}
+.vp-opt {
+  background: #161b22; border: 2px solid #21262d;
+  border-radius: 12px;
+  padding: 1rem; text-align: left;
+  cursor: pointer; color: #c9d1d9;
+  display: flex; flex-direction: column; gap: .55rem;
+  transition: border-color .15s, transform .15s, background .15s;
+  font-family: inherit;
+}
+.vp-opt:hover:not([disabled]) { border-color: #58a6ff; transform: translateY(-2px); background: #1c2128; }
+.vp-opt.is-active { border-color: #f6c90e; background: #1c1a10; }
+.vp-opt[disabled] { opacity: .5; cursor: not-allowed; }
+.vp-opt.vp-opt--soon { position: relative; }
+.vp-opt.vp-opt--soon::after {
+  content: 'PRÓXIMAMENTE';
+  position: absolute; top: .6rem; right: .6rem;
+  background: #21262d; color: #f6c90e;
+  font-size: .55rem; font-weight: 800; letter-spacing: .08em;
+  padding: .15rem .45rem; border-radius: 4px;
+}
+.vp-label { font-weight: 700; font-size: 1.1rem; color: #fff; }
+.vp-desc { font-size: .82rem; color: #8b949e; line-height: 1.35; }
+
+/* Thumbnails — representación visual de cada layout */
+.vp-thumb {
+  background: #0a0a0a;
+  border-radius: 8px;
+  border: 1px solid #21262d;
+  height: 130px;
+  padding: .5rem;
+  display: grid;
+  gap: .3rem;
+}
+/* V1: 6 barras horizontales (filas) */
+.vp-thumb--1 {
+  grid-template-rows: repeat(6, 1fr);
+}
+.vp-thumb--1 > span {
+  background: linear-gradient(90deg, #f6c90e 0%, #f6c90e 18%, #21262d 18%, #21262d 100%);
+  border-radius: 3px;
+}
+.vp-thumb--1 > span:nth-child(1) { background: linear-gradient(90deg, #e63946 0%, #e63946 18%, #2a2a2a 18%, #2a2a2a 100%); }
+.vp-thumb--1 > span:nth-child(2) { background: linear-gradient(90deg, #2196f3 0%, #2196f3 18%, #2a2a2a 18%, #2a2a2a 100%); }
+.vp-thumb--1 > span:nth-child(3) { background: linear-gradient(90deg, #4caf50 0%, #4caf50 18%, #2a2a2a 18%, #2a2a2a 100%); }
+.vp-thumb--1 > span:nth-child(4) { background: linear-gradient(90deg, #ff9800 0%, #ff9800 18%, #2a2a2a 18%, #2a2a2a 100%); }
+.vp-thumb--1 > span:nth-child(5) { background: linear-gradient(90deg, #9c27b0 0%, #9c27b0 18%, #2a2a2a 18%, #2a2a2a 100%); }
+.vp-thumb--1 > span:nth-child(6) { background: linear-gradient(90deg, #00bcd4 0%, #00bcd4 18%, #2a2a2a 18%, #2a2a2a 100%); }
+
+/* V2: cuadrícula 8x3 de tarjetas pequeñas */
+.vp-thumb--2 {
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+}
+.vp-thumb--2 > span {
+  background: #21262d;
+  border-top: 2px solid var(--bc, #58a6ff);
+  border-radius: 3px;
+}
+.vp-thumb--2 > span:nth-child(8n+1) { --bc: #e63946; }
+.vp-thumb--2 > span:nth-child(8n+2) { --bc: #2196f3; }
+.vp-thumb--2 > span:nth-child(8n+3) { --bc: #4caf50; }
+.vp-thumb--2 > span:nth-child(8n+4) { --bc: #ff9800; }
+.vp-thumb--2 > span:nth-child(8n+5) { --bc: #9c27b0; }
+.vp-thumb--2 > span:nth-child(8n+6) { --bc: #00bcd4; }
+.vp-thumb--2 > span:nth-child(8n+7) { --bc: #ff5722; }
+.vp-thumb--2 > span:nth-child(8n)   { --bc: #cddc39; }
+
+/* V3: tarjetas con detalles (4x4 con sub-grid) */
+.vp-thumb--3 {
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+}
+.vp-thumb--3 > span {
+  background: #161b22;
+  border-radius: 3px;
+  padding: 2px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+}
+.vp-thumb--3 > span > i { background: #2a2a2a; border-radius: 1px; }
+
+/* V4: tabla con filas */
+.vp-thumb--4 {
+  grid-template-rows: repeat(7, 1fr);
+  gap: 2px;
+  padding: .4rem;
+}
+.vp-thumb--4 > i {
+  background: linear-gradient(90deg, #21262d 0 12%, #161b22 12% 28%, #21262d 28% 46%, #161b22 46% 60%, #21262d 60% 76%, #161b22 76% 100%);
+  border-radius: 2px;
+}
+.vp-thumb--4 > i:first-child { background: #1f6feb; opacity: .5; }
+
+/* Botón Vista en header — el selector :not([hidden]) evita sobrescribir el
+   atributo hidden que aplicamos por defecto para carreras con ≤8 carriles. */
+.lbtn--view:not([hidden]) {
+  display: inline-flex; align-items: center; gap: .35rem;
+}
+
+/* ── V1 (filas) — Diseño "tabla horizontal compacta" ─────────────────────── */
+/* Cabecera única arriba con las columnas (en lugar de label por celda) */
+.lanes-header {
+  display: flex; align-items: center;
+  gap: clamp(.3rem, .8vw, 1rem);
+  padding: .4rem clamp(.5rem, 1vw, 1.2rem);
+  background: #0a0a0a;
+  border-bottom: 1px solid #21262d;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: .08em;
+  font-size: .72rem;
+  text-transform: uppercase;
+  color: #8b949e;
+  flex-shrink: 0;
+}
+.lh-col { flex: 1 1 0; text-align: center; min-width: 0; }
+.lh-col--name  { flex: 0 0 auto; min-width: 90px; max-width: 22%; text-align: left; }
+.lh-col--vlt   { flex: 0.8 1 70px; }
+
+/* La cabecera se oculta en V2 (cuadrícula compacta) */
+body:has(.live-lanes--vertical) .lanes-header { display: none; }
+
+/* En V1 ocultamos los labels que se repetían en cada tarjeta (ahora están arriba) */
+body:not(:has(.live-lanes--vertical)) .lane-card__col-label { display: none !important; }
+
+/* En V1 el color del carril va como borde izquierdo, no marco completo */
+body:not(:has(.live-lanes--vertical)) .lane-card {
+  border: 1px solid #161b22 !important;
+  border-left: 5px solid var(--card-color, #21262d) !important;
+}
+
+/* Colores fijos en V1: TOTAL ámbar, MEJOR verde, MEDIA gris, SAL muted/red, Δ por % via JS */
+body:not(:has(.live-lanes--vertical)) .lane-card__col--total .lane-card__col-val { color: #f59e0b; }
+body:not(:has(.live-lanes--vertical)) .lane-card__col--best  .lane-card__col-val { color: #22c55e; }
+body:not(:has(.live-lanes--vertical)) .lane-card__col--avg   .lane-card__col-val { color: #9ca3af; }
+body:not(:has(.live-lanes--vertical)) .lane-card__col--exits .lane-card__col-val { color: #4b5563; }
+
+/* Clases de color condicionales aplicadas por JS sobre ÚLTIMA y Δ */
+.lv-color-green  { color: #22c55e !important; }
+.lv-color-white  { color: #ffffff !important; }
+.lv-color-amber  { color: #f59e0b !important; }
+.lv-color-red    { color: #ef4444 !important; }
+
+/* SAL activa (>0) sigue siendo roja, sobreescribe el muted */
+body:not(:has(.live-lanes--vertical)) .lane-card__col-val--exits-active { color: #ef4444 !important; font-weight: 800; }
+
+/* ── V1 redesign — Tabla horizontal con fuente Inter ──────────────────────
+   Cabecera única arriba; cada fila reparte el alto con flex:1; el color del
+   carril es solo borde izquierdo; los números usan Inter 800. */
+
+/* Pesos de columna unificados entre header y filas */
+body:not(:has(.live-lanes--vertical)) .lh-col,
+body:not(:has(.live-lanes--vertical)) .lane-card > .lane-card__col {
+  flex: 1 1 0 !important;
+  min-width: 0;
+  text-align: center;
+}
+body:not(:has(.live-lanes--vertical)) .lh-col--name,
+body:not(:has(.live-lanes--vertical)) .lane-card > .lane-card__col--name {
+  /* Ancho fijo proporcional para que header y filas tengan EXACTAMENTE el
+     mismo tamaño en la columna PILOTO. Si el contenido excede, el nombre se
+     trunca o pasa a 2 líneas (line-clamp). */
+  flex: 0 0 clamp(180px, 22%, 320px) !important;
+  min-width: 0;
+  max-width: none !important;
+  text-align: left;
+}
+/* "PILOTO" se indenta para caer encima del nombre, no de las flechas+chips.
+   Aprox: 0.85rem (flechas) + 0.55rem (gap) + 1.85rem (pos) + 0.55rem (gap)
+   + 1.85rem (lane) + 0.55rem (gap) ≈ 6.2rem */
+body:not(:has(.live-lanes--vertical)) .lh-col--name {
+  padding-left: 6.2rem;
+}
+body:not(:has(.live-lanes--vertical)) .lh-col--vlt,
+body:not(:has(.live-lanes--vertical)) .lane-card > .lane-card__col--laps {
+  flex: 1 1 0 !important;
+}
+
+/* Header: ahora está dentro de .live-lanes, así que comparte su padding y
+   ancho. Solo necesita el mismo padding interno horizontal que las tarjetas
+   + 5px a la izquierda para compensar el border-left de color y 1px a la
+   derecha para el border lateral. */
+body:not(:has(.live-lanes--vertical)) .lanes-header {
+  padding-top: .4rem;
+  padding-bottom: .4rem;
+  padding-left:  calc(clamp(.6rem, 1vw, 1.2rem) + 5px);
+  padding-right: calc(clamp(.6rem, 1vw, 1.2rem) + 1px);
+  gap: clamp(.5rem, 1vw, 1.2rem);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: clamp(.7rem, 1.2vh, .85rem);
+  position: sticky;
+  top: 0;
+  background: #0a0a0a;
+  z-index: 2;
+}
+/* VLT del header con el mismo flex que las filas (antes era 0.8) */
+body:not(:has(.live-lanes--vertical)) .lh-col--vlt {
+  flex: 1 1 0 !important;
+}
+
+/* Tarjetas filas: dimensionadas para que SIEMPRE entren hasta 10 filas sin
+   scroll en pantallas ≥720p. Si hay más de 10 pilotos, el organizador
+   debería cambiar a V2 (cuadrícula compacta) desde el botón 🖼 Vista. */
+body:not(:has(.live-lanes--vertical)) .lane-card {
+  padding: clamp(.3rem, .6vh, .7rem) clamp(.6rem, 1vw, 1.2rem);
+  gap: clamp(.5rem, 1vw, 1.2rem);
+  /* min-height bajo + flex:1 reparte el alto disponible entre las filas.
+     Hasta ~10 filas caben sin activar el min-height; a partir de ahí
+     aparecería scroll. */
+  min-height: clamp(46px, 5.5vh, 75px);
+}
+
+/* Cabecera nombre: pos · chip pista · nombre — todo en una fila */
+body:not(:has(.live-lanes--vertical)) .lane-card__col--name {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: .55rem;
+  justify-content: flex-start;
+}
+body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__name-row {
+  display: contents !important;
+}
+body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__driver-row {
+  display: none !important;
+}
+body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__pos {
+  order: 1;
+  background: #21262d !important;
+  color: #c9d1d9 !important;
+  border-radius: 5px;
+  padding: 0 .5rem;
+  height: 1.65rem;
+  display: inline-flex; align-items: center;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-weight: 700 !important;
+  font-size: .8rem !important;
+  letter-spacing: 0 !important;
+  margin: 0 !important;
+  flex-shrink: 0;
+}
+body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__pos--1,
+body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__pos--2,
+body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__pos--3 {
+  background: #21262d !important; color: #c9d1d9 !important;
+}
+body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__label {
+  order: 2;
+  background: var(--card-color, #21262d) !important;
+  color: #fff !important;
+  border-radius: 5px !important;
+  padding: 0 .55rem !important;
+  height: 1.65rem;
+  display: inline-flex !important; align-items: center;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-weight: 800 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  flex-shrink: 0;
+  align-self: auto !important;
+  gap: .15rem;
+}
+body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__track-text {
+  display: none !important;
+}
+body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__lane-num {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: .95rem !important;
+  color: #fff !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+}
+body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__name {
+  order: 3;
+  flex: 1 1 auto !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: clamp(.95rem, 1.7vh, 1.25rem) !important;
+  font-weight: 700 !important;
+  color: #fff !important;
+  /* Sin marquee: permite hasta 2 líneas y luego corta */
+  white-space: normal !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  line-height: 1.15;
+  min-width: 0;
+  animation: none !important;
+  transform: none !important;
+}
+/* Anula la clase overflow que activa el marquee */
+body:not(:has(.live-lanes--vertical)) .lane-card__name--overflow {
+  animation: none !important;
+  transform: none !important;
+}
+body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__pit { order: 4; }
+body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__trend {
+  order: 0;
+  flex-shrink: 0;
+  margin-right: .15rem;
+}
+
+/* Columnas numéricas: valor a la derecha, Inter 800, sin labels (los tiene el header) */
+body:not(:has(.live-lanes--vertical)) .lane-card > .lane-card__col:not(.lane-card__col--name) {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: center;
+  text-align: center;
+}
+body:not(:has(.live-lanes--vertical)) .lane-card__col-val {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: clamp(1.05rem, 2.4vh, 1.6rem) !important;
+  font-weight: 800 !important;
+  letter-spacing: -.02em !important;
+  text-align: center !important;
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1 !important;
+  margin: 0 !important;
+}
+body:not(:has(.live-lanes--vertical)) .lane-card__laps,
+body:not(:has(.live-lanes--vertical)) .lane-card__col--laps .lane-card__laps {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: clamp(1.05rem, 2.4vh, 1.6rem) !important;
+  font-weight: 800 !important;
+  color: #ffffff !important;
+  text-align: center !important;
+  margin: 0 !important;
+  line-height: 1.1 !important;
+}
+
+/* ── Columna PRÓX. en V1: oculta hasta que la manga finaliza ──────────── */
+body:not(.manga-finished) .lh-col--next { display: none; }
+body.manga-finished:not(:has(.live-lanes--vertical)) .lh-col--next {
+  flex: 0 0 auto !important;
+  min-width: 150px;
+  text-align: center;
+}
+
+/* En V1 con manga finalizada, el next-lane-badge se comporta como una
+   columna fija al final de la fila (mismo ancho que el header PRÓX.) */
+body.manga-finished:not(:has(.live-lanes--vertical)) .lane-card .next-lane-badge {
+  flex: 0 0 auto;
+  min-width: 150px;
+  justify-self: flex-end;
+  grid-column: auto;
+  margin-left: auto;
+  white-space: nowrap;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 600;
+}
+/* Las filas sin badge dejan el espacio vacío reservado para mantener alineación */
+body.manga-finished:not(:has(.live-lanes--vertical)) .lane-card:not(:has(.next-lane-badge))::after {
+  content: '';
+  flex: 0 0 auto;
+  min-width: 150px;
+}
+
+/* ── Vueltas rápidas dentro de la toolbar (en sustitución del footer) ──── */
+.live-toolbar__fastest {
+  display: flex; align-items: center;
+  gap: .5rem;
+  min-width: 0;
+  overflow: hidden;
+  flex: 1 1 0;  /* basis 0 para que no crezca por contenido */
+}
+.live-toolbar__label--fast {
+  color: #f6c90e !important;
+  font-weight: 700;
+  letter-spacing: .1em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+/* Override del overflow-x:auto que viene en .live-footer__items para que el
+   ticker NO scrollee y mi paginación JS pueda detectar overflow real. */
+.live-toolbar #bestLapsFooter {
+  display: flex;
+  gap: .4rem;
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden !important;
+  flex-wrap: nowrap;
+}
+/* Quitar overflow-x:auto del toolbar cuando contiene el ticker */
+.live-toolbar:has(.live-toolbar__fastest) { overflow: hidden !important; }
+
+
+/* ── V3 · Tarjetas con detalles (mockup D) ──────────────────────────────
+   Construye sobre V2 (.live-lanes--vertical) reorganizando el grid de la
+   tarjeta a 4 columnas × 4 filas. La fila inferior aloja VLT · SAL · PIT · Δ
+   como chips pequeños bajo los stats principales. */
+.live-lanes--detailed .lane-card {
+  grid-template-columns: 1fr 1fr 1fr 1fr !important;
+  grid-template-rows: auto 1fr 1fr auto !important;
+  grid-template-areas:
+    "head head head head"
+    "tot  tot  ult  ult"
+    "med  med  mej  mej"
+    "vlt  sal  pit  dlt" !important;
+}
+/* Mostrar las columnas extra que en V2 estaban ocultas */
+.live-lanes--detailed .lane-card__col--laps,
+.live-lanes--detailed .lane-card__col--exits,
+.live-lanes--detailed .lane-card__col--delta {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: transparent !important;
+  border-top: 1px solid #161b22;
+  padding: .25rem .15rem 0 .15rem !important;
+  gap: 0 !important;
+  min-height: 0;
+  border-radius: 0 !important;
+}
+.live-lanes--detailed .lane-card__col--laps  { grid-area: vlt !important; }
+.live-lanes--detailed .lane-card__col--exits { grid-area: sal !important; }
+.live-lanes--detailed .lane-card__col--delta { grid-area: dlt !important; }
+
+/* Labels y valores de la fila meta más pequeños */
+.live-lanes--detailed .lane-card__col--laps  .lane-card__col-label,
+.live-lanes--detailed .lane-card__col--exits .lane-card__col-label,
+.live-lanes--detailed .lane-card__col--delta .lane-card__col-label {
+  font-size: .5rem !important;
+  color: #6b7280 !important;
+  letter-spacing: .05em !important;
+  width: auto !important;
+  text-align: center !important;
+}
+.live-lanes--detailed .lane-card__col--laps  .lane-card__col-val,
+.live-lanes--detailed .lane-card__col--laps  .lane-card__laps,
+.live-lanes--detailed .lane-card__col--exits .lane-card__col-val,
+.live-lanes--detailed .lane-card__col--delta .lane-card__col-val {
+  font-size: .9rem !important;
+  font-weight: 800 !important;
+  text-align: center !important;
+  letter-spacing: -.01em !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  width: 100% !important;
+  line-height: 1.1 !important;
+}
+.live-lanes--detailed .lane-card__col--laps  .lane-card__col-val,
+.live-lanes--detailed .lane-card__col--laps  .lane-card__laps { color: #f6c90e !important; }
+.live-lanes--detailed .lane-card__col-val--exits        { color: #c9d1d9 !important; }
+.live-lanes--detailed .lane-card__col-val--exits-active { color: #ef4444 !important; }
+.live-lanes--detailed .lane-card__col--delta .lane-card__col-val { color: #ff6b35 !important; }
+
+/* Placeholder PIT (la lógica real ya muestra 🔧 en el header cuando hay
+   pit-stops; aquí dejamos una celda etiquetada para que la cuadrícula 4×4
+   tenga las 4 columnas pobladas también cuando no hay pit-stop). */
+.live-lanes--detailed .lane-card::after {
+  content: 'PIT\A —';
+  white-space: pre;
+  grid-area: pit;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: .55rem;
+  font-weight: 700;
+  color: #6b7280;
+  letter-spacing: .05em;
+  text-align: center;
+  border-top: 1px solid #161b22;
+  padding-top: .25rem;
+  line-height: 1.45;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Pequeño aumento del tope de tamaño de tarjeta en V3 — necesitan más alto
+   para alojar la fila extra. */
+.live-lanes--detailed.live-lanes--vertical {
+  grid-auto-rows: minmax(140px, 240px);
+}
+
+/* ── V3 overrides sobre V2 para volver al header de 1 fila (mockup D) ──── */
+.live-lanes--detailed .lane-card__col--name {
+  display: grid !important;
+  grid-template-columns: auto 1fr auto !important;
+  grid-template-rows: auto !important;
+  grid-template-areas: "pos name lane" !important;
+  column-gap: .4rem !important;
+  row-gap: 0 !important;
+  align-items: center;
+}
+.live-lanes--detailed .lane-card__pos {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  justify-self: start !important;
+}
+.live-lanes--detailed .lane-card__name {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  font-size: .9rem !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+/* Anulamos el position: absolute del label que heredamos de V2 — en V3 el
+   chip de pista vuelve al header inline a la derecha. */
+.live-lanes--detailed .lane-card__label {
+  position: static !important;
+  top: auto !important;
+  right: auto !important;
+  grid-column: 3 !important;
+  grid-row: 1 !important;
+  justify-self: end !important;
+}
+/* El contenedor de tarjeta no necesita position:relative aquí, pero
+   tampoco daña dejarlo. */
+
+/* Damos un poco más de aire a los stats reduciendo padding y dejando que
+   label + valor respiren sin cortarse. */
+.live-lanes--detailed .lane-card__col--total,
+.live-lanes--detailed .lane-card__col--last,
+.live-lanes--detailed .lane-card__col--avg,
+.live-lanes--detailed .lane-card__col--best {
+  padding: .25rem .45rem !important;
+  gap: .1rem !important;
+}
+.live-lanes--detailed .lane-card__col--total .lane-card__col-label,
+.live-lanes--detailed .lane-card__col--last  .lane-card__col-label,
+.live-lanes--detailed .lane-card__col--avg   .lane-card__col-label,
+.live-lanes--detailed .lane-card__col--best  .lane-card__col-label {
+  font-size: .6rem !important;
+}
+.live-lanes--detailed .lane-card__col--total .lane-card__col-val,
+.live-lanes--detailed .lane-card__col--last  .lane-card__col-val,
+.live-lanes--detailed .lane-card__col--avg   .lane-card__col-val,
+.live-lanes--detailed .lane-card__col--best  .lane-card__col-val {
+  font-size: clamp(1rem, 2vh, 1.4rem) !important;
+}
+
+/* ── V3: forzar visibilidad del nombre y rest cards compactos ───────── */
+/* (1) Garantizar que __name se vea en el header de V3 */
+.live-lanes--detailed .lane-card__name {
+  display: block !important;
+  visibility: visible !important;
+  color: #fff !important;
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+  line-height: 1.2 !important;
+}
+
+/* (2) Rest cards (descanso) compactos: mismo grid cell pero contenido
+       reorganizado en horizontal con el total de vueltas en grande. */
+.live-lanes--detailed .lane-card.is-rest,
+.live-lanes--vertical  .lane-card.is-rest {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: .4rem;
+  padding: .3rem .55rem !important;
+  min-height: 0 !important;
+  align-self: stretch;
+  background: #0a0a0a;
+  opacity: .85;
+  position: relative;
+}
+.live-lanes--detailed .lane-card.is-rest::after,
+.live-lanes--vertical  .lane-card.is-rest::after { content: none !important; }
+.live-lanes--detailed .lane-card.is-rest .lane-card__rest-icon,
+.live-lanes--vertical  .lane-card.is-rest .lane-card__rest-icon {
+  font-size: 1.1rem !important;
+  flex-shrink: 0;
+  opacity: .6;
+}
+.live-lanes--detailed .lane-card.is-rest .lane-card__rest-name,
+.live-lanes--vertical  .lane-card.is-rest .lane-card__rest-name {
+  font-size: .8rem !important;
+  font-weight: 700 !important;
+  text-align: left !important;
+  padding: 0 !important;
+  color: var(--card-color, #c9d1d9) !important;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.live-lanes--detailed .lane-card.is-rest .lane-card__rest-laps,
+.live-lanes--vertical  .lane-card.is-rest .lane-card__rest-laps {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 1.5rem !important;
+  font-weight: 800 !important;
+  color: #f6c90e !important;
+  letter-spacing: -.02em !important;
+  flex-shrink: 0;
+}
+.live-lanes--detailed .lane-card.is-rest .lane-card__rest-label,
+.live-lanes--vertical  .lane-card.is-rest .lane-card__rest-label {
+  font-size: .55rem !important;
+  font-weight: 700 !important;
+  letter-spacing: .08em !important;
+  padding: .1rem .35rem !important;
+  flex-shrink: 0;
+}
+
+/* DEBUG V3: forzar el nombre a verse pase lo que pase */
+.live-lanes--detailed .lane-card:not(.is-rest) .lane-card__name {
+  display: inline-block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  color: #fff !important;
+  background: transparent;
+  font-size: .85rem !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+  min-width: 30px !important;
+  max-width: none !important;
+  padding: 0 .2rem !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  grid-column: 2 / 3 !important;
+  grid-row: 1 / 2 !important;
+  justify-self: stretch !important;
+  align-self: center !important;
+  width: auto !important;
+  position: static !important;
+  transform: none !important;
+  animation: none !important;
+  z-index: 3;
+}
+
+/* En V2/V3 la columna del nombre debe ocupar TODO el ancho del header,
+   no el 22% que impone la regla base de V1. */
+.live-lanes--vertical .lane-card > .lane-card__col--name {
+  max-width: none !important;
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+
+/* ── Swap meta/stats ↔ next-lane cada 10s en V2 y V3 ────────────────────
+   Solo activo cuando body.manga-finished. Toggle body.swap-show-next
+   alterna qué se ve. */
+
+/* === V2 (cuadrícula compacta) === */
+/* Posiciona la badge en la fila inferior del grid de la tarjeta (med/mej) */
+body.manga-finished .live-lanes--vertical:not(.live-lanes--detailed) .lane-card .next-lane-badge {
+  grid-column: 1 / -1;
+  grid-row: 3 / 4;
+  grid-area: auto;
+  margin: 0;
+  padding: .25rem .5rem;
+  align-self: stretch;
+  justify-self: stretch;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 600;
+  white-space: nowrap;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity .35s ease;
+}
+body.manga-finished.swap-show-next .live-lanes--vertical:not(.live-lanes--detailed) .lane-card .next-lane-badge {
+  opacity: 1; visibility: visible; pointer-events: auto;
+}
+.live-lanes--vertical:not(.live-lanes--detailed) .lane-card__col--avg,
+.live-lanes--vertical:not(.live-lanes--detailed) .lane-card__col--best {
+  transition: opacity .35s ease;
+}
+body.manga-finished.swap-show-next .live-lanes--vertical:not(.live-lanes--detailed) .lane-card__col--avg,
+body.manga-finished.swap-show-next .live-lanes--vertical:not(.live-lanes--detailed) .lane-card__col--best {
+  opacity: 0; visibility: hidden; pointer-events: none;
+}
+
+/* === V3 (tarjetas con detalles) === */
+/* Posiciona la badge en la fila meta del grid (vlt/sal/pit/dlt) */
+body.manga-finished .live-lanes--detailed .lane-card .next-lane-badge {
+  grid-column: 1 / -1;
+  grid-row: 4 / 5;
+  grid-area: auto;
+  margin: 0;
+  padding: .25rem .5rem;
+  align-self: stretch;
+  justify-self: stretch;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 600;
+  white-space: nowrap;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity .35s ease;
+}
+body.manga-finished.swap-show-next .live-lanes--detailed .lane-card .next-lane-badge {
+  opacity: 1; visibility: visible; pointer-events: auto;
+}
+.live-lanes--detailed .lane-card__col--laps,
+.live-lanes--detailed .lane-card__col--exits,
+.live-lanes--detailed .lane-card__col--delta {
+  transition: opacity .35s ease;
+}
+body.manga-finished.swap-show-next .live-lanes--detailed .lane-card__col--laps,
+body.manga-finished.swap-show-next .live-lanes--detailed .lane-card__col--exits,
+body.manga-finished.swap-show-next .live-lanes--detailed .lane-card__col--delta {
+  opacity: 0; visibility: hidden; pointer-events: none;
+}
+/* También el placeholder PIT ::after que añadí en V3 */
+body.manga-finished.swap-show-next .live-lanes--detailed .lane-card::after {
+  opacity: 0; visibility: hidden;
+}
+.live-lanes--detailed .lane-card::after { transition: opacity .35s ease; }

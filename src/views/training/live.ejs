@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/training.css">
+  <link rel="stylesheet" href="/css/training.css?v=<%= Date.now() %>">
 </head>
 <body class="training-body">
 
@@ -31,8 +31,7 @@
 
     <div class="training-header__actions">
       <button id="voiceBtn" class="tr-btn tr-btn--voice" onclick="toggleVoice()" title="<%= lang === 'es' ? 'Activar/silenciar voz' : 'Toggle voice' %>">🔊</button>
-      <button id="viewBtn" class="tr-btn tr-btn--view" onclick="toggleView()" title="<%= lang === 'es' ? 'Cambiar vista' : 'Toggle view' %>">⊞</button>
-      <button id="tvBtn" class="tr-btn tr-btn--tv" onclick="toggleTvMode()" title="<%= lang === 'es' ? 'Modo TV (fuentes grandes para pantalla a distancia)' : 'TV mode (large fonts for distant screen)' %>">📺</button>
+      <button id="viewBtn" class="tr-btn tr-btn--view" onclick="openTrainingPicker()" title="<%= lang === 'es' ? 'Cambiar vista' : 'Change view' %>">🖼 <%= lang === 'es' ? 'Vista' : 'View' %></button>
       <% if (typeof heatNumber !== 'undefined' && heatNumber !== null) { %>
         <form action="/training/competition/stop" method="POST" style="display:inline"
           onsubmit="return confirm('<%= lang === 'es' ? '¿Reiniciar sesión? Se perderán todos los datos.' : 'Reset session? All data will be lost.' %>')">
@@ -44,12 +43,14 @@
           <button class="tr-btn tr-btn--reset">↺ <%= lang === 'es' ? 'Reset' : 'Reset' %></button>
         </form>
       <% } %>
-      <a href="/" class="tr-btn tr-btn--back">← <%= lang === 'es' ? 'Volver' : 'Back' %></a>
+      <form action="/training/exit" method="POST" style="display:inline">
+        <button class="tr-btn tr-btn--back" type="submit">← <%= lang === 'es' ? 'Volver' : 'Back' %></button>
+      </form>
     </div>
   </header>
 
   <!-- ── Lane cards ────────────────────────────────────────────────────────── -->
-  <div class="training-grid" id="trainingGrid" style="--lanes: <%= lanes.length %>"></div>
+  <div class="training-grid" id="trainingGrid" style="--lanes: <%= lanes.length %>; --cols: <%= Math.min(8, lanes.length) %>"></div>
 
   <!-- ── Resting participants (competition only, when P > N) ───────────────── -->
   <% if (typeof resting !== 'undefined' && resting && resting.length > 0) { %>
@@ -71,6 +72,32 @@
     <div class="resting-bar__items" id="restingItems"></div>
   </div>
   <% } %>
+
+  <!-- ── View picker modal ────────────────────────────────────────────── -->
+  <div id="trainingPickerOverlay" class="vp-overlay" hidden onclick="if(event.target===this)closeTrainingPicker()">
+    <div class="vp-modal" role="dialog" aria-modal="true">
+      <div class="vp-header">
+        <div class="vp-title"><%= lang === 'es' ? 'Elige cómo ver el entrenamiento' : 'Choose how to view training' %></div>
+        <button class="vp-x" onclick="closeTrainingPicker()" aria-label="<%= lang === 'es' ? 'Cerrar' : 'Close' %>">✕</button>
+      </div>
+      <div class="vp-grid">
+        <button class="vp-opt" data-mode="history" onclick="selectTrainingView('history')">
+          <div class="vp-thumb vp-thumb--tr-history" aria-hidden="true">
+            <span></span><span></span><span></span><span></span>
+          </div>
+          <div class="vp-label"><%= lang === 'es' ? 'Tarjetas con historial' : 'Cards with history' %></div>
+          <div class="vp-desc"><%= lang === 'es' ? 'Cada carril con sus últimas 20 vueltas. Ideal para sesiones largas.' : 'Each lane with its last 20 laps. Ideal for long sessions.' %></div>
+        </button>
+        <button class="vp-opt" data-mode="compact" onclick="selectTrainingView('compact')">
+          <div class="vp-thumb vp-thumb--tr-compact" aria-hidden="true">
+            <span></span><span></span><span></span><span></span><span></span><span></span>
+          </div>
+          <div class="vp-label"><%= lang === 'es' ? 'Compacta' : 'Compact' %></div>
+          <div class="vp-desc"><%= lang === 'es' ? 'Solo mejor y última, sin historial. Para muchos carriles a la vez.' : 'Only best and last lap, no history. For many lanes at once.' %></div>
+        </button>
+      </div>
+    </div>
+  </div>
 
   <script>
     const TRAINING_DATA = <%- JSON.stringify({

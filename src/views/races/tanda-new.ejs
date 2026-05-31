@@ -11,13 +11,54 @@
     </div>
   <% } %>
 
+  <%
+    // ── Sub-circuito por carril y por DSC (compartido entre la secuencia y
+    //    el formulario más abajo) ─────────────────────────────────────────
+    const _sizes = Array.isArray(circuitSizes) && circuitSizes.length > 0
+                    ? circuitSizes
+                    : [laneSequence.filter(l => l > 0).length];
+    const _numCircuits = _sizes.length;
+    const _laneInfo = {};
+    let _runningEnd = 0;
+    _sizes.forEach((sz, ci) => {
+      for (let l = _runningEnd + 1; l <= _runningEnd + sz; l++) {
+        _laneInfo[l] = { ci, local: l - _runningEnd };
+      }
+      _runningEnd += sz;
+    });
+    const _maxSize = Math.max(..._sizes);
+    function _dscCircuitFor(seqIdx) {
+      for (let j = seqIdx - 1; j >= 0; j--) {
+        const ln = laneSequence[j];
+        if (ln > 0 && _laneInfo[ln]) return _laneInfo[ln].ci;
+      }
+      for (let j = seqIdx + 1; j < laneSequence.length; j++) {
+        const ln = laneSequence[j];
+        if (ln > 0 && _laneInfo[ln]) return _laneInfo[ln].ci;
+      }
+      return _numCircuits - 1;
+    }
+    // Precalcular etiquetas DSCx-Cy para cada DSC en laneSequence
+    const _dscLabels = {};
+    const _dscCountSeq = Array(_numCircuits).fill(0);
+    laneSequence.forEach((ln, idx) => {
+      if (ln === 0) {
+        const ci = _dscCircuitFor(idx);
+        _dscCountSeq[ci]++;
+        _dscLabels[idx] = _numCircuits > 1
+          ? `DSC${_dscCountSeq[ci]}-C${ci + 1}`
+          : `DSC${_dscCountSeq[ci]}`;
+      }
+    });
+  %>
+
   <div class="form-card">
 
     <div class="seq-display" style="margin-bottom:1.75rem">
       <span class="seq-display__label"><%= lang === 'es' ? 'Secuencia:' : 'Sequence:' %></span>
       <% laneSequence.forEach((lane, i) => { %>
         <% if (lane === 0) { %>
-          <span class="seq-display__lane" style="background:#30363d;color:#8b949e;font-size:.65rem"><%= lang === 'es' ? 'DSC' : 'REST' %></span>
+          <span class="seq-display__lane" style="background:#30363d;color:#8b949e;font-size:.6rem;padding:0 .35rem"><%= _dscLabels[i] %></span>
         <% } else { %>
           <span class="seq-display__lane" style="background:<%= LANE_COLORS[lane-1] %>"><%= lane %></span>
         <% } %>
@@ -39,21 +80,51 @@
             : `Minimum ${laneSequence.length} drivers. Add more for rotation with rest slots.` %>
         </p>
 
-        <div id="driversGrid" class="drivers-grid">
+        <%
+          // Contador de DSC por columna (los demás helpers ya están arriba).
+          const _dscPerCol = Array(_numCircuits).fill(0);
+        %>
+        <div id="driversGrid" class="drivers-grid drivers-grid--cols"
+             style="display:grid; grid-template-columns: repeat(<%= _numCircuits %>, minmax(0, 1fr)); column-gap: 1rem; row-gap: .5rem">
           <% const initD = Math.max(laneSequence.length, body.drivers ? body.drivers.length : 0); %>
           <% for (let i = 0; i < initD; i++) { %>
-            <div class="driver-row participant-row" data-row="<%= i %>">
-              <%
-                const slotLane = i < laneSequence.length ? laneSequence[i] : 0;
-                const slotColor = slotLane > 0 ? LANE_COLORS[(slotLane - 1) % LANE_COLORS.length] : '#30363d';
-                // Rest slots: DSC1 = first to start racing (rests least at start)
-                const restIdx = slotLane === 0 ? (initD - i) : 0;
-                const slotLabel = slotLane > 0
-                  ? slotLane
-                  : ((lang === 'es' ? 'DSC' : 'REST') + (restIdx > 0 ? restIdx : ''));
-              %>
+            <%
+              const slotLane = i < laneSequence.length ? laneSequence[i] : 0;
+              const slotColor = slotLane > 0 ? LANE_COLORS[(slotLane - 1) % LANE_COLORS.length] : '#30363d';
+              // Sub-circuito del DSC + posición dentro de él (para etiqueta DSCx-Cy)
+              const _dscCi = slotLane === 0 ? _dscCircuitFor(i) : -1;
+              const _dscPos = slotLane === 0 ? ((_dscPerCol[_dscCi] || 0) + 1) : 0;
+              const _dscPrefix = lang === 'es' ? 'DSC' : 'REST';
+              const slotLabel = slotLane > 0
+                ? slotLane
+                : (_numCircuits > 1
+                    ? `${_dscPrefix}${_dscPos}-C${_dscCi + 1}`
+                    : `${_dscPrefix}${_dscPos}`);
+              // Columna + fila explícitas para que el grid coloque cada input
+              // en la columna del sub-circuito al que pertenece su carril,
+              // ordenados verticalmente por número de carril dentro del
+              // sub-circuito. Los DSC bajan al final del último sub-circuito.
+              let colIdx, rowIdx;
+              if (slotLane > 0) {
+                const info = _laneInfo[slotLane] || { ci: 0, local: 1 };
+                colIdx = info.ci;
+                rowIdx = info.local;
+              } else {
+                // DSC: ya calculamos _dscCi arriba; lo reutilizamos.
+                colIdx = _dscCi;
+                _dscPerCol[colIdx] = (_dscPerCol[colIdx] || 0) + 1;
+                rowIdx = _maxSize + _dscPerCol[colIdx];
+              }
+            %>
+            <div class="driver-row participant-row" data-row="<%= i %>"
+                 style="grid-column: <%= colIdx + 1 %>; grid-row: <%= rowIdx %>; display:flex; align-items:center; gap:.5rem">
               <span class="lane-badge participant-badge" style="background:<%= slotColor %>;<%= slotLane === 0 ? 'color:#8b949e;font-size:.65rem' : '' %>" data-index="<%= i %>"><%= slotLabel %></span>
               <div class="driver-field participant-fields">
+                <%
+                  // Tabindex = orden visual: por columnas (col * 100 + fila),
+                  // así el tabulador sigue 1,2,3…8 (col 1), 9,10…16 (col 2)…
+                  const _tabIdx = (colIdx * 100) + rowIdx;
+                %>
                 <input
                   class="form-input participant-name"
                   type="text"
@@ -61,6 +132,7 @@
                   placeholder="<%= t('wizard.driver_name_ph') %>"
                   value="<%= (body.drivers && body.drivers[i]) || '' %>"
                   autocomplete="off"
+                  tabindex="<%= _tabIdx %>"
                   <%= i < laneSequence.length ? 'required' : '' %>>
               </div>
               <% if (i >= laneSequence.length) { %>

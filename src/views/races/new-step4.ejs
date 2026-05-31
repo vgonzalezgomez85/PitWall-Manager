@@ -25,12 +25,13 @@
       <% } %>
     </p>
 
+    <% const _minRows = wizard.lanes_count || 2; %>
     <form action="/races/new/step4" method="POST">
 
       <% if (wizard.format === 'individual') { %>
 
         <div id="driversGrid" class="drivers-grid">
-          <% const initD = Math.max(2, body.drivers ? body.drivers.length : 0); %>
+          <% const initD = Math.max(_minRows, body.drivers ? body.drivers.length : 0); %>
           <% for (let i = 0; i < initD; i++) { %>
             <div class="driver-row participant-row" data-row="<%= i %>">
               <span class="lane-badge participant-badge" style="background:<%= LANE_COLORS[i % LANE_COLORS.length] %>" data-index="<%= i %>"><%= i + 1 %></span>
@@ -42,9 +43,9 @@
                   placeholder="<%= t('wizard.driver_name_ph') %>"
                   value="<%= (body.drivers && body.drivers[i]) || '' %>"
                   autocomplete="off"
-                  <%= i < 2 ? 'required' : '' %>>
+                  <%= i < _minRows ? 'required' : '' %>>
               </div>
-              <% if (i >= 2) { %>
+              <% if (i >= _minRows) { %>
                 <button type="button" class="btn btn--danger btn--sm remove-row">✕</button>
               <% } %>
             </div>
@@ -58,7 +59,7 @@
       <% } else { %>
 
         <div id="teamsContainer" class="teams-container">
-          <% const initT = Math.max(2, body.teams ? Object.keys(body.teams).length : 0); %>
+          <% const initT = Math.max(_minRows, body.teams ? Object.keys(body.teams).length : 0); %>
           <% for (let i = 0; i < initT; i++) { %>
             <div class="team-block participant-row" data-row="<%= i %>">
               <div class="team-block__header" style="border-left-color:<%= LANE_COLORS[i % LANE_COLORS.length] %>">
@@ -70,8 +71,8 @@
                   placeholder="<%= t('wizard.team_name_ph') %>"
                   value="<%= (body.teams && body.teams[i] && body.teams[i].name) || '' %>"
                   autocomplete="off"
-                  <%= i < 2 ? 'required' : '' %>>
-                <% if (i >= 2) { %>
+                  <%= i < _minRows ? 'required' : '' %>>
+                <% if (i >= _minRows) { %>
                   <button type="button" class="btn btn--danger btn--sm remove-row" style="margin-left:.5rem">✕</button>
                 <% } %>
               </div>

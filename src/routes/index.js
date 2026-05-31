@@ -18,7 +18,29 @@ const DiagnosticsController       = require('../controllers/DiagnosticsControlle
 const LiveStatsController         = require('../controllers/LiveStatsController');
 const { requireModule }           = require('../middleware/licenseGuard');
 
-router.get('/', (req, res) => res.render('home', { t: req.t }));
+router.get('/', (req, res) => {
+  const Race          = require('../models/Race');
+  const DriverProfile = require('../models/DriverProfile');
+  const TeamCatalog   = require('../models/TeamCatalog');
+  const Car           = require('../models/Car');
+  const Category      = require('../models/Category');
+  const Circuit       = require('../models/Circuit');
+  const SerialService = require('../services/SerialService');
+
+  // Contadores ligeros (rápidos sobre tablas pequeñas) + race en curso
+  const allRaces       = Race.findAll();
+  const activeRaceCount = allRaces.filter(r => r.status === 'active').length;
+  const counts = {
+    drivers:    DriverProfile.findAll().length,
+    teams:      TeamCatalog.findAll().length,
+    cars:       (() => { try { return Car.findAll().length; } catch { return 0; } })(),
+    categories: Category.findAll().length,
+    circuits:   Circuit.findAll().length,
+  };
+  const serial = SerialService.getLinkStatus();
+
+  res.render('home', { t: req.t, counts, activeRaceCount, serial });
+});
 
 // ── License ───────────────────────────────────────────────────────────────────
 router.get( '/license',        LicenseController.index);
@@ -147,6 +169,7 @@ router.get( '/training/live',                 TrainingController.live);
 router.post('/training/start',                TrainingController.start);
 router.post('/training/stop',                 TrainingController.stop);
 router.post('/training/free/reset',           TrainingController.freeReset);
+router.post('/training/exit',                 TrainingController.exit);
 
 // ── Settings ──────────────────────────────────────────────────────────────────
 router.get( '/race-stats',                        LiveStatsController.index);
