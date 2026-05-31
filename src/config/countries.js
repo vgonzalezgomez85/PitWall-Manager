@@ -1,0 +1,77 @@
+// Lista de países con su bandera (emoji o '__SVG__' para la senyera).
+// Compartida entre el form de equipos (cliente) y el importador CSV (server).
+const COUNTRIES = [
+  ['Catalunya', '__SVG__'],
+  ['Afghanistan','🇦🇫'],['Albania','🇦🇱'],['Algeria','🇩🇿'],['Andorra','🇦🇩'],['Angola','🇦🇴'],
+  ['Argentina','🇦🇷'],['Armenia','🇦🇲'],['Australia','🇦🇺'],['Austria','🇦🇹'],['Azerbaijan','🇦🇿'],
+  ['Bahrain','🇧🇭'],['Bangladesh','🇧🇩'],['Belarus','🇧🇾'],['Belgium','🇧🇪'],['Bolivia','🇧🇴'],
+  ['Bosnia','🇧🇦'],['Brazil','🇧🇷'],['Bulgaria','🇧🇬'],['Canada','🇨🇦'],['Chile','🇨🇱'],
+  ['China','🇨🇳'],['Colombia','🇨🇴'],['Croatia','🇭🇷'],['Cuba','🇨🇺'],['Cyprus','🇨🇾'],
+  ['Czech Republic','🇨🇿'],['Denmark','🇩🇰'],['Ecuador','🇪🇨'],['Egypt','🇪🇬'],['Estonia','🇪🇪'],
+  ['Finland','🇫🇮'],['France','🇫🇷'],['Georgia','🇬🇪'],['Germany','🇩🇪'],['Ghana','🇬🇭'],
+  ['Greece','🇬🇷'],['Guatemala','🇬🇹'],['Honduras','🇭🇳'],['Hungary','🇭🇺'],['Iceland','🇮🇸'],
+  ['India','🇮🇳'],['Indonesia','🇮🇩'],['Iran','🇮🇷'],['Iraq','🇮🇶'],['Ireland','🇮🇪'],
+  ['Israel','🇮🇱'],['Italy','🇮🇹'],['Jamaica','🇯🇲'],['Japan','🇯🇵'],['Jordan','🇯🇴'],
+  ['Kazakhstan','🇰🇿'],['Kenya','🇰🇪'],['Kuwait','🇰🇼'],['Latvia','🇱🇻'],['Lebanon','🇱🇧'],
+  ['Libya','🇱🇾'],['Lithuania','🇱🇹'],['Luxembourg','🇱🇺'],['Malaysia','🇲🇾'],['Malta','🇲🇹'],
+  ['Mexico','🇲🇽'],['Moldova','🇲🇩'],['Monaco','🇲🇨'],['Morocco','🇲🇦'],['Netherlands','🇳🇱'],
+  ['New Zealand','🇳🇿'],['Nigeria','🇳🇬'],['North Korea','🇰🇵'],['Norway','🇳🇴'],['Pakistan','🇵🇰'],
+  ['Panama','🇵🇦'],['Paraguay','🇵🇾'],['Peru','🇵🇪'],['Philippines','🇵🇭'],['Poland','🇵🇱'],
+  ['Portugal','🇵🇹'],['Qatar','🇶🇦'],['Romania','🇷🇴'],['Russia','🇷🇺'],['Saudi Arabia','🇸🇦'],
+  ['Serbia','🇷🇸'],['Singapore','🇸🇬'],['Slovakia','🇸🇰'],['Slovenia','🇸🇮'],['South Africa','🇿🇦'],
+  ['South Korea','🇰🇷'],['Spain','🇪🇸'],['Sweden','🇸🇪'],['Switzerland','🇨🇭'],['Thailand','🇹🇭'],
+  ['Tunisia','🇹🇳'],['Turkey','🇹🇷'],['Ukraine','🇺🇦'],['United Arab Emirates','🇦🇪'],
+  ['United Kingdom','🇬🇧'],['United States','🇺🇸'],['Uruguay','🇺🇾'],['Venezuela','🇻🇪'],
+  ['Vietnam','🇻🇳'],
+];
+
+// Aliases en español → nombre canónico inglés, para el importador CSV.
+const ALIASES = {
+  'cataluña': 'Catalunya', 'catalunya': 'Catalunya',
+  'españa': 'Spain', 'espana': 'Spain', 'spain': 'Spain',
+  'reino unido': 'United Kingdom', 'inglaterra': 'United Kingdom', 'uk': 'United Kingdom',
+  'estados unidos': 'United States', 'eeuu': 'United States', 'usa': 'United States', 'us': 'United States',
+  'emiratos árabes unidos': 'United Arab Emirates', 'emiratos': 'United Arab Emirates', 'uae': 'United Arab Emirates',
+  'alemania': 'Germany', 'francia': 'France', 'italia': 'Italy', 'portugal': 'Portugal',
+  'países bajos': 'Netherlands', 'holanda': 'Netherlands',
+  'japón': 'Japan', 'china': 'China', 'corea del sur': 'South Korea', 'corea del norte': 'North Korea',
+  'brasil': 'Brazil', 'argentina': 'Argentina', 'méxico': 'Mexico', 'mexico': 'Mexico',
+  'chile': 'Chile', 'colombia': 'Colombia', 'perú': 'Peru', 'venezuela': 'Venezuela', 'uruguay': 'Uruguay',
+  'rusia': 'Russia', 'ucrania': 'Ukraine', 'polonia': 'Poland',
+  'república checa': 'Czech Republic', 'chequia': 'Czech Republic',
+  'suecia': 'Sweden', 'noruega': 'Norway', 'finlandia': 'Finland', 'dinamarca': 'Denmark',
+  'austria': 'Austria', 'suiza': 'Switzerland', 'bélgica': 'Belgium', 'belgica': 'Belgium',
+  'grecia': 'Greece', 'turquía': 'Turkey', 'turquia': 'Turkey',
+  'australia': 'Australia', 'nueva zelanda': 'New Zealand',
+  'irlanda': 'Ireland', 'islandia': 'Iceland', 'sudáfrica': 'South Africa', 'sudafrica': 'South Africa',
+  'arabia saudí': 'Saudi Arabia', 'arabia saudita': 'Saudi Arabia',
+  'andorra': 'Andorra', 'mónaco': 'Monaco', 'monaco': 'Monaco',
+};
+
+const BY_LOWER = new Map(COUNTRIES.map(([name, flag]) => [name.toLowerCase(), { name, flag }]));
+
+/**
+ * Resuelve un nombre de país (en cualquier idioma soportado) al formato
+ * que guarda el form: "Nombre|🇫🇱". Si no encuentra el país devuelve null
+ * (no se establece país).
+ */
+function resolveCountry(input) {
+  if (!input) return null;
+  const trimmed = String(input).trim();
+  if (!trimmed) return null;
+
+  // Si el usuario ya escribió el formato "Nombre|🇫🇱", aceptarlo tal cual.
+  if (trimmed.includes('|')) return trimmed;
+
+  const lc = trimmed.toLowerCase();
+  // Match directo
+  let match = BY_LOWER.get(lc);
+  if (!match) {
+    const canonical = ALIASES[lc];
+    if (canonical) match = BY_LOWER.get(canonical.toLowerCase());
+  }
+  if (!match) return null;
+  return `${match.name}|${match.flag}`;
+}
+
+module.exports = { COUNTRIES, resolveCountry };

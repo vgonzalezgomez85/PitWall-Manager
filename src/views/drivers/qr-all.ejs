@@ -47,10 +47,14 @@
     <div class="grid">
       <% items.forEach(p => { %>
         <div class="qr-card">
-          <img class="qr-img" src="<%= p.qrDataUrl %>" alt="QR">
+          <% if (p.qrDataUrl) { %>
+            <img class="qr-img" src="<%= p.qrDataUrl %>" alt="QR">
+          <% } else { %>
+            <div style="width:120px;height:120px;display:grid;place-items:center;color:#a00;font-size:.7rem;border:1px dashed #ccc;border-radius:6px">⚠️</div>
+          <% } %>
           <div class="qr-name"><%= p.name %></div>
           <div class="qr-cat"><%= { platino:'💎 Platino', oro:'🥇 Oro', plata:'🥈 Plata', bronce:'🥉 Bronce' }[p.category] || p.category %></div>
-          <div class="qr-code"><%= p.qr_code %></div>
+          <div class="qr-code"><%= p.qr_code || '—' %></div>
         </div>
       <% }) %>
     </div>
