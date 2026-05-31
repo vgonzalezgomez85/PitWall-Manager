@@ -3,7 +3,16 @@
 const fs   = require('fs');
 const path = require('path');
 
-const LOG_DIR = path.join(__dirname, '..', '..', 'logs', 'debug');
+// En Electron packageado (Windows / macOS firmado), la carpeta del proyecto
+// va dentro de un `.asar` de solo lectura. Tenemos que escribir en una
+// carpeta de datos del usuario. main.js pasa SLOTIME_DATA al fork con
+// `app.getPath('userData')`:
+//   Windows: C:\Users\<user>\AppData\Roaming\Voltrace Manager\logs\debug\
+//   macOS:   ~/Library/Application Support/Voltrace Manager/logs/debug/
+//   Linux:   ~/.config/Voltrace Manager/logs/debug/
+// En dev (node src/app.js) caemos al fallback de la raíz del proyecto.
+const DATA_BASE = process.env.SLOTIME_DATA || path.join(__dirname, '..', '..');
+const LOG_DIR   = path.join(DATA_BASE, 'logs', 'debug');
 
 // Singleton debug logger. Writes per-manga `.jsonl` and `.log` files when
 // enabled via Settings (`debug_mode = '1'`). Until a manga is started, events
