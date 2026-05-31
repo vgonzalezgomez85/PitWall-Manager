@@ -18,9 +18,42 @@
         <span class="vt-cnt"><%= cars.length %></span>
       </div>
       <div class="vt-head__actions">
+        <a href="/plantilla_coches.csv" download class="vt-btn vt-btn--ghost vt-btn--sm">
+          <svg viewBox="0 0 24 24"><path d="M12 4v12M6 11l6 6 6-6M5 21h14"/></svg>
+          <%= lang === 'es' ? 'Plantilla CSV' : 'CSV Template' %>
+        </a>
+        <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="toggleCsv">
+          <svg viewBox="0 0 24 24"><path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/><path d="M12 3v12M8 11l4 4 4-4"/></svg>
+          <%= lang === 'es' ? 'Importar CSV' : 'Import CSV' %>
+        </button>
         <a href="/cars/new" class="vt-btn vt-btn--primary">
           + <%= lang === 'es' ? 'Nuevo coche' : 'New car' %>
         </a>
+      </div>
+    </div>
+
+    <!-- CSV Import panel -->
+    <div id="csv-import-panel" style="display:none;margin-top:18px">
+      <div class="vt-card">
+        <div class="vt-card-h">
+          <svg viewBox="0 0 24 24"><path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>
+          <%= lang === 'es' ? 'Importar coches desde CSV' : 'Import cars from CSV' %>
+        </div>
+        <p class="vt-hint" style="margin-bottom:12px">
+          <%= lang === 'es'
+            ? 'CSV con cabecera: marca,modelo,categoria,descripcion (descripción opcional). Las categorías inexistentes se crean automáticamente.'
+            : 'CSV with header: brand,model,category,description (description optional). Missing categories are created automatically.' %>
+        </p>
+        <form action="/cars/import" method="POST" id="csv-form">
+          <input type="hidden" name="csv_content" id="csv-content-input">
+          <div class="vt-csv-row">
+            <input type="file" id="csv-file-picker" accept=".csv,text/csv">
+            <span id="csv-file-name" class="vt-hint"></span>
+            <button type="submit" id="csv-submit" class="vt-btn vt-btn--primary vt-btn--sm" disabled>
+              <%= lang === 'es' ? 'Importar' : 'Import' %>
+            </button>
+          </div>
+        </form>
       </div>
     </div>
 
@@ -82,5 +115,23 @@
 
   </div>
 </div>
+
+<script>
+document.getElementById('toggleCsv')?.addEventListener('click', () => {
+  const p = document.getElementById('csv-import-panel');
+  p.style.display = p.style.display === 'none' ? '' : 'none';
+});
+document.getElementById('csv-file-picker')?.addEventListener('change', function() {
+  const file = this.files[0];
+  if (!file) return;
+  document.getElementById('csv-file-name').textContent = file.name;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('csv-content-input').value = e.target.result;
+    document.getElementById('csv-submit').disabled = false;
+  };
+  reader.readAsText(file, 'UTF-8');
+});
+</script>
 
 <%- include('../partials/footer') %>

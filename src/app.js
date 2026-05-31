@@ -5,6 +5,20 @@ const methodOverride = require('method-override');
 const morgan  = require('morgan');
 const path    = require('path');
 
+// Anti-crash global: en Express 4 los errores asíncronos en handlers no
+// propagan al middleware de error automáticamente. Si un controller async
+// olvida try/catch o un next(err), el promise queda rechazado y Node mata
+// el proceso. Estos handlers lo evitan y dejan el server en marcha; la
+// petición concreta queda colgada (cliente verá timeout) pero las demás
+// siguen funcionando. Los handlers individuales SIGUEN siendo responsables
+// de hacer try/catch — esto es solo red de seguridad.
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[unhandledRejection]', reason && reason.stack || reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', err && err.stack || err);
+});
+
 const i18n    = require('./middleware/i18n');
 const routes  = require('./routes');
 

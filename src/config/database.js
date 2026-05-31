@@ -196,7 +196,14 @@ const migrations = [
     driver_name TEXT    NOT NULL,
     started_at  DATETIME DEFAULT CURRENT_TIMESTAMP
   )`,
-  `ALTER TABLE driver_profiles ADD COLUMN qr_code TEXT UNIQUE`,
+  // OJO: SQLite no permite ADD COLUMN con UNIQUE en un solo ALTER. La
+  // antigua migración `ALTER TABLE driver_profiles ADD COLUMN qr_code TEXT
+  // UNIQUE` fallaba silenciosamente en BDs frescas → la columna no se
+  // creaba. Se separa en dos pasos: ADD COLUMN + UNIQUE INDEX parcial
+  // (parcial para que múltiples NULL no colisionen entre sí).
+  `ALTER TABLE driver_profiles ADD COLUMN qr_code TEXT`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_driver_profiles_qr_code
+     ON driver_profiles(qr_code) WHERE qr_code IS NOT NULL`,
   `ALTER TABLE circuits ADD COLUMN lane_sequence TEXT NOT NULL DEFAULT '[]'`,
 
   // Track minimap: imagen del circuito (base64 data URL) + polilínea relativa
@@ -293,7 +300,18 @@ const migrations = [
   `CREATE INDEX IF NOT EXISTS idx_circuit_cat_times_circuit ON circuit_category_times(circuit_id, category_id)`,
 ];
 for (const sql of migrations) {
-  try { db.exec(sql); } catch { /* already exists */ }
+  try {
+    db.exec(sql);
+  } catch (err) {
+    // Errores esperados (la migración ya se aplicó): silencio.
+    // Cualquier otro → log para no esconder bugs como el de ADD COLUMN UNIQUE.
+    const msg = err.message || '';
+    const expected = /duplicate column name|already exists/i.test(msg);
+    if (!expected) {
+      console.error('[migration] error en SQL:\n  ', sql.replace(/\s+/g, ' ').slice(0, 200));
+      console.error('  →', msg);
+    }
+  }
 }
 
 // Assign qr_code to any driver_profile that doesn't have one yet

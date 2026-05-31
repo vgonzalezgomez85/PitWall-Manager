@@ -48,8 +48,12 @@
     <div class="qr-cat">
       <%= { platino:'💎 Platino', oro:'🥇 Oro', plata:'🥈 Plata', bronce:'🥉 Bronce' }[profile.category] || profile.category %>
     </div>
-    <img class="qr-img" src="<%= qrDataUrl %>" alt="QR" width="240" height="240">
-    <div class="qr-code"><%= profile.qr_code %></div>
+    <% if (qrDataUrl) { %>
+      <img class="qr-img" src="<%= qrDataUrl %>" alt="QR" width="240" height="240">
+    <% } else { %>
+      <div style="padding:2rem;color:#a00;font-size:.9rem">⚠️ No se pudo generar el QR.</div>
+    <% } %>
+    <div class="qr-code"><%= profile.qr_code || '— sin código —' %></div>
   </div>
 
   <div class="no-print">

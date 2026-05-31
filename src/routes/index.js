@@ -144,6 +144,7 @@ router.post(  '/api/categories',        CategoryController.apiCreate);
 // ── Cars ──────────────────────────────────────────────────────────────────────
 router.get(   '/cars',            CarController.index);
 router.get(   '/cars/new',        CarController.new);
+router.post(  '/cars/import',     CarController.importCsv);
 router.post(  '/cars',            CarController.create);
 router.get(   '/cars/:id/edit',   CarController.edit);
 router.post(  '/cars/:id',        CarController.update);
@@ -151,6 +152,7 @@ router.post(  '/cars/:id/delete', CarController.delete);
 
 router.get(   '/teams',            requireModule('teams_catalog'), TeamCatalogController.index);
 router.get(   '/teams/new',        requireModule('teams_catalog'), TeamCatalogController.newForm);
+router.post(  '/teams/import',     requireModule('teams_catalog'), TeamCatalogController.importCsv);
 router.post(  '/teams',            requireModule('teams_catalog'), TeamCatalogController.create);
 router.get(   '/teams/:id/edit',   requireModule('teams_catalog'), TeamCatalogController.editForm);
 router.post(  '/teams/:id',        requireModule('teams_catalog'), TeamCatalogController.update);
