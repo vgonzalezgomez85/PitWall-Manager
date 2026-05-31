@@ -53,6 +53,21 @@ class Car {
     `);
     return stmt.run(id);
   }
+
+  // Mapa { "brand|model" → row } normalizado (case+accent insensitive) para
+  // detectar duplicados en el importer CSV. Solo brand+model identifican el
+  // coche; la categoría y descripción pueden cambiar entre versiones.
+  static buildBrandModelIndex() {
+    const { normalize } = require('../utils/csv');
+    const rows = db.prepare(`
+      SELECT c.id, c.brand, c.model, c.description, c.category_id, cat.name AS category_name
+      FROM cars c
+      LEFT JOIN categories cat ON c.category_id = cat.id
+    `).all();
+    const map = new Map();
+    for (const r of rows) map.set(normalize(r.brand) + '|' + normalize(r.model), r);
+    return map;
+  }
 }
 
 module.exports = Car;

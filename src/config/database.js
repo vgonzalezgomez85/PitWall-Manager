@@ -297,6 +297,27 @@ const migrations = [
   `CREATE INDEX IF NOT EXISTS idx_ctr_session            ON competition_training_results(session_id, heat_number)`,
   `CREATE INDEX IF NOT EXISTS idx_driver_shifts_manga    ON driver_shifts(manga_id)`,
   `CREATE INDEX IF NOT EXISTS idx_driver_shifts_race     ON driver_shifts(race_id)`,
+
+  // ── Driver shifts: precisión temporal ───────────────────────────────────
+  // started_at_ms / ended_at_ms: epoch ms (más precisos que DATETIME ascii)
+  // driving_ms: tiempo efectivo conducido por el piloto en ese turno,
+  //             descontando pausas (incrementado por TimingService cada tick).
+  // pre_armed: 1 si el shift se creó durante standby (manga aún pending).
+  //            Al arrancar la manga se ponen a 0 y se setea started_at_ms.
+  `ALTER TABLE driver_shifts ADD COLUMN started_at_ms INTEGER`,
+  `ALTER TABLE driver_shifts ADD COLUMN ended_at_ms   INTEGER`,
+  `ALTER TABLE driver_shifts ADD COLUMN driving_ms    INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE driver_shifts ADD COLUMN pre_armed     INTEGER NOT NULL DEFAULT 0`,
+  `CREATE INDEX IF NOT EXISTS idx_driver_shifts_open ON driver_shifts(manga_id, lane) WHERE ended_at_ms IS NULL`,
+
+  // ── Race: límites de tiempo por piloto + ventana de bloqueo ─────────────
+  // driver_min_total_ms / driver_max_total_ms: ms acumulados a lo largo de
+  //   toda la carrera (suma de mangas). 0 = sin límite.
+  // driver_change_lockout_ms: ms desde el final de la manga durante los que
+  //   no se permite cambio de piloto. Default 120000 (2 minutos).
+  `ALTER TABLE races ADD COLUMN driver_min_total_ms     INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE races ADD COLUMN driver_max_total_ms     INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE races ADD COLUMN driver_change_lockout_ms INTEGER NOT NULL DEFAULT 120000`,
   `CREATE INDEX IF NOT EXISTS idx_circuit_cat_times_circuit ON circuit_category_times(circuit_id, category_id)`,
 ];
 for (const sql of migrations) {

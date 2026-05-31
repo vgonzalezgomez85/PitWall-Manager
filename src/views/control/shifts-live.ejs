@@ -1,0 +1,457 @@
+<%- include('../partials/header', { lang, pageTitle: lang === 'es' ? 'Control de pilotos' : 'Driver shifts' }) %>
+
+<%
+function fmtTime(ms) {
+  if (ms == null || isNaN(ms)) return '—';
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  const ss = (s % 60).toString().padStart(2, '0');
+  return m + ':' + ss;
+}
+
+// Pre-calcular shifts cerrados por carril (histórico de la manga) — útil
+// como tooltip o lista lateral. Por ahora solo lo dejamos en data atributos.
+const closedByLane = {};
+(history || []).forEach(s => {
+  if (s.ended_at_ms == null) return;
+  if (!closedByLane[s.lane]) closedByLane[s.lane] = [];
+  closedByLane[s.lane].push(s);
+});
+
+// Total acumulado por piloto en la carrera (incluye otras mangas)
+const totalsByName = {};
+(summary || []).forEach(r => { totalsByName[r.profile_name] = r.total_ms; });
+
+const minMs = current && current.race ? (current.race.driver_min_total_ms || 0) : 0;
+const maxMs = current && current.race ? (current.race.driver_max_total_ms || 0) : 0;
+const lockoutMs = current && current.race ? (current.race.driver_change_lockout_ms || 120000) : 120000;
+%>
+
+<div class="vt-page vt-page--shifts">
+  <div class="vt-wrap">
+
+    <a href="/" class="vt-back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      <%= lang === 'es' ? 'Inicio' : 'Home' %>
+    </a>
+
+    <div class="vt-head">
+      <div class="vt-head__title">
+        <h1><%= lang === 'es' ? 'Control de pilotos' : 'Driver shifts' %></h1>
+        <% if (current) { %>
+          <span class="vt-cnt"><%= current.race.name %> · M<%= current.manga.number %></span>
+        <% } %>
+      </div>
+      <div class="vt-head__actions">
+        <% if (current) { %>
+          <% const statusBadge = current.liveStatus === 'running' ? 'is-ok is-live' : current.liveStatus === 'paused' ? 'is-warn' : current.liveStatus === 'standby' ? 'is-warn' : 'is-neutral'; %>
+          <% const statusLabel = {
+            running: lang === 'es' ? 'EN MARCHA' : 'RUNNING',
+            paused:  lang === 'es' ? 'PAUSADA'   : 'PAUSED',
+            standby: lang === 'es' ? 'STANDBY (pre-arme)' : 'STANDBY (pre-arm)',
+            unknown: lang === 'es' ? 'ACTIVA'    : 'ACTIVE',
+          }[current.liveStatus]; %>
+          <span class="vt-badge <%= statusBadge %>"><span class="vt-badge__d"></span><%= statusLabel %></span>
+        <% } else { %>
+          <span class="vt-badge is-neutral"><span class="vt-badge__d"></span><%= lang === 'es' ? 'Sin manga activa' : 'No active manga' %></span>
+        <% } %>
+        <a href="<%= current ? '/races/' + current.race.id + '/shifts' : '#' %>" class="vt-btn vt-btn--ghost vt-btn--sm" <%= current ? '' : 'aria-disabled="true" style="opacity:.4;pointer-events:none"' %>>
+          <svg viewBox="0 0 24 24"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+          <%= lang === 'es' ? 'Histórico' : 'History' %>
+        </a>
+      </div>
+    </div>
+
+    <% if (!current) { %>
+      <div class="vt-empty" style="margin-top:32px">
+        <div class="vt-empty__t"><%= lang === 'es' ? 'Esperando carrera' : 'Waiting for race' %></div>
+        <p style="color:var(--vt-mute);margin:6px 0 0">
+          <%= lang === 'es'
+            ? 'Esta vista se activa cuando hay una carrera de tipo campeonato con una manga preparada o en marcha.'
+            : 'This view activates when there is a championship race with a manga prepared or running.' %>
+        </p>
+      </div>
+    <% } else { %>
+
+      <!-- ── Indicador de scan ──────────────────────────────────────── -->
+      <div class="sc-scan-bar" id="scScanBar">
+        <span class="sc-scan-led" id="scLed"></span>
+        <span class="sc-scan-msg" id="scMsg"><%= lang === 'es' ? 'Listo para escanear' : 'Ready to scan' %></span>
+        <span class="sc-remaining" id="scRemaining" style="margin-left:auto"></span>
+      </div>
+
+      <!-- Input invisible que captura el lector USB-QR -->
+      <input id="scScanInput" type="text" autocomplete="off" spellcheck="false"
+             aria-label="<%= lang === 'es' ? 'Lector QR' : 'QR scanner' %>"
+             class="sc-scan-input">
+
+      <!-- ── Cards por carril ───────────────────────────────────────── -->
+      <div class="sc-lane-grid">
+        <% lanes.forEach(l => {
+          const s = openByLane[l.lane];
+          const live = liveActive[l.lane] || {};
+          const drivingMs = live.drivingMs ?? (s ? (s.driving_ms || 0) : 0);
+          const driverName = s ? s.driver_name : null;
+          const totalMs = driverName ? (totalsByName[driverName] || 0) : 0;
+          const closed = closedByLane[l.lane] || [];
+        %>
+          <div class="sc-lane" data-lane="<%= l.lane %>">
+            <div class="sc-lane__head">
+              <div class="sc-lane__num">L<%= l.lane %></div>
+              <div class="sc-lane__team"><%= l.team_name || l.driver_name || '—' %></div>
+            </div>
+            <div class="sc-lane__driver" data-driver-name>
+              <% if (driverName) { %>
+                <%= driverName %>
+              <% } else { %>
+                <span class="sc-lane__empty"><%= lang === 'es' ? 'Sin asignar' : 'Unassigned' %></span>
+              <% } %>
+            </div>
+            <div class="sc-lane__stats">
+              <div>
+                <span class="sc-lane__lbl"><%= lang === 'es' ? 'Turno' : 'Shift' %></span>
+                <span class="sc-lane__val" data-shift-ms="<%= drivingMs %>"><%= fmtTime(drivingMs) %></span>
+              </div>
+              <div>
+                <span class="sc-lane__lbl"><%= lang === 'es' ? 'Total piloto' : 'Driver total' %></span>
+                <span class="sc-lane__val" data-total-ms="<%= totalMs %>"><%= fmtTime(totalMs) %></span>
+              </div>
+            </div>
+            <% if (closed.length) { %>
+              <div class="sc-lane__history" title="<%= lang === 'es' ? 'Pilotos anteriores en este carril' : 'Previous drivers on this lane' %>">
+                <% closed.slice(-3).reverse().forEach(c => { %>
+                  <span><%= c.driver_name %> · <%= fmtTime(c.driving_ms) %></span>
+                <% }) %>
+              </div>
+            <% } %>
+          </div>
+        <% }) %>
+      </div>
+
+      <!-- ── Resumen por piloto a nivel carrera ──────────────────────── -->
+      <div class="sc-section">
+        <div class="vt-sec-lbl"><%= lang === 'es' ? 'Tiempo por piloto (carrera entera)' : 'Driver time (whole race)' %></div>
+        <% if (summary.length === 0) { %>
+          <p style="color:var(--vt-mute)"><%= lang === 'es' ? 'Aún no hay turnos registrados.' : 'No shifts recorded yet.' %></p>
+        <% } else { %>
+          <div class="sc-summary">
+            <% summary.forEach(r => {
+              const t = r.total_ms;
+              const overMax = maxMs > 0 && t >= maxMs;
+              const nearMax = maxMs > 0 && t >= maxMs * 0.9 && !overMax;
+              const underMin = minMs > 0 && t < minMs;
+              let badge = 'is-ok';
+              if (overMax) badge = 'is-bad';
+              else if (nearMax) badge = 'is-warn';
+              else if (underMin) badge = 'is-info';
+              const pct = maxMs > 0 ? Math.min(100, Math.round(t / maxMs * 100)) : 0;
+              const minPct = maxMs > 0 && minMs > 0 ? Math.min(100, Math.round(minMs / maxMs * 100)) : 0;
+            %>
+              <div class="sc-pilot-row" data-profile-name="<%= r.profile_name %>">
+                <div class="sc-pilot-row__name">
+                  <span class="vt-cat-dot vt-cat--<%= r.profile_category %>"></span>
+                  <%= r.profile_name %>
+                </div>
+                <% if (maxMs > 0 || minMs > 0) { %>
+                  <div class="sc-pilot-row__bar">
+                    <div class="sc-pilot-row__bar-fill <%= badge %>" style="width:<%= pct %>%"></div>
+                    <% if (minPct > 0) { %>
+                      <div class="sc-pilot-row__bar-min" style="left:<%= minPct %>%" title="<%= lang === 'es' ? 'Mínimo' : 'Min' %>"></div>
+                    <% } %>
+                  </div>
+                <% } %>
+                <div class="sc-pilot-row__total" data-total-ms="<%= t %>">
+                  <%= fmtTime(t) %>
+                  <% if (maxMs > 0) { %><span style="color:var(--vt-mute)"> / <%= fmtTime(maxMs) %></span><% } %>
+                </div>
+                <div class="sc-pilot-row__status">
+                  <% if (overMax) { %>
+                    <span class="vt-badge is-bad"><span class="vt-badge__d"></span><%= lang === 'es' ? 'PASADO' : 'OVER' %></span>
+                  <% } else if (nearMax) { %>
+                    <span class="vt-badge is-warn"><span class="vt-badge__d"></span><%= lang === 'es' ? '90%+' : '90%+' %></span>
+                  <% } else if (underMin) { %>
+                    <span class="vt-badge is-info"><span class="vt-badge__d"></span><%= lang === 'es' ? 'Bajo mín.' : 'Under min' %></span>
+                  <% } else { %>
+                    <span class="vt-badge is-ok"><span class="vt-badge__d"></span>OK</span>
+                  <% } %>
+                </div>
+              </div>
+            <% }) %>
+          </div>
+        <% } %>
+      </div>
+
+      <!-- ── Toast contenedor ───────────────────────────────────────── -->
+      <div class="sc-toast-wrap" id="scToasts" aria-live="polite"></div>
+
+    <% } %>
+
+  </div>
+</div>
+
+<% if (current) { %>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const RACE_ID  = <%= current.race.id %>;
+const MANGA_ID = <%= current.manga.id %>;
+const LOCKOUT_MS = <%= lockoutMs %>;
+const MIN_MS = <%= minMs %>;
+const MAX_MS = <%= maxMs %>;
+const LANG = "<%= lang %>";
+
+function fmtTime(ms) {
+  if (ms == null || isNaN(ms)) return '—';
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  return m + ':' + String(s % 60).padStart(2, '0');
+}
+
+// ── Input siempre enfocado ────────────────────────────────────────
+const input = document.getElementById('scScanInput');
+const led   = document.getElementById('scLed');
+const msg   = document.getElementById('scMsg');
+const scanBar = document.getElementById('scScanBar');
+
+function refocus() { if (input) input.focus(); }
+function setLed(state, text) {
+  scanBar.dataset.state = state;
+  msg.textContent = text;
+}
+function updateFocus() {
+  if (document.activeElement === input) {
+    setLed('ready', LANG === 'es' ? 'Listo para escanear' : 'Ready to scan');
+  } else {
+    setLed('warn', LANG === 'es' ? 'Pulsa para reactivar el lector' : 'Click to reactivate scanner');
+  }
+}
+input.addEventListener('focus', updateFocus);
+input.addEventListener('blur', () => setTimeout(updateFocus, 50));
+document.addEventListener('click', e => { if (e.target.tagName !== 'A' && e.target.tagName !== 'BUTTON') refocus(); });
+window.addEventListener('focus', refocus);
+refocus(); updateFocus();
+
+// ── Submit en Enter (el lector USB termina con Enter) ─────────────
+input.addEventListener('keydown', async e => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const code = input.value.trim();
+  input.value = '';
+  if (!code) return;
+  setLed('busy', LANG === 'es' ? 'Procesando…' : 'Processing…');
+  try {
+    const res = await fetch(`/races/${RACE_ID}/mangas/${MANGA_ID}/checkin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ qr_code: code }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.ok) {
+      const modeLabel = {
+        pre_arm: LANG === 'es' ? 'Pre-armado' : 'Pre-armed',
+        swap_running: LANG === 'es' ? 'Cambio en marcha' : 'Live swap',
+        swap_paused: LANG === 'es' ? 'Cambio en pausa' : 'Swap on pause',
+      }[data.mode] || (LANG === 'es' ? 'Asignado' : 'Assigned');
+      toast('ok', `${modeLabel}: ${data.driverName} → ${LANG === 'es' ? 'Carril' : 'Lane'} ${data.lane}`);
+    } else {
+      const errMap = {
+        unknown_qr:                LANG === 'es' ? 'QR desconocido' : 'Unknown QR',
+        driver_not_in_manga:       LANG === 'es' ? 'El piloto no está en esta manga' : 'Driver not in this manga',
+        not_championship_race:     LANG === 'es' ? 'No es carrera de campeonato' : 'Not a championship race',
+        not_team_race:             LANG === 'es' ? 'No es carrera por equipos' : 'Not a team race',
+        ambiguous_team:            LANG === 'es' ? 'Ambigüedad — usa override manual' : 'Ambiguous — use manual override',
+        manga_active_but_not_timing: LANG === 'es' ? 'Manga activa pero sin sesión de timing' : 'Manga active but no timing session',
+        manga_active_but_not_running: LANG === 'es' ? 'Manga activa pero ni running ni paused' : 'Manga active but neither running nor paused',
+        manga_status_invalid:      LANG === 'es' ? 'Estado de manga inválido' : 'Invalid manga status',
+        change_locked_final_minutes: LANG === 'es'
+          ? `Bloqueado — quedan ${fmtTime(data.remainingMs)} del final`
+          : `Locked — ${fmtTime(data.remainingMs)} left`,
+        missing_params: LANG === 'es' ? 'Faltan datos' : 'Missing params',
+      };
+      const text = errMap[data.error] || (data.error || 'Error');
+      toast('error', text + (data.name ? ` (${data.name})` : ''));
+    }
+  } catch (err) {
+    toast('error', err.message || 'Network error');
+  } finally {
+    updateFocus();
+    refocus();
+  }
+});
+
+// ── Toast ─────────────────────────────────────────────────────────
+const toastWrap = document.getElementById('scToasts');
+function toast(kind, text) {
+  const el = document.createElement('div');
+  el.className = 'sc-toast sc-toast--' + kind;
+  el.textContent = text;
+  toastWrap.appendChild(el);
+  setTimeout(() => el.classList.add('sc-toast--out'), 3500);
+  setTimeout(() => el.remove(), 4500);
+}
+
+// ── Socket: ticks de turnos + driver_checkin + manga state ────────
+const socket = io({ transports: ['websocket', 'polling'] });
+
+socket.on('shifts:tick', data => {
+  if (!data || data.mangaId !== MANGA_ID) return;
+  const active = data.active || {};
+  document.querySelectorAll('.sc-lane').forEach(card => {
+    const lane = parseInt(card.dataset.lane, 10);
+    const a = active[lane];
+    const cell = card.querySelector('[data-shift-ms]');
+    if (a && cell) {
+      cell.dataset.shiftMs = a.drivingMs;
+      cell.textContent = fmtTime(a.drivingMs);
+    }
+  });
+});
+
+socket.on('tick', data => {
+  if (!data) return;
+  const remEl = document.getElementById('scRemaining');
+  if (remEl && data.remainingMs != null) {
+    const locked = data.remainingMs <= LOCKOUT_MS && data.remainingMs > 0;
+    remEl.textContent = (LANG === 'es' ? 'Restante: ' : 'Remaining: ') + fmtTime(data.remainingMs);
+    remEl.classList.toggle('sc-locked', locked);
+  }
+});
+
+socket.on('driver_checkin', data => {
+  if (!data || data.mangaId !== MANGA_ID) return;
+  // Para mantener simple, recargamos tras un cambio. Si quieres hot-update,
+  // se puede sustituir por mutación directa del DOM.
+  setTimeout(() => location.reload(), 300);
+});
+
+['manga:started', 'manga:paused', 'manga:cancelled', 'manga:stopped'].forEach(ev => {
+  socket.on(ev, () => setTimeout(() => location.reload(), 500));
+});
+</script>
+<% } else { %>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+// Sin manga activa: recargar cuando alguna manga arranca.
+const socket = io({ transports: ['websocket', 'polling'] });
+socket.on('manga:started', () => location.reload());
+</script>
+<% } %>
+
+<style>
+.vt-page--shifts .sc-scan-bar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 18px; margin-top: 22px;
+  background: var(--vt-panel); border: 1px solid var(--vt-border);
+  border-radius: 14px;
+  font-family: 'Saira Condensed', sans-serif;
+  font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+  font-size: 14px;
+}
+.vt-page--shifts .sc-scan-led {
+  width: 14px; height: 14px; border-radius: 50%; flex: none;
+  background: var(--vt-mute-2); box-shadow: 0 0 0 3px rgba(255,255,255,.04);
+  transition: background .2s;
+}
+.vt-page--shifts .sc-scan-bar[data-state="ready"] .sc-scan-led { background: var(--vt-green); box-shadow: 0 0 12px var(--vt-green), 0 0 0 3px rgba(34,197,94,.18); }
+.vt-page--shifts .sc-scan-bar[data-state="warn"]  .sc-scan-led { background: var(--vt-amber); box-shadow: 0 0 12px var(--vt-amber); }
+.vt-page--shifts .sc-scan-bar[data-state="busy"]  .sc-scan-led { background: var(--vt-blue);  animation: scBlink .6s infinite; }
+@keyframes scBlink { 50% { opacity: .3; } }
+.vt-page--shifts .sc-scan-msg { color: var(--vt-text); }
+.vt-page--shifts .sc-remaining { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--vt-mute); }
+.vt-page--shifts .sc-remaining.sc-locked { color: var(--vt-amber); }
+
+.vt-page--shifts .sc-scan-input {
+  position: fixed; left: -9999px; top: -9999px; width: 1px; height: 1px;
+  opacity: 0;
+}
+
+.vt-page--shifts .sc-lane-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px; margin-top: 18px;
+}
+.vt-page--shifts .sc-lane {
+  background: linear-gradient(180deg, var(--vt-panel), var(--vt-panel-2));
+  border: 1px solid var(--vt-border); border-radius: 14px;
+  padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.vt-page--shifts .sc-lane__head { display: flex; align-items: center; gap: 10px; }
+.vt-page--shifts .sc-lane__num {
+  font-family: 'IBM Plex Mono', monospace; font-weight: 700;
+  background: var(--vt-surface-2); color: var(--vt-mute);
+  padding: 2px 8px; border-radius: 6px; font-size: 12px;
+}
+.vt-page--shifts .sc-lane__team {
+  font-family: 'Saira Condensed', sans-serif; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .04em; font-size: 15px; color: #fff;
+}
+.vt-page--shifts .sc-lane__driver {
+  font-size: 22px; font-weight: 700; color: #fff; min-height: 28px;
+}
+.vt-page--shifts .sc-lane__empty { color: var(--vt-mute-2); font-weight: 500; font-style: italic; font-size: 16px; }
+.vt-page--shifts .sc-lane__stats {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  padding-top: 8px; border-top: 1px solid var(--vt-border);
+}
+.vt-page--shifts .sc-lane__lbl {
+  display: block; font-size: 10.5px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--vt-mute);
+  margin-bottom: 2px;
+}
+.vt-page--shifts .sc-lane__val {
+  font-family: 'IBM Plex Mono', monospace; font-size: 18px; font-weight: 700; color: var(--vt-text);
+}
+.vt-page--shifts .sc-lane__history {
+  font-size: 11.5px; color: var(--vt-mute); padding-top: 6px;
+  display: flex; flex-direction: column; gap: 2px;
+  border-top: 1px dashed var(--vt-border);
+}
+
+.vt-page--shifts .sc-section { margin-top: 28px; }
+.vt-page--shifts .sc-summary { display: flex; flex-direction: column; gap: 6px; }
+.vt-page--shifts .sc-pilot-row {
+  display: grid; grid-template-columns: 200px 1fr 140px 90px;
+  gap: 14px; align-items: center;
+  padding: 10px 14px; border-radius: 10px;
+  background: var(--vt-panel-2); border: 1px solid var(--vt-border);
+}
+.vt-page--shifts .sc-pilot-row__name { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--vt-text); }
+.vt-page--shifts .sc-pilot-row__bar {
+  position: relative; height: 8px; border-radius: 4px;
+  background: var(--vt-surface-2); overflow: hidden;
+}
+.vt-page--shifts .sc-pilot-row__bar-fill {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  background: var(--vt-green); border-radius: 4px;
+  transition: width .3s;
+}
+.vt-page--shifts .sc-pilot-row__bar-fill.is-warn { background: var(--vt-amber); }
+.vt-page--shifts .sc-pilot-row__bar-fill.is-bad  { background: var(--vt-red); }
+.vt-page--shifts .sc-pilot-row__bar-fill.is-info { background: var(--vt-blue); }
+.vt-page--shifts .sc-pilot-row__bar-min {
+  position: absolute; top: -3px; bottom: -3px; width: 2px;
+  background: rgba(255,255,255,.5);
+}
+.vt-page--shifts .sc-pilot-row__total { font-family: 'IBM Plex Mono', monospace; font-size: 14px; text-align: right; }
+.vt-page--shifts .sc-pilot-row__status { text-align: right; }
+@media (max-width: 720px) {
+  .vt-page--shifts .sc-pilot-row { grid-template-columns: 1fr; gap: 6px; }
+}
+
+/* Toasts */
+.vt-page--shifts .sc-toast-wrap {
+  position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+  display: flex; flex-direction: column; gap: 8px; max-width: 360px;
+}
+.vt-page--shifts .sc-toast {
+  padding: 12px 16px; border-radius: 12px;
+  font-family: 'Saira', sans-serif; font-weight: 600; font-size: 14px;
+  color: #fff; box-shadow: 0 14px 28px -10px rgba(0,0,0,.8);
+  transform: translateX(0); transition: transform .25s, opacity .25s;
+  opacity: 1;
+}
+.vt-page--shifts .sc-toast--ok    { background: linear-gradient(180deg, #16a34a, #15803d); }
+.vt-page--shifts .sc-toast--error { background: linear-gradient(180deg, var(--vt-red), var(--vt-red-deep)); }
+.vt-page--shifts .sc-toast--out   { transform: translateX(20px); opacity: 0; }
+</style>
+
+<%- include('../partials/footer') %>

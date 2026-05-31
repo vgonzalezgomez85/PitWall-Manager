@@ -3,6 +3,7 @@ const Manga         = require('../models/Manga');
 const Tanda         = require('../models/Tanda');
 const Team          = require('../models/Team');
 const Driver        = require('../models/Driver');
+const DriverShift   = require('../models/DriverShift');
 const SerialService = require('./SerialService');
 const SocketService = require('./SocketService');
 const DebugLogger   = require('./DebugLogger');
@@ -116,10 +117,29 @@ class TimingServiceClass {
     this._lapHandler = ({ lane, timestamp, lapTimeMs }) => this._onCrossing(lane, timestamp, lapTimeMs);
     SerialService.on('lane_crossing', this._lapHandler);
 
+    // ── Driver shifts (solo carreras de campeonato) ────────────────────
+    // Mapa en memoria: lane → { shiftId, drivingMs }. Se incrementa cada
+    // tick mientras la manga esté running. Se persiste a BD cada 5s.
+    this._isChampionship = (race.type === 'championship');
+    this._activeShiftsByLane = {};
+    if (this._isChampionship) {
+      // Activa los shifts pre-armados que el staff haya escaneado durante
+      // el standby: les setea started_at_ms = startTime y pre_armed=0.
+      DriverShift.activatePreArmedShifts(manga.id, startTime);
+      // Carga el mapa en memoria de los shifts abiertos (los recién activados
+      // y cualquier otro que pueda haber quedado pendiente de un crash).
+      DriverShift.findAllOpenByManga(manga.id).forEach(s => {
+        this._activeShiftsByLane[s.lane] = { shiftId: s.id, drivingMs: s.driving_ms || 0 };
+      });
+    }
+    this._driverShiftTickN = 0; // contador para persistir cada 5 ticks
+
     this._tickInt = setInterval(() => {
       const elapsedMs   = Date.now() - startTime;
       const remainingMs = Math.max(0, sessionDurationMs - elapsedMs);
       SocketService.emit('tick', { elapsedMs, remainingMs });
+      // Incremento del contador de cada piloto activo y persistencia periódica.
+      if (this._isChampionship) this._tickDriverShifts();
     }, 1000);
 
     this._autoStopTimer = setTimeout(() => {
@@ -148,6 +168,14 @@ class TimingServiceClass {
       this._lapHandler = null;
     }
     this._pendingSetup = null;
+
+    // Cierra todos los shifts abiertos de la manga (persiste driving_ms
+    // final + ended_at_ms). Solo aplica a campeonato.
+    if (this._isChampionship) {
+      this._persistAllDriverShifts();
+      DriverShift.closeAllOpenForManga(this.session.manga.id, Date.now());
+      this._activeShiftsByLane = {};
+    }
 
     let nextMangaId  = null;
     let nextLanes    = {};   // { currentLane → nextLane }
@@ -253,6 +281,8 @@ class TimingServiceClass {
     clearInterval(this._tickInt);
     clearTimeout(this._autoStopTimer);
     this._tickInt = this._autoStopTimer = null;
+    // Persistir el driving_ms actual de cada shift abierto antes de pausar.
+    if (this._isChampionship) this._persistAllDriverShifts();
     DebugLogger.log('manga', { event: 'pause', mangaNumber: this.session.manga.number });
     SocketService.emit('manga:paused');
     console.log(`[TimingService] Manga ${this.session.manga.number} paused`);
@@ -310,6 +340,12 @@ class TimingServiceClass {
     // Delete all laps recorded in this session and reset manga to pending
     Lap.deleteByManga(mangaId);
     Manga.updateStatus(mangaId, 'pending');
+    // Borrar shifts de la manga cancelada (vuelve a 'pending' → el staff
+    // tendrá que re-escanear los pilotos). Solo aplica a campeonato.
+    if (this._isChampionship) {
+      DriverShift.deleteByManga(mangaId);
+      this._activeShiftsByLane = {};
+    }
 
     // Re-register as pending setup so DS-300 GO can restart it immediately
     const { manga, race, lanes, teams, drivers } = this.session;
@@ -656,7 +692,82 @@ class TimingServiceClass {
   }
 
   get isRunning()     { return this.session?.status === 'running'; }
+  get isPaused()      { return this.session?.status === 'paused'; }
   get activeMangaId() { return this.session?.manga?.id ?? null; }
+  get activeRaceId()  { return this.session?.race?.id ?? null; }
+
+  // Ms restantes hasta el final de la manga. Devuelve null si no hay sesión.
+  // Durante pausa, el tiempo no avanza, pero remaining es relativo a la
+  // duración original menos lo elapsed antes de la pausa.
+  getRemainingMs() {
+    if (!this.session) return null;
+    const elapsed = this.session.status === 'paused'
+      ? (this.session.pauseStart - this.session.startTime)
+      : (Date.now() - this.session.startTime);
+    return Math.max(0, this.session.durationMs - elapsed);
+  }
+
+  // ── Driver shifts (solo carreras de campeonato) ─────────────────────
+
+  // Incremento por tick (1s) de cada shift activo. Persiste cada 5s.
+  // Emite snapshot por socket para que la vista de control refresque
+  // cronómetros sin estimación en cliente.
+  _tickDriverShifts() {
+    for (const lane in this._activeShiftsByLane) {
+      this._activeShiftsByLane[lane].drivingMs += 1000;
+    }
+    this._driverShiftTickN++;
+    if (this._driverShiftTickN >= 5) {
+      this._persistAllDriverShifts();
+      this._driverShiftTickN = 0;
+    }
+    SocketService.emit('shifts:tick', {
+      mangaId: this.session?.manga?.id,
+      raceId:  this.session?.race?.id,
+      active:  this._activeShiftsByLane,
+    });
+  }
+
+  // UPDATE de driving_ms en BD para cada shift abierto.
+  _persistAllDriverShifts() {
+    for (const lane in this._activeShiftsByLane) {
+      const s = this._activeShiftsByLane[lane];
+      try { DriverShift.updateDrivingMs(s.shiftId, s.drivingMs); }
+      catch (e) { console.error('[TimingService] persist driver shift error', e.message); }
+    }
+  }
+
+  // Cambia el piloto de un carril en runtime. Si había un shift abierto, lo
+  // cierra con su driving_ms acumulado y luego registra el nuevo. Si la
+  // manga está en pausa, el nuevo shift se crea pero el contador no avanza
+  // hasta el resume. Llamado por SessionController.driverCheckin cuando la
+  // manga ya está corriendo (no para pre-arme).
+  swapDriverOnLane({ lane, raceId, mangaId, teamId, driverId, driverName }) {
+    if (!this.session || this.session.manga.id !== mangaId) return null;
+    if (!this._isChampionship) return null;
+
+    const now = Date.now();
+    // Cerrar shift previo si existe
+    const prev = this._activeShiftsByLane[lane];
+    if (prev) {
+      try { DriverShift.closeShift(prev.shiftId, now, prev.drivingMs); }
+      catch (e) { console.error('[TimingService] closeShift', e.message); }
+    }
+
+    // Abrir nuevo
+    const newId = DriverShift.openShift({
+      mangaId, raceId, lane, teamId, driverId, driverName,
+      startedAtMs: now, preArmed: false,
+    });
+    this._activeShiftsByLane[lane] = { shiftId: newId, drivingMs: 0 };
+    return newId;
+  }
+
+  // Devuelve el snapshot de shifts activos (lane → { shiftId, drivingMs }).
+  // El driving_ms es el valor in-memory ya tickeado, no el de BD.
+  getActiveShifts() {
+    return { ...this._activeShiftsByLane };
+  }
 }
 
 module.exports = new TimingServiceClass();

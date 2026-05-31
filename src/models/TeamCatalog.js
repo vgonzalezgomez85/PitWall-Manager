@@ -53,6 +53,15 @@ class TeamCatalog {
     db.prepare('DELETE FROM teams_catalog WHERE id = ?').run(id);
   }
 
+  // Mapa { normName → row } para detectar duplicados case+accent insensitive.
+  static buildNameIndex() {
+    const { normalize } = require('../utils/csv');
+    const rows = db.prepare('SELECT id, name, categoria, coche, country, notes FROM teams_catalog').all();
+    const map = new Map();
+    for (const r of rows) map.set(normalize(r.name), r);
+    return map;
+  }
+
   static setMembers(teamId, members) {
     db.prepare('DELETE FROM teams_catalog_members WHERE team_id = ?').run(teamId);
     const insert = db.prepare(

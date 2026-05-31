@@ -1,0 +1,158 @@
+<%- include('../partials/header', { lang, pageTitle: (lang === 'es' ? 'Histórico de turnos' : 'Shifts history') + ' — ' + race.name }) %>
+
+<%
+function fmtTime(ms) {
+  if (ms == null || isNaN(ms)) return '—';
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  return m + ':' + String(s % 60).padStart(2, '0');
+}
+function fmtMsStamp(ms) {
+  if (!ms) return '—';
+  const d = new Date(ms);
+  return d.toLocaleTimeString();
+}
+const minMs = race.driver_min_total_ms || 0;
+const maxMs = race.driver_max_total_ms || 0;
+%>
+
+<div class="vt-page vt-page--shifts-history">
+  <div class="vt-wrap">
+
+    <a href="/races/<%= race.id %>" class="vt-back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      <%= lang === 'es' ? 'Volver a la carrera' : 'Back to race' %>
+    </a>
+
+    <div class="vt-head">
+      <div class="vt-head__title">
+        <h1><%= lang === 'es' ? 'Histórico de turnos' : 'Shifts history' %></h1>
+        <span class="vt-cnt"><%= race.name %></span>
+      </div>
+      <div class="vt-head__actions">
+        <a href="/control/shifts" class="vt-btn vt-btn--ghost vt-btn--sm">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          <%= lang === 'es' ? 'Control en vivo' : 'Live control' %>
+        </a>
+      </div>
+    </div>
+
+    <% if (notChampionship) { %>
+      <div class="vt-empty" style="margin-top:32px">
+        <div class="vt-empty__t"><%= lang === 'es' ? 'No aplica' : 'Not applicable' %></div>
+        <p style="color:var(--vt-mute);margin:6px 0 0">
+          <%= lang === 'es'
+            ? 'Solo las carreras de tipo campeonato registran turnos de pilotos.'
+            : 'Only championship races track driver shifts.' %>
+        </p>
+      </div>
+    <% } else { %>
+
+      <!-- Resumen por piloto -->
+      <div class="sc-section" style="margin-top:18px">
+        <div class="vt-sec-lbl"><%= lang === 'es' ? 'Tiempo total por piloto' : 'Total time per driver' %></div>
+        <% if (summary.length === 0) { %>
+          <p style="color:var(--vt-mute)"><%= lang === 'es' ? 'Aún no hay turnos registrados.' : 'No shifts recorded yet.' %></p>
+        <% } else { %>
+          <div class="vt-table-card">
+            <table class="vt-table">
+              <thead>
+                <tr>
+                  <th><%= lang === 'es' ? 'Piloto' : 'Driver' %></th>
+                  <th><%= lang === 'es' ? 'Categoría' : 'Category' %></th>
+                  <th class="is-num"><%= lang === 'es' ? 'Total' : 'Total' %></th>
+                  <% if (minMs > 0) { %><th class="is-num"><%= lang === 'es' ? 'Mín.' : 'Min' %></th><% } %>
+                  <% if (maxMs > 0) { %><th class="is-num"><%= lang === 'es' ? 'Máx.' : 'Max' %></th><% } %>
+                  <th class="is-num"><%= lang === 'es' ? 'Turnos' : 'Shifts' %></th>
+                  <th><%= lang === 'es' ? 'Estado' : 'Status' %></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% summary.forEach(r => {
+                  const overMax = maxMs > 0 && r.total_ms >= maxMs;
+                  const nearMax = maxMs > 0 && r.total_ms >= maxMs * 0.9 && !overMax;
+                  const underMin = minMs > 0 && r.total_ms < minMs;
+                %>
+                  <tr>
+                    <td class="is-name"><span class="vt-cat-dot vt-cat--<%= r.profile_category %>" style="margin-right:6px"></span><%= r.profile_name %></td>
+                    <td class="is-mute"><%= r.profile_category %></td>
+                    <td class="is-num is-mono is-name"><%= fmtTime(r.total_ms) %></td>
+                    <% if (minMs > 0) { %><td class="is-num is-mono is-mute"><%= fmtTime(minMs) %></td><% } %>
+                    <% if (maxMs > 0) { %><td class="is-num is-mono is-mute"><%= fmtTime(maxMs) %></td><% } %>
+                    <td class="is-num is-mono"><%= r.shifts_count %></td>
+                    <td>
+                      <% if (overMax) { %>
+                        <span class="vt-badge is-bad"><span class="vt-badge__d"></span><%= lang === 'es' ? 'PASADO' : 'OVER' %></span>
+                      <% } else if (nearMax) { %>
+                        <span class="vt-badge is-warn"><span class="vt-badge__d"></span>90%+</span>
+                      <% } else if (underMin) { %>
+                        <span class="vt-badge is-info"><span class="vt-badge__d"></span><%= lang === 'es' ? 'Bajo mín.' : 'Under min' %></span>
+                      <% } else { %>
+                        <span class="vt-badge is-ok"><span class="vt-badge__d"></span>OK</span>
+                      <% } %>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } %>
+      </div>
+
+      <!-- Por manga -->
+      <% mangas.forEach(m => { %>
+        <div class="sc-section" style="margin-top:28px">
+          <div class="vt-sec-lbl">
+            <%= lang === 'es' ? 'Tanda' : 'Round' %> <%= m.tanda_number || '?' %> ·
+            <%= lang === 'es' ? 'Manga' : 'Heat' %> <%= m.number %>
+            <span style="margin-left:10px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--vt-mute)">— <%= m.status %></span>
+          </div>
+          <% if (m.shifts.length === 0) { %>
+            <p style="color:var(--vt-mute);font-size:13px;margin:0">
+              <%= lang === 'es' ? 'Sin turnos.' : 'No shifts.' %>
+            </p>
+          <% } else { %>
+            <div class="vt-table-card">
+              <table class="vt-table">
+                <thead>
+                  <tr>
+                    <th class="is-num"><%= lang === 'es' ? 'Carril' : 'Lane' %></th>
+                    <th><%= lang === 'es' ? 'Piloto' : 'Driver' %></th>
+                    <th><%= lang === 'es' ? 'Inicio' : 'Start' %></th>
+                    <th><%= lang === 'es' ? 'Fin' : 'End' %></th>
+                    <th class="is-num"><%= lang === 'es' ? 'Duración' : 'Duration' %></th>
+                    <th><%= lang === 'es' ? 'Tipo' : 'Type' %></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% m.shifts.forEach(s => { %>
+                    <tr>
+                      <td class="is-num is-mono is-name">L<%= s.lane %></td>
+                      <td class="is-name"><%= s.driver_name %></td>
+                      <td class="is-mute is-mono"><%= fmtMsStamp(s.started_at_ms) %></td>
+                      <td class="is-mute is-mono"><%= s.ended_at_ms ? fmtMsStamp(s.ended_at_ms) : '<span style="color:var(--vt-green)">— ' + (lang === 'es' ? 'abierto' : 'open') + '</span>' %></td>
+                      <td class="is-num is-mono is-name"><%= fmtTime(s.driving_ms) %></td>
+                      <td>
+                        <% if (s.pre_armed) { %>
+                          <span class="vt-badge is-info"><span class="vt-badge__d"></span>Pre-arme</span>
+                        <% } else if (s.ended_at_ms == null) { %>
+                          <span class="vt-badge is-ok is-live"><span class="vt-badge__d"></span><%= lang === 'es' ? 'En curso' : 'Active' %></span>
+                        <% } else { %>
+                          <span class="vt-badge is-neutral"><span class="vt-badge__d"></span><%= lang === 'es' ? 'Cerrado' : 'Closed' %></span>
+                        <% } %>
+                      </td>
+                    </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+          <% } %>
+        </div>
+      <% }) %>
+
+    <% } %>
+
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

@@ -69,19 +69,90 @@
 /* Action buttons */
 .live-header__actions { display: flex; gap: .5rem; align-items: center; flex-shrink: 0; }
 
+/* ── Botones del header — estilo "chip" con borde y glow ─────────────────── */
 .lbtn {
-  padding: .5rem 1.25rem; border-radius: 5px; border: none; cursor: pointer;
-  font-family: 'Rajdhani', sans-serif; font-size: 1rem; font-weight: 700;
-  letter-spacing: .06em; text-decoration: none;
-  display: inline-flex; align-items: center; gap: .3rem;
-  transition: filter .15s;
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: .5rem; padding: 10px 16px; min-height: 42px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.03);
+  color: #c9d1d9; cursor: pointer; text-decoration: none;
+  border-radius: 12px;
+  font-family: 'Saira Condensed', 'Saira', sans-serif;
+  font-weight: 700; font-size: 15px; letter-spacing: .06em;
+  transition: background .15s, border-color .15s, color .15s, transform .15s, box-shadow .15s;
+  white-space: nowrap;
 }
-.lbtn:hover         { filter: brightness(1.15); text-decoration: none; }
-.lbtn--go           { background: #3fb950; color: #000000; }
-.lbtn--repeat       { background: #21262d; color: #f0883e; border: 1px solid #f0883e55; }
-.lbtn--repeat:hover { background: #f0883e22; }
-.lbtn--fin          { background: #e63946; color: #fff; }
-.lbtn--back         { background: #21262d; color: #8b949e; font-size: .85rem; }
+.lbtn:hover {
+  background: rgba(255,255,255,.06);
+  border-color: rgba(255,255,255,.20);
+  color: #fff;
+  text-decoration: none;
+}
+.lbtn:active { transform: translateY(1px); }
+
+/* Icon-only: cuadrados, sin padding lateral */
+.lbtn--icon {
+  width: 42px; padding: 0;
+}
+/* Iconos SVG dentro de cualquier .lbtn */
+.lbtn svg { width: 18px; height: 18px; flex: none; }
+.lbtn--icon svg { width: 22px; height: 22px; }
+/* En botones con label, dejamos algo de aire entre svg y texto */
+.lbtn > svg + span,
+.lbtn > span + svg { /* no-op, gap base ya está */ }
+
+/* GO — acento ámbar/dorado con glow (acción principal) */
+.lbtn--go {
+  background: linear-gradient(180deg, rgba(250,204,21,.18), rgba(250,204,21,.08));
+  border-color: rgba(250,204,21,.5);
+  color: #facc15;
+  box-shadow: 0 0 0 1px rgba(250,204,21,.18), 0 8px 20px -8px rgba(250,204,21,.4);
+}
+.lbtn--go:hover {
+  background: linear-gradient(180deg, rgba(250,204,21,.28), rgba(250,204,21,.12));
+  color: #fde047;
+  border-color: rgba(250,204,21,.7);
+  box-shadow: 0 0 0 1px rgba(250,204,21,.35), 0 10px 24px -8px rgba(250,204,21,.55);
+}
+
+/* Repeat — naranja amable */
+.lbtn--repeat {
+  background: rgba(240,136,62,.10);
+  border-color: rgba(240,136,62,.4);
+  color: #f0883e;
+}
+.lbtn--repeat:hover { background: rgba(240,136,62,.18); color: #ffb87a; border-color: rgba(240,136,62,.6); }
+
+/* STOP — rojo de alerta */
+.lbtn--fin {
+  background: linear-gradient(180deg, rgba(239,70,81,.22), rgba(239,70,81,.10));
+  border-color: rgba(239,70,81,.5);
+  color: #ff8e95;
+  box-shadow: 0 0 0 1px rgba(239,70,81,.2), 0 8px 20px -8px rgba(239,70,81,.5);
+}
+.lbtn--fin:hover { color: #fff; background: linear-gradient(180deg, #ef4651, #d8323d); border-color: transparent; }
+
+/* Vista (toggle de modo) — azul al activarse */
+.lbtn--view {
+  background: rgba(59,158,255,.10);
+  border-color: rgba(59,158,255,.35);
+  color: #7cc4ff;
+}
+.lbtn--view:hover { background: rgba(59,158,255,.18); color: #fff; border-color: rgba(59,158,255,.55); }
+.lbtn--view.active {
+  background: linear-gradient(180deg, rgba(59,158,255,.22), rgba(59,158,255,.10));
+  color: #fff; border-color: rgba(59,158,255,.7);
+  box-shadow: 0 0 0 1px rgba(59,158,255,.35), 0 8px 20px -8px rgba(59,158,255,.5);
+}
+
+/* Back — pill con flecha (consistente con vt-back-link) */
+.lbtn--back {
+  background: rgba(255,255,255,.04);
+  border-color: rgba(255,255,255,.12);
+  color: #c9d1d9;
+  font-size: 14.5px;
+}
+.lbtn--back:hover { background: rgba(255,255,255,.08); color: #fff; border-color: rgba(255,255,255,.22); }
 
 /* ── Main layout ─────────────────────────────────────────────────────────── */
 .live-layout {
@@ -603,8 +674,26 @@ body.resizing-sidebar * { cursor: col-resize !important; }
   display: contents !important;
 }
 /* Ocultar elementos que solo molestan en V2 */
-.live-lanes--vertical .lane-card__trend,
-.live-lanes--vertical .lane-card__driver-row { display: none !important; }
+.live-lanes--vertical .lane-card__trend { display: none !important; }
+/* En V2 (tarjetas) sí mostramos el piloto activo bajo el nombre del equipo
+   como bloque dedicado. Si está vacío (sin check-in), se colapsa. */
+.live-lanes--vertical .lane-card__driver-row {
+  grid-column: 1 / -1 !important;
+  grid-row: auto;
+  min-height: 0;
+  margin-top: 1px;
+  padding: 0 .15rem;
+  font-size: .7rem;
+  font-weight: 600;
+  color: #58a6ff;
+  letter-spacing: .01em;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.live-lanes--vertical .lane-card__driver-row:empty { display: none !important; }
+.live-lanes--vertical .lane-card__driver-name { color: inherit; font-size: inherit; }
 .live-lanes--vertical .lane-card__pit { order: 4; }
 .live-lanes--vertical .lane-card__name {
   grid-column: 1 / -1 !important;
@@ -701,8 +790,7 @@ body.resizing-sidebar * { cursor: col-resize !important; }
 .live-lanes--vertical .lane-card__col--avg   .lane-card__col-val { color: #9ca3af; }
 .live-lanes--vertical .lane-card__col--best  .lane-card__col-val { color: #22c55e; }
 
-.lbtn--view       { background: #21262d; color: #8b949e; font-size: 1.1rem; }
-.lbtn--view.active { background: #1f6feb; color: #fff; }
+/* (.lbtn--view redefinido en la sección superior con estilo nuevo) */
 
 /* (lane-num está definido arriba en .lane-card__label) */
 
@@ -1225,9 +1313,24 @@ body:not(:has(.live-lanes--vertical)) .lane-card__col--name {
 body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__name-row {
   display: contents !important;
 }
+/* V1: el `__driver-row` queda oculto (su layout no encaja con el grid
+   horizontal). En su lugar se inyecta inline dentro del propio
+   `.lane-card__name` un sub-elemento con el piloto activo. */
 body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__driver-row {
   display: none !important;
 }
+/* Inline driver name (V1, dentro del span del equipo) */
+.lane-card__driver-inline {
+  margin-left: .55rem;
+  font-size: .72em;
+  font-weight: 600;
+  color: #58a6ff;
+  letter-spacing: .01em;
+  white-space: nowrap;
+}
+/* En V2 (tarjetas) ya existe el row dedicado bajo el nombre,
+   así que ocultamos el inline para no duplicarlo. */
+.live-lanes--vertical .lane-card__driver-inline { display: none; }
 body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__pos {
   order: 1;
   background: #21262d !important;

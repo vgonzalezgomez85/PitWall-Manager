@@ -5,6 +5,7 @@ const multer      = require('multer');
 const path        = require('path');
 const fs          = require('fs');
 const { resolveCountry } = require('../config/countries');
+const { parseCsvRaw, parseCsvLine, normalize } = require('../utils/csv');
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -150,128 +151,222 @@ class TeamCatalogController {
     res.json({ ok: true, team });
   }
 
-  // CSV con cabecera (es o en). Campos soportados (orden libre por cabecera):
-  //   nombre,categoria,coche,pais,notas,pilotos
-  //   name,category,car,country,notes,drivers
-  //
-  // Detalles tolerantes a usuarios no técnicos:
-  //   - Separador: detecta automáticamente coma o punto y coma (Excel ES usa ';').
+  // ── Parser CSV de equipos ───────────────────────────────────────────
+  //   - Separador: detecta automáticamente ',' o ';' (Excel ES usa ';').
   //   - Comillas: campos pueden ir entre " " si llevan comas dentro.
   //   - BOM UTF-8 al inicio: se elimina.
-  //   - pais: solo nombre ("España", "Italia", "Brasil"…). La bandera se
-  //     resuelve en server vía resolveCountry. Soporta nombres en ES y EN.
-  //     Si ya viene en formato "Spain|🇪🇸" también se acepta.
-  //   - pilotos: lista separada por "|" o ";". Para cada nombre:
-  //       1. Si existe un driver_profile con ese nombre (case-insensitive)
-  //          → se enlaza por driver_id.
-  //       2. Si NO existe → se crea uno nuevo como categoría 'bronce' y se
-  //          enlaza. Aparece de inmediato en /drivers para edición posterior.
-  //     El flash final reporta cuántos pilotos se enlazaron y cuántos se
-  //     crearon ex-novo, para que el usuario detecte typos.
-  //
-  // Nota: la columna 'color' del catálogo está en BD por legacy pero no se
-  // expone en el form ni se renderiza en ningún sitio, así que el importer
-  // no la lee — el modelo le pone el gris por defecto.
-  static importCsv(req, res) {
-    const lang = req.session?.lang || 'es';
-    let raw = req.body.csv_content || '';
-    // Strip BOM UTF-8 que Excel suele añadir al guardar como CSV
-    if (raw.charCodeAt(0) === 0xFEFF) raw = raw.slice(1);
-    raw = raw.trim();
-    if (!raw) {
-      req.session.flash = { type: 'error', text: lang === 'es' ? 'Fichero vacío' : 'Empty file' };
-      return res.redirect('/teams');
-    }
+  //   - pais: solo nombre. La bandera se autorrresuelve.
+  //   - pilotos: lista separada por "|" — al confirmar, los que no existan
+  //     se crean como bronce.
+  // Duplicados detectados por nombre normalizado (case+accent insensitive).
+  static _parseTeamsCsv(rawCsv) {
+    const csv = rawCsv || '';
+    const parsed = parseCsvRaw(csv);
+    const sep = parsed.sep;
 
-    const lines = raw.split(/\r?\n/).filter(l => l.trim().length > 0);
-    if (lines.length < 2) {
-      req.session.flash = { type: 'error', text: lang === 'es' ? 'El CSV debe tener cabecera y al menos una fila' : 'CSV needs a header and at least one row' };
-      return res.redirect('/teams');
-    }
-
-    // Autodetectar separador: si la primera línea tiene más ';' que ',', usar ';'
-    const sep = (lines[0].split(';').length > lines[0].split(',').length) ? ';' : ',';
-
-    // Cabecera — mapeo de columnas
-    const headerCols = parseCsvLine(lines[0], sep).map(c => c.trim().toLowerCase());
-    const idx = (...names) => {
+    const headerCols = parsed.header;
+    const idxOf = (...names) => {
       for (const n of names) {
         const i = headerCols.indexOf(n);
         if (i !== -1) return i;
       }
       return -1;
     };
-    const iName    = idx('nombre', 'name');
-    const iCat     = idx('categoria', 'category');
-    const iCoche   = idx('coche', 'car');
-    const iCountry = idx('pais', 'país', 'country');
-    const iNotes   = idx('notas', 'notes');
-    const iPilots  = idx('pilotos', 'drivers', 'pilots');
+    const iName    = idxOf('nombre', 'name');
+    const iCat     = idxOf('categoria', 'category');
+    const iCoche   = idxOf('coche', 'car');
+    const iCountry = idxOf('pais', 'país', 'country');
+    const iNotes   = idxOf('notas', 'notes');
+    const iPilots  = idxOf('pilotos', 'drivers', 'pilots');
 
     if (iName === -1) {
+      return { rows: [], csv_content: csv, headerError: 'name_column_missing' };
+    }
+
+    const index = TeamCatalog.buildNameIndex();
+    const seenInCsv = new Map();
+
+    const rows = parsed.dataLines.map((line, i) => {
+      const cols = parseCsvLine(line, sep);
+      const name = (cols[iName] || '').trim();
+      const categoria  = iCat     !== -1 ? (cols[iCat]?.trim()     || '') : '';
+      const coche      = iCoche   !== -1 ? (cols[iCoche]?.trim()   || '') : '';
+      const rawCountry = iCountry !== -1 ? (cols[iCountry]?.trim() || '') : '';
+      const country    = resolveCountry(rawCountry) || null;
+      const notes      = iNotes   !== -1 ? (cols[iNotes]?.trim()   || '') : '';
+      const pilotsRaw  = iPilots  !== -1 ? (cols[iPilots]?.trim()  || '') : '';
+      const pilots     = pilotsRaw ? pilotsRaw.split(/[|;]/).map(s => s.trim()).filter(Boolean) : [];
+
+      const base = { idx: i, name, categoria, coche, country, rawCountry, notes, pilots };
+
+      if (!name || name.length < 2) {
+        return { ...base, status: 'error', reason: 'name_too_short' };
+      }
+
+      const key = normalize(name);
+      const existing = index.get(key);
+      const seenAt = seenInCsv.get(key);
+      seenInCsv.set(key, i);
+
+      if (existing) return { ...base, status: 'duplicate', existing };
+      if (seenAt !== undefined) return { ...base, status: 'duplicate_in_csv', existingIdx: seenAt };
+      return { ...base, status: 'new' };
+    });
+
+    return { rows, csv_content: csv };
+  }
+
+  static importPreview(req, res) {
+    const lang = req.session?.lang || 'es';
+    const result = TeamCatalogController._parseTeamsCsv(req.body.csv_content || '');
+    if (result.headerError === 'name_column_missing') {
       req.session.flash = { type: 'error', text: lang === 'es' ? 'Falta la columna "nombre" en la cabecera' : 'Missing "name" column in header' };
       return res.redirect('/teams');
     }
-
-    // Caché de pilotos existentes por nombre normalizado (lowercase + trim).
-    // Mutamos esta caché si se crean pilotos nuevos durante la importación,
-    // así un mismo nombre que aparezca en dos equipos del CSV se enlaza al
-    // perfil recién creado en lugar de duplicarse.
-    const allDrivers = db.prepare('SELECT id, name FROM driver_profiles').all();
-    const driverByName = new Map(allDrivers.map(d => [d.name.toLowerCase().trim(), d]));
-
-    let imported = 0, skipped = 0;
-    let pilotsLinked = 0, pilotsCreated = 0;
-
-    for (let li = 1; li < lines.length; li++) {
-      const cols = parseCsvLine(lines[li], sep);
-      const name = cols[iName]?.trim();
-      if (!name || name.length < 2) { skipped++; continue; }
-
-      const rawCountry = iCountry !== -1 ? cols[iCountry]?.trim() : '';
-      const country    = resolveCountry(rawCountry);
-
-      try {
-        const id = TeamCatalog.create({
-          name,
-          notes:     iNotes !== -1 ? (cols[iNotes]?.trim() || null) : null,
-          country,
-          categoria: iCat   !== -1 ? (cols[iCat]?.trim()   || null) : null,
-          coche:     iCoche !== -1 ? (cols[iCoche]?.trim() || null) : null,
-        });
-
-        if (iPilots !== -1 && cols[iPilots]) {
-          const memberNames = cols[iPilots].split(/[|;]/).map(s => s.trim()).filter(Boolean);
-          const members = memberNames.map(mn => {
-            const key = mn.toLowerCase();
-            let d = driverByName.get(key);
-            if (d) {
-              pilotsLinked++;
-            } else {
-              // No existe → crear nuevo perfil con categoría por defecto 'bronce'.
-              // Aparece en /drivers para que el usuario pueda subirle la
-              // categoría después.
-              const newId = DriverProfile.create({ name: mn, category: 'bronce' });
-              d = { id: newId, name: mn };
-              driverByName.set(key, d);
-              pilotsCreated++;
-            }
-            return { name: mn, driver_id: d.id };
-          });
-          if (members.length) TeamCatalog.setMembers(id, members);
-        }
-        imported++;
-      } catch { skipped++; }
+    const { rows, csv_content } = result;
+    if (rows.length === 0) {
+      req.session.flash = { type: 'error', text: lang === 'es' ? 'Fichero vacío o sin filas válidas' : 'Empty file or no valid rows' };
+      return res.redirect('/teams');
     }
+    const stats = {
+      total:     rows.length,
+      new:       rows.filter(r => r.status === 'new').length,
+      duplicate: rows.filter(r => r.status === 'duplicate' || r.status === 'duplicate_in_csv').length,
+      error:     rows.filter(r => r.status === 'error').length,
+    };
+    res.render('teams/import-preview', { t: req.t, rows, csv_content, stats });
+  }
+
+  static importConfirm(req, res) {
+    const lang = req.session?.lang || 'es';
+    const { rows } = TeamCatalogController._parseTeamsCsv(req.body.csv_content || '');
+    const decisions = req.body.decisions || {};
+
+    const allDrivers = db.prepare('SELECT id, name FROM driver_profiles').all();
+    const driverByName = new Map(allDrivers.map(d => [normalize(d.name), d]));
+
+    let created = 0, updated = 0, skipped = 0;
+    let pilotsLinked = 0, pilotsCreated = 0;
+    const teamCreatedInRun = new Map(); // normName → teamId
+
+    const resolveMembers = (pilotsArr) => {
+      return pilotsArr.map(mn => {
+        const key = normalize(mn);
+        let d = driverByName.get(key);
+        if (d) { pilotsLinked++; }
+        else {
+          try {
+            const newId = DriverProfile.create({ name: mn, category: 'bronce' });
+            d = { id: newId, name: mn };
+            driverByName.set(key, d);
+            pilotsCreated++;
+          } catch { d = { id: null, name: mn }; }
+        }
+        return { name: mn, driver_id: d.id || null };
+      });
+    };
+
+    rows.forEach(r => {
+      if (r.status === 'error') { skipped++; return; }
+
+      const payload = {
+        name:      r.name,
+        notes:     r.notes || null,
+        country:   r.country || null,
+        categoria: r.categoria || null,
+        coche:     r.coche || null,
+      };
+
+      if (r.status === 'new') {
+        try {
+          const id = TeamCatalog.create(payload);
+          if (r.pilots.length) TeamCatalog.setMembers(id, resolveMembers(r.pilots));
+          teamCreatedInRun.set(normalize(r.name), id);
+          created++;
+        } catch { skipped++; }
+        return;
+      }
+
+      const dec = (decisions[String(r.idx)] || 'update').toLowerCase();
+
+      if (r.status === 'duplicate') {
+        const ex = r.existing;
+        if (dec === 'skip') { skipped++; return; }
+        if (dec === 'duplicate') {
+          try {
+            const id = TeamCatalog.create(payload);
+            if (r.pilots.length) TeamCatalog.setMembers(id, resolveMembers(r.pilots));
+            created++;
+          } catch { skipped++; }
+          return;
+        }
+        // update: actualiza el equipo existente. Para color y car_photo el
+        // modelo respeta su default; conservamos los campos no enviados.
+        try {
+          TeamCatalog.update(ex.id, {
+            name: r.name,
+            color: '#8b949e',
+            notes: payload.notes,
+            country: payload.country,
+            categoria: payload.categoria,
+            coche: payload.coche,
+            // car_photo: undefined → modelo conserva el actual
+          });
+          // Re-set members del CSV. Si el CSV no trae pilotos, los miembros
+          // existentes se borran (consistente con el form, que también
+          // re-graba members).
+          TeamCatalog.setMembers(ex.id, r.pilots.length ? resolveMembers(r.pilots) : []);
+          updated++;
+        } catch { skipped++; }
+        return;
+      }
+
+      if (r.status === 'duplicate_in_csv') {
+        if (dec === 'skip') { skipped++; return; }
+        if (dec === 'duplicate') {
+          try {
+            const id = TeamCatalog.create(payload);
+            if (r.pilots.length) TeamCatalog.setMembers(id, resolveMembers(r.pilots));
+            created++;
+          } catch { skipped++; }
+          return;
+        }
+        // update: si la fila previa del CSV ya creó el equipo, lo actualizamos.
+        const prevId = teamCreatedInRun.get(normalize(r.name));
+        if (prevId) {
+          try {
+            TeamCatalog.update(prevId, {
+              name: r.name,
+              color: '#8b949e',
+              notes: payload.notes,
+              country: payload.country,
+              categoria: payload.categoria,
+              coche: payload.coche,
+            });
+            TeamCatalog.setMembers(prevId, r.pilots.length ? resolveMembers(r.pilots) : []);
+            updated++;
+          } catch { skipped++; }
+        } else {
+          // Sin previo (fue 'skip' o error): creamos uno nuevo igualmente.
+          try {
+            const id = TeamCatalog.create(payload);
+            if (r.pilots.length) TeamCatalog.setMembers(id, resolveMembers(r.pilots));
+            teamCreatedInRun.set(normalize(r.name), id);
+            created++;
+          } catch { skipped++; }
+        }
+      }
+    });
 
     const parts = [];
-    parts.push(lang === 'es' ? `${imported} equipos importados` : `${imported} teams imported`);
-    if (pilotsLinked  > 0) parts.push(lang === 'es' ? `${pilotsLinked} pilotos enlazados`  : `${pilotsLinked} drivers linked`);
-    if (pilotsCreated > 0) parts.push(lang === 'es' ? `${pilotsCreated} pilotos creados`   : `${pilotsCreated} drivers created`);
-    if (skipped       > 0) parts.push(lang === 'es' ? `${skipped} omitidos`                : `${skipped} skipped`);
+    if (created > 0) parts.push(lang === 'es' ? `${created} equipos creados`        : `${created} teams created`);
+    if (updated > 0) parts.push(lang === 'es' ? `${updated} equipos actualizados`   : `${updated} teams updated`);
+    if (pilotsLinked  > 0) parts.push(lang === 'es' ? `${pilotsLinked} pilotos enlazados` : `${pilotsLinked} drivers linked`);
+    if (pilotsCreated > 0) parts.push(lang === 'es' ? `${pilotsCreated} pilotos creados`  : `${pilotsCreated} drivers created`);
+    if (skipped       > 0) parts.push(lang === 'es' ? `${skipped} omitidos`               : `${skipped} skipped`);
     req.session.flash = {
-      type: imported > 0 ? 'success' : 'error',
-      text: parts.join(' · '),
+      type: (created + updated) > 0 ? 'success' : 'error',
+      text: parts.join(' · ') || (lang === 'es' ? 'Sin cambios' : 'No changes'),
     };
     res.redirect('/teams');
   }
@@ -286,36 +381,6 @@ class TeamCatalogController {
     }
     return members;
   }
-}
-
-/**
- * Parsea una línea CSV soportando comillas. Devuelve array de strings.
- * Reglas mínimas (subset RFC 4180):
- *   - Separador parametrizable (',' o ';').
- *   - Campo entre " " preserva el separador y comas dentro: "foo, bar".
- *   - "" dentro de un campo entrecomillado → " literal.
- *   - Espacios en blanco alrededor del separador no se eliminan aquí
- *     (lo hace cada caller con .trim() si quiere).
- */
-function parseCsvLine(line, sep) {
-  const out = [];
-  let cur = '';
-  let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (inQuotes) {
-      if (ch === '"') {
-        if (line[i + 1] === '"') { cur += '"'; i++; }
-        else inQuotes = false;
-      } else cur += ch;
-    } else {
-      if (ch === '"') inQuotes = true;
-      else if (ch === sep) { out.push(cur); cur = ''; }
-      else cur += ch;
-    }
-  }
-  out.push(cur);
-  return out;
 }
 
 module.exports = TeamCatalogController;
