@@ -1,44 +1,86 @@
 <%- include('../partials/header', { lang, pageTitle: lang === 'es' ? 'Entrenamiento' : 'Training' }) %>
 
-<div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:3rem">
+<div class="vt-page vt-page--training-pick">
+  <div class="vt-wrap" style="max-width:920px">
 
-  <div class="page-header" style="justify-content:center;margin-bottom:2rem">
-    <div>
-      <h1 class="page-title">🎯 <%= lang === 'es' ? 'Entrenamiento' : 'Training' %></h1>
-      <p class="page-subtitle">
-        <%= lang === 'es' ? 'Selecciona la modalidad de entrenamiento.' : 'Select the training mode.' %>
-      </p>
+    <a href="/" class="vt-back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      <%= lang === 'es' ? 'Inicio' : 'Home' %>
+    </a>
+
+    <div class="tr-pick__header">
+      <div class="tr-pick__eyebrow">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="13" r="8"/>
+          <circle cx="11" cy="13" r="4"/>
+          <circle cx="11" cy="13" r=".6" fill="currentColor"/>
+          <path d="M16 8l5-5M21 3h-3.5M21 3v3.5"/>
+        </svg>
+      </div>
+      <h1><%= lang === 'es' ? 'Entrenamiento' : 'Training' %></h1>
+      <p><%= lang === 'es' ? 'Selecciona la modalidad de entrenamiento.' : 'Select the training mode.' %></p>
+    </div>
+
+    <div class="tr-pick__grid">
+
+      <a href="/training/free" class="tr-pick__opt" style="--a:var(--vt-blue)">
+        <div class="tr-pick__ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 13l1.7-4.8A2.5 2.5 0 0 1 8 6.5h8a2.5 2.5 0 0 1 2.3 1.7L20 13"/>
+            <path d="M2 13h20v3.5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/>
+            <circle cx="7" cy="18.5" r="1.9"/>
+            <circle cx="17" cy="18.5" r="1.9"/>
+          </svg>
+        </div>
+        <h2><%= lang === 'es' ? 'Entrenamiento libre' : 'Free practice' %></h2>
+        <div class="tr-pick__desc">
+          <%= lang === 'es'
+            ? 'Registra vueltas por carril sin estructura de equipos. Ideal para sesiones abiertas.'
+            : 'Record laps per lane without team structure. Ideal for open sessions.' %>
+        </div>
+        <div class="tr-pick__chips">
+          <span class="tr-pick__chip"><%= lang === 'es' ? 'Sin equipos' : 'No teams' %></span>
+          <span class="tr-pick__chip"><%= lang === 'es' ? 'Vueltas por carril' : 'Laps per lane' %></span>
+          <span class="tr-pick__chip"><%= lang === 'es' ? 'Sesión abierta' : 'Open session' %></span>
+        </div>
+        <span class="tr-pick__go">
+          <%= lang === 'es' ? 'Empezar libre' : 'Start free' %>
+          <span class="tr-pick__arr">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </span>
+        </span>
+      </a>
+
+      <a href="/training/competition" class="tr-pick__opt" style="--a:var(--vt-amber)">
+        <div class="tr-pick__ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M7 4h10v4a5 5 0 0 1-10 0z"/>
+            <path d="M7 5H4.5A1.5 1.5 0 0 0 3 6.5 3.5 3.5 0 0 0 6.5 10M17 5h2.5A1.5 1.5 0 0 1 21 6.5 3.5 3.5 0 0 1 17.5 10"/>
+            <path d="M12 13v3"/>
+            <path d="M9 20h6M9.5 20l.4-4h4.2l.4 4"/>
+          </svg>
+        </div>
+        <h2><%= lang === 'es' ? 'De competición' : 'Competition' %></h2>
+        <div class="tr-pick__desc">
+          <%= lang === 'es'
+            ? 'Equipos o pilotos asignados a carriles con rotación automática tras cada tanda.'
+            : 'Teams or drivers assigned to lanes with automatic rotation after each heat.' %>
+        </div>
+        <div class="tr-pick__chips">
+          <span class="tr-pick__chip"><%= lang === 'es' ? 'Equipos / pilotos' : 'Teams / drivers' %></span>
+          <span class="tr-pick__chip"><%= lang === 'es' ? 'Rotación automática' : 'Auto rotation' %></span>
+          <span class="tr-pick__chip"><%= lang === 'es' ? 'Por tandas' : 'By heats' %></span>
+        </div>
+        <span class="tr-pick__go">
+          <%= lang === 'es' ? 'Empezar competición' : 'Start competition' %>
+          <span class="tr-pick__arr">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </span>
+        </span>
+      </a>
+
     </div>
   </div>
-
-<div class="training-mode-grid">
-
-  <a href="/training/free" class="training-mode-card">
-    <div class="training-mode-card__icon">🏎️</div>
-    <div class="training-mode-card__title">
-      <%= lang === 'es' ? 'Entrenamiento libre' : 'Free practice' %>
-    </div>
-    <div class="training-mode-card__desc">
-      <%= lang === 'es'
-        ? 'Registra vueltas por carril sin estructura de equipos. Ideal para sesiones abiertas.'
-        : 'Record laps per lane without team structure. Ideal for open sessions.' %>
-    </div>
-  </a>
-
-  <a href="/training/competition" class="training-mode-card">
-    <div class="training-mode-card__icon">🏆</div>
-    <div class="training-mode-card__title">
-      <%= lang === 'es' ? 'Entrenamiento de competición' : 'Competition training' %>
-    </div>
-    <div class="training-mode-card__desc">
-      <%= lang === 'es'
-        ? 'Equipos o pilotos asignados a carriles con rotación automática tras cada tanda.'
-        : 'Teams or pilots assigned to lanes with automatic rotation after each heat.' %>
-    </div>
-  </a>
-
-</div>
-
 </div>
 
 <%- include('../partials/footer') %>

@@ -1,94 +1,137 @@
 <%- include('../partials/header', { pageTitle: lang === 'es' ? 'Pilotos' : 'Drivers' }) %>
-<div class="container">
 
-  <div class="page-header">
-    <div>
-      <h1 class="page-title"><%= lang === 'es' ? 'Base de datos de pilotos' : 'Driver database' %></h1>
-      <p class="page-subtitle"><%= profiles.length %> <%= lang === 'es' ? 'pilotos registrados' : 'registered drivers' %></p>
-    </div>
-    <div class="page-header__actions">
-      <a href="/plantilla_pilotos.csv" download class="btn btn--ghost">
-        ⬇ <%= lang === 'es' ? 'Plantilla CSV' : 'CSV Template' %>
-      </a>
-      <button class="btn btn--ghost" onclick="document.getElementById('csv-import-panel').classList.toggle('hidden')">
-        📂 <%= lang === 'es' ? 'Importar CSV' : 'Import CSV' %>
-      </button>
-      <a href="/drivers/qr-all" target="_blank" class="btn btn--ghost">▦ <%= lang === 'es' ? 'Exportar QR' : 'Export QR' %></a>
-      <a href="/drivers/new" class="btn btn--primary">+ <%= lang === 'es' ? 'Nuevo piloto' : 'New driver' %></a>
-    </div>
-  </div>
+<%
+const CATEGORIES = ['platino','oro','plata','bronce'];
+const CAT_LABELS = {
+  es: { platino: 'Platino', oro: 'Oro', plata: 'Plata', bronce: 'Bronce' },
+  en: { platino: 'Platinum', oro: 'Gold', plata: 'Silver', bronce: 'Bronze' }
+};
+const CAT_ICONS = {
+  platino: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12l3 6-9 11L3 10z"/><path d="M6 4l3 6h6l3-6M9 10l3 11M15 10l-3 11"/></svg>',
+  oro:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="15" r="6"/><path d="M8 4l2 5M16 4l-2 5M7 4h10"/></svg>',
+  plata:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="15" r="6"/><path d="M8 4l2 5M16 4l-2 5M7 4h10"/></svg>',
+  bronce:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="15" r="6"/><path d="M8 4l2 5M16 4l-2 5M7 4h10"/></svg>',
+};
+%>
 
-  <!-- CSV Import panel -->
-  <div id="csv-import-panel" class="hidden" style="margin-bottom:1.5rem">
-    <div class="form-card" style="padding:1.25rem">
-      <p class="form-label" style="margin-bottom:.75rem">
-        <%= lang === 'es'
-          ? 'Selecciona un fichero CSV con columnas: nombre, categoria (opcional)'
-          : 'Select a CSV file with columns: nombre, categoria (optional)' %>
-      </p>
-      <form action="/drivers/import" method="POST" id="csv-form">
-        <input type="hidden" name="csv_content" id="csv-content-input">
-        <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap">
-          <input type="file" id="csv-file-picker" accept=".csv,text/csv" class="btn btn--ghost"
-                 style="cursor:pointer;padding:.4rem .75rem">
-          <span id="csv-file-name" class="form-hint"></span>
-          <button type="submit" id="csv-submit" class="btn btn--primary" disabled>
-            <%= lang === 'es' ? 'Importar' : 'Import' %>
-          </button>
+<div class="vt-page">
+  <div class="vt-wrap">
+
+    <a href="/" class="vt-back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      <%= lang === 'es' ? 'Inicio' : 'Home' %>
+    </a>
+
+    <% if (flash) { %>
+      <div class="flash flash--<%= flash.type %>" style="margin-bottom:1rem"><%- flash.text %></div>
+    <% } %>
+
+    <div class="vt-head">
+      <div class="vt-head__title">
+        <h1><%= lang === 'es' ? 'Pilotos' : 'Drivers' %></h1>
+        <span class="vt-cnt"><%= profiles.length %></span>
+      </div>
+      <div class="vt-head__actions">
+        <a href="/plantilla_pilotos.csv" download class="vt-btn vt-btn--ghost vt-btn--sm">
+          <svg viewBox="0 0 24 24"><path d="M12 4v12M6 11l6 6 6-6M5 21h14"/></svg>
+          <%= lang === 'es' ? 'Plantilla CSV' : 'CSV Template' %>
+        </a>
+        <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="toggleCsv">
+          <svg viewBox="0 0 24 24"><path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/><path d="M12 3v12M8 11l4 4 4-4"/></svg>
+          <%= lang === 'es' ? 'Importar CSV' : 'Import CSV' %>
+        </button>
+        <a href="/drivers/qr-all" target="_blank" class="vt-btn vt-btn--ghost vt-btn--sm">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3M20 14v3M14 20h3v1M20 17v4"/></svg>
+          <%= lang === 'es' ? 'Exportar QR' : 'Export QR' %>
+        </a>
+        <a href="/drivers/new" class="vt-btn vt-btn--primary">
+          + <%= lang === 'es' ? 'Nuevo piloto' : 'New driver' %>
+        </a>
+      </div>
+    </div>
+
+    <!-- CSV Import panel -->
+    <div id="csv-import-panel" style="display:none;margin-top:18px">
+      <div class="vt-card">
+        <div class="vt-card-h">
+          <svg viewBox="0 0 24 24"><path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>
+          <%= lang === 'es' ? 'Importar pilotos desde CSV' : 'Import drivers from CSV' %>
         </div>
-      </form>
+        <p class="vt-hint" style="margin-bottom:12px">
+          <%= lang === 'es'
+            ? 'Selecciona un fichero CSV con columnas: nombre, categoria (opcional).'
+            : 'Select a CSV file with columns: nombre, categoria (optional).' %>
+        </p>
+        <form action="/drivers/import" method="POST" id="csv-form">
+          <input type="hidden" name="csv_content" id="csv-content-input">
+          <div class="vt-csv-row">
+            <input type="file" id="csv-file-picker" accept=".csv,text/csv">
+            <span id="csv-file-name" class="vt-hint"></span>
+            <button type="submit" id="csv-submit" class="vt-btn vt-btn--primary vt-btn--sm" disabled>
+              <%= lang === 'es' ? 'Importar' : 'Import' %>
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
-  </div>
 
-  <% if (profiles.length === 0) { %>
-    <div class="empty-state">
-      <div class="empty-state__icon">🏎️</div>
-      <p class="empty-state__text">
-        <%= lang === 'es' ? 'Sin pilotos registrados. Añade el primero.' : 'No drivers registered yet. Add the first one.' %>
-      </p>
-      <a href="/drivers/new" class="btn btn--primary">+ <%= lang === 'es' ? 'Añadir piloto' : 'Add driver' %></a>
-    </div>
-  <% } else { %>
+    <% if (profiles.length === 0) { %>
+      <div class="vt-empty" style="margin-top:32px">
+        <div class="vt-empty__t"><%= lang === 'es' ? 'Sin pilotos registrados' : 'No drivers registered' %></div>
+        <p style="color:var(--vt-mute);margin:6px 0 16px"><%= lang === 'es' ? 'Añade tu primer piloto para empezar.' : 'Add your first driver to get started.' %></p>
+        <a href="/drivers/new" class="vt-btn vt-btn--primary">+ <%= lang === 'es' ? 'Añadir piloto' : 'Add driver' %></a>
+      </div>
+    <% } else { %>
 
-    <% const CATEGORIES = ['platino','oro','plata','bronce']; %>
-    <% const CAT_LABELS = { es: { platino:'Platino', oro:'Oro', plata:'Plata', bronce:'Bronce' }, en: { platino:'Platinum', oro:'Gold', plata:'Silver', bronce:'Bronze' } }; %>
-
-    <% CATEGORIES.forEach(cat => { %>
-      <% const group = profiles.filter(p => p.category === cat); %>
-      <% if (group.length > 0) { %>
-        <div class="section-header" style="margin:1.75rem 0 .6rem">
-          <span class="cat-badge cat-badge--<%= cat %>">
-            <span class="cat-badge__icon"><%= {platino:'💎',oro:'🥇',plata:'🥈',bronce:'🥉'}[cat] %></span>
-            <%= CAT_LABELS[lang][cat] %>
-            <span class="cat-badge__count"><%= group.length %></span>
-          </span>
-        </div>
-        <div class="drivers-list">
-          <% group.forEach(p => { %>
-            <div class="driver-profile-card">
-              <div class="driver-profile-card__info">
-                <span class="cat-dot cat-dot--<%= p.category %>"></span>
-                <span class="driver-profile-card__name"><%= p.name %></span>
-              </div>
-              <div style="display:flex;gap:.3rem">
-                <a href="/drivers/<%= p.id %>/qr" target="_blank" class="btn btn--ghost btn--sm" title="QR">▦</a>
-                <a href="/drivers/<%= p.id %>/edit" class="btn btn--ghost btn--sm">✏</a>
-                <form action="/drivers/<%= p.id %>?_method=DELETE" method="POST" style="display:inline"
-                      onsubmit="return confirm('<%= lang === 'es' ? '¿Eliminar piloto?' : 'Delete driver?' %>')">
-                  <button type="submit" class="btn btn--danger btn--sm">✕</button>
-                </form>
-              </div>
+      <% CATEGORIES.forEach(cat => { %>
+        <% const group = profiles.filter(p => p.category === cat); %>
+        <% if (group.length > 0) { %>
+          <div class="vt-list-section">
+            <div class="vt-list-section__h">
+              <span class="vt-cat-pill vt-cat--<%= cat %>">
+                <span class="vt-cat-dot vt-cat--<%= cat %>"></span>
+                <%= CAT_LABELS[lang][cat] %>
+                <span class="vt-cat-pill__count"><%= group.length %></span>
+              </span>
             </div>
-          <% }) %>
-        </div>
-      <% } %>
-    <% }) %>
+            <div class="vt-list">
+              <% group.forEach(p => { %>
+                <div class="vt-list-row">
+                  <div class="vt-list-row__main">
+                    <span class="vt-cat-dot vt-cat--<%= p.category %>"></span>
+                    <span class="vt-list-row__name"><%= p.name %></span>
+                  </div>
+                  <div class="vt-list-row__actions">
+                    <a href="/drivers/<%= p.id %>/qr" target="_blank" class="vt-icon-btn" title="QR">
+                      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3M20 14v3"/></svg>
+                    </a>
+                    <a href="/drivers/<%= p.id %>/edit" class="vt-icon-btn" title="<%= lang === 'es' ? 'Editar' : 'Edit' %>">
+                      <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+                    </a>
+                    <form action="/drivers/<%= p.id %>?_method=DELETE" method="POST" style="display:inline"
+                          onsubmit="return confirm('<%= lang === 'es' ? '¿Eliminar piloto?' : 'Delete driver?' %>')">
+                      <button type="submit" class="vt-icon-btn is-danger" title="<%= lang === 'es' ? 'Eliminar' : 'Delete' %>">
+                        <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/></svg>
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              <% }) %>
+            </div>
+          </div>
+        <% } %>
+      <% }) %>
 
-  <% } %>
-
+    <% } %>
+  </div>
 </div>
+
 <script>
-document.getElementById('csv-file-picker').addEventListener('change', function() {
+document.getElementById('toggleCsv')?.addEventListener('click', () => {
+  const p = document.getElementById('csv-import-panel');
+  p.style.display = p.style.display === 'none' ? '' : 'none';
+});
+document.getElementById('csv-file-picker')?.addEventListener('change', function() {
   const file = this.files[0];
   if (!file) return;
   document.getElementById('csv-file-name').textContent = file.name;
@@ -100,4 +143,5 @@ document.getElementById('csv-file-picker').addEventListener('change', function()
   reader.readAsText(file, 'UTF-8');
 });
 </script>
+
 <%- include('../partials/footer') %>

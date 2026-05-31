@@ -134,6 +134,13 @@ class SessionController {
 
     const totalMangas = Manga.findByTanda(manga.tanda_id).length;
     const totalTandas = Tanda.findByRace(race.id).length;
+    // Duración total de la CARRERA (todas las mangas de todas las tandas) —
+    // usado por la clasificación estimada con la fórmula:
+    //   projectedTotal = totalRaceMs / lapAvgMs
+    const totalRaceMangas = require('../config/database').prepare(
+      'SELECT COUNT(*) c FROM mangas m JOIN tandas t ON t.id = m.tanda_id WHERE t.race_id = ?'
+    ).get(race.id).c;
+    const totalRaceMs = totalRaceMangas * race.manga_duration_minutes * 60000;
 
     // Team-race extras: members per lane + current active drivers
     let teamMembersByLane = {};
@@ -261,7 +268,7 @@ class SessionController {
     const hasQrCheckin = LicenseService.has('qr_checkin');
 
     const isSimulating = SerialService.isSimulating;
-    res.render('races/live', { t: req.t, race, manga, tanda, lanes, laps, isActive, standings, prevLapsByLane, totalMangas, totalTandas, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, allParticipants, nextLaneByLane, nextMangaInfo, isSimulating });
+    res.render('races/live', { t: req.t, race, manga, tanda, lanes, laps, isActive, standings, prevLapsByLane, totalMangas, totalTandas, totalRaceMs, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, allParticipants, nextLaneByLane, nextMangaInfo, isSimulating });
   }
 
   // GET /races/:id/mangas/:mangaId/panel/:type  (standalone popup)
@@ -311,6 +318,61 @@ class SessionController {
       p.remaining_mangas = a.pending_mangas || 0;
       p.planned_mangas   = a.planned_mangas || 0;
     });
+
+    // ── Carriles SIN entidad asignada (datos de test / pruebas) ───────────
+    // El query anterior excluye filas con team_id/driver_id = NULL, lo que
+    // colapsa cualquier dato de prueba en una sola "fila null". Para que el
+    // popup muestre algo útil, añadimos un participante sintético por LANE
+    // basándonos en manga_lanes con entidad nula. Las stats salen de laps.
+    const lanesWithoutEntity = db.prepare(`
+      SELECT ml.lane,
+             COUNT(DISTINCT m.id) AS planned_mangas,
+             SUM(CASE WHEN m.status = 'pending' THEN 1 ELSE 0 END) AS pending_mangas
+      FROM manga_lanes ml
+      JOIN mangas m ON m.id = ml.manga_id
+      WHERE m.race_id = ?
+        AND ml.is_rest = 0
+        AND ml.team_id IS NULL AND ml.driver_id IS NULL
+      GROUP BY ml.lane
+    `).all(race.id);
+
+    const lapStatsByLane = db.prepare(`
+      SELECT lane,
+             COUNT(*)                                             AS total_laps,
+             MIN(CASE WHEN is_exit = 0 AND is_warmup = 0
+                      THEN lap_time_ms END)                       AS best_lap_ms,
+             AVG(CASE WHEN is_warmup = 0 THEN lap_time_ms END)    AS avg_lap_ms,
+             COUNT(DISTINCT manga_id)                             AS mangas_raced
+      FROM laps
+      WHERE race_id = ? AND is_ghost = 0
+        AND team_id IS NULL AND driver_id IS NULL
+      GROUP BY lane
+    `).all(race.id);
+    const lapByLane = new Map(lapStatsByLane.map(r => [r.lane, r]));
+
+    lanesWithoutEntity.forEach(l => {
+      const stats = lapByLane.get(l.lane) || {};
+      allParticipants.push({
+        entity_id:        `lane_${l.lane}`,
+        entity_name:      `Pista ${l.lane}`,
+        entity_type:      isTeamRace ? 'team' : 'driver',
+        color:            null,
+        total_laps:       stats.total_laps  || 0,
+        best_lap_ms:      stats.best_lap_ms ?? null,
+        avg_lap_ms:       stats.avg_lap_ms  ?? null,
+        total_time_ms:    0,
+        mangas_raced:     stats.mangas_raced || 0,
+        exit_count:       0,
+        planned_mangas:   l.planned_mangas  || 0,
+        remaining_mangas: l.pending_mangas  || 0,
+      });
+    });
+
+    // Quita la fila "null" sintética que sale de aggregateByRace cuando hay
+    // laps sin team_id ni driver_id: ya están representadas por las "Pista N"
+    for (let i = allParticipants.length - 1; i >= 0; i--) {
+      if (allParticipants[i].entity_id == null) allParticipants.splice(i, 1);
+    }
 
     // Previous race-wide laps per lane (excludes this manga) — same data the
     // live view uses to project totals; the panel needs it to match exactly.

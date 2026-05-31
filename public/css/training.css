@@ -2,7 +2,8 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 .training-body {
-  display: flex; flex-direction: column; min-height: 100vh;
+  display: flex; flex-direction: column;
+  height: 100vh; overflow: hidden;
   background: #000000;
   font-family: 'Inter', system-ui, sans-serif;
   color: #e6edf3;
@@ -53,14 +54,16 @@
 .tr-btn--back  { background: #21262d; color: #8b949e; font-size: .85rem; }
 
 /* ── Cards grid ──────────────────────────────────────────────────────────── */
-/* Una columna por carril, ocupando toda la altura disponible bajo el header. */
+/* Hasta 8 columnas por fila. Si --lanes ≤ 8, tantas columnas como carriles.
+   Si > 8, fuerza 8 columnas y deja que los excedentes envuelvan abajo. */
 .training-grid {
   display: grid;
-  grid-template-columns: repeat(var(--lanes, 6), minmax(0, 1fr));
+  grid-template-columns: repeat(var(--cols, 6), minmax(0, 1fr));
   grid-auto-rows: 1fr;
   gap: clamp(.4rem, .8vw, .8rem);
   padding: clamp(.4rem, .8vw, .9rem);
-  height: calc(100vh - 96px); /* header height */
+  flex: 1;
+  min-height: 0;
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -347,60 +350,6 @@
 }
 .resting-chip__name { font-weight: 600; }
 
-.tr-btn--tv { background: #21262d; color: #8b949e; font-size: 1.05rem; }
-.tr-btn--tv.active { background: #f59e0b; color: #000000; }
-
-/* ── Modo TV — pantalla grande a ~4m ─────────────────────────────────────── */
-/* Se activa al hacer toggle desde el botón 📺. Todo escala con vw para que
-   funcione bien en 720p, 1080p y 4K manteniendo proporciones.            */
-body.tv-mode .training-header { height: clamp(120px, 14vh, 200px); padding: .8rem 2rem; }
-body.tv-mode .tr-timer        { font-size: clamp(5rem, 11vw, 12rem); }
-body.tv-mode .tr-timer-label  { font-size: clamp(1.2rem, 1.8vw, 2rem); letter-spacing: .2em; }
-body.tv-mode .tr-title        { font-size: clamp(2rem, 3.5vw, 4rem); letter-spacing: .12em; }
-body.tv-mode .tr-subtitle     { font-size: clamp(1.2rem, 1.8vw, 2.2rem); }
-body.tv-mode .tr-btn          { padding: .8rem 1.6rem; font-size: clamp(1.2rem, 1.8vw, 2rem); }
-
-body.tv-mode .training-grid {
-  height: calc(100vh - clamp(120px, 14vh, 200px));
-  gap: clamp(.6rem, 1.2vw, 1.5rem);
-  padding: clamp(.6rem, 1.2vw, 1.5rem);
-}
-
-body.tv-mode .tr-card { border-width: 4px; border-radius: 16px; }
-
-body.tv-mode .tr-card__header { padding: clamp(.6rem, 1.4vh, 1.4rem) clamp(.8rem, 1.2vw, 1.6rem) clamp(.3rem, .7vh, .7rem); }
-body.tv-mode .tr-card__label  { font-size: clamp(1.8rem, 3vw, 4.5rem); letter-spacing: .14em; }
-body.tv-mode .tr-card__lane-num { padding: .2rem .8rem; border-radius: 10px; }
-body.tv-mode .tr-card__count  { font-size: clamp(1.6rem, 2.5vw, 3.5rem); }
-body.tv-mode .tr-card__name   { font-size: clamp(1.6rem, 2.6vw, 4rem); padding: 0 clamp(.8rem, 1.2vw, 1.6rem) .2rem; }
-
-/* La mejor vuelta — el dato MÁS importante, mucho mayor */
-body.tv-mode .tr-card__best   {
-  font-size: clamp(3.5rem, 7vw, 11rem);
-  padding: clamp(.3rem, 1vh, 1rem) clamp(.8rem, 1.2vw, 1.6rem);
-  line-height: .9;
-}
-
-body.tv-mode .tr-card__avg-row    { padding: .3rem clamp(.8rem, 1.2vw, 1.6rem) .8rem; gap: .35rem; }
-body.tv-mode .tr-card__avg-label  { font-size: clamp(1.1rem, 1.8vw, 2.2rem); }
-body.tv-mode .tr-card__avg-val    { font-size: clamp(1.6rem, 2.5vw, 3.4rem); }
-
-body.tv-mode .tr-card__session-record { padding: .4rem clamp(.8rem, 1.2vw, 1.6rem) .35rem; }
-body.tv-mode .tr-srec-label { font-size: clamp(1.1rem, 1.8vw, 2rem); }
-body.tv-mode .tr-srec-time  { font-size: clamp(1.7rem, 2.7vw, 3.6rem); }
-
-/* Lista de vueltas: pocas pero MUY visibles */
-body.tv-mode .tr-card__laps  { padding: .6rem clamp(.8rem, 1.2vw, 1.6rem) 1rem; gap: .25rem; }
-body.tv-mode .tr-lap-item    { font-size: clamp(1.3rem, 2vw, 2.6rem); padding: .25rem 0; }
-body.tv-mode .tr-lap-item--best { font-size: clamp(1.5rem, 2.2vw, 3rem); }
-body.tv-mode .tr-lap-empty   { font-size: clamp(1.1rem, 1.7vw, 2rem); }
-
-body.tv-mode .resting-bar__title { font-size: clamp(1.2rem, 1.8vw, 2rem); }
-body.tv-mode .resting-chip      { font-size: clamp(1.1rem, 1.7vw, 2rem); padding: .5rem 1rem; }
-body.tv-mode .resting-chip__num { font-size: clamp(.9rem, 1.4vw, 1.5rem); }
-body.tv-mode .resting-chip__dot { width: 16px; height: 16px; }
-
-body.tv-mode .tr-standby-badge { font-size: clamp(1.5rem, 2.5vw, 3rem); }
 
 /* ─────────────────────────────────────────────────────────────────────────────
    REDISEÑO MINIMAL
@@ -479,12 +428,179 @@ body.tv-mode .tr-standby-badge { font-size: clamp(1.5rem, 2.5vw, 3rem); }
 .tr-card__divider  { background: rgba(255,255,255,.06); }
 
 /* Botones del header con mejor contraste */
-.tr-btn--voice, .tr-btn--view, .tr-btn--tv, .tr-btn--back, .tr-btn--reset {
+.tr-btn--voice, .tr-btn--view, .tr-btn--back, .tr-btn--reset {
   color: #ffffff;
 }
-.tr-btn--voice, .tr-btn--view, .tr-btn--tv, .tr-btn--back {
+.tr-btn--voice, .tr-btn--view, .tr-btn--back {
   background: #2a2f3a;
 }
 .tr-btn--reset { background: #2a2f3a; border-color: #e63946aa; }
 .tr-btn--view.active { background: #2563eb; }
-.tr-btn--tv.active   { background: #fbbf24; color: #000000; }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Lenguaje visual nuevo (alineado con la vista live de carreras):
+   - Todas las cifras en Inter 800 con letter-spacing tight y tabular-nums.
+   - Paleta: ÚLTIMA condicional (verde/blanco/ámbar/rojo), MEDIA gris,
+     MEJOR verde, RÉCORD CARRIL ámbar.
+   ───────────────────────────────────────────────────────────────────── */
+.tr-card__count,
+.tr-card__best,
+.tr-card__avg-val,
+.tr-srec-time,
+.tr-lap-item {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  letter-spacing: -.02em !important;
+  font-variant-numeric: tabular-nums;
+}
+.tr-card__best,
+.tr-card__avg-val,
+.tr-srec-time {
+  font-weight: 800 !important;
+}
+.tr-card__count { font-weight: 700 !important; color: #ffffff !important; }
+
+/* ÚLTIMA vuelta (el número grande). Color base blanco; JS aplica la clase
+   lv-color-* según comparación con mejor/media. */
+.tr-card__best { color: #ffffff !important; }
+.tr-card__best.lv-color-green { color: #22c55e !important; }
+.tr-card__best.lv-color-white { color: #ffffff !important; }
+.tr-card__best.lv-color-amber { color: #f59e0b !important; }
+.tr-card__best.lv-color-red   { color: #ef4444 !important; }
+
+/* MEDIA → gris (igual que MED en races) */
+[id^="tr-avg-"] { color: #9ca3af !important; }
+
+/* MEJOR → verde (igual que MEJ en races) */
+[id^="tr-record-"] { color: #22c55e !important; }
+
+/* Récord del carril (chip ámbar arriba) */
+.tr-srec-time { color: #f59e0b !important; }
+
+/* Lista de vueltas: Inter 700, mejor vuelta en verde */
+.tr-lap-item { font-weight: 700 !important; }
+.tr-lap-item--best { color: #22c55e !important; }
+
+/* ── Modo Compacta — sin historial ni media. Récord carril sí se mantiene. */
+.training-grid--compact .tr-card__divider,
+.training-grid--compact .tr-card__laps,
+.training-grid--compact .tr-card__avg-cell:first-child {
+  display: none !important;
+}
+/* En compacta la celda Mejor se centra ocupando todo el avg-row */
+.training-grid--compact .tr-card__avg-row {
+  justify-content: center;
+}
+/* La última vuelta (número grande) ocupa más protagonismo en compacta */
+.training-grid--compact .tr-card__best {
+  font-size: clamp(2.8rem, 6vw, 5rem);
+}
+
+/* ── View picker modal (training) ─────────────────────────────────────── */
+.vp-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, .82);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+  padding: 1.5rem;
+}
+.vp-overlay[hidden] { display: none; }
+.vp-modal {
+  background: #0a0a0a;
+  border: 1px solid #21262d;
+  border-radius: 14px;
+  max-width: 720px; width: 100%;
+  max-height: 90vh; overflow: auto;
+  padding: 1.4rem 1.4rem 1.6rem;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .8);
+}
+.vp-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.2rem; }
+.vp-title { font-family: 'Rajdhani', sans-serif; font-size: 1.5rem; font-weight: 700; color: #fff; letter-spacing: .03em; }
+.vp-x { background: #21262d; color: #c9d1d9; border: none; border-radius: 8px; width: 2.2rem; height: 2.2rem; font-size: 1rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.vp-x:hover { background: #30363d; color: #fff; }
+.vp-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .9rem; }
+.vp-opt {
+  background: #161b22; border: 2px solid #21262d; border-radius: 12px;
+  padding: 1rem; text-align: left; cursor: pointer; color: #c9d1d9;
+  display: flex; flex-direction: column; gap: .55rem;
+  transition: border-color .15s, transform .15s, background .15s;
+  font-family: inherit;
+}
+.vp-opt:hover { border-color: #58a6ff; transform: translateY(-2px); background: #1c2128; }
+.vp-opt.is-active { border-color: #f6c90e; background: #1c1a10; }
+.vp-label { font-weight: 700; font-size: 1.1rem; color: #fff; }
+.vp-desc { font-size: .82rem; color: #8b949e; line-height: 1.35; }
+
+/* Thumbnails para training */
+.vp-thumb {
+  background: #0a0a0a; border-radius: 8px; border: 1px solid #21262d;
+  height: 110px; padding: .5rem; display: grid; gap: .35rem;
+}
+/* Historial: 4 tarjetas con líneas debajo simulando lap list */
+.vp-thumb--tr-history {
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: 1fr 1fr;
+}
+.vp-thumb--tr-history > span {
+  background: linear-gradient(180deg,
+    #2196f3 0 22%,
+    transparent 22% 30%,
+    #1f6feb22 30% 36%,
+    transparent 36% 42%,
+    #1f6feb22 42% 48%,
+    transparent 48% 54%,
+    #1f6feb22 54% 60%,
+    transparent 60% 66%,
+    #1f6feb22 66% 72%,
+    transparent 72% 100%
+  );
+  border-radius: 3px;
+  border-top: 2px solid var(--bc, #58a6ff);
+}
+.vp-thumb--tr-history > span:nth-child(1) { --bc: #e63946; }
+.vp-thumb--tr-history > span:nth-child(2) { --bc: #2196f3; }
+.vp-thumb--tr-history > span:nth-child(3) { --bc: #4caf50; }
+.vp-thumb--tr-history > span:nth-child(4) { --bc: #ff9800; }
+/* Compacta: 6 tarjetas pequeñas sin contenido */
+.vp-thumb--tr-compact {
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: 1fr 1fr;
+}
+.vp-thumb--tr-compact > span {
+  background: #21262d;
+  border-top: 2px solid var(--bc, #58a6ff);
+  border-radius: 3px;
+}
+.vp-thumb--tr-compact > span:nth-child(1) { --bc: #e63946; }
+.vp-thumb--tr-compact > span:nth-child(2) { --bc: #2196f3; }
+.vp-thumb--tr-compact > span:nth-child(3) { --bc: #4caf50; }
+.vp-thumb--tr-compact > span:nth-child(4) { --bc: #ff9800; }
+.vp-thumb--tr-compact > span:nth-child(5) { --bc: #9c27b0; }
+.vp-thumb--tr-compact > span:nth-child(6) { --bc: #00bcd4; }
+
+/* ── Ajustes finos de tamaño (más compacto, sobre todo cuando son 8 cards
+   en una fila las dimensiones de FullHD se quedan justas) ─────────────── */
+.tr-card__label       { font-size: clamp(.75rem, 1.3vw, 1.4rem); }
+.tr-card__lane-num    { font-size: 1.15em; padding: .1rem .55rem; }
+.tr-card__count       { font-size: clamp(.7rem, 1.1vw, 1.2rem); }
+.tr-card__name        { font-size: clamp(1rem, 1.6vw, 1.8rem); }
+.tr-card__best        { font-size: clamp(2rem, 4vw, 4.5rem); }
+.tr-card__avg-label   { font-size: clamp(.7rem, 1vw, 1rem); }
+.tr-card__avg-val     { font-size: clamp(.85rem, 1.2vw, 1.3rem); }
+.tr-srec-label        { font-size: clamp(.7rem, 1vw, 1rem); }
+.tr-srec-time         { font-size: clamp(.85rem, 1.2vw, 1.2rem); }
+.tr-lap-item          { font-size: clamp(.75rem, 1vw, 1rem); }
+.tr-lap-item--best    { font-size: clamp(.8rem, 1.1vw, 1.05rem); }
+
+/* ── Ajustes para muchas cards (≥16): tipografía algo menor ────────────── */
+.tr-card__best        { font-size: clamp(1.6rem, 3vw, 3rem) !important; padding: .05rem .55rem !important; }
+.tr-card__name        { font-size: clamp(.9rem, 1.3vw, 1.4rem) !important; padding: .15rem .55rem !important; }
+.tr-card__avg-label   { font-size: clamp(.65rem, .9vw, .95rem) !important; }
+.tr-card__avg-val     { font-size: clamp(.8rem, 1.1vw, 1.15rem) !important; }
+.tr-srec-label        { font-size: clamp(.65rem, .9vw, .9rem) !important; }
+.tr-srec-time         { font-size: clamp(.8rem, 1vw, 1.1rem) !important; }
+.tr-card__label       { font-size: clamp(.7rem, 1.1vw, 1.2rem) !important; }
+.tr-card__count       { font-size: clamp(.65rem, .95vw, 1rem) !important; }
+.tr-card__header      { padding: .35rem .65rem .25rem !important; }
+.tr-card__session-record { padding: .1rem .65rem !important; }
+.tr-card__avg-row     { padding: .1rem .65rem .35rem !important; }

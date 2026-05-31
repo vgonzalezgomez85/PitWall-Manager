@@ -7,15 +7,17 @@
   const CIRCUIT_COLORS = ['#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4'];
 %>
 <%- include('../partials/header', { pageTitle: formTitle }) %>
-<div class="container container--narrow">
+<div class="vt-page vt-page--circuits-form">
+  <div class="vt-wrap vt-wrap--narrow">
 
-  <a href="/circuits" class="back-link">
-    ← <%= lang === 'es' ? 'Volver a circuitos' : 'Back to circuits' %>
+  <a href="/circuits" class="vt-back-link">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    <%= lang === 'es' ? 'Volver a circuitos' : 'Back to circuits' %>
   </a>
-  <h1 class="page-title">🏁 <%= formTitle %></h1>
+  <h1><%= formTitle %></h1>
 
   <% if (errors.length > 0) { %>
-    <div class="alert alert--error">
+    <div class="vt-alert" style="margin-top:16px">
       <% errors.forEach(e => { %>
         <p>
           <% if (e === 'name_required') { %><%= lang === 'es' ? 'El nombre es obligatorio (mínimo 2 caracteres).' : 'Name is required (min 2 characters).' %>
@@ -26,7 +28,7 @@
     </div>
   <% } %>
 
-  <form action="<%= formAction %>" method="POST" class="form-card">
+  <form action="<%= formAction %>" method="POST" class="vt-panel">
 
     <div class="form-group">
       <label class="form-label" for="cName"><%= lang === 'es' ? 'Nombre' : 'Name' %></label>
@@ -121,7 +123,6 @@
       </p>
     </div>
 
-    <% if (categories && categories.length > 0) { %>
     <div class="form-group">
       <label class="form-label">
         <%= lang === 'es' ? 'Vueltas mínimas por categoría (opcional)' : 'Per-category minimum laps (optional)' %>
@@ -131,9 +132,10 @@
           ? 'Sobrescribe el tiempo por defecto cuando la carrera pertenece a una categoría concreta. Deja vacío para usar el valor por defecto.'
           : 'Overrides the default time when the race belongs to a specific category. Leave empty to use the default.' %>
       </p>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.6rem">
-        <% categories.forEach(cat => { %>
-          <div style="display:flex;align-items:center;gap:.5rem;background:#000000;border:1px solid #21262d;border-radius:6px;padding:.5rem .7rem">
+
+      <div id="categoryGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.6rem">
+        <% (categories || []).forEach(cat => { %>
+          <div class="cat-row" data-cat-id="<%= cat.id %>" style="display:flex;align-items:center;gap:.5rem;background:#000000;border:1px solid #21262d;border-radius:6px;padding:.5rem .7rem">
             <span style="flex:1;font-weight:600;font-size:.95rem"><%= cat.name %></span>
             <input class="form-input form-input--sm"
                    type="number" step="0.01" min="0" max="999"
@@ -145,8 +147,24 @@
           </div>
         <% }) %>
       </div>
+
+      <% if (!categories || categories.length === 0) { %>
+        <p id="catEmpty" class="form-hint" style="margin:.6rem 0">
+          <%= lang === 'es' ? 'No hay categorías todavía. Crea una abajo para asignarle un tiempo mínimo.' : 'No categories yet. Create one below to assign it a minimum lap time.' %>
+        </p>
+      <% } %>
+
+      <!-- Inline create category -->
+      <div style="display:flex;gap:.5rem;align-items:center;margin-top:.6rem;flex-wrap:wrap">
+        <input id="newCatName" type="text" class="form-input form-input--sm"
+               placeholder="<%= lang === 'es' ? 'Nombre de categoría (p. ej. GT, GRUPO C)' : 'Category name (e.g. GT, GROUP C)' %>"
+               style="flex:1;min-width:200px" maxlength="40" autocomplete="off">
+        <button type="button" id="btnAddCategory" class="btn btn--ghost btn--sm">
+          + <%= lang === 'es' ? 'Crear categoría' : 'Create category' %>
+        </button>
+      </div>
+      <p id="catFeedback" class="form-hint" style="margin-top:.35rem;display:none"></p>
     </div>
-    <% } %>
 
     <div class="form-group">
       <label class="form-label" for="cDesc">
@@ -209,14 +227,15 @@
              value='<%= (isEdit && circuit) ? (circuit.track_outline_json || "[]") : "[]" %>'>
     </details>
 
-    <div class="form-actions">
-      <a href="/circuits" class="btn btn--ghost"><%= lang === 'es' ? 'Cancelar' : 'Cancel' %></a>
-      <button type="submit" class="btn btn--primary">
+    <div class="vt-form-actions">
+      <a href="/circuits" class="vt-btn vt-btn--ghost"><%= lang === 'es' ? 'Cancelar' : 'Cancel' %></a>
+      <button type="submit" class="vt-btn vt-btn--primary">
         <%= isEdit ? (lang === 'es' ? 'Guardar cambios' : 'Save changes') : (lang === 'es' ? 'Crear circuito' : 'Create circuit') %>
       </button>
     </div>
 
   </form>
+  </div>
 </div>
 
 <!-- ── Track outline editor — vanilla JS, autoinit cuando el details se abre ──── -->
@@ -657,6 +676,69 @@ seqEl.addEventListener('click', e => {
 
 // Initial render: from saved value or default rotation
 renderSeq(parseSeqFromValue(seqHidd.value, totalLanesNow()));
+
+// ── Crear categoría inline (POST /api/categories) ──────────────────────
+(function () {
+  const input = document.getElementById('newCatName');
+  const btn   = document.getElementById('btnAddCategory');
+  const grid  = document.getElementById('categoryGrid');
+  const empty = document.getElementById('catEmpty');
+  const feed  = document.getElementById('catFeedback');
+  if (!input || !btn || !grid) return;
+
+  function showFeedback(msg, isError) {
+    feed.textContent = msg;
+    feed.style.display = 'block';
+    feed.style.color = isError ? '#e63946' : '#4caf50';
+    if (!isError) setTimeout(() => { feed.style.display = 'none'; }, 2500);
+  }
+
+  function addCardToGrid(cat) {
+    const div = document.createElement('div');
+    div.className = 'cat-row';
+    div.dataset.catId = cat.id;
+    div.style.cssText = 'display:flex;align-items:center;gap:.5rem;background:#000000;border:1px solid #21262d;border-radius:6px;padding:.5rem .7rem';
+    div.innerHTML = `
+      <span style="flex:1;font-weight:600;font-size:.95rem">${cat.name}</span>
+      <input class="form-input form-input--sm" type="number" step="0.01" min="0" max="999"
+             name="category_min_lap_s_${cat.id}" placeholder="—" style="width:5.5rem">
+      <span class="form-hint">s</span>
+    `;
+    grid.appendChild(div);
+    if (empty) empty.style.display = 'none';
+  }
+
+  async function createCategory() {
+    const name = input.value.trim();
+    if (!name) { showFeedback('Escribe un nombre primero', true); input.focus(); return; }
+    btn.disabled = true;
+    try {
+      const res = await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showFeedback(data.error || 'Error', true);
+      } else {
+        addCardToGrid({ id: data.id, name: data.name });
+        input.value = '';
+        showFeedback(`Categoría "${data.name}" creada`, false);
+      }
+    } catch (e) {
+      showFeedback('Error de red', true);
+    } finally {
+      btn.disabled = false;
+      input.focus();
+    }
+  }
+
+  btn.addEventListener('click', createCategory);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); createCategory(); }
+  });
+})();
 </script>
 
 <%- include('../partials/footer') %>

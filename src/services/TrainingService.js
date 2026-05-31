@@ -35,21 +35,20 @@ class TrainingServiceClass {
     this._pendingDurationMs = null;
     this._sessionRecords   = new Map(); // lane → bestMs, persists until reset
 
-    // Trama 1 del GO: solo prepara y guarda la duración. La activación (cronómetro)
-    // se difiere hasta race_started (trama 3, t+3134ms) para que la cuenta atrás
-    // comience exactamente cuando la corriente se enciende.
+    // Trama 1 del GO: limpia datos de la sesión anterior y guarda la duración.
+    // La activación (cronómetro) se difiere hasta race_started (trama 3,
+    // t+3134ms) para que la cuenta atrás comience exactamente cuando la
+    // corriente se enciende. Los récords de carril (_sessionRecords) se
+    // PRESERVAN entre GOs — solo se borran con el botón "Reset" manual.
     SerialService.on('race_go', ({ durationMs }) => {
-      // Trama 1: guarda duración. No activa todavía — el cronómetro arranca en trama 3.
       if (this._active) return;
       this._pendingDurationMs = durationMs;
       this._paused = false;
-      if (!this._standby) {
-        this.prepare(lanesFromSettings());
-      }
+      this.prepare(lanesFromSettings());
+      SocketService.emit('training:standby', this.getLanes());
     });
 
     SerialService.on('race_started', () => {
-      // Trama 3: activa el cronómetro y emite training:go.
       if (this._active) return;
       this._paused = false;
       if (this._pendingDurationMs != null) {

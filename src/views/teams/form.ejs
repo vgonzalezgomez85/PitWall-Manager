@@ -7,15 +7,17 @@
   const currentMembers = isEdit ? team.members : [];
 %>
 <%- include('../partials/header', { pageTitle: formTitle }) %>
-<div class="container container--narrow">
+<div class="vt-page vt-page--teams-form">
+  <div class="vt-wrap vt-wrap--narrow">
 
-  <a href="/teams" class="back-link">
-    ← <%= lang === 'es' ? 'Volver a equipos' : 'Back to teams' %>
+  <a href="/teams" class="vt-back-link">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    <%= lang === 'es' ? 'Volver a equipos' : 'Back to teams' %>
   </a>
-  <h1 class="page-title">🤝 <%= formTitle %></h1>
+  <h1><%= formTitle %></h1>
 
   <% if (errors.length > 0) { %>
-    <div class="alert alert--error">
+    <div class="vt-alert" style="margin-top:16px">
       <% errors.forEach(e => { %>
         <p>
           <% if (e === 'name_required') { %>
@@ -26,7 +28,7 @@
     </div>
   <% } %>
 
-  <form action="<%= formAction %>" method="POST" enctype="multipart/form-data" class="form-card">
+  <form action="<%= formAction %>" method="POST" enctype="multipart/form-data" class="vt-panel">
 
     <!-- Name -->
     <div class="form-group">
@@ -152,14 +154,15 @@
              value="<%= body.notes || '' %>">
     </div>
 
-    <div class="form-actions">
-      <a href="/teams" class="btn btn--ghost"><%= lang === 'es' ? 'Cancelar' : 'Cancel' %></a>
-      <button type="submit" class="btn btn--primary">
+    <div class="vt-form-actions">
+      <a href="/teams" class="vt-btn vt-btn--ghost"><%= lang === 'es' ? 'Cancelar' : 'Cancel' %></a>
+      <button type="submit" class="vt-btn vt-btn--primary">
         <%= isEdit ? (lang === 'es' ? 'Guardar cambios' : 'Save changes') : (lang === 'es' ? 'Crear equipo' : 'Create team') %>
       </button>
     </div>
 
   </form>
+  </div>
 </div>
 
 <style>

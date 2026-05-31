@@ -74,7 +74,22 @@
     .pt-pos.p3 { background: #a0674a; color: #fff; }
     .pt-pos.pn { background: #21262d; color: #8b949e; }
 
-    .pt-name    { color: #e6edf3; font-weight: 500; }
+    .pt-name-cell { max-width: 32%; overflow: hidden; }
+    .pt-name {
+      display: inline-block;
+      white-space: nowrap;
+      color: #e6edf3;
+      font-weight: 500;
+      max-width: 100%;
+    }
+    .pt-name--marquee {
+      animation: pt-name-scroll 8s linear infinite;
+      transform-origin: left center;
+    }
+    @keyframes pt-name-scroll {
+      0%,  15%  { transform: translateX(0); }
+      85%, 100% { transform: translateX(var(--pt-name-shift, -50%)); }
+    }
     .pt-proj    { font-family: 'Share Tech Mono', monospace; color: #f6c90e; font-weight: 700; font-size: 1.05rem; }
     .pt-ontrack { font-family: 'Share Tech Mono', monospace; color: #e6edf3; font-weight: 700; }
     .pt-avg     { font-family: 'Share Tech Mono', monospace; color: #58a6ff; }
@@ -180,115 +195,191 @@
 
     const panelBody = document.getElementById('panelBody');
 
+    // Auto-ajuste de fuente y padding a la VENTANA: toma el mínimo entre el
+    // factor altura (filas vs alto disponible) y el factor ancho (8 columnas
+    // necesitan ~440px a 1rem). Se ejecuta en resize Y tras cada render, y
+    // también vía ResizeObserver sobre el contenedor por si la ventana del
+    // popup cambia sin disparar resize del window (raro pero posible).
+    // Auto-ajuste + paginación con carrusel:
+    //   1) Calcula un tamaño de fuente basado en altura, con un MÍNIMO
+    //      legible (~0.72 rem). Si todas las filas no caben a ese tamaño,
+    //      no se sigue achicando — se pagina.
+    //   2) Mide el ancho real y reduce la fuente si las columnas no caben.
+    //   3) Calcula cuántas filas caben con la fuente final y, si sobran,
+    //      activa un carrusel que rota la página visible cada PAGE_INTERVAL_MS.
+    const PAGE_INTERVAL_MS = 30000;   // 30 s entre páginas
+    const FONT_MIN_REM      = 0.72;
+    const FONT_MAX_REM      = 1.4;
+    let _pageTimer = null;
+    let _currentPage = 0;
     function fitTable() {
       const wrap = document.querySelector('.panel-table-wrap');
-      if (!wrap) return;
+      const table = document.querySelector('.panel-table');
+      if (!wrap || !table) return;
       const thead = wrap.querySelector('thead');
-      const rows  = panelBody ? panelBody.querySelectorAll('tr') : [];
-      if (!rows.length) return;
-      const available = wrap.clientHeight - (thead ? thead.offsetHeight : 32);
-      const rowH = available / rows.length;
-      const fontSize = Math.min(0.92, Math.max(0.38, rowH / (1.5 + 0.9)));
-      const pad      = Math.min(0.55, Math.max(0.06, fontSize * 0.45));
-      document.documentElement.style.setProperty('--pt-font', fontSize.toFixed(3) + 'rem');
-      document.documentElement.style.setProperty('--pt-pad',  pad.toFixed(3) + 'rem');
-    }
-    window.addEventListener('resize', fitTable);
+      const allRows = panelBody ? Array.from(panelBody.querySelectorAll('tr')) : [];
+      if (!allRows.length) return;
 
-    // Projected total laps for the WHOLE race for every participant. Uses the
-    // same formula as live.js so that this popup panel shows identical values
-    // to the sidebar in the main /live view:
-    //
-    //   Active in this manga:  prevLaps + projThisManga + projFutureMangas
-    //     prevLaps        = race-wide laps before this manga (from prevLapsByLane)
-    //     projThisManga   = floor(totalMangaDuration / avgLapMs) — extrapolate the current manga
-    //     projFutureMangas= remaining_mangas × (historical avg laps per manga)
-    //
-    //   Resting / different tanda:  total_laps + projFutureMangas
-    function buildRows(data) {
-      const liveByName = new Map();
-      if (data?.standings) {
-        data.standings.forEach(s => {
-          if (s.name) liveByName.set(s.name, s);
-        });
+      // Reset display para medir con todas las filas visibles
+      allRows.forEach(r => { r.style.display = ''; });
+
+      const headerH    = thead ? thead.offsetHeight : 32;
+      const availableH = Math.max(60, wrap.clientHeight - headerH);
+      const availableW = Math.max(120, wrap.clientWidth - 4);
+
+      // 1) Tamaño inicial por altura con MIN floor (no achicar más allá de eso)
+      const rowHTarget = availableH / allRows.length;
+      let fontSize  = rowHTarget / 2.4;
+      fontSize      = Math.min(FONT_MAX_REM, Math.max(FONT_MIN_REM, fontSize));
+      let pad       = Math.max(0.05, fontSize * 0.40);
+      document.documentElement.style.setProperty('--pt-font', fontSize.toFixed(3) + 'rem');
+      document.documentElement.style.setProperty('--pt-pad',  pad.toFixed(3)      + 'rem');
+
+      // 2) Width-fit: si las columnas no caben, reduce proporcionalmente
+      for (let iter = 0; iter < 3; iter++) {
+        void table.offsetWidth;
+        const actualW = table.scrollWidth;
+        if (actualW <= availableW + 2) break;
+        const ratio = (availableW - 4) / actualW;
+        fontSize    = Math.max(0.38, fontSize * ratio);     // sin floor aquí, prioridad: caben
+        pad         = Math.max(0.04, fontSize * 0.40);
+        document.documentElement.style.setProperty('--pt-font', fontSize.toFixed(3) + 'rem');
+        document.documentElement.style.setProperty('--pt-pad',  pad.toFixed(3)      + 'rem');
       }
 
-      const elapsed   = data?.elapsedMs ?? 0;
-      const remaining = data?.remainingMs ?? PANEL_DATA.mangaDurationMs;
-      const totalMangaDuration = elapsed + remaining || PANEL_DATA.mangaDurationMs;
+      // 3) Paginación: con la fuente final, ¿caben todas las filas?
+      void table.offsetWidth;
+      const actualRowH = allRows[0].offsetHeight || (fontSize * 16 * 2.4);
+      const pageSize   = Math.max(1, Math.floor(availableH / actualRowH));
+
+      if (_pageTimer) { clearInterval(_pageTimer); _pageTimer = null; }
+
+      if (pageSize >= allRows.length) {
+        // Cabe todo: nada que paginar
+        _currentPage = 0;
+        return;
+      }
+
+      // Hay overflow → rotar páginas
+      const totalPages = Math.ceil(allRows.length / pageSize);
+      if (_currentPage >= totalPages) _currentPage = 0;
+      showPage(allRows, pageSize, _currentPage);
+      _pageTimer = setInterval(() => {
+        _currentPage = (_currentPage + 1) % totalPages;
+        showPage(allRows, pageSize, _currentPage);
+        if (typeof refreshMarquees === 'function') refreshMarquees();
+      }, PAGE_INTERVAL_MS);
+    }
+
+    function showPage(rows, pageSize, pageIdx) {
+      const from = pageIdx * pageSize;
+      const to   = from + pageSize;
+      rows.forEach((r, i) => {
+        r.style.display = (i >= from && i < to) ? '' : 'none';
+      });
+    }
+    window.addEventListener('resize', fitTable);
+    // ResizeObserver sobre el wrap: dispara fitTable si el contenedor cambia
+    // (p.ej. al cambiar el tamaño de la ventana del popup sin un resize de window)
+    if ('ResizeObserver' in window) {
+      const wrap = document.querySelector('.panel-table-wrap');
+      if (wrap) {
+        let rafId = 0;
+        const ro = new ResizeObserver(() => {
+          if (rafId) cancelAnimationFrame(rafId);
+          rafId = requestAnimationFrame(() => { rafId = 0; fitTable(); });
+        });
+        ro.observe(wrap);
+      }
+    }
+
+    // Proyección estilo Tic Tac, idéntica a la del sidebar de /live:
+    //   projectedTotal = (planned_mangas × manga_duration_ms) / avgLapMs
+    // donde avgLapMs es la media SUCIA (incluye salidas, excluye warmup).
+    function buildRows(data) {
+      const MANGA_DURATION_MS = PANEL_DATA.mangaDurationMs || 0;
       const allPMap = new Map();
       (PANEL_DATA.allParticipants || []).forEach(p => allPMap.set(p.entity_name, p));
 
-      function projFutureMangas(p, extraMangas) {
-        if (!p || !extraMangas) return 0;
-        const avgPerManga = p.mangas_raced > 0 ? p.total_laps / p.mangas_raced : 0;
-        return Math.round(extraMangas * avgPerManga);
-      }
-
-      // Active (in this manga) participants — overlay live standings on DB totals
+      // Activo en esta manga: media combinada (server emite raceAvgLapMs)
       const activeByName = new Map();
       if (data?.standings) {
         data.standings.forEach(r => {
-          const p          = allPMap.get(r.name);
-          const prevLaps   = (PANEL_DATA.prevLapsByLane || {})[r.lane] || 0;
-          const total      = prevLaps + (r.lapCount || 0);
-          const avg        = r.lapCount > 1 ? (elapsed / r.lapCount) : (r.avgLapMs || null);
-          const projThis   = avg && totalMangaDuration > 0
-            ? Math.floor(totalMangaDuration / avg) : (r.lapCount || 0);
-          const projFuture = projFutureMangas(p, p?.remaining_mangas || 0);
+          const prevLaps = (PANEL_DATA.prevLapsByLane || {})[r.lane] || 0;
+          const total    = prevLaps + (r.lapCount || 0);
           activeByName.set(r.name, {
             name: r.name,
             total,
-            avgLapMs: r.avgLapMs ?? (avg ? Math.round(avg) : null),
-            projectedTotal: prevLaps + projThis + projFuture,
+            avgLapMs:  r.raceAvgLapMs ?? r.avgLapMs ?? null,
+            bestLapMs: r.bestLapMs ?? null,
             hasData: true,
           });
         });
       }
 
-      // Merge active + non-active participants (different tanda / resting now)
+      // Combinar: todos los participantes de la carrera + activos sin histórico
       const seen = new Set();
       const rows = [];
       (PANEL_DATA.allParticipants || []).forEach(p => {
         const name = p.entity_name;
+        if (!name) return;                              // descarta entradas null
         if (seen.has(name)) return;
         seen.add(name);
         if (activeByName.has(name)) {
           rows.push(activeByName.get(name));
         } else {
-          const projFuture = projFutureMangas(p, p.remaining_mangas || 0);
           rows.push({
             name,
             total: p.total_laps || 0,
-            avgLapMs: p.avg_lap_ms != null ? Math.round(p.avg_lap_ms) : null,
-            projectedTotal: (p.total_laps || 0) + projFuture,
+            avgLapMs:  p.avg_lap_ms != null ? Math.round(p.avg_lap_ms) : null,
+            bestLapMs: p.best_lap_ms ?? null,
             hasData: (p.total_laps || 0) > 0 || p.avg_lap_ms != null,
           });
         }
       });
-      // Active participants that are not yet in allParticipants (first manga ever)
       activeByName.forEach((r, name) => { if (!seen.has(name)) { rows.push(r); seen.add(name); } });
 
-      rows.sort((a, b) =>
-        b.projectedTotal - a.projectedTotal ||
-        (a.avgLapMs ?? Infinity) - (b.avgLapMs ?? Infinity) ||
-        a.name.localeCompare(b.name)
-      );
+      // Aplica la fórmula por piloto usando sus planned_mangas
+      rows.forEach(r => {
+        const p = allPMap.get(r.name);
+        const plannedMangas = p?.planned_mangas || 0;
+        const pilotRaceMs   = plannedMangas * MANGA_DURATION_MS;
+        if (pilotRaceMs > 0 && r.avgLapMs && r.avgLapMs > 0) {
+          r.projectedTotalRaw = pilotRaceMs / r.avgLapMs;
+          r.projectedTotal    = Math.round(r.projectedTotalRaw);
+        } else {
+          r.projectedTotalRaw = null;
+          r.projectedTotal    = null;
+        }
+      });
+
+      rows.sort((a, b) => {
+        if (a.projectedTotalRaw == null && b.projectedTotalRaw == null) return (a.name || '').localeCompare(b.name || '');
+        if (a.projectedTotalRaw == null) return 1;
+        if (b.projectedTotalRaw == null) return -1;
+        return b.projectedTotalRaw - a.projectedTotalRaw
+            || (a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity);
+      });
 
       const BIG = 1e9;
-      const scoreOf = r => (r.projectedTotal || 0) * BIG - (r.avgLapMs ?? BIG);
+      const scoreOf = r => (r.projectedTotalRaw ?? 0) * BIG - (r.avgLapMs ?? BIG);
 
       rows.forEach((r, i) => {
-        if (i === 0) { r._gapL = 0; r._gapMs = 0; r._gapAbove = null; }
+        if (i === 0) { r._gapL = null; r._gapMs = 0; r._gapAbove = null; }
         else {
           const above = rows[i-1];
-          r._gapL = above.projectedTotal - r.projectedTotal;
-          r._gapMs = (r._gapL === 0 && r.avgLapMs != null && above.avgLapMs != null)
+          const aRaw = above.projectedTotalRaw, rRaw = r.projectedTotalRaw;
+          // Si cualquiera de los dos no tiene proyección, no hay gap definido
+          r._gapL = (aRaw == null || rRaw == null) ? null : (aRaw - rRaw);
+          r._gapMs = (r._gapL != null && Math.abs(r._gapL) < 0.5
+                       && r.avgLapMs != null && above.avgLapMs != null)
             ? above.avgLapMs - r.avgLapMs : 0;
-          r._gapAbove = scoreOf(above) - scoreOf(r);
+          r._gapAbove = (r.projectedTotalRaw == null || above.projectedTotalRaw == null)
+            ? null : scoreOf(above) - scoreOf(r);
         }
         const below = rows[i+1];
-        r._gapBelow = below ? scoreOf(r) - scoreOf(below) : null;
+        r._gapBelow = (below && r.projectedTotalRaw != null && below.projectedTotalRaw != null)
+          ? scoreOf(r) - scoreOf(below) : null;
 
         const prev = prevPanelGap[r.name] || {};
         r._trUp = 'neutral'; r._trDown = 'neutral';
@@ -318,7 +409,7 @@
         return `
         <tr class="pt-row${r.hasData ? '' : ' pt-row--idle'}">
           <td><span class="pt-pos ${posClass(i+1)}">${i+1}</span></td>
-          <td><span class="pt-name">${r.name}</span></td>
+          <td class="pt-name-cell"><span class="pt-name">${r.name}</span></td>
           <td class="pt-right"><span class="pt-proj">${r.projectedTotal || '—'}</span></td>
           <td class="pt-right"><span class="pt-ontrack">${r.total}</span></td>
           <td class="pt-right"><span class="pt-avg">${formatMs(r.avgLapMs)}</span></td>
@@ -330,8 +421,30 @@
           <td class="pt-right"><span class="pt-gap">${r._gapMs > 0 ? '+' + formatMs(r._gapMs) : '—'}</span></td>
         </tr>`;
       }).join('');
-      requestAnimationFrame(fitTable);
+      requestAnimationFrame(() => { fitTable(); refreshMarquees(); });
     }
+
+    // Marquee automático para nombres que no caben en su celda. Detecta
+    // overflow midiendo scrollWidth vs clientWidth y aplica una animación
+    // CSS que desplaza el texto a la izquierda y vuelve. Se recalcula tras
+    // cada render y cuando cambia el tamaño de la ventana (la celda max-width
+    // es porcentual del wrap, así que cambia con el ancho del popup).
+    function refreshMarquees() {
+      document.querySelectorAll('.pt-name').forEach(el => {
+        const cell = el.closest('.pt-name-cell');
+        if (!cell) return;
+        el.classList.remove('pt-name--marquee');
+        el.style.removeProperty('--pt-name-shift');
+        // Forzar reflow tras quitar la animación para que las medidas sean reales
+        void el.offsetWidth;
+        const overflow = el.scrollWidth - cell.clientWidth;
+        if (overflow > 4) {
+          el.style.setProperty('--pt-name-shift', -(overflow + 8) + 'px');
+          el.classList.add('pt-name--marquee');
+        }
+      });
+    }
+    window.addEventListener('resize', () => requestAnimationFrame(refreshMarquees));
 
     render(PANEL_DATA.standings);
 

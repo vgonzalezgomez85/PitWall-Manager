@@ -1,93 +1,111 @@
 <%- include('../partials/header', { pageTitle: lang === 'es' ? 'Circuitos' : 'Circuits' }) %>
-<div class="container">
 
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem">
-    <h1 class="page-title" style="margin:0">
-      🏁 <%= lang === 'es' ? 'Circuitos' : 'Circuits' %>
-    </h1>
-    <a href="/circuits/new" class="btn btn--primary">
-      + <%= lang === 'es' ? 'Nuevo circuito' : 'New circuit' %>
+<div class="vt-page">
+  <div class="vt-wrap">
+
+    <a href="/" class="vt-back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      <%= lang === 'es' ? 'Inicio' : 'Home' %>
     </a>
-  </div>
 
-  <% if (circuits.length === 0) { %>
-    <div class="empty-state" style="padding:3rem">
-      <p class="empty-state__text">
-        <%= lang === 'es' ? 'No hay circuitos. Crea uno para reutilizarlo en tus carreras.' : 'No circuits yet. Create one to reuse it in your races.' %>
-      </p>
-      <a href="/circuits/new" class="btn btn--primary" style="margin-top:1rem">
-        + <%= lang === 'es' ? 'Crear circuito' : 'Create circuit' %>
-      </a>
+    <% if (flash) { %>
+      <div class="flash flash--<%= flash.type %>" style="margin-bottom:1rem"><%- flash.text %></div>
+    <% } %>
+
+    <div class="vt-head">
+      <div class="vt-head__title">
+        <h1><%= lang === 'es' ? 'Circuitos' : 'Circuits' %></h1>
+        <span class="vt-cnt"><%= circuits.length %></span>
+      </div>
+      <div class="vt-head__actions">
+        <a href="/circuits/new" class="vt-btn vt-btn--primary">
+          + <%= lang === 'es' ? 'Nuevo circuito' : 'New circuit' %>
+        </a>
+      </div>
     </div>
-  <% } else { %>
-    <div class="tanda-block" style="padding:0;overflow:hidden">
-      <table class="schedule-table">
-        <thead>
-          <tr>
-            <th><%= lang === 'es' ? 'Nombre' : 'Name' %></th>
-            <th><%= lang === 'es' ? 'Sub-circuitos' : 'Sub-circuits' %></th>
-            <th><%= lang === 'es' ? 'Configuración de carriles' : 'Lane configuration' %></th>
-            <th><%= lang === 'es' ? 'Carriles totales' : 'Total lanes' %></th>
-            <th><%= lang === 'es' ? 'Vuelta mínima' : 'Min lap' %></th>
-            <th><%= lang === 'es' ? 'Por categoría' : 'Per category' %></th>
-            <th><%= lang === 'es' ? 'Notas' : 'Notes' %></th>
-            <th><%= lang === 'es' ? 'Creado' : 'Created' %></th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <% circuits.forEach(c => {
-            let cfg = [];
-            try { cfg = JSON.parse(c.circuits_config || '[]'); } catch {}
-            if (!Array.isArray(cfg) || cfg.length === 0) cfg = [c.lanes_count];
-            const cfgLabel = cfg.join(' + ');
-            const created = c.created_at ? new Date(c.created_at.replace(' ', 'T') + 'Z').toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US') : '—';
-          %>
+
+    <% if (circuits.length === 0) { %>
+      <div class="vt-empty" style="margin-top:32px">
+        <div class="vt-empty__t"><%= lang === 'es' ? 'Sin circuitos' : 'No circuits' %></div>
+        <p style="color:var(--vt-mute);margin:6px 0 16px">
+          <%= lang === 'es' ? 'Crea uno para reutilizarlo en tus carreras.' : 'Create one to reuse it in your races.' %>
+        </p>
+        <a href="/circuits/new" class="vt-btn vt-btn--primary">+ <%= lang === 'es' ? 'Crear circuito' : 'Create circuit' %></a>
+      </div>
+    <% } else { %>
+
+      <div class="vt-table-card">
+        <table class="vt-table">
+          <thead>
             <tr>
-              <td style="font-weight:600"><%= c.name %></td>
-              <td style="font-family:monospace"><%= c.circuits_count %></td>
-              <td style="font-family:monospace; color:#58a6ff"><%= cfgLabel %></td>
-              <td style="font-family:monospace; font-weight:600"><%= c.lanes_count %></td>
-              <td style="font-family:monospace">
-                <% if (c.min_lap_ms > 0) { %>
-                  <span style="color:#4caf50;font-weight:600"><%= (c.min_lap_ms / 1000).toFixed(2) %>s</span>
-                <% } else { %>
-                  <span style="color:var(--text-muted)">—</span>
-                <% } %>
-              </td>
-              <td style="font-size:.85rem">
-                <% if (c.category_times && c.category_times.length > 0) { %>
-                  <div style="display:flex;flex-wrap:wrap;gap:.3rem">
-                    <% c.category_times.forEach(ct => { %>
-                      <span style="background:#161b22;border:1px solid #21262d;border-radius:4px;padding:.15rem .4rem;font-family:monospace">
-                        <span style="color:#8b949e"><%= ct.category_name %>:</span>
-                        <span style="color:#58a6ff;font-weight:600"><%= (ct.min_lap_ms / 1000).toFixed(2) %>s</span>
-                      </span>
-                    <% }) %>
-                  </div>
-                <% } else { %>
-                  <span style="color:var(--text-muted)">—</span>
-                <% } %>
-              </td>
-              <td style="color:var(--text-muted);font-size:.85rem"><%= c.description || '—' %></td>
-              <td style="color:var(--text-muted);font-size:.85rem"><%= created %></td>
-              <td>
-                <div style="display:flex;gap:.4rem;justify-content:flex-end">
-                  <a href="/circuits/<%= c.id %>/edit" class="btn btn--ghost btn--sm">
-                    ✏ <%= lang === 'es' ? 'Editar' : 'Edit' %>
-                  </a>
-                  <form action="/circuits/<%= c.id %>/delete" method="POST"
-                        onsubmit="return confirm('<%= lang === 'es' ? '¿Eliminar circuito?' : 'Delete circuit?' %>')">
-                    <button type="submit" class="btn btn--danger btn--sm">✕</button>
-                  </form>
-                </div>
-              </td>
+              <th><%= lang === 'es' ? 'Nombre' : 'Name' %></th>
+              <th class="is-num"><%= lang === 'es' ? 'Sub-circuitos' : 'Sub-circuits' %></th>
+              <th><%= lang === 'es' ? 'Configuración' : 'Configuration' %></th>
+              <th class="is-num"><%= lang === 'es' ? 'Carriles' : 'Lanes' %></th>
+              <th><%= lang === 'es' ? 'Vuelta mín.' : 'Min lap' %></th>
+              <th><%= lang === 'es' ? 'Por categoría' : 'Per category' %></th>
+              <th><%= lang === 'es' ? 'Notas' : 'Notes' %></th>
+              <th><%= lang === 'es' ? 'Creado' : 'Created' %></th>
+              <th class="is-actions"></th>
             </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    </div>
-  <% } %>
+          </thead>
+          <tbody>
+            <% circuits.forEach(c => {
+              let cfg = [];
+              try { cfg = JSON.parse(c.circuits_config || '[]'); } catch {}
+              if (!Array.isArray(cfg) || cfg.length === 0) cfg = [c.lanes_count];
+              const cfgLabel = cfg.join(' + ');
+              const created = c.created_at
+                ? new Date(c.created_at.replace(' ', 'T') + 'Z').toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US')
+                : '—';
+            %>
+              <tr>
+                <td class="is-name"><%= c.name %></td>
+                <td class="is-num is-mono"><%= c.circuits_count %></td>
+                <td class="is-mono is-info"><%= cfgLabel %></td>
+                <td class="is-num is-mono is-name"><%= c.lanes_count %></td>
+                <td class="is-mono">
+                  <% if (c.min_lap_ms > 0) { %>
+                    <span style="color:var(--vt-green);font-weight:600"><%= (c.min_lap_ms / 1000).toFixed(2) %>s</span>
+                  <% } else { %>
+                    <span class="is-mute">—</span>
+                  <% } %>
+                </td>
+                <td>
+                  <% if (c.category_times && c.category_times.length > 0) { %>
+                    <div style="display:flex;flex-wrap:wrap;gap:6px">
+                      <% c.category_times.forEach(ct => { %>
+                        <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;background:var(--vt-surface);border:1px solid var(--vt-border);border-radius:6px;padding:2px 8px">
+                          <span style="color:var(--vt-mute)"><%= ct.category_name %>:</span>
+                          <span style="color:var(--vt-blue);font-weight:600"><%= (ct.min_lap_ms / 1000).toFixed(2) %>s</span>
+                        </span>
+                      <% }) %>
+                    </div>
+                  <% } else { %>
+                    <span class="is-mute">—</span>
+                  <% } %>
+                </td>
+                <td class="is-mute"><%= c.description || '—' %></td>
+                <td class="is-mute is-mono"><%= created %></td>
+                <td class="is-actions">
+                  <a href="/circuits/<%= c.id %>/edit" class="vt-icon-btn" title="<%= lang === 'es' ? 'Editar' : 'Edit' %>">
+                    <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+                  </a>
+                  <form action="/circuits/<%= c.id %>/delete" method="POST" style="display:inline"
+                        onsubmit="return confirm('<%= lang === 'es' ? '¿Eliminar circuito?' : 'Delete circuit?' %>')">
+                    <button type="submit" class="vt-icon-btn is-danger" title="<%= lang === 'es' ? 'Eliminar' : 'Delete' %>">
+                      <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/></svg>
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
 
+    <% } %>
+  </div>
 </div>
+
 <%- include('../partials/footer') %>

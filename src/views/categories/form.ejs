@@ -1,56 +1,62 @@
-<%- include('../partials/header-compact', { lang, pageTitle: typeof pageTitle !== 'undefined' ? pageTitle : '' }) %>
+<%- include('../partials/header', { lang, pageTitle: typeof pageTitle !== 'undefined' ? pageTitle : '' }) %>
 
-<div class="container--narrow">
+<div class="vt-page">
+  <div class="vt-wrap vt-wrap--narrow">
 
-  <div class="page-header">
-    <div>
-      <a href="/categories" class="back-link">← <%= lang === 'es' ? 'Volver' : 'Back' %></a>
-      <h1 class="page-title">
-        <% if (category) { %>
-          ✏️ <%= lang === 'es' ? 'Editar categoría' : 'Edit category' %>
-        <% } else { %>
-          ➕ <%= lang === 'es' ? 'Nueva categoría' : 'New category' %>
-        <% } %>
-      </h1>
-    </div>
+    <a href="/categories" class="vt-back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      <%= lang === 'es' ? 'Volver a categorías' : 'Back to categories' %>
+    </a>
+
+    <h1>
+      <% if (category) { %>
+        <%= lang === 'es' ? 'Editar categoría' : 'Edit category' %>
+      <% } else { %>
+        <%= lang === 'es' ? 'Nueva categoría' : 'New category' %>
+      <% } %>
+    </h1>
+
+    <% if (error) { %>
+      <div class="vt-alert" style="margin-top:16px">
+        <p><strong><%= lang === 'es' ? 'Error' : 'Error' %>:</strong> <%= error %></p>
+      </div>
+    <% } %>
+
+    <form action="<%= category ? '/categories/' + category.id : '/categories' %>" method="POST" class="vt-panel">
+
+      <div class="vt-form-group">
+        <label class="vt-form-group__label" for="name">
+          <%= lang === 'es' ? 'Nombre de la categoría' : 'Category name' %> *
+        </label>
+        <input class="vt-inp" type="text" id="name" name="name" maxlength="50"
+          value="<%= category?.name || '' %>"
+          placeholder="<%= lang === 'es' ? 'Ej: Fórmula 1, Rally, Clásicos' : 'E.g: Formula 1, Rally, Classics' %>"
+          autocomplete="off" autofocus required>
+        <p class="vt-hint"><%= lang === 'es' ? 'Nombre que verás en los catálogos de coches y carreras.' : 'Name displayed in car and race catalogs.' %></p>
+      </div>
+
+      <div class="vt-form-group">
+        <label class="vt-form-group__label" for="description">
+          <%= lang === 'es' ? 'Descripción' : 'Description' %>
+        </label>
+        <textarea class="vt-inp" id="description" name="description" rows="3" maxlength="200"
+          style="height:auto;padding-top:12px;padding-bottom:12px;line-height:1.5;resize:vertical"
+          placeholder="<%= lang === 'es' ? 'Descripción opcional…' : 'Optional description…' %>"><%= category?.description || '' %></textarea>
+        <p class="vt-hint"><%= lang === 'es' ? 'Información adicional sobre esta categoría.' : 'Additional information about this category.' %></p>
+      </div>
+
+      <div class="vt-form-actions">
+        <a href="/categories" class="vt-btn vt-btn--ghost"><%= lang === 'es' ? 'Cancelar' : 'Cancel' %></a>
+        <button type="submit" class="vt-btn vt-btn--primary">
+          <% if (category) { %>
+            <%= lang === 'es' ? 'Guardar cambios' : 'Save changes' %>
+          <% } else { %>
+            <%= lang === 'es' ? 'Crear categoría' : 'Create category' %>
+          <% } %>
+        </button>
+      </div>
+    </form>
   </div>
-
-  <% if (error) { %>
-    <div class="card" style="background:#3d1f1f;border:1px solid var(--red);margin-bottom:1rem;padding:1rem;border-radius:8px">
-      <p style="color:var(--red);margin:0"><strong>⚠️ <%= lang === 'es' ? 'Error' : 'Error' %></strong></p>
-      <p style="color:var(--red);margin:.5rem 0 0;font-size:.9rem"><%= error %></p>
-    </div>
-  <% } %>
-
-  <form action="<% if (category) { %>/categories/<%= category.id %><% } else { %>/categories<% } %>" method="POST" class="card">
-    <div class="form-group">
-      <label class="form-label"><%= lang === 'es' ? 'Nombre de la categoría' : 'Category name' %> *</label>
-      <input type="text" name="name" class="form-input" maxlength="50"
-        value="<%= category?.name || '' %>" required autofocus>
-      <p class="form-hint"><%= lang === 'es' ? 'Ej: Fórmula 1, Rally, Clásicos' : 'E.g: Formula 1, Rally, Classics' %></p>
-    </div>
-
-    <div class="form-group">
-      <label class="form-label"><%= lang === 'es' ? 'Descripción' : 'Description' %></label>
-      <textarea name="description" class="form-input" rows="3" maxlength="200"
-        placeholder="<%= lang === 'es' ? 'Descripción opcional...' : 'Optional description...' %>"><%= category?.description || '' %></textarea>
-      <p class="form-hint"><%= lang === 'es' ? 'Información adicional sobre esta categoría' : 'Additional information about this category' %></p>
-    </div>
-
-    <div style="display:flex;gap:.75rem">
-      <button type="submit" class="btn btn--primary">
-        <% if (category) { %>
-          💾 <%= lang === 'es' ? 'Guardar cambios' : 'Save changes' %>
-        <% } else { %>
-          ➕ <%= lang === 'es' ? 'Crear categoría' : 'Create category' %>
-        <% } %>
-      </button>
-      <a href="/categories" class="btn btn--ghost">
-        <%= lang === 'es' ? 'Cancelar' : 'Cancel' %>
-      </a>
-    </div>
-  </form>
-
 </div>
 
 <%- include('../partials/footer') %>

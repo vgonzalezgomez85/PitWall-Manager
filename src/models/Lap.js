@@ -1,12 +1,12 @@
 const db = require('../config/database');
 
 class Lap {
-  static create({ race_id, manga_id, team_id, driver_id, lane, lap_number, lap_time_ms, elapsed_ms, is_exit = 0, is_ghost = 0, is_pit_stop = 0, ghost_from_lane = null }) {
+  static create({ race_id, manga_id, team_id, driver_id, lane, lap_number, lap_time_ms, elapsed_ms, is_exit = 0, is_ghost = 0, is_pit_stop = 0, is_warmup = 0, ghost_from_lane = null }) {
     const { lastInsertRowid } = db.prepare(`
-      INSERT INTO laps (race_id, manga_id, team_id, driver_id, lane, lap_number, lap_time_ms, elapsed_ms, is_exit, is_ghost, is_pit_stop, ghost_from_lane)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO laps (race_id, manga_id, team_id, driver_id, lane, lap_number, lap_time_ms, elapsed_ms, is_exit, is_ghost, is_pit_stop, is_warmup, ghost_from_lane)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(race_id, manga_id ?? null, team_id ?? null, driver_id ?? null,
-           lane, lap_number, lap_time_ms, elapsed_ms ?? 0, is_exit, is_ghost, is_pit_stop, ghost_from_lane ?? null);
+           lane, lap_number, lap_time_ms, elapsed_ms ?? 0, is_exit, is_ghost, is_pit_stop, is_warmup, ghost_from_lane ?? null);
     return lastInsertRowid;
   }
 
@@ -74,7 +74,7 @@ class Lap {
       WITH best_per_lane AS (
         SELECT lane, MIN(lap_time_ms) AS bestLapMs
         FROM laps
-        WHERE race_id = ? AND is_ghost = 0 AND is_exit = 0 AND lap_number > 0
+        WHERE race_id = ? AND is_ghost = 0 AND is_exit = 0 AND is_warmup = 0 AND lap_number > 0
         GROUP BY lane
       )
       SELECT b.lane,
@@ -83,7 +83,7 @@ class Lap {
         CASE WHEN t.id IS NOT NULL THEN 'team' ELSE 'driver' END AS entityType
       FROM best_per_lane b
       JOIN laps l ON l.race_id = ? AND l.lane = b.lane AND l.lap_time_ms = b.bestLapMs
-                 AND l.is_ghost = 0 AND l.is_exit = 0 AND l.lap_number > 0
+                 AND l.is_ghost = 0 AND l.is_exit = 0 AND l.is_warmup = 0 AND l.lap_number > 0
       LEFT JOIN teams   t ON t.id = l.team_id
       LEFT JOIN drivers d ON d.id = l.driver_id
       GROUP BY b.lane
@@ -101,8 +101,11 @@ class Lap {
         CASE WHEN t.id IS NOT NULL THEN 'team' ELSE 'driver' END AS entity_type,
         t.color,
         COUNT(l.id)                              AS total_laps,
-        MIN(CASE WHEN l.is_exit = 0 THEN l.lap_time_ms END) AS best_lap_ms,
-        AVG(l.lap_time_ms)                       AS avg_lap_ms,
+        MIN(CASE WHEN l.is_exit = 0 AND l.is_warmup = 0 THEN l.lap_time_ms END) AS best_lap_ms,
+        -- Media "sucia" (incluye salidas) pero SIN warmup: representa el
+        -- ritmo real de carrera con sus mistakes incluidos. Es la métrica
+        -- correcta para la proyección "vueltas al final de la carrera".
+        AVG(CASE WHEN l.is_warmup = 0 THEN l.lap_time_ms END) AS avg_lap_ms,
         SUM(l.lap_time_ms)                       AS total_time_ms,
         COUNT(DISTINCT l.manga_id)               AS mangas_raced,
         SUM(l.is_exit)                           AS exit_count

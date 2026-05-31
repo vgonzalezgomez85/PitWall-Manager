@@ -1,85 +1,255 @@
-<%- include('partials/header', { lang, pageTitle: lang === 'es' ? 'Inicio' : 'Home' }) %>
+<%- include('partials/header', { lang, pageTitle: lang === 'es' ? 'Inicio' : 'Home', hideNavbar: true }) %>
 
-<div class="home-wrapper">
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700;800;900&family=Saira:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 
-  <!-- Top row: las dos tarjetas principales -->
-  <div class="home-grid home-grid--top">
+<%
+const ss = (typeof serialStatus !== 'undefined' && serialStatus) ? serialStatus : { simulating: false, ports: [] };
+const serialConnected = Array.isArray(ss.ports) && ss.ports.length > 0;
+const portLabels = serialConnected ? ss.ports.map(p => String(p).split('/').pop()).join(' · ') : '';
+const portCount = serialConnected ? ss.ports.length : 0;
+const inProgressRaces = typeof activeRaceCount !== 'undefined' ? activeRaceCount : 0;
+const c = typeof counts !== 'undefined' ? counts : { drivers: 0, teams: 0, cars: 0, categories: 0, circuits: 0 };
+%>
 
-    <a href="/training" class="home-card home-card--hero">
-      <div class="home-card__icon">⏱️</div>
-      <div class="home-card__title"><%= lang === 'es' ? 'Entrenamientos' : 'Training' %></div>
-      <div class="home-card__desc"><%= lang === 'es' ? 'Sesiones de entrenamiento libre o de competición.' : 'Free or competition training sessions.' %></div>
-    </a>
+<div class="vol-home">
+  <div class="vol-home__wrap">
 
-    <a href="/races" class="home-card home-card--hero">
-      <div class="home-card__icon">🚦</div>
-      <div class="home-card__title"><%= lang === 'es' ? 'Carreras' : 'Races' %></div>
-      <div class="home-card__desc"><%= lang === 'es' ? 'Gestiona y controla tus carreras en tiempo real.' : 'Manage and control your races in real time.' %></div>
-    </a>
-
-  </div>
-
-  <!-- Bottom row: resto de módulos en grid de 3 -->
-  <div class="home-grid home-grid--bottom">
-
-    <a href="/drivers" class="home-card">
-      <div class="home-card__icon">👥</div>
-      <div class="home-card__title"><%= lang === 'es' ? 'Pilotos' : 'Drivers' %></div>
-      <div class="home-card__desc"><%= lang === 'es' ? 'Registra y gestiona los pilotos.' : 'Register and manage drivers.' %></div>
-    </a>
-
-    <a href="/teams" class="home-card">
-      <div class="home-card__icon">🤝</div>
-      <div class="home-card__title"><%= lang === 'es' ? 'Equipos' : 'Teams' %></div>
-      <div class="home-card__desc"><%= lang === 'es' ? 'Crea y gestiona el catálogo de equipos con sus pilotos.' : 'Create and manage your team catalog with their drivers.' %></div>
-    </a>
-
-    <a href="/categories" class="home-card">
-      <div class="home-card__icon">🏷️</div>
-      <div class="home-card__title"><%= lang === 'es' ? 'Categorías' : 'Categories' %></div>
-      <div class="home-card__desc"><%= lang === 'es' ? 'Gestiona las categorías de carreras y tiempos mínimos.' : 'Manage race categories and minimum times.' %></div>
-    </a>
-
-    <a href="/cars" class="home-card">
-      <div class="home-card__icon">🏎️</div>
-      <div class="home-card__title"><%= lang === 'es' ? 'Coches' : 'Cars' %></div>
-      <div class="home-card__desc"><%= lang === 'es' ? 'Gestiona el catálogo de coches y su categoría.' : 'Manage your car catalog and their category.' %></div>
-    </a>
-
-    <a href="/circuits" class="home-card">
-      <div class="home-card__icon">
-        <svg viewBox="0 0 64 40" width="48" height="30" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="2" y="2" width="60" height="36" rx="10" ry="10" stroke="#8b949e" stroke-width="3" fill="none"/>
-          <rect x="10" y="10" width="44" height="20" rx="6" ry="6" stroke="#8b949e" stroke-width="2.5" fill="none"/>
-          <line x1="10" y1="20" x2="16" y2="14" stroke="#f6c90e" stroke-width="2" stroke-linecap="round"/>
-          <line x1="16" y1="14" x2="22" y2="20" stroke="#f6c90e" stroke-width="2" stroke-linecap="round"/>
-          <line x1="32" y1="2" x2="32" y2="10" stroke="#e63946" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- ── Topbar ─────────────────────────────────────────────────── -->
+    <div class="vh-topbar">
+      <div class="vh-brand">
+        <svg class="vh-mark" viewBox="0 0 44 44" aria-hidden="true">
+          <rect x="6" y="3" width="32" height="38" rx="11" fill="none" stroke="currentColor" stroke-width="2.2"/>
+          <path d="M14 14 L22 22 L14 30" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="29" cy="14" r="1.6" fill="currentColor"/>
+          <circle cx="29" cy="30" r="1.6" fill="currentColor"/>
         </svg>
+        <div class="vh-wordmark">
+          <div class="vh-nm">VOL<span class="vh-nm-t">T</span>RACE</div>
+          <div class="vh-sub">MANAGER</div>
+        </div>
       </div>
-      <div class="home-card__title"><%= lang === 'es' ? 'Circuitos' : 'Circuits' %></div>
-      <div class="home-card__desc"><%= lang === 'es' ? 'Define los circuitos y su configuración de carriles.' : 'Define circuits and their lane configuration.' %></div>
-    </a>
 
-    <a href="/settings" class="home-card">
-      <div class="home-card__icon">⚙️</div>
-      <div class="home-card__title"><%= lang === 'es' ? 'Ajustes' : 'Settings' %></div>
-      <div class="home-card__desc"><%= lang === 'es' ? 'Configura el puerto serie, simulación y preferencias.' : 'Configure serial port, simulation and preferences.' %></div>
-    </a>
+      <% if (ss.simulating) { %>
+        <a href="/settings" class="vh-status vh-status--sim">
+          <span class="vh-status__dot"></span>
+          <%= lang === 'es' ? 'Modo simulación' : 'Simulation mode' %>
+        </a>
+      <% } else if (serialConnected) { %>
+        <a href="/settings" class="vh-status vh-status--ok">
+          <span class="vh-status__dot"></span>
+          DS-300 ×<%= portCount %>
+          <span class="vh-status__port">· <%= portLabels %></span>
+        </a>
+      <% } else { %>
+        <a href="/settings" class="vh-status vh-status--off">
+          <span class="vh-status__dot"></span>
+          <%= lang === 'es' ? 'Sin conexión' : 'Disconnected' %>
+        </a>
+      <% } %>
+    </div>
 
-    <a href="/race-stats" class="home-card">
-      <div class="home-card__icon">📊</div>
-      <div class="home-card__title"><%= lang === 'es' ? 'Estadísticas en vivo' : 'Live stats' %></div>
-      <div class="home-card__desc"><%= lang === 'es' ? 'Sigue tu carrera y compárate con tus rivales en tiempo real.' : 'Follow your race and compare with rivals in real time.' %></div>
-    </a>
+    <!-- ── COMPETICIÓN ─────────────────────────────────────────────── -->
+    <section class="vh-section">
+      <div class="vh-sec-h">
+        <span class="vh-sec-lbl"><%= lang === 'es' ? 'Competición' : 'Competition' %></span>
+        <span class="vh-sec-line"></span>
+      </div>
+      <div class="vh-grid">
 
-    <a href="/diagnostico" class="home-card">
-      <div class="home-card__icon">🛠️</div>
-      <div class="home-card__title"><%= lang === 'es' ? 'Solución de problemas' : 'Troubleshooting' %></div>
-      <div class="home-card__desc"><%= lang === 'es' ? 'Estado del sistema y acciones de recuperación.' : 'System state and recovery actions.' %></div>
-    </a>
+        <a class="vh-card" href="/training" style="--a:#38bdf8;--a-bg:rgba(56,189,248,.12)">
+          <div class="vh-ico">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="13" r="8" fill="none" stroke="currentColor" stroke-width="1.7"/>
+              <path d="M12 9v4l2.5 1.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+              <path d="M9 2h6M12 2v3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="vh-body">
+            <div class="vh-t"><%= lang === 'es' ? 'Entrenamientos' : 'Training' %></div>
+            <div class="vh-d"><%= lang === 'es' ? 'Sesiones de entrenamiento libre o de competición.' : 'Free or competition training sessions.' %></div>
+          </div>
+          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </a>
+
+        <a class="vh-card vh-card--feature" href="/races" style="--a:#ef4651;--a-bg:rgba(239,70,81,.13)">
+          <div class="vh-ico">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 21V4M5 4h12l-2.2 3.5L17 11H5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="vh-body">
+            <div class="vh-t">
+              <%= lang === 'es' ? 'Carreras' : 'Races' %>
+              <% if (inProgressRaces > 0) { %>
+                <span class="vh-live">
+                  <span class="vh-live__d"></span>
+                  <%= inProgressRaces %> <%= lang === 'es' ? (inProgressRaces === 1 ? 'en curso' : 'en curso') : (inProgressRaces === 1 ? 'in progress' : 'in progress') %>
+                </span>
+              <% } %>
+            </div>
+            <div class="vh-d"><%= lang === 'es' ? 'Gestiona y controla tus carreras en tiempo real.' : 'Manage and control your races in real time.' %></div>
+          </div>
+          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </a>
+
+        <a class="vh-card" href="/race-stats" style="--a:#22c55e;--a-bg:rgba(34,197,94,.12)">
+          <div class="vh-ico">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 21h18M6 21v-6M11 21V8M16 21v-9M21 21V5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="vh-body">
+            <div class="vh-t"><%= lang === 'es' ? 'Estadísticas en vivo' : 'Live stats' %></div>
+            <div class="vh-d"><%= lang === 'es' ? 'Sigue tu carrera y compárate con tus rivales en tiempo real.' : 'Follow your race and compare with rivals in real time.' %></div>
+          </div>
+          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </a>
+
+      </div>
+    </section>
+
+    <!-- ── CATÁLOGO ───────────────────────────────────────────────── -->
+    <section class="vh-section">
+      <div class="vh-sec-h">
+        <span class="vh-sec-lbl"><%= lang === 'es' ? 'Catálogo' : 'Catalog' %></span>
+        <span class="vh-sec-line"></span>
+      </div>
+      <div class="vh-grid">
+
+        <a class="vh-card" href="/drivers" style="--a:#f59e0b;--a-bg:rgba(245,158,11,.12)">
+          <div class="vh-ico">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="1.7"/>
+              <path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="vh-body">
+            <div class="vh-t">
+              <%= lang === 'es' ? 'Pilotos' : 'Drivers' %>
+              <% if (c.drivers > 0) { %><span class="vh-count"><%= c.drivers %></span><% } %>
+            </div>
+            <div class="vh-d"><%= lang === 'es' ? 'Registra y gestiona los pilotos.' : 'Register and manage drivers.' %></div>
+          </div>
+          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </a>
+
+        <a class="vh-card" href="/teams" style="--a:#a855f7;--a-bg:rgba(168,85,247,.13)">
+          <div class="vh-ico">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="9" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.7"/>
+              <circle cx="17" cy="9.5" r="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/>
+              <path d="M3 20v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M16 14a4 4 0 0 1 5 4v1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="vh-body">
+            <div class="vh-t">
+              <%= lang === 'es' ? 'Equipos' : 'Teams' %>
+              <% if (c.teams > 0) { %><span class="vh-count"><%= c.teams %></span><% } %>
+            </div>
+            <div class="vh-d"><%= lang === 'es' ? 'Crea y gestiona el catálogo de equipos con sus pilotos.' : 'Create and manage the team catalog with their drivers.' %></div>
+          </div>
+          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </a>
+
+        <a class="vh-card" href="/cars" style="--a:#fb7185;--a-bg:rgba(251,113,133,.12)">
+          <div class="vh-ico">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 13l1.6-4.6A2 2 0 0 1 8.5 7h7a2 2 0 0 1 1.9 1.4L19 13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M3 13h18v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="7.5" cy="18" r="1.6" fill="none" stroke="currentColor" stroke-width="1.7"/>
+              <circle cx="16.5" cy="18" r="1.6" fill="none" stroke="currentColor" stroke-width="1.7"/>
+            </svg>
+          </div>
+          <div class="vh-body">
+            <div class="vh-t">
+              <%= lang === 'es' ? 'Coches' : 'Cars' %>
+              <% if (c.cars > 0) { %><span class="vh-count"><%= c.cars %></span><% } %>
+            </div>
+            <div class="vh-d"><%= lang === 'es' ? 'Gestiona el catálogo de coches y su categoría.' : 'Manage your car catalog and their category.' %></div>
+          </div>
+          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </a>
+
+        <a class="vh-card" href="/categories" style="--a:#2dd4bf;--a-bg:rgba(45,212,191,.12)">
+          <div class="vh-ico">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 8.5V4.5A1.5 1.5 0 0 1 4.5 3h4a2 2 0 0 1 1.4.6l9.5 9.5a1.5 1.5 0 0 1 0 2.1l-4.8 4.8a1.5 1.5 0 0 1-2.1 0L3 10.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="7.5" cy="7.5" r="1.3" fill="none" stroke="currentColor" stroke-width="1.7"/>
+            </svg>
+          </div>
+          <div class="vh-body">
+            <div class="vh-t">
+              <%= lang === 'es' ? 'Categorías' : 'Categories' %>
+              <% if (c.categories > 0) { %><span class="vh-count"><%= c.categories %></span><% } %>
+            </div>
+            <div class="vh-d"><%= lang === 'es' ? 'Gestiona las categorías de carreras y tiempos mínimos.' : 'Manage race categories and minimum times.' %></div>
+          </div>
+          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </a>
+
+        <a class="vh-card" href="/circuits" style="--a:#fb923c;--a-bg:rgba(251,146,60,.12)">
+          <div class="vh-ico">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 18a3 3 0 0 1 0-6h9a3 3 0 0 0 0-6H7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="6" cy="18" r="1.4" fill="currentColor"/>
+              <circle cx="6" cy="6" r="1.4" fill="currentColor"/>
+            </svg>
+          </div>
+          <div class="vh-body">
+            <div class="vh-t">
+              <%= lang === 'es' ? 'Circuitos' : 'Circuits' %>
+              <% if (c.circuits > 0) { %><span class="vh-count"><%= c.circuits %></span><% } %>
+            </div>
+            <div class="vh-d"><%= lang === 'es' ? 'Define los circuitos y su configuración de carriles.' : 'Define circuits and their lane configuration.' %></div>
+          </div>
+          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </a>
+
+      </div>
+    </section>
+
+    <!-- ── SISTEMA ────────────────────────────────────────────────── -->
+    <section class="vh-section">
+      <div class="vh-sec-h">
+        <span class="vh-sec-lbl"><%= lang === 'es' ? 'Sistema' : 'System' %></span>
+        <span class="vh-sec-line"></span>
+      </div>
+      <div class="vh-grid">
+
+        <a class="vh-card" href="/settings" style="--a:#94a3b8;--a-bg:rgba(148,163,184,.12)">
+          <div class="vh-ico">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+              <circle cx="9" cy="7" r="2.2" fill="#000" stroke="currentColor" stroke-width="1.7"/>
+              <circle cx="15" cy="12" r="2.2" fill="#000" stroke="currentColor" stroke-width="1.7"/>
+              <circle cx="8" cy="17" r="2.2" fill="#000" stroke="currentColor" stroke-width="1.7"/>
+            </svg>
+          </div>
+          <div class="vh-body">
+            <div class="vh-t"><%= lang === 'es' ? 'Ajustes' : 'Settings' %></div>
+            <div class="vh-d"><%= lang === 'es' ? 'Configura el puerto serie, simulación y preferencias.' : 'Configure serial port, simulation and preferences.' %></div>
+          </div>
+          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </a>
+
+        <a class="vh-card" href="/diagnostico" style="--a:#facc15;--a-bg:rgba(250,204,21,.12)">
+          <div class="vh-ico">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M14.5 6.5a3.5 3.5 0 0 0-4.8 4.4l-5.4 5.4a1.6 1.6 0 0 0 2.3 2.3l5.4-5.4a3.5 3.5 0 0 0 4.4-4.8l-2.3 2.3-2-2z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="vh-body">
+            <div class="vh-t"><%= lang === 'es' ? 'Solución de problemas' : 'Troubleshooting' %></div>
+            <div class="vh-d"><%= lang === 'es' ? 'Estado del sistema y acciones de recuperación.' : 'System state and recovery actions.' %></div>
+          </div>
+          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </a>
+
+      </div>
+    </section>
 
   </div>
-
 </div>
 
 <%- include('partials/footer') %>

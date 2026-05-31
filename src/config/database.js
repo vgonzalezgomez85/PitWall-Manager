@@ -162,6 +162,11 @@ const migrations = [
   // just out, it stopped for a long-enough fix that we display a wrench icon).
   `ALTER TABLE laps ADD COLUMN is_pit_stop INTEGER NOT NULL DEFAULT 0`,
 
+  // Primera vuelta REAL de cada manga por carril — NO compite por mejor vuelta
+  // (el primer tiempo suele estar inflado/desinflado por el cruce inicial,
+  // semáforo, etc.). Sí cuenta para totales, media y proyección.
+  `ALTER TABLE laps ADD COLUMN is_warmup INTEGER NOT NULL DEFAULT 0`,
+
   // ── Teams catalog ──────────────────────────────────────────────────────────
   `CREATE TABLE IF NOT EXISTS teams_catalog (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,

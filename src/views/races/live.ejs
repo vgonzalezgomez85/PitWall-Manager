@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/live.css">
+  <link rel="stylesheet" href="/css/live.css?v=<%= Date.now() %>">
 </head>
 <body class="live-body">
 
@@ -71,8 +71,8 @@
           <button class="lbtn lbtn--repeat">↺ <%= lang === 'es' ? 'Repetir' : 'Repeat' %></button>
         </form>
       <% } %>
-      <button id="voiceBtn" class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Activar/silenciar voz' : 'Toggle voice' %>" onclick="toggleVoice()">🔊</button>
-      <button id="viewBtn" class="lbtn lbtn--view" title="<%= lang === 'es' ? 'Cambiar vista' : 'Toggle view' %>" onclick="toggleView()">⊞</button>
+      <button id="voiceBtn" class="lbtn lbtn--back" onclick="toggleVoice()">🔊 <%= lang === 'es' ? 'Todas' : 'All' %></button>
+      <button id="viewBtn" class="lbtn lbtn--view" title="<%= lang === 'es' ? 'Cambiar vista' : 'Change view' %>" onclick="openViewPicker()">🖼 <%= lang === 'es' ? 'Vista' : 'View' %></button>
       <button class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Clasificación general (ventana)' : 'Overall standings (window)' %>"
         onclick="window.open('/races/<%= race.id %>/mangas/<%= manga.id %>/panel/standings','_blank','width=620,height=780')">📊</button>
       <button class="lbtn lbtn--back" title="<%= lang === 'es' ? 'Vueltas rápidas por pista (ventana)' : 'Fastest laps by lane (window)' %>"
@@ -99,17 +99,45 @@
     <span id="serialBannerSince" class="serial-banner__since"></span>
   </div>
 
+  <!-- ── Toolbar: VUELTAS RÁPIDAS ────────────────────────────────────────── -->
+  <div class="live-toolbar" id="liveToolbar">
+    <div class="live-toolbar__fastest">
+      <span class="live-toolbar__label live-toolbar__label--fast">
+        ⚡ <%= lang === 'es' ? 'VUELTAS RÁPIDAS' : 'FASTEST LAPS' %>
+        <a href="/races/<%= race.id %>/mangas/<%= manga.id %>/panel/fastest" target="_blank" class="panel-expand" title="<%= lang === 'es' ? 'Abrir en ventana' : 'Open in window' %>">⤢</a>
+      </span>
+      <div class="live-footer__items" id="bestLapsFooter"></div>
+    </div>
+  </div>
+
   <!-- ── Main layout ───────────────────────────────────────────────────────── -->
   <div class="live-layout">
 
-    <!-- Lane cards -->
-    <div class="live-lanes" id="lanesGrid"></div>
+    <!-- Lane cards + header de columnas (V1) como primer hijo para compartir
+         el padding del contenedor y alinearse con las filas. En V2 el header
+         se oculta vía CSS body:has(.live-lanes--vertical). -->
+    <div class="live-lanes" id="lanesGrid">
+      <div class="lanes-header" id="lanesHeader" aria-hidden="true">
+        <div class="lh-col lh-col--name"><%= lang === 'es' ? 'PILOTO' : 'DRIVER' %></div>
+        <div class="lh-col lh-col--vlt"   data-col="vlt"><%= lang === 'es' ? 'VLT' : 'LAP' %></div>
+        <div class="lh-col lh-col--total" data-col="total"><%= lang === 'es' ? 'TOTAL' : 'TOTAL' %></div>
+        <div class="lh-col lh-col--last"  data-col="ultima"><%= lang === 'es' ? 'ÚLTIMA' : 'LAST' %></div>
+        <div class="lh-col lh-col--best"  data-col="mejor"><%= lang === 'es' ? 'MEJOR' : 'BEST' %></div>
+        <div class="lh-col lh-col--avg"   data-col="media"><%= lang === 'es' ? 'MEDIA' : 'AVG' %></div>
+        <div class="lh-col lh-col--exits" data-col="salidas"><%= lang === 'es' ? 'SALIDAS' : 'EXITS' %></div>
+        <div class="lh-col lh-col--delta" data-col="delta">Δ</div>
+        <div class="lh-col lh-col--next"><%= lang === 'es' ? 'PRÓX.' : 'NEXT' %></div>
+      </div>
+    </div>
 
-    <!-- Resizer -->
-    <div id="sidebarResizer" class="sidebar-resizer" title="<%= lang === 'es' ? 'Arrastra para redimensionar' : 'Drag to resize' %>"></div>
+    <!-- Resizer (oculto: la sidebar ya no se muestra en la vista principal) -->
+    <div id="sidebarResizer" class="sidebar-resizer" style="display:none" title="<%= lang === 'es' ? 'Arrastra para redimensionar' : 'Drag to resize' %>"></div>
 
-    <!-- Sidebar: clasificación estimada (las vueltas rápidas viven ahora en el footer) -->
-    <aside class="live-sidebar" id="liveSidebar">
+    <!-- Sidebar: clasificación estimada — OCULTA en la vista principal. Se
+         abre en ventana independiente con el botón 📊 del header. Mantenemos
+         los IDs en el DOM para que live.js (renderProjected, fitSidebarTable)
+         no falle al buscarlos. -->
+    <aside class="live-sidebar" id="liveSidebar" style="display:none">
       <div class="live-panel">
         <div class="live-panel__title">
           <%= lang === 'es' ? 'CLASIFICACIÓN ESTIMADA' : 'PROJECTED STANDINGS' %>
@@ -136,14 +164,7 @@
     </aside>
   </div>
 
-  <!-- ── Footer: vueltas rápidas por pista ───────────────────────────────── -->
-  <footer class="live-footer" id="liveFooter">
-    <div class="live-footer__label">
-      ⚡ <%= lang === 'es' ? 'VUELTAS RÁPIDAS' : 'FASTEST LAPS' %>
-      <a href="/races/<%= race.id %>/mangas/<%= manga.id %>/panel/fastest" target="_blank" class="panel-expand" title="<%= lang === 'es' ? 'Abrir en ventana' : 'Open in window' %>">⤢</a>
-    </div>
-    <div class="live-footer__items" id="bestLapsFooter"></div>
-  </footer>
+  <!-- Footer eliminado: las vueltas rápidas se muestran ahora en la toolbar. -->
 
   <%
     // Compute initial lane state from DB laps
@@ -203,6 +224,7 @@
       isActive:       isActive,
       isTeam:         race.format === 'team',
       durationMs:     null,
+      mangaDurationMs: race.manga_duration_minutes * 60000,
       standings:      standings,
       lanes:          Object.values(laneInit),
       raceBestLaps:   raceBestLaps,
@@ -213,6 +235,44 @@
     RACE_DATA.allParticipants = <%- JSON.stringify(allParticipants) %>;
     const LANG = "<%= lang %>";
   </script>
+  <!-- ── View picker modal ────────────────────────────────────────────────── -->
+  <div id="viewPickerOverlay" class="vp-overlay" hidden onclick="if(event.target===this)closeViewPicker()">
+    <div class="vp-modal" role="dialog" aria-modal="true" aria-labelledby="vpTitle">
+      <div class="vp-header">
+        <div id="vpTitle" class="vp-title"><%= lang === 'es' ? 'Elige cómo quieres ver la carrera' : 'Choose how to view the race' %></div>
+        <button class="vp-x" onclick="closeViewPicker()" aria-label="<%= lang === 'es' ? 'Cerrar' : 'Close' %>">✕</button>
+      </div>
+      <div class="vp-grid">
+        <button class="vp-opt" data-mode="1" onclick="selectView('1')">
+          <div class="vp-thumb vp-thumb--1" aria-hidden="true">
+            <span></span><span></span><span></span><span></span><span></span><span></span>
+          </div>
+          <div class="vp-label"><%= lang === 'es' ? 'Filas horizontales' : 'Horizontal rows' %></div>
+          <div class="vp-desc"><%= lang === 'es' ? 'Una fila por carril. Recomendado para pocos carriles.' : 'One row per lane. Recommended for few lanes.' %></div>
+        </button>
+        <button class="vp-opt" data-mode="2" onclick="selectView('2')">
+          <div class="vp-thumb vp-thumb--2" aria-hidden="true">
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+          </div>
+          <div class="vp-label"><%= lang === 'es' ? 'Cuadrícula compacta' : 'Compact grid' %></div>
+          <div class="vp-desc"><%= lang === 'es' ? 'Todas las pistas a la vez. Ideal para muchos carriles.' : 'All lanes at once. Ideal for many lanes.' %></div>
+        </button>
+        <button class="vp-opt" data-mode="3" onclick="selectView('3')">
+          <div class="vp-thumb vp-thumb--3" aria-hidden="true">
+            <span><i></i><i></i><i></i><i></i></span>
+            <span><i></i><i></i><i></i><i></i></span>
+            <span><i></i><i></i><i></i><i></i></span>
+            <span><i></i><i></i><i></i><i></i></span>
+          </div>
+          <div class="vp-label"><%= lang === 'es' ? 'Tarjetas con detalles' : 'Detailed cards' %></div>
+          <div class="vp-desc"><%= lang === 'es' ? 'Como la compacta pero con VLT, SAL, PIT y Δ visibles en cada tarjeta.' : 'Like compact but with VLT, SAL, PIT and Δ visible on each card.' %></div>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/live.js?v=<%= Date.now() %>"></script>
   <script>

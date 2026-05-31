@@ -1,50 +1,159 @@
 <%- include('../partials/header', { pageTitle: t('races.title') }) %>
-<div class="container">
 
-  <div class="page-header">
-    <h1 class="page-title"><%= t('races.title') %></h1>
-    <a href="/races/new" class="btn btn--primary">+ <%= t('nav.new_race') %></a>
+<%
+const ST = {
+  'pending':    { color: 'var(--vt-amber)', live: false, label: t('races.status.pending') },
+  'active':     { color: 'var(--vt-green)', live: true,  label: t('races.status.active') },
+  'completed':  { color: 'var(--vt-blue)',  live: false, label: t('races.status.completed') },
+};
+const fmtDate = (s) => new Date(s).toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-GB');
+const counts = {
+  todas: races.length,
+  pending: races.filter(r => r.status === 'pending').length,
+  active: races.filter(r => r.status === 'active').length,
+  completed: races.filter(r => r.status === 'completed').length,
+};
+%>
+
+<div class="vt-page">
+  <div class="vt-wrap">
+
+    <a href="/" class="vt-back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      <%= lang === 'es' ? 'Inicio' : 'Home' %>
+    </a>
+
+    <% if (flash) { %>
+      <div class="flash flash--<%= flash.type %>" style="margin-bottom:1rem"><%- flash.text %></div>
+    <% } %>
+
+    <div class="vt-head">
+      <div class="vt-head__title">
+        <h1><%= t('races.title') %></h1>
+        <span class="vt-cnt" id="rcCount"><%= races.length %></span>
+      </div>
+      <div class="vt-head__actions">
+        <label class="vt-search">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <input type="text" id="rcQuery" placeholder="<%= lang === 'es' ? 'Buscar carrera…' : 'Search race…' %>">
+        </label>
+        <a href="/races/new" class="vt-btn vt-btn--primary">+ <%= t('nav.new_race') %></a>
+      </div>
+    </div>
+
+    <% if (races.length === 0) { %>
+      <div class="vt-empty" style="margin-top:32px">
+        <div class="vt-empty__t"><%= t('races.no_races') %></div>
+        <a href="/races/new" class="vt-btn vt-btn--primary" style="margin-top:16px"><%= t('races.create_first') %></a>
+      </div>
+    <% } else { %>
+
+      <div class="vt-filters">
+        <div class="vt-tabs" id="rcTabs">
+          <button class="vt-tab is-active" data-f="todas"><%= lang === 'es' ? 'Todas' : 'All' %> <span class="vt-tab__b"><%= counts.todas %></span></button>
+          <button class="vt-tab" data-f="active"><%= t('races.status.active') %> <span class="vt-tab__b"><%= counts.active %></span></button>
+          <button class="vt-tab" data-f="pending"><%= t('races.status.pending') %> <span class="vt-tab__b"><%= counts.pending %></span></button>
+          <button class="vt-tab" data-f="completed"><%= t('races.status.completed') %> <span class="vt-tab__b"><%= counts.completed %></span></button>
+        </div>
+        <div class="vt-sort">
+          <%= lang === 'es' ? 'Ordenar' : 'Sort' %>
+          <select id="rcSort">
+            <option value="date"><%= lang === 'es' ? 'Fecha (recientes)' : 'Date (recent)' %></option>
+            <option value="date-asc"><%= lang === 'es' ? 'Fecha (antiguas)' : 'Date (oldest)' %></option>
+            <option value="name"><%= lang === 'es' ? 'Nombre' : 'Name' %></option>
+            <option value="drivers"><%= lang === 'es' ? 'Nº de pilotos' : 'Drivers' %></option>
+          </select>
+        </div>
+      </div>
+
+      <div class="vt-race-grid" id="rcGrid">
+        <% races.forEach(race => {
+          const st = ST[race.status] || { color: 'var(--vt-mute)', live: false, label: race.status };
+        %>
+          <a href="/races/<%= race.id %>" class="vt-race-card"
+             data-status="<%= race.status %>"
+             data-name="<%= race.name.toLowerCase() %>"
+             data-date="<%= race.created_at %>"
+             data-drivers="<%= race.driver_count || 0 %>"
+             style="--st: <%= st.color %>">
+            <div class="vt-race-card__pills">
+              <span class="vt-badge is-<%= race.status === 'active' ? 'ok is-live' : (race.status === 'pending' ? 'warn' : 'neutral') %>">
+                <span class="vt-badge__d"></span> <%= st.label %>
+              </span>
+              <span class="vt-badge is-info"><%= t('races.type.' + race.type) %></span>
+            </div>
+            <h3 class="vt-race-card__name"><%= race.name %></h3>
+            <div class="vt-race-card__meta">
+              <span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9h18"/><path d="M8 2.5v4M16 2.5v4"/></svg>
+                <b><%= fmtDate(race.created_at) %></b>
+              </span>
+              <span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4"/><path d="M5 4h11l-2 3.2L16 10H5"/></svg>
+                <%= race.format === 'team' ? t('races.format.team') : t('races.format.individual') %>
+              </span>
+              <span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v16M12 4v16M18 4v16"/></svg>
+                <%= race.lanes_count %> <%= t('races.lanes') %>
+              </span>
+              <% if (race.driver_count > 0) { %>
+                <span>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9.5" r="2.3"/><path d="M3 20v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1"/><path d="M16 14a4 4 0 0 1 5 4v1"/></svg>
+                  <b><%= race.driver_count %></b> <%= t('races.drivers') %>
+                </span>
+              <% } %>
+            </div>
+            <span class="vt-race-card__chev">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+            </span>
+          </a>
+        <% }) %>
+      </div>
+
+    <% } %>
   </div>
-
-  <% if (races.length === 0) { %>
-    <div class="empty-state">
-      <div class="empty-state__icon">🏁</div>
-      <p class="empty-state__text"><%= t('races.no_races') %></p>
-      <a href="/races/new" class="btn btn--primary"><%= t('races.create_first') %></a>
-    </div>
-  <% } else { %>
-    <div class="race-grid">
-      <% races.forEach(race => { %>
-        <a href="/races/<%= race.id %>" class="race-card">
-          <div class="race-card__header">
-            <span class="badge badge--<%= race.status %>"><%= t('races.status.' + race.status) %></span>
-            <span class="badge badge--type"><%= t('races.type.' + race.type) %></span>
-          </div>
-          <h2 class="race-card__name"><%= race.name %></h2>
-          <div class="race-card__meta">
-            <span class="meta-item">
-              <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 1.5a5.5 5.5 0 110 11 5.5 5.5 0 010-11zM7.25 4v4.25l3.25 1.95.75-1.25-2.75-1.65V4h-1.25z"/></svg>
-              <%= new Date(race.created_at).toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-GB') %>
-            </span>
-            <span class="meta-item">
-              <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5A6.5 6.5 0 1014.5 8 6.51 6.51 0 008 1.5zm0-1.5a8 8 0 110 16A8 8 0 018 0zm.5 4.75v3.5l3 1.75-.75 1.25-3.5-2.04V4.75h1.25z"/></svg>
-              <%= race.format === 'team' ? t('races.format.team') : t('races.format.individual') %>
-            </span>
-            <span class="meta-item">
-              <svg viewBox="0 0 16 16" fill="currentColor"><path d="M1 1h14v2H1V1zm0 4h14v2H1V5zm0 4h14v2H1V9zm0 4h14v2H1v-2z"/></svg>
-              <%= race.lanes_count %> <%= t('races.lanes') %>
-            </span>
-            <% if (race.driver_count > 0) { %>
-            <span class="meta-item">
-              <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 8a3 3 0 100-6 3 3 0 000 6zm-5 6s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3z"/></svg>
-              <%= race.driver_count %> <%= t('races.drivers') %>
-            </span>
-            <% } %>
-          </div>
-        </a>
-      <% }) %>
-    </div>
-  <% } %>
-
 </div>
+
+<script>
+(function(){
+  const grid = document.getElementById('rcGrid');
+  if (!grid) return;
+  const cards = Array.from(grid.querySelectorAll('.vt-race-card'));
+  const q = document.getElementById('rcQuery');
+  const sort = document.getElementById('rcSort');
+  const tabs = document.getElementById('rcTabs');
+  const countEl = document.getElementById('rcCount');
+  let filter = 'todas', query = '', sortKey = 'date';
+
+  function apply(){
+    const visible = cards.filter(c => {
+      const matchesF = filter === 'todas' || c.dataset.status === filter;
+      const matchesQ = !query || c.dataset.name.includes(query);
+      return matchesF && matchesQ;
+    });
+    const hiddenSet = new Set(cards.filter(c => !visible.includes(c)));
+
+    visible.sort((a,b) => {
+      if (sortKey === 'name')     return a.dataset.name.localeCompare(b.dataset.name);
+      if (sortKey === 'drivers')  return (+b.dataset.drivers) - (+a.dataset.drivers);
+      if (sortKey === 'date-asc') return new Date(a.dataset.date) - new Date(b.dataset.date);
+      return new Date(b.dataset.date) - new Date(a.dataset.date);
+    });
+    visible.forEach(c => grid.appendChild(c));
+    hiddenSet.forEach(c => { c.style.display = 'none'; });
+    visible.forEach(c => { c.style.display = ''; });
+    countEl.textContent = visible.length;
+  }
+
+  tabs && tabs.addEventListener('click', e => {
+    const t = e.target.closest('.vt-tab'); if (!t) return;
+    tabs.querySelectorAll('.vt-tab').forEach(x => x.classList.remove('is-active'));
+    t.classList.add('is-active');
+    filter = t.dataset.f; apply();
+  });
+  q && q.addEventListener('input', e => { query = e.target.value.toLowerCase(); apply(); });
+  sort && sort.addEventListener('change', e => { sortKey = e.target.value; apply(); });
+})();
+</script>
+
 <%- include('../partials/footer') %>

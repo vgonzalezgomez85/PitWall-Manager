@@ -71,7 +71,14 @@ class PoleController {
       });
     }
 
-    PoleSession.startPole(session.id, lane);
+    // Orden explícito desde el form (lo decide el usuario con el botón 🎲);
+    // si no llega, se respeta el orden ya guardado en BD.
+    const orderRaw = (req.body.entry_order || '').trim();
+    const orderedIds = orderRaw
+      ? orderRaw.split(',').map(s => parseInt(s, 10)).filter(n => !isNaN(n))
+      : null;
+
+    PoleSession.startPole(session.id, lane, orderedIds);
     res.redirect(`/races/${race.id}/pole/timing`);
   }
 
@@ -90,12 +97,34 @@ class PoleController {
     const next    = entries[session.current_idx + 1] || null;
     const done    = entries.filter(e => e.order_idx < session.current_idx);
 
-    const isTimingRunning = PoleTimingService.isRunning;
     const durationMs      = (race.manga_duration_minutes || 5) * 60000;
+
+    // Si hay piloto pendiente y el servicio no está activo/standby, lo dejamos
+    // ya en standby aquí — así un GO físico inmediato no se pierde por la
+    // race condition del POST async desde el cliente.
+    if (current && !PoleTimingService.isRunning && !PoleTimingService.isStandby) {
+      PoleTimingService.start({
+        poleSessionId: session.id,
+        entryId:       current.id,
+        entryName:     current.entity_name,
+        poleLane:      session.lane,
+        durationMs,
+      });
+    }
+    const isTimingRunning = PoleTimingService.isRunning;
+
+    // Mejor tiempo de la sesión (tiempo a batir para el piloto actual)
+    const timedEntries = entries.filter(e => e.lap_time_ms != null);
+    const poleBestMs   = timedEntries.length > 0
+      ? Math.min(...timedEntries.map(e => e.lap_time_ms))
+      : null;
+    const poleHolder   = timedEntries.length > 0
+      ? timedEntries.reduce((a, b) => a.lap_time_ms <= b.lap_time_ms ? a : b)
+      : null;
 
     res.render('races/pole-timing', {
       t: req.t, race, session, entries, current, next, done,
-      LANE_COLORS, isTimingRunning, durationMs
+      LANE_COLORS, isTimingRunning, durationMs, poleBestMs, poleHolder
     });
   }
 
@@ -111,7 +140,14 @@ class PoleController {
     const current = entries[session.current_idx];
     if (!current) return res.status(400).json({ error: 'no_current_entry' });
 
-    if (PoleTimingService.isRunning) PoleTimingService.stop(false);
+    // Si ya está en standby/running para ESTE mismo piloto, no reiniciamos
+    // (el GET /pole/timing pudo prepararlo antes y un abort aquí abriría una
+    // ventana donde el GO físico se perdería). Si es otro piloto o estaba
+    // inactivo, abortamos para arrancar limpio.
+    if (PoleTimingService.currentEntryId === current.id) {
+      return res.json({ ok: true, entryName: current.entity_name, alreadyPrepared: true });
+    }
+    if (PoleTimingService.isRunning || PoleTimingService.isStandby) PoleTimingService.abort();
 
     const durationMs = (race.manga_duration_minutes || 5) * 60000;
     PoleTimingService.start({
@@ -125,10 +161,11 @@ class PoleController {
     res.json({ ok: true, entryName: current.entity_name, durationMs });
   }
 
-  // POST /races/:id/pole/participant/stop  — stop timing early (manual)
+  // POST /races/:id/pole/participant/stop  — stop manual (aborta y reinicia
+  // la pole del piloto actual sin guardar tiempo).
   static stopParticipant(req, res) {
-    const result = PoleTimingService.stop(false);
-    res.json({ ok: true, bestLapMs: result?.bestLapMs ?? null });
+    PoleTimingService.abort();
+    res.json({ ok: true });
   }
 
   // POST /races/:id/pole/next  — advance to next participant
@@ -139,8 +176,8 @@ class PoleController {
     const session = PoleSession.findByRace(race.id);
     if (!session || !['in_progress', 'timing'].includes(session.status)) return res.redirect(`/races/${race.id}/pole/results`);
 
-    // Stop timing if still running (saves best lap via PoleTimingService.stop)
-    if (PoleTimingService.isRunning) PoleTimingService.stop(false);
+    // Si la pole sigue corriendo, finalizar persistiendo la mejor vuelta
+    if (PoleTimingService.isRunning) PoleTimingService.finish(false);
 
     const entries = PoleSession.getEntriesOrdered(session.id);
     const nextIdx = session.current_idx + 1;

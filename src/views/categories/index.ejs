@@ -1,65 +1,80 @@
-<%- include('../partials/header-compact', { lang, pageTitle: lang === 'es' ? 'Categorías' : 'Categories' }) %>
+<%- include('../partials/header', { lang, pageTitle: lang === 'es' ? 'Categorías' : 'Categories' }) %>
 
-<div class="container">
+<div class="vt-page">
+  <div class="vt-wrap">
 
-  <div class="page-header">
-    <div>
-      <h1 class="page-title">🏷️ <%= lang === 'es' ? 'Categorías de carrera' : 'Race categories' %></h1>
-    </div>
-    <div class="page-header__actions">
-      <a href="/categories/new" class="btn btn--primary">
-        + <%= lang === 'es' ? 'Nueva categoría' : 'New category' %>
-      </a>
-    </div>
-  </div>
+    <a href="/" class="vt-back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      <%= lang === 'es' ? 'Inicio' : 'Home' %>
+    </a>
 
-  <% if (categories.length === 0) { %>
-    <div class="card" style="text-align:center;padding:2rem">
-      <p style="color:#6e7681;margin-bottom:1rem">
-        <%= lang === 'es' ? 'No hay categorías creadas aún.' : 'No categories yet.' %>
-      </p>
-      <a href="/categories/new" class="btn btn--primary">
-        <%= lang === 'es' ? 'Crear primera categoría' : 'Create first category' %>
-      </a>
+    <% if (flash) { %>
+      <div class="flash flash--<%= flash.type %>" style="margin-bottom:1rem"><%- flash.text %></div>
+    <% } %>
+
+    <div class="vt-head">
+      <div class="vt-head__title">
+        <h1><%= lang === 'es' ? 'Categorías de carrera' : 'Race categories' %></h1>
+        <span class="vt-cnt"><%= categories.length %></span>
+      </div>
+      <div class="vt-head__actions">
+        <a href="/categories/new" class="vt-btn vt-btn--primary">
+          + <%= lang === 'es' ? 'Nueva categoría' : 'New category' %>
+        </a>
+      </div>
     </div>
-  <% } else { %>
-    <div class="card">
-      <table style="width:100%;border-collapse:collapse">
-        <thead>
-          <tr style="border-bottom:1px solid var(--border)">
-            <th style="text-align:left;padding:1rem;font-weight:600"><%= lang === 'es' ? 'Nombre' : 'Name' %></th>
-            <th style="text-align:left;padding:1rem;font-weight:600"><%= lang === 'es' ? 'Descripción' : 'Description' %></th>
-            <th style="text-align:center;padding:1rem;font-weight:600"><%= lang === 'es' ? 'Coches' : 'Cars' %></th>
-            <th style="text-align:left;padding:1rem;font-weight:600"><%= lang === 'es' ? 'Creada' : 'Created' %></th>
-            <th style="text-align:center;padding:1rem;font-weight:600"><%= lang === 'es' ? 'Acciones' : 'Actions' %></th>
-          </tr>
-        </thead>
-        <tbody>
-          <% categories.forEach(cat => {
-            const created = cat.created_at ? new Date(cat.created_at.replace(' ', 'T') + 'Z').toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US') : '—';
-          %>
-            <tr style="border-bottom:1px solid var(--border-light)">
-              <td style="padding:1rem;font-weight:500"><%= cat.name %></td>
-              <td style="padding:1rem;color:var(--text-muted);font-size:.9rem"><%= cat.description || '-' %></td>
-              <td style="padding:1rem;text-align:center;font-family:monospace;font-weight:600;color:#58a6ff"><%= cat.car_count || 0 %></td>
-              <td style="padding:1rem;color:var(--text-muted);font-size:.85rem"><%= created %></td>
-              <td style="padding:1rem;text-align:center;display:flex;gap:.5rem;justify-content:center">
-                <a href="/categories/<%= cat.id %>/edit" class="btn btn--ghost btn--sm">
-                  <%= lang === 'es' ? 'Editar' : 'Edit' %>
-                </a>
-                <form action="/categories/<%= cat.id %>/delete" method="POST" style="display:inline" onsubmit="return confirm('<%= lang === 'es' ? '¿Eliminar categoría?' : 'Delete category?' %>')">
-                  <button type="submit" class="btn btn--ghost btn--sm" style="color:var(--red)">
-                    <%= lang === 'es' ? 'Eliminar' : 'Delete' %>
-                  </button>
-                </form>
-              </td>
+
+    <% if (categories.length === 0) { %>
+      <div class="vt-empty" style="margin-top:32px">
+        <div class="vt-empty__t"><%= lang === 'es' ? 'Sin categorías' : 'No categories' %></div>
+        <p style="color:var(--vt-mute);margin:6px 0 16px">
+          <%= lang === 'es' ? 'Crea categorías para agrupar coches por nivel.' : 'Create categories to group cars by level.' %>
+        </p>
+        <a href="/categories/new" class="vt-btn vt-btn--primary"><%= lang === 'es' ? 'Crear primera categoría' : 'Create first category' %></a>
+      </div>
+    <% } else { %>
+
+      <div class="vt-table-card">
+        <table class="vt-table">
+          <thead>
+            <tr>
+              <th><%= lang === 'es' ? 'Nombre' : 'Name' %></th>
+              <th><%= lang === 'es' ? 'Descripción' : 'Description' %></th>
+              <th class="is-num"><%= lang === 'es' ? 'Coches' : 'Cars' %></th>
+              <th><%= lang === 'es' ? 'Creada' : 'Created' %></th>
+              <th class="is-actions"></th>
             </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    </div>
-  <% } %>
+          </thead>
+          <tbody>
+            <% categories.forEach(cat => {
+              const created = cat.created_at
+                ? new Date(cat.created_at.replace(' ', 'T') + 'Z').toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US')
+                : '—';
+            %>
+              <tr>
+                <td class="is-name"><%= cat.name %></td>
+                <td class="is-mute"><%= cat.description || '—' %></td>
+                <td class="is-num is-mono is-info"><%= cat.car_count || 0 %></td>
+                <td class="is-mute is-mono"><%= created %></td>
+                <td class="is-actions">
+                  <a href="/categories/<%= cat.id %>/edit" class="vt-icon-btn" title="<%= lang === 'es' ? 'Editar' : 'Edit' %>">
+                    <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+                  </a>
+                  <form action="/categories/<%= cat.id %>/delete" method="POST" style="display:inline"
+                        onsubmit="return confirm('<%= lang === 'es' ? '¿Eliminar categoría?' : 'Delete category?' %>')">
+                    <button type="submit" class="vt-icon-btn is-danger" title="<%= lang === 'es' ? 'Eliminar' : 'Delete' %>">
+                      <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/></svg>
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
 
+  </div>
 </div>
 
 <%- include('../partials/footer') %>

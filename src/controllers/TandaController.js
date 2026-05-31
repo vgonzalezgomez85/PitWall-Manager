@@ -16,6 +16,26 @@ const LANE_COLORS = [
   '#006064','#827717'
 ];
 
+// Devuelve el array de tamaños de sub-circuitos. Si no hay circuito asignado
+// o la config no es válida, devuelve [lanes_count] (un solo sub-circuito).
+function _circuitSizesFor(race) {
+  try {
+    if (race.circuit_id) {
+      const Circuit = require('../models/Circuit');
+      const c = Circuit.findById(race.circuit_id);
+      if (c) {
+        const sizes = Circuit.getConfig(c);
+        if (Array.isArray(sizes) && sizes.length > 0) return sizes;
+      }
+    }
+    if (race.circuits_config) {
+      const arr = JSON.parse(race.circuits_config);
+      if (Array.isArray(arr) && arr.length > 0) return arr;
+    }
+  } catch {}
+  return [race.lanes_count || 6];
+}
+
 class TandaController {
 
   // GET /races/:id/tandas/new
@@ -26,7 +46,8 @@ class TandaController {
     const laneSequence  = Race.getLaneSequence(race);
     const profiles      = DriverProfile.findAll();
     const teamsCatalog  = TeamCatalog.findAll();
-    res.render('races/tanda-new', { t: req.t, race, laneSequence, LANE_COLORS, profiles, teamsCatalog, errors: [], body: {} });
+    const circuitSizes  = _circuitSizesFor(race);
+    res.render('races/tanda-new', { t: req.t, race, laneSequence, LANE_COLORS, profiles, teamsCatalog, circuitSizes, errors: [], body: {} });
   }
 
   // POST /races/:id/tandas
@@ -71,7 +92,7 @@ class TandaController {
       if (errors.length) {
         Tanda.delete(tandaId);
         const teamsCatalog = TeamCatalog.findAll();
-        return res.render('races/tanda-new', { t: req.t, race, laneSequence, LANE_COLORS, profiles: DriverProfile.findAll(), teamsCatalog, errors, body: req.body });
+        return res.render('races/tanda-new', { t: req.t, race, laneSequence, LANE_COLORS, profiles: DriverProfile.findAll(), teamsCatalog, circuitSizes: _circuitSizesFor(race), errors, body: req.body });
       }
 
       catalogIds.forEach((catalogId, idx) => {
@@ -101,7 +122,7 @@ class TandaController {
 
       if (errors.length) {
         Tanda.delete(tandaId);
-        return res.render('races/tanda-new', { t: req.t, race, laneSequence, LANE_COLORS, profiles: DriverProfile.findAll(), errors, body: req.body });
+        return res.render('races/tanda-new', { t: req.t, race, laneSequence, LANE_COLORS, profiles: DriverProfile.findAll(), circuitSizes: _circuitSizesFor(race), errors, body: req.body });
       }
 
       driversArray.forEach((name, idx) => {

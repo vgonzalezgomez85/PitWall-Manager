@@ -1,11 +1,27 @@
 <%- include('../partials/header', { pageTitle: lang === 'es' ? 'Editar Tanda' : 'Edit Heat Group' }) %>
-<div class="container container--narrow">
 
-  <a href="/races/<%= race.id %>" class="back-link">← <%= lang === 'es' ? 'Volver a la carrera' : 'Back to race' %></a>
-  <h1 class="page-title">
-    <%= lang === 'es' ? 'Editar Tanda' : 'Edit Heat Group' %> <%= tanda.number %>
-  </h1>
-  <p class="page-subtitle"><%= race.name %> · <%= t('races.format.' + race.format) %> · <%= laneSequence.length %> <%= t('races.lanes') %></p>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700;800&family=Saira:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<div class="pole-broadcast pole-broadcast--form">
+<div class="pole-bcast-wrap pole-bcast-wrap--narrow">
+
+  <a href="/races/<%= race.id %>" class="pole-back">← <%= lang === 'es' ? 'Volver a la carrera' : 'Back to race' %></a>
+
+  <div class="pole-title-row">
+    <div class="pole-flag" aria-hidden="true"></div>
+    <h1 class="pole-h1"><%= lang === 'es' ? 'Editar Tanda' : 'Edit Heat' %> <%= tanda.number %></h1>
+  </div>
+
+  <div class="pole-meta">
+    <span class="pole-meta-club"><%= race.name %></span>
+    <span class="pole-dot"></span>
+    <span><%= t('races.format.' + race.format) %></span>
+    <span class="pole-dot"></span>
+    <span class="pole-lane-badge">
+      <%= lang === 'es' ? 'Carriles' : 'Lanes' %>
+      <span class="pole-lane-num"><%= laneSequence.length %></span>
+    </span>
+  </div>
 
   <% if (!canRestructure) { %>
     <div class="alert" style="background:rgba(255,152,0,.08);border:1px solid rgba(255,152,0,.3);color:#ff9800;margin-bottom:1.25rem">
@@ -171,15 +187,21 @@
 
       <% } %>
 
-      <div class="form-actions" style="margin-top:1.5rem">
-        <a href="/races/<%= race.id %>" class="btn btn--ghost">← <%= t('wizard.back') %></a>
-        <button type="submit" class="btn btn--primary">
+      <div class="form-actions pole-lanes-actions" style="margin-top:1.5rem">
+        <a href="/races/<%= race.id %>" class="pole-btn-edit">← <%= t('wizard.back') %></a>
+        <button type="submit" class="pole-btn-confirm pole-btn-confirm--save">
           💾 <%= lang === 'es' ? 'Guardar cambios' : 'Save changes' %>
         </button>
       </div>
 
     </form>
   </div>
+
+  <div class="pole-bcast-foot">
+    <%= lang === 'es' ? 'Edición de tanda · arrastra para reordenar' : 'Heat editing · drag to reorder' %>
+  </div>
+
+</div>
 </div>
 
 <% if (canRestructure) { %>

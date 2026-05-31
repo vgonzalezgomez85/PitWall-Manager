@@ -13,25 +13,37 @@
 
   <div class="form-card">
 
+    <!-- Lane picker + participants (mismo form para enviar lane + orden) -->
+    <form action="/races/<%= race.id %>/pole/start" method="POST">
+
     <!-- Participants preview -->
     <div style="margin-bottom:1.5rem">
-      <p class="pole-section-title" style="margin-bottom:.75rem">
-        <%= lang === 'es' ? 'Participantes' : 'Participants' %>
-        <span class="form-hint" style="font-weight:400;margin-left:.5rem">
-          (<%= entries.length %> · <%= lang === 'es' ? 'el orden de salida será aleatorio' : 'call order will be random' %>)
-        </span>
-      </p>
-      <div style="display:flex;flex-wrap:wrap;gap:.4rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-bottom:.75rem;flex-wrap:wrap">
+        <p class="pole-section-title" style="margin:0">
+          <%= lang === 'es' ? 'Participantes' : 'Participants' %>
+          <span class="form-hint" style="font-weight:400;margin-left:.5rem">
+            (<%= entries.length %>)
+          </span>
+        </p>
+        <button type="button" id="shuffleEntries" class="btn btn--ghost btn--sm">
+          🎲 <%= lang === 'es' ? 'Aleatorio' : 'Random' %>
+        </button>
+      </div>
+      <div id="entriesList" style="display:flex;flex-wrap:wrap;gap:.4rem">
         <% entries.forEach((e, i) => { %>
-          <span class="badge badge--neutral" style="background:rgba(255,255,255,.06)"><%= e.entity_name %></span>
+          <span class="badge badge--neutral entry-badge" data-id="<%= e.id %>" style="background:rgba(255,255,255,.06)"><%= e.entity_name %></span>
         <% }) %>
       </div>
+      <input type="hidden" name="entry_order" id="entryOrderInput"
+             value="<%= entries.map(e => e.id).join(',') %>">
+      <p class="form-hint" style="margin-top:.6rem">
+        <%= lang === 'es'
+          ? 'Pulsa 🎲 para barajar el orden. El orden actual será el de salida en la pole.'
+          : 'Press 🎲 to shuffle. The current order will be used for the pole start.' %>
+      </p>
     </div>
 
     <hr style="border:none;border-top:1px solid var(--border);margin:1.25rem 0">
-
-    <!-- Lane picker -->
-    <form action="/races/<%= race.id %>/pole/start" method="POST">
 
       <div class="form-group">
         <label class="form-label">
@@ -84,6 +96,30 @@ document.getElementById('poleLaneInc').addEventListener('click', () => setPoleLa
 document.getElementById('poleLaneRandom').addEventListener('click', () => {
   setPoleLane(Math.floor(Math.random() * TOTAL_LANES) + 1);
 });
+
+// ── Shuffle de participantes ─────────────────────────────────────────────
+(function () {
+  const list  = document.getElementById('entriesList');
+  const input = document.getElementById('entryOrderInput');
+  const btn   = document.getElementById('shuffleEntries');
+  if (!list || !input || !btn) return;
+
+  function syncHidden() {
+    const ids = [...list.querySelectorAll('.entry-badge')].map(el => el.dataset.id);
+    input.value = ids.join(',');
+  }
+  btn.addEventListener('click', () => {
+    const nodes = [...list.querySelectorAll('.entry-badge')];
+    // Fisher-Yates
+    for (let i = nodes.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [nodes[i], nodes[j]] = [nodes[j], nodes[i]];
+    }
+    list.innerHTML = '';
+    nodes.forEach(n => list.appendChild(n));
+    syncHidden();
+  });
+})();
 </script>
 
 <%- include('../partials/footer') %>

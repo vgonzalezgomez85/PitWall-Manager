@@ -1,390 +1,435 @@
 <%- include('../partials/header', { pageTitle: lang === 'es' ? 'Configuración' : 'Settings' }) %>
-<div class="container container--narrow">
 
-  <div class="page-header">
-    <h1 class="page-title"><%= lang === 'es' ? 'Configuración' : 'Settings' %></h1>
-  </div>
+<%
+const portsList = (connectedPorts || []).map(p => String(p).split('/').pop()).join(' · ');
+const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.length > 0 ? 'ok' : 'off');
+%>
 
-  <div class="settings-status">
-    <% if (isSimulating) { %>
-      <span class="badge badge--active">⚡ <%= lang === 'es' ? 'Modo simulación activo' : 'Simulation mode active' %></span>
-    <% } else if (connectedPorts.length > 0) { %>
+<div class="vt-page">
+  <div class="vt-wrap vt-wrap--narrow">
+
+    <a href="/" class="vt-back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      <%= lang === 'es' ? 'Inicio' : 'Home' %>
+    </a>
+
+    <% if (flash) { %>
+      <div class="flash flash--<%= flash.type %>" style="margin-bottom:1rem"><%- flash.text %></div>
+    <% } %>
+
+    <h1><%= lang === 'es' ? 'Configuración' : 'Settings' %></h1>
+
+    <% if (portState === 'sim') { %>
+      <div class="vt-port-pill is-sim">
+        <span class="dot"></span> <%= lang === 'es' ? 'Modo simulación activo' : 'Simulation mode active' %>
+      </div>
+    <% } else if (portState === 'ok') { %>
       <% connectedPorts.forEach((p, i) => { %>
-        <span class="badge badge--active">🔌 C<%= i+1 %>: <%= p %></span>
+        <div class="vt-port-pill" style="margin-right:8px">
+          <span class="dot"></span> C<%= i+1 %>: <span class="vt-mono"><%= p %></span>
+        </div>
       <% }) %>
     <% } else { %>
-      <span class="badge badge--pending"><%= lang === 'es' ? 'Sin conexión' : 'Not connected' %></span>
+      <div class="vt-port-pill is-off">
+        <span class="dot"></span> <%= lang === 'es' ? 'Sin conexión' : 'Not connected' %>
+      </div>
     <% } %>
-  </div>
 
-  <form action="/settings" method="POST" class="form-card" style="margin-top:1.5rem">
+    <form action="/settings" method="POST" class="vt-panel">
 
-    <h2 class="section-title" style="margin-top:0"><%= lang === 'es' ? 'Fuente de datos' : 'Data source' %></h2>
+      <div class="vt-sec-lbl"><%= lang === 'es' ? 'Fuente de datos' : 'Data source' %></div>
 
-    <div class="form-group">
-      <div class="option-cards">
-        <label class="option-card">
-          <input type="radio" name="serial_mode" value="simulation"
-            <%= (cfg.serial_mode || 'simulation') === 'simulation' ? 'checked' : '' %>>
-          <div class="option-card__body">
-            <span class="option-card__icon">🎮</span>
-            <span class="option-card__title"><%= lang === 'es' ? 'Simulación' : 'Simulation' %></span>
-            <span class="option-card__desc"><%= lang === 'es' ? 'Genera vueltas aleatorias. Ideal para pruebas.' : 'Generates random laps. Ideal for testing.' %></span>
+      <div class="vt-opts">
+        <label class="vt-opt <%= (cfg.serial_mode || 'simulation') === 'simulation' ? 'is-sel' : '' %>" id="optSim">
+          <input type="radio" name="serial_mode" value="simulation" <%= (cfg.serial_mode || 'simulation') === 'simulation' ? 'checked' : '' %>>
+          <div class="vt-opt__radio"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></div>
+          <div class="vt-opt__ico">
+            <svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="11" rx="5.5"/><path d="M7.5 11v3M6 12.5h3"/><circle cx="16" cy="11.5" r="1"/><circle cx="18" cy="14" r="1"/></svg>
           </div>
+          <div class="vt-opt__t"><%= lang === 'es' ? 'Simulación' : 'Simulation' %></div>
+          <div class="vt-opt__d"><%= lang === 'es' ? 'Genera vueltas aleatorias. Ideal para pruebas.' : 'Generates random laps. Ideal for testing.' %></div>
         </label>
-        <label class="option-card">
-          <input type="radio" name="serial_mode" value="serial"
-            <%= cfg.serial_mode === 'serial' ? 'checked' : '' %>>
-          <div class="option-card__body">
-            <span class="option-card__icon">🔌</span>
-            <span class="option-card__title">DS-300</span>
-            <span class="option-card__desc"><%= lang === 'es' ? 'Uno o varios DS-300 por USB/RS-232.' : 'One or more DS-300 via USB/RS-232.' %></span>
+
+        <label class="vt-opt <%= cfg.serial_mode === 'serial' ? 'is-sel' : '' %>" id="optDs">
+          <input type="radio" name="serial_mode" value="serial" <%= cfg.serial_mode === 'serial' ? 'checked' : '' %>>
+          <div class="vt-opt__radio"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></div>
+          <div class="vt-opt__ico">
+            <svg viewBox="0 0 24 24"><path d="M9 2v5M15 2v5"/><path d="M7 7h10v3a5 5 0 0 1-10 0z"/><path d="M12 15v6"/></svg>
           </div>
+          <div class="vt-opt__t">DS-300</div>
+          <div class="vt-opt__d"><%= lang === 'es' ? 'Uno o varios DS-300 por USB/RS-232.' : 'One or more DS-300 via USB/RS-232.' %></div>
         </label>
       </div>
-    </div>
 
-    <!-- ── Simulation ──────────────────────────────────────────────────── -->
-    <div id="simSettings">
-      <h3 class="form-label" style="margin-bottom:.75rem"><%= lang === 'es' ? 'Parámetros de simulación' : 'Simulation parameters' %></h3>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
-        <div class="form-group" style="margin-bottom:0">
-          <label class="form-label"><%= lang === 'es' ? 'Carriles a simular' : 'Lanes to simulate' %></label>
-          <input class="form-input" type="number" name="sim_lanes" min="1" max="32" value="<%= cfg.sim_lanes || 6 %>">
-        </div>
-        <div class="form-group" style="margin-bottom:0">
-          <label class="form-label"><%= lang === 'es' ? 'Vuelta media (ms)' : 'Avg lap time (ms)' %></label>
-          <input class="form-input" type="number" name="sim_avg_ms" min="3000" max="60000" step="1000" value="<%= cfg.sim_avg_ms || 12000 %>">
+      <!-- ── Simulation ──────────────────────────────────────────────────── -->
+      <div id="simSettings" style="margin-top:22px">
+        <div class="vt-sec-lbl"><%= lang === 'es' ? 'Parámetros de simulación' : 'Simulation parameters' %></div>
+        <div class="vt-fields vt-fields--2">
+          <div class="vt-field">
+            <label><%= lang === 'es' ? 'Carriles a simular' : 'Lanes to simulate' %></label>
+            <input class="vt-inp is-mono" type="number" name="sim_lanes" min="1" max="32" value="<%= cfg.sim_lanes || 6 %>">
+          </div>
+          <div class="vt-field">
+            <label><%= lang === 'es' ? 'Vuelta media (ms)' : 'Avg lap time (ms)' %></label>
+            <input class="vt-inp is-mono" type="number" name="sim_avg_ms" min="3000" max="60000" step="1000" value="<%= cfg.sim_avg_ms || 12000 %>">
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- ── Multi-circuit serial ───────────────────────────────────────── -->
-    <div id="serialSettings" style="display:none">
+      <!-- ── Multi-circuit serial ───────────────────────────────────────── -->
+      <div id="serialSettings" style="display:none;margin-top:26px">
 
-      <div class="circuit-section-header">
-        <div>
-          <h3 class="form-label" style="margin:0">
-            <%= lang === 'es' ? 'Circuitos DS-300' : 'DS-300 circuits' %>
-          </h3>
-          <p class="form-hint" style="margin:.35rem 0 0">
-            <%= lang === 'es'
-              ? 'Cada DS-300 controla un circuito independiente. Los carriles se numeran de forma global.'
-              : 'Each DS-300 controls one independent circuit. Lanes are numbered globally.' %>
-          </p>
-        </div>
-        <div style="display:flex;gap:.5rem;align-items:center">
-          <button type="button" class="btn btn--ghost btn--sm" id="refreshPorts" title="<%= lang === 'es' ? 'Buscar puertos COM' : 'Search COM ports' %>">
-            ⟳ <%= lang === 'es' ? 'Buscar puertos' : 'Refresh ports' %>
-          </button>
-          <% if (multiCircuit) { %>
-            <button type="button" class="btn btn--ghost btn--sm" id="addCircuit">
-              + <%= lang === 'es' ? 'Añadir circuito' : 'Add circuit' %>
+        <div class="vt-sub">
+          <div>
+            <h3><%= lang === 'es' ? 'Circuitos DS-300' : 'DS-300 circuits' %></h3>
+            <p class="vt-sub__p">
+              <%= lang === 'es'
+                ? 'Cada DS-300 controla un circuito independiente. Los carriles se numeran de forma global.'
+                : 'Each DS-300 controls one independent circuit. Lanes are numbered globally.' %>
+            </p>
+          </div>
+          <div class="vt-sub__actions">
+            <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="refreshPorts" title="<%= lang === 'es' ? 'Buscar puertos COM' : 'Search COM ports' %>">
+              <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v5h-5"/></svg>
+              <%= lang === 'es' ? 'Buscar puertos' : 'Refresh ports' %>
             </button>
-          <% } else { %>
-            <a href="/license" class="upgrade-hint">
-              🔒 <%= lang === 'es' ? 'Multi-circuito requiere Pro' : 'Multi-circuit requires Pro' %>
-            </a>
-          <% } %>
+            <% if (multiCircuit) { %>
+              <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="addCircuit">
+                <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                <%= lang === 'es' ? 'Añadir circuito' : 'Add circuit' %>
+              </button>
+            <% } else { %>
+              <a href="/license" class="vt-upgrade-hint">
+                🔒 <%= lang === 'es' ? 'Multi-circuito requiere Pro' : 'Multi-circuit requires Pro' %>
+              </a>
+            <% } %>
+          </div>
         </div>
-      </div>
 
-      <div id="circuitList">
-        <% let globalLaneStart = 1; %>
-        <% circuits.forEach((c, i) => { %>
-          <div class="circuit-row" data-index="<%= i %>">
-            <div class="circuit-row__header">
-              <div class="circuit-row__title">
-                <span class="circuit-row__num"><%= i + 1 %></span>
-                <%= lang === 'es' ? 'Circuito' : 'Circuit' %> <%= i + 1 %>
-                <span class="circuit-row__lanes-badge">
+        <div id="circuitList">
+          <% let globalLaneStart = 1; %>
+          <% circuits.forEach((c, i) => { %>
+            <div class="vt-circuit-row circuit-row" data-index="<%= i %>">
+              <div class="vt-circuit-row__h">
+                <div class="vt-circuit-row__num cnum"><%= i + 1 %></div>
+                <div class="vt-circuit-row__title cname"><%= lang === 'es' ? 'Circuito' : 'Circuit' %> <%= i + 1 %></div>
+                <span class="vt-circuit-row__lanes-badge circuit-row__lanes-badge">
                   <%= lang === 'es' ? 'Carriles' : 'Lanes' %>&nbsp;<%= globalLaneStart %>–<%= globalLaneStart + (c.lanes || 8) - 1 %>
                 </span>
+                <% if (multiCircuit) { %>
+                  <button type="button" class="vt-circuit-row__x btn-remove-circuit" data-index="<%= i %>" title="Eliminar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                  </button>
+                <% } %>
               </div>
-              <% if (multiCircuit) { %>
-                <button type="button" class="btn-remove-circuit" data-index="<%= i %>" title="Eliminar">✕</button>
-              <% } %>
+
+              <div class="vt-group-lbl"><%= lang === 'es' ? 'Conexión serie' : 'Serial connection' %></div>
+              <div class="vt-fields vt-fields--3 circuit-row__body">
+                <div class="vt-field circuit-row__field circuit-row__field--port">
+                  <label><%= lang === 'es' ? 'Puerto' : 'Port' %></label>
+                  <div class="vt-selw">
+                    <select class="port-select" name="circuit_port">
+                      <option value="">— <%= lang === 'es' ? 'seleccionar' : 'select' %> —</option>
+                      <% ports.forEach(p => { %>
+                        <option value="<%= p.path %>" <%= c.port === p.path ? 'selected' : '' %>>
+                          <%= p.path %><%= p.manufacturer ? ` — ${p.manufacturer}` : '' %>
+                        </option>
+                      <% }) %>
+                      <% if (c.port && !ports.find(p => p.path === c.port)) { %>
+                        <option value="<%= c.port %>" selected><%= c.port %></option>
+                      <% } %>
+                    </select>
+                  </div>
+                  <input class="vt-inp is-mono port-manual" type="text"
+                    placeholder="<%= lang === 'es' ? 'o escribe el path: /dev/ttys003' : 'or type path: COM3' %>"
+                    value="<%= c.port || '' %>" style="margin-top:7px;font-size:13px">
+                </div>
+                <div class="vt-field circuit-row__field circuit-row__field--baud">
+                  <label>Baud rate</label>
+                  <div class="vt-selw">
+                    <select name="circuit_baud_select" id="baud-<%= i %>" data-target="baud-input-<%= i %>">
+                      <% [9600, 19200, 38400, 57600, 115200].forEach(b => { %>
+                        <option value="<%= b %>" <%= (c.baud || 57600) == b ? 'selected' : '' %>><%= b %></option>
+                      <% }) %>
+                    </select>
+                  </div>
+                  <input type="hidden" id="baud-input-<%= i %>" name="circuit_baud" value="<%= c.baud || 57600 %>">
+                </div>
+                <div class="vt-field circuit-row__field">
+                  <label>Data bits</label>
+                  <div class="vt-selw">
+                    <select name="circuit_databits">
+                      <% [7, 8].forEach(v => { %>
+                        <option value="<%= v %>" <%= (c.dataBits || 8) == v ? 'selected' : '' %>><%= v %></option>
+                      <% }) %>
+                    </select>
+                  </div>
+                </div>
+                <div class="vt-field circuit-row__field">
+                  <label><%= lang === 'es' ? 'Paridad' : 'Parity' %></label>
+                  <div class="vt-selw">
+                    <select name="circuit_parity">
+                      <% ['none','even','odd'].forEach(v => { %>
+                        <option value="<%= v %>" <%= (c.parity || 'none') === v ? 'selected' : '' %>><%= v %></option>
+                      <% }) %>
+                    </select>
+                  </div>
+                </div>
+                <div class="vt-field circuit-row__field">
+                  <label>Stop bits</label>
+                  <div class="vt-selw">
+                    <select name="circuit_stopbits">
+                      <% [1, 2].forEach(v => { %>
+                        <option value="<%= v %>" <%= (c.stopBits || 1) == v ? 'selected' : '' %>><%= v %></option>
+                      <% }) %>
+                    </select>
+                  </div>
+                </div>
+                <div class="vt-field circuit-row__field">
+                  <label><%= lang === 'es' ? 'Control de flujo' : 'Flow control' %></label>
+                  <div class="vt-selw">
+                    <select name="circuit_flow">
+                      <% ['none','rtscts','xonxoff'].forEach(v => { %>
+                        <option value="<%= v %>" <%= (c.flowControl || 'none') === v ? 'selected' : '' %>><%= v %></option>
+                      <% }) %>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div class="vt-divider"></div>
+
+              <div class="vt-group-lbl"><%= lang === 'es' ? 'Asignación de carriles' : 'Lane assignment' %></div>
+              <div class="vt-fields vt-fields--2">
+                <div class="vt-field circuit-row__field circuit-row__field--circuit">
+                  <label><%= lang === 'es' ? 'Circuito' : 'Circuit' %></label>
+                  <div class="vt-selw">
+                    <select class="circuit-ref-select" name="circuit_ref">
+                      <option value="">— <%= lang === 'es' ? 'Manual' : 'Manual' %> —</option>
+                      <% allCircuits.forEach(ac => { %>
+                        <option value="<%= ac.id %>" data-lanes="<%= ac.lanes_count %>"
+                          <%= String(c.circuit_id || '') === String(ac.id) ? 'selected' : '' %>>
+                          <%= ac.name %> (<%= ac.lanes_count %>)
+                        </option>
+                      <% }) %>
+                    </select>
+                  </div>
+                </div>
+                <div class="vt-field circuit-row__field circuit-row__field--lanes">
+                  <label><%= lang === 'es' ? 'Nº de carriles' : 'Lanes' %></label>
+                  <input class="vt-inp is-mono circuit-lanes-input" type="number" name="circuit_lanes" min="2" max="8"
+                    value="<%= c.lanes || 8 %>" <%= c.circuit_id ? 'readonly' : '' %>>
+                </div>
+              </div>
             </div>
-            <div class="circuit-row__body">
-              <div class="circuit-row__field circuit-row__field--port">
-                <label class="form-label"><%= lang === 'es' ? 'Puerto serie' : 'Serial port' %></label>
-                <select class="form-input port-select" name="circuit_port" style="margin-bottom:.35rem">
-                  <option value=""><%= lang === 'es' ? '— seleccionar —' : '— select —' %></option>
-                  <% ports.forEach(p => { %>
-                    <option value="<%= p.path %>" <%= c.port === p.path ? 'selected' : '' %>>
-                      <%= p.path %><%= p.manufacturer ? ` — ${p.manufacturer}` : '' %>
-                    </option>
-                  <% }) %>
-                  <% if (c.port && !ports.find(p => p.path === c.port)) { %>
-                    <option value="<%= c.port %>" selected><%= c.port %></option>
-                  <% } %>
-                </select>
-                <input class="form-input port-manual" type="text"
-                  placeholder="<%= lang === 'es' ? 'o escribe el path: /dev/ttys003' : 'or type path: COM3' %>"
-                  value="<%= c.port || '' %>" style="font-size:.8rem">
-              </div>
-              <div class="circuit-row__field circuit-row__field--baud">
-                <label class="form-label">Baud</label>
-                <input class="form-input" type="number" name="circuit_baud" value="<%= c.baud || 57600 %>">
-              </div>
-              <div class="circuit-row__field">
-                <label class="form-label">Data bits</label>
-                <select class="form-input" name="circuit_databits">
-                  <% [7, 8].forEach(v => { %>
-                    <option value="<%= v %>" <%= (c.dataBits || 8) == v ? 'selected' : '' %>><%= v %></option>
-                  <% }) %>
-                </select>
-              </div>
-              <div class="circuit-row__field">
-                <label class="form-label">Parity</label>
-                <select class="form-input" name="circuit_parity">
-                  <% ['none','even','odd'].forEach(v => { %>
-                    <option value="<%= v %>" <%= (c.parity || 'none') === v ? 'selected' : '' %>><%= v %></option>
-                  <% }) %>
-                </select>
-              </div>
-              <div class="circuit-row__field">
-                <label class="form-label">Stop bits</label>
-                <select class="form-input" name="circuit_stopbits">
-                  <% [1, 2].forEach(v => { %>
-                    <option value="<%= v %>" <%= (c.stopBits || 1) == v ? 'selected' : '' %>><%= v %></option>
-                  <% }) %>
-                </select>
-              </div>
-              <div class="circuit-row__field">
-                <label class="form-label">Flow control</label>
-                <select class="form-input" name="circuit_flow">
-                  <% ['none','rtscts','xonxoff'].forEach(v => { %>
-                    <option value="<%= v %>" <%= (c.flowControl || 'none') === v ? 'selected' : '' %>><%= v %></option>
-                  <% }) %>
-                </select>
-              </div>
-              <div class="circuit-row__field circuit-row__field--circuit">
-                <label class="form-label"><%= lang === 'es' ? 'Circuito' : 'Circuit' %></label>
-                <select class="form-input circuit-ref-select" name="circuit_ref">
-                  <option value=""><%= lang === 'es' ? '— Manual —' : '— Manual —' %></option>
-                  <% allCircuits.forEach(ac => { %>
-                    <option value="<%= ac.id %>" data-lanes="<%= ac.lanes_count %>"
-                      <%= String(c.circuit_id || '') === String(ac.id) ? 'selected' : '' %>>
-                      <%= ac.name %> (<%= ac.lanes_count %>)
-                    </option>
-                  <% }) %>
-                </select>
-              </div>
-              <div class="circuit-row__field circuit-row__field--lanes">
-                <label class="form-label"><%= lang === 'es' ? 'Carriles' : 'Lanes' %></label>
-                <input class="form-input circuit-lanes-input" type="number" name="circuit_lanes" min="2" max="8"
-                  value="<%= c.lanes || 8 %>" <%= c.circuit_id ? 'readonly' : '' %>>
-              </div>
+            <% globalLaneStart += (c.lanes || 8); %>
+          <% }) %>
+        </div>
+
+        <!-- ── Debug mode ─────────────────────────────────────────────────── -->
+        <div class="vt-debug">
+          <button type="button" class="vt-switch <%= cfg.debug_mode === '1' ? 'is-on' : '' %>" id="dbgSwitch" aria-label="Toggle debug"></button>
+          <input type="hidden" name="debug_mode" id="dbgInput" value="<%= cfg.debug_mode === '1' ? '1' : '' %>">
+          <div>
+            <div class="vt-debug__t">
+              <svg viewBox="0 0 24 24"><rect x="8" y="8" width="8" height="10" rx="4"/><path d="M12 8V5M9 5L8 3M15 5l1-2M8 11H4M16 11h4M8 15H4M16 15h4M8 18l-2 2M16 18l2 2"/></svg>
+              <%= lang === 'es' ? 'Modo debug' : 'Debug mode' %>
+            </div>
+            <div class="vt-debug__d">
+              <%= lang === 'es'
+                ? 'Registra tramas DS-300 crudas, cruces de carril, eventos de manga y errores en ficheros (.jsonl + .log) bajo logs/debug/. Un par de ficheros por manga.'
+                : 'Logs raw DS-300 frames, lane crossings, manga events and errors to files (.jsonl + .log) under logs/debug/. One pair per manga.' %>
             </div>
           </div>
-          <% globalLaneStart += (c.lanes || 8); %>
-        <% }) %>
-      </div>
-
-      <!-- ── Debug mode ─────────────────────────────────────────────────── -->
-      <div class="form-group" style="margin-top:1rem; padding:.8rem; border:1px solid var(--border, #30363d); border-radius:6px">
-        <label class="form-label" style="display:flex; align-items:center; gap:.5rem; cursor:pointer; margin:0">
-          <input type="checkbox" name="debug_mode" value="1"
-                 <%= cfg.debug_mode === '1' ? 'checked' : '' %>>
-          <span><%= lang === 'es' ? '🐞 Modo debug' : '🐞 Debug mode' %></span>
-        </label>
-        <div class="form-hint" style="margin-top:.4rem">
-          <%= lang === 'es'
-            ? 'Registra tramas DS-300 crudas, cruces de carril, eventos de manga y errores en ficheros (.jsonl + .log) bajo logs/debug/. Un par de ficheros por manga.'
-            : 'Logs raw DS-300 frames, lane crossings, manga events and errors to files (.jsonl + .log) under logs/debug/. One pair per manga.' %>
         </div>
-      </div>
 
-      <!-- ── Advanced parser tuning ─────────────────────────────────────── -->
-      <details style="margin-top:1rem">
-        <summary class="form-hint" style="cursor:pointer">
-          <%= lang === 'es' ? '⚙️ Avanzado: timing del parser DS-300' : '⚙️ Advanced: DS-300 parser timing' %>
-        </summary>
-        <div style="display:flex; gap:1rem; align-items:flex-end; margin-top:.6rem">
-          <div class="form-group" style="margin:0">
-            <label class="form-label" for="serial_frame_gap_ms">FRAME_GAP_MS</label>
-            <input class="form-input" type="number" id="serial_frame_gap_ms"
-                   name="serial_frame_gap_ms" min="10" max="500"
-                   value="<%= cfg.serial_frame_gap_ms || 75 %>" style="width:100px">
-            <div class="form-hint" style="margin-top:.25rem">
+        <details>
+          <summary>
+            <span class="ar"></span>
+            <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+            <%= lang === 'es' ? 'Avanzado: timing del parser DS-300' : 'Advanced: DS-300 parser timing' %>
+          </summary>
+          <div class="vt-disc-body">
+            <div class="vt-field" style="max-width:160px;margin-top:10px">
+              <label>FRAME_GAP_MS</label>
+              <input class="vt-inp is-mono" type="number" name="serial_frame_gap_ms" min="10" max="500" value="<%= cfg.serial_frame_gap_ms || 75 %>">
+            </div>
+            <div class="vt-hint">
               <%= lang === 'es'
                 ? 'Silencio (ms) entre bytes que separa dos tramas. Por defecto 75. Bájalo si tu DS encadena tramas muy rápido (Tic-Tac usa ~1).'
                 : 'Silence (ms) between bytes that separates two frames. Default 75. Lower it if your DS chains frames fast.' %>
             </div>
           </div>
-        </div>
-      </details>
-
-      <% if (rawLog.length > 0) { %>
-        <details style="margin-top:1rem">
-          <summary class="form-hint" style="cursor:pointer"><%= lang === 'es' ? 'Ver bytes recibidos (debug)' : 'View received bytes (debug)' %></summary>
-          <div class="raw-log">
-            <% rawLog.forEach(({ byte }) => { %>
-              <span class="raw-byte">0x<%= byte.toString(16).padStart(2,'0').toUpperCase() %></span>
-            <% }) %>
-          </div>
         </details>
-      <% } %>
-    </div>
 
-    <div class="form-actions">
-      <a href="/" class="btn btn--ghost"><%= lang === 'es' ? 'Cancelar' : 'Cancel' %></a>
-      <button type="submit" class="btn btn--primary"><%= lang === 'es' ? 'Guardar y aplicar' : 'Save & apply' %></button>
-    </div>
-  </form>
+        <% if (rawLog.length > 0) { %>
+          <details>
+            <summary>
+              <span class="ar"></span>
+              <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 9l3 3-3 3M13 15h4"/></svg>
+              <%= lang === 'es' ? 'Ver bytes recibidos (debug)' : 'View received bytes (debug)' %>
+            </summary>
+            <div class="vt-disc-body">
+              <div class="vt-bytes"><% rawLog.forEach(({ byte }) => { %><%= '0x' + byte.toString(16).padStart(2,'0').toUpperCase() + ' ' %><% }) %></div>
+            </div>
+          </details>
+        <% } %>
+      </div>
+
+      <div class="vt-form-foot">
+        <a href="/" class="vt-btn vt-btn--ghost vt-btn--lg"><%= lang === 'es' ? 'Cancelar' : 'Cancel' %></a>
+        <button type="submit" class="vt-btn vt-btn--primary vt-btn--lg"><%= lang === 'es' ? 'Guardar y aplicar' : 'Save & apply' %></button>
+      </div>
+    </form>
+  </div>
 </div>
-
-<style>
-/* Circuit section header */
-.circuit-section-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1rem; gap:1rem; }
-.upgrade-hint { font-size:.8rem; color:#8b949e; text-decoration:none; white-space:nowrap; padding:.3rem .75rem; border:1px solid #30363d; border-radius:6px; transition:color .15s; }
-.upgrade-hint:hover { color:#d2a8ff; border-color:#d2a8ff; }
-
-/* Circuit row */
-.circuit-row { background:#000000; border:1px solid #21262d; border-radius:10px; padding:1rem 1.25rem; margin-bottom:.75rem; transition:border-color .15s; }
-.circuit-row:hover { border-color:#30363d; }
-.circuit-row__header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; }
-.circuit-row__title { font-weight:600; color:#e6edf3; display:flex; align-items:center; gap:.6rem; font-size:.95rem; }
-.circuit-row__num { width:1.5rem; height:1.5rem; background:#21262d; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:.75rem; color:#8b949e; flex-shrink:0; }
-.circuit-row__lanes-badge { font-size:.72rem; background:#161b22; color:#58a6ff; border:1px solid #1c3a5e; padding:.15rem .5rem; border-radius:20px; font-weight:500; }
-.circuit-row__body { display:grid; grid-template-columns:1fr 100px 1fr 100px; gap:.75rem; align-items:end; }
-.circuit-lanes-input[readonly] { background:#000000; color:#8b949e; cursor:not-allowed; }
-.circuit-row__field { display:flex; flex-direction:column; gap:.35rem; }
-.btn-remove-circuit { background:none; border:none; color:#484f58; cursor:pointer; font-size:.9rem; padding:.3rem .5rem; border-radius:6px; line-height:1; transition:color .15s, background .15s; }
-.btn-remove-circuit:hover { color:#f85149; background:#21262d; }
-</style>
 
 <script>
 const LANG = "<%= lang %>";
-const modeRadios = document.querySelectorAll('input[name="serial_mode"]');
-const simDiv     = document.getElementById('simSettings');
-const serialDiv  = document.getElementById('serialSettings');
-const portOptions = `<option value="">— seleccionar —</option>` +
-  Array.from(document.querySelectorAll('select[name="circuit_port"] option'))
-    .filter((o,i,a) => a.findIndex(x=>x.value===o.value)===i && o.value)
-    .map(o=>`<option value="${o.value}">${o.textContent.trim()}</option>`).join('');
 
-function updateView() {
+/* ── radio source ── */
+const sim = document.getElementById('optSim');
+const ds  = document.getElementById('optDs');
+const simDiv = document.getElementById('simSettings');
+const serialDiv = document.getElementById('serialSettings');
+function pickSource(){
   const mode = document.querySelector('input[name="serial_mode"]:checked')?.value;
+  sim.classList.toggle('is-sel', mode === 'simulation');
+  ds.classList.toggle('is-sel',  mode === 'serial');
   simDiv.style.display    = mode === 'simulation' ? '' : 'none';
   serialDiv.style.display = mode === 'serial'     ? '' : 'none';
 }
-modeRadios.forEach(r => r.addEventListener('change', updateView));
-updateView();
+document.querySelectorAll('input[name="serial_mode"]').forEach(r => r.addEventListener('change', pickSource));
+pickSource();
 
-// Update lane badge labels dynamically
-function updateLaneBadges() {
+/* ── debug switch ── */
+const sw = document.getElementById('dbgSwitch');
+const swInput = document.getElementById('dbgInput');
+sw.addEventListener('click', () => {
+  sw.classList.toggle('is-on');
+  swInput.value = sw.classList.contains('is-on') ? '1' : '';
+});
+
+/* ── baud select → hidden input ── */
+document.querySelectorAll('select[name="circuit_baud_select"]').forEach(sel => {
+  const target = document.getElementById(sel.dataset.target);
+  sel.addEventListener('change', () => { if (target) target.value = sel.value; });
+});
+
+/* ── lane badge labels ── */
+function updateLaneBadges(){
   let offset = 1;
-  document.querySelectorAll('.circuit-row').forEach(row => {
+  document.querySelectorAll('.circuit-row').forEach((row, idx) => {
     const lanes = parseInt(row.querySelector('.circuit-lanes-input')?.value || '8', 10);
-    const idx   = Array.from(document.querySelectorAll('.circuit-row')).indexOf(row) + 1;
-    row.querySelector('.circuit-row__title').childNodes[0].textContent =
-      `Circuito ${idx} `;
-    row.querySelector('.circuit-row__lanes-badge').textContent =
-      `Carriles ${offset}–${offset + lanes - 1}`;
+    const badge = row.querySelector('.circuit-row__lanes-badge');
+    const title = row.querySelector('.vt-circuit-row__title');
+    if (title) title.textContent = (LANG === 'es' ? 'Circuito ' : 'Circuit ') + (idx + 1);
+    if (badge) badge.textContent = (LANG === 'es' ? 'Carriles ' : 'Lanes ') + offset + '–' + (offset + lanes - 1);
     offset += lanes;
   });
 }
 
-// Port select ↔ manual input sync
-function wirePortFields(container) {
+/* ── port select ↔ manual ── */
+function wirePortFields(container){
   const sel = container.querySelector('.port-select');
   const inp = container.querySelector('.port-manual');
   if (!sel || !inp) return;
-  // Select changes → update input
   sel.addEventListener('change', () => { if (sel.value) inp.value = sel.value; });
-  // Input changes → update select name so the form submits the typed value
   inp.addEventListener('input', () => {
-    // Add typed value as an option if not present, select it
     let opt = Array.from(sel.options).find(o => o.value === inp.value);
-    if (!opt && inp.value) {
-      opt = new Option(inp.value, inp.value);
-      sel.appendChild(opt);
-    }
+    if (!opt && inp.value) { opt = new Option(inp.value, inp.value); sel.appendChild(opt); }
     sel.value = inp.value;
   });
 }
 document.querySelectorAll('.circuit-row__field--port').forEach(wirePortFields);
 
-// Saved-circuit selector ↔ lanes input
-function wireCircuitRef(row) {
+/* ── saved-circuit ↔ lanes input ── */
+function wireCircuitRef(row){
   const sel = row.querySelector('.circuit-ref-select');
   const inp = row.querySelector('.circuit-lanes-input');
   if (!sel || !inp) return;
   sel.addEventListener('change', () => {
     const opt = sel.options[sel.selectedIndex];
     const lanes = parseInt(opt?.dataset?.lanes || '0', 10);
-    if (sel.value && lanes > 0) {
-      inp.value    = lanes;
-      inp.readOnly = true;
-    } else {
-      inp.readOnly = false;
-    }
+    if (sel.value && lanes > 0) { inp.value = lanes; inp.readOnly = true; }
+    else { inp.readOnly = false; }
     updateLaneBadges();
   });
 }
 document.querySelectorAll('.circuit-row').forEach(wireCircuitRef);
-
 document.getElementById('circuitList').addEventListener('input', e => {
   if (e.target.classList.contains('circuit-lanes-input')) updateLaneBadges();
 });
 
-// Reusable HTML fragment for the saved-circuit selector (built from existing markup)
-const circuitRefOptions = `<option value="">— Manual —</option>` +
+/* ── port options template for add-circuit ── */
+const portOptions = Array.from(document.querySelectorAll('select.port-select option'))
+  .filter((o,i,a) => a.findIndex(x => x.value === o.value) === i && o.value)
+  .map(o => `<option value="${o.value}">${o.textContent.trim()}</option>`).join('');
+
+const circuitRefOptions = `<option value="">— ${LANG === 'es' ? 'Manual' : 'Manual'} —</option>` +
   Array.from(document.querySelector('.circuit-ref-select')?.options || [])
     .filter(o => o.value)
     .map(o => `<option value="${o.value}" data-lanes="${o.dataset.lanes}">${o.textContent.trim()}</option>`)
     .join('');
 
-// Add circuit
+/* ── add circuit ── */
 document.getElementById('addCircuit')?.addEventListener('click', () => {
-  const list  = document.getElementById('circuitList');
-  const idx   = list.querySelectorAll('.circuit-row').length;
-  const div   = document.createElement('div');
-  div.className = 'circuit-row';
+  const list = document.getElementById('circuitList');
+  const idx = list.querySelectorAll('.circuit-row').length;
+  const div = document.createElement('div');
+  div.className = 'vt-circuit-row circuit-row';
   div.innerHTML = `
-    <div class="circuit-row__header">
-      <div class="circuit-row__title">
-        <span class="circuit-row__num">${idx+1}</span>
-        Circuito ${idx+1}
-        <span class="circuit-row__lanes-badge">Carriles ?</span>
-      </div>
-      <button type="button" class="btn-remove-circuit" title="Eliminar">✕</button>
+    <div class="vt-circuit-row__h">
+      <div class="vt-circuit-row__num cnum">${idx+1}</div>
+      <div class="vt-circuit-row__title cname">${LANG === 'es' ? 'Circuito' : 'Circuit'} ${idx+1}</div>
+      <span class="vt-circuit-row__lanes-badge circuit-row__lanes-badge">${LANG === 'es' ? 'Carriles ?' : 'Lanes ?'}</span>
+      <button type="button" class="vt-circuit-row__x btn-remove-circuit" title="Eliminar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
     </div>
-    <div class="circuit-row__body">
-      <div class="circuit-row__field circuit-row__field--port">
-        <label class="form-label">Puerto serie</label>
-        <select class="form-input port-select" name="circuit_port" style="margin-bottom:.35rem"><option value="">— seleccionar —</option>${portOptions}</select>
-        <input class="form-input port-manual" type="text" placeholder="o escribe el path: /dev/ttys003" style="font-size:.8rem">
+    <div class="vt-group-lbl">${LANG === 'es' ? 'Conexión serie' : 'Serial connection'}</div>
+    <div class="vt-fields vt-fields--3 circuit-row__body">
+      <div class="vt-field circuit-row__field circuit-row__field--port">
+        <label>${LANG === 'es' ? 'Puerto' : 'Port'}</label>
+        <div class="vt-selw"><select class="port-select" name="circuit_port">
+          <option value="">— ${LANG === 'es' ? 'seleccionar' : 'select'} —</option>${portOptions}
+        </select></div>
+        <input class="vt-inp is-mono port-manual" type="text" style="margin-top:7px;font-size:13px"
+          placeholder="${LANG === 'es' ? 'o escribe el path' : 'or type path'}">
       </div>
-      <div class="circuit-row__field circuit-row__field--baud">
-        <label class="form-label">Baud</label>
-        <input class="form-input" type="number" name="circuit_baud" value="57600">
+      <div class="vt-field circuit-row__field circuit-row__field--baud">
+        <label>Baud rate</label>
+        <div class="vt-selw"><select name="circuit_baud">
+          <option>9600</option><option>19200</option><option>38400</option><option selected>57600</option><option>115200</option>
+        </select></div>
       </div>
-      <div class="circuit-row__field">
-        <label class="form-label">Data bits</label>
-        <select class="form-input" name="circuit_databits"><option value="7">7</option><option value="8" selected>8</option></select>
+      <div class="vt-field circuit-row__field">
+        <label>Data bits</label>
+        <div class="vt-selw"><select name="circuit_databits"><option value="7">7</option><option value="8" selected>8</option></select></div>
       </div>
-      <div class="circuit-row__field">
-        <label class="form-label">Parity</label>
-        <select class="form-input" name="circuit_parity"><option value="none" selected>none</option><option value="even">even</option><option value="odd">odd</option></select>
+      <div class="vt-field circuit-row__field">
+        <label>${LANG === 'es' ? 'Paridad' : 'Parity'}</label>
+        <div class="vt-selw"><select name="circuit_parity"><option value="none" selected>none</option><option value="even">even</option><option value="odd">odd</option></select></div>
       </div>
-      <div class="circuit-row__field">
-        <label class="form-label">Stop bits</label>
-        <select class="form-input" name="circuit_stopbits"><option value="1" selected>1</option><option value="2">2</option></select>
+      <div class="vt-field circuit-row__field">
+        <label>Stop bits</label>
+        <div class="vt-selw"><select name="circuit_stopbits"><option value="1" selected>1</option><option value="2">2</option></select></div>
       </div>
-      <div class="circuit-row__field">
-        <label class="form-label">Flow control</label>
-        <select class="form-input" name="circuit_flow"><option value="none" selected>none</option><option value="rtscts">rtscts</option><option value="xonxoff">xonxoff</option></select>
+      <div class="vt-field circuit-row__field">
+        <label>${LANG === 'es' ? 'Control de flujo' : 'Flow control'}</label>
+        <div class="vt-selw"><select name="circuit_flow"><option value="none" selected>none</option><option value="rtscts">rtscts</option><option value="xonxoff">xonxoff</option></select></div>
       </div>
-      <div class="circuit-row__field circuit-row__field--circuit">
-        <label class="form-label">Circuito</label>
-        <select class="form-input circuit-ref-select" name="circuit_ref">${circuitRefOptions}</select>
+    </div>
+    <div class="vt-divider"></div>
+    <div class="vt-group-lbl">${LANG === 'es' ? 'Asignación de carriles' : 'Lane assignment'}</div>
+    <div class="vt-fields vt-fields--2">
+      <div class="vt-field circuit-row__field circuit-row__field--circuit">
+        <label>${LANG === 'es' ? 'Circuito' : 'Circuit'}</label>
+        <div class="vt-selw"><select class="circuit-ref-select" name="circuit_ref">${circuitRefOptions}</select></div>
       </div>
-      <div class="circuit-row__field circuit-row__field--lanes">
-        <label class="form-label">Carriles</label>
-        <input class="form-input circuit-lanes-input" type="number" name="circuit_lanes" min="2" max="8" value="8">
+      <div class="vt-field circuit-row__field circuit-row__field--lanes">
+        <label>${LANG === 'es' ? 'Nº de carriles' : 'Lanes'}</label>
+        <input class="vt-inp is-mono circuit-lanes-input" type="number" name="circuit_lanes" min="2" max="8" value="8">
       </div>
     </div>`;
   list.appendChild(div);
@@ -393,39 +438,36 @@ document.getElementById('addCircuit')?.addEventListener('click', () => {
   updateLaneBadges();
 });
 
-// Remove circuit
+/* ── remove circuit ── */
 document.getElementById('circuitList').addEventListener('click', e => {
-  if (e.target.classList.contains('btn-remove-circuit')) {
-    const rows = document.querySelectorAll('.circuit-row');
-    if (rows.length > 1) { e.target.closest('.circuit-row').remove(); updateLaneBadges(); }
-  }
+  const btn = e.target.closest('.btn-remove-circuit');
+  if (!btn) return;
+  const rows = document.querySelectorAll('.circuit-row');
+  if (rows.length > 1) { btn.closest('.circuit-row').remove(); updateLaneBadges(); }
 });
 
-// Refresh COM ports — re-fetches the system port list and updates all selects
+/* ── refresh COM ports ── */
 document.getElementById('refreshPorts')?.addEventListener('click', async (e) => {
   const btn = e.currentTarget;
-  const originalText = btn.textContent;
+  const originalHTML = btn.innerHTML;
   btn.disabled = true;
-  btn.textContent = '⟳ ' + (LANG === 'es' ? 'Buscando…' : 'Searching…');
+  btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v5h-5"/></svg>' + (LANG === 'es' ? 'Buscando…' : 'Searching…');
   try {
     const res = await fetch('/api/settings/ports');
     const { ports } = await res.json();
     document.querySelectorAll('.port-select').forEach(sel => {
       const current = sel.value;
-      const newOptions = '<option value="">— ' + (LANG === 'es' ? 'seleccionar' : 'select') + ' —</option>' +
+      const opts = '<option value="">— ' + (LANG === 'es' ? 'seleccionar' : 'select') + ' —</option>' +
         ports.map(p => `<option value="${p.path}"${p.path === current ? ' selected' : ''}>${p.path}${p.manufacturer ? ' — ' + p.manufacturer : ''}</option>`).join('');
-      // Preserve a typed value not in the list
       let extra = '';
-      if (current && !ports.find(p => p.path === current)) {
-        extra = `<option value="${current}" selected>${current}</option>`;
-      }
-      sel.innerHTML = newOptions + extra;
+      if (current && !ports.find(p => p.path === current)) extra = `<option value="${current}" selected>${current}</option>`;
+      sel.innerHTML = opts + extra;
     });
-    btn.textContent = '✓ ' + (LANG === 'es' ? `${ports.length} puertos` : `${ports.length} ports`);
-    setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 1500);
+    btn.innerHTML = '✓ ' + (LANG === 'es' ? `${ports.length} puertos` : `${ports.length} ports`);
+    setTimeout(() => { btn.innerHTML = originalHTML; btn.disabled = false; }, 1500);
   } catch (err) {
-    btn.textContent = '✗ ' + (LANG === 'es' ? 'Error' : 'Error');
-    setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 2000);
+    btn.innerHTML = '✗ ' + (LANG === 'es' ? 'Error' : 'Error');
+    setTimeout(() => { btn.innerHTML = originalHTML; btn.disabled = false; }, 2000);
   }
 });
 </script>

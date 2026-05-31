@@ -1,90 +1,123 @@
 <%- include('../partials/header', { lang, pageTitle: lang === 'es' ? 'Entrenamiento de competición' : 'Competition training' }) %>
 
-<div class="container--narrow">
+<div class="vt-page">
+  <div class="vt-wrap vt-wrap--narrow">
 
-  <div class="page-header">
-    <div>
-      <a href="/training" class="back-link">← <%= lang === 'es' ? 'Volver' : 'Back' %></a>
-      <h1 class="page-title">🏆 <%= lang === 'es' ? 'Entrenamiento de competición' : 'Competition training' %></h1>
+    <a href="/training" class="vt-back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      <%= lang === 'es' ? 'Volver a entrenamiento' : 'Back to training' %>
+    </a>
+
+    <div class="vt-head" style="align-items:flex-start;justify-content:flex-start;gap:16px;flex-wrap:nowrap">
+      <div class="vt-head__icon" style="background:rgba(250,204,21,.13);color:var(--vt-amber)">
+        <svg viewBox="0 0 24 24"><path d="M7 4h10v4a5 5 0 0 1-10 0z"/><path d="M7 5H4.5A1.5 1.5 0 0 0 3 6.5 3.5 3.5 0 0 0 6.5 10M17 5h2.5A1.5 1.5 0 0 1 21 6.5 3.5 3.5 0 0 1 17.5 10"/><path d="M12 13v3M9 20h6M9.5 20l.4-4h4.2l.4 4"/></svg>
+      </div>
+      <div>
+        <h1><%= lang === 'es' ? 'Entrenamiento de competición' : 'Competition training' %></h1>
+        <p class="vt-lead">
+          <%= lang === 'es'
+            ? 'Asigna participantes a los carriles y prepara una sesión por tandas con rotación automática.'
+            : 'Assign participants to lanes and prepare a session by heats with auto rotation.' %>
+        </p>
+      </div>
     </div>
+
+    <form action="/training/competition/start" method="POST" id="compForm">
+
+      <!-- Circuit selector -->
+      <div class="vt-card">
+        <div class="vt-card-h">
+          <svg viewBox="0 0 24 24"><path d="M6 18a3 3 0 0 1 0-6h9a3 3 0 0 0 0-6H7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="18" r="1.4" fill="currentColor"/><circle cx="6" cy="6" r="1.4" fill="currentColor"/></svg>
+          <%= lang === 'es' ? 'Circuito' : 'Circuit' %>
+        </div>
+        <div class="vt-fields vt-fields--2" style="align-items:end">
+          <div class="vt-field" style="grid-column:1 / -1">
+            <label><%= lang === 'es' ? 'Selecciona el circuito de la sesión' : 'Select the session circuit' %></label>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <div class="vt-selw" style="flex:1;min-width:240px">
+                <select name="circuit_id" id="circuitSelect">
+                  <option value=""><%= lang === 'es' ? '— Por defecto (de ajustes) —' : '— Default (from settings) —' %></option>
+                  <% (circuits || []).forEach(c => { %>
+                    <option value="<%= c.id %>" data-lanes="<%= c.lanes_count %>"
+                      <%= defaultCircuitId === c.id ? 'selected' : '' %>>
+                      <%= c.name %> (<%= c.lanes_count %> <%= lang === 'es' ? 'carriles' : 'lanes' %>)
+                    </option>
+                  <% }) %>
+                </select>
+              </div>
+              <span id="circuitLanesHint" class="vt-badge is-info" style="white-space:nowrap"></span>
+            </div>
+            <p class="vt-hint" style="margin-top:10px">
+              <%= lang === 'es'
+                ? 'Cambia aquí el circuito de la sesión sin tener que ir a ajustes.'
+                : 'Switch the circuit for this session without going to settings.' %>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Participants list -->
+      <div class="vt-card">
+        <div class="vt-card-h">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9.5" r="2.3"/><path d="M3 20v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1"/><path d="M16 14a4 4 0 0 1 5 4v1"/></svg>
+          <%= lang === 'es' ? 'Participantes' : 'Participants' %>
+          <span class="vt-cnt" id="partCount" style="margin-left:auto">0</span>
+        </div>
+
+        <div id="participantList" class="tc-part-list" style="margin-top:14px;margin-bottom:16px"></div>
+
+        <div class="tc-add-row">
+          <input type="text" id="newName" class="vt-inp"
+            placeholder="<%= lang === 'es' ? 'Nombre del piloto / equipo' : 'Pilot / team name' %>"
+            maxlength="30">
+          <button type="button" class="vt-btn vt-btn--ghost" onclick="addParticipant()">
+            <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            <%= lang === 'es' ? 'Añadir' : 'Add' %>
+          </button>
+        </div>
+        <p class="vt-hint" style="margin-top:10px">
+          <%= lang === 'es'
+            ? 'Los participantes se asignan a los carriles en el orden en que los añades.'
+            : 'Participants are assigned to lanes in the order you add them.' %>
+        </p>
+      </div>
+
+      <!-- Hidden inputs filled by JS -->
+      <div id="hiddenInputs"></div>
+
+      <button type="submit" class="vt-btn vt-btn--primary vt-btn--lg" style="width:100%;justify-content:center;margin-top:18px" id="startBtn" disabled>
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        <%= lang === 'es' ? 'Preparar sesión' : 'Prepare session' %>
+      </button>
+
+    </form>
+
   </div>
-
-  <form action="/training/competition/start" method="POST" id="compForm">
-
-    <!-- Circuit selector -->
-    <div class="card" style="margin-bottom:1.25rem">
-      <h3 class="form-label" style="margin-bottom:.6rem">
-        🏁 <%= lang === 'es' ? 'Circuito' : 'Circuit' %>
-      </h3>
-      <div style="display:flex;gap:.5rem;align-items:center">
-        <select name="circuit_id" id="circuitSelect" class="form-input" style="flex:1">
-          <option value=""><%= lang === 'es' ? '— Por defecto (de ajustes) —' : '— Default (from settings) —' %></option>
-          <% (circuits || []).forEach(c => { %>
-            <option value="<%= c.id %>" data-lanes="<%= c.lanes_count %>"
-              <%= defaultCircuitId === c.id ? 'selected' : '' %>>
-              <%= c.name %> (<%= c.lanes_count %> <%= lang === 'es' ? 'carriles' : 'lanes' %>)
-            </option>
-          <% }) %>
-        </select>
-        <span id="circuitLanesHint" class="form-hint" style="white-space:nowrap"></span>
-      </div>
-      <p class="form-hint" style="margin-top:.4rem">
-        <%= lang === 'es'
-          ? 'Cambia aquí el circuito de la sesión sin tener que ir a ajustes.'
-          : 'Switch the circuit for this session without going to settings.' %>
-      </p>
-    </div>
-
-    <!-- Participants list -->
-    <div class="card" style="margin-bottom:1.25rem">
-      <h3 class="form-label" style="margin-bottom:1rem">
-        <%= lang === 'es' ? 'Participantes' : 'Participants' %>
-      </h3>
-
-      <div id="participantList" style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:1rem">
-        <!-- Filled by JS -->
-      </div>
-
-      <div style="display:flex;gap:.5rem;align-items:center">
-        <input type="text" id="newName" class="form-input"
-          placeholder="<%= lang === 'es' ? 'Nombre del piloto / equipo' : 'Pilot / team name' %>"
-          style="flex:1" maxlength="30">
-        <button type="button" class="btn btn--ghost" onclick="addParticipant()">
-          + <%= lang === 'es' ? 'Añadir' : 'Add' %>
-        </button>
-      </div>
-      <p class="form-hint" style="margin-top:.5rem">
-        <%= lang === 'es'
-          ? 'Los participantes se asignan a los carriles en el orden en que los añades.'
-          : 'Participants are assigned to lanes in the order you add them.' %>
-      </p>
-    </div>
-
-    <!-- Hidden inputs filled by JS -->
-    <div id="hiddenInputs"></div>
-
-    <button type="submit" class="btn btn--primary btn--lg" style="width:100%" id="startBtn" disabled>
-      ▶ <%= lang === 'es' ? 'Preparar sesión' : 'Prepare session' %>
-    </button>
-
-  </form>
-
 </div>
 
 <%- include('../partials/footer') %>
+
 <script>
-// Circuit hint
+const LANG = "<%= lang %>";
+
+/* Circuit hint */
 (function () {
   const sel = document.getElementById('circuitSelect');
   const hint = document.getElementById('circuitLanesHint');
   function update() {
     const opt = sel.options[sel.selectedIndex];
     const lanes = opt?.dataset?.lanes;
-    hint.textContent = lanes ? `→ ${lanes} carriles` : '';
+    if (lanes) {
+      hint.innerHTML = `<span class="vt-badge__d"></span> ${lanes} ${LANG === 'es' ? 'carriles' : 'lanes'}`;
+      hint.style.display = '';
+    } else {
+      hint.style.display = 'none';
+    }
   }
   sel.addEventListener('change', update);
   update();
 })();
+
 const COLORS = [
   '#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4',
   '#ff5722','#607d8b','#795548','#e91e63','#3f51b5','#009688',
@@ -99,39 +132,50 @@ function addParticipant() {
   participants.push({ name, color: COLORS[participants.length % COLORS.length] });
   input.value = '';
   renderList();
+  input.focus();
 }
 
 function removeParticipant(i) {
   participants.splice(i, 1);
-  // Reassign colors in order
   participants = participants.map((p, idx) => ({ ...p, color: COLORS[idx % COLORS.length] }));
   renderList();
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
 function renderList() {
   const list   = document.getElementById('participantList');
   const hidden = document.getElementById('hiddenInputs');
   const btn    = document.getElementById('startBtn');
+  const countEl = document.getElementById('partCount');
 
-  list.innerHTML = participants.length === 0
-    ? `<p style="color:#6e7681;font-size:.85rem">${'<%= lang === "es" ? "Sin participantes aún." : "No participants yet." %>'}</p>`
-    : participants.map((p, i) => `
-        <div style="display:flex;align-items:center;gap:.75rem;padding:.5rem .75rem;background:#0a0a0a;border-radius:8px;border:1px solid #21262d">
-          <span style="width:14px;height:14px;border-radius:50%;background:${p.color};flex-shrink:0"></span>
-          <span style="flex:1;font-weight:600">${p.name}</span>
-          <span style="font-size:.75rem;color:#6e7681"><%= lang === 'es' ? 'Carril' : 'Lane' %> ${i + 1}</span>
-          <button type="button" onclick="removeParticipant(${i})" style="background:none;border:none;color:#6e7681;cursor:pointer;font-size:1rem">✕</button>
-        </div>`).join('');
+  countEl.textContent = participants.length;
+
+  if (participants.length === 0) {
+    list.innerHTML = `<div class="tc-part-empty">${LANG === 'es' ? 'Sin participantes aún. Añade el primero abajo.' : 'No participants yet. Add the first one below.'}</div>`;
+  } else {
+    list.innerHTML = participants.map((p, i) => `
+      <div class="tc-part-row">
+        <span class="tc-part-row__color" style="background:${p.color}"></span>
+        <span class="tc-part-row__name">${escapeHtml(p.name)}</span>
+        <span class="tc-part-row__lane">${LANG === 'es' ? 'Carril' : 'Lane'} ${i + 1}</span>
+        <button type="button" class="vt-icon-btn is-danger" onclick="removeParticipant(${i})" title="${LANG === 'es' ? 'Quitar' : 'Remove'}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+    `).join('');
+  }
 
   hidden.innerHTML = participants.map((p, i) =>
-    `<input type="hidden" name="participants[${i}][name]" value="${p.name}">
+    `<input type="hidden" name="participants[${i}][name]" value="${escapeHtml(p.name)}">
      <input type="hidden" name="participants[${i}][color]" value="${p.color}">`
   ).join('');
 
   btn.disabled = participants.length < 2;
 }
 
-// Allow Enter to add participant
 document.getElementById('newName').addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); addParticipant(); }
 });
