@@ -1,5 +1,6 @@
 const DriverProfile = require('../models/DriverProfile');
 const QRCode        = require('qrcode');
+const { parseCsvRaw, parseCsvLine, normalize } = require('../utils/csv');
 
 const VALID_CATEGORIES = ['platino', 'oro', 'plata', 'bronce'];
 
@@ -51,50 +52,148 @@ class DriverProfileController {
     res.redirect('/drivers');
   }
 
-  static importCsv(req, res) {
-    const lang = req.session?.lang || 'es';
-    let raw = req.body.csv_content || '';
-    if (raw.charCodeAt(0) === 0xFEFF) raw = raw.slice(1);
-    raw = raw.trim();
-    if (!raw) {
-      req.session.flash = { type: 'error', text: lang === 'es' ? 'Fichero vacío' : 'Empty file' };
-      return res.redirect('/drivers');
+  // ── Parser CSV de pilotos ───────────────────────────────────────────
+  // Devuelve { rows, csv_content } donde rows[i] = { idx, name, category,
+  // status: 'new'|'duplicate'|'error', existing?, reason? }.
+  static _parseDriversCsv(rawCsv) {
+    const csv = rawCsv || '';
+    let parsed = parseCsvRaw(csv);
+
+    // Si la primera línea NO es cabecera (no empieza por nombre/name), la
+    // tratamos como dato. Pero parseCsvRaw ya quita la cabecera, así que
+    // reincorporamos si era data.
+    let dataLines = parsed.dataLines;
+    const headerLooksReal = parsed.header[0] === 'nombre' || parsed.header[0] === 'name';
+    if (!headerLooksReal) {
+      // No había cabecera: la línea que parseamos como header en realidad
+      // era data. Volvemos a leer todo crudo.
+      const full = csv.split(/\r?\n/).filter(l => l.trim().length > 0);
+      dataLines = full;
     }
 
-    const lines = raw.split(/\r?\n/).filter(l => l.trim().length > 0);
-    if (lines.length === 0) {
-      req.session.flash = { type: 'error', text: lang === 'es' ? 'Sin filas válidas' : 'No valid rows' };
-      return res.redirect('/drivers');
-    }
+    const index = DriverProfile.buildNameIndex();
+    const seenInCsv = new Map(); // norm → idx en CSV donde apareció
 
-    const sep = (lines[0].split(';').length > lines[0].split(',').length) ? ';' : ',';
-
-    let dataLines = lines;
-    const firstLower = lines[0].toLowerCase();
-    if (firstLower.startsWith('nombre') || firstLower.startsWith('name')) {
-      dataLines = lines.slice(1);
-    }
-
-    let imported = 0, skipped = 0;
-    dataLines.forEach(line => {
-      const cols = parseCsvLine(line, sep).map(c => c.trim());
+    const rows = dataLines.map((line, i) => {
+      const cols = parseCsvLine(line, parsed.sep).map(c => c.trim());
       const name = cols[0];
-      if (!name || name.length < 2) { skipped++; return; }
-      const cat = VALID_CATEGORIES.includes(cols[1]?.toLowerCase())
-        ? cols[1].toLowerCase()
-        : 'bronce';
-      try {
-        DriverProfile.create({ name, category: cat });
-        imported++;
-      } catch { skipped++; }
+      const catRaw = (cols[1] || '').toLowerCase();
+      const category = VALID_CATEGORIES.includes(catRaw) ? catRaw : 'bronce';
+
+      if (!name || name.length < 2) {
+        return { idx: i, raw: line, name: name || '', category, status: 'error', reason: 'name_too_short' };
+      }
+
+      const key = normalize(name);
+      const existing = index.get(key);
+      const seenAt = seenInCsv.get(key);
+      seenInCsv.set(key, i);
+
+      if (existing) {
+        return { idx: i, name, category, status: 'duplicate', existing };
+      }
+      if (seenAt !== undefined) {
+        return { idx: i, name, category, status: 'duplicate_in_csv', existingIdx: seenAt };
+      }
+      return { idx: i, name, category, status: 'new' };
+    });
+
+    return { rows, csv_content: csv };
+  }
+
+  // POST /drivers/import/preview — devuelve la vista de previsualización
+  // sin tocar la BD. Recibe el csv_content del file picker.
+  static importPreview(req, res) {
+    const lang = req.session?.lang || 'es';
+    const { rows, csv_content } = DriverProfileController._parseDriversCsv(req.body.csv_content || '');
+    if (rows.length === 0) {
+      req.session.flash = { type: 'error', text: lang === 'es' ? 'Fichero vacío o sin filas válidas' : 'Empty file or no valid rows' };
+      return res.redirect('/drivers');
+    }
+    const stats = {
+      total:     rows.length,
+      new:       rows.filter(r => r.status === 'new').length,
+      duplicate: rows.filter(r => r.status === 'duplicate' || r.status === 'duplicate_in_csv').length,
+      error:     rows.filter(r => r.status === 'error').length,
+    };
+    res.render('drivers/import-preview', { t: req.t, rows, csv_content, stats });
+  }
+
+  // POST /drivers/import — aplica las decisiones del preview.
+  // Body: csv_content + decisions[i] = 'update' | 'skip' | 'duplicate'
+  // (solo se respeta para filas con status 'duplicate'; las 'new' se crean,
+  // las 'error' se omiten, las 'duplicate_in_csv' siguen la decisión por
+  // defecto = update sobre la fila previa del propio CSV).
+  static importConfirm(req, res) {
+    const lang = req.session?.lang || 'es';
+    const { rows } = DriverProfileController._parseDriversCsv(req.body.csv_content || '');
+    const decisions = req.body.decisions || {};
+
+    let created = 0, updated = 0, skipped = 0;
+    // Para 'duplicate_in_csv' necesitamos resolver al perfil creado en esta
+    // misma pasada. Mantenemos un mapa norm → id según vamos creando.
+    const createdInRun = new Map();
+
+    rows.forEach(r => {
+      if (r.status === 'error') { skipped++; return; }
+
+      if (r.status === 'new') {
+        try {
+          const id = DriverProfile.create({ name: r.name, category: r.category });
+          createdInRun.set(normalize(r.name), id);
+          created++;
+        } catch { skipped++; }
+        return;
+      }
+
+      const dec = (decisions[String(r.idx)] || 'update').toLowerCase();
+
+      if (r.status === 'duplicate') {
+        const ex = r.existing;
+        if (dec === 'skip') { skipped++; return; }
+        if (dec === 'duplicate') {
+          try { DriverProfile.create({ name: r.name, category: r.category }); created++; }
+          catch { skipped++; }
+          return;
+        }
+        // 'update' (default)
+        try {
+          DriverProfile.update(ex.id, { name: r.name, category: r.category });
+          updated++;
+        } catch { skipped++; }
+        return;
+      }
+
+      if (r.status === 'duplicate_in_csv') {
+        // Apunta a una fila previa del CSV. Buscamos el perfil que se haya
+        // creado/actualizado para esa fila. Si fue 'skip' allí, podríamos
+        // tratar ésta como 'new'; para simplificar, aplicamos la decisión
+        // por defecto 'update' contra el perfil con ese nombre normalizado.
+        const key = normalize(r.name);
+        const id = createdInRun.get(key);
+        if (dec === 'skip') { skipped++; return; }
+        if (dec === 'duplicate') {
+          try { DriverProfile.create({ name: r.name, category: r.category }); created++; }
+          catch { skipped++; }
+          return;
+        }
+        if (id) {
+          try { DriverProfile.update(id, { name: r.name, category: r.category }); updated++; }
+          catch { skipped++; }
+        } else {
+          try { const nid = DriverProfile.create({ name: r.name, category: r.category }); createdInRun.set(key, nid); created++; }
+          catch { skipped++; }
+        }
+      }
     });
 
     const parts = [];
-    parts.push(lang === 'es' ? `${imported} pilotos importados` : `${imported} drivers imported`);
-    if (skipped > 0) parts.push(lang === 'es' ? `${skipped} omitidos` : `${skipped} skipped`);
+    if (created > 0) parts.push(lang === 'es' ? `${created} pilotos creados`     : `${created} drivers created`);
+    if (updated > 0) parts.push(lang === 'es' ? `${updated} pilotos actualizados`: `${updated} drivers updated`);
+    if (skipped > 0) parts.push(lang === 'es' ? `${skipped} omitidos`             : `${skipped} skipped`);
     req.session.flash = {
-      type: imported > 0 ? 'success' : 'error',
-      text: parts.join(' · '),
+      type: (created + updated) > 0 ? 'success' : 'error',
+      text: parts.join(' · ') || (lang === 'es' ? 'Sin cambios' : 'No changes'),
     };
     res.redirect('/drivers');
   }
@@ -161,27 +260,6 @@ class DriverProfileController {
       next(err);
     }
   }
-}
-
-function parseCsvLine(line, sep) {
-  const out = [];
-  let cur = '';
-  let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (inQuotes) {
-      if (ch === '"') {
-        if (line[i + 1] === '"') { cur += '"'; i++; }
-        else inQuotes = false;
-      } else cur += ch;
-    } else {
-      if (ch === '"') inQuotes = true;
-      else if (ch === sep) { out.push(cur); cur = ''; }
-      else cur += ch;
-    }
-  }
-  out.push(cur);
-  return out;
 }
 
 module.exports = DriverProfileController;

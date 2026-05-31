@@ -59,10 +59,10 @@ const CAT_ICONS = {
         </div>
         <p class="vt-hint" style="margin-bottom:12px">
           <%= lang === 'es'
-            ? 'Selecciona un fichero CSV con columnas: nombre, categoria (opcional).'
-            : 'Select a CSV file with columns: nombre, categoria (optional).' %>
+            ? 'Selecciona un CSV con columnas: nombre, categoria (opcional). Verás una previsualización antes de importar.'
+            : 'Select a CSV with columns: nombre, categoria (optional). You will see a preview before importing.' %>
         </p>
-        <form action="/drivers/import" method="POST" id="csv-form">
+        <form action="/drivers/import/preview" method="POST" id="csv-form">
           <input type="hidden" name="csv_content" id="csv-content-input">
           <div class="vt-csv-row">
             <input type="file" id="csv-file-picker" accept=".csv,text/csv">

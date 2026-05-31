@@ -112,6 +112,32 @@ class RaceController {
       return res.render('races/new-step1', { t: req.t, errors, body: req.body, savedCircuits, circuitCategoryTimes });
     }
 
+    // Reglas de turnos por piloto (solo si type === 'championship'; en otros
+    // casos se guardan a 0 = sin límite y se ignoran).
+    let driverMinMs = 0, driverMaxMs = 0, lockoutMs = 120000;
+    if (type === 'championship') {
+      const minMin = parseInt(req.body.driver_min_total_min, 10);
+      const maxMin = parseInt(req.body.driver_max_total_min, 10);
+      const lockS  = parseInt(req.body.driver_change_lockout_s, 10);
+      if (!isNaN(minMin) && minMin > 0) driverMinMs = minMin * 60 * 1000;
+      if (!isNaN(maxMin) && maxMin > 0) driverMaxMs = maxMin * 60 * 1000;
+      if (!isNaN(lockS)  && lockS  >= 0) lockoutMs = lockS * 1000;
+      // Validación coherencia: max debe ser >= min si ambos > 0
+      if (driverMinMs > 0 && driverMaxMs > 0 && driverMaxMs < driverMinMs) {
+        errors.push('driver_max_below_min');
+      }
+    }
+
+    if (errors.length) {
+      const savedCircuits = Circuit.findAll();
+      const circuitCategoryTimes = {};
+      for (const c of savedCircuits) {
+        const times = Circuit.getCategoryTimes(c.id);
+        if (times.length) circuitCategoryTimes[c.id] = times;
+      }
+      return res.render('races/new-step1', { t: req.t, errors, body: req.body, savedCircuits, circuitCategoryTimes });
+    }
+
     req.session.wizard = {
       name: trimmedName, type,
       lanes_count: totalLanes,
@@ -121,6 +147,9 @@ class RaceController {
       circuit_id: circuitId,
       category_id: categoryId,
       min_lap_ms: minLapMs,
+      driver_min_total_ms:      driverMinMs,
+      driver_max_total_ms:      driverMaxMs,
+      driver_change_lockout_ms: lockoutMs,
     };
     res.redirect('/races/new/step2');
   }
@@ -276,6 +305,11 @@ class RaceController {
       has_pole:               wizard.has_pole || 0,
       circuit_id:             wizard.circuit_id || null,
       min_lap_ms:             wizard.min_lap_ms || 0,
+      // Reglas de turnos por piloto (solo championship; el wizard guarda 0
+      // para no-championship).
+      driver_min_total_ms:      wizard.driver_min_total_ms      || 0,
+      driver_max_total_ms:      wizard.driver_max_total_ms      || 0,
+      driver_change_lockout_ms: wizard.driver_change_lockout_ms || 120000,
     });
 
     // If pole enabled, create session + entries from wizard participants

@@ -1,0 +1,152 @@
+<%- include('../partials/header', { pageTitle: lang === 'es' ? 'Previsualizar importación de coches' : 'Import preview — cars' }) %>
+
+<div class="vt-page">
+  <div class="vt-wrap">
+
+    <a href="/cars" class="vt-back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      <%= lang === 'es' ? 'Cancelar' : 'Cancel' %>
+    </a>
+
+    <div class="vt-head">
+      <div class="vt-head__title">
+        <h1><%= lang === 'es' ? 'Previsualización' : 'Preview' %></h1>
+        <span class="vt-cnt"><%= stats.total %> <%= lang === 'es' ? 'filas' : 'rows' %></span>
+      </div>
+    </div>
+
+    <p class="vt-lead" style="margin-top:8px">
+      <%= lang === 'es'
+        ? 'Los duplicados se detectan por marca + modelo. Por defecto se actualizan; cambia la acción si quieres.'
+        : 'Duplicates are detected by brand + model. They are updated by default; change the action if you want.' %>
+    </p>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px">
+      <span class="vt-badge is-ok"><span class="vt-badge__d"></span><%= stats.new %> <%= lang === 'es' ? 'nuevos' : 'new' %></span>
+      <span class="vt-badge is-warn"><span class="vt-badge__d"></span><%= stats.duplicate %> <%= lang === 'es' ? 'duplicados' : 'duplicates' %></span>
+      <% if (stats.error > 0) { %><span class="vt-badge is-bad"><span class="vt-badge__d"></span><%= stats.error %> <%= lang === 'es' ? 'con errores' : 'with errors' %></span><% } %>
+    </div>
+
+    <form action="/cars/import" method="POST">
+      <input type="hidden" name="csv_content" value="<%= csv_content %>">
+
+      <% if (stats.duplicate > 0) { %>
+        <div class="vt-card" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <strong style="color:var(--vt-mute);font-size:13px;text-transform:uppercase;letter-spacing:.1em">
+            <%= lang === 'es' ? 'Aplicar a todos los duplicados' : 'Apply to all duplicates' %>
+          </strong>
+          <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" data-bulk="update"><%= lang === 'es' ? '↻ Actualizar todos' : '↻ Update all' %></button>
+          <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" data-bulk="skip"><%= lang === 'es' ? '⊘ Omitir todos' : '⊘ Skip all' %></button>
+          <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" data-bulk="duplicate"><%= lang === 'es' ? '⧉ Crear duplicados' : '⧉ Create as duplicates' %></button>
+        </div>
+      <% } %>
+
+      <div class="vt-table-card" style="margin-top:16px">
+        <table class="vt-table">
+          <thead>
+            <tr>
+              <th style="width:48px">#</th>
+              <th style="width:120px"><%= lang === 'es' ? 'Estado' : 'Status' %></th>
+              <th><%= lang === 'es' ? 'Marca' : 'Brand' %></th>
+              <th><%= lang === 'es' ? 'Modelo' : 'Model' %></th>
+              <th><%= lang === 'es' ? 'Categoría' : 'Category' %></th>
+              <th><%= lang === 'es' ? 'Descripción' : 'Description' %></th>
+              <th><%= lang === 'es' ? 'Acción' : 'Action' %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% rows.forEach(r => { %>
+              <tr>
+                <td class="is-mono is-mute"><%= r.idx + 1 %></td>
+                <td>
+                  <% if (r.status === 'new') { %>
+                    <span class="vt-badge is-ok"><span class="vt-badge__d"></span><%= lang === 'es' ? 'Nuevo' : 'New' %></span>
+                  <% } else if (r.status === 'duplicate') { %>
+                    <span class="vt-badge is-warn"><span class="vt-badge__d"></span><%= lang === 'es' ? 'Duplicado en BD' : 'Duplicate in DB' %></span>
+                  <% } else if (r.status === 'duplicate_in_csv') { %>
+                    <span class="vt-badge is-warn"><span class="vt-badge__d"></span><%= lang === 'es' ? 'Repetido en CSV' : 'Repeated in CSV' %></span>
+                  <% } else { %>
+                    <span class="vt-badge is-bad"><span class="vt-badge__d"></span><%= lang === 'es' ? 'Error' : 'Error' %></span>
+                  <% } %>
+                </td>
+                <td class="is-name"><%= r.brand || '—' %></td>
+                <td class="is-name">
+                  <%= r.model || '—' %>
+                  <% if (r.status === 'duplicate' && r.existing) { %>
+                    <div style="font-size:11.5px;color:var(--vt-mute);margin-top:3px;font-family:'IBM Plex Mono',monospace">
+                      → <%= lang === 'es' ? 'existente: ' : 'existing: ' %><%= r.existing.brand %> <%= r.existing.model %>
+                    </div>
+                  <% } else if (r.status === 'duplicate_in_csv') { %>
+                    <div style="font-size:11.5px;color:var(--vt-mute);margin-top:3px;font-family:'IBM Plex Mono',monospace">
+                      → <%= lang === 'es' ? 'fila ' : 'row ' %><%= r.existingIdx + 1 %>
+                    </div>
+                  <% } else if (r.status === 'error') { %>
+                    <div style="font-size:11.5px;color:var(--vt-red);margin-top:3px">
+                      <%= r.reason === 'missing_brand_or_model'
+                        ? (lang === 'es' ? 'Falta marca o modelo' : 'Missing brand or model')
+                        : (lang === 'es' ? 'Falta categoría'      : 'Missing category') %>
+                    </div>
+                  <% } %>
+                </td>
+                <td>
+                  <% if (r.categoryName) { %>
+                    <span class="vt-badge is-info" style="font-size:11.5px"><span class="vt-badge__d"></span><%= r.categoryName %></span>
+                    <% if (r.status === 'duplicate' && r.existing && r.existing.category_name && r.existing.category_name !== r.categoryName) { %>
+                      <div style="font-size:11.5px;color:var(--vt-mute);margin-top:3px;font-family:'IBM Plex Mono',monospace">
+                        <%= lang === 'es' ? 'antes: ' : 'was: ' %><%= r.existing.category_name %>
+                      </div>
+                    <% } %>
+                  <% } else { %>
+                    <span class="is-mute">—</span>
+                  <% } %>
+                </td>
+                <td class="is-mute" style="max-width:200px">
+                  <%= r.description || '—' %>
+                  <% if (r.status === 'duplicate' && r.existing && r.existing.description && r.existing.description !== r.description) { %>
+                    <div style="font-size:11.5px;color:var(--vt-mute-2);margin-top:3px;font-family:'IBM Plex Mono',monospace">
+                      <%= lang === 'es' ? 'antes: ' : 'was: ' %><%= r.existing.description %>
+                    </div>
+                  <% } %>
+                </td>
+                <td>
+                  <% if (r.status === 'new') { %>
+                    <span class="vt-badge is-ok" style="font-size:11.5px"><%= lang === 'es' ? 'Crear' : 'Create' %></span>
+                  <% } else if (r.status === 'error') { %>
+                    <span class="vt-badge is-neutral" style="font-size:11.5px"><%= lang === 'es' ? 'Omitir' : 'Skip' %></span>
+                  <% } else { %>
+                    <div class="vt-selw" style="min-width:160px">
+                      <select name="decisions[<%= r.idx %>]" class="vt-dup-action" style="height:36px">
+                        <option value="update" selected><%= lang === 'es' ? 'Actualizar' : 'Update' %></option>
+                        <option value="skip"><%= lang === 'es' ? 'Omitir' : 'Skip' %></option>
+                        <option value="duplicate"><%= lang === 'es' ? 'Crear duplicado' : 'Create duplicate' %></option>
+                      </select>
+                    </div>
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="vt-form-actions">
+        <a href="/cars" class="vt-btn vt-btn--ghost"><%= lang === 'es' ? 'Cancelar' : 'Cancel' %></a>
+        <button type="submit" class="vt-btn vt-btn--primary vt-btn--lg">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4L19 7"/></svg>
+          <%= lang === 'es' ? 'Confirmar importación' : 'Confirm import' %>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('[data-bulk]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const v = btn.dataset.bulk;
+    document.querySelectorAll('.vt-dup-action').forEach(sel => { sel.value = v; });
+  });
+});
+</script>
+
+<%- include('../partials/footer') %>

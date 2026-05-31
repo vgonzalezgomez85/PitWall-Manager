@@ -1630,80 +1630,165 @@ class SessionController {
   }
 
   // POST /races/:id/mangas/:mangaId/checkin
-  // Body: { qr_code } or { driver_id, lane } (manual override)
+  // Body: { qr_code } or { driver_id, lane, force? } (manual override)
+  //
+  // Reglas (solo carreras de tipo 'championship'):
+  //   1. Si manga.status === 'pending' (standby) → PRE-ARME: crea el shift
+  //      con pre_armed=1, started_at_ms=null. Se activará al GO.
+  //   2. Si manga.status === 'active' Y TimingService la gestiona Y running:
+  //      → SWAP en runtime. Verifica lockout (últimos N ms bloqueados).
+  //   3. Si manga.status === 'active' Y TimingService.isPaused:
+  //      → SWAP permitido (sin lockout). El contador no avanza hasta resume.
+  //   4. Si manga.status === 'finished'/'cancelled' → rechazo.
   static driverCheckin(req, res) {
     const race  = Race.findById(req.params.id);
     const manga = Manga.findById(req.params.mangaId);
     if (!race || !manga) return res.status(404).json({ error: 'not_found' });
+    if (race.type !== 'championship') return res.status(400).json({ error: 'not_championship_race' });
     if (race.format !== 'team') return res.status(400).json({ error: 'not_team_race' });
 
     const db = require('../config/database');
 
-    // ── QR scan path ────────────────────────────────────────────────────────
+    // ── Validar estado de la manga para aceptar el scan ────────────────
+    const mangaStatus = manga.status;
+    let mode = null;        // 'pre_arm' | 'swap_running' | 'swap_paused'
+    let remainingMs = null;
+
+    if (mangaStatus === 'pending') {
+      mode = 'pre_arm';
+    } else if (mangaStatus === 'active') {
+      const tsRunsThisManga = TimingService.activeMangaId === manga.id;
+      if (!tsRunsThisManga) {
+        return res.status(409).json({ error: 'manga_active_but_not_timing' });
+      }
+      if (TimingService.isRunning) {
+        remainingMs = TimingService.getRemainingMs();
+        const lockoutMs = race.driver_change_lockout_ms || 120000;
+        const forceOverride = req.body.qr_code ? false : !!req.body.force;
+        if (remainingMs != null && remainingMs <= lockoutMs && !forceOverride) {
+          return res.status(409).json({
+            error: 'change_locked_final_minutes',
+            remainingMs,
+            lockoutMs,
+          });
+        }
+        mode = 'swap_running';
+      } else if (TimingService.isPaused) {
+        mode = 'swap_paused';
+      } else {
+        return res.status(409).json({ error: 'manga_active_but_not_running' });
+      }
+    } else {
+      return res.status(409).json({ error: 'manga_status_invalid', status: mangaStatus });
+    }
+
+    // ── Resolver piloto + carril ────────────────────────────────────────
+    let assignment = null;
+    let profileName = null;
+
     if (req.body.qr_code) {
-      const qr      = (req.body.qr_code || '').trim();
+      const qr = (req.body.qr_code || '').trim();
       const profile = db.prepare('SELECT * FROM driver_profiles WHERE qr_code = ?').get(qr);
       if (!profile) return res.status(404).json({ error: 'unknown_qr', qr });
+      profileName = profile.name;
 
-      // Find the race driver linked to this profile in this tanda
-      // Match by driver_id in teams_catalog_members → driver name in drivers table
-      const assignment = db.prepare(`
-        SELECT d.id AS driver_id, d.name AS driver_name, d.team_id,
-               ml.lane
-        FROM drivers d
-        JOIN manga_lanes ml ON ml.team_id = d.team_id AND ml.manga_id = ? AND ml.is_rest = 0
-        JOIN teams_catalog_members tcm ON tcm.driver_id = ? AND tcm.name = d.name
-        LIMIT 1
-      `).get(manga.id, profile.id);
+      const assignments = DriverShift.findAssignmentsByProfile(profile.id, manga.id);
+      if (assignments.length === 0) {
+        return res.status(404).json({ error: 'driver_not_in_manga', name: profile.name });
+      }
+      if (assignments.length > 1) {
+        // Caso raro: piloto en varios equipos del catálogo que coinciden
+        // con equipos diferentes en esta manga → ambigüedad. El staff
+        // debe usar override manual (driver_id + lane).
+        return res.status(409).json({
+          error: 'ambiguous_team',
+          name: profile.name,
+          candidates: assignments.map(a => ({ lane: a.lane, teamId: a.team_id })),
+        });
+      }
+      assignment = assignments[0];
+    } else {
+      // Override manual
+      const lane     = parseInt(req.body.lane, 10);
+      const driverId = parseInt(req.body.driver_id, 10);
+      if (!lane || !driverId) return res.status(400).json({ error: 'missing_params' });
 
-      if (!assignment) return res.status(404).json({ error: 'driver_not_in_manga', name: profile.name });
+      const driver = db.prepare('SELECT * FROM drivers WHERE id = ?').get(driverId);
+      if (!driver) return res.status(404).json({ error: 'driver_not_found' });
+      assignment = {
+        lane,
+        team_id: driver.team_id,
+        driver_id: driver.id,
+        driver_name: driver.name,
+      };
+      profileName = driver.name;
+    }
 
-      DriverShift.checkin({
+    // ── Aplicar el cambio según el modo ────────────────────────────────
+    let shiftId = null;
+
+    if (mode === 'pre_arm') {
+      // Cierra cualquier shift pre-armado previo para este carril
+      // (el equipo cambió de idea antes del GO).
+      const prev = DriverShift.findOpenByLane(manga.id, assignment.lane);
+      if (prev) {
+        DriverShift.closeShift(prev.id, Date.now(), prev.driving_ms || 0);
+      }
+      shiftId = DriverShift.openShift({
         mangaId:    manga.id,
         raceId:     race.id,
         lane:       assignment.lane,
         teamId:     assignment.team_id,
         driverId:   assignment.driver_id,
         driverName: assignment.driver_name,
+        preArmed:   true,
       });
-
-      SocketService.emit('driver_checkin', {
-        mangaId:    manga.id,
+    } else if (mode === 'swap_running') {
+      shiftId = TimingService.swapDriverOnLane({
         lane:       assignment.lane,
-        driverName: assignment.driver_name,
-        driverId:   assignment.driver_id,
+        raceId:     race.id,
+        mangaId:    manga.id,
         teamId:     assignment.team_id,
+        driverId:   assignment.driver_id,
+        driverName: assignment.driver_name,
       });
-
-      return res.json({ ok: true, lane: assignment.lane, driverName: assignment.driver_name });
+    } else if (mode === 'swap_paused') {
+      // Manga pausada: cierra el shift abierto (driving_ms se quedó al
+      // valor actual en BD desde el último persist en pauseManga) y abre
+      // uno nuevo. El nuevo no avanza hasta el resume.
+      const prev = DriverShift.findOpenByLane(manga.id, assignment.lane);
+      if (prev) DriverShift.closeShift(prev.id, Date.now(), prev.driving_ms || 0);
+      shiftId = DriverShift.openShift({
+        mangaId:    manga.id,
+        raceId:     race.id,
+        lane:       assignment.lane,
+        teamId:     assignment.team_id,
+        driverId:   assignment.driver_id,
+        driverName: assignment.driver_name,
+        startedAtMs: Date.now(),
+        preArmed:   false,
+      });
+      // Actualizar el mapa en memoria del TimingService para que al
+      // reanudar incremente el shift correcto.
+      TimingService._activeShiftsByLane && (TimingService._activeShiftsByLane[assignment.lane] = { shiftId, drivingMs: 0 });
     }
-
-    // ── Manual override path ─────────────────────────────────────────────────
-    const lane     = parseInt(req.body.lane, 10);
-    const driverId = parseInt(req.body.driver_id, 10);
-    if (!lane || !driverId) return res.status(400).json({ error: 'missing_params' });
-
-    const driver = db.prepare('SELECT * FROM drivers WHERE id = ?').get(driverId);
-    if (!driver) return res.status(404).json({ error: 'driver_not_found' });
-
-    DriverShift.checkin({
-      mangaId:    manga.id,
-      raceId:     race.id,
-      lane,
-      teamId:     driver.team_id,
-      driverId:   driver.id,
-      driverName: driver.name,
-    });
 
     SocketService.emit('driver_checkin', {
       mangaId:    manga.id,
-      lane,
-      driverName: driver.name,
-      driverId:   driver.id,
-      teamId:     driver.team_id,
+      lane:       assignment.lane,
+      driverName: assignment.driver_name,
+      driverId:   assignment.driver_id,
+      teamId:     assignment.team_id,
+      mode,
     });
 
-    return res.json({ ok: true, lane, driverName: driver.name });
+    return res.json({
+      ok: true,
+      mode,
+      lane: assignment.lane,
+      driverName: assignment.driver_name,
+      shiftId,
+    });
   }
 
   // ── Activate next tanda: register its first manga for DS-300 GO ──────────────

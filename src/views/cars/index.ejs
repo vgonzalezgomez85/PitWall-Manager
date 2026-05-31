@@ -44,7 +44,7 @@
             ? 'CSV con cabecera: marca,modelo,categoria,descripcion (descripción opcional). Las categorías inexistentes se crean automáticamente.'
             : 'CSV with header: brand,model,category,description (description optional). Missing categories are created automatically.' %>
         </p>
-        <form action="/cars/import" method="POST" id="csv-form">
+        <form action="/cars/import/preview" method="POST" id="csv-form">
           <input type="hidden" name="csv_content" id="csv-content-input">
           <div class="vt-csv-row">
             <input type="file" id="csv-file-picker" accept=".csv,text/csv">

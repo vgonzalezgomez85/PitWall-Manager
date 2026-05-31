@@ -10,6 +10,7 @@ const LapCorrectionController     = require('../controllers/LapCorrectionControl
 const CircuitController           = require('../controllers/CircuitController');
 const CategoryController          = require('../controllers/CategoryController');
 const CarController               = require('../controllers/CarController');
+const ControlController           = require('../controllers/ControlController');
 const TeamCatalogController       = require('../controllers/TeamCatalogController');
 const TrainingController          = require('../controllers/TrainingController');
 const MobileController            = require('../controllers/MobileController');
@@ -76,6 +77,10 @@ router.post('/races/:id/mangas/:mangaId/stop',         SessionController.stop);
 router.post('/races/:id/tandas/:tandaId/next-tanda',   SessionController.activateNextTanda);
 router.post('/races/:id/mangas/:mangaId/repeat',       SessionController.repeat);
 
+// ── QR shifts control ─────────────────────────────────────────────────────
+router.get('/control/shifts',     ControlController.live);
+router.get('/races/:id/shifts',   ControlController.raceHistory);
+
 // ── Le Mans classification board ──────────────────────────────────────────────
 router.get( '/races/:id/lemans',       requireModule('lemans'), SessionController.lemans);
 
@@ -117,7 +122,8 @@ router.delete('/races/:id',  RaceController.delete);
 router.get(   '/drivers',           requireModule('driver_profiles'), DriverProfileController.index);
 router.get(   '/drivers/new',       requireModule('driver_profiles'), DriverProfileController.newForm);
 router.post(  '/drivers',           requireModule('driver_profiles'), DriverProfileController.create);
-router.post(  '/drivers/import',    requireModule('driver_profiles'), DriverProfileController.importCsv);
+router.post(  '/drivers/import/preview', requireModule('driver_profiles'), DriverProfileController.importPreview);
+router.post(  '/drivers/import',    requireModule('driver_profiles'), DriverProfileController.importConfirm);
 router.get(   '/drivers/qr-all',    requireModule('driver_profiles'), DriverProfileController.qrAll);
 router.get(   '/drivers/:id/qr',    requireModule('driver_profiles'), DriverProfileController.qrPage);
 router.get(   '/drivers/:id/edit',  requireModule('driver_profiles'), DriverProfileController.editForm);
@@ -144,7 +150,8 @@ router.post(  '/api/categories',        CategoryController.apiCreate);
 // ── Cars ──────────────────────────────────────────────────────────────────────
 router.get(   '/cars',            CarController.index);
 router.get(   '/cars/new',        CarController.new);
-router.post(  '/cars/import',     CarController.importCsv);
+router.post(  '/cars/import/preview', CarController.importPreview);
+router.post(  '/cars/import',     CarController.importConfirm);
 router.post(  '/cars',            CarController.create);
 router.get(   '/cars/:id/edit',   CarController.edit);
 router.post(  '/cars/:id',        CarController.update);
@@ -152,7 +159,8 @@ router.post(  '/cars/:id/delete', CarController.delete);
 
 router.get(   '/teams',            requireModule('teams_catalog'), TeamCatalogController.index);
 router.get(   '/teams/new',        requireModule('teams_catalog'), TeamCatalogController.newForm);
-router.post(  '/teams/import',     requireModule('teams_catalog'), TeamCatalogController.importCsv);
+router.post(  '/teams/import/preview', requireModule('teams_catalog'), TeamCatalogController.importPreview);
+router.post(  '/teams/import',     requireModule('teams_catalog'), TeamCatalogController.importConfirm);
 router.post(  '/teams',            requireModule('teams_catalog'), TeamCatalogController.create);
 router.get(   '/teams/:id/edit',   requireModule('teams_catalog'), TeamCatalogController.editForm);
 router.post(  '/teams/:id',        requireModule('teams_catalog'), TeamCatalogController.update);

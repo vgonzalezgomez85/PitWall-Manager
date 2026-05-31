@@ -31,6 +31,16 @@ class DriverProfile {
   static delete(id) {
     db.prepare('DELETE FROM driver_profiles WHERE id = ?').run(id);
   }
+
+  // Devuelve mapa { normName → row } para lookup case+accent insensitive.
+  // Útil en el importer CSV para detectar duplicados.
+  static buildNameIndex() {
+    const { normalize } = require('../utils/csv');
+    const rows = db.prepare('SELECT id, name, category FROM driver_profiles').all();
+    const map = new Map();
+    for (const r of rows) map.set(normalize(r.name), r);
+    return map;
+  }
 }
 
 module.exports = DriverProfile;

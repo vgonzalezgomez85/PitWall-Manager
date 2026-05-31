@@ -1162,11 +1162,18 @@ const RACE_VOICE_KEY = 'slotime.race.voiceMode';
 const RACE_VOICE_MODES = ['all', 'best', 'off'];
 let voiceMode = localStorage.getItem(RACE_VOICE_KEY) || 'best';
 
+// Iconos SVG (stroke-style) por estado de voiceMode.
+// best = altavoz + rayo (canta solo las vueltas rápidas)
+const VOICE_ICON = {
+  off:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>',
+  best: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6L4.5 9.5H1.5v5h3L9 18z"/><path d="M17 3.5l-3.2 6.5H17l-1 7 4.5-7h-3l1-6.5z" fill="currentColor" stroke="none"/></svg>',
+  all:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M15 9a3 3 0 0 1 0 6"/><path d="M18 6a7 7 0 0 1 0 12"/></svg>',
+};
 function voiceLabel() {
   const isES = LANG === 'es';
-  if (voiceMode === 'off')  return isES ? '🔇 Sin voz'     : '🔇 No voice';
-  if (voiceMode === 'best') return isES ? '⚡ Sólo rápidas' : '⚡ Fast only';
-  return                              isES ? '🔊 Todas'       : '🔊 All';
+  if (voiceMode === 'off')  return isES ? 'Sin voz'      : 'No voice';
+  if (voiceMode === 'best') return isES ? 'Sólo rápidas' : 'Fast only';
+  return                          isES ? 'Todas'        : 'All';
 }
 function voiceTitle() {
   if (LANG === 'es') {
@@ -1181,8 +1188,12 @@ function voiceTitle() {
 function refreshVoiceBtn() {
   const btn = document.getElementById('voiceBtn');
   if (!btn) return;
-  btn.textContent = voiceLabel();
-  btn.title       = voiceTitle();
+  const icon = VOICE_ICON[voiceMode] || VOICE_ICON.all;
+  btn.innerHTML = icon + '<span>' + voiceLabel() + '</span>';
+  btn.title     = voiceTitle();
+  // Resalta como GO (ámbar/glow) cuando está en modo 'best' (sólo rápidas).
+  btn.classList.toggle('lbtn--go',   voiceMode === 'best');
+  btn.classList.toggle('lbtn--back', voiceMode !== 'best');
 }
 function toggleVoice() {
   const idx = RACE_VOICE_MODES.indexOf(voiceMode);
@@ -1455,16 +1466,35 @@ function announce(text) {
 // ── Driver check-in helpers ───────────────────────────────────────────────────
 function setActiveDriver(lane, driverName) {
   const el = document.getElementById(`card-driver-${lane}`);
-  if (!el) return;
-  if (driverName) {
-    el.innerHTML = `<span class="lane-card__driver-name">👤 ${driverName}</span>`;
-    el.classList.add('lane-card__driver-row--active');
-    // Flash animation
-    const card = document.getElementById(`card-${lane}`);
-    if (card) { card.classList.add('card-checkin-flash'); setTimeout(() => card.classList.remove('card-checkin-flash'), 800); }
-  } else {
-    el.innerHTML = '';
-    el.classList.remove('lane-card__driver-row--active');
+  const card = document.getElementById(`card-${lane}`);
+  const nameSpan = card ? card.querySelector('.lane-card__name') : null;
+
+  // 1) Row dedicado (visible en V2)
+  if (el) {
+    if (driverName) {
+      el.innerHTML = `<span class="lane-card__driver-name">👤 ${driverName}</span>`;
+      el.classList.add('lane-card__driver-row--active');
+    } else {
+      el.innerHTML = '';
+      el.classList.remove('lane-card__driver-row--active');
+    }
+  }
+
+  // 2) Span inline dentro del nombre del equipo (visible en V1)
+  if (nameSpan) {
+    nameSpan.querySelector('.lane-card__driver-inline')?.remove();
+    if (driverName) {
+      const inline = document.createElement('span');
+      inline.className = 'lane-card__driver-inline';
+      inline.textContent = '· 👤 ' + driverName;
+      nameSpan.appendChild(inline);
+    }
+  }
+
+  // 3) Flash en la card al checkin
+  if (driverName && card) {
+    card.classList.add('card-checkin-flash');
+    setTimeout(() => card.classList.remove('card-checkin-flash'), 800);
   }
 }
 

@@ -44,7 +44,7 @@
             ? '<b>Cabecera obligatoria.</b> Columnas reconocidas (orden libre): <b>nombre</b> (obligatorio), <b>categoria</b>, <b>coche</b>, <b>pais</b> (escribe el nombre: España, Francia, Reino Unido… — la bandera se añade automáticamente), <b>notas</b>, <b>pilotos</b> (lista separada por "|"). Cada piloto se busca en tu base de datos por nombre: si existe, se enlaza al equipo; si no existe, se crea automáticamente como bronce y aparece en /pilotos para que le ajustes la categoría. Acepta separador "," o ";". Si una celda lleva comas dentro, envuélvela en comillas.'
             : '<b>Header required.</b> Recognized columns (free order): <b>name</b> (required), <b>category</b>, <b>car</b>, <b>country</b> (just the name — flag auto-added), <b>notes</b>, <b>drivers</b> (list separated by "|"). Each driver is looked up in the database by name: if it exists, linked to the team; if not, auto-created as bronze and shown in /drivers so you can adjust the category. Accepts "," or ";" as separator. Quote cells that contain commas.' %>
         </p>
-        <form action="/teams/import" method="POST" id="csv-form">
+        <form action="/teams/import/preview" method="POST" id="csv-form">
           <input type="hidden" name="csv_content" id="csv-content-input">
           <div class="vt-csv-row">
             <input type="file" id="csv-file-picker" accept=".csv,text/csv">

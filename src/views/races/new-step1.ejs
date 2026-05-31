@@ -47,6 +47,52 @@
       </div>
     </div>
 
+    <!-- Reglas de turnos por piloto (solo championship) -->
+    <%
+      // Defaults para el form: en BD se guardan en ms, en el form en minutos/segundos.
+      const minMin = body.driver_min_total_min != null ? body.driver_min_total_min : '';
+      const maxMin = body.driver_max_total_min != null ? body.driver_max_total_min : '';
+      const lockS  = body.driver_change_lockout_s != null ? body.driver_change_lockout_s : 120;
+    %>
+    <div class="form-group" id="champRulesGroup" style="display:<%= body.type === 'championship' ? 'block' : 'none' %>">
+      <label class="form-label">
+        <%= lang === 'es' ? 'Reglas de turnos por piloto' : 'Driver shift rules' %>
+      </label>
+      <p class="form-hint" style="margin:.2rem 0 .8rem">
+        <%= lang === 'es'
+          ? 'Aplica solo a carreras de campeonato. Cada piloto se identifica por QR; el contador suma sus minutos en TODAS las mangas de la carrera.'
+          : 'Championship only. Each driver scans a QR; the counter sums their minutes across ALL heats of the race.' %>
+      </p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem">
+        <div>
+          <label class="form-label" for="driverMinMin" style="font-size:.85rem;color:var(--vt-mute,#9aa0a6)">
+            <%= lang === 'es' ? 'Mínimo por piloto (min)' : 'Min per driver (min)' %>
+          </label>
+          <input class="form-input form-input--sm" type="number" id="driverMinMin" name="driver_min_total_min"
+                 min="0" max="600" step="1" placeholder="0 = sin mínimo" value="<%= minMin %>">
+        </div>
+        <div>
+          <label class="form-label" for="driverMaxMin" style="font-size:.85rem;color:var(--vt-mute,#9aa0a6)">
+            <%= lang === 'es' ? 'Máximo por piloto (min)' : 'Max per driver (min)' %>
+          </label>
+          <input class="form-input form-input--sm" type="number" id="driverMaxMin" name="driver_max_total_min"
+                 min="0" max="600" step="1" placeholder="0 = sin máximo" value="<%= maxMin %>">
+        </div>
+        <div>
+          <label class="form-label" for="lockoutS" style="font-size:.85rem;color:var(--vt-mute,#9aa0a6)">
+            <%= lang === 'es' ? 'Bloqueo final de manga (s)' : 'Final-manga lockout (s)' %>
+          </label>
+          <input class="form-input form-input--sm" type="number" id="lockoutS" name="driver_change_lockout_s"
+                 min="0" max="600" step="1" value="<%= lockS %>">
+        </div>
+      </div>
+      <p class="form-hint" style="margin-top:.4rem;font-size:.78rem">
+        <%= lang === 'es'
+          ? 'Bloqueo: durante los últimos X segundos de cada manga no se aceptan cambios de piloto (por QR ni manuales).'
+          : 'Lockout: during the last X seconds of each heat, no driver swaps are accepted (neither QR nor manual).' %>
+      </p>
+    </div>
+
     <!-- Circuit selector -->
     <div class="form-group">
       <label class="form-label">
@@ -317,6 +363,16 @@ function applyCategoryFromSelect() {
 }
 
 categorySelect.addEventListener('change', applyCategoryFromSelect);
+
+// Toggle del bloque "Reglas de turnos por piloto" según tipo de carrera
+const champRules = document.getElementById('champRulesGroup');
+document.querySelectorAll('input[name="type"]').forEach(r => {
+  r.addEventListener('change', () => {
+    champRules.style.display = r.value === 'championship' && r.checked ? 'block' : (
+      document.querySelector('input[name="type"]:checked')?.value === 'championship' ? 'block' : 'none'
+    );
+  });
+});
 
 circPills.addEventListener('click', e => {
   const btn = e.target.closest('.circ-pill');
