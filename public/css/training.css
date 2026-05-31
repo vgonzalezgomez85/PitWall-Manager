@@ -115,6 +115,46 @@
   text-align: right;
 }
 
+/* ── V1 (history): Media + Mejor a la misma escala que la "vuelta actual"
+   Apilados verticalmente (cada valor ocupa el ancho completo) para que el
+   número pueda crecer al mismo tamaño que el current. La actual usa
+   clamp(2.5rem, 6vw, 8rem); aplicamos lo mismo a Media y Mejor. */
+.training-grid:not(.training-grid--compact) .tr-card__avg-row {
+  display: flex; flex-direction: column; gap: .15rem;
+  padding: .25rem clamp(.6rem, 1vw, 1rem) .45rem;
+}
+.training-grid:not(.training-grid--compact) .tr-card__avg-cell {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 0;
+  text-align: left;
+  border-top: 1px solid rgba(255,255,255,.04);
+  padding-top: .15rem;
+}
+.training-grid:not(.training-grid--compact) .tr-card__avg-cell:first-child {
+  border-top: none; padding-top: 0;
+}
+.training-grid:not(.training-grid--compact) .tr-card__avg-label {
+  font-size: clamp(.7rem, 1vw, 1rem); letter-spacing: .08em;
+  text-transform: uppercase; color: #6e7681; line-height: 1;
+}
+.training-grid:not(.training-grid--compact) .tr-card__avg-val {
+  /* Igual fórmula que .tr-card__best (línea 598) — current vs Media vs Mejor
+     se ven exactamente al mismo tamaño. */
+  font-size: clamp(1.6rem, 3vw, 3rem) !important;
+  line-height: 1; text-align: left; white-space: nowrap;
+  width: 100%; padding-top: .05rem;
+}
+/* Historial de vueltas: cada item también al tamaño de la vuelta actual */
+.training-grid:not(.training-grid--compact) .tr-card__laps {
+  gap: .25rem !important;
+}
+.training-grid:not(.training-grid--compact) .tr-lap-item {
+  font-size: clamp(1.6rem, 3vw, 3rem) !important;
+  line-height: 1.1; padding: .1rem 0;
+}
+.training-grid:not(.training-grid--compact) .tr-lap-item--best {
+  font-size: clamp(1.6rem, 3vw, 3rem) !important;
+}
+
 .tr-card__divider {
   height: 1px; background: #161b22; margin: 0 .9rem;
 }
