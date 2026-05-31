@@ -61,7 +61,8 @@ class TrainingController {
     if (CompetitionService.isReady) return res.redirect('/training/competition/live');
     const circuits = Circuit.findAll();
     const defaultCircuitId = parseInt(Settings.get('training_circuit_id', '') || '0', 10) || null;
-    res.render('training/competition', { t: req.t, circuits, defaultCircuitId });
+    const fallbackLanes = parseInt(Settings.get('sim_lanes', '6'), 10) || 6;
+    res.render('training/competition', { t: req.t, circuits, defaultCircuitId, fallbackLanes });
   }
 
   // POST /training/competition/start

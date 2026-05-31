@@ -30,7 +30,10 @@ function stepState(idx) {
 <div class="race-show">
 <div class="race-show__wrap">
 
-  <a class="rs-back" href="/races">← <%= t('race.back_to_list') %></a>
+  <a class="vt-back-link" href="/races">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    <%= t('race.back_to_list') %>
+  </a>
 
   <!-- ── Cabecera ──────────────────────────────────────────────────── -->
   <div class="rs-head">

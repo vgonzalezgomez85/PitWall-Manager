@@ -75,49 +75,64 @@
 .race-best-star { color: #fbbf24; margin-left: 2px; }
 
 @media print {
-  .navbar, .page-header__actions, .results-tabs, .back-link,
+  .navbar, .footer, .vt-head__actions, .results-tabs, .vt-back-link,
   .results-panel:not(.active) { display: none !important; }
   .results-panel.active { display: block !important; }
-  body { background: #fff !important; color: #000 !important; }
+  body, .vt-page, .main-content { background: #fff !important; color: #000 !important; }
+  .vt-page h1 { color: #000 !important; }
+  .vt-lead { color: #555 !important; }
   .results-table { border-collapse: collapse; width: 100%; }
-  .results-table th, .results-table td { border: 1px solid #ccc; padding: 6px 10px; }
+  .results-table th, .results-table td { border: 1px solid #ccc; padding: 6px 10px; color: #000 !important; }
   .results-table thead th { background: #f0f0f0 !important; color: #000 !important; }
   .pos-badge { border: 1px solid #999; color: #000 !important; background: none !important; }
   .result-highlight { font-weight: 700; }
-  .page-title::before { content: "<%= race.name %> — "; font-size: 1rem; color: #555; display: block; }
+  .vt-page h1::before { content: "<%= race.name %> — "; font-size: 1rem; color: #555; display: block; font-weight: 400; }
 }
 </style>
-<div class="container">
+<div class="vt-page vt-page--results">
+  <div class="vt-wrap">
+
+    <a href="/races/<%= race.id %>" class="vt-back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      <%= lang === 'es' ? 'Volver a la carrera' : 'Back to race' %>
+    </a>
 
   <!-- Header -->
-  <div class="page-header">
-    <div>
-      <a href="/races/<%= race.id %>" class="back-link">← <%= t('race.back_to_list') %></a>
-      <h1 class="page-title"><%= lang === 'es' ? 'Resultados' : 'Results' %></h1>
-      <p class="page-subtitle"><%= race.name %> · <%= t('races.type.' + race.type) %> · <%= t('races.format.' + race.format) %></p>
+  <div class="vt-head" style="align-items:flex-start">
+    <div class="vt-head__title" style="flex-direction:column;align-items:flex-start;gap:6px">
+      <h1><%= lang === 'es' ? 'Resultados' : 'Results' %></h1>
+      <p class="vt-lead" style="margin-top:0">
+        <strong style="color:var(--vt-text);font-weight:600"><%= race.name %></strong>
+        · <%= t('races.type.' + race.type) %>
+        · <%= t('races.format.' + race.format) %>
+      </p>
     </div>
-    <div class="page-header__actions">
-      <span class="badge badge--neutral"><%= tandas.length %> <%= lang === 'es' ? 'tandas' : 'rounds' %></span>
-      <a href="/races/<%= race.id %>/results/xlsx?lang=<%= lang %>" class="btn btn--ghost btn--sm" title="<%= lang === 'es' ? 'Exportar a Excel' : 'Export to Excel' %>">
-        📊 Excel
+    <div class="vt-head__actions">
+      <span class="vt-badge is-info"><span class="vt-badge__d"></span><%= tandas.length %> <%= lang === 'es' ? 'tandas' : 'rounds' %></span>
+      <a href="/races/<%= race.id %>/results/xlsx?lang=<%= lang %>" class="vt-btn vt-btn--ghost vt-btn--sm" title="<%= lang === 'es' ? 'Exportar a Excel' : 'Export to Excel' %>">
+        <svg viewBox="0 0 24 24"><path d="M14 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13l3 3 3-3M12 16V9"/></svg>
+        Excel
       </a>
-      <a href="/races/<%= race.id %>/results/points.xlsx?lang=<%= lang %>" class="btn btn--ghost btn--sm" title="<%= lang === 'es' ? 'Exportar puntos de clasificación (Excel)' : 'Export classification points (Excel)' %>">
-        🏆 <%= lang === 'es' ? 'Puntos (xlsx)' : 'Points (xlsx)' %>
+      <a href="/races/<%= race.id %>/results/points.xlsx?lang=<%= lang %>" class="vt-btn vt-btn--ghost vt-btn--sm" title="<%= lang === 'es' ? 'Exportar puntos de clasificación (Excel)' : 'Export classification points (Excel)' %>">
+        <svg viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v6a5 5 0 0 1-10 0z"/><path d="M7 5H4.5A1.5 1.5 0 0 0 3 6.5 3.5 3.5 0 0 0 6.5 10M17 5h2.5A1.5 1.5 0 0 1 21 6.5 3.5 3.5 0 0 1 17.5 10"/></svg>
+        <%= lang === 'es' ? 'Puntos (xlsx)' : 'Points (xlsx)' %>
       </a>
-      <a href="/races/<%= race.id %>/results/points.csv?lang=<%= lang %>" class="btn btn--ghost btn--sm" title="<%= lang === 'es' ? 'Exportar puntos (CSV)' : 'Export points (CSV)' %>">
-        📄 <%= lang === 'es' ? 'Puntos (csv)' : 'Points (csv)' %>
+      <a href="/races/<%= race.id %>/results/points.csv?lang=<%= lang %>" class="vt-btn vt-btn--ghost vt-btn--sm" title="<%= lang === 'es' ? 'Exportar puntos (CSV)' : 'Export points (CSV)' %>">
+        <svg viewBox="0 0 24 24"><path d="M14 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
+        <%= lang === 'es' ? 'Puntos (csv)' : 'Points (csv)' %>
       </a>
-      <button class="btn btn--ghost btn--sm" onclick="window.print()" title="<%= lang === 'es' ? 'Guardar como PDF' : 'Save as PDF' %>">
-        🖨 PDF
+      <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" onclick="window.print()" title="<%= lang === 'es' ? 'Guardar como PDF' : 'Save as PDF' %>">
+        <svg viewBox="0 0 24 24"><path d="M6 9V4h12v5M6 18H4a1 1 0 0 1-1-1v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a1 1 0 0 1-1 1h-2M6 14h12v7H6z"/></svg>
+        PDF
       </button>
     </div>
   </div>
 
   <% if (results.length === 0) { %>
-    <div class="empty-state">
-      <div class="empty-state__icon">📊</div>
-      <p class="empty-state__text">
-        <%= lang === 'es' ? 'Sin datos todavía. Completa al menos una manga para ver resultados.' : 'No data yet. Complete at least one heat to see results.' %>
+    <div class="vt-empty" style="margin-top:32px">
+      <div class="vt-empty__t"><%= lang === 'es' ? 'Sin datos todavía' : 'No data yet' %></div>
+      <p style="color:var(--vt-mute);margin:6px 0 0">
+        <%= lang === 'es' ? 'Completa al menos una manga para ver resultados.' : 'Complete at least one heat to see results.' %>
       </p>
     </div>
   <% } else { %>
@@ -1003,6 +1018,7 @@
 
   <% } %>
 
+  </div>
 </div>
 
 <script>
