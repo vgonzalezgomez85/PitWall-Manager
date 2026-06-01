@@ -40,8 +40,13 @@ class TrainingServiceClass {
     // t+3134ms) para que la cuenta atrás comience exactamente cuando la
     // corriente se enciende. Los récords de carril (_sessionRecords) se
     // PRESERVAN entre GOs — solo se borran con el botón "Reset" manual.
+    // El "auto" de training (engancharse a un GO del DS-300) solo aplica
+    // cuando NO hay una manga oficial corriendo. Si TimingService está en
+    // mitad de una carrera, el mismo GO del DS pertenece a esa manga y
+    // training debe quedarse fuera para no registrar datos en paralelo.
     SerialService.on('race_go', ({ durationMs }) => {
       if (this._active) return;
+      if (TimingService.isRunning) return;
       this._pendingDurationMs = durationMs;
       this._paused = false;
       this.prepare(lanesFromSettings());
@@ -50,6 +55,7 @@ class TrainingServiceClass {
 
     SerialService.on('race_started', () => {
       if (this._active) return;
+      if (TimingService.isRunning) return;
       this._paused = false;
       if (this._pendingDurationMs != null) {
         this._durationMs = this._pendingDurationMs;

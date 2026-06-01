@@ -48,8 +48,9 @@ class TrainingController {
     }
     // If the DS-300 is already mid-manga (someone pressed GO before opening
     // this view), skip standby and start recording immediately so the user
-    // doesn't have to press GO again.
-    if (!TrainingService.isActive && SerialService.isDSRunning()) {
+    // doesn't have to press GO again. Excepción: si hay una manga oficial
+    // corriendo, ese GO pertenece a la carrera — training no debe enganchar.
+    if (!TrainingService.isActive && SerialService.isDSRunning() && !TimingService.isRunning) {
       TrainingService.activate();
       console.log('[TrainingController] /training/free entered with DS already running → auto-activated');
     }
