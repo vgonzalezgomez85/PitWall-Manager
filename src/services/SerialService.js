@@ -528,15 +528,15 @@ class SerialServiceClass extends EventEmitter {
       const conn = new CircuitConnection(
         i,
         laneOffset,
-        data => { DebugLogger.log('crossing_raw', { source: 'ds300', ...data }); this.emit('lane_crossing', data); },
-        ()   => this.emit('race_started'),
-        ()   => this.emit('race_stopped'),
-        ()   => this.emit('race_paused'),
-        ()   => this.emit('race_resumed'),
-        ms   => this.emit('race_go', { durationMs: ms }),
-        ()   => this.emit('race_finished'),
-        ()   => this.emit('race_resume_signal'),
-        ()   => this.emit('semaphore_step'),
+        data => { DebugLogger.log('crossing_raw', { source: 'ds300', circuit: i, ...data }); this.emit('lane_crossing', { circuit: i, ...data }); },
+        ()   => this.emit('race_started',       { circuit: i }),
+        ()   => this.emit('race_stopped',       { circuit: i }),
+        ()   => this.emit('race_paused',        { circuit: i }),
+        ()   => this.emit('race_resumed',       { circuit: i }),
+        ms   => this.emit('race_go',            { circuit: i, durationMs: ms }),
+        ()   => this.emit('race_finished',      { circuit: i }),
+        ()   => this.emit('race_resume_signal', { circuit: i }),
+        ()   => this.emit('semaphore_step',     { circuit: i }),
       );
       await conn.connect(port, baud, { dataBits, parity, stopBits, flowControl });
       connections.push(conn);

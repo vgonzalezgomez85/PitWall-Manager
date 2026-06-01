@@ -48,7 +48,7 @@ class TimingServiceClass {
 
   // ── Start manga ───────────────────────────────────────────────────────────
 
-  startManga(manga, race, lanes, teams, drivers, durationMs = null) {
+  startManga(manga, race, lanes, teams, drivers, durationMs = null, startCircuitIndex = 0) {
     if (this.session) this.stopManga(false);
 
     // Si TrainingService se había auto-activado por el mismo GO (su listener
@@ -118,7 +118,14 @@ class TimingServiceClass {
       }
     });
 
-    this.session = { manga, race, lanes, teams, drivers, laneMap, startTime, durationMs: sessionDurationMs, status: 'running' };
+    // ── Estado por circuito ───────────────────────────────────────────────
+    // Una manga abarca todos los circuitos, pero cada uno tiene ciclo de vida
+    // propio (GO/fin/reloj). El mapa carril→circuito sale de circuits_config
+    // (mismos offsets que SerialService). Arrancamos SOLO el circuito cuyo GO
+    // disparó esto; los demás quedan 'pending' hasta recibir su propio GO.
+    const { circuits, laneToCircuit } = this._buildCircuits(race, sessionDurationMs, startTime, startCircuitIndex);
+
+    this.session = { manga, race, lanes, teams, drivers, laneMap, startTime, durationMs: sessionDurationMs, status: 'running', circuits, laneToCircuit };
 
     const activeLanes = Object.keys(laneMap).map(Number);
     if (SerialService.isSimulating && activeLanes.length > 0) {
@@ -153,16 +160,101 @@ class TimingServiceClass {
       if (this._isChampionship) this._tickDriverShifts();
     }, 1000);
 
-    this._autoStopTimer = setTimeout(() => {
-      console.log('[TimingService] Manga auto-stopped (time expired)');
-      this.stopManga(true);
-    }, sessionDurationMs);
+    // Auto-fin del circuito de arranque al agotar SU tiempo. Cada circuito
+    // programa el suyo al recibir su propio GO (startCircuit).
+    this._scheduleCircuitAutoFinish(startCircuitIndex);
 
     Manga.updateStatus(manga.id, 'active');
     DebugLogger.startMangaLog(manga, race);
     DebugLogger.log('manga', { event: 'start', mangaNumber: manga.number, durationMs: sessionDurationMs, activeLanes });
     SocketService.emit('manga:started', { mangaId: manga.id, ...this.getStandings() });
     console.log(`[TimingService] Manga ${manga.number} started @ ${Date.now()} — ${activeLanes.length} active lanes — ${race.manga_duration_minutes}min`);
+  }
+
+  // ── Estado por circuito (helpers) ───────────────────────────────────────────
+
+  // Construye el mapa carril→circuito y el estado por circuito a partir de
+  // circuits_config (p.ej. "[8,8]"). Solo `startCi` arranca; el resto 'pending'.
+  _buildCircuits(race, durationMs, startTime, startCi) {
+    let cfg = [];
+    try { cfg = JSON.parse(race.circuits_config || '[]'); } catch {}
+    const counts = (Array.isArray(cfg) && cfg.length) ? cfg : [race.lanes_count || 0];
+    const circuits = {};
+    const laneToCircuit = {};
+    let off = 0;
+    counts.forEach((n, ci) => {
+      for (let l = off + 1; l <= off + n; l++) laneToCircuit[l] = ci;
+      circuits[ci] = {
+        index: ci,
+        status: ci === startCi ? 'running' : 'pending',
+        startTime: ci === startCi ? startTime : null,
+        durationMs,
+        autoStopTimer: null,
+        laneCount: n,
+      };
+      off += n;
+    });
+    // Salvaguarda: si el circuito de arranque no aparece en la config, créalo.
+    if (!circuits[startCi]) {
+      circuits[startCi] = { index: startCi, status: 'running', startTime, durationMs, autoStopTimer: null, laneCount: 0 };
+    }
+    return { circuits, laneToCircuit };
+  }
+
+  // (Re)programa el auto-fin de un circuito según el tiempo que le queda.
+  _scheduleCircuitAutoFinish(ci) {
+    const c = this.session && this.session.circuits[ci];
+    if (!c) return;
+    if (c.autoStopTimer) { clearTimeout(c.autoStopTimer); c.autoStopTimer = null; }
+    const elapsed   = c.startTime ? (Date.now() - c.startTime) : 0;
+    const remaining = Math.max(0, c.durationMs - elapsed);
+    c.autoStopTimer = setTimeout(() => {
+      console.log(`[TimingService] Circuito ${ci + 1} auto-finalizado (tiempo agotado)`);
+      this.finishCircuit(ci);
+    }, remaining);
+  }
+
+  _clearAllCircuitTimers() {
+    if (!this.session || !this.session.circuits) return;
+    for (const c of Object.values(this.session.circuits)) {
+      if (c.autoStopTimer) { clearTimeout(c.autoStopTimer); c.autoStopTimer = null; }
+    }
+  }
+
+  // Arranca un circuito por su GO (cuando la manga ya existe). Cada circuito
+  // cuenta su tiempo desde SU propio GO.
+  startCircuit(ci, durationMs = null) {
+    if (!this.session) return;
+    const c = this.session.circuits[ci];
+    if (!c) { console.log(`[TimingService] startCircuit: circuito ${ci + 1} no está en la config`); return; }
+    if (c.status === 'running') return;   // su GO ya estaba dado → ignorar
+    c.status    = 'running';
+    c.startTime = Date.now();
+    if (durationMs) c.durationMs = durationMs;
+    this._scheduleCircuitAutoFinish(ci);
+    console.log(`[TimingService] Circuito ${ci + 1} arrancado @ ${c.startTime}`);
+    SocketService.emitStandings(this.getStandings());
+  }
+
+  // Finaliza un circuito (fin normal o tiempo agotado). La manga se cierra de
+  // verdad cuando NINGÚN circuito sigue corriendo y al menos uno terminó.
+  finishCircuit(ci) {
+    if (!this.session) return;
+    const c = this.session.circuits[ci];
+    if (!c || c.status !== 'running') return;
+    c.status = 'finished';
+    if (c.autoStopTimer) { clearTimeout(c.autoStopTimer); c.autoStopTimer = null; }
+    console.log(`[TimingService] Circuito ${ci + 1} finalizado`);
+
+    const list = Object.values(this.session.circuits);
+    const anyRunning  = list.some(x => x.status === 'running');
+    const anyFinished = list.some(x => x.status === 'finished');
+    if (!anyRunning && anyFinished) {
+      console.log('[TimingService] Todos los circuitos finalizados → cierre de manga');
+      this.stopManga(true);
+    } else {
+      SocketService.emitStandings(this.getStandings());
+    }
   }
 
   // ── Stop manga ────────────────────────────────────────────────────────────
@@ -173,6 +265,7 @@ class TimingServiceClass {
     clearInterval(this._tickInt);
     clearTimeout(this._autoStopTimer);
     this._tickInt = this._autoStopTimer = null;
+    this._clearAllCircuitTimers();
 
     if (this._lapHandler) {
       SerialService.off('lane_crossing', this._lapHandler);
@@ -292,6 +385,9 @@ class TimingServiceClass {
     clearInterval(this._tickInt);
     clearTimeout(this._autoStopTimer);
     this._tickInt = this._autoStopTimer = null;
+    // Detener el auto-fin de cada circuito mientras dure la pausa (se
+    // reprograma en resume con el tiempo que les quedaba).
+    this._clearAllCircuitTimers();
     // Persistir el driving_ms actual de cada shift abierto antes de pausar.
     if (this._isChampionship) this._persistAllDriverShifts();
     DebugLogger.log('manga', { event: 'pause', mangaNumber: this.session.manga.number });
@@ -302,9 +398,19 @@ class TimingServiceClass {
   resumeManga() {
     if (!this.session || this.session.status !== 'paused') return;
     const pausedMs = Date.now() - this.session.pauseStart;
-    this.session.startTime += pausedMs; // shift start so elapsed stays correct
+    this.session.startTime += pausedMs; // shift global start so elapsed stays correct
     this.session.status     = 'running';
     this.session.pauseStart = null;
+
+    // Desplazar el reloj de cada circuito activo por la pausa y reprogramar su
+    // auto-fin con el tiempo que le quedaba. (Fase 1: la pausa es global; la
+    // pausa por circuito independiente llegará en la Fase 2.)
+    for (const c of Object.values(this.session.circuits)) {
+      if (c.status === 'running' && c.startTime != null) {
+        c.startTime += pausedMs;
+        this._scheduleCircuitAutoFinish(c.index);
+      }
+    }
 
     // Accumulate pause duration into every active lane so the first crossing
     // post-resume per lane subtracts the pause time from the DS-reported
@@ -321,11 +427,6 @@ class TimingServiceClass {
       SocketService.emit('tick', { elapsedMs, remainingMs });
     }, 1000);
 
-    const remaining = this.session.durationMs - (Date.now() - this.session.startTime);
-    if (remaining > 0) {
-      this._autoStopTimer = setTimeout(() => this.stopManga(true), remaining);
-    }
-
     DebugLogger.log('manga', { event: 'resume', mangaNumber: this.session.manga.number, pausedMs });
     SocketService.emit('manga:resumed');
     console.log(`[TimingService] Manga ${this.session.manga.number} resumed`);
@@ -339,6 +440,7 @@ class TimingServiceClass {
     clearInterval(this._tickInt);
     clearTimeout(this._autoStopTimer);
     this._tickInt = this._autoStopTimer = null;
+    this._clearAllCircuitTimers();
 
     if (this._lapHandler) {
       SerialService.off('lane_crossing', this._lapHandler);
@@ -377,6 +479,16 @@ class TimingServiceClass {
       return;
     }
 
+    // El circuito de este carril debe estar corriendo: su GO dado y aún sin
+    // finalizar. Así, un cruce de un circuito que todavía no arrancó —o que ya
+    // terminó— no entra en la manga ni descuadra los tiempos.
+    const ci = this.session.laneToCircuit[lane];
+    const circuit = ci != null ? this.session.circuits[ci] : null;
+    if (!circuit || circuit.status !== 'running') {
+      DebugLogger.log('crossing_dropped', { lane, deviceLapTimeMs, reason: 'circuit_not_running', circuit: ci });
+      return;
+    }
+
     const ld = this.session.laneMap[lane];
     if (!ld) {
       DebugLogger.log('crossing_dropped', { lane, deviceLapTimeMs, reason: 'lane_not_in_manga' });
@@ -406,7 +518,7 @@ class TimingServiceClass {
     // First crossing from device (no device-reported lap time): count it as
     // lap 1 with elapsed time from race start → first crossing.
     if (deviceLapTimeMs === null) {
-      const firstLapMs = Math.max(0, Math.round(timestamp - this.session.startTime));
+      const firstLapMs = Math.max(0, Math.round(timestamp - circuit.startTime));
       ld.lapCount++;
       ld.lastLapMs    = firstLapMs;
       ld.lastCrossing = timestamp;
@@ -449,7 +561,7 @@ class TimingServiceClass {
     if (autoGhost) {
       DebugLogger.log('ghost_lap', { lane, lapTimeMs, minLapMs });
       console.log(`[TimingService] Ghost lap: lane ${lane} (${lapTimeMs}ms < Pt ${minLapMs}ms)`);
-      const elapsedMs = timestamp - this.session.startTime;
+      const elapsedMs = timestamp - circuit.startTime;
       const race    = this.session.race;
       const manga   = this.session.manga;
       const teamId  = ld.teamId;
@@ -590,7 +702,7 @@ class TimingServiceClass {
       ld.cleanAvgMs    = ld.cleanLapsSum / ld.cleanAvgCount;
     }
 
-    const elapsedMs = timestamp - this.session.startTime;
+    const elapsedMs = timestamp - circuit.startTime;
     const race    = this.session.race;
     const manga   = this.session.manga;
     const teamId  = ld.teamId;
