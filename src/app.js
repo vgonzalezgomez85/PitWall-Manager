@@ -48,6 +48,24 @@ const TrainingService = require('./services/TrainingService');
 
 let _pendingGoDurationMs = null;
 
+// ── De-dup del semáforo entre varios DS ──────────────────────────────────────
+// Con varios circuitos, cada DS emite su propia secuencia de semáforo (en GO y
+// en resume). Atendemos solo al PRIMER race:semaphore dentro de una ventana y
+// los demás se ignoran, para que el overlay no se re-dispare a media secuencia
+// (lo que congelaba la pantalla). La ventana cubre la secuencia completa (~3s)
+// más margen para el desfase entre los GO/resume de los distintos DS.
+const SEMA_DEDUP_MS = 5000;
+let _lastSemaphoreAt = 0;
+function emitSemaphoreOnce(reason) {
+  const now = Date.now();
+  if (now - _lastSemaphoreAt < SEMA_DEDUP_MS) {
+    console.log(`[DS-300] race:semaphore ignorado (${reason}) — ya hay uno activo en la ventana`);
+    return;
+  }
+  _lastSemaphoreAt = now;
+  SocketService.emit('race:semaphore');
+}
+
 SerialService.on('race_go', ({ durationMs }) => {
   console.log(`[DS-300] race_go received (duration=${durationMs}ms) — emit race:semaphore @ ${Date.now()}`);
   if (TimingService._tandaBoundary) {
@@ -55,13 +73,22 @@ SerialService.on('race_go', ({ durationMs }) => {
     return;
   }
   _pendingGoDurationMs = durationMs || null;
-  SocketService.emit('race:semaphore');
+  emitSemaphoreOnce('go');
 });
 
-SerialService.on('race_started', () => {
-  console.log(`[DS-300] race_started @ ${Date.now()} → emit training:autostart`);
+SerialService.on('race_started', ({ circuit } = {}) => {
+  const ci = circuit || 0;
+  console.log(`[DS-300] race_started (circuit ${ci + 1}) @ ${Date.now()} → emit training:autostart`);
   SocketService.emit('training:autostart');
-  if (TimingService.isRunning) return;
+
+  // Si ya hay una manga en curso, este GO pertenece a OTRO circuito: arranca
+  // solo ese circuito (con su propio reloj) sin reiniciar ni tocar los demás.
+  if (TimingService.activeMangaId != null) {
+    TimingService.startCircuit(ci, _pendingGoDurationMs);
+    _pendingGoDurationMs = null;
+    return;
+  }
+
   if (TimingService._tandaBoundary) {
     console.log('[DS-300] STARTED ignored — tanda boundary, waiting for user to start next tanda');
     return;
@@ -111,7 +138,7 @@ SerialService.on('race_started', () => {
   }
 
   if (!setup) { console.log('[DS-300] GO received but no pending manga found'); return; }
-  TimingService.startManga(setup.manga, setup.race, setup.lanes, setup.teams, setup.drivers, _pendingGoDurationMs);
+  TimingService.startManga(setup.manga, setup.race, setup.lanes, setup.teams, setup.drivers, _pendingGoDurationMs, ci);
   _pendingGoDurationMs = null;
   TimingService.clearPendingManga();
 });
@@ -120,8 +147,10 @@ SerialService.on('race_stopped', () => {
   if (TimingService.isRunning) TimingService.cancelManga();
 });
 
-SerialService.on('race_finished', () => {
-  if (TimingService.isRunning) TimingService.stopManga(true);
+SerialService.on('race_finished', ({ circuit } = {}) => {
+  // Fin (normal / tiempo agotado) de UN circuito: lo cierra. La manga se
+  // finaliza de verdad cuando todos los circuitos han terminado (finishCircuit).
+  if (TimingService.activeMangaId != null) TimingService.finishCircuit(circuit || 0);
 });
 
 SerialService.on('race_paused', () => {
@@ -132,7 +161,7 @@ SerialService.on('race_paused', () => {
 // used on GO so users see the ~3s countdown before the track is unlocked.
 SerialService.on('race_resume_signal', () => {
   console.log(`[DS-300] race_resume_signal received — emit race:semaphore @ ${Date.now()}`);
-  SocketService.emit('race:semaphore');
+  emitSemaphoreOnce('resume');
 });
 
 // Trama 2 (0xA2) of GO or resume: intermediate step of the DS semaphore.
