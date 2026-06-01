@@ -23,10 +23,32 @@
   font-family: 'Share Tech Mono', 'Courier New', monospace;
   font-size: 4rem; color: #ff6b35; letter-spacing: .04em; line-height: 1;
 }
+.live-timer--running { color: #22c55e; }   /* corriendo (cuenta atrás) = verde */
+.live-timer--stopped { color: #ef4444; }   /* pausado / parado = rojo */
 .live-timer-label {
   font-size: .85rem; color: #6e7681; letter-spacing: .1em;
   text-transform: lowercase; margin-top: 2px;
 }
+
+/* ── Temporizadores por circuito (multi-DS) ─────────────────────────────── */
+.circuit-timers { display: flex; gap: clamp(.5rem, 1.4vw, 1.4rem); align-items: flex-end; }
+.circuit-timer { display: flex; flex-direction: column; align-items: center; line-height: 1; }
+.circuit-timer__lbl {
+  font-size: .7rem; font-weight: 800; letter-spacing: .1em; color: #8b949e;
+}
+.circuit-timer__val {
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
+  font-size: clamp(1.6rem, 5vh, 2.8rem); letter-spacing: .03em;
+  font-variant-numeric: tabular-nums;
+  color: #22c55e;   /* corriendo (cuenta atrás) = verde */
+}
+/* Pausado o parado (sin arrancar / terminado) = rojo */
+.circuit-timer--paused   .circuit-timer__val,
+.circuit-timer--pending  .circuit-timer__val,
+.circuit-timer--finished .circuit-timer__val { color: #ef4444; }
+.circuit-timer--paused   .circuit-timer__lbl,
+.circuit-timer--pending  .circuit-timer__lbl,
+.circuit-timer--finished .circuit-timer__lbl { color: #ef4444; }
 
 .live-header__info { flex: 1; min-width: 0; }
 .live-manga-id { display: flex; gap: .45rem; align-items: center; margin-bottom: .1rem; }
