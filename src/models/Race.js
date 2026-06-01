@@ -33,6 +33,27 @@ class Race {
     return lastInsertRowid;
   }
 
+  // Partial update — only the provided fields are written. Used by the
+  // "Editar carrera" page (name + circuit OR manual min lap).
+  static update(id, { name, circuit_id, min_lap_ms, lanes_count, circuits_config, lane_sequence }) {
+    const sets = [], vals = [];
+    if (name            !== undefined) { sets.push('name=?');            vals.push(name); }
+    if (circuit_id      !== undefined) { sets.push('circuit_id=?');      vals.push(circuit_id || null); }
+    if (min_lap_ms      !== undefined) { sets.push('min_lap_ms=?');      vals.push(min_lap_ms || 0); }
+    if (lanes_count     !== undefined) { sets.push('lanes_count=?');     vals.push(lanes_count); }
+    if (circuits_config !== undefined) { sets.push('circuits_config=?'); vals.push(Array.isArray(circuits_config) ? JSON.stringify(circuits_config) : circuits_config); }
+    if (lane_sequence   !== undefined) { sets.push('lane_sequence=?');   vals.push(Array.isArray(lane_sequence) ? JSON.stringify(lane_sequence) : lane_sequence); }
+    if (!sets.length) return;
+    vals.push(id);
+    db.prepare(`UPDATE races SET ${sets.join(', ')} WHERE id=?`).run(...vals);
+  }
+
+  // True if any lap has been recorded for this race. Gates destructive edits
+  // (changing the circuit reshuffles lanes, so it's only allowed before racing).
+  static hasRecordedLaps(id) {
+    return !!db.prepare('SELECT 1 FROM laps WHERE race_id=? LIMIT 1').get(id);
+  }
+
   static getCircuits(race) {
     try {
       const c = JSON.parse(race.circuits_config || '[]');

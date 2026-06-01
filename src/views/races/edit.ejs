@@ -1,0 +1,162 @@
+<%- include('../partials/header', { pageTitle: (lang === 'es' ? 'Editar carrera' : 'Edit race') }) %>
+<div class="container container--narrow">
+
+  <a class="vt-back-link" href="/races/<%= race.id %>">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    <%= lang === 'es' ? 'Volver a la carrera' : 'Back to race' %>
+  </a>
+
+  <h1 class="page-title"><%= lang === 'es' ? 'Editar carrera' : 'Edit race' %></h1>
+
+  <% if (errors.length > 0) { %>
+    <div class="alert alert--error">
+      <% errors.forEach(e => { %><p><%= t('errors.' + e) %></p><% }) %>
+    </div>
+  <% } %>
+
+  <form action="/races/<%= race.id %>/edit" method="POST" class="form-card">
+
+    <!-- Name -->
+    <div class="form-group">
+      <label class="form-label" for="name"><%= lang === 'es' ? 'Nombre de la carrera' : 'Race name' %></label>
+      <input
+        class="form-input <%= errors.includes('name_required') ? 'form-input--error' : '' %>"
+        type="text" id="name" name="name"
+        value="<%= race.name %>" autocomplete="off" autofocus required>
+    </div>
+
+    <% if (race.circuit_id) { %>
+      <!-- Circuit race: change the assigned circuit -->
+      <div class="form-group">
+        <label class="form-label"><%= lang === 'es' ? 'Circuito' : 'Circuit' %></label>
+
+        <% if (hasLaps) { %>
+          <% const cur = savedCircuits.find(c => c.id === race.circuit_id) || {}; %>
+          <input class="form-input" type="text" style="max-width:22rem" disabled
+                 value="<%= cur.name || ('#' + race.circuit_id) %>">
+          <p class="form-hint" style="color:#e0a106;margin-top:.5rem">
+            🔒 <%= lang === 'es'
+              ? 'No se puede cambiar el circuito: la carrera ya tiene vueltas registradas.'
+              : 'The circuit cannot be changed: the race already has recorded laps.' %>
+          </p>
+        <% } else { %>
+          <select id="circuitSelect" name="circuit_id" class="form-input" style="max-width:22rem"
+                  onchange="applyCircuit(this.value)">
+            <% savedCircuits.forEach(c => { %>
+              <option value="<%= c.id %>"
+                      data-config="<%= c.circuits_config %>"
+                      data-min-ms="<%= c.min_lap_ms %>"
+                      <%= race.circuit_id == c.id ? 'selected' : '' %>>
+                <%= c.name %> (<%= c.lanes_count %> <%= lang === 'es' ? 'carriles' : 'lanes' %><% if (c.min_lap_ms > 0) { %> · min <%= (c.min_lap_ms/1000).toFixed(2) %>s<% } %>)
+              </option>
+            <% }) %>
+          </select>
+
+          <!-- Category override (shown only if the chosen circuit has per-category times) -->
+          <div id="categoryWrap" style="margin-top:.75rem;display:none;align-items:center;gap:.6rem;flex-wrap:wrap">
+            <span class="form-hint" style="flex-shrink:0"><%= lang === 'es' ? 'Categoría:' : 'Category:' %></span>
+            <select id="categorySelect" name="category_id" class="form-input form-input--sm" style="max-width:14rem">
+              <option value=""><%= lang === 'es' ? '— por defecto —' : '— default —' %></option>
+            </select>
+            <span class="form-hint" id="categoryHint" style="color:#9aa0a6"></span>
+          </div>
+
+          <p class="form-hint" style="margin-top:.7rem">
+            <%= lang === 'es' ? 'Carriles:' : 'Lanes:' %> <strong id="lanesInfo" style="color:#58a6ff">—</strong>
+            &nbsp;·&nbsp;
+            <%= lang === 'es' ? 'Vuelta mínima:' : 'Min lap:' %> <strong id="minLapInfo" style="color:#4caf50">—</strong>
+          </p>
+
+          <p class="form-hint" style="color:#e0a106;margin-top:.5rem">
+            ⚠️ <%= lang === 'es'
+              ? 'Cambiar el circuito reajusta el número de carriles y la secuencia de salida. Las tandas ya creadas mantienen su configuración anterior; regénéralas si quieres aplicar el nuevo trazado.'
+              : 'Changing the circuit readjusts the lane count and starting sequence. Existing heats keep their previous setup; regenerate them to apply the new layout.' %>
+          </p>
+        <% } %>
+      </div>
+    <% } else { %>
+      <!-- Manual race: change the minimum lap threshold -->
+      <div class="form-group">
+        <label class="form-label" for="minLapS"><%= lang === 'es' ? 'Vuelta mínima' : 'Min lap time' %></label>
+        <div style="display:flex;align-items:center;gap:.6rem">
+          <input class="form-input form-input--sm" type="number" id="minLapS" name="min_lap_s"
+                 step="0.01" min="0" max="999" style="width:6rem"
+                 placeholder="<%= lang === 'es' ? 'desactivada' : 'disabled' %>"
+                 value="<%= race.min_lap_ms > 0 ? (race.min_lap_ms/1000).toFixed(2) : '' %>">
+          <span class="form-hint">s</span>
+        </div>
+        <p class="form-hint" style="margin-top:.5rem">
+          <%= lang === 'es'
+            ? 'Los cruces más rápidos que este tiempo se descartan como rebotes. Vacío = desactivada. Se aplica desde la siguiente manga.'
+            : 'Crossings faster than this are discarded as bounces. Empty = disabled. Applies from the next heat.' %>
+        </p>
+      </div>
+    <% } %>
+
+    <div class="form-actions">
+      <a href="/races/<%= race.id %>" class="btn btn--ghost"><%= lang === 'es' ? 'Cancelar' : 'Cancel' %></a>
+      <button type="submit" class="btn btn--primary"><%= lang === 'es' ? 'Guardar cambios' : 'Save changes' %></button>
+    </div>
+
+  </form>
+</div>
+
+<% if (race.circuit_id && !hasLaps) { %>
+<script>
+const CIRCUIT_CATEGORY_TIMES = <%- JSON.stringify(circuitCategoryTimes || {}) %>;
+const DISABLED_TXT = '<%= lang === "es" ? "desactivada" : "disabled" %>';
+const FROM_CAT     = '<%= lang === "es" ? "← de la categoría" : "← from category" %>';
+
+const circuitSelect  = document.getElementById('circuitSelect');
+const categoryWrap   = document.getElementById('categoryWrap');
+const categorySelect = document.getElementById('categorySelect');
+const categoryHint   = document.getElementById('categoryHint');
+const lanesInfo      = document.getElementById('lanesInfo');
+const minLapInfo     = document.getElementById('minLapInfo');
+
+function fmtMs(ms) { return ms > 0 ? (ms / 1000).toFixed(2) + 's' : DISABLED_TXT; }
+
+function applyCircuit(id) {
+  const opt = circuitSelect.querySelector(`option[value="${id}"]`);
+  if (!opt) { lanesInfo.textContent = '—'; minLapInfo.textContent = '—'; populateCategories(null); return; }
+  let config = [];
+  try { config = JSON.parse(opt.dataset.config || '[]'); } catch {}
+  const total = (Array.isArray(config) ? config : []).reduce((a, b) => a + (parseInt(b, 10) || 0), 0);
+  lanesInfo.textContent  = total || '—';
+  minLapInfo.textContent = fmtMs(parseInt(opt.dataset.minMs, 10) || 0);
+  populateCategories(id);
+}
+
+function populateCategories(circuitId) {
+  while (categorySelect.options.length > 1) categorySelect.remove(1);
+  const list = circuitId ? (CIRCUIT_CATEGORY_TIMES[circuitId] || []) : [];
+  if (!list.length) { categoryWrap.style.display = 'none'; categoryHint.textContent = ''; return; }
+  for (const cat of list) {
+    const o = document.createElement('option');
+    o.value = cat.category_id;
+    o.textContent = `${cat.category_name} (${(cat.min_lap_ms/1000).toFixed(2)}s)`;
+    o.dataset.minMs = cat.min_lap_ms;
+    categorySelect.appendChild(o);
+  }
+  categoryWrap.style.display = 'flex';
+  applyCategory();
+}
+
+function applyCategory() {
+  const opt = categorySelect.selectedOptions[0];
+  if (opt && opt.value) {
+    minLapInfo.textContent = fmtMs(parseInt(opt.dataset.minMs, 10) || 0);
+    categoryHint.textContent = FROM_CAT;
+  } else {
+    const cOpt = circuitSelect.selectedOptions[0];
+    minLapInfo.textContent = fmtMs(cOpt ? (parseInt(cOpt.dataset.minMs, 10) || 0) : 0);
+    categoryHint.textContent = '';
+  }
+}
+
+categorySelect.addEventListener('change', applyCategory);
+applyCircuit(circuitSelect.value);
+</script>
+<% } %>
+
+<%- include('../partials/footer') %>
