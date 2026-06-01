@@ -50,7 +50,7 @@ class TrainingController {
     // this view), skip standby and start recording immediately so the user
     // doesn't have to press GO again. Excepción: si hay una manga oficial
     // corriendo, ese GO pertenece a la carrera — training no debe enganchar.
-    if (!TrainingService.isActive && SerialService.isDSRunning() && !TimingService.isRunning) {
+    if (!TrainingService.isActive && SerialService.isDSRunning() && !TimingService.isBusy) {
       TrainingService.activate();
       console.log('[TrainingController] /training/free entered with DS already running → auto-activated');
     }

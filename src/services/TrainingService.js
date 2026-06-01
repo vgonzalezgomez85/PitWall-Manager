@@ -46,7 +46,7 @@ class TrainingServiceClass {
     // training debe quedarse fuera para no registrar datos en paralelo.
     SerialService.on('race_go', ({ durationMs }) => {
       if (this._active) return;
-      if (TimingService.isRunning) return;
+      if (TimingService.isBusy) return;
       this._pendingDurationMs = durationMs;
       this._paused = false;
       this.prepare(lanesFromSettings());
@@ -55,7 +55,7 @@ class TrainingServiceClass {
 
     SerialService.on('race_started', () => {
       if (this._active) return;
-      if (TimingService.isRunning) return;
+      if (TimingService.isBusy) return;
       this._paused = false;
       if (this._pendingDurationMs != null) {
         this._durationMs = this._pendingDurationMs;
