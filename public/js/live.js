@@ -1433,6 +1433,26 @@ function announce(text) {
       // flip it to green and dismiss — same flow as the GO countdown.
       if (document.getElementById('semaphore-overlay')) semaphoreGo(null);
     });
+
+    // Pausa POR CIRCUITO: marca/desmarca los carriles de ese circuito (cuando
+    // se pausan TODOS aparece además el overlay global via manga:paused).
+    socket.on('circuit:state', ({ status, lanes }) => {
+      const paused = status === 'paused';
+      (lanes || []).forEach(lane => {
+        const card = document.getElementById(`card-${lane}`);
+        if (!card) return;
+        card.classList.toggle('lane-paused', paused);
+        let badge = card.querySelector('.lane-pause-badge');
+        if (paused && !badge) {
+          badge = document.createElement('div');
+          badge.className = 'lane-pause-badge';
+          badge.textContent = LANG === 'es' ? '⏸ PAUSA' : '⏸ PAUSED';
+          card.appendChild(badge);
+        } else if (!paused && badge) {
+          badge.remove();
+        }
+      });
+    });
   }
 
   socket.on('race:semaphore', () => showSemaphore());

@@ -144,7 +144,8 @@ SerialService.on('race_started', ({ circuit } = {}) => {
 });
 
 SerialService.on('race_stopped', () => {
-  if (TimingService.isRunning) TimingService.cancelManga();
+  // STOP forzado = abortar TODA la manga (aunque haya circuitos en pausa).
+  if (TimingService.activeMangaId != null) TimingService.cancelManga();
 });
 
 SerialService.on('race_finished', ({ circuit } = {}) => {
@@ -153,8 +154,9 @@ SerialService.on('race_finished', ({ circuit } = {}) => {
   if (TimingService.activeMangaId != null) TimingService.finishCircuit(circuit || 0);
 });
 
-SerialService.on('race_paused', () => {
-  if (TimingService.isRunning) TimingService.pauseManga();
+SerialService.on('race_paused', ({ circuit } = {}) => {
+  // Pausa POR CIRCUITO: solo afecta a los carriles de ese DS.
+  if (TimingService.activeMangaId != null) TimingService.pauseCircuit(circuit || 0);
 });
 
 // Trama 1 of the resume sequence (0xA6): show the same semaphore animation
@@ -171,8 +173,8 @@ SerialService.on('semaphore_step', () => {
   SocketService.emit('race:semaphore_step');
 });
 
-SerialService.on('race_resumed', () => {
-  TimingService.resumeManga();
+SerialService.on('race_resumed', ({ circuit } = {}) => {
+  if (TimingService.activeMangaId != null) TimingService.resumeCircuit(circuit || 0);
 });
 
 const PORT = process.env.PORT || 3000;

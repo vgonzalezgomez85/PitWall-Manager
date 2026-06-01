@@ -152,13 +152,7 @@ class TimingServiceClass {
     }
     this._driverShiftTickN = 0; // contador para persistir cada 5 ticks
 
-    this._tickInt = setInterval(() => {
-      const elapsedMs   = Date.now() - startTime;
-      const remainingMs = Math.max(0, sessionDurationMs - elapsedMs);
-      SocketService.emit('tick', { elapsedMs, remainingMs });
-      // Incremento del contador de cada piloto activo y persistencia periódica.
-      if (this._isChampionship) this._tickDriverShifts();
-    }, 1000);
+    this._startTick();
 
     // Auto-fin del circuito de arranque al agotar SU tiempo. Cada circuito
     // programa el suyo al recibir su propio GO (startCircuit).
@@ -219,6 +213,14 @@ class TimingServiceClass {
     for (const c of Object.values(this.session.circuits)) {
       if (c.autoStopTimer) { clearTimeout(c.autoStopTimer); c.autoStopTimer = null; }
     }
+  }
+
+  // Carriles activos (en laneMap) que pertenecen a un circuito.
+  _circuitLanes(ci) {
+    if (!this.session) return [];
+    return Object.values(this.session.laneMap)
+      .filter(ld => this.session.laneToCircuit[ld.lane] === ci)
+      .map(ld => ld.lane);
   }
 
   // Arranca un circuito por su GO (cuando la manga ya existe). Cada circuito
@@ -376,60 +378,81 @@ class TimingServiceClass {
     this.session = null;
   }
 
-  // ── Pause / Resume manga ──────────────────────────────────────────────────
+  // ── Tick (cronómetro global de la manga) ────────────────────────────────────
 
-  pauseManga() {
-    if (!this.session || this.session.status !== 'running') return;
-    this.session.status    = 'paused';
-    this.session.pauseStart = Date.now();
-    clearInterval(this._tickInt);
-    clearTimeout(this._autoStopTimer);
-    this._tickInt = this._autoStopTimer = null;
-    // Detener el auto-fin de cada circuito mientras dure la pausa (se
-    // reprograma en resume con el tiempo que les quedaba).
-    this._clearAllCircuitTimers();
-    // Persistir el driving_ms actual de cada shift abierto antes de pausar.
-    if (this._isChampionship) this._persistAllDriverShifts();
-    DebugLogger.log('manga', { event: 'pause', mangaNumber: this.session.manga.number });
-    SocketService.emit('manga:paused');
-    console.log(`[TimingService] Manga ${this.session.manga.number} paused`);
-  }
-
-  resumeManga() {
-    if (!this.session || this.session.status !== 'paused') return;
-    const pausedMs = Date.now() - this.session.pauseStart;
-    this.session.startTime += pausedMs; // shift global start so elapsed stays correct
-    this.session.status     = 'running';
-    this.session.pauseStart = null;
-
-    // Desplazar el reloj de cada circuito activo por la pausa y reprogramar su
-    // auto-fin con el tiempo que le quedaba. (Fase 1: la pausa es global; la
-    // pausa por circuito independiente llegará en la Fase 2.)
-    for (const c of Object.values(this.session.circuits)) {
-      if (c.status === 'running' && c.startTime != null) {
-        c.startTime += pausedMs;
-        this._scheduleCircuitAutoFinish(c.index);
-      }
-    }
-
-    // Accumulate pause duration into every active lane so the first crossing
-    // post-resume per lane subtracts the pause time from the DS-reported
-    // lap_time (the DS keeps counting during the pause and includes it in the
-    // first reported lap after resume).
-    for (const ld of Object.values(this.session.laneMap)) {
-      ld.pendingPauseAdjustMs = (ld.pendingPauseAdjustMs || 0) + pausedMs;
-    }
-    console.log(`[TimingService] Manga ${this.session.manga.number} resumed after ${pausedMs}ms pause`);
-
+  _startTick() {
+    if (this._tickInt) return;
     this._tickInt = setInterval(() => {
       const elapsedMs   = Date.now() - this.session.startTime;
       const remainingMs = Math.max(0, this.session.durationMs - elapsedMs);
       SocketService.emit('tick', { elapsedMs, remainingMs });
+      // Incremento del contador de cada piloto activo y persistencia periódica.
+      if (this._isChampionship) this._tickDriverShifts();
     }, 1000);
+  }
 
-    DebugLogger.log('manga', { event: 'resume', mangaNumber: this.session.manga.number, pausedMs });
+  // ── Pausa / Resume POR CIRCUITO ─────────────────────────────────────────────
+  // Cada DS pausa/reanuda SOLO su circuito. El overlay global de pausa y el
+  // congelado del cronómetro solo se aplican cuando TODOS los circuitos están
+  // pausados. La compensación (pendingPauseAdjustMs) se aplica solo a los
+  // carriles del circuito reanudado, con SU propia duración de pausa.
+
+  pauseCircuit(ci) {
+    if (!this.session) return;
+    const c = this.session.circuits[ci];
+    if (!c || c.status !== 'running') return;
+    c.status     = 'paused';
+    c.pauseStart = Date.now();
+    if (c.autoStopTimer) { clearTimeout(c.autoStopTimer); c.autoStopTimer = null; }
+    if (this._isChampionship) this._persistAllDriverShifts();
+    console.log(`[TimingService] Circuito ${ci + 1} pausado`);
+    DebugLogger.log('manga', { event: 'pause', circuit: ci, mangaNumber: this.session.manga.number });
+
+    // Si ya no queda ningún circuito corriendo, la manga está totalmente en
+    // pausa: congelamos el cronómetro global y mostramos el overlay.
+    const anyRunning = Object.values(this.session.circuits).some(x => x.status === 'running');
+    if (!anyRunning) {
+      this.session.pauseStart = Date.now();
+      clearInterval(this._tickInt); this._tickInt = null;
+      SocketService.emit('manga:paused');
+    }
+    // Feedback por circuito: marca sus carriles como pausados en la vista live.
+    SocketService.emit('circuit:state', { circuit: ci, status: 'paused', lanes: this._circuitLanes(ci) });
+    SocketService.emitStandings(this.getStandings());
+  }
+
+  resumeCircuit(ci) {
+    if (!this.session) return;
+    const c = this.session.circuits[ci];
+    if (!c || c.status !== 'paused') return;
+    const pausedMs = Date.now() - (c.pauseStart || Date.now());
+    c.startTime += pausedMs;       // su reloj se desplaza por SU pausa
+    c.status     = 'running';
+    c.pauseStart = null;
+
+    // Compensación SOLO a los carriles de este circuito: el primer cruce tras
+    // el resume resta su propia pausa (el DS sigue contando durante la pausa).
+    for (const ld of Object.values(this.session.laneMap)) {
+      if (this.session.laneToCircuit[ld.lane] === ci) {
+        ld.pendingPauseAdjustMs = (ld.pendingPauseAdjustMs || 0) + pausedMs;
+      }
+    }
+    this._scheduleCircuitAutoFinish(ci);
+    console.log(`[TimingService] Circuito ${ci + 1} reanudado tras ${pausedMs}ms`);
+    DebugLogger.log('manga', { event: 'resume', circuit: ci, pausedMs, mangaNumber: this.session.manga.number });
+
+    // Si la manga estaba totalmente pausada (cronómetro congelado), lo
+    // reanudamos desplazando el inicio global por el tiempo que estuvo parada.
+    if (!this._tickInt) {
+      if (this.session.pauseStart) {
+        this.session.startTime += Date.now() - this.session.pauseStart;
+        this.session.pauseStart = null;
+      }
+      this._startTick();
+    }
     SocketService.emit('manga:resumed');
-    console.log(`[TimingService] Manga ${this.session.manga.number} resumed`);
+    SocketService.emit('circuit:state', { circuit: ci, status: 'running', lanes: this._circuitLanes(ci) });
+    SocketService.emitStandings(this.getStandings());
   }
 
   // ── Cancel manga (manual stop) — resets to pending, deletes laps ──────────
@@ -474,8 +497,8 @@ class TimingServiceClass {
   // ── Lap crossing ──────────────────────────────────────────────────────────
 
   _onCrossing(lane, timestamp, deviceLapTimeMs) {
-    if (!this.session || this.session.status !== 'running') {
-      DebugLogger.log('crossing_dropped', { lane, deviceLapTimeMs, reason: this.session ? 'not_running' : 'no_session' });
+    if (!this.session) {
+      DebugLogger.log('crossing_dropped', { lane, deviceLapTimeMs, reason: 'no_session' });
       return;
     }
 
@@ -814,8 +837,10 @@ class TimingServiceClass {
     };
   }
 
-  get isRunning()     { return this.session?.status === 'running'; }
-  get isPaused()      { return this.session?.status === 'paused'; }
+  // Derivados del estado por circuito: la manga "corre" si algún circuito corre;
+  // está "en pausa" si ninguno corre pero alguno está pausado.
+  get isRunning()     { return !!this.session && Object.values(this.session.circuits).some(c => c.status === 'running'); }
+  get isPaused()      { return !!this.session && !this.isRunning && Object.values(this.session.circuits).some(c => c.status === 'paused'); }
   // True si hay una manga armada esperando el GO del DS-300, o una manga
   // en curso. Útil para que TrainingService no enganche cruces durante una
   // carrera oficial, ya que el listener de race_started del training puede
@@ -829,10 +854,9 @@ class TimingServiceClass {
   // duración original menos lo elapsed antes de la pausa.
   getRemainingMs() {
     if (!this.session) return null;
-    const elapsed = this.session.status === 'paused'
-      ? (this.session.pauseStart - this.session.startTime)
-      : (Date.now() - this.session.startTime);
-    return Math.max(0, this.session.durationMs - elapsed);
+    // Si la manga está totalmente pausada, el tiempo no avanza desde pauseStart.
+    const ref = (this.isPaused && this.session.pauseStart) ? this.session.pauseStart : Date.now();
+    return Math.max(0, this.session.durationMs - (ref - this.session.startTime));
   }
 
   // ── Driver shifts (solo carreras de campeonato) ─────────────────────
@@ -842,6 +866,9 @@ class TimingServiceClass {
   // cronómetros sin estimación en cliente.
   _tickDriverShifts() {
     for (const lane in this._activeShiftsByLane) {
+      // No sumar tiempo a un piloto cuyo circuito esté pausado.
+      const ci = this.session && this.session.laneToCircuit ? this.session.laneToCircuit[lane] : null;
+      if (ci != null && this.session.circuits[ci] && this.session.circuits[ci].status !== 'running') continue;
       this._activeShiftsByLane[lane].drivingMs += 1000;
     }
     this._driverShiftTickN++;
