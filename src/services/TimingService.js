@@ -51,6 +51,17 @@ class TimingServiceClass {
   startManga(manga, race, lanes, teams, drivers, durationMs = null) {
     if (this.session) this.stopManga(false);
 
+    // Si TrainingService se había auto-activado por el mismo GO (su listener
+    // de race_started corre antes que el de app.js que llama aquí), hay que
+    // pararlo: ese GO pertenece a la manga oficial, no al training libre.
+    try {
+      const TrainingService = require('./TrainingService');
+      if (TrainingService.isReady) {
+        TrainingService.stop();
+        console.log('[TimingService] Training libre detenido — la manga oficial toma el control del GO');
+      }
+    } catch {}
+
     const startTime = Date.now();
     const sessionDurationMs = durationMs || (race.manga_duration_minutes * 60 * 1000);
 
@@ -693,6 +704,11 @@ class TimingServiceClass {
 
   get isRunning()     { return this.session?.status === 'running'; }
   get isPaused()      { return this.session?.status === 'paused'; }
+  // True si hay una manga armada esperando el GO del DS-300, o una manga
+  // en curso. Útil para que TrainingService no enganche cruces durante una
+  // carrera oficial, ya que el listener de race_started del training puede
+  // dispararse antes que el de TimingService.startManga.
+  get isBusy()        { return this.isRunning || this.isPaused || this._pendingSetup != null || this._tandaBoundary === true; }
   get activeMangaId() { return this.session?.manga?.id ?? null; }
   get activeRaceId()  { return this.session?.race?.id ?? null; }
 
