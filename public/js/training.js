@@ -300,6 +300,28 @@ socket.on('race:semaphore', () => showSemaphore());
 socket.on('race:semaphore_step', () => semaphoreStep());
 socket.on('training:autostart', () => semaphoreGo());
 
+// Pausa POR CIRCUITO (multi-DS): atenúa los carriles del circuito pausado.
+socket.on('training:circuit_state', ({ status, lanes }) => {
+  const paused = status === 'paused';
+  // Al reanudar un circuito, cierra el semáforo de resume si sigue en pantalla
+  // (en training no hay manga:resumed que lo cierre como en carrera).
+  if (!paused && document.getElementById('semaphore-overlay')) semaphoreGo(null);
+  (lanes || []).forEach(lane => {
+    const card = document.getElementById(`tr-card-${lane}`);
+    if (!card) return;
+    card.classList.toggle('tr-card--paused', paused);
+    let badge = card.querySelector('.tr-pause-badge');
+    if (paused && !badge) {
+      badge = document.createElement('div');
+      badge.className = 'tr-pause-badge';
+      badge.textContent = LANG === 'es' ? '⏸ PAUSA' : '⏸ PAUSED';
+      card.appendChild(badge);
+    } else if (!paused && badge) {
+      badge.remove();
+    }
+  });
+});
+
 socket.on('training:data', (lanes) => {
   lanes.forEach(lane => updateCard(lane));
 });

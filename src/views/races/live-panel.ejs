@@ -59,6 +59,9 @@
     .pt-row--idle .pt-ontrack,
     .pt-row--idle .pt-avg,
     .pt-row--idle .pt-proj { opacity: .55; }
+    /* Carril en pausa (pausa por circuito, multi-DS) */
+    .pt-row--paused { opacity: .45; }
+    .pt-pause-badge { margin-left: .5rem; color: #ef4444; font-weight: 800; }
     .pt-arrows { text-align: center; line-height: 1.05; }
     .pt-arrow-up, .pt-arrow-down { display: block; font-weight: 700; color: #30363d; }
     .pt-arrow-up.good,   .pt-arrow-down.good { color: #3fb950; }
@@ -313,6 +316,7 @@
           const total    = prevLaps + (r.lapCount || 0);
           activeByName.set(r.name, {
             name: r.name,
+            lane: r.lane,
             total,
             avgLapMs:  r.raceAvgLapMs ?? r.avgLapMs ?? null,
             bestLapMs: r.bestLapMs ?? null,
@@ -404,6 +408,26 @@
     }
     let prevPanelGap = {};
 
+    // Pausa por circuito: carriles pausados → atenúa sus filas. Se mantiene en
+    // un set porque render() reconstruye la tabla en cada standings.
+    let pausedLanes = new Set();
+    function applyPausedRows() {
+      panelBody.querySelectorAll('.pt-row').forEach(row => {
+        const lane = parseInt(row.dataset.lane, 10);
+        const paused = !isNaN(lane) && pausedLanes.has(lane);
+        row.classList.toggle('pt-row--paused', paused);
+        let b = row.querySelector('.pt-pause-badge');
+        if (paused && !b) {
+          b = document.createElement('span');
+          b.className = 'pt-pause-badge';
+          b.textContent = '⏸';
+          (row.querySelector('.pt-name-cell') || row).appendChild(b);
+        } else if (!paused && b) {
+          b.remove();
+        }
+      });
+    }
+
     function render(data) {
       const rows = buildRows(data);
       panelBody.innerHTML = rows.map((r, i) => {
@@ -412,7 +436,7 @@
         const upCh    = i === 0 ? '' : '▲';
         const downCh  = i === rows.length - 1 ? '' : '▼';
         return `
-        <tr class="pt-row${r.hasData ? '' : ' pt-row--idle'}">
+        <tr class="pt-row${r.hasData ? '' : ' pt-row--idle'}" data-lane="${r.lane != null ? r.lane : ''}">
           <td><span class="pt-pos ${posClass(i+1)}">${i+1}</span></td>
           <td class="pt-name-cell"><span class="pt-name">${r.name}</span></td>
           <td class="pt-right"><span class="pt-proj">${r.projectedTotal || '—'}</span></td>
@@ -426,6 +450,7 @@
           <td class="pt-right"><span class="pt-gap">${r._gapVT > 0 ? '-' + r._gapVT.toFixed(2) : '—'}</span></td>
         </tr>`;
       }).join('');
+      applyPausedRows();
       requestAnimationFrame(() => { fitTable(); refreshMarquees(); });
     }
 
@@ -457,6 +482,13 @@
       const socket = io();
       socket.on('connect', () => socket.emit('standings:request'));
       socket.on('standings', (data) => render(data));
+      // Pausa por circuito: atenúa las filas de los carriles del circuito pausado.
+      socket.on('circuit:state', ({ status, lanes }) => {
+        (lanes || []).forEach(l => {
+          if (status === 'paused') pausedLanes.add(l); else pausedLanes.delete(l);
+        });
+        applyPausedRows();
+      });
       socket.on('manga:stopped', () => {
         const s = document.getElementById('panelStatus');
         if (s) s.innerHTML = `<span class="status-text status-text--finished">${LANG === 'es' ? 'Finalizada' : 'Finished'}</span>`;
