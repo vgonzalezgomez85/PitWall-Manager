@@ -5,25 +5,27 @@ const SerialService       = require('../services/SerialService');
 const Settings            = require('../models/Settings');
 const Circuit             = require('../models/Circuit');
 
+// Suma de carriles de TODOS los DS-300 en modo serial (multi-DS); 0 si no aplica.
+function serialLaneTotal() {
+  if (Settings.get('serial_mode', '') !== 'serial') return 0;
+  try {
+    const cfg = JSON.parse(Settings.get('circuits_serial', '[]'));
+    if (Array.isArray(cfg) && cfg.length > 0) {
+      return cfg.reduce((sum, c) => sum + (parseInt(c.lanes, 10) || 0), 0);
+    }
+  } catch {}
+  return 0;
+}
+
 function lanesFromSettings() {
-  // 1. Sum lanes across all DS-300 circuits when in serial mode.
-  if (Settings.get('serial_mode', '') === 'serial') {
-    try {
-      const cfg = JSON.parse(Settings.get('circuits_serial', '[]'));
-      if (Array.isArray(cfg) && cfg.length > 0) {
-        const total = cfg.reduce((sum, c) => sum + (parseInt(c.lanes, 10) || 0), 0);
-        if (total > 0) return total;
-      }
-    } catch {}
-  }
-  // 2. Legacy single training circuit (kept for backwards-compat).
-  const circuitId = Settings.get('training_circuit_id', '');
+  const total = serialLaneTotal();
+  if (total > 0) return total;                                  // multi-DS: suma de circuitos
+  const circuitId = Settings.get('training_circuit_id', '');    // circuito único (legacy)
   if (circuitId) {
     const c = Circuit.findById(parseInt(circuitId, 10));
     if (c) return c.lanes_count;
   }
-  // 3. Simulation fallback.
-  return parseInt(Settings.get('sim_lanes', '6'), 10) || 6;
+  return parseInt(Settings.get('sim_lanes', '6'), 10) || 6;     // simulación
 }
 
 class TrainingController {
@@ -84,7 +86,11 @@ class TrainingController {
     const fallbackId = parseInt(Settings.get('training_circuit_id', '') || '0', 10);
     const circuitId = pickedId || fallbackId;
     const circuit   = circuitId ? Circuit.findById(circuitId) : null;
-    const numLanes  = circuit ? circuit.lanes_count : Math.max(participants.length, parseInt(Settings.get('sim_lanes', '6'), 10) || 6);
+    let numLanes  = circuit ? circuit.lanes_count : Math.max(participants.length, parseInt(Settings.get('sim_lanes', '6'), 10) || 6);
+    // Multi-DS: el total físico de carriles (suma de todos los DS) manda, para
+    // no perder los cruces de los circuitos superiores (p.ej. el 2º circuito).
+    const serialTotal = serialLaneTotal();
+    if (serialTotal > 0) numLanes = serialTotal;
 
     CompetitionService.setup(participants, numLanes);
     res.redirect('/training/competition/live');

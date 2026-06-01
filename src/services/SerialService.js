@@ -741,6 +741,34 @@ class SerialServiceClass extends EventEmitter {
       ports:      this.connectedPorts,
     };
   }
+
+  // Nº de circuitos configurados (de circuits_serial). 1 si no hay multi.
+  circuitCount() {
+    try {
+      const cfg = JSON.parse(Settings.get('circuits_serial', '[]')) || [];
+      return Array.isArray(cfg) && cfg.length > 0 ? cfg.length : 1;
+    } catch { return 1; }
+  }
+
+  // Carriles (globales, con offset) que pertenecen a un circuito según
+  // circuits_serial. Devuelve null si solo hay 1 circuito (no aplica feedback
+  // por circuito). Fuente única reutilizada por los servicios de training.
+  lanesOfCircuit(ci) {
+    let cfg = [];
+    try { cfg = JSON.parse(Settings.get('circuits_serial', '[]')) || []; } catch {}
+    if (!Array.isArray(cfg) || cfg.length <= 1) return null;
+    let off = 0;
+    for (let i = 0; i < cfg.length; i++) {
+      const n = cfg[i].lanes || 8;
+      if (i === ci) {
+        const lanes = [];
+        for (let l = off + 1; l <= off + n; l++) lanes.push(l);
+        return lanes;
+      }
+      off += n;
+    }
+    return null;
+  }
 }
 
 module.exports = new SerialServiceClass();

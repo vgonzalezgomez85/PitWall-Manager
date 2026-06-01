@@ -19,7 +19,7 @@ class CompetitionTrainingServiceClass {
     this._heatNumber   = 0;
     this._active       = false;
     this._standby      = false;
-    this._paused       = false;
+    this._pausedCircuits = new Set();   // circuitos en pausa (multi-DS)
     this._laneMap      = new Map(); // lane → {participantIdx, count, sum, lastMs, laps, chronoLaps}
     this._handler      = null;
     this._startedAt        = null;
@@ -31,12 +31,12 @@ class CompetitionTrainingServiceClass {
     SerialService.on('race_go', ({ durationMs }) => {
       if (!this.isReady) return;
       this._pendingDurationMs = durationMs;
-      this._paused = false;
+      this._pausedCircuits.clear();
     });
 
     SerialService.on('race_started', () => {
       if (!this.isReady) return;
-      this._paused = false;
+      this._pausedCircuits.clear();
       if (this._pendingDurationMs != null) {
         this._durationMs = this._pendingDurationMs;
         this._pendingDurationMs = null;
@@ -47,8 +47,9 @@ class CompetitionTrainingServiceClass {
       }
     });
 
-    SerialService.on('race_paused',  () => { if (this._active) this._paused = true; });
-    SerialService.on('race_resumed', () => { if (this._active) this._paused = false; });
+    // Pausa POR CIRCUITO: cada DS pausa solo sus carriles.
+    SerialService.on('race_paused',  ({ circuit } = {}) => { if (this._active) this._setCircuitPaused(circuit || 0, true);  });
+    SerialService.on('race_resumed', ({ circuit } = {}) => { if (this._active) this._setCircuitPaused(circuit || 0, false); });
     // Forced stop: preserve heat, don't rotate
     SerialService.on('race_stopped',  () => { if (this._active) this._stopHeat(false); });
     // Normal end: rotate lanes
@@ -116,15 +117,28 @@ class CompetitionTrainingServiceClass {
   // Public getter for rest slot info (used by views and live updates)
   getResting() { return this._restingNames(); }
 
+  // ── Pausa por circuito ──────────────────────────────────────────────────────
+  _setCircuitPaused(ci, paused) {
+    if (paused) this._pausedCircuits.add(ci);
+    else        this._pausedCircuits.delete(ci);
+    SocketService.emit('training:circuit_state', {
+      circuit: ci,
+      status:  paused ? 'paused' : 'running',
+      lanes:   SerialService.lanesOfCircuit(ci),
+    });
+    console.log(`[CompetitionTraining] Circuito ${ci + 1} ${paused ? 'pausado' : 'reanudado'}`);
+  }
+
   // ── Activate (start recording) ────────────────────────────────────────────
   _activate() {
     this._standby   = false;
     this._active    = true;
-    this._paused    = false;
+    this._pausedCircuits.clear();
     this._startedAt = Date.now();
 
-    this._handler = ({ lane, lapTimeMs }) => {
-      if (!this._active || this._paused || lapTimeMs == null) return;
+    this._handler = ({ lane, lapTimeMs, circuit }) => {
+      if (!this._active || lapTimeMs == null) return;
+      if (this._pausedCircuits.has(circuit || 0)) return;   // circuito pausado → ignora su cruce
       const ld = this._laneMap.get(lane);
       if (!ld) return;
 

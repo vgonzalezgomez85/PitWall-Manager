@@ -14,11 +14,25 @@ const LANE_COLORS = [
 ];
 
 function lanesFromSettings() {
+  // 1. Con varios DS-300 (modo serial), suma los carriles de TODOS los circuitos.
+  //    Imprescindible para que en multi-DS aparezcan todos los carriles (si no,
+  //    el training prepara solo sim_lanes y desaparece el 2º circuito).
+  if (Settings.get('serial_mode', '') === 'serial') {
+    try {
+      const cfg = JSON.parse(Settings.get('circuits_serial', '[]'));
+      if (Array.isArray(cfg) && cfg.length > 0) {
+        const total = cfg.reduce((sum, c) => sum + (parseInt(c.lanes, 10) || 0), 0);
+        if (total > 0) return total;
+      }
+    } catch {}
+  }
+  // 2. Circuito único de training (legacy).
   const circuitId = Settings.get('training_circuit_id', '');
   if (circuitId) {
     const c = Circuit.findById(parseInt(circuitId, 10));
     if (c) return c.lanes_count;
   }
+  // 3. Fallback simulación.
   return parseInt(Settings.get('sim_lanes', '6'), 10) || 6;
 }
 
@@ -26,7 +40,7 @@ class TrainingServiceClass {
   constructor() {
     this._standby        = false;
     this._active         = false;
-    this._paused         = false;
+    this._pausedCircuits = new Set();   // circuitos en pausa (multi-DS)
     this._lanes          = [];
     this._laneData       = new Map();
     this._handler        = null;
@@ -48,7 +62,7 @@ class TrainingServiceClass {
       if (this._active) return;
       if (TimingService.isBusy) return;
       this._pendingDurationMs = durationMs;
-      this._paused = false;
+      this._pausedCircuits.clear();
       this.prepare(lanesFromSettings());
       SocketService.emit('training:standby', this.getLanes());
     });
@@ -56,7 +70,7 @@ class TrainingServiceClass {
     SerialService.on('race_started', () => {
       if (this._active) return;
       if (TimingService.isBusy) return;
-      this._paused = false;
+      this._pausedCircuits.clear();
       if (this._pendingDurationMs != null) {
         this._durationMs = this._pendingDurationMs;
         this._pendingDurationMs = null;
@@ -66,8 +80,9 @@ class TrainingServiceClass {
       SocketService.emit('training:go', { durationMs: this._durationMs });
     });
 
-    SerialService.on('race_resumed',  () => { this._paused = false; });
-    SerialService.on('race_paused',   () => { this._paused = true;  });
+    // Pausa POR CIRCUITO: cada DS pausa solo sus carriles.
+    SerialService.on('race_paused',  ({ circuit } = {}) => { this._setCircuitPaused(circuit || 0, true);  });
+    SerialService.on('race_resumed', ({ circuit } = {}) => { this._setCircuitPaused(circuit || 0, false); });
     // Forced stop: preserve lap data, go back to standby to restart same session
     SerialService.on('race_stopped',  () => { if (this._active) this._pauseToStandby(); });
     // Normal end: clear data, standby for new session
@@ -85,6 +100,20 @@ class TrainingServiceClass {
     const out = {};
     for (const [lane, ms] of this._sessionRecords) out[lane] = ms;
     return out;
+  }
+
+  // ── Pausa por circuito ──────────────────────────────────────────────────────
+  // Marca/desmarca un circuito como pausado y avisa al cliente para que atenúe
+  // sus carriles. Solo afecta a los cruces de ese circuito; los demás siguen.
+  _setCircuitPaused(ci, paused) {
+    if (paused) this._pausedCircuits.add(ci);
+    else        this._pausedCircuits.delete(ci);
+    SocketService.emit('training:circuit_state', {
+      circuit: ci,
+      status:  paused ? 'paused' : 'running',
+      lanes:   SerialService.lanesOfCircuit(ci),
+    });
+    console.log(`[TrainingService] Circuito ${ci + 1} ${paused ? 'pausado' : 'reanudado'}`);
   }
 
   // ── Prepare lanes in standby (no recording) ────────────────────────────────
@@ -107,11 +136,12 @@ class TrainingServiceClass {
     if (this._active) return;
     this._standby   = false;
     this._active    = true;
-    this._paused    = false;
+    this._pausedCircuits.clear();
     this._startedAt = Date.now();
 
-    this._handler = ({ lane, lapTimeMs }) => {
-      if (!this._active || this._paused || lapTimeMs == null) return;
+    this._handler = ({ lane, lapTimeMs, circuit }) => {
+      if (!this._active || lapTimeMs == null) return;
+      if (this._pausedCircuits.has(circuit || 0)) return;   // circuito pausado → ignora su cruce
       const ld = this._laneData.get(lane);
       if (!ld) return;
 
