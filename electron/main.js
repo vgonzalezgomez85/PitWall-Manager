@@ -126,10 +126,34 @@ function createWindow() {
 }
 
 // ── Tray ──────────────────────────────────────────────────────────────────────
+// macOS usa el template (PNG monocromo @2x) para que la barra de menús lo
+// renderice adaptado a modo claro/oscuro. Win/Linux usan el PNG blanco.
+function loadTrayIcon() {
+  const trayDir = path.join(__dirname, '..', 'build', 'tray');
+  const altDir  = path.join(process.resourcesPath || '', 'build', 'tray');
+  function pick(name) {
+    for (const base of [trayDir, altDir]) {
+      const p = path.join(base, name);
+      if (fs.existsSync(p)) return p;
+    }
+    return null;
+  }
+  if (process.platform === 'darwin') {
+    const tplPath = pick('voltraceTemplate.png');
+    if (tplPath) {
+      const img = nativeImage.createFromPath(tplPath);
+      img.setTemplateImage(true);
+      return img;
+    }
+  }
+  const pngPath = pick('tray-white-32.png') || pick('tray-white-22.png');
+  if (pngPath) return nativeImage.createFromPath(pngPath);
+  // Fallback al icono general redimensionado
+  return loadAppIcon().resize({ width: 32, height: 32 });
+}
+
 function createTray() {
-  const sz   = process.platform === 'darwin' ? 22 : 32;
-  const icon = loadAppIcon().resize({ width: sz, height: sz });
-  tray = new Tray(icon);
+  tray = new Tray(loadTrayIcon());
   tray.setToolTip('Voltrace Manager');
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Abrir Voltrace Manager', click: () => mainWindow ? (mainWindow.show(), mainWindow.focus()) : createWindow() },
