@@ -24,37 +24,55 @@
 
     <form action="/training/competition/start" method="POST" id="compForm">
 
-      <!-- Circuit selector -->
-      <div class="vt-card">
-        <div class="vt-card-h">
-          <svg viewBox="0 0 24 24"><path d="M6 18a3 3 0 0 1 0-6h9a3 3 0 0 0 0-6H7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="18" r="1.4" fill="currentColor"/><circle cx="6" cy="6" r="1.4" fill="currentColor"/></svg>
-          <%= lang === 'es' ? 'Circuito' : 'Circuit' %>
+      <% if (typeof serialTotal !== 'undefined' && serialTotal > 0) { %>
+        <!-- Multi-DS: los carriles los fijan los DS conectados; sin selector de circuito. -->
+        <div class="vt-card">
+          <div class="vt-card-h">
+            <svg viewBox="0 0 24 24"><path d="M6 18a3 3 0 0 1 0-6h9a3 3 0 0 0 0-6H7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="18" r="1.4" fill="currentColor"/><circle cx="6" cy="6" r="1.4" fill="currentColor"/></svg>
+            <%= lang === 'es' ? 'Carriles' : 'Lanes' %>
+            <span class="vt-badge is-info" style="margin-left:auto;white-space:nowrap">
+              <span class="vt-badge__d"></span> <%= serialTotal %> <%= lang === 'es' ? 'carriles (de los DS)' : 'lanes (from DS)' %>
+            </span>
+          </div>
+          <p class="vt-hint" style="margin-top:8px">
+            <%= lang === 'es'
+              ? 'El número de carriles se detecta automáticamente de los DS conectados.'
+              : 'The number of lanes is detected automatically from the connected DS units.' %>
+          </p>
         </div>
-        <div class="vt-fields vt-fields--2" style="align-items:end">
-          <div class="vt-field" style="grid-column:1 / -1">
-            <label><%= lang === 'es' ? 'Selecciona el circuito de la sesión' : 'Select the session circuit' %></label>
-            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-              <div class="vt-selw" style="flex:1;min-width:240px">
-                <select name="circuit_id" id="circuitSelect">
-                  <option value=""><%= lang === 'es' ? '— Por defecto (de ajustes) —' : '— Default (from settings) —' %></option>
-                  <% (circuits || []).forEach(c => { %>
-                    <option value="<%= c.id %>" data-lanes="<%= c.lanes_count %>"
-                      <%= defaultCircuitId === c.id ? 'selected' : '' %>>
-                      <%= c.name %> (<%= c.lanes_count %> <%= lang === 'es' ? 'carriles' : 'lanes' %>)
-                    </option>
-                  <% }) %>
-                </select>
+      <% } else { %>
+        <!-- Circuit selector (sin DS en serie: define los carriles) -->
+        <div class="vt-card">
+          <div class="vt-card-h">
+            <svg viewBox="0 0 24 24"><path d="M6 18a3 3 0 0 1 0-6h9a3 3 0 0 0 0-6H7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="18" r="1.4" fill="currentColor"/><circle cx="6" cy="6" r="1.4" fill="currentColor"/></svg>
+            <%= lang === 'es' ? 'Circuito' : 'Circuit' %>
+          </div>
+          <div class="vt-fields vt-fields--2" style="align-items:end">
+            <div class="vt-field" style="grid-column:1 / -1">
+              <label><%= lang === 'es' ? 'Selecciona el circuito de la sesión' : 'Select the session circuit' %></label>
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                <div class="vt-selw" style="flex:1;min-width:240px">
+                  <select name="circuit_id" id="circuitSelect">
+                    <option value=""><%= lang === 'es' ? '— Por defecto (de ajustes) —' : '— Default (from settings) —' %></option>
+                    <% (circuits || []).forEach(c => { %>
+                      <option value="<%= c.id %>" data-lanes="<%= c.lanes_count %>"
+                        <%= defaultCircuitId === c.id ? 'selected' : '' %>>
+                        <%= c.name %> (<%= c.lanes_count %> <%= lang === 'es' ? 'carriles' : 'lanes' %>)
+                      </option>
+                    <% }) %>
+                  </select>
+                </div>
+                <span id="circuitLanesHint" class="vt-badge is-info" style="white-space:nowrap"></span>
               </div>
-              <span id="circuitLanesHint" class="vt-badge is-info" style="white-space:nowrap"></span>
+              <p class="vt-hint" style="margin-top:10px">
+                <%= lang === 'es'
+                  ? 'Cambia aquí el circuito de la sesión sin tener que ir a ajustes.'
+                  : 'Switch the circuit for this session without going to settings.' %>
+              </p>
             </div>
-            <p class="vt-hint" style="margin-top:10px">
-              <%= lang === 'es'
-                ? 'Cambia aquí el circuito de la sesión sin tener que ir a ajustes.'
-                : 'Switch the circuit for this session without going to settings.' %>
-            </p>
           </div>
         </div>
-      </div>
+      <% } %>
 
       <!-- Participants list -->
       <div class="vt-card">
@@ -66,11 +84,31 @@
 
         <div id="participantList" class="tc-part-list" style="margin-top:14px;margin-bottom:6px"></div>
 
+        <button type="button" id="addPilotBtn" class="vt-btn vt-btn--ghost" style="margin-top:6px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          <%= lang === 'es' ? 'Añadir piloto' : 'Add pilot' %>
+        </button>
+
         <p class="vt-hint" style="margin-top:10px">
           <%= lang === 'es'
-            ? 'Rellena el nombre del piloto o equipo en cada carril. Deja en blanco los carriles que no se vayan a usar.'
-            : 'Fill in the pilot or team name for each lane. Leave blank any lane you don\'t want to use.' %>
+            ? 'Hay un carril por cada pista. Puedes añadir más pilotos que carriles: los de más entran como reserva y rotan por turnos. Deja en blanco los carriles que no se usen.'
+            : 'There is one lane per track. You can add more pilots than lanes: the extra ones start as reserves and rotate in. Leave blank any unused lane.' %>
         </p>
+      </div>
+
+      <!-- Lane rotation sequence -->
+      <div class="vt-card">
+        <div class="vt-card-h">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h11M4 12h16M4 17h8"/><path d="M17 5l3 2-3 2M14 15l3 2-3 2"/></svg>
+          <%= lang === 'es' ? 'Secuencia de cambio de carril' : 'Lane rotation sequence' %>
+        </div>
+        <p class="vt-hint" style="margin:6px 0 12px">
+          <%= lang === 'es'
+            ? 'Orden en el que cada coche va cambiando de carril manga a manga. Arrastra los carriles para reordenarlo.'
+            : 'Order in which each car moves through the lanes heat by heat. Drag the lanes to reorder it.' %>
+        </p>
+        <div id="laneSeqList" class="tc-seq-list"></div>
+        <div id="laneSeqHidden"></div>
       </div>
 
       <!-- Hidden inputs filled by JS -->
@@ -88,9 +126,26 @@
 
 <%- include('../partials/footer') %>
 
+<style>
+  .tc-seq-list { display:flex; flex-wrap:wrap; gap:8px; }
+  .tc-seq-chip {
+    display:flex; align-items:center; gap:8px;
+    background:#161b22; border:1px solid #30363d; border-radius:8px;
+    padding:8px 12px; cursor:grab; user-select:none;
+  }
+  .tc-seq-chip:active { cursor:grabbing; }
+  .tc-seq-chip.dragging { opacity:.4; }
+  .tc-seq-chip.drop-target { border-color:var(--vt-amber,#facc15); }
+  .tc-seq-chip__ord  { font-size:.7rem; color:#8b949e; font-weight:700; }
+  .tc-seq-chip__lane { font-weight:800; }
+</style>
+
 <script>
 const LANG = "<%= lang %>";
 const FALLBACK_LANES = <%= typeof fallbackLanes !== 'undefined' ? fallbackLanes : 6 %>;
+// Total físico de carriles de los DS conectados (suma de circuits_serial). Si
+// hay DS en modo serial, ESTE es el nº de carriles real, no sim_lanes.
+const SERIAL_TOTAL = <%= typeof serialTotal !== 'undefined' ? serialTotal : 0 %>;
 const COLORS = [
   '#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4',
   '#ff5722','#607d8b','#795548','#e91e63','#3f51b5','#009688',
@@ -105,20 +160,18 @@ function escapeHtml(s) {
 }
 
 function currentLaneCount() {
+  if (SERIAL_TOTAL > 0) return SERIAL_TOTAL;   // multi-DS: manda el total físico de los DS
   const sel = document.getElementById('circuitSelect');
   const opt = sel.options[sel.selectedIndex];
   const lanes = parseInt(opt?.dataset?.lanes || '', 10);
   return lanes > 0 ? lanes : FALLBACK_LANES;
 }
 
-function syncSlotsToLaneCount() {
+// Garantiza al menos un slot por carril; NO trunca: se permiten más pilotos
+// que carriles (la competición rota con descansos).
+function ensureMinSlots() {
   const n = currentLaneCount();
-  if (slots.length === n) return;
-  if (slots.length < n) {
-    while (slots.length < n) slots.push('');
-  } else {
-    slots = slots.slice(0, n);
-  }
+  while (slots.length < n) slots.push('');
 }
 
 function renderSlots() {
@@ -127,21 +180,27 @@ function renderSlots() {
   const btn    = document.getElementById('startBtn');
   const count  = document.getElementById('partCount');
 
-  syncSlotsToLaneCount();
+  ensureMinSlots();
+  const laneCount = currentLaneCount();
 
   list.innerHTML = slots.map((name, i) => {
     const color = COLORS[i % COLORS.length];
     const v = escapeHtml(name);
+    const isReserve = i >= laneCount;
+    const label = isReserve
+      ? `${LANG === 'es' ? 'Reserva' : 'Reserve'} ${i + 1 - laneCount}`
+      : `${LANG === 'es' ? 'Carril' : 'Lane'} ${i + 1}`;
+    const showClear = name || isReserve;
     return `
-      <div class="tc-slot-row">
-        <span class="tc-slot-row__lane">${LANG === 'es' ? 'Carril' : 'Lane'} ${i + 1}</span>
+      <div class="tc-slot-row${isReserve ? ' tc-slot-row--reserve' : ''}">
+        <span class="tc-slot-row__lane">${label}</span>
         <span class="tc-slot-row__color" style="background:${color}"></span>
         <input type="text" class="vt-inp tc-slot-row__inp" data-idx="${i}"
                maxlength="30" autocomplete="off"
                value="${v}"
                placeholder="${LANG === 'es' ? 'Nombre del piloto / equipo…' : 'Pilot / team name…'}">
         <button type="button" class="vt-icon-btn tc-slot-row__clear" data-idx="${i}"
-                title="${LANG === 'es' ? 'Vaciar' : 'Clear'}" ${name ? '' : 'style="visibility:hidden"'}>
+                title="${isReserve ? (LANG === 'es' ? 'Quitar' : 'Remove') : (LANG === 'es' ? 'Vaciar' : 'Clear')}" ${showClear ? '' : 'style="visibility:hidden"'}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
       </div>`;
@@ -170,7 +229,7 @@ document.getElementById('participantList').addEventListener('input', e => {
   /* Actualizar X y contador sin destruir el foco */
   const row = inp.closest('.tc-slot-row');
   const clear = row.querySelector('.tc-slot-row__clear');
-  clear.style.visibility = slots[idx].trim() ? '' : 'hidden';
+  clear.style.visibility = (slots[idx].trim() || idx >= currentLaneCount()) ? '' : 'hidden';
   const filled = slots.filter(n => n.trim()).length;
   document.getElementById('partCount').textContent = `${filled} / ${slots.length}`;
   document.getElementById('startBtn').disabled = filled < 2;
@@ -191,28 +250,91 @@ document.getElementById('participantList').addEventListener('click', e => {
   const btn = e.target.closest('.tc-slot-row__clear');
   if (!btn) return;
   const idx = parseInt(btn.dataset.idx, 10);
-  slots[idx] = '';
+  // Reserva (por encima de los carriles) → elimina la fila; carril → la vacía.
+  if (idx >= currentLaneCount()) slots.splice(idx, 1);
+  else slots[idx] = '';
   renderSlots();
-  /* devolver foco al input vaciado */
+  /* devolver foco al input correspondiente */
   const inp = document.querySelector(`.tc-slot-row__inp[data-idx="${idx}"]`);
   if (inp) inp.focus();
 });
 
-/* Circuit hint + re-render de slots al cambiar circuito */
+/* Botón "Añadir piloto": agrega un slot extra (reserva) y enfoca su input */
+document.getElementById('addPilotBtn').addEventListener('click', () => {
+  slots.push('');
+  renderSlots();
+  const inputs = document.querySelectorAll('.tc-slot-row__inp');
+  const last = inputs[inputs.length - 1];
+  if (last) last.focus();
+});
+
+/* ── Secuencia de rotación de carriles (drag-and-drop) ──────────────────── */
+let laneSeq = [];
+let _seqDragFrom = null;
+
+function renderLaneSeq() {
+  const n = currentLaneCount();
+  // Regenera la secuencia natural [1..N] si cambió el nº de carriles.
+  const valid = laneSeq.length === n && laneSeq.slice().sort((a, b) => a - b).every((v, i) => v === i + 1);
+  if (!valid) laneSeq = Array.from({ length: n }, (_, i) => i + 1);
+
+  const list   = document.getElementById('laneSeqList');
+  const hidden = document.getElementById('laneSeqHidden');
+  list.innerHTML = laneSeq.map((lane, i) => `
+    <div class="tc-seq-chip" draggable="true" data-i="${i}">
+      <span class="tc-seq-chip__ord">${i + 1}º</span>
+      <span class="tc-seq-chip__lane">${LANG === 'es' ? 'Carril' : 'Lane'} ${lane}</span>
+    </div>`).join('');
+  hidden.innerHTML = laneSeq.map(lane => `<input type="hidden" name="lane_sequence[]" value="${lane}">`).join('');
+}
+
+(function () {
+  const list = document.getElementById('laneSeqList');
+  list.addEventListener('dragstart', e => {
+    const chip = e.target.closest('.tc-seq-chip'); if (!chip) return;
+    _seqDragFrom = parseInt(chip.dataset.i, 10);
+    chip.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  list.addEventListener('dragend', () => {
+    list.querySelectorAll('.dragging,.drop-target').forEach(c => c.classList.remove('dragging', 'drop-target'));
+    _seqDragFrom = null;
+  });
+  list.addEventListener('dragover', e => {
+    e.preventDefault();
+    const chip = e.target.closest('.tc-seq-chip');
+    list.querySelectorAll('.drop-target').forEach(c => c.classList.remove('drop-target'));
+    if (chip) chip.classList.add('drop-target');
+  });
+  list.addEventListener('drop', e => {
+    e.preventDefault();
+    const chip = e.target.closest('.tc-seq-chip');
+    if (!chip || _seqDragFrom == null) return;
+    const to = parseInt(chip.dataset.i, 10);
+    if (to !== _seqDragFrom) {
+      const [m] = laneSeq.splice(_seqDragFrom, 1);
+      laneSeq.splice(to, 0, m);
+      renderLaneSeq();
+    }
+    _seqDragFrom = null;
+  });
+})();
+
+/* Circuit hint + re-render de slots al cambiar circuito.
+   En multi-DS no hay selector de circuito (los carriles los fijan los DS):
+   renderizamos directamente slots + secuencia. */
 (function () {
   const sel = document.getElementById('circuitSelect');
+  if (!sel) { renderSlots(); renderLaneSeq(); return; }
   const hint = document.getElementById('circuitLanesHint');
   function update() {
-    const opt = sel.options[sel.selectedIndex];
-    const lanes = opt?.dataset?.lanes;
-    if (lanes) {
-      hint.innerHTML = `<span class="vt-badge__d"></span> ${lanes} ${LANG === 'es' ? 'carriles' : 'lanes'}`;
-      hint.style.display = '';
-    } else {
-      hint.innerHTML = `<span class="vt-badge__d"></span> ${FALLBACK_LANES} ${LANG === 'es' ? 'carriles' : 'lanes'} (def.)`;
-      hint.style.display = '';
-    }
+    const lanes = sel.options[sel.selectedIndex]?.dataset?.lanes;
+    hint.innerHTML = lanes
+      ? `<span class="vt-badge__d"></span> ${lanes} ${LANG === 'es' ? 'carriles' : 'lanes'}`
+      : `<span class="vt-badge__d"></span> ${FALLBACK_LANES} ${LANG === 'es' ? 'carriles' : 'lanes'} (def.)`;
+    hint.style.display = '';
     renderSlots();
+    renderLaneSeq();
   }
   sel.addEventListener('change', update);
   update();

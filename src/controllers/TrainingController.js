@@ -65,7 +65,7 @@ class TrainingController {
     const circuits = Circuit.findAll();
     const defaultCircuitId = parseInt(Settings.get('training_circuit_id', '') || '0', 10) || null;
     const fallbackLanes = parseInt(Settings.get('sim_lanes', '6'), 10) || 6;
-    res.render('training/competition', { t: req.t, circuits, defaultCircuitId, fallbackLanes });
+    res.render('training/competition', { t: req.t, circuits, defaultCircuitId, fallbackLanes, serialTotal: serialLaneTotal() });
   }
 
   // POST /training/competition/start
@@ -92,7 +92,11 @@ class TrainingController {
     const serialTotal = serialLaneTotal();
     if (serialTotal > 0) numLanes = serialTotal;
 
-    CompetitionService.setup(participants, numLanes);
+    // Secuencia de rotación de carriles (definida con drag-and-drop en el form).
+    const rawSeq = req.body.lane_sequence;
+    const laneSequence = Array.isArray(rawSeq) ? rawSeq.map(x => parseInt(x, 10)) : [];
+
+    CompetitionService.setup(participants, numLanes, laneSequence);
     res.redirect('/training/competition/live');
   }
 

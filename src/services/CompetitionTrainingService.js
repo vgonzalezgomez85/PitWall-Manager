@@ -57,12 +57,22 @@ class CompetitionTrainingServiceClass {
   }
 
   // ── Setup ─────────────────────────────────────────────────────────────────
-  setup(participants, numLanes) {
+  setup(participants, numLanes, laneSequence) {
     if (this._active) this._deactivate();
     this._participants = participants;
     this._numLanes     = numLanes;
+    this._laneSequence = this._normalizeLaneSequence(laneSequence, numLanes);
     this._heatNumber   = 0;
     this._prepareHeat();
+  }
+
+  // Valida la secuencia de rotación: debe ser una permutación de 1..N. Si no lo
+  // es (o falta), usa el orden natural [1..N].
+  _normalizeLaneSequence(seq, n) {
+    const natural = Array.from({ length: n }, (_, i) => i + 1);
+    if (!Array.isArray(seq)) return natural;
+    const cleaned = [...new Set(seq.map(x => parseInt(x, 10)).filter(x => x >= 1 && x <= n))];
+    return cleaned.length === n ? cleaned : natural;
   }
 
   // ── Prepare next heat (assign lanes) ─────────────────────────────────────
@@ -83,24 +93,36 @@ class CompetitionTrainingServiceClass {
 
     const P = this._participants.length;
     const N = this._numLanes;
+    const H = this._heatNumber;
+    // Ciclo de rotación: secuencia de carriles (orden CONFIGURABLE) + descansos.
+    const seq = (this._laneSequence && this._laneSequence.length === N)
+      ? this._laneSequence
+      : Array.from({ length: N }, (_, i) => i + 1);
 
-    for (let lane = 1; lane <= N; lane++) {
-      const pIdx = P > 0 ? (((lane - this._heatNumber) % P) + P) % P : null;
+    // Inicializa todas las pistas vacías (en el orden de la secuencia).
+    for (const lane of seq) {
       this._laneMap.set(lane, {
-        participantIdx: pIdx,
+        participantIdx: null,
         count: 0, sum: 0, lastMs: null,
         laps: [], chronoLaps: [],
       });
     }
 
-    // Compute who is currently resting (for UI), in rotation order:
-    // rest slot R (1..P-N) → participant at slot (N + R - 1)
-    // → participant index = (N + R − H + P) mod P
-    this._restingIdx = [];
-    for (let r = 1; r <= Math.max(0, P - N); r++) {
-      const pIdx = (((N + r - this._heatNumber) % P) + P) % P;
-      this._restingIdx.push(pIdx);
+    // Cada heat, cada participante avanza una posición en el ciclo:
+    //   pos = (k + H − 1) mod P. Si pos < N → corre en seq[pos]; si no, descansa.
+    // Con seq = [1..N] reproduce la rotación natural anterior.
+    const restByPos = [];
+    for (let k = 0; k < P; k++) {
+      const pos = (((k + H - 1) % P) + P) % P;
+      if (pos < N) {
+        const ld = this._laneMap.get(seq[pos]);
+        if (ld) ld.participantIdx = k;
+      } else {
+        restByPos.push({ k, restPos: pos - N });
+      }
     }
+    restByPos.sort((a, b) => a.restPos - b.restPos);
+    this._restingIdx = restByPos.map(x => x.k);
 
     console.log(`[CompetitionTraining] Heat ${this._heatNumber} prepared — standby (${P} pilots / ${N} lanes / ${this._restingIdx.length} rest)`);
     SocketService.emit('training:standby', this.getLanes());
