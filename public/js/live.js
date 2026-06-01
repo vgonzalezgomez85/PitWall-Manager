@@ -856,32 +856,23 @@ function renderProjected(data) {
   const BIG = 1e9;
   const scoreOf = r => (r.projectedTotal || 0) * BIG - (r.avgLapMs ?? BIG);
   const projGapInLaps = {};
-  const projGapInMs   = {};
   const gapAboveNow   = {};
   const gapBelowNow   = {};
 
+  // Gap V.T.: diferencia de vueltas proyectadas contra el PRIMER participante
+  // (líder = rows[0]). El líder no muestra gap. Si alguien no tiene proyección
+  // (null), se marca null → "—" en la UI.
+  const leaderRaw = rows.length ? (rows[0].projectedTotalRaw ?? rows[0].projectedTotal) : null;
   rows.forEach((r, i) => {
-    if (i === 0) {
-      projGapInLaps[r.name] = 0;
-      projGapInMs[r.name] = 0;
-      gapAboveNow[r.name] = null;        // leader: no one above
-    } else {
-      const above = rows[i-1];
-      // Versión fraccional para mostrar con decimales; si raw no está, cae al int.
-      const aboveRaw = above.projectedTotalRaw ?? above.projectedTotal;
-      const rRaw     = r.projectedTotalRaw     ?? r.projectedTotal;
-      // Si cualquiera de los dos no tiene proyección (null), no se puede
-      // calcular un gap significativo → marcar como null para que se muestre
-      // "—" en la UI. Antes esto se traducía implícitamente a "leader − 0"
-      // dando gaps falsos enormes (p.ej. -252.00 para CAPEL).
-      const gapLaps = (aboveRaw == null || rRaw == null) ? null : (aboveRaw - rRaw);
-      projGapInLaps[r.name] = gapLaps;
-      projGapInMs[r.name] = (gapLaps != null && Math.abs(gapLaps) < 0.5
-                             && r.avgLapMs != null && above.avgLapMs != null)
-        ? above.avgLapMs - r.avgLapMs : 0;
-      gapAboveNow[r.name] = (r.projectedTotal == null || above.projectedTotal == null)
-        ? null : scoreOf(above) - scoreOf(r);
-    }
+    const rRaw = r.projectedTotalRaw ?? r.projectedTotal;
+    projGapInLaps[r.name] = (i === 0)
+      ? 0
+      : (leaderRaw == null || rRaw == null) ? null : (leaderRaw - rRaw);
+
+    // Tendencia (↕): se sigue midiendo contra el rival de delante / detrás.
+    const above = rows[i-1];
+    gapAboveNow[r.name] = (i === 0 || r.projectedTotal == null || (above && above.projectedTotal == null))
+      ? null : scoreOf(above) - scoreOf(r);
     const below = rows[i+1];
     gapBelowNow[r.name] = (below && r.projectedTotal != null && below.projectedTotal != null)
       ? scoreOf(r) - scoreOf(below) : null;
@@ -913,7 +904,6 @@ function renderProjected(data) {
     const gapL = projGapInLaps[r.name];
     const gapLapDisplay = (gapL && Math.abs(gapL) >= 0.01)
       ? `-${gapL.toFixed(2)}` : '—';
-    const gapSecDisplay = projGapInMs[r.name] > 0 ? `+${formatMs(projGapInMs[r.name])}` : '—';
     const tr = trend[r.name];
     const upCls   = tr.up === 'good' ? ' good' : tr.up === 'bad' ? ' bad' : '';
     const downCls = tr.down === 'good' ? ' good' : tr.down === 'bad' ? ' bad' : '';
@@ -932,7 +922,6 @@ function renderProjected(data) {
         <span class="sr-arrow-down${downCls}">${downChar}</span>
       </td>
       <td class="sr-right"><span class="sr-delta">${gapLapDisplay}</span></td>
-      <td class="sr-right"><span class="sr-delta">${gapSecDisplay}</span></td>
     </tr>`;
   }).join('');
 

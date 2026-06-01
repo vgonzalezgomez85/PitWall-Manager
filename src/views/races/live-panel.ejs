@@ -131,8 +131,7 @@
           <th class="pt-right"><%= lang === 'es' ? 'Total' : 'Total' %></th>
           <th class="pt-right"><%= lang === 'es' ? 'Media' : 'Avg' %></th>
           <th title="<%= lang === 'es' ? 'Tendencia' : 'Trend' %>">↕</th>
-          <th class="pt-right"><%= lang === 'es' ? 'Gap V' : 'Gap L' %></th>
-          <th class="pt-right"><%= lang === 'es' ? 'Gap S' : 'Gap S' %></th>
+          <th class="pt-right" title="<%= lang === 'es' ? 'Vueltas proyectadas respecto al primer clasificado' : 'Projected laps behind the leader' %>"><%= lang === 'es' ? 'Gap V.T.' : 'Gap L.T.' %></th>
         </tr>
       </thead>
       <tbody id="panelBody"></tbody>
@@ -368,21 +367,19 @@
       const BIG = 1e9;
       const scoreOf = r => (r.projectedTotalRaw ?? 0) * BIG - (r.avgLapMs ?? BIG);
 
+      // Gap V.T.: diferencia de vueltas proyectadas contra el PRIMER
+      // participante (líder = rows[0]). El líder no muestra gap.
+      const leaderRaw = rows.length ? rows[0].projectedTotalRaw : null;
       rows.forEach((r, i) => {
-        if (i === 0) { r._gapL = null; r._gapMs = 0; r._gapAbove = null; }
-        else {
-          const above = rows[i-1];
-          const aRaw = above.projectedTotalRaw, rRaw = r.projectedTotalRaw;
-          // Si cualquiera de los dos no tiene proyección, no hay gap definido
-          r._gapL = (aRaw == null || rRaw == null) ? null : (aRaw - rRaw);
-          r._gapMs = (r._gapL != null && Math.abs(r._gapL) < 0.5
-                       && r.avgLapMs != null && above.avgLapMs != null)
-            ? above.avgLapMs - r.avgLapMs : 0;
-          r._gapAbove = (r.projectedTotalRaw == null || above.projectedTotalRaw == null)
-            ? null : scoreOf(above) - scoreOf(r);
-        }
+        const rRaw = r.projectedTotalRaw;
+        r._gapL = (i === 0 || leaderRaw == null || rRaw == null) ? null : (leaderRaw - rRaw);
+
+        // Tendencia (↕): se sigue midiendo contra el rival de delante / detrás.
+        const above = rows[i-1];
+        r._gapAbove = (i === 0 || rRaw == null || (above && above.projectedTotalRaw == null))
+          ? null : scoreOf(above) - scoreOf(r);
         const below = rows[i+1];
-        r._gapBelow = (below && r.projectedTotalRaw != null && below.projectedTotalRaw != null)
+        r._gapBelow = (below && rRaw != null && below.projectedTotalRaw != null)
           ? scoreOf(r) - scoreOf(below) : null;
 
         const prev = prevPanelGap[r.name] || {};
@@ -421,8 +418,7 @@
             <span class="pt-arrow-up${upCls}">${upCh}</span>
             <span class="pt-arrow-down${downCls}">${downCh}</span>
           </td>
-          <td class="pt-right"><span class="pt-gap">${r._gapL > 0 ? '-' + r._gapL : '—'}</span></td>
-          <td class="pt-right"><span class="pt-gap">${r._gapMs > 0 ? '+' + formatMs(r._gapMs) : '—'}</span></td>
+          <td class="pt-right"><span class="pt-gap">${r._gapL > 0 ? '-' + r._gapL.toFixed(2) : '—'}</span></td>
         </tr>`;
       }).join('');
       requestAnimationFrame(() => { fitTable(); refreshMarquees(); });

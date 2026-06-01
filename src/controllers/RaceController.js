@@ -393,6 +393,81 @@ class RaceController {
     });
   }
 
+  // ─── GET /races/:id/edit ──────────────────────────────────────────────────
+  // Focused edit: race name + (circuit, if one was assigned) OR (manual min
+  // lap, for races configured by hand). Manga duration is NOT editable here —
+  // it's taken live from the DS-300 GO signal.
+
+  static editForm(req, res) {
+    const race = Race.findById(req.params.id);
+    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
+
+    const savedCircuits = Circuit.findAll();
+    const circuitCategoryTimes = {};
+    for (const c of savedCircuits) {
+      const times = Circuit.getCategoryTimes(c.id);
+      if (times.length) circuitCategoryTimes[c.id] = times;
+    }
+    res.render('races/edit', {
+      t: req.t, race, savedCircuits, circuitCategoryTimes,
+      hasLaps: Race.hasRecordedLaps(race.id), errors: [],
+    });
+  }
+
+  // ─── POST /races/:id/edit ─────────────────────────────────────────────────
+
+  static update(req, res) {
+    const race = Race.findById(req.params.id);
+    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
+
+    const errors = [];
+    const name   = (req.body.name || '').trim();
+    if (name.length < 2) errors.push('name_required');
+
+    const hasLaps = Race.hasRecordedLaps(race.id);
+    const patch   = { name };
+
+    if (race.circuit_id) {
+      // Circuit race: switching the circuit reshuffles lanes, so only allow it
+      // before any lap is recorded. The derived lane config + min lap come from
+      // the chosen circuit (and category override, if picked).
+      if (!hasLaps) {
+        const circuitId  = parseInt(req.body.circuit_id, 10) || null;
+        const categoryId = parseInt(req.body.category_id, 10) || null;
+        const circuit    = circuitId ? Circuit.findById(circuitId) : null;
+        if (circuit) {
+          const circuits = Circuit.getConfig(circuit);
+          patch.circuit_id      = circuitId;
+          patch.circuits_config = circuits;
+          patch.lanes_count     = circuits.reduce((a, b) => a + b, 0);
+          patch.lane_sequence   = Circuit.getLaneSequence(circuit);
+          patch.min_lap_ms      = Circuit.getMinLapMsForCategory(circuitId, categoryId);
+        }
+        // Invalid/missing circuit → keep the current one untouched.
+      }
+    } else {
+      // Manual race: just the minimum lap threshold. Safe to change anytime —
+      // it only affects detection from the next manga onward.
+      const minLapS = parseFloat(req.body.min_lap_s);
+      patch.min_lap_ms = (!isNaN(minLapS) && minLapS > 0) ? Math.round(minLapS * 1000) : 0;
+    }
+
+    if (errors.length) {
+      const savedCircuits = Circuit.findAll();
+      const circuitCategoryTimes = {};
+      for (const c of savedCircuits) {
+        const times = Circuit.getCategoryTimes(c.id);
+        if (times.length) circuitCategoryTimes[c.id] = times;
+      }
+      return res.render('races/edit', {
+        t: req.t, race: { ...race, name }, savedCircuits, circuitCategoryTimes, hasLaps, errors,
+      });
+    }
+
+    Race.update(race.id, patch);
+    res.redirect(`/races/${race.id}`);
+  }
+
   // ─── DELETE /races/:id ────────────────────────────────────────────────────
 
   static delete(req, res) {

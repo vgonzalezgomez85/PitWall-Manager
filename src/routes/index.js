@@ -113,10 +113,12 @@ router.get(   '/races/:id/mangas/:mangaId/edit',  TandaController.editManga);
 router.post(  '/races/:id/mangas/:mangaId/edit',  TandaController.updateManga);
 
 // ── Races CRUD ────────────────────────────────────────────────────────────────
-router.get(   '/races',      RaceController.index);
-router.post(  '/races',      RaceController.create);
-router.get(   '/races/:id',  RaceController.show);
-router.delete('/races/:id',  RaceController.delete);
+router.get(   '/races',          RaceController.index);
+router.post(  '/races',          RaceController.create);
+router.get(   '/races/:id/edit', requireModule('races_basic'), RaceController.editForm);
+router.post(  '/races/:id/edit', requireModule('races_basic'), RaceController.update);
+router.get(   '/races/:id',      RaceController.show);
+router.delete('/races/:id',      RaceController.delete);
 
 // ── Driver profiles ───────────────────────────────────────────────────────────
 router.get(   '/drivers',           requireModule('driver_profiles'), DriverProfileController.index);
