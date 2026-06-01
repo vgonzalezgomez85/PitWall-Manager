@@ -1,0 +1,62 @@
+<%- include('../partials/header', { pageTitle: (lang === 'es' ? 'Gestión de base de datos' : 'Database management') }) %>
+<%
+  function humanSize(bytes) {
+    if (bytes == null) return '—';
+    if (bytes < 1024) return bytes + ' B';
+    const u = ['KB','MB','GB'];
+    let n = bytes / 1024, i = 0;
+    while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
+    return n.toFixed(n < 10 ? 1 : 0) + ' ' + u[i];
+  }
+%>
+<div class="container container--narrow">
+
+  <a class="vt-back-link" href="/">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    <%= lang === 'es' ? 'Volver al inicio' : 'Back to home' %>
+  </a>
+
+  <h1 class="page-title"><%= lang === 'es' ? 'Gestión de base de datos' : 'Database management' %></h1>
+
+  <!-- Estado actual de la BD -->
+  <div class="form-card" style="margin-bottom:1rem">
+    <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
+      <span class="form-hint"><%= lang === 'es' ? 'Tamaño actual:' : 'Current size:' %></span>
+      <strong style="color:#58a6ff"><%= humanSize(sizeBytes) %></strong>
+    </div>
+    <% if (dbPath) { %>
+      <p class="form-hint" style="margin-top:.4rem;word-break:break-all;opacity:.7"><%= dbPath %></p>
+    <% } %>
+  </div>
+
+  <!-- Copia de seguridad -->
+  <div class="form-card" style="margin-bottom:1rem">
+    <div class="form-label" style="font-size:1.05rem;margin-bottom:.35rem">
+      💾 <%= lang === 'es' ? 'Copia de seguridad' : 'Backup' %>
+    </div>
+    <p class="form-hint" style="margin:0 0 1rem">
+      <%= lang === 'es'
+        ? 'Descarga un archivo .db con todos los datos (carreras, equipos, pilotos, circuitos y ajustes). Guárdalo para trasladarlo a otro PC o como respaldo. Es seguro hacerlo aunque haya una carrera en curso.'
+        : 'Download a .db file with all your data (races, teams, drivers, circuits and settings). Keep it to move to another PC or as a backup. Safe to run even during a race.' %>
+    </p>
+    <a href="/database/backup" class="btn btn--primary">
+      ⬇ <%= lang === 'es' ? 'Descargar copia de seguridad' : 'Download backup' %>
+    </a>
+  </div>
+
+  <!-- Importar (próximamente) -->
+  <div class="form-card" style="opacity:.55">
+    <div class="form-label" style="font-size:1.05rem;margin-bottom:.35rem">
+      ⬆ <%= lang === 'es' ? 'Importar copia' : 'Import backup' %>
+      <span class="form-hint" style="margin-left:.4rem">(<%= lang === 'es' ? 'próximamente' : 'coming soon' %>)</span>
+    </div>
+    <p class="form-hint" style="margin:0">
+      <%= lang === 'es'
+        ? 'Cargar un archivo de copia de seguridad para restaurar los datos en este PC. Disponible en una próxima versión.'
+        : 'Load a backup file to restore data on this PC. Available in a future version.' %>
+    </p>
+  </div>
+
+</div>
+
+<%- include('../partials/footer') %>
