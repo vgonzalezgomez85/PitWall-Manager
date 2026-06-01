@@ -203,6 +203,27 @@ class PoleTimingServiceClass {
   get isPaused()        { return this._paused; }
   get currentEntryId()  { return this.session?.entryId ?? null; }
   get currentBestLap()  { return this.session?.bestLapMs ?? null; }
+
+  // Snapshot puntual del cronómetro para consumidores que no escuchan
+  // pole:tick por socket (ej. polling HTTP de la app móvil). Devuelve null
+  // si no hay cronómetro corriendo. Tiene en cuenta una pausa en curso.
+  getLiveSnapshot() {
+    if (!this._active || !this.session) return null;
+    const s = this.session;
+    const now = Date.now();
+    const pausedNow = (this._paused && this._pausedAt) ? (now - this._pausedAt) : 0;
+    const totalPaused = this._totalPausedMs + pausedNow;
+    const elapsedMs    = Math.max(0, now - s.startTime - totalPaused);
+    const remainingMs  = Math.max(0, s.durationMs - elapsedMs);
+    const currentLapMs = this._paused ? 0 : Math.max(0, now - s.lastCrossing);
+    return {
+      elapsedMs,
+      remainingMs,
+      currentLapMs,
+      bestLapMs: s.bestLapMs,
+      lapCount:  s.lapCount,
+    };
+  }
 }
 
 module.exports = new PoleTimingServiceClass();

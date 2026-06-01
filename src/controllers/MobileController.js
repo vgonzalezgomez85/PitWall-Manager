@@ -1,5 +1,7 @@
-const TimingService  = require('../services/TimingService');
-const TrainingService = require('../services/TrainingService');
+const TimingService     = require('../services/TimingService');
+const TrainingService   = require('../services/TrainingService');
+const PoleTimingService = require('../services/PoleTimingService');
+const PoleSession       = require('../models/PoleSession');
 const Race  = require('../models/Race');
 const Tanda = require('../models/Tanda');
 const Manga = require('../models/Manga');
@@ -153,6 +155,7 @@ const MobileController = {
         lanesCount:        race.lanes_count,
         mangaDurationMin:  race.manga_duration_minutes,
         startedAt:         race.started_at,
+        hasPole:           !!race.has_pole,
       },
       activeManga: activeManga ? {
         id:         activeManga.id,
@@ -188,7 +191,7 @@ const MobileController = {
   racesActive(req, res) {
     const rows = db.prepare(`
       SELECT id, name, format, type, status, lanes_count, manga_duration_minutes,
-             created_at, started_at
+             has_pole, created_at, started_at
       FROM races
       WHERE status IN ('active','pending')
       ORDER BY CASE status WHEN 'active' THEN 0 ELSE 1 END, created_at ASC
@@ -207,6 +210,7 @@ const MobileController = {
         status:            r.status,
         lanesCount:        r.lanes_count,
         mangaDurationMin:  r.manga_duration_minutes,
+        hasPole:           !!r.has_pole,
         createdAt:         r.created_at,
         startedAt:         r.started_at,
         tandasCount,
@@ -224,6 +228,108 @@ const MobileController = {
     const race = Race.findById(req.params.id);
     if (!race) return res.status(404).json({ error: 'race_not_found' });
     return res.json(MobileController._buildRaceDetail(race));
+  },
+
+  // GET /api/mobile/races/:id/pole
+  //
+  // Estado completo de la pole de una carrera. Útil para la app móvil cuando
+  // la race tiene has_pole=1: la app muestra orden de salida, clasificación
+  // por mejor tiempo y, si hay alguien en pista, el cronómetro en vivo.
+  racesPole(req, res) {
+    const race = Race.findById(req.params.id);
+    if (!race) return res.status(404).json({ error: 'race_not_found' });
+
+    const defaultDurationMs = (race.manga_duration_minutes || 5) * 60_000;
+    const sess = PoleSession.findByRace(race.id);
+
+    if (!sess) {
+      return res.json({
+        active:        false,
+        status:        null,
+        poleLane:      null,
+        durationMs:    defaultDurationMs,
+        currentIdx:    0,
+        totalCount:    0,
+        currentEntry:  null,
+        nextEntry:     null,
+        startingOrder: [],
+        standings:     [],
+        live:          null,
+      });
+    }
+
+    const ordered = PoleSession.getEntriesOrdered(sess.id);
+    const sorted  = PoleSession.getEntriesSorted(sess.id);
+
+    const startingOrder = ordered.map((e, i) => ({
+      entryId:   e.id,
+      pos:       (e.order_idx ?? i) + 1,
+      name:      e.entity_name,
+      lapTimeMs: e.lap_time_ms ?? null,
+      done:      e.lap_time_ms != null,
+    }));
+
+    const standings = sorted
+      .filter(e => e.lap_time_ms != null)
+      .map((e, i) => ({
+        entryId:   e.id,
+        pos:       i + 1,
+        name:      e.entity_name,
+        lapTimeMs: e.lap_time_ms,
+      }));
+
+    // currentEntry/live: PoleTimingService manda si su sesión coincide con
+    // la de esta race (alguien en standby o cronómetro corriendo). Si no,
+    // caemos al current_idx persistido en BD.
+    const ts = PoleTimingService;
+    const matches = ts.session && ts.session.poleSessionId === sess.id;
+
+    let currentEntry = null;
+    let liveSnapshot = null;
+    let durationMs   = defaultDurationMs;
+
+    if (matches && (ts.isRunning || ts.isStandby)) {
+      const e = ordered.find(o => o.id === ts.session.entryId);
+      currentEntry = {
+        entryId:  ts.session.entryId,
+        name:     ts.session.entryName,
+        startPos: (e?.order_idx ?? 0) + 1,
+      };
+      liveSnapshot = ts.getLiveSnapshot();   // null si está en standby
+      if (ts.session.durationMs) durationMs = ts.session.durationMs;
+    } else if (sess.status === 'in_progress' && ordered[sess.current_idx]) {
+      const c = ordered[sess.current_idx];
+      currentEntry = {
+        entryId:  c.id,
+        name:     c.entity_name,
+        startPos: (c.order_idx ?? sess.current_idx) + 1,
+      };
+    }
+
+    // nextEntry: el siguiente en starting order tras el current. Si la
+    // pole ya está done, no hay siguiente.
+    let nextEntry = null;
+    if (sess.status !== 'done') {
+      const curIdx = currentEntry
+        ? ordered.findIndex(e => e.id === currentEntry.entryId)
+        : sess.current_idx - 1;
+      const next = ordered[curIdx + 1];
+      if (next) nextEntry = { entryId: next.id, name: next.entity_name };
+    }
+
+    return res.json({
+      active:        sess.status !== 'done',
+      status:        sess.status,
+      poleLane:      sess.lane ?? null,
+      durationMs,
+      currentIdx:    sess.current_idx,
+      totalCount:    ordered.length,
+      currentEntry,
+      nextEntry,
+      startingOrder,
+      standings,
+      live:          liveSnapshot,
+    });
   },
 
   // GET /api/mobile/training
