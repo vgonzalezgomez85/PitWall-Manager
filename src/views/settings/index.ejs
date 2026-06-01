@@ -37,6 +37,18 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
 
     <form action="/settings" method="POST" class="vt-panel">
 
+      <datalist id="baud-options">
+        <option value="9600"></option>
+        <option value="19200"></option>
+        <option value="38400"></option>
+        <option value="56000"></option>
+        <option value="57600"></option>
+        <option value="115200"></option>
+        <option value="230400"></option>
+        <option value="460800"></option>
+        <option value="921600"></option>
+      </datalist>
+
       <div class="vt-sec-lbl"><%= lang === 'es' ? 'Fuente de datos' : 'Data source' %></div>
 
       <div class="vt-opts">
@@ -146,14 +158,9 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
                 </div>
                 <div class="vt-field circuit-row__field circuit-row__field--baud">
                   <label>Baud rate</label>
-                  <div class="vt-selw">
-                    <select name="circuit_baud_select" id="baud-<%= i %>" data-target="baud-input-<%= i %>">
-                      <% [9600, 19200, 38400, 57600, 115200].forEach(b => { %>
-                        <option value="<%= b %>" <%= (c.baud || 57600) == b ? 'selected' : '' %>><%= b %></option>
-                      <% }) %>
-                    </select>
-                  </div>
-                  <input type="hidden" id="baud-input-<%= i %>" name="circuit_baud" value="<%= c.baud || 57600 %>">
+                  <input class="vt-inp is-mono" type="number" name="circuit_baud" list="baud-options"
+                         min="300" max="921600" step="1"
+                         value="<%= c.baud || 57600 %>" required>
                 </div>
                 <div class="vt-field circuit-row__field">
                   <label>Data bits</label>
@@ -310,12 +317,6 @@ sw.addEventListener('click', () => {
   swInput.value = sw.classList.contains('is-on') ? '1' : '';
 });
 
-/* ── baud select → hidden input ── */
-document.querySelectorAll('select[name="circuit_baud_select"]').forEach(sel => {
-  const target = document.getElementById(sel.dataset.target);
-  sel.addEventListener('change', () => { if (target) target.value = sel.value; });
-});
-
 /* ── lane badge labels ── */
 function updateLaneBadges(){
   let offset = 1;
@@ -399,9 +400,8 @@ document.getElementById('addCircuit')?.addEventListener('click', () => {
       </div>
       <div class="vt-field circuit-row__field circuit-row__field--baud">
         <label>Baud rate</label>
-        <div class="vt-selw"><select name="circuit_baud">
-          <option>9600</option><option>19200</option><option>38400</option><option selected>57600</option><option>115200</option>
-        </select></div>
+        <input class="vt-inp is-mono" type="number" name="circuit_baud" list="baud-options"
+               min="300" max="921600" step="1" value="57600" required>
       </div>
       <div class="vt-field circuit-row__field">
         <label>Data bits</label>
