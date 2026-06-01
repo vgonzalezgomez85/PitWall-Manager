@@ -17,6 +17,7 @@ const MobileController            = require('../controllers/MobileController');
 const LicenseController           = require('../controllers/LicenseController');
 const DiagnosticsController       = require('../controllers/DiagnosticsController');
 const LiveStatsController         = require('../controllers/LiveStatsController');
+const DatabaseController          = require('../controllers/DatabaseController');
 const { requireModule }           = require('../middleware/licenseGuard');
 
 router.get('/', (req, res) => {
@@ -198,6 +199,10 @@ router.post('/diagnostico/reconnect-serial',      DiagnosticsController.reconnec
 router.get( '/settings',           SettingsController.index);
 router.post('/settings',           SettingsController.save);
 router.get( '/api/settings/ports', SettingsController.listPorts);
+
+// ── Gestión de base de datos ───────────────────────────────────────────────────
+router.get( '/database',        DatabaseController.index);
+router.get( '/database/backup', DatabaseController.backup);
 router.get( '/api/serial/status', (req, res) => {
   const SerialService = require('../services/SerialService');
   res.json(SerialService.getLinkStatus());
