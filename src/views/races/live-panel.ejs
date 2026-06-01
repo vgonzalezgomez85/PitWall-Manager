@@ -131,6 +131,7 @@
           <th class="pt-right"><%= lang === 'es' ? 'Total' : 'Total' %></th>
           <th class="pt-right"><%= lang === 'es' ? 'Media' : 'Avg' %></th>
           <th title="<%= lang === 'es' ? 'Tendencia' : 'Trend' %>">↕</th>
+          <th class="pt-right" title="<%= lang === 'es' ? 'Vueltas proyectadas respecto al de delante' : 'Projected laps behind the car ahead' %>"><%= lang === 'es' ? 'Gap V' : 'Gap L' %></th>
           <th class="pt-right" title="<%= lang === 'es' ? 'Vueltas proyectadas respecto al primer clasificado' : 'Projected laps behind the leader' %>"><%= lang === 'es' ? 'Gap V.T.' : 'Gap L.T.' %></th>
         </tr>
       </thead>
@@ -367,15 +368,18 @@
       const BIG = 1e9;
       const scoreOf = r => (r.projectedTotalRaw ?? 0) * BIG - (r.avgLapMs ?? BIG);
 
-      // Gap V.T.: diferencia de vueltas proyectadas contra el PRIMER
-      // participante (líder = rows[0]). El líder no muestra gap.
+      // Dos gaps en vueltas proyectadas (el líder no muestra ninguno):
+      //   _gapV  = respecto al de delante (posición i-1)
+      //   _gapVT = respecto al primer clasificado (líder = rows[0])
       const leaderRaw = rows.length ? rows[0].projectedTotalRaw : null;
       rows.forEach((r, i) => {
         const rRaw = r.projectedTotalRaw;
-        r._gapL = (i === 0 || leaderRaw == null || rRaw == null) ? null : (leaderRaw - rRaw);
+        const above = rows[i-1];
+        const aboveRaw = above ? above.projectedTotalRaw : null;
+        r._gapV  = (i === 0 || aboveRaw  == null || rRaw == null) ? null : (aboveRaw  - rRaw);
+        r._gapVT = (i === 0 || leaderRaw == null || rRaw == null) ? null : (leaderRaw - rRaw);
 
         // Tendencia (↕): se sigue midiendo contra el rival de delante / detrás.
-        const above = rows[i-1];
         r._gapAbove = (i === 0 || rRaw == null || (above && above.projectedTotalRaw == null))
           ? null : scoreOf(above) - scoreOf(r);
         const below = rows[i+1];
@@ -418,7 +422,8 @@
             <span class="pt-arrow-up${upCls}">${upCh}</span>
             <span class="pt-arrow-down${downCls}">${downCh}</span>
           </td>
-          <td class="pt-right"><span class="pt-gap">${r._gapL > 0 ? '-' + r._gapL.toFixed(2) : '—'}</span></td>
+          <td class="pt-right"><span class="pt-gap">${r._gapV  > 0 ? '-' + r._gapV.toFixed(2)  : '—'}</span></td>
+          <td class="pt-right"><span class="pt-gap">${r._gapVT > 0 ? '-' + r._gapVT.toFixed(2) : '—'}</span></td>
         </tr>`;
       }).join('');
       requestAnimationFrame(() => { fitTable(); refreshMarquees(); });
