@@ -199,9 +199,43 @@ let remainingMs = RACE_DATA.durationMs;
 let lastTickAt  = null;
 let timerInt    = null;
 const timerEl   = document.getElementById('raceTimer');
+const circuitTimersEl = document.getElementById('circuitTimers');
 const statusEl  = document.getElementById('timerStatus');
 let warned60 = false;
 let warned30 = false;
+
+// Temporizadores POR CIRCUITO (multi-DS). Con un solo circuito se usa el timer
+// global (raceTimer). Con varios, se oculta el global y se muestra el tiempo
+// restante propio de cada circuito (refleja su GO y sus pausas). Alimentado por
+// el payload `circuits` de los eventos tick/standings (resolución 1s, suficiente).
+function renderCircuitTimers(circuits) {
+  if (!circuitTimersEl || !timerEl) return;
+  if (!Array.isArray(circuits) || circuits.length <= 1) {
+    circuitTimersEl.hidden = true;
+    timerEl.style.display = '';
+    // Timer global (1 circuito): verde si corre, rojo si pausado/parado.
+    const st = (circuits && circuits[0]) ? circuits[0].status : null;
+    timerEl.classList.toggle('live-timer--running', st === 'running');
+    timerEl.classList.toggle('live-timer--stopped', st != null && st !== 'running');
+    return;
+  }
+  timerEl.style.display = 'none';
+  circuitTimersEl.hidden = false;
+  circuits.forEach(c => {
+    let el = circuitTimersEl.querySelector(`[data-ci="${c.index}"]`);
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'circuit-timer';
+      el.dataset.ci = c.index;
+      el.innerHTML = `<span class="circuit-timer__lbl">C${c.index + 1}</span><span class="circuit-timer__val"></span>`;
+      circuitTimersEl.appendChild(el);
+    }
+    el.querySelector('.circuit-timer__val').textContent = formatRemaining(c.remainingMs);
+    el.classList.toggle('circuit-timer--paused',   c.status === 'paused');
+    el.classList.toggle('circuit-timer--pending',  c.status === 'pending');
+    el.classList.toggle('circuit-timer--finished', c.status === 'finished');
+  });
+}
 
 function announceWarning(text) {
   if (!window.speechSynthesis) return;
@@ -1120,6 +1154,7 @@ if (RACE_DATA.lanes.filter(l => !l.isRest).length <= 8) {
 
 if (RACE_DATA.standings) {
   renderStandings(RACE_DATA.standings);
+  renderCircuitTimers(RACE_DATA.standings.circuits);
   renderBestLaps();
   if (RACE_DATA.standings.remainingMs != null) {
     if (RACE_DATA.standings.elapsedMs != null)
@@ -1273,6 +1308,7 @@ function announce(text) {
 
     socket.on('standings', (data) => {
       renderStandings(data);
+      renderCircuitTimers(data.circuits);
       if (data.remainingMs != null) {
         if (data.elapsedMs != null) RACE_DATA.durationMs = data.remainingMs + data.elapsedMs;
         if (!timerInt) {
@@ -1343,7 +1379,8 @@ function announce(text) {
     // No voice announcement — the UI will re-classify V1 on the next standings.
     socket.on('lap:retro_exit', () => {});
 
-    socket.on('tick', ({ elapsedMs }) => {
+    socket.on('tick', ({ elapsedMs, circuits }) => {
+      renderCircuitTimers(circuits);
       // durationMs is set from standings data; this fires only if standings was missed
       if (timerInt === null && RACE_DATA.durationMs) {
         startCountdown(RACE_DATA.durationMs - elapsedMs);

@@ -20,6 +20,8 @@
   <header class="live-header">
     <div class="live-header__timer">
       <div id="raceTimer" class="live-timer"><%= String(race.manga_duration_minutes).padStart(2,'0') %>:00</div>
+      <!-- Con >1 circuito, se ocultará raceTimer y se mostrarán timers por circuito -->
+      <div id="circuitTimers" class="circuit-timers" hidden></div>
       <div class="live-timer-label"><%= lang === 'es' ? 'tiempo' : 'time' %></div>
     </div>
 

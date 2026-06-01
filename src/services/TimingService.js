@@ -223,6 +223,22 @@ class TimingServiceClass {
       .map(ld => ld.lane);
   }
 
+  // Reloj de cada circuito para la UI: tiempo restante propio según su estado.
+  _circuitClocks() {
+    if (!this.session) return [];
+    const now = Date.now();
+    return Object.values(this.session.circuits)
+      .sort((a, b) => a.index - b.index)
+      .map(c => {
+        let remainingMs;
+        if (c.status === 'pending')       remainingMs = c.durationMs;
+        else if (c.status === 'finished') remainingMs = 0;
+        else if (c.status === 'paused')   remainingMs = Math.max(0, c.durationMs - ((c.pauseStart || now) - c.startTime));
+        else                               remainingMs = Math.max(0, c.durationMs - (now - c.startTime));
+        return { index: c.index, status: c.status, remainingMs };
+      });
+  }
+
   // Arranca un circuito por su GO (cuando la manga ya existe). Cada circuito
   // cuenta su tiempo desde SU propio GO.
   startCircuit(ci, durationMs = null) {
@@ -385,7 +401,7 @@ class TimingServiceClass {
     this._tickInt = setInterval(() => {
       const elapsedMs   = Date.now() - this.session.startTime;
       const remainingMs = Math.max(0, this.session.durationMs - elapsedMs);
-      SocketService.emit('tick', { elapsedMs, remainingMs });
+      SocketService.emit('tick', { elapsedMs, remainingMs, circuits: this._circuitClocks() });
       // Incremento del contador de cada piloto activo y persistencia periódica.
       if (this._isChampionship) this._tickDriverShifts();
     }, 1000);
@@ -834,6 +850,7 @@ class TimingServiceClass {
       remainingMs:  Math.max(0, this.session.durationMs - (Date.now() - startTime)),
       standings:    rows,
       raceBestLaps,
+      circuits:     this._circuitClocks(),
     };
   }
 
