@@ -223,6 +223,7 @@ router.get('/api/mobile/races/active',       MobileController.racesActive);
 router.get('/api/mobile/races',              MobileController.racesList);
 router.get('/api/mobile/races/:id/results',  MobileController.racesResults);
 router.get('/api/mobile/races/:id',          MobileController.racesShow);
+router.get('/api/mobile/races/:id/pole',     MobileController.racesPole);
 
 // ── Test: simulate DS-300 events ─────────────────────────────────────────────
 router.get('/api/test/go', (req, res) => {
