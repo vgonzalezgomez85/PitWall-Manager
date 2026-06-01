@@ -57,7 +57,28 @@
   MessageBox MB_YESNO|MB_ICONQUESTION \
     "${PRODUCT_NAME}$\r$\n$\r$\n¿Quieres eliminar también los datos guardados (base de datos, carreras, equipos y configuración)?$\r$\n$\r$\nSelecciona NO si vas a reinstalar la app o quieres conservar tu historial.$\r$\n$\r$\nSelecciona SÍ para borrar todo (no se podrá recuperar)." \
     /SD IDNO IDNO skip_userdata
+
+    ; Mata cualquier proceso aún vivo de la app. SQLite en WAL deja .db,
+    ; .db-wal y .db-shm bloqueados mientras node siga corriendo; sin esto
+    ; RMDir falla en silencio y la carpeta sobrevive a pesar de que el
+    ; usuario haya dicho que SÍ.
+    nsExec::ExecToLog 'taskkill /F /T /IM "${PRODUCT_NAME}.exe"'
+    nsExec::ExecToLog 'taskkill /F /T /IM "Voltrace Manager.exe"'
+    nsExec::ExecToLog 'taskkill /F /T /IM "node.exe"'
+    Sleep 600
+
+    ; Borra las dos rutas posibles: la usada por electron (productName) y
+    ; la legacy basada en el name del package.json.
     RMDir /r "$APPDATA\${PRODUCT_NAME}"
-    DetailPrint "Datos de usuario eliminados: $APPDATA\${PRODUCT_NAME}"
+    RMDir /r "$APPDATA\slot-timer-pro"
+
+    ; Verifica el resultado y avisa si quedaron ficheros bloqueados.
+    IfFileExists "$APPDATA\${PRODUCT_NAME}\*.*" 0 done_clean
+      MessageBox MB_OK|MB_ICONEXCLAMATION \
+        "No se han podido eliminar todos los datos.$\r$\n$\r$\nCierra Voltrace Manager si sigue abierto y borra manualmente:$\r$\n$APPDATA\${PRODUCT_NAME}"
+      Goto skip_userdata
+    done_clean:
+      DetailPrint "Datos de usuario eliminados: $APPDATA\${PRODUCT_NAME}"
+
   skip_userdata:
 !macroend
