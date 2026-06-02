@@ -42,6 +42,16 @@ DebugLogger.setEnabled(SettingsModel.get('debug_mode', '0') === '1');
 const SerialService = require('./services/SerialService');
 SerialService.init(); // start with saved settings (or simulation if not configured)
 
+// ── Infolap server (opt-in en Settings) ────────────────────────────────────────
+// Emula el protocolo Tic Tac Slot Infolap para que la app Android legacy se
+// pueda conectar a Voltrace y recibir vueltas en vivo. Es OPT-IN porque
+// ocupa el puerto UDP 4441 y no lo queremos abierto si nadie lo usa.
+const InfolapServer = require('./services/InfolapServer');
+if (SettingsModel.get('infolap_enabled', '0') === '1') {
+  try { InfolapServer.start(); }
+  catch (e) { console.error('[Infolap] no se pudo arrancar:', e.message); }
+}
+
 // ── DS hardware GO/STOP ────────────────────────────────────────────────────────
 const TimingService  = require('./services/TimingService');
 const TrainingService = require('./services/TrainingService');
@@ -80,6 +90,9 @@ SerialService.on('race_started', ({ circuit } = {}) => {
   const ci = circuit || 0;
   console.log(`[DS-300] race_started (circuit ${ci + 1}) @ ${Date.now()} → emit training:autostart`);
   SocketService.emit('training:autostart');
+  // Reset del estado por-carril en el server Infolap para que los clientes
+  // Android vean los carriles como "primer reporte" en cada manga nueva.
+  if (InfolapServer.isRunning) InfolapServer.resetSession();
 
   // Si ya hay una manga en curso, este GO pertenece a OTRO circuito: arranca
   // solo ese circuito (con su propio reloj) sin reiniciar ni tocar los demás.
