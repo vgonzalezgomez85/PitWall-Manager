@@ -68,6 +68,7 @@ class ControlController {
         lanes:    [],
         shifts:   [],
         summary:  [],
+        history:  [],
       });
     }
     const { manga, race, liveStatus } = current;
