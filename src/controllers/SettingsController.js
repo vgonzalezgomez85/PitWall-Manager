@@ -52,8 +52,9 @@ class SettingsController {
   }
 
   static async save(req, res) {
-    const { serial_mode, sim_lanes, sim_avg_ms, serial_frame_gap_ms, debug_mode } = req.body;
-    const debugOn = debug_mode === '1' || debug_mode === 'on' || debug_mode === 'true';
+    const { serial_mode, sim_lanes, sim_avg_ms, serial_frame_gap_ms, debug_mode, infolap_enabled } = req.body;
+    const debugOn   = debug_mode      === '1' || debug_mode      === 'on' || debug_mode      === 'true';
+    const infolapOn = infolap_enabled === '1' || infolap_enabled === 'on' || infolap_enabled === 'true';
 
     // Parse multi-circuit config from form arrays
     const portArr  = [].concat(req.body['circuit_port']  || []);
@@ -109,8 +110,18 @@ class SettingsController {
       training_circuit_id:  String(trainingCircuitId),
       serial_frame_gap_ms:  String(fgClean),
       debug_mode:           debugOn ? '1' : '0',
+      infolap_enabled:      infolapOn ? '1' : '0',
     });
     DebugLogger.setEnabled(debugOn);
+
+    // Aplica toggle Infolap en caliente: arranca/para el UDP server sin
+    // necesidad de reiniciar el proceso. (El texto en Settings dice que
+    // requiere reinicio para curarse en salud, pero esto va igual.)
+    try {
+      const InfolapServer = require('../services/InfolapServer');
+      if (infolapOn && !InfolapServer.isRunning)  InfolapServer.start();
+      if (!infolapOn && InfolapServer.isRunning)  InfolapServer.stop();
+    } catch (e) { console.warn('[Settings] Infolap toggle failed:', e.message); }
 
     if (serial_mode === 'serial' && circuits.length > 0) {
       await SerialService.closeAll();

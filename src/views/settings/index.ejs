@@ -250,6 +250,23 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
           </div>
         </div>
 
+        <!-- ── Compatibilidad Infolap (Tic Tac Slot) ──────────────────────── -->
+        <div class="vt-debug">
+          <button type="button" class="vt-switch <%= cfg.infolap_enabled === '1' ? 'is-on' : '' %>" id="infolapSwitch" aria-label="Toggle Infolap server"></button>
+          <input type="hidden" name="infolap_enabled" id="infolapInput" value="<%= cfg.infolap_enabled === '1' ? '1' : '' %>">
+          <div>
+            <div class="vt-debug__t">
+              <svg viewBox="0 0 24 24"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>
+              <%= lang === 'es' ? 'Compatibilidad Infolap' : 'Infolap compatibility' %>
+            </div>
+            <div class="vt-debug__d">
+              <%= lang === 'es'
+                ? 'Permite que la app móvil legacy de Tic Tac Slot Infolap se conecte a Voltrace y reciba vueltas en vivo. Abre UDP :4441. Cambios al toggle requieren reiniciar el servidor.'
+                : 'Lets the legacy Tic Tac Slot Infolap mobile app connect to Voltrace and receive live laps. Opens UDP :4441. Restart server after toggling.' %>
+            </div>
+          </div>
+        </div>
+
         <details>
           <summary>
             <span class="ar"></span>
@@ -316,6 +333,16 @@ sw.addEventListener('click', () => {
   sw.classList.toggle('is-on');
   swInput.value = sw.classList.contains('is-on') ? '1' : '';
 });
+
+/* ── infolap switch ── */
+const ifSw = document.getElementById('infolapSwitch');
+const ifInput = document.getElementById('infolapInput');
+if (ifSw && ifInput) {
+  ifSw.addEventListener('click', () => {
+    ifSw.classList.toggle('is-on');
+    ifInput.value = ifSw.classList.contains('is-on') ? '1' : '';
+  });
+}
 
 /* ── lane badge labels ── */
 function updateLaneBadges(){
