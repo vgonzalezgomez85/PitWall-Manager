@@ -67,10 +67,17 @@ function reqIp(req) {
   return normIp(req.ip || req.socket?.remoteAddress || req.connection?.remoteAddress || '');
 }
 
+// Rutas PÚBLICAS (accesibles desde cualquier IP): el index (que a externos
+// muestra solo el botón) y las estadísticas en vivo.
+function isPublicPath(p) {
+  return p === '/' || p === '/race-stats' || /^\/races\/\d+\/live-stats(\.json)?$/.test(p);
+}
+
 // ── Express middleware ──────────────────────────────────────────────────────
 function restrictAccess(req, res, next) {
   if (!isRestrictEnabled()) return next();
   if (req.path.startsWith('/api/mobile/')) return next();   // app móvil (REST)
+  if (isPublicPath(req.path)) return next();                // vistas públicas
   if (ipAllowed(reqIp(req))) return next();
   return res.status(403).render('error', {
     t: req.t, code: 403,
@@ -88,15 +95,19 @@ function isSocketAllowed(socket) {
   if (ipAllowed(normIp(socket.handshake.address))) return true;
   const q  = socket.handshake.query || {};
   const ua = socket.handshake.headers['user-agent'] || '';
+  if (q.view === 'livestats') return true;   // espectador de estadísticas en vivo (público)
   // app móvil: se identifica (client=mobile) o NO es un navegador (sin "Mozilla")
   return q.client === 'mobile' || !/mozilla/i.test(ua);
 }
 
 // ── Legacy (se conservan; ya no se usan directamente) ───────────────────────
 function isLocalRequest(req) { return isLocal(reqIp(req)); }
+// Admin = acceso completo (localhost o allowlist; o restricción desactivada).
+// Guest = IP externa no permitida → ve la home reducida (solo botón).
 function annotateAccess(req, res, next) {
-  res.locals.isAdminAccess = isLocalRequest(req);
-  res.locals.isGuestAccess = !res.locals.isAdminAccess;
+  const admin = !isRestrictEnabled() || ipAllowed(reqIp(req));
+  res.locals.isAdminAccess = admin;
+  res.locals.isGuestAccess = !admin;
   next();
 }
 

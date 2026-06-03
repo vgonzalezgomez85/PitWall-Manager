@@ -225,8 +225,10 @@ app.use((req, res, next) => {
 });
 
 // Control de acceso "blando": bloquea la web salvo localhost + allowlist.
-// Exime /api/mobile/* (app móvil). socket.io e Infolap se gestionan aparte.
-app.use(require('./middleware/accessControl').restrictAccess);
+// Exime /api/mobile/* (app móvil) y rutas públicas. socket.io e Infolap aparte.
+const accessControl = require('./middleware/accessControl');
+app.use(accessControl.annotateAccess);   // res.locals.isAdminAccess / isGuestAccess
+app.use(accessControl.restrictAccess);
 
 app.use('/', routes);
 
