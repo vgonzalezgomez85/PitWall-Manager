@@ -7,59 +7,6 @@ const db            = require('../config/database');
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-// Cálculo de predicción de adelantamiento entre dos entidades.
-// my, rival: { totalLapsRaceSoFar, pacePerLap (ms), mangasRaced, lapsThisManga }
-// remainingMsInManga, remainingMangas
-// Devuelve { willPassInManga, willPassInRace, lapsAtEndOfManga, lapsAtEndOfRace, ... }
-function predictOvertake({ my, rival, remainingMsInManga, remainingMangas, avgMangaDurationMs }) {
-  // Proyección dentro de la manga actual: vueltas adicionales = remaining / pace.
-  const myExtraInManga    = my.pacePerLap    > 0 ? Math.max(0, remainingMsInManga / my.pacePerLap)    : 0;
-  const rivalExtraInManga = rival.pacePerLap > 0 ? Math.max(0, remainingMsInManga / rival.pacePerLap) : 0;
-
-  const myAtEndOfManga    = my.totalLapsRaceSoFar    + myExtraInManga;
-  const rivalAtEndOfManga = rival.totalLapsRaceSoFar + rivalExtraInManga;
-
-  // Proyección para el resto de la carrera (mangas pendientes posteriores):
-  // se asume que cada uno seguirá a su ritmo medio histórico × duración media.
-  const myPerManga    = my.pacePerLap    > 0 ? avgMangaDurationMs / my.pacePerLap    : 0;
-  const rivalPerManga = rival.pacePerLap > 0 ? avgMangaDurationMs / rival.pacePerLap : 0;
-
-  const myAtEndOfRace    = myAtEndOfManga    + remainingMangas * myPerManga;
-  const rivalAtEndOfRace = rivalAtEndOfManga + remainingMangas * rivalPerManga;
-
-  const gapNow         = my.totalLapsRaceSoFar - rival.totalLapsRaceSoFar;
-  const gapEndOfManga  = myAtEndOfManga       - rivalAtEndOfManga;
-  const gapEndOfRace   = myAtEndOfRace        - rivalAtEndOfRace;
-
-  // Detecta cambios de signo del gap entre ahora y el futuro → indica
-  // adelantamiento en cualquiera de los dos sentidos.
-  const willPassInManga    = gapNow < 0 && gapEndOfManga > 0;  // yo le paso
-  const willPassInRace     = gapNow < 0 && gapEndOfRace  > 0;
-  const willBePassedManga  = gapNow > 0 && gapEndOfManga < 0;  // me pasa él
-  const willBePassedRace   = gapNow > 0 && gapEndOfRace  < 0;
-
-  // Distancia (en vueltas) que necesito mejorar o defender para forzar/evitar
-  // el adelantamiento. Sign convention: positivo = soy yo el que necesita
-  // ganar terreno; negativo = el rival necesita mejorar para alcanzarme.
-  const margin = +gapEndOfRace.toFixed(2);
-
-  return {
-    gapNow:            +gapNow.toFixed(2),
-    gapEndOfManga:     +gapEndOfManga.toFixed(2),
-    gapEndOfRace:      +gapEndOfRace.toFixed(2),
-    myAtEndOfManga:    +myAtEndOfManga.toFixed(2),
-    rivalAtEndOfManga: +rivalAtEndOfManga.toFixed(2),
-    myAtEndOfRace:     +myAtEndOfRace.toFixed(2),
-    rivalAtEndOfRace:  +rivalAtEndOfRace.toFixed(2),
-    willPassInManga,
-    willPassInRace,
-    willBePassedManga,
-    willBePassedRace,
-    margin,
-  };
-}
-
-
 // Sectorización en N bins iguales sobre la duración de la manga. Por defecto 3
 // bins (inicio / mitad / final). Si la manga es muy corta los bins pequeños
 // pueden quedar vacíos — la UI lo muestra como "—".
@@ -113,6 +60,9 @@ function buildEntityStats({ laps, mangaDurationMs }) {
     exits:    bin.filter(l => l.is_exit).length,
   }));
 
+  // Última vuelta cronometrada (las filas vienen ordenadas por elapsed_ms ASC).
+  const lastLapMs = racing.length ? racing[racing.length - 1].lap_time_ms : null;
+
   return {
     totalLaps:   racing.length,
     cleanLaps:   clean.length,
@@ -121,6 +71,7 @@ function buildEntityStats({ laps, mangaDurationMs }) {
     bestMs,
     avgAll, avgClean,
     deltaAll, deltaClean,
+    lastLapMs,
     lostMs, lostLapsEquiv,
     sectors,
   };
@@ -128,14 +79,18 @@ function buildEntityStats({ laps, mangaDurationMs }) {
 
 class LiveStatsController {
 
-  // GET /race-stats — landing: list races so the user picks one. Auto-redirect
-  // to the active race if there's one.
+  // GET /race-stats — landing de la vista EN VIVO. Muestra las carreras ACTIVAS
+  // (status='active') para que el piloto/equipo elija cuál seguir. Normalmente
+  // habrá una sola: en ese caso se entra directo. Si hay varias (p.ej. activas
+  // en paralelo) se muestra el selector para no adivinar la equivocada. La
+  // vista de carreras FINALIZADAS se implementará aparte.
   static index(req, res) {
     const lang = req.session?.lang || 'es';
-    const races = Race.findAll();
-    const active = races.find(r => r.status === 'active');
-    if (active) return res.redirect(`/races/${active.id}/live-stats`);
-    res.render('live-stats/index', { t: req.t, lang, races });
+    const activeRaces = Race.findAll().filter(r => r.status === 'active');
+    if (activeRaces.length === 1) return res.redirect(`/races/${activeRaces[0].id}/live-stats`);
+    res.render('live-stats/index', {
+      t: req.t, lang, races: activeRaces, noLive: activeRaces.length === 0,
+    });
   }
 
   // GET /races/:id/live-stats?mangaId=N&entity=team_5
@@ -271,8 +226,6 @@ class LiveStatsController {
       JOIN tandas t ON t.id = m.tanda_id
       WHERE t.race_id = ? AND m.status = 'pending'
     `).get(race.id).n;
-    const avgMangaDurationMs = mangaDurationMs || (race.manga_duration_minutes * 60 * 1000);
-
     // Enriquecer cada entity con su total race-wide
     entities.forEach(e => {
       const rw = raceByKey.get(e.key) || {};
@@ -282,25 +235,34 @@ class LiveStatsController {
       e.mangasRaced     = rw.mangas_raced || 0;
     });
 
-    // ── Predicción de adelantamiento (opcional) ─────────────────────────────
-    let prediction = null;
-    const myKey      = req.query.entity     || null;
-    const rivalKey   = req.query.compareWith || null;
+    // ── Comparativa EN VIVO (sin estimaciones de futuro) ────────────────────
+    // Compara dos participantes con sus datos ACTUALES: gap en vueltas, ritmo,
+    // mejor/media/última vuelta. Las proyecciones de adelantamiento se calculan
+    // en otra vista; aquí solo el presente.
+    let comparison = null;
+    const myKey    = req.query.entity      || null;
+    const rivalKey = req.query.compareWith || null;
     if (myKey && rivalKey && myKey !== rivalKey) {
       const me    = entities.find(e => e.key === myKey);
       const rival = entities.find(e => e.key === rivalKey);
       if (me && rival) {
-        const myPace    = (req.query.usePaceClean === '1' ? me.avgClean    : me.avgAll)    ?? me.racePaceAllMs;
-        const rivalPace = (req.query.usePaceClean === '1' ? rival.avgClean : rival.avgAll) ?? rival.racePaceAllMs;
-        prediction = predictOvertake({
-          my:    { totalLapsRaceSoFar: me.raceTotalLaps,    pacePerLap: myPace    || 0 },
-          rival: { totalLapsRaceSoFar: rival.raceTotalLaps, pacePerLap: rivalPace || 0 },
-          remainingMsInManga: remainingMs ?? 0,
-          remainingMangas,
-          avgMangaDurationMs,
-        });
-        prediction.myName    = me.entityName;
-        prediction.rivalName = rival.entityName;
+        const clean    = req.query.usePaceClean === '1';
+        const myAvg    = clean ? me.avgClean    : me.avgAll;
+        const rivalAvg = clean ? rival.avgClean : rival.avgAll;
+        const diff = (a, b) => (a != null && b != null) ? a - b : null;
+        comparison = {
+          myKey, rivalKey,
+          myName: me.entityName,    rivalName: rival.entityName,
+          myPos: me.position,       rivalPos: rival.position,
+          myLaps: me.totalLaps,     rivalLaps: rival.totalLaps,
+          myBest: me.bestMs,        rivalBest: rival.bestMs,
+          myAvg,                    rivalAvg,
+          myLast: me.lastLapMs,     rivalLast: rival.lastLapMs,
+          gapLaps:     me.totalLaps     - rival.totalLaps,      // en esta manga
+          gapLapsRace: me.raceTotalLaps - rival.raceTotalLaps,  // en la carrera
+          paceDiffMs:  diff(myAvg, rivalAvg),       // <0 = yo más rápido/vuelta
+          bestDiffMs:  diff(me.bestMs, rival.bestMs),
+        };
       }
     }
 
@@ -315,7 +277,7 @@ class LiveStatsController {
       remainingMangas,
       isActive,
       entities,
-      prediction,
+      comparison,
     });
   }
 }
