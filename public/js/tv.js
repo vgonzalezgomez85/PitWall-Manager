@@ -1,11 +1,11 @@
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function formatMs(ms) {
   if (ms == null) return '—';
-  const totalSec   = Math.floor(ms / 1000);
-  const hundredths = Math.floor((ms % 1000) / 10);
+  const totalSec = Math.floor(ms / 1000);
+  const millis   = ms % 1000;
   const secs = totalSec % 60;
   const mins = Math.floor(totalSec / 60);
-  return `${mins > 0 ? mins + ':' : ''}${String(secs).padStart(mins > 0 ? 2 : 1, '0')}.${String(hundredths).padStart(2, '0')}`;
+  return `${mins > 0 ? mins + ':' : ''}${String(secs).padStart(mins > 0 ? 2 : 1, '0')}.${String(millis).padStart(3, '0')}`;
 }
 
 function formatRemaining(ms) {
