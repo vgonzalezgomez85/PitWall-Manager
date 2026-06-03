@@ -113,6 +113,15 @@ class InfolapServerClass {
 
   get isRunning() { return this._socket != null; }
 
+  // Clientes Infolap (móvil) conectados, EXCLUYENDO localhost.
+  remoteClientCount() {
+    let n = 0;
+    for (const ip of this._clients.keys()) {
+      if (ip !== '127.0.0.1' && ip !== '::1' && !String(ip).startsWith('::ffff:127.')) n++;
+    }
+    return n;
+  }
+
   // ── Discovery ──────────────────────────────────────────────────────────────
   _onProbe(ip) {
     const wasNew = !this._clients.has(ip);
@@ -129,6 +138,7 @@ class InfolapServerClass {
     if (wasNew) {
       console.log(`[Infolap] new client ${ip}`);
       for (const e of entries) this._pushLane(e.lane, ip);
+      try { require('./SocketService')._emitConnections(); } catch {}
     }
   }
 

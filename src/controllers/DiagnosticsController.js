@@ -1,6 +1,7 @@
 const db             = require('../config/database');
 const TimingService  = require('../services/TimingService');
 const SerialService  = require('../services/SerialService');
+const SocketService  = require('../services/SocketService');
 const Lap            = require('../models/Lap');
 const Manga          = require('../models/Manga');
 
@@ -39,7 +40,9 @@ class DiagnosticsController {
       ORDER BY m.started_at DESC
     `).all().filter(m => m.id !== timing.activeMangaId);
 
-    res.render('diagnostico/index', { lang, t, timing, link, stuck, flash: req.session?.flash });
+    const connections = SocketService.getConnectionCounts();
+
+    res.render('diagnostico/index', { lang, t, timing, link, stuck, connections, flash: req.session?.flash });
     if (req.session) req.session.flash = null;
   }
 

@@ -80,8 +80,37 @@ module.exports = {
       });
       socket.on('disconnect', () => {
         if (counted) { counted = false; localLiveViewers = Math.max(0, localLiveViewers - 1); }
+        setImmediate(() => this._emitConnections());
       });
+
+      this._emitConnections();
     });
+  },
+
+  // Cuenta de conexiones por tipo, EXCLUYENDO localhost (el PC de control no
+  // cuenta como espectador). Web = navegadores; mobile = app móvil (socket.io
+  // con query client=mobile); infolap = clientes UDP del server Infolap.
+  getConnectionCounts() {
+    let web = 0, mobile = 0;
+    if (io) {
+      for (const [, s] of io.sockets.sockets) {
+        if (isLocalAddress(s.handshake.address)) continue;
+        // Móvil si la app se identifica (query client=mobile) o si NO es un
+        // navegador: los navegadores siempre mandan user-agent "Mozilla/…";
+        // el cliente React Native no manda user-agent.
+        const q  = s.handshake.query || {};
+        const ua = s.handshake.headers['user-agent'] || '';
+        const isMobileApp = q.client === 'mobile' || !/mozilla/i.test(ua);
+        if (isMobileApp) mobile++; else web++;
+      }
+    }
+    let infolap = 0;
+    try { infolap = require('./InfolapServer').remoteClientCount(); } catch {}
+    return { web, mobile, infolap };
+  },
+
+  _emitConnections() {
+    if (io) io.emit('connections', this.getConnectionCounts());
   },
 
   emit(event, data) {
