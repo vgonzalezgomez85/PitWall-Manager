@@ -9,12 +9,18 @@
     <h1 class="page-title">📊 <%= lang === 'es' ? 'Estadísticas en vivo' : 'Live stats' %></h1>
     <p style="color:#8b949e; margin-top:.3rem">
       <%= lang === 'es'
-        ? 'Elige la carrera que quieres seguir.'
-        : 'Pick the race you want to follow.' %>
+        ? 'Elige la carrera activa que quieres seguir en directo.'
+        : 'Pick the active race you want to follow live.' %>
     </p>
   </div>
 
-  <% if (races.length === 0) { %>
+  <% if (typeof noLive !== 'undefined' && noLive) { %>
+    <div class="ls-nolive">
+      <div class="ls-nolive__icon">🏁</div>
+      <p class="ls-nolive__title"><%= lang === 'es' ? 'No hay ninguna carrera en directo ahora mismo.' : 'No race is live right now.' %></p>
+      <p class="ls-nolive__sub"><%= lang === 'es' ? 'Cuando se dé el GO a una carrera, aparecerá aquí automáticamente.' : 'When a race gets the GO, it will appear here automatically.' %></p>
+    </div>
+  <% } else if (races.length === 0) { %>
     <p style="color:#8b949e">
       <%= lang === 'es' ? 'No hay carreras creadas todavía.' : 'No races created yet.' %>
     </p>
@@ -44,6 +50,21 @@
   .ls-race-card__status { display:inline-block; padding:1px 7px; border-radius:9px; font-size:.7rem; font-weight:700; text-transform:uppercase; background:#21262d; color:#8b949e }
   .ls-race-card__status--active { background:rgba(46,160,67,.18); color:#3fb950 }
   .ls-race-card__status--finished { background:rgba(88,166,255,.15); color:#58a6ff }
+  .ls-nolive { text-align:center; margin-top:2.5rem; color:#8b949e }
+  .ls-nolive__icon { font-size:3rem; opacity:.6 }
+  .ls-nolive__title { color:#e6edf3; font-size:1.15rem; font-weight:600; margin:.8rem 0 .3rem }
+  .ls-nolive__sub { font-size:.9rem }
 </style>
+
+<% if (typeof noLive !== 'undefined' && noLive) { %>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  // Cuando arranque una carrera (GO), recargamos: el index redirige solo a la
+  // carrera en directo. view=livestats para pasar el gate de acceso.
+  const socket = io({ query: { view: 'livestats' } });
+  socket.on('manga:started', () => location.reload());
+  socket.on('training:autostart', () => location.reload());
+</script>
+<% } %>
 
 <%- include('../partials/footer') %>
