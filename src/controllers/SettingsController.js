@@ -52,9 +52,14 @@ class SettingsController {
   }
 
   static async save(req, res) {
-    const { serial_mode, sim_lanes, sim_avg_ms, serial_frame_gap_ms, debug_mode, infolap_enabled } = req.body;
+    const { serial_mode, sim_lanes, sim_avg_ms, serial_frame_gap_ms, debug_mode, infolap_enabled,
+            access_restrict_enabled, access_allowlist } = req.body;
     const debugOn   = debug_mode      === '1' || debug_mode      === 'on' || debug_mode      === 'true';
     const infolapOn = infolap_enabled === '1' || infolap_enabled === 'on' || infolap_enabled === 'true';
+    const accessOn  = access_restrict_enabled === '1' || access_restrict_enabled === 'on' || access_restrict_enabled === 'true';
+    // Allowlist: IPs/CIDR separadas por coma, salto de línea o ';'
+    const allowlist = String(access_allowlist || '')
+      .split(/[\n,;]+/).map(s => s.trim()).filter(Boolean);
 
     // Parse multi-circuit config from form arrays
     const portArr  = [].concat(req.body['circuit_port']  || []);
@@ -111,6 +116,8 @@ class SettingsController {
       serial_frame_gap_ms:  String(fgClean),
       debug_mode:           debugOn ? '1' : '0',
       infolap_enabled:      infolapOn ? '1' : '0',
+      access_restrict_enabled: accessOn ? '1' : '0',
+      access_allowlist:        JSON.stringify(allowlist),
     });
     DebugLogger.setEnabled(debugOn);
 
