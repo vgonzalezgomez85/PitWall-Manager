@@ -267,6 +267,28 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
           </div>
         </div>
 
+        <!-- ── Control de acceso web ──────────────────────────────────── -->
+        <div class="vt-debug">
+          <button type="button" class="vt-switch <%= cfg.access_restrict_enabled !== '0' ? 'is-on' : '' %>" id="accessSwitch" aria-label="Toggle access restriction"></button>
+          <input type="hidden" name="access_restrict_enabled" id="accessInput" value="<%= cfg.access_restrict_enabled !== '0' ? '1' : '' %>">
+          <div style="flex:1">
+            <div class="vt-debug__t">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+              <%= lang === 'es' ? 'Restringir acceso web' : 'Restrict web access' %>
+            </div>
+            <div class="vt-debug__d">
+              <%= lang === 'es'
+                ? 'Bloquea el acceso web desde cualquier IP salvo este equipo (localhost) y las IPs/rangos de la lista. No afecta a la app móvil ni a Infolap (siguen recibiendo el vuelta a vuelta).'
+                : 'Blocks web access from any IP except this machine (localhost) and the listed IPs/ranges. Does not affect the mobile app or Infolap (they keep receiving live laps).' %>
+            </div>
+            <span class="vt-debug__d" style="display:block;margin:.6rem 0 .25rem">
+              <%= lang === 'es' ? 'IPs/rangos permitidos (uno por línea; admite CIDR, p.ej. 192.168.1.50 o 192.168.1.0/24):' : 'Allowed IPs/ranges (one per line; CIDR ok, e.g. 192.168.1.50 or 192.168.1.0/24):' %>
+            </span>
+            <textarea name="access_allowlist" id="accessAllowlist" class="vt-inp" rows="4" style="width:100%;font-family:monospace"
+              placeholder="192.168.1.50&#10;192.168.1.0/24"><%= (function(){ try { return JSON.parse(cfg.access_allowlist || '[]').join('\n'); } catch (e) { return ''; } })() %></textarea>
+          </div>
+        </div>
+
         <details>
           <summary>
             <span class="ar"></span>
@@ -341,6 +363,16 @@ if (ifSw && ifInput) {
   ifSw.addEventListener('click', () => {
     ifSw.classList.toggle('is-on');
     ifInput.value = ifSw.classList.contains('is-on') ? '1' : '';
+  });
+}
+
+/* ── access restriction switch ── */
+const acSw = document.getElementById('accessSwitch');
+const acInput = document.getElementById('accessInput');
+if (acSw && acInput) {
+  acSw.addEventListener('click', () => {
+    acSw.classList.toggle('is-on');
+    acInput.value = acSw.classList.contains('is-on') ? '1' : '';
   });
 }
 

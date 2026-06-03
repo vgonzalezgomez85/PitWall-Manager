@@ -45,6 +45,17 @@ module.exports = {
   init(httpServer) {
     io = new Server(httpServer, { cors: { origin: '*' } });
 
+    // Gate de acceso: bloquea sockets de navegadores desde IPs no autorizadas;
+    // permite localhost, allowlist y la app móvil. (Infolap va por UDP, no
+    // pasa por aquí.) Fail-open si algo falla, para no tumbar el live.
+    io.use((socket, next) => {
+      try {
+        const { isSocketAllowed } = require('../middleware/accessControl');
+        if (isSocketAllowed(socket)) return next();
+        return next(new Error('forbidden'));
+      } catch { return next(); }
+    });
+
     io.on('connection', (socket) => {
       const remote = socket.handshake.address;
       const local  = isLocalAddress(remote);
