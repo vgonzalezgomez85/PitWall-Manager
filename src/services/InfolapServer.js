@@ -26,6 +26,7 @@ const CLIENT_TTL_MS = 30_000;  // drop clientes sin probe en este tiempo
 class InfolapServerClass {
   constructor() {
     this._socket   = null;
+    this._txSocket = null;   // socket de ENVÍO con puerto efímero (como el Gestor real)
     this._clients  = new Map();   // ip → { lastSeen: ts }
     this._pushInt  = null;
     this._lanesState = new Map(); // lane → { name, lastLapMs, firstReport }
@@ -60,17 +61,25 @@ class InfolapServerClass {
     sock.bind(PORT_LISTEN);
     this._socket = sock;
 
-    // Push timer: si hay clientes y hay datos, empuja cada 800ms.
-    this._pushInt = setInterval(() => this._tick(), 800);
+    // Socket de ENVÍO separado, en puerto efímero (fijo durante la sesión),
+    // igual que el "Gestor de Carreras" real de Tic Tac: las respuestas de
+    // discovery y el push NO salen del :4441 de escucha sino de este puerto.
+    // (Verificado en capturas: el Gestor real responde desde un puerto efímero,
+    // nunca desde 4441; la app parece engancharse a ese (IP,puerto).)
+    const tx = dgram.createSocket('udp4');
+    tx.on('error', (err) => console.error('[Infolap] tx socket error:', err.message));
+    tx.bind(() => { try { console.log(`[Infolap] tx desde puerto ${tx.address().port}`); } catch {} });
+    this._txSocket = tx;
 
-    // Hook a cruces para mantener `_lanesState.lastLapMs` actualizado
-    // independientemente de cuándo se haga push.
+    // Sin ciclo de reenvío: el push es EVENT-DRIVEN. Al recibir un cruce con
+    // tiempo, actualizamos el estado y empujamos ESE carril una sola vez.
     const SerialService = require('./SerialService');
     this._lapHandler = ({ lane, lapTimeMs }) => {
       if (lapTimeMs == null) return;
       const st = this._lanesState.get(lane) || {};
       st.lastLapMs = lapTimeMs;
       this._lanesState.set(lane, st);
+      this._pushLane(lane);   // 1 vuelta = 1 paquete (a todos los clientes)
     };
     SerialService.on('lane_crossing', this._lapHandler);
   }
@@ -85,6 +94,10 @@ class InfolapServerClass {
     if (this._socket) {
       try { this._socket.close(); } catch {}
       this._socket = null;
+    }
+    if (this._txSocket) {
+      try { this._txSocket.close(); } catch {}
+      this._txSocket = null;
     }
     this._clients.clear();
     this._lanesState.clear();
@@ -104,38 +117,34 @@ class InfolapServerClass {
   _onProbe(ip) {
     const wasNew = !this._clients.has(ip);
     this._clients.set(ip, { lastSeen: Date.now() });
-    if (wasNew) console.log(`[Infolap] new client ${ip}`);
 
-    // Respondemos a cada probe (la app real envía probes cada ~2s y espera
-    // discovery response cada vez — sirve también como ack/keepalive).
+    // Respondemos el discovery a cada probe.
     const entries = this._currentEntries();
     if (entries.length === 0) return;
     const resp = codec.buildDiscoveryResponse(entries);
-    this._socket.send(resp, 0, resp.length, PORT_PUSH, ip);
+    this._txSocket.send(resp, 0, resp.length, PORT_PUSH, ip);
+
+    // Cliente nuevo: le enviamos un primer-reporte de CADA carril (con su estado
+    // actual; centinela si aún sin vuelta) para que los registre. Solo a él.
+    if (wasNew) {
+      console.log(`[Infolap] new client ${ip}`);
+      for (const e of entries) this._pushLane(e.lane, ip);
+    }
   }
 
-  // ── Push de paquetes de estado ─────────────────────────────────────────────
-  _tick() {
-    if (!this._socket) return;
-
-    // Purga clientes viejos
-    const now = Date.now();
-    for (const [ip, info] of this._clients) {
-      if (now - info.lastSeen > CLIENT_TTL_MS) this._clients.delete(ip);
-    }
-    if (this._clients.size === 0) return;
+  // ── Push de UN carril ───────────────────────────────────────────────────────
+  // Event-driven: se envía un paquete de ese carril (a todos los clientes, o a
+  // uno solo si se pasa `onlyIp`). Se llama al recibir cada cruce → 1 vuelta =
+  // 1 paquete = la app la canta UNA vez. (Antes un ciclo reenviaba el mismo
+  // tiempo cada ~800ms → la app lo cantaba 2-3 veces.)
+  _pushLane(lane, onlyIp = null) {
+    if (!this._txSocket) return;
+    if (!onlyIp && this._clients.size === 0) return;
 
     const entries = this._currentEntries();
-    if (entries.length === 0) return;
+    const e = entries.find(x => x.lane === lane);
+    if (!e) return;   // ese carril no pertenece a la sesión actual
 
-    // Manga number (1-indexed) si hay sesión, si no 1
-    const mangaNum = this._currentMangaNumber();
-
-    // Próximo carril del ciclo
-    const e = entries[this._cycleIdx % entries.length];
-    this._cycleIdx++;
-
-    const lane = e.lane;
     const state = this._lanesState.get(lane) || {};
     const firstReport = state.lastLapMs == null;
 
@@ -145,26 +154,17 @@ class InfolapServerClass {
       name:        e.name,
       lapMs:       state.lastLapMs ?? null,
       firstReport,
-      mangaNum,
+      mangaNum:    this._currentMangaNumber(),
       altFlag:     this._altFlag,
     });
 
-    // Marcamos firstReport una vez aunque no llegue lap, para que el cliente
-    // sepa que ese carril existe. (Memory: "1"=primer reporte, "X"=normal.)
-    // Tras enviarlo con firstReport=true cambiamos a "no-first" hasta que
-    // haya un reset.
-    if (firstReport) {
-      state.firstReport = false;
-      this._lanesState.set(lane, state);
-    }
-
-    // Alterna F/space entre paquetes consecutivos
     this._altFlag = (this._altFlag === ' ') ? 'F' : ' ';
     this._packetSeq++;
     if (this._packetSeq > 999) this._packetSeq = 1;
 
-    for (const [ip] of this._clients) {
-      this._socket.send(pkt, 0, pkt.length, PORT_PUSH, ip, (err) => {
+    const targets = onlyIp ? [onlyIp] : [...this._clients.keys()];
+    for (const ip of targets) {
+      this._txSocket.send(pkt, 0, pkt.length, PORT_PUSH, ip, (err) => {
         if (err) console.warn(`[Infolap] push to ${ip} failed: ${err.message}`);
       });
     }
@@ -178,6 +178,7 @@ class InfolapServerClass {
   //   3. [] si no hay nada
   _currentEntries() {
     const TimingService = this._getTimingService();
+    // 1. Manga oficial CORRIENDO.
     if (TimingService?.session?.laneMap) {
       return Object.values(TimingService.session.laneMap).map((l, i) => ({
         lane: l.lane,
@@ -185,8 +186,21 @@ class InfolapServerClass {
         id:   String(i + 1).padStart(3, '0'),
       }));
     }
+    // 2. Manga ARMADA (pendiente del GO): permite que el móvil conecte y elija
+    //    carril/equipo ANTES de dar el GO.
+    const pend = TimingService?._pendingSetup;
+    if (pend?.lanes?.length) {
+      return pend.lanes
+        .filter(ml => !ml.is_rest)
+        .map((ml, i) => ({
+          lane: ml.lane,
+          name: ml.team_name || ml.driver_name || `Carril ${ml.lane}`,
+          id:   String(i + 1).padStart(3, '0'),
+        }));
+    }
+    // 3. Training ACTIVO o en STANDBY (preparado, esperando GO).
     const TrainingService = require('./TrainingService');
-    if (TrainingService.isActive) {
+    if (TrainingService.isReady) {
       return TrainingService.getLanes().map((l, i) => ({
         lane: l.lane,
         name: `Carril ${l.lane}`,
