@@ -143,6 +143,26 @@ const healthCls = allOk ? '' : (stuck.length > 0 || !link.connected ? 'is-bad' :
       <% } %>
     </div>
 
+    <!-- CONEXIONES -->
+    <div class="vt-card">
+      <div class="vt-card-h">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9.5" r="2.3"/><path d="M3 20v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1"/><path d="M16 14a4 4 0 0 1 5 4v1"/></svg>
+        Conexiones <span class="vt-note" style="font-weight:400">(no cuenta localhost)</span>
+      </div>
+      <div class="vt-row">
+        <div class="vt-row__k">🌐 Web (navegadores)</div>
+        <div class="vt-row__v"><span class="vt-badge is-neutral"><span class="vt-badge__d"></span> <span id="conn-web"><%= connections.web %></span></span></div>
+      </div>
+      <div class="vt-row">
+        <div class="vt-row__k">📱 App móvil</div>
+        <div class="vt-row__v"><span class="vt-badge is-neutral"><span class="vt-badge__d"></span> <span id="conn-mobile"><%= connections.mobile %></span></span></div>
+      </div>
+      <div class="vt-row">
+        <div class="vt-row__k">📡 Infolap (móvil legacy)</div>
+        <div class="vt-row__v"><span class="vt-badge is-neutral"><span class="vt-badge__d"></span> <span id="conn-infolap"><%= connections.infolap %></span></span></div>
+      </div>
+    </div>
+
     <!-- SERIAL -->
     <div class="vt-card">
       <div class="vt-card-h">
@@ -232,5 +252,17 @@ const healthCls = allOk ? '' : (stuck.length > 0 || !link.connected ? 'is-bad' :
 
   </div>
 </div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  // Actualización en vivo de las cuentas de conexiones (excluye localhost).
+  (function () {
+    const s = io();
+    s.on('connections', (c) => {
+      const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+      set('conn-web', c.web); set('conn-mobile', c.mobile); set('conn-infolap', c.infolap);
+    });
+  })();
+</script>
 
 <%- include('../partials/footer') %>
