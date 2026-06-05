@@ -844,6 +844,26 @@ class TimingServiceClass {
       r.raceAvgLapMs = totalCount > 0 ? Math.round((priorSum + currSum) / totalCount) : null;
     });
 
+    // Tiempo TOTAL acumulado de carrera por ENTIDAD (equipo/piloto), para el
+    // desempate "por coma": a igualdad de vueltas, va delante quien las hizo en
+    // menos tiempo. = tiempo en mangas anteriores (por entidad, sobrevive a la
+    // rotación de carriles) + suma de la manga actual.
+    const priorTimeRows = db.prepare(`
+      SELECT CASE WHEN team_id IS NOT NULL THEN 't'||team_id ELSE 'd'||driver_id END AS ekey,
+             SUM(lap_time_ms) AS sum_ms
+      FROM laps
+      WHERE race_id = ? AND manga_id != ? AND is_ghost = 0
+      GROUP BY ekey
+    `).all(race.id, manga.id);
+    const priorTimeByEntity = {};
+    priorTimeRows.forEach(p => { priorTimeByEntity[p.ekey] = p.sum_ms || 0; });
+    rows.forEach(r => {
+      const ld = laneMap[r.lane];
+      const ekey = ld?.teamId ? 't' + ld.teamId : (ld?.driverId ? 'd' + ld.driverId : null);
+      const priorTime = ekey ? (priorTimeByEntity[ekey] || 0) : 0;
+      r.totalTimeMs = priorTime + (ld?.lapsMsSum || 0);
+    });
+
     return {
       mangaId:      manga.id,
       raceId:       race.id,

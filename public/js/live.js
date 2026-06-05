@@ -685,14 +685,16 @@ function sortCards(rows) {
     prevLapCount: l.prevLapCount || 0,
     bestLapMs:    l.bestLapMs ?? null,
     avgLapMs:     l.avgLapMs ?? null,
+    totalTimeMs:  l.totalTimeMs ?? null,
   }));
 
   const totalOf = r => r.isRest ? (r.prevLapCount || 0) : getTotalLaps(r.lane, r.lapCount);
   const cardKey = r => r.isRest ? r.cardId : r.lane;
 
-  // Sort by total race laps desc, then best lap asc (activos + descansos juntos)
+  // Orden por vueltas totales desc; a igualdad de vueltas, desempate "por coma":
+  // va delante quien hizo esas vueltas en menos tiempo total acumulado.
   const sorted = [...rows.filter(r => !r.isRest), ...restRows]
-    .sort((a, b) => totalOf(b) - totalOf(a) || (a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity));
+    .sort((a, b) => totalOf(b) - totalOf(a) || (a.totalTimeMs ?? Infinity) - (b.totalTimeMs ?? Infinity));
 
   const BIG = 1e9;
   const scoreOf = r => totalOf(r) * BIG - (r.avgLapMs ?? BIG);
@@ -744,13 +746,7 @@ function sortCards(rows) {
   });
 
   prevLaneGap = {};
-  sorted.forEach(r => { prevLaneGap[r.lane] = { above: gapAbove[r.lane], below: gapBelow[r.lane] }; });
-
-  // Rest cards go to the end (keep their relative order: restPos 1..N)
-  RACE_DATA.lanes.filter(l => l.isRest).forEach(l => {
-    const card = document.getElementById(`card-${l.cardId || l.lane}`);
-    if (card) card.style.order = 999 + (l.restPos || 0);
-  });
+  sorted.forEach(r => { const k = cardKey(r); prevLaneGap[k] = { above: gapAbove[k], below: gapBelow[k] }; });
 }
 
 // Tracks previous gap (in total laps) from each lane to the driver ahead
