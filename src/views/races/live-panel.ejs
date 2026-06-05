@@ -135,10 +135,10 @@
           <th><%= lang === 'es' ? 'Participante' : 'Participant' %></th>
           <th class="pt-right" title="<%= lang === 'es' ? 'Vueltas proyectadas al final de la carrera (líder) o gap al líder' : 'Projected total laps (leader) or gap to leader' %>"><%= lang === 'es' ? 'V. Proy.' : 'Proj.' %></th>
           <th class="pt-right"><%= lang === 'es' ? 'Total' : 'Total' %></th>
+          <th class="pt-right" title="<%= lang === 'es' ? 'Vueltas proyectadas respecto al de delante' : 'Projected laps behind the car ahead' %>"><%= lang === 'es' ? 'Gap V' : 'Gap L' %></th>
           <th class="pt-right"><%= lang === 'es' ? 'Media' : 'Avg' %></th>
           <th class="pt-right" title="<%= lang === 'es' ? 'Media que necesitas en lo que queda de carrera para alcanzar al de delante (— = inalcanzable con el tiempo restante)' : 'Average pace needed for the rest of the race to catch the car ahead (— = unreachable in the time left)' %>"><%= lang === 'es' ? 'P/Subir' : 'To pass' %></th>
           <th title="<%= lang === 'es' ? 'Tendencia' : 'Trend' %>">↕</th>
-          <th class="pt-right" title="<%= lang === 'es' ? 'Vueltas proyectadas respecto al de delante' : 'Projected laps behind the car ahead' %>"><%= lang === 'es' ? 'Gap V' : 'Gap L' %></th>
         </tr>
       </thead>
       <tbody id="panelBody"></tbody>
@@ -194,6 +194,7 @@
   <script>
     function formatMs(ms) {
       if (ms == null) return '—';
+      ms = Math.round(ms);             // sin esto, ms%1000 sobre un float (p.ej. P/Subir) arrastra basura de coma flotante; 3 decimales = ms enteros
       const totalSec = Math.floor(ms / 1000);
       const millis   = ms % 1000;
       const secs = totalSec % 60;
@@ -469,13 +470,13 @@
                                                              : fmtLaps1(r.projectedTotalRaw) + 'v'))
           }</span></td>
           <td class="pt-right"><span class="pt-ontrack">${r.total}</span></td>
+          <td class="pt-right"><span class="pt-gap">${r._gapV  > 0 ? 'a ' + fmtLaps1(r._gapV) + 'v' : '—'}</span></td>
           <td class="pt-right"><span class="pt-avg">${formatMs(r.avgLapMs)}</span></td>
           <td class="pt-right"><span class="pt-tocatch">${r._avgToCatch != null ? formatMs(r._avgToCatch) : '—'}</span></td>
           <td class="pt-arrows">
             <span class="pt-arrow-up${upCls}">${upCh}</span>
             <span class="pt-arrow-down${downCls}">${downCh}</span>
           </td>
-          <td class="pt-right"><span class="pt-gap">${r._gapV  > 0 ? 'a ' + fmtLaps1(r._gapV) + 'v' : '—'}</span></td>
         </tr>`;
       }).join('');
       applyPausedRows();

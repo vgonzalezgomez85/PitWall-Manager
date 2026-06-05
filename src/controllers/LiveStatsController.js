@@ -129,10 +129,40 @@ class LiveStatsController {
       ORDER BY entity_name COLLATE NOCASE ASC
     `).all(race.id);
 
+    // ── Matriz por carril ────────────────────────────────────────────────
+    // Stats de cada entidad EN cada carril a lo largo de TODA la carrera, para
+    // la comparativa por carril. clave (`tipo_id`) → carril → { stats }.
+    // best = excluye salidas/warmup/1ª vuelta (igual que raceBestByLane).
+    // avgAll = media sucia (con salidas, sin warmup); avgClean = sin salidas.
+    const laneStatRows = db.prepare(`
+      SELECT
+        CASE WHEN l.team_id IS NOT NULL THEN 'team_'||l.team_id ELSE 'driver_'||l.driver_id END AS key,
+        l.lane,
+        COUNT(*) AS laps,
+        MIN(CASE WHEN l.is_exit=0 AND l.is_warmup=0 AND l.lap_number>1 THEN l.lap_time_ms END) AS bestMs,
+        AVG(CASE WHEN l.is_warmup=0 THEN l.lap_time_ms END)                    AS avgAllMs,
+        AVG(CASE WHEN l.is_warmup=0 AND l.is_exit=0 THEN l.lap_time_ms END)    AS avgCleanMs,
+        SUM(l.is_exit) AS exits
+      FROM laps l
+      WHERE l.race_id = ? AND l.is_ghost = 0 AND (l.team_id IS NOT NULL OR l.driver_id IS NOT NULL)
+      GROUP BY key, l.lane
+    `).all(race.id);
+    const laneMatrix = {};
+    const laneSet = new Set();
+    laneStatRows.forEach(r => {
+      if (r.lane == null || r.lane <= 0) return;
+      laneSet.add(r.lane);
+      (laneMatrix[r.key] = laneMatrix[r.key] || {})[r.lane] = {
+        laps: r.laps, bestMs: r.bestMs, avgAllMs: r.avgAllMs, avgCleanMs: r.avgCleanMs, exits: r.exits || 0,
+      };
+    });
+    const lanesList = [...laneSet].sort((a, b) => a - b);
+
     res.render('live-stats/show', {
       t: req.t, lang, race, tandas, allMangas, entityRows,
       selectedMangaId,
       isActive: TimingService.activeMangaId === selectedMangaId,
+      laneMatrix, lanesList,
     });
   }
 

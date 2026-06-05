@@ -105,17 +105,10 @@
         onclick="window.open('/races/<%= race.id %>/mangas/<%= manga.id %>/panel/standings','_blank','width=620,height=780')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M6 21v-7M11 21V10M16 21v-5M21 21V5"/></svg>
       </button>
-      <button class="lbtn lbtn--back lbtn--icon" title="<%= lang === 'es' ? 'Vueltas rápidas por pista (ventana)' : 'Fastest laps by lane (window)' %>"
-        onclick="window.open('/races/<%= race.id %>/mangas/<%= manga.id %>/panel/fastest','_blank','width=480,height=560')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>
-      </button>
       <button class="lbtn lbtn--back lbtn--icon" title="<%= lang === 'es' ? 'Minimapa del circuito (ventana)' : 'Track minimap (window)' %>"
         onclick="window.open('/races/<%= race.id %>/mangas/<%= manga.id %>/panel/track','_blank','width=900,height=600')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3L3 5v16l6-2 6 2 6-2V3l-6 2-6-2zM9 3v16M15 5v16"/></svg>
       </button>
-      <a href="/races/<%= race.id %>/mangas/<%= manga.id %>/tv" target="_blank" class="lbtn lbtn--back lbtn--icon" title="<%= lang === 'es' ? 'Pantalla TV' : 'TV display' %>">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-      </a>
       <% if (race.format === 'team' && totalMangas > 1 && license.tier === 'pro') { %>
         <a href="/races/<%= race.id %>/lemans" target="_blank" class="lbtn lbtn--back lbtn--icon" title="<%= lang === 'es' ? 'Clasificación Le Mans' : 'Le Mans standings' %>">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h12l-2 4 2 4H5"/></svg>
