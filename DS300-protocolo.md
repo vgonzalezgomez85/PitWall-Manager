@@ -15,7 +15,7 @@ Documento técnico basado en:
 | Velocidad | 56 000 baud (fallback: 57 600 en puertos virtuales) |
 | Formato | 8N1 |
 | Conector | USB-Serial (adaptador CH340 u similar) |
-| Delimitación de tramas | Silencio > 75 ms entre bytes → nueva trama |
+| Delimitación de tramas | Silencio > 75 ms entre bytes → nueva trama. **Además** se re-separan ráfagas: ver "De-merge de ráfagas" más abajo |
 
 ---
 
@@ -246,13 +246,24 @@ El parsing de tramas es idéntico para todos los circuitos; el offset se añade 
 
 ---
 
+## De-merge de ráfagas (`_processFrame`)
+
+El DS-300 emite tramas de **21 bytes** delimitadas por `0xE0` (inicio) y `0xEB` (fin). Cuando varios coches cruzan casi a la vez (típico en el GO o en pista corta), el DS manda varias tramas **seguidas**: a 56 000 baud cada trama tarda ~3,6 ms, así que 6 tramas (~22 ms) llegan dentro de la ventana de `FRAME_GAP_MS` (75 ms) y `_onData` las concatena en **un solo buffer**.
+
+La implementación antigua solo leía el **primer cruce** de ese buffer y perdía el resto (causa raíz de una pérdida medida de ~7-8 % de vueltas). Desde el fix, `_processFrame` hace **de-merge**: si el buffer es múltiplo de `DS_FRAME_LEN` (21) y cada sub-trama está bien formada (`0xE0`…`0xEB`), lo parte en tramas de 21 bytes y procesa **cada cruce**. Si no divide limpio, cae al comportamiento anterior (no rompe fragmentación).
+
+> El contador de secuencia **B1** es consecutivo entre las tramas de una ráfaga, lo que confirma que el DS sí las envía todas — solo había que separarlas. Sirve además para detectar pérdida real a nivel de protocolo (saltos en B1).
+
+---
+
 ## Filtros aplicados por `SerialService.js`
 
 | Filtro | Valor | Motivo |
 |--------|-------|--------|
 | `MIN_CROSSING_MS` | 500 ms | Descarta rebotes / coches detenidos sobre el sensor |
 | `MAX_LAP_MS` | 240 000 ms (4 min) | Descarta coche parado; resetea referencia sin registrar vuelta |
-| `FRAME_GAP_MS` | 75 ms | Silencio entre bytes que delimita una trama |
+| `FRAME_GAP_MS` | 75 ms | Silencio entre bytes que separa lecturas. **No** basta por sí solo: las ráfagas se re-separan por estructura (ver "De-merge de ráfagas") |
+| `DS_FRAME_LEN` | 21 bytes | Longitud fija de trama (`0xE0`…`0xEB`); base del de-merge de ráfagas |
 
 ---
 

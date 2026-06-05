@@ -21,6 +21,7 @@ const REPLAY_FILE = path.join(__dirname, '../data/RegistroCarrera.txt');
 // DS-300 unit emits frames with different timing.
 const FRAME_GAP_MS_DEFAULT = 75;
 let   FRAME_GAP_MS         = FRAME_GAP_MS_DEFAULT;
+const DS_FRAME_LEN = 21;       // un frame DS-300 = 21 bytes fijos (0xe0 … 0xeb)
 const MIN_CROSSING_MS = 500;   // minimum ms between two crossings on the same lane
 const MAX_LAP_MS      = 240000; // elapsed > 240s → car stopped; reset ref, skip recording
 
@@ -296,6 +297,29 @@ class CircuitConnection {
 
   _processFrame(frame, ts) {
     if (frame.length < 2) return;
+
+    // ── De-merge de ráfagas ─────────────────────────────────────────────────
+    // El DS-300 emite frames de 21 bytes (0xe0 … 0xeb). Cuando varios carriles
+    // cruzan casi a la vez (GO, pista corta) el DS los manda seguidos y, como
+    // llegan a < FRAME_GAP_MS unos de otros, _onData los concatena en un solo
+    // buffer. Antes solo se leía el PRIMER cruce y se perdía el resto (root
+    // cause de la pérdida de vueltas). Aquí re-separamos el buffer en frames de
+    // 21 bytes y procesamos cada uno. Solo si divide limpio en frames bien
+    // formados; si no, lo tratamos como antes para no romper fragmentación.
+    if (frame.length > DS_FRAME_LEN && frame.length % DS_FRAME_LEN === 0) {
+      const n = frame.length / DS_FRAME_LEN;
+      let wellFormed = true;
+      for (let i = 0; i < n && wellFormed; i++) {
+        const off = i * DS_FRAME_LEN;
+        if (frame[off] !== 0xe0 || frame[off + DS_FRAME_LEN - 1] !== 0xeb) wellFormed = false;
+      }
+      if (wellFormed) {
+        for (let i = 0; i < n; i++) {
+          this._processFrame(frame.slice(i * DS_FRAME_LEN, (i + 1) * DS_FRAME_LEN), ts);
+        }
+        return;
+      }
+    }
 
     if (DebugLogger.isEnabled()) {
       const hex = Array.from(frame).map(b => b.toString(16).padStart(2, '0')).join(' ');

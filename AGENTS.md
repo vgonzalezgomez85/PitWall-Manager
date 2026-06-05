@@ -64,7 +64,7 @@ database/                 — slotime.db (SQLite, no commitear)
 ## Protocolo DS-300
 
 - **Puerto serie**: 56000 baud, 8N1
-- **Frames**: ~19 bytes separados por silencio > 75ms (`FRAME_GAP_MS`)
+- **Frames**: 21 bytes fijos, `0xE0`…`0xEB`, separados por silencio > 75ms (`FRAME_GAP_MS`). En ráfaga (varios cruces juntos) llegan concatenados; `_processFrame` los **re-separa** en tramas de 21 bytes (de-merge) para no perder cruces. Ver `DS300-protocolo.md`
 - **Lane**: byte[10] — bitmask no secuencial: `0x80→1, 0x40→2, 0x20→3, 0x10→4, 0x08→5, 0x04→6, 0x02→7, 0x01→8`
 - **Tiempo de vuelta**: bytes[14-17] BCD (`ds300Byte()`): minutos, segundos, centésimas, diezmilésimas. Si algún nibble es A-F = primer cruce (sin tiempo válido)
 - **Señales de carrera** (emitidas por `SerialService` como eventos internos):
@@ -105,9 +105,9 @@ Siguiente manga pendiente se activa automáticamente
 |---|---|
 | `races` | Carrera: tipo (club/championship), formato (individual/team), duración de manga, estado |
 | `tandas` | Grupo de mangas dentro de una carrera |
-| `mangas` | Una manga individual. Estados: pending → active → finished |
+| `mangas` | Una manga individual. Estados: pending → active → finished. `actual_duration_ms` = duración real que mandó el DS al GO (la usa la estimada) |
 | `manga_lanes` | Asignación carril↔equipo/piloto por manga. `lane=0, is_rest=1` = descanso |
-| `laps` | Vueltas registradas. `is_ghost=1` filtra vueltas inválidas (< min_lap_ms) |
+| `laps` | Vueltas registradas. `is_ghost=1` = inválida (< min_lap_ms); `is_warmup=1` = 1ª vuelta (no cuenta para mejor vuelta); `is_exit`/`is_pit_stop` = salida/parada |
 | `teams` / `drivers` | Entidades de competición |
 | `settings` | Clave-valor persistente (puerto serie, carriles, etc.) |
 | `circuits` | Circuitos con `lanes_count` y `min_lap_ms` |
@@ -120,12 +120,16 @@ Siguiente manga pendiente se activa automáticamente
 - Singleton. Emite eventos internos con `EventEmitter`.
 - En modo simulación (sin puerto serie configurado) usa `RegistroCarrera.txt` o genera cruces aleatorios.
 - `getRawLog()` devuelve los últimos bytes recibidos (útil para debug).
+- **De-merge de ráfagas**: las tramas son de 21 bytes (`0xE0`…`0xEB`). Si varias llegan juntas (<`FRAME_GAP_MS`) se concatenan en un buffer; `_processFrame` lo re-separa en tramas de 21 bytes y procesa cada cruce. Sin esto se perdía ~7-8% de vueltas. Ver `DS300-protocolo.md` → "De-merge de ráfagas".
 
 ### TimingService
 - Singleton. `isRunning` = hay manga activa.
 - `_pendingSetup` = manga registrada para el próximo GO del DS-300. Si es null, `app.js` busca la primera manga pending de cualquier carrera activa.
 - **No llamar a `startManga` directamente desde controladores** salvo en el flujo manual (`SessionController.start`).
 - `stopManga(true)` = fin normal (guarda). `cancelManga()` = cancela sin guardar.
+- **1ª vuelta = warmup**: la primera vuelta real de cada carril se marca `is_warmup=1` y NO compite por mejor vuelta (ni en vivo ni en `Lap.raceBestByLane`, que filtra `lap_number > 1`). Evita que una salida desde parado / primer cruce sea "vuelta rápida".
+- **Duración de manga del DS**: `startManga` persiste la duración real del GO en `mangas.actual_duration_ms`. La clasificación estimada (`_getEffectiveMangaDurationMs`) la usa para no caer al placeholder `manga_duration_minutes`.
+- **Proyección (clasificación estimada)**: `proyección = vueltas_reales + (tiempo restante de su manga / media) + (mangas futuras × duración / media)`. Anclada en lo real → converge al final; quien terminó sus mangas proyecta su total real. Se calcula en cliente (`live.js renderProjected`, `live-panel.ejs`).
 
 ### TrainingService
 - También escucha `race_go` y `race_started`.

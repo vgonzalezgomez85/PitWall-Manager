@@ -74,7 +74,9 @@ class Lap {
       WITH best_per_lane AS (
         SELECT lane, MIN(lap_time_ms) AS bestLapMs
         FROM laps
-        WHERE race_id = ? AND is_ghost = 0 AND is_exit = 0 AND is_warmup = 0 AND lap_number > 0
+        -- lap_number > 1: la 1ª vuelta de cada manga (salida desde parado /
+        -- primera referencia del DS) NO puede contar como vuelta rápida.
+        WHERE race_id = ? AND is_ghost = 0 AND is_exit = 0 AND is_warmup = 0 AND lap_number > 1
         GROUP BY lane
       )
       SELECT b.lane,
@@ -83,7 +85,7 @@ class Lap {
         CASE WHEN t.id IS NOT NULL THEN 'team' ELSE 'driver' END AS entityType
       FROM best_per_lane b
       JOIN laps l ON l.race_id = ? AND l.lane = b.lane AND l.lap_time_ms = b.bestLapMs
-                 AND l.is_ghost = 0 AND l.is_exit = 0 AND l.is_warmup = 0 AND l.lap_number > 0
+                 AND l.is_ghost = 0 AND l.is_exit = 0 AND l.is_warmup = 0 AND l.lap_number > 1
       LEFT JOIN teams   t ON t.id = l.team_id
       LEFT JOIN drivers d ON d.id = l.driver_id
       GROUP BY b.lane

@@ -127,6 +127,18 @@ class TimingServiceClass {
 
     this.session = { manga, race, lanes, teams, drivers, laneMap, startTime, durationMs: sessionDurationMs, status: 'running', circuits, laneToCircuit };
 
+    // Persistir la duración REAL que mandó el DS al arrancar (GO). Así la
+    // clasificación estimada la usa también en mangas ya terminadas o tras
+    // recargar, en vez del placeholder manga_duration_minutes (p.ej. 99 min),
+    // que inflaría la proyección ~10×. Solo si el DS dio un valor real.
+    if (durationMs && durationMs > 0) {
+      try {
+        require('../config/database')
+          .prepare('UPDATE mangas SET actual_duration_ms = ? WHERE id = ?')
+          .run(durationMs, manga.id);
+      } catch (err) { console.error('[TimingService] persist actual_duration_ms error:', err.message); }
+    }
+
     const activeLanes = Object.keys(laneMap).map(Number);
     if (SerialService.isSimulating && activeLanes.length > 0) {
       SerialService.startSimulation(activeLanes.length);
