@@ -119,6 +119,28 @@
     </div>
   </section>
 
+  <!-- ── Comparativa por carril ──────────────────────────────────────────── -->
+  <% if (typeof lanesList !== 'undefined' && lanesList.length) { %>
+  <section class="ls-section" id="lsLaneSection">
+    <h2 class="ls-section__title">🛣️ <%= lang === 'es' ? 'Comparativa por carril' : 'Per-lane comparison' %></h2>
+    <div class="ls-bar__controls" style="margin-bottom:.8rem; display:flex; gap:.5rem; flex-wrap:wrap">
+      <select id="lsLane" class="ls-select" title="<%= lang === 'es' ? 'Carril' : 'Lane' %>">
+        <option value="">— <%= lang === 'es' ? 'Carril' : 'Lane' %> —</option>
+        <% lanesList.forEach(function (ln) { %><option value="<%= ln %>"><%= (lang === 'es' ? 'Carril ' : 'Lane ') + ln %></option><% }); %>
+      </select>
+      <% for (var i = 1; i <= 3; i++) { %>
+        <select id="lsLaneE<%= i %>" class="ls-select" title="<%= (lang === 'es' ? 'Equipo/piloto ' : 'Team/driver ') + i %>">
+          <option value="">— <%= (lang === 'es' ? 'Equipo/piloto ' : 'Team/driver ') + i %> —</option>
+          <% entityRows.forEach(function (e) { %><option value="<%= e.entity_type %>_<%= e.entity_id %>"><%= e.entity_name %></option><% }); %>
+        </select>
+      <% } %>
+    </div>
+    <div class="ls-cmp" id="lsLaneBox" hidden>
+      <div class="ls-cmp-table-wrap"><table class="ls-cmp2" id="lsLaneTable"></table></div>
+    </div>
+  </section>
+  <% } %>
+
   <a href="/race-stats" class="ls-back">← <%= lang === 'es' ? 'Cambiar carrera' : 'Change race' %></a>
 </div>
 
@@ -422,6 +444,37 @@
       renderComparison(latestData);
     }
   });
+
+  // ── Comparativa por carril ───────────────────────────────────────────────
+  // Datos precalculados en servidor: clave (`tipo_id`) → carril → stats de esa
+  // entidad EN ese carril a lo largo de toda la carrera. "—" si no hay datos.
+  const LANE_MATRIX  = <%- JSON.stringify(typeof laneMatrix !== 'undefined' ? laneMatrix : {}) %>;
+  const ENTITY_NAMES = <%- JSON.stringify(entityRows.reduce(function (o, e) { o[e.entity_type + '_' + e.entity_id] = e.entity_name; return o; }, {})) %>;
+
+  function renderLaneCompare() {
+    if (!$('lsLaneBox')) return;
+    const lane = $('lsLane').value;
+    const keys = ['lsLaneE1', 'lsLaneE2', 'lsLaneE3'].map(id => $(id).value).filter(Boolean);
+    if (!lane || keys.length === 0) { $('lsLaneBox').hidden = true; return; }
+    $('lsLaneBox').hidden = false;
+    const avgKey = ($('lsIncludeOutliers') && $('lsIncludeOutliers').checked) ? 'avgAllMs' : 'avgCleanMs';
+    const cls  = i => i === 0 ? 'is-me' : 'is-rv' + i;
+    const cols = keys.map(k => ({ name: ENTITY_NAMES[k] || k, d: (LANE_MATRIX[k] || {})[lane] || null }));
+    let html = '<thead><tr><th></th>' + cols.map((c, i) =>
+      `<th class="${cls(i)}"><div class="ls-cmp2__name">${c.name}</div></th>`).join('') + '</tr></thead><tbody>';
+    const row = (label, fn) => `<tr><td class="ls-cmp2__lbl">${label}</td>` +
+      cols.map((c, i) => `<td class="${cls(i)}">${c.d ? fn(c.d) : '—'}</td>`).join('') + '</tr>';
+    html += row('<%= lang === "es" ? "Mejor" : "Best" %>',   d => fmtMs(d.bestMs));
+    html += row('<%= lang === "es" ? "Media" : "Avg" %>',    d => fmtMs(d[avgKey]));
+    html += row('<%= lang === "es" ? "Vueltas" : "Laps" %>', d => d.laps);
+    html += row('<%= lang === "es" ? "Salidas" : "Exits" %>', d => d.exits);
+    html += '</tbody>';
+    $('lsLaneTable').innerHTML = html;
+  }
+  ['lsLane', 'lsLaneE1', 'lsLaneE2', 'lsLaneE3'].forEach(id => {
+    const el = $(id); if (el) el.addEventListener('change', renderLaneCompare);
+  });
+  if ($('lsIncludeOutliers')) $('lsIncludeOutliers').addEventListener('change', renderLaneCompare);
 
   // ── Initial + socket live updates ─────────────────────────────────────
   fetchData();

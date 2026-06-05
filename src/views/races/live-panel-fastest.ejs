@@ -115,6 +115,7 @@
   <script>
     function formatMs(ms) {
       if (ms == null) return '—';
+      ms = Math.round(ms);             // los tiempos del DS llegan en float; sin redondear, ms%1000 arrastra basura de coma flotante. 3 decimales = ms enteros.
       const totalSec = Math.floor(ms / 1000);
       const millis   = ms % 1000;
       const secs = totalSec % 60;

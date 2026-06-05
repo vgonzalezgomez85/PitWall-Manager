@@ -1,12 +1,15 @@
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function formatMs(ms) {
   if (ms == null) return '—';
-  ms = Math.round(ms);                 // los tiempos del DS llegan en float (p.ej. 11839.79999…); sin redondear, ms%1000 arrastra basura de coma flotante a la pantalla
-  const totalSec = Math.floor(ms / 1000);
-  const millis   = ms % 1000;
+  // 2 decimales (centésimas) TRUNCANDO, sin redondear (12.069s → 12.06).
+  // Truncamos el total de centésimas; también evita la basura de coma flotante
+  // (los tiempos del DS llegan en float).
+  const cs = Math.floor(ms / 10);            // centésimas totales (truncadas)
+  const totalSec   = Math.floor(cs / 100);
+  const hundredths = cs % 100;
   const secs = totalSec % 60;
   const mins = Math.floor(totalSec / 60);
-  return `${mins > 0 ? mins + ':' : ''}${String(secs).padStart(mins > 0 ? 2 : 1, '0')}.${String(millis).padStart(3, '0')}`;
+  return `${mins > 0 ? mins + ':' : ''}${String(secs).padStart(mins > 0 ? 2 : 1, '0')}.${String(hundredths).padStart(2, '0')}`;
 }
 
 

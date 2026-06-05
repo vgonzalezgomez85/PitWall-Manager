@@ -34,8 +34,19 @@ class LapCorrectionController {
     const laneGroups  = Object.values(laneMap).sort((a, b) => a.info.lane - b.info.lane);
     const activeLanes = lanes.filter(l => !l.is_rest).map(l => l.lane).sort((a, b) => a - b);
 
+    // Lista de mangas de la carrera para el selector (poder corregir una manga
+    // pasada sin salir de la vista). Solo las que tienen datos: activas o
+    // finalizadas (las 'pending' aún no tienen vueltas que corregir).
+    const mangaOptions = [];
+    Tanda.findByRace(race.id).forEach(tnd => {
+      Manga.findByTanda(tnd.id).forEach(m => {
+        if (m.status === 'pending') return;
+        mangaOptions.push({ id: m.id, number: m.number, tandaNumber: tnd.number, status: m.status });
+      });
+    });
+
     res.render('races/lap-corrections', {
-      t: req.t, race, manga, tanda, laneGroups, activeLanes, LANE_COLORS
+      t: req.t, race, manga, tanda, laneGroups, activeLanes, LANE_COLORS, mangaOptions
     });
   }
 
