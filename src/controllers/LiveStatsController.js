@@ -235,37 +235,8 @@ class LiveStatsController {
       e.mangasRaced     = rw.mangas_raced || 0;
     });
 
-    // ── Comparativa EN VIVO (sin estimaciones de futuro) ────────────────────
-    // Compara dos participantes con sus datos ACTUALES: gap en vueltas, ritmo,
-    // mejor/media/última vuelta. Las proyecciones de adelantamiento se calculan
-    // en otra vista; aquí solo el presente.
-    let comparison = null;
-    const myKey    = req.query.entity      || null;
-    const rivalKey = req.query.compareWith || null;
-    if (myKey && rivalKey && myKey !== rivalKey) {
-      const me    = entities.find(e => e.key === myKey);
-      const rival = entities.find(e => e.key === rivalKey);
-      if (me && rival) {
-        const clean    = req.query.usePaceClean === '1';
-        const myAvg    = clean ? me.avgClean    : me.avgAll;
-        const rivalAvg = clean ? rival.avgClean : rival.avgAll;
-        const diff = (a, b) => (a != null && b != null) ? a - b : null;
-        comparison = {
-          myKey, rivalKey,
-          myName: me.entityName,    rivalName: rival.entityName,
-          myPos: me.position,       rivalPos: rival.position,
-          myLaps: me.totalLaps,     rivalLaps: rival.totalLaps,
-          myBest: me.bestMs,        rivalBest: rival.bestMs,
-          myAvg,                    rivalAvg,
-          myLast: me.lastLapMs,     rivalLast: rival.lastLapMs,
-          gapLaps:     me.totalLaps     - rival.totalLaps,      // en esta manga
-          gapLapsRace: me.raceTotalLaps - rival.raceTotalLaps,  // en la carrera
-          paceDiffMs:  diff(myAvg, rivalAvg),       // <0 = yo más rápido/vuelta
-          bestDiffMs:  diff(me.bestMs, rival.bestMs),
-        };
-      }
-    }
-
+    // La comparativa en vivo (tú vs 1-2 rivales) se calcula en CLIENTE a partir
+    // de `entities` (cada una trae lane, position, totalLaps, best/avg, última).
     res.json({
       raceId: race.id,
       mangaId: manga.id,
@@ -277,7 +248,6 @@ class LiveStatsController {
       remainingMangas,
       isActive,
       entities,
-      comparison,
     });
   }
 }

@@ -81,27 +81,19 @@
   <section class="ls-section" id="lsCmpSection" hidden>
     <h2 class="ls-section__title">⚔️ <%= lang === 'es' ? 'Comparativa en vivo' : 'Live comparison' %></h2>
     <div class="ls-bar__controls" style="margin-bottom:.8rem">
-      <select id="lsCompare" class="ls-select">
+      <select id="lsCompare1" class="ls-select" title="<%= lang === 'es' ? 'Rival 1' : 'Rival 1' %>">
         <option value=""><%= lang === 'es' ? '— Compárate con… —' : '— Compare with… —' %></option>
+      </select>
+      <select id="lsCompare2" class="ls-select" title="<%= lang === 'es' ? 'Rival 2 (opcional)' : 'Rival 2 (optional)' %>">
+        <option value=""><%= lang === 'es' ? '— y con… (opcional) —' : '— and with… (optional) —' %></option>
       </select>
       <button class="ls-btn" id="lsAuto" type="button"><%= lang === 'es' ? 'Mi rival más cercano' : 'My closest rival' %></button>
     </div>
     <div class="ls-cmp" id="lsCmpBox" hidden>
-      <div class="ls-cmp__head">
-        <span class="ls-cmp__name ls-cmp__name--me"    id="lsCmpMe">—</span>
-        <span class="ls-cmp__vs">vs</span>
-        <span class="ls-cmp__name ls-cmp__name--rival" id="lsCmpRival">—</span>
+      <div class="ls-cmp-table-wrap">
+        <table class="ls-cmp2" id="lsCmpTable"></table>
       </div>
-      <div class="ls-cmp__verdict" id="lsCmpVerdict">—</div>
-      <table class="ls-cmp__table">
-        <tbody>
-          <tr><td class="ls-cmp__me" id="lsCmpPosMe">—</td><th><%= lang === 'es' ? 'Posición' : 'Position' %></th><td class="ls-cmp__rv" id="lsCmpPosRv">—</td></tr>
-          <tr><td class="ls-cmp__me" id="lsCmpLapsMe">—</td><th><%= lang === 'es' ? 'Vueltas (manga)' : 'Laps (heat)' %></th><td class="ls-cmp__rv" id="lsCmpLapsRv">—</td></tr>
-          <tr><td class="ls-cmp__me" id="lsCmpBestMe">—</td><th><%= lang === 'es' ? 'Mejor' : 'Best' %></th><td class="ls-cmp__rv" id="lsCmpBestRv">—</td></tr>
-          <tr><td class="ls-cmp__me" id="lsCmpAvgMe">—</td><th><%= lang === 'es' ? 'Media' : 'Average' %></th><td class="ls-cmp__rv" id="lsCmpAvgRv">—</td></tr>
-          <tr><td class="ls-cmp__me" id="lsCmpLastMe">—</td><th><%= lang === 'es' ? 'Última' : 'Last' %></th><td class="ls-cmp__rv" id="lsCmpLastRv">—</td></tr>
-        </tbody>
-      </table>
+      <div class="ls-cmp__verdicts" id="lsCmpVerdicts"></div>
     </div>
   </section>
 
@@ -164,21 +156,27 @@
   .ls-sector__meta { color:#6e7681; font-size:.7rem }
 
   .ls-cmp { background:#161b22; border:1px solid #30363d; border-radius:10px; padding:.9rem 1rem }
-  .ls-cmp__head { display:flex; justify-content:space-between; align-items:center; gap:.7rem; font-size:1.05rem; margin-bottom:.5rem }
-  .ls-cmp__name { font-weight:700; flex:1 }
-  .ls-cmp__name--me { color:#58a6ff; text-align:left }
-  .ls-cmp__name--rival { color:#e6a817; text-align:right }
-  .ls-cmp__vs { color:#8b949e; font-size:.8rem }
-  .ls-cmp__verdict { text-align:center; font-size:1.05rem; font-weight:600; padding:.6rem; border-radius:8px; margin-bottom:.7rem }
-  .ls-cmp__verdict--good { background:rgba(46,160,67,.18); color:#3fb950 }
-  .ls-cmp__verdict--bad  { background:rgba(248,81,73,.16); color:#f85149 }
-  .ls-cmp__verdict--warn { background:rgba(187,128,9,.18); color:#e6a817 }
-  .ls-cmp__verdict--info { background:rgba(31,111,235,.16); color:#58a6ff }
-  .ls-cmp__table { width:100%; border-collapse:collapse; font-family:'Share Tech Mono', monospace }
-  .ls-cmp__table th { color:#8b949e; font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; text-align:center; font-weight:500; padding:.4rem .3rem; font-family:inherit; white-space:nowrap }
-  .ls-cmp__table td { font-size:1.15rem; font-weight:700; padding:.4rem .6rem; border-bottom:1px solid #21262d }
-  .ls-cmp__me { color:#58a6ff; text-align:left; width:38% }
-  .ls-cmp__rv { color:#e6a817; text-align:right; width:38% }
+  .ls-cmp-table-wrap { overflow-x:auto }
+  .ls-cmp2 { width:100%; border-collapse:collapse; font-family:'Share Tech Mono', monospace }
+  .ls-cmp2 th, .ls-cmp2 td { padding:.45rem .6rem; border-bottom:1px solid #21262d; text-align:center }
+  .ls-cmp2 thead th { vertical-align:bottom }
+  .ls-cmp2__lbl { color:#8b949e; font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; text-align:left; font-family:Saira, system-ui, sans-serif; font-weight:600; white-space:nowrap }
+  .ls-cmp2 td { font-size:1.15rem; font-weight:700; color:#c9d1d9 }
+  .ls-cmp2__name { font-size:.95rem; font-weight:700; font-family:Saira, system-ui, sans-serif }
+  .ls-cmp2__sub { font-size:.7rem; color:#6e7681; font-family:Saira, system-ui, sans-serif; margin-top:.1rem }
+  .ls-cmp2 .is-me    { color:#58a6ff }
+  .ls-cmp2 .is-rv1   { color:#e6a817 }
+  .ls-cmp2 .is-rv2   { color:#3fb950 }
+  .ls-cmp2 thead .is-me  { border-bottom:2px solid #58a6ff }
+  .ls-cmp2 thead .is-rv1 { border-bottom:2px solid #e6a817 }
+  .ls-cmp2 thead .is-rv2 { border-bottom:2px solid #3fb950 }
+  .ls-cmp__verdicts { display:flex; flex-direction:column; gap:.4rem; margin-top:.8rem }
+  .ls-cmp__chip { font-size:.92rem; padding:.5rem .7rem; border-radius:8px }
+  .ls-cmp__chip b { font-weight:700 }
+  .ls-cmp__chip--good { background:rgba(46,160,67,.16); color:#3fb950 }
+  .ls-cmp__chip--bad  { background:rgba(248,81,73,.15); color:#f85149 }
+  .ls-cmp__chip--warn { background:rgba(187,128,9,.16); color:#e6a817 }
+  .ls-cmp__chip--info { background:rgba(31,111,235,.15); color:#58a6ff }
 
   .ls-table-wrap { overflow-x:auto }
   .ls-table { width:100%; border-collapse:collapse; font-size:.92rem }
@@ -225,8 +223,6 @@
   async function fetchData() {
     const params = new URLSearchParams({ mangaId: MANGA_ID });
     if (myKey) params.append('entity', myKey);
-    const compareKey = $('lsCompare').value;
-    if (compareKey) params.append('compareWith', compareKey);
     params.append('usePaceClean', includeOutliers ? '0' : '1');
     try {
       const r = await fetch(`/races/${RACE_ID}/live-stats.json?` + params.toString());
@@ -261,14 +257,6 @@
         <td>${fmtSec(e.lostMs)} <span style="color:#6e7681">(≈${e.lostLapsEquiv}v)</span></td>
       </tr>
     `).join('');
-
-    // Compare select options
-    const sel = $('lsCompare');
-    const prevCompare = sel.value;
-    sel.innerHTML = '<option value="">— Compárate con… —</option>' +
-      data.entities.filter(e => e.key !== myKey)
-        .map(e => `<option value="${e.key}">P${e.position} · ${e.entityName}</option>`).join('');
-    if ([...sel.options].some(o => o.value === prevCompare)) sel.value = prevCompare;
 
     // Mi panel
     const me = data.entities.find(e => e.key === myKey);
@@ -308,50 +296,92 @@
     return (ms < 0 ? '−' : '+') + s + 's';
   };
 
+  // Rellena los dos selectores de rival mostrando el CARRIL de cada uno
+  // ("C3 · P2 · Nombre"), excluyendo al propio piloto. Conserva la selección.
+  function populateCompareOptions(data) {
+    const mk = e => `<option value="${e.key}">C${e.lane != null ? e.lane : '—'} · P${e.position} · ${e.entityName}</option>`;
+    [['lsCompare1', '— Compárate con… —', 'ls_cmp1_'],
+     ['lsCompare2', '— y con… (opcional) —', 'ls_cmp2_']].forEach(([id, ph, lk]) => {
+      const sel = $(id);
+      const want = sel.value || localStorage.getItem(lk + RACE_ID) || '';
+      sel.innerHTML = `<option value="">${ph}</option>` +
+        data.entities.filter(e => e.key !== myKey).map(mk).join('');
+      if ([...sel.options].some(o => o.value === want)) sel.value = want;
+    });
+  }
+
+  // Diferencia de ritmo (media/vuelta) entre yo y un rival. <0 = yo más rápido.
+  function paceBetween(me, r) {
+    const k = includeOutliers ? 'avgAll' : 'avgClean';
+    return (me[k] != null && r[k] != null) ? me[k] - r[k] : null;
+  }
+
+  // Veredicto EN PRESENTE para un rival: gap de vueltas (manga) + tendencia de
+  // ritmo. Sin proyecciones a futuro.
+  function verdictChip(me, r) {
+    const gap = me.totalLaps - r.totalLaps;   // >0 = voy por delante en la manga
+    const pace = paceBetween(me, r);
+    const faster = pace != null && pace < 0;
+    const paceTxt = pace != null ? ` (${fmtDiff(pace)}/v)` : '';
+    let cls, text;
+    if (gap > 0) {
+      const vv = gap === 1 ? 'vuelta' : 'vueltas';
+      if (faster)        { cls = 'good'; text = `vas ${gap} ${vv} por delante y ruedas más rápido${paceTxt}: abres hueco.`; }
+      else if (pace > 0) { cls = 'warn'; text = `vas ${gap} ${vv} por delante, pero rueda más rápido${paceTxt}: te recorta.`; }
+      else               { cls = 'info'; text = `vas ${gap} ${vv} por delante a ritmo parejo.`; }
+    } else if (gap < 0) {
+      const g = Math.abs(gap), vv = g === 1 ? 'vuelta' : 'vueltas';
+      if (faster)        { cls = 'info'; text = `vas ${g} ${vv} por detrás pero ruedas más rápido${paceTxt}: recortas.`; }
+      else if (pace > 0) { cls = 'bad';  text = `vas ${g} ${vv} por detrás y más lento${paceTxt}: pierdes terreno.`; }
+      else               { cls = 'warn'; text = `vas ${g} ${vv} por detrás a ritmo parejo.`; }
+    } else {
+      if (faster)        { cls = 'good'; text = `empatados a vueltas y ruedas más rápido${paceTxt}.`; }
+      else if (pace > 0) { cls = 'bad';  text = `empatados a vueltas pero rueda más rápido${paceTxt}.`; }
+      else               { cls = 'info'; text = `empate técnico: mismas vueltas y ritmo parejo.`; }
+    }
+    return `<div class="ls-cmp__chip ls-cmp__chip--${cls}"><b>vs ${r.entityName}:</b> ${text}</div>`;
+  }
+
   function renderComparison(data) {
-    const c = data.comparison;
-    if (!c) { $('lsCmpBox').hidden = true; return; }
+    if (!data) return;
+    populateCompareOptions(data);
+    const me = data.entities.find(e => e.key === myKey);
+    if (!me) { $('lsCmpBox').hidden = true; return; }
+
+    // Rivales seleccionados (1 o 2), sin duplicar ni incluirme.
+    const seen = new Set([myKey]);
+    const rivals = [];
+    for (const k of [$('lsCompare1').value, $('lsCompare2').value]) {
+      if (!k || seen.has(k)) continue;
+      const e = data.entities.find(x => x.key === k);
+      if (e) { rivals.push(e); seen.add(k); }
+    }
+    if (!rivals.length) { $('lsCmpBox').hidden = true; return; }
     $('lsCmpBox').hidden = false;
 
-    $('lsCmpMe').textContent    = c.myName;
-    $('lsCmpRival').textContent = c.rivalName;
-    $('lsCmpPosMe').textContent  = 'P' + c.myPos;
-    $('lsCmpPosRv').textContent  = 'P' + c.rivalPos;
-    $('lsCmpLapsMe').textContent = c.myLaps;
-    $('lsCmpLapsRv').textContent = c.rivalLaps;
-    $('lsCmpBestMe').textContent = fmtMs(c.myBest);
-    $('lsCmpBestRv').textContent = fmtMs(c.rivalBest);
-    $('lsCmpAvgMe').textContent  = fmtMs(c.myAvg);
-    $('lsCmpAvgRv').textContent  = fmtMs(c.rivalAvg);
-    $('lsCmpLastMe').textContent = fmtMs(c.myLast);
-    $('lsCmpLastRv').textContent = fmtMs(c.rivalLast);
+    const cols = [me, ...rivals];
+    const cls = i => i === 0 ? 'is-me' : 'is-rv' + i;
+    const avgKey = includeOutliers ? 'avgAll' : 'avgClean';
 
-    // Veredicto EN PRESENTE: posición relativa (gap de vueltas en la manga) +
-    // tendencia de ritmo (media por vuelta). Nada de proyecciones a futuro.
-    const v = $('lsCmpVerdict');
-    v.className = 'ls-cmp__verdict';
-    const gap   = c.gapLaps;                 // >0 = voy por delante (en la manga)
-    const pace  = c.paceDiffMs;              // <0 = ruedo más rápido
-    const faster = pace != null && pace < 0;
-    const paceTxt = pace != null ? ` (${fmtDiff(pace)}/vuelta)` : '';
-    let text, cls;
+    let html = '<thead><tr><th></th>' + cols.map((e, i) =>
+      `<th class="${cls(i)}"><div class="ls-cmp2__name">${e.entityName}</div>` +
+      `<div class="ls-cmp2__sub">C${e.lane != null ? e.lane : '—'} · P${e.position}</div></th>`
+    ).join('') + '</tr></thead><tbody>';
+    const row = (label, fn) => `<tr><td class="ls-cmp2__lbl">${label}</td>` +
+      cols.map((e, i) => `<td class="${cls(i)}">${fn(e, i)}</td>`).join('') + '</tr>';
+    html += row('Vueltas',   e => e.totalLaps);
+    html += row('Mejor',     e => fmtMs(e.bestMs));
+    html += row('Media',     e => fmtMs(e[avgKey]));
+    html += row('Última',    e => fmtMs(e.lastLapMs));
+    html += row('Δ vueltas', (e, i) => {
+      if (i === 0) return '—';
+      const d = me.totalLaps - e.totalLaps;
+      return (d > 0 ? '+' : '') + d;
+    });
+    html += '</tbody>';
+    $('lsCmpTable').innerHTML = html;
 
-    if (gap > 0) {                            // delante
-      if (faster)      { cls = 'good'; text = `🟢 Vas ${gap} ${gap === 1 ? 'vuelta' : 'vueltas'} por delante y además ruedas más rápido${paceTxt}: abres hueco.`; }
-      else if (pace > 0) { cls = 'warn'; text = `🟡 Vas ${gap} ${gap === 1 ? 'vuelta' : 'vueltas'} por delante, pero él rueda más rápido${paceTxt}: te recorta.`; }
-      else             { cls = 'info'; text = `🔵 Vas ${gap} ${gap === 1 ? 'vuelta' : 'vueltas'} por delante a un ritmo parejo.`; }
-    } else if (gap < 0) {                      // detrás
-      const g = Math.abs(gap);
-      if (faster)      { cls = 'info'; text = `🔵 Vas ${g} ${g === 1 ? 'vuelta' : 'vueltas'} por detrás pero ruedas más rápido${paceTxt}: recortas.`; }
-      else if (pace > 0) { cls = 'bad'; text = `🔴 Vas ${g} ${g === 1 ? 'vuelta' : 'vueltas'} por detrás y más lento${paceTxt}: pierdes terreno.`; }
-      else             { cls = 'warn'; text = `🟡 Vas ${g} ${g === 1 ? 'vuelta' : 'vueltas'} por detrás a un ritmo parejo.`; }
-    } else {                                   // mismas vueltas
-      if (faster)      { cls = 'good'; text = `🟢 Empatados a vueltas y ruedas más rápido${paceTxt}.`; }
-      else if (pace > 0) { cls = 'bad'; text = `🔴 Empatados a vueltas pero él rueda más rápido${paceTxt}.`; }
-      else             { cls = 'info'; text = `🔵 Empate técnico: mismas vueltas y ritmo parejo.`; }
-    }
-    v.classList.add('ls-cmp__verdict--' + cls);
-    v.textContent = text;
+    $('lsCmpVerdicts').innerHTML = rivals.map(r => verdictChip(me, r)).join('');
   }
 
   // ── Events ────────────────────────────────────────────────────────────
@@ -364,7 +394,15 @@
     localStorage.setItem('ls_entity_' + RACE_ID, myKey);
     fetchData();
   });
-  $('lsCompare').addEventListener('change', fetchData);
+  // Cambiar rival no requiere refetch: los datos ya están en latestData.
+  $('lsCompare1').addEventListener('change', () => {
+    localStorage.setItem('ls_cmp1_' + RACE_ID, $('lsCompare1').value);
+    renderComparison(latestData);
+  });
+  $('lsCompare2').addEventListener('change', () => {
+    localStorage.setItem('ls_cmp2_' + RACE_ID, $('lsCompare2').value);
+    renderComparison(latestData);
+  });
   $('lsIncludeOutliers').addEventListener('change', () => {
     includeOutliers = $('lsIncludeOutliers').checked;
     localStorage.setItem('ls_include_outliers', includeOutliers ? '1' : '0');
@@ -374,13 +412,14 @@
     if (!latestData || !myKey) return;
     const me = latestData.entities.find(e => e.key === myKey);
     if (!me) return;
-    // Más cercano = el de delante si lo hay, si no el de atrás.
+    // Más cercano = el de delante si lo hay, si no el de atrás → al Rival 1.
     const ahead = latestData.entities.find(e => e.position === me.position - 1);
     const behind = latestData.entities.find(e => e.position === me.position + 1);
     const rival = ahead || behind;
     if (rival) {
-      $('lsCompare').value = rival.key;
-      fetchData();
+      $('lsCompare1').value = rival.key;
+      localStorage.setItem('ls_cmp1_' + RACE_ID, rival.key);
+      renderComparison(latestData);
     }
   });
 
