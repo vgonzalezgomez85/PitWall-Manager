@@ -37,6 +37,9 @@ class SessionController {
     if (TimingService.activeMangaId === manga.id && TimingService.session?.durationMs > 0) {
       return TimingService.session.durationMs;
     }
+    // Duración real persistida del DS (GO) — correcta también en mangas
+    // terminadas o tras recargar, a diferencia del placeholder de la BD.
+    if (manga.actual_duration_ms > 0) return manga.actual_duration_ms;
     return (race.manga_duration_minutes || 0) * 60000;
   }
 

@@ -265,7 +265,8 @@
       if (!s || s.isRest) return;
       s.lapCount = Math.max(s.lapCount, l.lap_number);
       s.lastLapMs = l.lap_time_ms;
-      if (!l.is_exit && (!s.bestLapMs || l.lap_time_ms < s.bestLapMs)) s.bestLapMs = l.lap_time_ms;
+      // lap_number > 1: la 1ª vuelta de la manga no cuenta como mejor vuelta.
+      if (!l.is_exit && l.lap_number > 1 && (!s.bestLapMs || l.lap_time_ms < s.bestLapMs)) s.bestLapMs = l.lap_time_ms;
       if (l.is_exit) { s.exitCount++; } else { s._lapSum += l.lap_time_ms; s._lapN++; }
     });
     Object.values(laneInit).forEach(s => {

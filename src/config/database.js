@@ -319,6 +319,10 @@ const migrations = [
   `ALTER TABLE races ADD COLUMN driver_max_total_ms     INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE races ADD COLUMN driver_change_lockout_ms INTEGER NOT NULL DEFAULT 120000`,
   `CREATE INDEX IF NOT EXISTS idx_circuit_cat_times_circuit ON circuit_category_times(circuit_id, category_id)`,
+  // Duración real (ms) que el DS-300 mandó al GO de cada manga. La escribe
+  // TimingService.startManga. La usa la clasificación estimada para no caer al
+  // placeholder manga_duration_minutes (p.ej. 99) en mangas terminadas/recargas.
+  `ALTER TABLE mangas ADD COLUMN actual_duration_ms INTEGER`,
 ];
 for (const sql of migrations) {
   try {

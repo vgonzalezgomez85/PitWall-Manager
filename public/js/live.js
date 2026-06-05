@@ -1,6 +1,7 @@
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function formatMs(ms) {
   if (ms == null) return '—';
+  ms = Math.round(ms);                 // los tiempos del DS llegan en float (p.ej. 11839.79999…); sin redondear, ms%1000 arrastra basura de coma flotante a la pantalla
   const totalSec = Math.floor(ms / 1000);
   const millis   = ms % 1000;
   const secs = totalSec % 60;
@@ -848,9 +849,13 @@ function renderProjected(data) {
   // - avgLapMs: media SUCIA (incluye salidas, excluye warmup) a través de
   //   todas las mangas que ha corrido el piloto hasta ahora.
   //
-  // Es un pronóstico HONESTO: "si mantienes este ritmo (con salidas) durante
-  // las mangas que te tocan, harás N vueltas al final de la carrera".
+  // Pronóstico CONVERGENTE, anclado en lo ya hecho:
+  //   proyección = vueltas_reales
+  //              + (tiempo restante de SU manga actual / media)   [si corre ahora]
+  //              + (mangas futuras pendientes × duración / media)
+  // Quien ya terminó sus mangas proyecta su total real (no extrapola 6 enteras).
   const MANGA_DURATION_MS = RACE_DATA.mangaDurationMs || 0;
+  const mangaRemainingMs  = (data && data.remainingMs > 0) ? data.remainingMs : 0;
 
   const allPMap = new Map();
   (RACE_DATA.allParticipants || []).forEach(p => allPMap.set(p.entity_name, p));
@@ -867,6 +872,7 @@ function renderProjected(data) {
       total,
       avgLapMs,
       bestLapMs: r.bestLapMs,
+      onTrack: true,   // corre la manga actual → le queda tiempo de esta manga
     });
   });
 
@@ -891,14 +897,15 @@ function renderProjected(data) {
   });
   activeMap.forEach((r, name) => { if (!seen.has(name)) rows.push(r); });
 
-  // Aplica la fórmula a cada fila, usando las mangas asignadas DE ESE PILOTO
+  // Proyección anclada en lo ya hecho + lo que aún le queda por correr.
   rows.forEach(r => {
     const p = allPMap.get(r.name);
-    const plannedMangas = p?.planned_mangas || 0;
-    const pilotRaceMs   = plannedMangas * MANGA_DURATION_MS;
-    if (pilotRaceMs > 0 && r.avgLapMs && r.avgLapMs > 0) {
-      r.projectedTotalRaw = pilotRaceMs / r.avgLapMs;        // float, para gap con decimales
-      r.projectedTotal    = Math.round(r.projectedTotalRaw); // int, para display principal
+    const futureMangas = p?.remaining_mangas || 0;            // mangas futuras 'pending' (NO la activa)
+    if (r.avgLapMs && r.avgLapMs > 0) {
+      const currentLeftMs = r.onTrack ? mangaRemainingMs : 0; // lo que queda de su manga actual
+      const futureMs      = futureMangas * MANGA_DURATION_MS;  // mangas futuras completas
+      r.projectedTotalRaw = (r.total || 0) + (currentLeftMs + futureMs) / r.avgLapMs;
+      r.projectedTotal    = Math.round(r.projectedTotalRaw);
     } else {
       r.projectedTotalRaw = null;
       r.projectedTotal    = null;

@@ -381,6 +381,30 @@ document.querySelectorAll('.lc-lane').forEach(el => {
   ['manga:started', 'manga:paused', 'manga:cancelled', 'manga:stopped', 'manga:resumed'].forEach(ev => {
     socket.on(ev, () => schedule());
   });
+
+  // ── Añadir vuelta robusto ────────────────────────────────────────────
+  // El submit nativo del form ".lc-insert" se cancelaba en manga activa: el
+  // auto-refresh (replaceWith de .lc-main) desconectaba el form del DOM justo
+  // al pulsar "Añadir", así que el POST nunca salía. Lo mandamos por fetch con
+  // delegación en `document` (que nunca se reemplaza), de modo que la petición
+  // ya está en vuelo aunque el DOM se intercambie. Al terminar, refrescamos.
+  document.addEventListener('submit', async (e) => {
+    const form = e.target;
+    if (!form || !form.classList || !form.classList.contains('lc-insert')) return;
+    e.preventDefault();
+    try {
+      const res = await fetch(form.action, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'fetch' },
+        body: new URLSearchParams(new FormData(form)),
+      });
+      if (!res.ok) console.warn('[corrections] add HTTP', res.status);
+    } catch (err) {
+      console.warn('[corrections] add error', err.message || err);
+    }
+    refreshNow();
+  });
 })();
 </script>
 
