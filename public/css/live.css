@@ -278,6 +278,16 @@
   font-family: 'Share Tech Mono', monospace;
   font-size: .85rem; font-weight: 700; color: #ff9800;
 }
+/* Badge de salidas: mismo estilo compacto que el de pit-stop, en rojo. */
+.lane-card__exit {
+  font-size: 1.1rem; margin-left: .3rem; line-height: 1;
+  display: inline-flex; align-items: baseline; gap: .1rem;
+}
+.lane-card__exit[hidden] { display: none; }
+.lane-card__exit-count {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .85rem; font-weight: 700; color: #e63946;
+}
 .lane-card__laps {
   font-family: 'Share Tech Mono', monospace;
   font-size: 5rem; font-weight: 700; color: #f6c90e;
@@ -733,6 +743,7 @@ body.resizing-sidebar * { cursor: col-resize !important; }
 .live-lanes--vertical .lane-card__driver-row:empty { display: none !important; }
 .live-lanes--vertical .lane-card__driver-name { color: inherit; font-size: inherit; }
 .live-lanes--vertical .lane-card__pit { order: 4; }
+.live-lanes--vertical .lane-card__exit { order: 5; }
 .live-lanes--vertical .lane-card__name {
   grid-column: 1 / -1 !important;
   grid-row: 2 !important;
@@ -1374,12 +1385,12 @@ body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__pos {
   background: #21262d !important;
   color: #c9d1d9 !important;
   border-radius: 5px;
-  padding: 0 .5rem;
-  height: 1.65rem;
+  padding: 0 .7rem;
+  height: 2.1rem;
   display: inline-flex; align-items: center;
   font-family: 'Inter', system-ui, sans-serif !important;
   font-weight: 700 !important;
-  font-size: .8rem !important;
+  font-size: 1.1rem !important;
   letter-spacing: 0 !important;
   margin: 0 !important;
   flex-shrink: 0;
@@ -1394,8 +1405,8 @@ body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__label {
   background: var(--card-color, #21262d) !important;
   color: #fff !important;
   border-radius: 5px !important;
-  padding: 0 .55rem !important;
-  height: 1.65rem;
+  padding: 0 .7rem !important;
+  height: 2.1rem;
   display: inline-flex !important; align-items: center;
   font-family: 'Inter', system-ui, sans-serif !important;
   font-weight: 800 !important;
@@ -1410,7 +1421,7 @@ body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__track-te
 }
 body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__lane-num {
   font-family: 'Inter', system-ui, sans-serif !important;
-  font-size: .95rem !important;
+  font-size: 1.35rem !important;
   color: #fff !important;
   font-weight: 800 !important;
   line-height: 1 !important;
@@ -1419,7 +1430,7 @@ body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__name {
   order: 3;
   flex: 1 1 auto !important;
   font-family: 'Inter', system-ui, sans-serif !important;
-  font-size: clamp(.95rem, 1.7vh, 1.25rem) !important;
+  font-size: clamp(1.4rem, 4.2vh, 2.8rem) !important;
   font-weight: 700 !important;
   color: #fff !important;
   /* Sin marquee: permite hasta 2 líneas y luego corta */
@@ -1441,10 +1452,12 @@ body:not(:has(.live-lanes--vertical)) .lane-card__name--overflow {
   transform: none !important;
 }
 body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__pit { order: 4; }
+body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__exit { order: 5; }
 body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__trend {
   order: 0;
   flex-shrink: 0;
   margin-right: .15rem;
+  font-size: 1.4rem !important;
 }
 
 /* Columnas numéricas: valor a la derecha, Inter 800, sin labels (los tiene el header) */
@@ -1457,7 +1470,7 @@ body:not(:has(.live-lanes--vertical)) .lane-card > .lane-card__col:not(.lane-car
 }
 body:not(:has(.live-lanes--vertical)) .lane-card__col-val {
   font-family: 'Inter', system-ui, sans-serif !important;
-  font-size: clamp(1.05rem, 2.4vh, 1.6rem) !important;
+  font-size: clamp(1.5rem, 5.5vh, 3.6rem) !important;
   font-weight: 800 !important;
   letter-spacing: -.02em !important;
   text-align: center !important;
@@ -1469,7 +1482,7 @@ body:not(:has(.live-lanes--vertical)) .lane-card__col-val {
 body:not(:has(.live-lanes--vertical)) .lane-card__laps,
 body:not(:has(.live-lanes--vertical)) .lane-card__col--laps .lane-card__laps {
   font-family: 'Inter', system-ui, sans-serif !important;
-  font-size: clamp(1.05rem, 2.4vh, 1.6rem) !important;
+  font-size: clamp(1.5rem, 5.5vh, 3.6rem) !important;
   font-weight: 800 !important;
   color: #ffffff !important;
   text-align: center !important;
