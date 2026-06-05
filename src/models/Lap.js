@@ -114,7 +114,7 @@ class Lap {
       LEFT JOIN drivers d ON d.id = l.driver_id
       WHERE l.race_id = ? AND l.is_ghost = 0
       GROUP BY entity_id, entity_type
-      ORDER BY total_laps DESC, best_lap_ms ASC
+      ORDER BY total_laps DESC, total_time_ms ASC
     `).all(raceId);
   }
 

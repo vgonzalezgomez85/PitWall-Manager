@@ -225,6 +225,18 @@
       const key = r.team_id ? `t${r.team_id}` : `d${r.driver_id}`;
       restPosByEntityKey[key] = i + 1;
     });
+    // Total de vueltas de carrera por ENTIDAD (equipo/piloto) — para los que
+    // descansan, que no están en ningún carril esta manga (lane=0) y por tanto
+    // no pueden mirarse por `prevLapsByLane[lane]`. allParticipants ya es
+    // aggregateByRace(race.id): total acumulado por entidad en toda la carrera.
+    const entityTotalLaps = {};
+    const entityTotalTime = {};
+    (allParticipants || []).forEach(p => {
+      if (p.entity_id == null) return;
+      const k = `${p.entity_type === 'team' ? 't' : 'd'}${p.entity_id}`;
+      entityTotalLaps[k] = p.total_laps || 0;
+      entityTotalTime[k] = p.total_time_ms || 0;
+    });
     lanes.forEach(l => {
       const entityKey = l.team_id ? `t${l.team_id}` : (l.driver_id ? `d${l.driver_id}` : null);
       const restPos = l.is_rest && entityKey ? restPosByEntityKey[entityKey] : null;
@@ -237,7 +249,10 @@
         isRest:       l.is_rest ? true : false,
         restPos, restTotal,
         lapCount:     0, bestLapMs: null, lastLapMs: null, exitCount: 0,
-        prevLapCount: prevLapsByLane[l.lane] || 0,
+        prevLapCount: l.is_rest
+          ? (entityKey ? (entityTotalLaps[entityKey] || 0) : 0)
+          : (prevLapsByLane[l.lane] || 0),
+        totalTimeMs:  entityKey ? (entityTotalTime[entityKey] || 0) : null,
         _lapSum: 0, _lapN: 0, avgLapMs: null,
         teamMembers:  teamMembersByLane[l.lane] || [],
         activeDriver: activeDriversByLane[l.lane] || null,
