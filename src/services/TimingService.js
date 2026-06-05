@@ -767,6 +767,7 @@ class TimingServiceClass {
       lapNumber: ld.lapCount, lapTimeMs, bestLapMs: ld.bestLapMs,
       elapsedMs, isExit, isPitStop,
       pitStopCount: ld.pitStopCount,
+      exitCount: ld.exitCount,
     });
     SocketService.emitStandings(this.getStandings());
   }

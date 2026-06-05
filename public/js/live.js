@@ -302,7 +302,9 @@ function buildCard(lane) {
       : (LANG === 'es' ? 'Descansando' : 'Resting');
     card.innerHTML = `
       <div class="lane-card__rest-icon">💤</div>
-      <div class="lane-card__rest-name">${lane.name}</div>
+      <div class="lane-card__rest-name">
+        <span class="lane-card__pos" id="card-pos-${lane.cardId || lane.lane}"></span> ${lane.name}
+      </div>
       <div class="lane-card__rest-laps" id="card-rest-laps-${lane.cardId || lane.lane}">${restTotal}</div>
       <div class="lane-card__rest-label">${posLabel}</div>`;
     return card;
@@ -324,6 +326,9 @@ function buildCard(lane) {
         <span class="lane-card__name">${lane.name}</span>
         <span class="lane-card__pit" id="card-pit-${lane.lane}" hidden title="Pit-stop">
           🔧<span class="lane-card__pit-count" id="card-pit-count-${lane.lane}"></span>
+        </span>
+        <span class="lane-card__exit" id="card-exit-${lane.lane}" hidden title="${LANG === 'es' ? 'Salidas' : 'Exits'}">
+          ⚠️<span class="lane-card__exit-count" id="card-exit-count-${lane.lane}"></span>
         </span>
       </div>
       <div class="lane-card__driver-row" id="card-driver-${lane.lane}"></div>
@@ -352,11 +357,6 @@ function buildCard(lane) {
     <div class="lane-card__col lane-card__col--avg" data-col="media">
       <div class="lane-card__col-label">${LANG === 'es' ? 'Media' : 'Avg'}</div>
       <div class="lane-card__col-val lane-card__col-val--avg" id="card-avg-${lane.lane}">${formatMs(lane.avgLapMs)}</div>
-    </div>
-
-    <div class="lane-card__col lane-card__col--exits" data-col="salidas">
-      <div class="lane-card__col-label">${LANG === 'es' ? 'Salidas' : 'Exits'}</div>
-      <div class="lane-card__col-val lane-card__col-val--exits" id="card-exits-${lane.lane}">${lane.exitCount ?? 0}</div>
     </div>
 
     <div class="lane-card__col lane-card__col--delta" data-col="delta">
@@ -470,6 +470,21 @@ function updatePitIndicator(lane, count) {
   num.textContent = count > 1 ? `+${count - 1}` : '';
 }
 
+// Badge ⚠️ pequeño junto al nombre con el nº de salidas de la manga — mismo
+// estilo compacto que el indicador 🔧 de pit-stop. Muestra el total de salidas.
+function updateExitIndicator(lane, count) {
+  const wrap = document.getElementById(`card-exit-${lane}`);
+  const num  = document.getElementById(`card-exit-count-${lane}`);
+  if (!wrap || !num) return;
+  if (!count || count <= 0) {
+    wrap.hidden = true;
+    num.textContent = '';
+    return;
+  }
+  wrap.hidden = false;
+  num.textContent = count;
+}
+
 // ── Sidebar standings ─────────────────────────────────────────────────────────
 const standingsBody = document.getElementById('standingsBody');
 const projectedBody = document.getElementById('projectedBody');
@@ -575,20 +590,23 @@ function fitLaneCards() {
   const cssMinH = Math.max(60, Math.min(120, window.innerHeight * 0.10));
   const cardH = Math.max(cssMinH, (H / nLanes) - 8);
   // En la tarjeta hay 2 filas (label arriba + valor abajo). El número grande
-  // toma ~55% de la altura de la card.
-  const fontByHeight = cardH * 0.50;
+  // toma ~64% de la altura de la card (aprovecha el alto libre tras quitar
+  // la columna de salidas).
+  const fontByHeight = cardH * 0.64;
 
   // Ancho de tarjeta = W - paddings
   const cardW = Math.max(200, W - 24);
-  // grid: name(1.4fr) + laps(.8fr) + 6 × num(1fr) → unidades = 1.4 + .8 + 6 = 8.2
-  // Una columna numérica = cardW / 8.2 - gap(~6px)
-  const colW = (cardW / 8.2) - 6;
+  // grid: name(1.4fr) + laps(.8fr) + 5 × num(1fr) → unidades = 1.4 + .8 + 5 = 7.2
+  // (la columna "salidas" se eliminó; ahora son 5 columnas numéricas, por eso
+  //  cada una es más ancha y los valores pueden crecer para llenar el hueco).
+  // Una columna numérica = cardW / 7.2 - gap(~6px)
+  const colW = (cardW / 7.2) - 6;
   // Tipos: el contenido más ancho suele ser "+11.06" o "12345" → ~5 chars.
   // En Share Tech Mono (monospace), char ≈ 0.6 * fontSize. Margen interno ~6px.
   const fontByWidth = (colW - 6) / (5 * 0.6);
 
   let fontPx  = Math.min(fontByHeight, fontByWidth);
-  fontPx      = Math.max(14, Math.min(60, fontPx));   // clamp 14..60px
+  fontPx      = Math.max(14, Math.min(92, fontPx));   // clamp 14..92px
 
   const labelPx   = Math.max(9,  Math.min(20, fontPx * 0.32));
   const namePx    = Math.max(12, Math.min(34, fontPx * 0.55));
@@ -657,31 +675,45 @@ function posClass(pos) {
 let prevLaneGap = {};
 
 function sortCards(rows) {
-  // Sort by total race laps desc, then best lap asc
-  const sorted = [...rows]
-    .filter(r => !r.isRest)
-    .sort((a, b) => {
-      const ta = getTotalLaps(a.lane, a.lapCount);
-      const tb = getTotalLaps(b.lane, b.lapCount);
-      return tb - ta || (a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity);
-    });
+  // Equipos que descansan ESTA manga: no corren, pero tienen vueltas totales
+  // acumuladas. Se integran en la clasificación por sus vueltas totales para
+  // que se vean en la posición (P.x) que les toca, no apartados al final.
+  const restRows = RACE_DATA.lanes.filter(l => l.isRest).map(l => ({
+    isRest: true,
+    cardId: l.cardId || l.lane,
+    name:   l.name,
+    prevLapCount: l.prevLapCount || 0,
+    bestLapMs:    l.bestLapMs ?? null,
+    avgLapMs:     l.avgLapMs ?? null,
+  }));
+
+  const totalOf = r => r.isRest ? (r.prevLapCount || 0) : getTotalLaps(r.lane, r.lapCount);
+  const cardKey = r => r.isRest ? r.cardId : r.lane;
+
+  // Sort by total race laps desc, then best lap asc (activos + descansos juntos)
+  const sorted = [...rows.filter(r => !r.isRest), ...restRows]
+    .sort((a, b) => totalOf(b) - totalOf(a) || (a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity));
 
   const BIG = 1e9;
-  const scoreOf = r => getTotalLaps(r.lane, r.lapCount) * BIG - (r.avgLapMs ?? BIG);
+  const scoreOf = r => totalOf(r) * BIG - (r.avgLapMs ?? BIG);
   const gapAbove = {}, gapBelow = {};
   sorted.forEach((r, i) => {
-    gapAbove[r.lane] = i === 0 ? null : scoreOf(sorted[i-1]) - scoreOf(r);
-    gapBelow[r.lane] = i === sorted.length - 1 ? null : scoreOf(r) - scoreOf(sorted[i+1]);
+    const k = cardKey(r);
+    gapAbove[k] = i === 0 ? null : scoreOf(sorted[i-1]) - scoreOf(r);
+    gapBelow[k] = i === sorted.length - 1 ? null : scoreOf(r) - scoreOf(sorted[i+1]);
   });
 
   sorted.forEach((r, i) => {
-    const card = document.getElementById(`card-${r.lane}`);
+    const k = cardKey(r);
+    const card = document.getElementById(`card-${k}`);
     if (card) card.style.order = i;
-    const posEl = document.getElementById(`card-pos-${r.lane}`);
+    const posEl = document.getElementById(`card-pos-${k}`);
     if (posEl) {
       posEl.textContent = `P.${i + 1}`;
       posEl.className = `lane-card__pos lane-card__pos--${['1','2','3'][i] ?? 'n'}`;
     }
+
+    if (r.isRest) return;   // los descansos ya tienen su orden y P.x; sin trend
 
     const trendEl = document.getElementById(`card-trend-${r.lane}`);
     if (trendEl) {
@@ -796,6 +828,7 @@ function renderStandings(data) {
 
   data.standings.forEach(r => updateCard(r.lane, r.lapCount, r.lastLapMs, r.bestLapMs, r.avgLapMs, r.exitCount));
   data.standings.forEach(r => updatePitIndicator(r.lane, r.pitStopCount ?? 0));
+  data.standings.forEach(r => updateExitIndicator(r.lane, r.exitCount ?? 0));
   sortCards(data.standings);
 
   updateRaceBestLaps(data.raceBestLaps);
@@ -1339,6 +1372,7 @@ function announce(text) {
       // has had any pit-stop in the manga. If there's more than one, show
       // "+N" suffix so spectators can tell how many extra pit-stops it had.
       updatePitIndicator(lap.lane, lap.pitStopCount ?? 0);
+      updateExitIndicator(lap.lane, lap.exitCount ?? 0);
 
       // The "fastest laps by lane" panel updates via the `standings` event
       // that fires right after this lap (server emits both back-to-back), and
@@ -1664,7 +1698,7 @@ if (RACE_DATA.isTeam && RACE_DATA.hasQrCheckin) {
 
 // ── Toolbar: columnas visibles + zoom ─────────────────────────────────────────
 (function () {
-  const COLS = ['vlt', 'total', 'ultima', 'mejor', 'media', 'salidas', 'delta'];
+  const COLS = ['vlt', 'total', 'ultima', 'mejor', 'media', 'delta'];
   const body = document.body;
   const LS_COLS = 'slotime.live.cols';
   const LS_ZOOM = 'slotime.live.zoom';
