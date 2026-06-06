@@ -786,6 +786,10 @@ class SerialServiceClass extends EventEmitter {
   }
 
   get isSimulating()   { return this._simRunning; }
+  // True si la fuente activa es BART (SlotTime pilota el GO/STOP). Se usa en la
+  // vista live para mostrar el botón GO/STOP, igual que en simulación. En DS-300
+  // manda la caja → no aplica.
+  get isBart()         { return this._connections.some(c => c && c.isBart); }
   get connectedPort()  { return this._connections[0]?.path ?? null; }
   get connectedPorts() { return this._connections.map(c => c.path).filter(Boolean); }
 

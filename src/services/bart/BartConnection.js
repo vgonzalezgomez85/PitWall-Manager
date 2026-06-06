@@ -38,6 +38,7 @@ class BartConnection {
     this._onResumeSignal  = onResumeSignal  || (() => {});
     this._onSemaphoreStep = onSemaphoreStep || (() => {});
 
+    this.isBart     = true;          // marca de fuente (SerialService.isBart, UI)
     this._sock      = null;
     this._connected = true;          // optimista hasta que algo diga lo contrario
     this._raceState = null;          // 'running' | 'paused' | 'stopped' | null
