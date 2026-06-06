@@ -746,6 +746,30 @@ class SerialServiceClass extends EventEmitter {
     if (was) this._broadcastLinkStatus();
   }
 
+  // ── Comandos de salida hacia el hardware (inversión de control) ───────────
+  // Solo aplican a fuentes que SlotTime pilota (BART). En el DS-300 manda la
+  // caja, así que estas conexiones no exponen estos métodos → no-op. Si no se
+  // pasa `circuit`, el comando va a TODAS las conexiones que lo soporten.
+  _sendToCircuits(method, circuit) {
+    const targets = (circuit == null)
+      ? this._connections
+      : [this._connections[circuit]].filter(Boolean);
+    for (const c of targets) {
+      if (typeof c[method] === 'function') {
+        try { c[method](); } catch (e) { console.warn(`[SerialService] ${method} failed:`, e.message); }
+      }
+    }
+  }
+  sendStart(circuit)  { this._sendToCircuits('sendStart',  circuit); }
+  sendStop(circuit)   { this._sendToCircuits('sendStop',   circuit); }
+  sendPause(circuit)  { this._sendToCircuits('sendPause',  circuit); }
+  sendResume(circuit) { this._sendToCircuits('sendResume', circuit); }
+  sendClear(circuit)  { this._sendToCircuits('sendClear',  circuit); }
+  setMinLap(ms, circuit) {
+    const targets = (circuit == null) ? this._connections : [this._connections[circuit]].filter(Boolean);
+    for (const c of targets) { if (typeof c.setMinLap === 'function') { try { c.setMinLap(ms); } catch {} } }
+  }
+
   // ── Utilities ────────────────────────────────────────────────────────────
 
   async listPorts() {
