@@ -99,9 +99,24 @@ for ((i=1; i<=NUM_EMULATORS; i++)); do
   launch_emulator $i
 done
 
+# Arrancar el Director de carrera (panel maestro multi-DS) — escanea 3100..310N
+DIRECTOR_PORT=3099
+DIRECTOR_SCAN="3100-$((3100 + NUM_EMULATORS - 1))"
+echo -e "${YELLOW}[Director]${NC} Arrancando panel maestro en puerto HTTP ${BLUE}$DIRECTOR_PORT${NC}..."
+(
+  cd "$EMULATOR_DIR"
+  DS_DIRECTOR_PORT=$DIRECTOR_PORT DS_DIRECTOR_SCAN=$DIRECTOR_SCAN node director.js > /tmp/ds300-director.log 2>&1 &
+  echo $! >> /tmp/emulator-pids.txt
+)
+sleep 1
+echo -e "${GREEN}✓ Director listo en http://localhost:$DIRECTOR_PORT${NC} (controla los $NUM_EMULATORS circuitos a la vez)"
+echo ""
+
 echo -e "${BLUE}═══════════════════════════════════════${NC}"
 echo -e "${GREEN}✓ Todos los emuladores arrancados${NC}"
 echo -e "${BLUE}═══════════════════════════════════════${NC}"
+echo ""
+echo -e "🏁 ${GREEN}DIRECTOR DE CARRERA (GO/pausa/stop a todos a la vez):${NC} ${BLUE}http://localhost:$DIRECTOR_PORT${NC}"
 echo ""
 echo "Emuladores disponibles:"
 for info in "${EMULATOR_INFO[@]}"; do
