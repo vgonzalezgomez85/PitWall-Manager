@@ -181,6 +181,7 @@ router.post('/training/competition/start',    TrainingController.competitionStar
 router.get( '/training/competition/live',     TrainingController.competitionLive);
 router.post('/training/competition/stop',     TrainingController.competitionStop);
 router.get( '/training/live',                 TrainingController.live);
+router.post('/training/go',                   TrainingController.go);
 router.post('/training/start',                TrainingController.start);
 router.post('/training/stop',                 TrainingController.stop);
 router.post('/training/free/reset',           TrainingController.freeReset);

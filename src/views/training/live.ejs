@@ -31,6 +31,16 @@
     </div>
 
     <div class="training-header__actions">
+      <%# GO manual: solo cuando SlotTime inicia (simulación o BART) y estamos en
+          standby. En DS-300 manda la caja. %>
+      <% const _swGo = (typeof isSimulating !== 'undefined' && isSimulating) || (typeof isBart !== 'undefined' && isBart); %>
+      <% if (standby && _swGo) { %>
+        <form action="/training/go" method="POST" style="display:inline">
+          <input type="hidden" name="mode" value="<%= (typeof heatNumber !== 'undefined' && heatNumber !== null) ? 'competition' : 'free' %>">
+          <button class="tr-btn" type="submit" style="background:#16a34a;color:#fff;font-weight:700"
+                  title="<%= lang === 'es' ? 'Arrancar entrenamiento' : 'Start training' %>">▶ GO</button>
+        </form>
+      <% } %>
       <button id="voiceBtn" class="tr-btn tr-btn--voice" onclick="toggleVoice()" title="<%= lang === 'es' ? 'Activar/silenciar voz' : 'Toggle voice' %>">🔊</button>
       <button id="viewBtn" class="tr-btn tr-btn--view" onclick="openTrainingPicker()" title="<%= lang === 'es' ? 'Cambiar vista' : 'Change view' %>">🖼 <%= lang === 'es' ? 'Vista' : 'View' %></button>
       <% if (typeof heatNumber !== 'undefined' && heatNumber !== null) { %>

@@ -151,6 +151,10 @@ class CompetitionTrainingServiceClass {
     console.log(`[CompetitionTraining] Circuito ${ci + 1} ${paused ? 'pausado' : 'reanudado'}`);
   }
 
+  // Activación pública desde standby (GO manual en simulación/BART). No-op si
+  // no está en standby.
+  activate() { if (this._standby && !this._active) this._activate(); }
+
   // ── Activate (start recording) ────────────────────────────────────────────
   _activate() {
     this._standby   = false;

@@ -5,9 +5,10 @@ const SerialService       = require('../services/SerialService');
 const Settings            = require('../models/Settings');
 const Circuit             = require('../models/Circuit');
 
-// Suma de carriles de TODOS los DS-300 en modo serial (multi-DS); 0 si no aplica.
+// Suma de carriles de TODOS los circuitos configurados (DS-300 o BART); 0 si no aplica.
 function serialLaneTotal() {
-  if (Settings.get('serial_mode', '') !== 'serial') return 0;
+  const mode = Settings.get('serial_mode', '');
+  if (mode !== 'serial' && mode !== 'bart') return 0;
   try {
     const cfg = JSON.parse(Settings.get('circuits_serial', '[]'));
     if (Array.isArray(cfg) && cfg.length > 0) {
@@ -111,13 +112,30 @@ class TrainingController {
       durationMs: CompetitionService.durationMs,
       standby:    CompetitionService.isStandby,
       heatNumber: CompetitionService.heatNumber,
+      isSimulating: SerialService.isSimulating,
+      isBart:       SerialService.isBart,
     });
   }
 
   // POST /training/competition/stop
   static competitionStop(req, res) {
     CompetitionService.stop();
+    try { SerialService.sendStop(); } catch {}   // para el Master BART (no-op DS/sim)
     res.redirect('/training/competition');
+  }
+
+  // POST /training/go — GO manual para BART/simulación (no llega el race_started
+  // del hardware). Activa el entrenamiento en standby (libre o competición) y
+  // arranca el Master BART. sendStart es no-op en DS-300/simulación.
+  static go(req, res) {
+    if (req.body.mode === 'competition') {
+      CompetitionService.activate();
+      try { SerialService.sendStart(); } catch {}
+      return res.redirect('/training/competition/live');
+    }
+    TrainingService.activate();
+    try { SerialService.sendStart(); } catch {}
+    res.redirect('/training/live');
   }
 
   // POST /training/start (legacy / manual)
@@ -136,12 +154,14 @@ class TrainingController {
   // POST /training/stop
   static stop(req, res) {
     TrainingService.stop();
+    try { SerialService.sendStop(); } catch {}
     res.redirect('/training');
   }
 
   // POST /training/free/reset
   static freeReset(req, res) {
     TrainingService.resetSession();
+    try { SerialService.sendStop(); } catch {}
     res.redirect('/training/free');
   }
 
@@ -150,6 +170,7 @@ class TrainingController {
   static exit(req, res) {
     if (CompetitionService.isReady) CompetitionService.stop();
     TrainingService.resetSession();
+    try { SerialService.sendStop(); } catch {}
     res.redirect('/');
   }
 
@@ -164,6 +185,8 @@ class TrainingController {
       durationMs:     TrainingService.durationMs,
       standby:        TrainingService.isStandby,
       sessionRecords: TrainingService.getSessionRecords(),
+      isSimulating:   SerialService.isSimulating,
+      isBart:         SerialService.isBart,
     });
   }
 }
