@@ -55,14 +55,37 @@
                                     : (lang === 'es' ? 'Arrancar simulación'   : 'Start simulation'); %>
         <% const stopTitle = isBart ? (lang === 'es' ? 'Parar manga (BART)'    : 'Stop heat (BART)')
                                     : (lang === 'es' ? 'Parar simulación'      : 'Stop simulation'); %>
+        <%# Duración por defecto: el 99 es el placeholder → ofrecer 10 min. %>
+        <% const defaultDur = (race.manga_duration_minutes && race.manga_duration_minutes !== 99) ? race.manga_duration_minutes : 10; %>
         <% if (manga.status === 'pending' && !isActive) { %>
-          <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/start" method="POST" style="display:inline">
+          <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/start" method="POST" style="display:inline-flex;align-items:center;gap:8px">
+            <label class="live-dur" title="<%= lang === 'es' ? 'Duración de la manga (minutos)' : 'Heat duration (minutes)' %>">
+              <input class="vt-inp is-mono live-dur__inp" type="number" name="duration_minutes"
+                     min="1" max="600" step="1" value="<%= defaultDur %>"
+                     style="width:64px;text-align:center">
+              <span class="live-dur__u">min</span>
+            </label>
             <button class="lbtn lbtn--go" type="submit" title="<%= goTitle %>">
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
               <span>GO</span>
             </button>
           </form>
         <% } else if (isActive) { %>
+          <% if (isPaused) { %>
+            <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/resume" method="POST" style="display:inline">
+              <button class="lbtn lbtn--go" type="submit" title="<%= lang === 'es' ? 'Reanudar manga' : 'Resume heat' %>">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                <span><%= lang === 'es' ? 'REANUDAR' : 'RESUME' %></span>
+              </button>
+            </form>
+          <% } else { %>
+            <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/pause" method="POST" style="display:inline">
+              <button class="lbtn" type="submit" title="<%= lang === 'es' ? 'Pausar manga' : 'Pause heat' %>">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+                <span>PAUSE</span>
+              </button>
+            </form>
+          <% } %>
           <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/stop" method="POST" style="display:inline"
             onsubmit="return confirm('<%= lang === 'es' ? '¿Parar la manga y borrar las vueltas registradas?' : 'Stop the heat and delete recorded laps?' %>')">
             <button class="lbtn lbtn--fin" type="submit" title="<%= stopTitle %>">

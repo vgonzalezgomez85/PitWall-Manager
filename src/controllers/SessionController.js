@@ -65,8 +65,37 @@ class SessionController {
     const teams   = Team.findByTanda(manga.tanda_id);
     const drivers = Driver.findByTanda(manga.tanda_id);
 
-    TimingService.startManga(manga, race, lanes, teams, drivers);
+    // En simulación/BART SlotTime inicia la carrera, así que el usuario puede
+    // fijar la duración al dar GO (en DS-300 la manda la caja). Si llega, se usa
+    // para esta manga y se recuerda en la carrera para el próximo GO.
+    const durMin = parseInt(req.body.duration_minutes, 10);
+    let durationMs = null;
+    if (Number.isFinite(durMin) && durMin > 0) {
+      durationMs = durMin * 60000;
+      race.manga_duration_minutes = durMin;
+      try { require('../config/database').prepare('UPDATE races SET manga_duration_minutes=? WHERE id=?').run(durMin, race.id); } catch {}
+    }
+
+    TimingService.startManga(manga, race, lanes, teams, drivers, durationMs);
     Tanda.updateStatus(tanda.id, 'active');
+    res.redirect(`/races/${race.id}/mangas/${manga.id}/live`);
+  }
+
+  // POST /races/:id/mangas/:mangaId/pause  — pausa manual (simulación/BART)
+  static pause(req, res) {
+    const race  = Race.findById(req.params.id);
+    const manga = Manga.findById(req.params.mangaId);
+    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+    if (TimingService.activeMangaId === manga.id) TimingService.pauseManga();
+    res.redirect(`/races/${race.id}/mangas/${manga.id}/live`);
+  }
+
+  // POST /races/:id/mangas/:mangaId/resume  — reanuda manual (simulación/BART)
+  static resume(req, res) {
+    const race  = Race.findById(req.params.id);
+    const manga = Manga.findById(req.params.mangaId);
+    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+    if (TimingService.activeMangaId === manga.id) TimingService.resumeManga();
     res.redirect(`/races/${race.id}/mangas/${manga.id}/live`);
   }
 
@@ -297,7 +326,8 @@ class SessionController {
 
     const isSimulating = SerialService.isSimulating;
     const isBart       = SerialService.isBart;
-    res.render('races/live', { t: req.t, race, manga, tanda, lanes, laps, isActive, standings, prevLapsByLane, totalMangas, totalTandas, totalRaceMs, effectiveMangaDurationMs, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, allParticipants, nextLaneByLane, nextMangaInfo, isSimulating, isBart });
+    const isPaused     = TimingService.isPaused && isActive;
+    res.render('races/live', { t: req.t, race, manga, tanda, lanes, laps, isActive, standings, prevLapsByLane, totalMangas, totalTandas, totalRaceMs, effectiveMangaDurationMs, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, allParticipants, nextLaneByLane, nextMangaInfo, isSimulating, isBart, isPaused });
   }
 
   // GET /races/:id/mangas/:mangaId/panel/:type  (standalone popup)

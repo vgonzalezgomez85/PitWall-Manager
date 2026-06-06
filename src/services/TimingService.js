@@ -440,6 +440,10 @@ class TimingServiceClass {
     c.status     = 'paused';
     c.pauseStart = Date.now();
     if (c.autoStopTimer) { clearTimeout(c.autoStopTimer); c.autoStopTimer = null; }
+
+    // Inversión de control: en BART pausamos el Master (corta pista y deja de
+    // contar). No-op en DS-300/simulación. Best-effort.
+    SerialService.sendPause(ci);
     if (this._isChampionship) this._persistAllDriverShifts();
     console.log(`[TimingService] Circuito ${ci + 1} pausado`);
     DebugLogger.log('manga', { event: 'pause', circuit: ci, mangaNumber: this.session.manga.number });
@@ -468,11 +472,17 @@ class TimingServiceClass {
 
     // Compensación SOLO a los carriles de este circuito: el primer cruce tras
     // el resume resta su propia pausa (el DS sigue contando durante la pausa).
-    for (const ld of Object.values(this.session.laneMap)) {
-      if (this.session.laneToCircuit[ld.lane] === ci) {
-        ld.pendingPauseAdjustMs = (ld.pendingPauseAdjustMs || 0) + pausedMs;
+    // En BART NO se aplica: el Master se pausó de verdad (dejó de contar), así
+    // que el lap_ms posterior ya es tiempo real de pista, sin la pausa dentro.
+    if (!SerialService.isBart) {
+      for (const ld of Object.values(this.session.laneMap)) {
+        if (this.session.laneToCircuit[ld.lane] === ci) {
+          ld.pendingPauseAdjustMs = (ld.pendingPauseAdjustMs || 0) + pausedMs;
+        }
       }
     }
+    // Inversión de control: reanudar el Master BART (no hay OP_RESUME → START).
+    SerialService.sendResume(ci);
     this._scheduleCircuitAutoFinish(ci);
     console.log(`[TimingService] Circuito ${ci + 1} reanudado tras ${pausedMs}ms`);
     DebugLogger.log('manga', { event: 'resume', circuit: ci, pausedMs, mangaNumber: this.session.manga.number });
@@ -489,6 +499,17 @@ class TimingServiceClass {
     SocketService.emit('manga:resumed');
     SocketService.emit('circuit:state', { circuit: ci, status: 'running', lanes: this._circuitLanes(ci) });
     SocketService.emitStandings(this.getStandings());
+  }
+
+  // Pausa/reanuda TODA la manga (botón PAUSE/RESUME de la UI en simulación/BART).
+  // En DS-300 la pausa la dispara la caja (race_paused) por circuito.
+  pauseManga() {
+    if (!this.session) return;
+    Object.values(this.session.circuits).forEach(c => { if (c.status === 'running') this.pauseCircuit(c.index); });
+  }
+  resumeManga() {
+    if (!this.session) return;
+    Object.values(this.session.circuits).forEach(c => { if (c.status === 'paused') this.resumeCircuit(c.index); });
   }
 
   // ── Cancel manga (manual stop) — resets to pending, deletes laps ──────────
