@@ -296,7 +296,8 @@ class SessionController {
     const hasQrCheckin = LicenseService.has('qr_checkin');
 
     const isSimulating = SerialService.isSimulating;
-    res.render('races/live', { t: req.t, race, manga, tanda, lanes, laps, isActive, standings, prevLapsByLane, totalMangas, totalTandas, totalRaceMs, effectiveMangaDurationMs, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, allParticipants, nextLaneByLane, nextMangaInfo, isSimulating });
+    const isBart       = SerialService.isBart;
+    res.render('races/live', { t: req.t, race, manga, tanda, lanes, laps, isActive, standings, prevLapsByLane, totalMangas, totalTandas, totalRaceMs, effectiveMangaDurationMs, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, allParticipants, nextLaneByLane, nextMangaInfo, isSimulating, isBart });
   }
 
   // GET /races/:id/mangas/:mangaId/panel/:type  (standalone popup)

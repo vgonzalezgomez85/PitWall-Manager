@@ -48,10 +48,16 @@
     </div>
 
     <div class="live-header__actions">
-      <% if (isSimulating) { %>
+      <%# GO/STOP manual: solo cuando SlotTime inicia la carrera (simulación o BART).
+          En DS-300 manda la caja → no se muestra. %>
+      <% if (isSimulating || isBart) { %>
+        <% const goTitle   = isBart ? (lang === 'es' ? 'Arrancar manga (BART)' : 'Start heat (BART)')
+                                    : (lang === 'es' ? 'Arrancar simulación'   : 'Start simulation'); %>
+        <% const stopTitle = isBart ? (lang === 'es' ? 'Parar manga (BART)'    : 'Stop heat (BART)')
+                                    : (lang === 'es' ? 'Parar simulación'      : 'Stop simulation'); %>
         <% if (manga.status === 'pending' && !isActive) { %>
           <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/start" method="POST" style="display:inline">
-            <button class="lbtn lbtn--go" type="submit" title="<%= lang === 'es' ? 'Arrancar simulación' : 'Start simulation' %>">
+            <button class="lbtn lbtn--go" type="submit" title="<%= goTitle %>">
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
               <span>GO</span>
             </button>
@@ -59,7 +65,7 @@
         <% } else if (isActive) { %>
           <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/stop" method="POST" style="display:inline"
             onsubmit="return confirm('<%= lang === 'es' ? '¿Parar la manga y borrar las vueltas registradas?' : 'Stop the heat and delete recorded laps?' %>')">
-            <button class="lbtn lbtn--fin" type="submit" title="<%= lang === 'es' ? 'Parar simulación' : 'Stop simulation' %>">
+            <button class="lbtn lbtn--fin" type="submit" title="<%= stopTitle %>">
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>
               <span>STOP</span>
             </button>
