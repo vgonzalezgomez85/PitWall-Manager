@@ -76,11 +76,30 @@ class SessionController {
       try { require('../config/database').prepare('UPDATE races SET manga_duration_minutes=? WHERE id=?').run(durMin, race.id); } catch {}
     }
 
-    TimingService.startManga(manga, race, lanes, teams, drivers, durationMs);
-    // BART/simulación: hay un único GO (no una caja DS por circuito), así que
-    // arrancamos TODOS los circuitos a la vez. En DS-300 cada caja manda su GO.
-    if (SerialService.isBart || SerialService.isSimulating) TimingService.startAllCircuits(durationMs);
-    Tanda.updateStatus(tanda.id, 'active');
+    const softwareGo = SerialService.isBart || SerialService.isSimulating;
+
+    const doStart = () => {
+      TimingService.startManga(manga, race, lanes, teams, drivers, durationMs);
+      // BART/sim: un único GO arranca TODOS los circuitos (no hay caja DS por
+      // circuito). En DS-300 cada caja manda su GO.
+      if (softwareGo) TimingService.startAllCircuits(durationMs);
+      Tanda.updateStatus(tanda.id, 'active');
+    };
+
+    // BART/sim: el GO lo da SlotTime, así que lanzamos el semáforo F1 (3s) y
+    // arrancamos al ponerse verde — mismo flujo que la trama GO del DS-300.
+    // El botón es AJAX para que la animación no se pierda en una recarga.
+    const SEMAPHORE_MS = 3000;
+    if (softwareGo && req.body.semaphore !== '0') {
+      SocketService.emit('race:semaphore');
+      setTimeout(doStart, SEMAPHORE_MS);
+      if (req.xhr || (req.get('accept') || '').includes('application/json')) {
+        return res.json({ ok: true, semaphore: true });
+      }
+      return res.redirect(`/races/${race.id}/mangas/${manga.id}/live`);
+    }
+
+    doStart();
     res.redirect(`/races/${race.id}/mangas/${manga.id}/live`);
   }
 
@@ -98,7 +117,22 @@ class SessionController {
     const race  = Race.findById(req.params.id);
     const manga = Manga.findById(req.params.mangaId);
     if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
-    if (TimingService.activeMangaId === manga.id) TimingService.resumeManga();
+    if (TimingService.activeMangaId !== manga.id) return res.redirect(`/races/${race.id}/mangas/${manga.id}/live`);
+
+    // Igual que el GO: en BART/sim mostramos el semáforo de reanudación (3s) y
+    // reanudamos al ponerse verde — mismo flujo que la trama de resume del DS-300.
+    const softwareGo = SerialService.isBart || SerialService.isSimulating;
+    const SEMAPHORE_MS = 3000;
+    if (softwareGo && req.body.semaphore !== '0') {
+      SocketService.emit('race:semaphore');
+      setTimeout(() => TimingService.resumeManga(), SEMAPHORE_MS);
+      if (req.xhr || (req.get('accept') || '').includes('application/json')) {
+        return res.json({ ok: true, semaphore: true });
+      }
+      return res.redirect(`/races/${race.id}/mangas/${manga.id}/live`);
+    }
+
+    TimingService.resumeManga();
     res.redirect(`/races/${race.id}/mangas/${manga.id}/live`);
   }
 
