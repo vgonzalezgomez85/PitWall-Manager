@@ -449,12 +449,15 @@ class SessionController {
     else                                    view = 'races/live-panel';
 
     const effectiveMangaDurationMs = SessionController._getEffectiveMangaDurationMs(race, manga);
+    // Totales para la cabecera: "Tanda X/total · Manga Y/total".
+    const totalTandas        = Tanda.findByRace(race.id).length;
+    const totalMangasInTanda = Manga.findByTanda(manga.tanda_id).length;
 
     res.render(view, {
       t: req.t, race, manga, tanda, lanes, laps, isActive, standings,
       allParticipants, prevLapsByLane, raceBestLaps,
       circuit, trackOutline, lastLapByLane,
-      effectiveMangaDurationMs,
+      effectiveMangaDurationMs, totalTandas, totalMangasInTanda,
     });
   }
 
