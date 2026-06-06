@@ -107,9 +107,22 @@ class SettingsController {
     const fg = parseInt(serial_frame_gap_ms, 10);
     const fgClean = (Number.isFinite(fg) && fg >= 10 && fg <= 500) ? fg : 75;
 
+    // BART source: TCP bridge (emulator or BLE→TCP). Stored as a single circuit
+    // entry with type:'bart' so SerialService.connectMultiple builds a
+    // BartConnection. Lanes still numbered globally like the DS-300 path.
+    const bartHost  = String(req.body.bart_host || '127.0.0.1').trim() || '127.0.0.1';
+    const bartPort  = parseInt(req.body.bart_port  || '9300', 10) || 9300;
+    const bartLanes = parseInt(req.body.bart_lanes || '4', 10) || 4;
+    if (serial_mode === 'bart') {
+      circuits = [{ type: 'bart', host: bartHost, port: bartPort, lanes: bartLanes }];
+    }
+
     Settings.setMany({
       serial_mode:          serial_mode || 'simulation',
       circuits_serial:      JSON.stringify(circuits),
+      bart_host:            bartHost,
+      bart_port:            String(bartPort),
+      bart_lanes:           String(bartLanes),
       sim_lanes:            sim_lanes   || '6',
       sim_avg_ms:           sim_avg_ms  || '12000',
       training_circuit_id:  String(trainingCircuitId),
@@ -130,9 +143,9 @@ class SettingsController {
       if (!infolapOn && InfolapServer.isRunning)  InfolapServer.stop();
     } catch (e) { console.warn('[Settings] Infolap toggle failed:', e.message); }
 
-    if (serial_mode === 'serial' && circuits.length > 0) {
+    if ((serial_mode === 'serial' || serial_mode === 'bart') && circuits.length > 0) {
       await SerialService.closeAll();
-      SerialService.init(); // re-reads frame gap + reconnects
+      SerialService.init(); // re-reads frame gap + reconnects (DS-300 or BART)
     } else {
       await SerialService.closeAll();
       SerialService.startSimulation(
