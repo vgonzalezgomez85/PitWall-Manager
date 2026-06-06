@@ -158,6 +158,21 @@ class SettingsController {
       );
     }
 
+    // Confirmación visible (flash): así el usuario SABE que se aplicó y con qué
+    // fuente/transporte (antes no había feedback → "parece que no aplica").
+    const isEs = (req.session && req.session.lang) !== 'en';
+    let src;
+    if (serial_mode === 'bart') {
+      src = bartTransport === 'ble'
+        ? (isEs ? `BART (BLE) — buscando "${bartName}"…` : `BART (BLE) — searching "${bartName}"…`)
+        : (isEs ? `BART (TCP ${bartHost}:${bartPort})` : `BART (TCP ${bartHost}:${bartPort})`);
+    } else if (serial_mode === 'serial') {
+      src = isEs ? `DS-300 (${circuits.length} circuito${circuits.length === 1 ? '' : 's'})` : `DS-300 (${circuits.length} circuit${circuits.length === 1 ? '' : 's'})`;
+    } else {
+      src = isEs ? 'Simulación' : 'Simulation';
+    }
+    req.session.flash = { type: 'success', text: (isEs ? 'Configuración aplicada · Fuente: ' : 'Settings applied · Source: ') + src };
+
     res.redirect('/settings');
   }
 }
