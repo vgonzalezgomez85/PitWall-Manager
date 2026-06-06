@@ -73,6 +73,11 @@
   border-radius: 4px;
 }
 .race-best-star { color: #fbbf24; margin-left: 2px; }
+/* Redondel azul = vuelta rápida general del carril (mejor entre todos en esa pista) */
+.lane-fastest-dot {
+  display: inline-block; width: .62em; height: .62em; border-radius: 50%;
+  background: #2f81f7; margin-right: .35em; vertical-align: middle;
+}
 
 @media print {
   .navbar, .footer, .vt-head__actions, .results-tabs, .vt-back-link,
@@ -92,9 +97,10 @@
 <div class="vt-page vt-page--results">
   <div class="vt-wrap">
 
-    <a href="/races/<%= race.id %>" class="vt-back-link">
+    <% var _publicView = (typeof publicView !== 'undefined' && publicView); %>
+    <a href="<%= _publicView ? '/results' : '/races/' + race.id %>" class="vt-back-link">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      <%= lang === 'es' ? 'Volver a la carrera' : 'Back to race' %>
+      <%= _publicView ? (lang === 'es' ? 'Volver a resultados' : 'Back to results') : (lang === 'es' ? 'Volver a la carrera' : 'Back to race') %>
     </a>
 
   <!-- Header -->
@@ -109,6 +115,7 @@
     </div>
     <div class="vt-head__actions">
       <span class="vt-badge is-info"><span class="vt-badge__d"></span><%= tandas.length %> <%= lang === 'es' ? 'tandas' : 'rounds' %></span>
+      <% if (!_publicView) { %>
       <a href="/races/<%= race.id %>/results/xlsx?lang=<%= lang %>" class="vt-btn vt-btn--ghost vt-btn--sm" title="<%= lang === 'es' ? 'Exportar a Excel' : 'Export to Excel' %>">
         <svg viewBox="0 0 24 24"><path d="M14 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13l3 3 3-3M12 16V9"/></svg>
         Excel
@@ -121,6 +128,7 @@
         <svg viewBox="0 0 24 24"><path d="M14 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
         <%= lang === 'es' ? 'Puntos (csv)' : 'Points (csv)' %>
       </a>
+      <% } %>
       <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" onclick="window.print()" title="<%= lang === 'es' ? 'Guardar como PDF' : 'Save as PDF' %>">
         <svg viewBox="0 0 24 24"><path d="M6 9V4h12v5M6 18H4a1 1 0 0 1-1-1v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a1 1 0 0 1-1 1h-2M6 14h12v7H6z"/></svg>
         PDF
@@ -150,19 +158,7 @@
 
     <!-- Tab nav -->
     <div class="results-tabs">
-      <button class="results-tab active" data-tab="total">
-        🏆 <%= lang === 'es' ? 'Total vueltas' : 'Total laps' %>
-      </button>
-      <button class="results-tab" data-tab="best">
-        ⚡ <%= lang === 'es' ? 'Mejor vuelta' : 'Best lap' %>
-      </button>
-      <button class="results-tab" data-tab="avg">
-        📈 <%= lang === 'es' ? 'Vuelta media' : 'Average lap' %>
-      </button>
-      <button class="results-tab" data-tab="lanes">
-        🗂 <%= lang === 'es' ? 'Por carril' : 'Per lane' %>
-      </button>
-      <button class="results-tab" data-tab="matrix">
+      <button class="results-tab active" data-tab="matrix">
         🏁 <%= lang === 'es' ? 'Comparativa' : 'Comparison' %>
       </button>
       <button class="results-tab" data-tab="progression">
@@ -176,158 +172,20 @@
       </button>
     </div>
 
-    <!-- ── Total laps ranking ── -->
-    <div class="results-panel active" id="tab-total">
-      <table class="results-table">
-        <thead>
-          <tr>
-            <th class="col-pos">#</th>
-            <th><%= lang === 'es' ? 'Piloto / Equipo' : 'Driver / Team' %></th>
-            <th class="col-num"><%= lang === 'es' ? 'Vueltas' : 'Laps' %></th>
-            <th class="col-num"><%= lang === 'es' ? 'Mejor' : 'Best' %></th>
-            <th class="col-num"><%= lang === 'es' ? 'Media' : 'Avg' %></th>
-            <th class="col-num"><%= lang === 'es' ? 'Mangas' : 'Heats' %></th>
-          </tr>
-        </thead>
-        <tbody>
-          <% const byTotal = [...results].sort((a,b) => b.total_laps - a.total_laps || (a.best_lap_ms||Infinity) - (b.best_lap_ms||Infinity)); %>
-          <% byTotal.forEach((r, i) => { %>
-            <tr class="results-row <%= i < 3 ? 'top-' + (i+1) : '' %>">
-              <td class="col-pos">
-                <span class="pos-badge pos-<%= i+1 %>"><%= i+1 %></span>
-              </td>
-              <td>
-                <% if (r.color) { %>
-                  <span class="lane-dot" style="background:<%= r.color %>; width:10px; height:10px; display:inline-block; border-radius:3px; margin-right:6px;"></span>
-                <% } %>
-                <strong><%= r.entity_name %></strong>
-              </td>
-              <td class="col-num result-highlight"><%= r.total_laps %></td>
-              <td class="col-num"><%= fmtMs(r.best_lap_ms) %></td>
-              <td class="col-num text-muted"><%= fmtMs(Math.round(r.avg_lap_ms)) %></td>
-              <td class="col-num text-muted"><%= r.mangas_raced %></td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- ── Best lap ranking ── -->
-    <div class="results-panel" id="tab-best">
-      <table class="results-table">
-        <thead>
-          <tr>
-            <th class="col-pos">#</th>
-            <th><%= lang === 'es' ? 'Piloto / Equipo' : 'Driver / Team' %></th>
-            <th class="col-num"><%= lang === 'es' ? 'Mejor vuelta' : 'Best lap' %></th>
-            <th class="col-num"><%= lang === 'es' ? 'Vueltas' : 'Laps' %></th>
-          </tr>
-        </thead>
-        <tbody>
-          <% const byBest = [...results].filter(r => r.best_lap_ms).sort((a,b) => a.best_lap_ms - b.best_lap_ms); %>
-          <% byBest.forEach((r, i) => { %>
-            <tr class="results-row <%= i < 3 ? 'top-' + (i+1) : '' %>">
-              <td class="col-pos">
-                <span class="pos-badge pos-<%= i+1 %>"><%= i+1 %></span>
-              </td>
-              <td>
-                <% if (r.color) { %>
-                  <span class="lane-dot" style="background:<%= r.color %>; width:10px; height:10px; display:inline-block; border-radius:3px; margin-right:6px;"></span>
-                <% } %>
-                <strong><%= r.entity_name %></strong>
-              </td>
-              <td class="col-num result-highlight"><%= fmtMs(r.best_lap_ms) %></td>
-              <td class="col-num text-muted"><%= r.total_laps %></td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- ── Average lap ranking ── -->
-    <div class="results-panel" id="tab-avg">
-      <table class="results-table">
-        <thead>
-          <tr>
-            <th class="col-pos">#</th>
-            <th><%= lang === 'es' ? 'Piloto / Equipo' : 'Driver / Team' %></th>
-            <th class="col-num"><%= lang === 'es' ? 'Media' : 'Average' %></th>
-            <th class="col-num"><%= lang === 'es' ? 'Vueltas' : 'Laps' %></th>
-          </tr>
-        </thead>
-        <tbody>
-          <% const byAvg = [...results].filter(r => r.avg_lap_ms).sort((a,b) => a.avg_lap_ms - b.avg_lap_ms); %>
-          <% byAvg.forEach((r, i) => { %>
-            <tr class="results-row <%= i < 3 ? 'top-' + (i+1) : '' %>">
-              <td class="col-pos">
-                <span class="pos-badge pos-<%= i+1 %>"><%= i+1 %></span>
-              </td>
-              <td>
-                <% if (r.color) { %>
-                  <span class="lane-dot" style="background:<%= r.color %>; width:10px; height:10px; display:inline-block; border-radius:3px; margin-right:6px;"></span>
-                <% } %>
-                <strong><%= r.entity_name %></strong>
-              </td>
-              <td class="col-num result-highlight"><%= fmtMs(Math.round(r.avg_lap_ms)) %></td>
-              <td class="col-num text-muted"><%= r.total_laps %></td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- ── Per-lane breakdown ── -->
-    <div class="results-panel" id="tab-lanes">
-      <% results.forEach(r => { %>
-        <div class="per-lane-block">
-          <div class="per-lane-header">
-            <% if (r.color) { %>
-              <span class="lane-dot" style="background:<%= r.color %>; width:14px; height:14px; display:inline-block; border-radius:4px; margin-right:8px; flex-shrink:0"></span>
-            <% } %>
-            <strong><%= r.entity_name %></strong>
-            <span class="text-muted" style="font-size:.8rem; margin-left:.5rem">
-              <%= r.total_laps %> <%= lang === 'es' ? 'vueltas totales' : 'total laps' %>
-            </span>
-          </div>
-          <% if (r.perLane && r.perLane.length > 0) { %>
-            <table class="per-lane-table">
-              <thead>
-                <tr>
-                  <th><%= lang === 'es' ? 'Carril' : 'Lane' %></th>
-                  <th class="col-num"><%= lang === 'es' ? 'Vueltas' : 'Laps' %></th>
-                  <th class="col-num"><%= lang === 'es' ? 'Mejor' : 'Best' %></th>
-                  <th class="col-num"><%= lang === 'es' ? 'Media' : 'Avg' %></th>
-                  <th class="col-num" title="<%= lang === 'es' ? 'Salidas de pista' : 'Off-track exits' %>">🚨</th>
-                </tr>
-              </thead>
-              <tbody>
-                <% r.perLane.forEach(pl => { %>
-                  <tr>
-                    <td>
-                      <span class="lane-dot" style="background:<%= LANE_COLORS[pl.lane-1] || '#8b949e' %>"><%= pl.lane %></span>
-                    </td>
-                    <td class="col-num"><%= pl.laps %></td>
-                    <td class="col-num"><%= fmtMs(pl.best_ms) %></td>
-                    <td class="col-num text-muted"><%= fmtMs(Math.round(pl.avg_ms)) %></td>
-                    <td class="col-num" style="<%= pl.exit_count > 0 ? 'color:#e63946;font-weight:600' : 'color:#8b949e' %>">
-                      <%= pl.exit_count || 0 %>
-                    </td>
-                  </tr>
-                <% }) %>
-              </tbody>
-            </table>
-          <% } else { %>
-            <p class="form-hint" style="padding:.5rem 0"><%= lang === 'es' ? 'Sin datos de vueltas.' : 'No lap data.' %></p>
-          <% } %>
-        </div>
-      <% }) %>
-    </div>
-
     <!-- ── Comparison matrix (PDF-style, modern) ── -->
-    <div class="results-panel" id="tab-matrix">
+    <div class="results-panel active" id="tab-matrix">
       <%
         const orderedLanes = (laneSequence || []).filter(l => l > 0);
         const byTotalM = [...results].sort((a,b) => b.total_laps - a.total_laps || (a.best_lap_ms||Infinity) - (b.best_lap_ms||Infinity));
+
+        // VR general de cada carril = mejor `best_ms` de ese carril entre todos
+        // los participantes. Se marca con un redondel azul en la fila "Rápida".
+        const laneFastest = {};
+        byTotalM.forEach(r => (r.perLane || []).forEach(pl => {
+          if (pl.best_ms != null && (laneFastest[pl.lane] == null || pl.best_ms < laneFastest[pl.lane])) {
+            laneFastest[pl.lane] = pl.best_ms;
+          }
+        }));
 
         function fmtSec(ms) {
           if (ms == null) return '—';
@@ -401,11 +259,12 @@
                 <% orderedLanes.forEach(lane => {
                      const pl = laneMap.get(lane);
                      const isRaceBest = pl && pl.best_ms != null && pl.best_ms === raceBestLapMs;
+                     const isLaneFastest = pl && pl.best_ms != null && pl.best_ms === laneFastest[lane];
                      const isStart = lane === startLane;
                 %>
-                  <td class="matrix-lane-cell <%= isRaceBest ? 'race-best' : '' %> <%= isStart ? 'matrix-lane-cell--start' : '' %>">
+                  <td class="matrix-lane-cell <%= isRaceBest ? 'race-best' : '' %> <%= isLaneFastest ? 'lane-fastest' : '' %> <%= isStart ? 'matrix-lane-cell--start' : '' %>">
                     <% if (pl && pl.best_ms != null) { %>
-                      <%= fmtSec(pl.best_ms) %><% if (isRaceBest) { %> <span class="race-best-star">★</span><% } %>
+                      <% if (isLaneFastest) { %><span class="lane-fastest-dot" title="<%= lang === 'es' ? 'Vuelta rápida del carril' : 'Lane fastest lap' %>"></span><% } %><%= fmtSec(pl.best_ms) %><% if (isRaceBest) { %> <span class="race-best-star">★</span><% } %>
                     <% } else { %>—<% } %>
                   </td>
                 <% }) %>
@@ -982,8 +841,8 @@
   })();
 </script>
 
-    <!-- Lap corrections per manga -->
-    <% if (tandas.some(t => t.mangas && t.mangas.length > 0)) { %>
+    <!-- Lap corrections per manga (oculto en la vista pública) -->
+    <% if (!_publicView && tandas.some(t => t.mangas && t.mangas.length > 0)) { %>
       <div style="margin-top:2.5rem">
         <h2 class="section-title">
           🔧 <%= lang === 'es' ? 'Corrección de vueltas' : 'Lap Corrections' %>

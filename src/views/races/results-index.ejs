@@ -1,0 +1,54 @@
+<%- include('../partials/header', { pageTitle: (lang === 'es' ? 'Resultados' : 'Results') }) %>
+
+<div class="container container--narrow">
+  <a href="/" class="vt-back-link" style="margin-top:1rem">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    <%= lang === 'es' ? 'Inicio' : 'Home' %>
+  </a>
+  <div class="page-header">
+    <h1 class="page-title">🏆 <%= lang === 'es' ? 'Resultados' : 'Results' %></h1>
+    <p style="color:#8b949e; margin-top:.3rem">
+      <%= lang === 'es'
+        ? 'Elige una carrera finalizada para consultar sus resultados y estadísticas.'
+        : 'Pick a finished race to see its results and statistics.' %>
+    </p>
+  </div>
+
+  <% if (races.length === 0) { %>
+    <div class="rx-empty">
+      <div class="rx-empty__icon">🏁</div>
+      <p class="rx-empty__title"><%= lang === 'es' ? 'Todavía no hay carreras finalizadas.' : 'No finished races yet.' %></p>
+      <p class="rx-empty__sub"><%= lang === 'es' ? 'Cuando una carrera termine, aparecerá aquí.' : 'When a race finishes, it will show up here.' %></p>
+    </div>
+  <% } else { %>
+    <div class="rx-race-list">
+      <% races.forEach(r => { %>
+        <a href="/results/<%= r.id %>" class="rx-race-card">
+          <div class="rx-race-card__name"><%= r.name %></div>
+          <div class="rx-race-card__meta">
+            <span class="rx-race-card__status"><%= lang === 'es' ? 'Finalizada' : 'Finished' %></span>
+            <span style="margin-left:.5rem"><%= t('races.type.' + r.type) %> · <%= t('races.format.' + r.format) %></span>
+            <% if (r.created_at) { %>
+              <span style="margin-left:.5rem"><%= new Date(r.created_at).toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-GB') %></span>
+            <% } %>
+          </div>
+        </a>
+      <% }) %>
+    </div>
+  <% } %>
+</div>
+
+<style>
+  .rx-race-list { display:flex; flex-direction:column; gap:.6rem; margin-top:1.2rem }
+  .rx-race-card { display:block; background:#161b22; border:1px solid #30363d; border-radius:10px; padding:.9rem 1.1rem; color:#c9d1d9; text-decoration:none; transition: border-color .15s }
+  .rx-race-card:hover { border-color:#f6c90e; text-decoration:none }
+  .rx-race-card__name { font-weight:600; font-size:1.05rem }
+  .rx-race-card__meta { font-size:.78rem; color:#6e7681; margin-top:.2rem }
+  .rx-race-card__status { display:inline-block; padding:1px 7px; border-radius:9px; font-size:.7rem; font-weight:700; text-transform:uppercase; background:rgba(88,166,255,.15); color:#58a6ff }
+  .rx-empty { text-align:center; margin-top:2.5rem; color:#8b949e }
+  .rx-empty__icon { font-size:3rem; opacity:.6 }
+  .rx-empty__title { color:#e6edf3; font-size:1.15rem; font-weight:600; margin:.8rem 0 .3rem }
+  .rx-empty__sub { font-size:.9rem }
+</style>
+
+<%- include('../partials/footer') %>

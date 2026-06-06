@@ -189,6 +189,10 @@ router.get( '/race-stats',                        LiveStatsController.index);
 router.get( '/races/:id/live-stats',              LiveStatsController.show);
 router.get( '/races/:id/live-stats.json',         LiveStatsController.json);
 
+// Resultados públicos (consulta de carreras finalizadas, sin corrección)
+router.get( '/results',                           SessionController.resultsIndex);
+router.get( '/results/:id',                       SessionController.publicResults);
+
 router.get( '/diagnostico',                       DiagnosticsController.index);
 router.post('/diagnostico/clear-boundary',        DiagnosticsController.clearBoundary);
 router.post('/diagnostico/cancel-active',         DiagnosticsController.cancelActive);

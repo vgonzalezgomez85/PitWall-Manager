@@ -823,7 +823,25 @@ class SessionController {
       progressionByEntity, positionData,
       totalLapEvents: allLapsOrdered.length,
       advancedStats,
+      publicView: !!req._publicResults,
     });
+  }
+
+  // ── Resultados públicos ────────────────────────────────────────────────────
+  // GET /results — landing pública: lista de carreras finalizadas.
+  static resultsIndex(req, res) {
+    const lang  = req.session?.lang || 'es';
+    const races = Race.findAll()
+      .filter(r => r.status === 'finished')
+      .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+    res.render('races/results-index', { t: req.t, lang, races });
+  }
+
+  // GET /results/:id — resultados públicos de una carrera (misma vista que
+  // /races/:id/results pero sin la sección de corrección de vueltas).
+  static publicResults(req, res) {
+    req._publicResults = true;
+    return SessionController.results(req, res);
   }
 
   // GET /races/:id/results/xlsx

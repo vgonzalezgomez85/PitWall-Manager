@@ -131,7 +131,11 @@ class Lap {
     return db.prepare(`
       SELECT l.lane,
         COUNT(l.id)        AS laps,
-        MIN(CASE WHEN l.is_exit = 0 AND l.lap_number > 1 THEN l.lap_time_ms END) AS best_ms,
+        -- VR del carril: ni ghost (WHERE), ni salida, ni warmup, ni 1ª vuelta,
+        -- ni nada por debajo del Pt (fantasma no-marcado) — igual que el footer.
+        MIN(CASE WHEN l.is_exit = 0 AND l.is_warmup = 0 AND l.lap_number > 1
+                  AND l.lap_time_ms >= (SELECT COALESCE(min_lap_ms, 0) FROM races WHERE id = ?)
+                 THEN l.lap_time_ms END) AS best_ms,
         AVG(CASE WHEN l.lap_number > 1 THEN l.lap_time_ms END) AS avg_ms,
         MAX(CASE WHEN l.lap_number > 1 THEN l.lap_time_ms END) AS worst_ms,
         SUM(l.is_exit)     AS exit_count,
@@ -141,7 +145,7 @@ class Lap {
       WHERE l.race_id = ? AND ${col} = ? AND l.is_ghost = 0
       GROUP BY l.lane
       ORDER BY l.lane ASC
-    `).all(raceId, entityId);
+    `).all(raceId, raceId, entityId);
   }
 
   // ── Ghost lap corrections ────────────────────────────────────────────────
