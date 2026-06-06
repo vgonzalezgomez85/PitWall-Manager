@@ -507,7 +507,10 @@ class SerialServiceClass extends EventEmitter {
     console.log(`[SerialService] FRAME_GAP_MS = ${FRAME_GAP_MS} ms`);
 
     const mode = Settings.get('serial_mode', 'simulation');
-    if (mode === 'serial') {
+    // 'serial' (DS-300) y 'bart' (BLE vía puente) comparten ruta: ambos
+    // conectan los circuitos de circuits_serial; el type de cada entrada
+    // decide CircuitConnection vs BartConnection.
+    if (mode === 'serial' || mode === 'bart') {
       const circuitsJson = Settings.get('circuits_serial', '[]');
       let circuits = [];
       try { circuits = JSON.parse(circuitsJson); } catch {}
@@ -547,12 +550,15 @@ class SerialServiceClass extends EventEmitter {
     const connections = [];
 
     for (let i = 0; i < circuitConfigs.length; i++) {
-      const { port, baud, lanes = 8, dataBits, parity, stopBits, flowControl } = circuitConfigs[i];
-      if (!baud) throw new Error(`Circuit ${i + 1}: baud rate missing in DB config`);
-      const conn = new CircuitConnection(
+      const cfg  = circuitConfigs[i];
+      const type = cfg.type || 'ds300';
+      // Callbacks idénticos para cualquier fuente: lo que cambia es de dónde
+      // salen los cruces, no cómo se reemiten. Aguas abajo nadie nota la fuente.
+      const source = type === 'bart' ? 'bart' : 'ds300';
+      const callbacks = [
         i,
         laneOffset,
-        data => { DebugLogger.log('crossing_raw', { source: 'ds300', circuit: i, ...data }); this.emit('lane_crossing', { circuit: i, ...data }); },
+        data => { DebugLogger.log('crossing_raw', { source, circuit: i, ...data }); this.emit('lane_crossing', { circuit: i, ...data }); },
         ()   => this.emit('race_started',       { circuit: i }),
         ()   => this.emit('race_stopped',       { circuit: i }),
         ()   => this.emit('race_paused',        { circuit: i }),
@@ -561,8 +567,30 @@ class SerialServiceClass extends EventEmitter {
         ()   => this.emit('race_finished',      { circuit: i }),
         ()   => this.emit('race_resume_signal', { circuit: i }),
         ()   => this.emit('semaphore_step',     { circuit: i }),
-      );
-      await conn.connect(port, baud, { dataBits, parity, stopBits, flowControl });
+      ];
+
+      let conn, lanes;
+      if (type === 'bart') {
+        // Circuito BART: { type:'bart', host, port, lanes, minlap?, start? }
+        const BartConnection = require('./bart/BartConnection');
+        lanes = cfg.lanes || 4;                         // dispositivos BART: 2 ó 4 carriles
+        conn  = new BartConnection(...callbacks);
+        // BART va por TCP con reconexión propia: si el puente/emulador aún no
+        // está arriba, NO tiramos a simulación — la conexión reintenta sola y se
+        // engancha cuando aparezca. (El DS-300 sí propaga el fallo: puerto serie
+        // ausente es un error de config.)
+        try {
+          await conn.connect(cfg.host || '127.0.0.1', cfg.port || 9300, { transport: cfg.transport || 'tcp', name: cfg.name, minlap: cfg.minlap, start: cfg.start });
+        } catch (e) {
+          console.warn(`[SerialService] BART C${i + 1}: ${e.message} — reintentando en segundo plano`);
+        }
+      } else {
+        // Circuito DS-300: { port, baud, lanes, dataBits, ... }
+        if (!cfg.baud) throw new Error(`Circuit ${i + 1}: baud rate missing in DB config`);
+        lanes = cfg.lanes || 8;
+        conn  = new CircuitConnection(...callbacks);
+        await conn.connect(cfg.port, cfg.baud, { dataBits: cfg.dataBits, parity: cfg.parity, stopBits: cfg.stopBits, flowControl: cfg.flowControl });
+      }
       connections.push(conn);
       laneOffset += lanes;
     }
@@ -726,6 +754,30 @@ class SerialServiceClass extends EventEmitter {
     if (was) this._broadcastLinkStatus();
   }
 
+  // ── Comandos de salida hacia el hardware (inversión de control) ───────────
+  // Solo aplican a fuentes que SlotTime pilota (BART). En el DS-300 manda la
+  // caja, así que estas conexiones no exponen estos métodos → no-op. Si no se
+  // pasa `circuit`, el comando va a TODAS las conexiones que lo soporten.
+  _sendToCircuits(method, circuit) {
+    const targets = (circuit == null)
+      ? this._connections
+      : [this._connections[circuit]].filter(Boolean);
+    for (const c of targets) {
+      if (typeof c[method] === 'function') {
+        try { c[method](); } catch (e) { console.warn(`[SerialService] ${method} failed:`, e.message); }
+      }
+    }
+  }
+  sendStart(circuit)  { this._sendToCircuits('sendStart',  circuit); }
+  sendStop(circuit)   { this._sendToCircuits('sendStop',   circuit); }
+  sendPause(circuit)  { this._sendToCircuits('sendPause',  circuit); }
+  sendResume(circuit) { this._sendToCircuits('sendResume', circuit); }
+  sendClear(circuit)  { this._sendToCircuits('sendClear',  circuit); }
+  setMinLap(ms, circuit) {
+    const targets = (circuit == null) ? this._connections : [this._connections[circuit]].filter(Boolean);
+    for (const c of targets) { if (typeof c.setMinLap === 'function') { try { c.setMinLap(ms); } catch {} } }
+  }
+
   // ── Utilities ────────────────────────────────────────────────────────────
 
   async listPorts() {
@@ -742,6 +794,10 @@ class SerialServiceClass extends EventEmitter {
   }
 
   get isSimulating()   { return this._simRunning; }
+  // True si la fuente activa es BART (SlotTime pilota el GO/STOP). Se usa en la
+  // vista live para mostrar el botón GO/STOP, igual que en simulación. En DS-300
+  // manda la caja → no aplica.
+  get isBart()         { return this._connections.some(c => c && c.isBart); }
   get connectedPort()  { return this._connections[0]?.path ?? null; }
   get connectedPorts() { return this._connections.map(c => c.path).filter(Boolean); }
 

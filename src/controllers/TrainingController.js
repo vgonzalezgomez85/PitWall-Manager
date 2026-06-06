@@ -2,12 +2,14 @@ const TrainingService     = require('../services/TrainingService');
 const CompetitionService  = require('../services/CompetitionTrainingService');
 const TimingService       = require('../services/TimingService');
 const SerialService       = require('../services/SerialService');
+const SocketService       = require('../services/SocketService');
 const Settings            = require('../models/Settings');
 const Circuit             = require('../models/Circuit');
 
-// Suma de carriles de TODOS los DS-300 en modo serial (multi-DS); 0 si no aplica.
+// Suma de carriles de TODOS los circuitos configurados (DS-300 o BART); 0 si no aplica.
 function serialLaneTotal() {
-  if (Settings.get('serial_mode', '') !== 'serial') return 0;
+  const mode = Settings.get('serial_mode', '');
+  if (mode !== 'serial' && mode !== 'bart') return 0;
   try {
     const cfg = JSON.parse(Settings.get('circuits_serial', '[]'));
     if (Array.isArray(cfg) && cfg.length > 0) {
@@ -111,13 +113,78 @@ class TrainingController {
       durationMs: CompetitionService.durationMs,
       standby:    CompetitionService.isStandby,
       heatNumber: CompetitionService.heatNumber,
+      isSimulating: SerialService.isSimulating,
+      isBart:       SerialService.isBart,
+      isPaused:     CompetitionService.isPaused,
     });
   }
 
   // POST /training/competition/stop
   static competitionStop(req, res) {
     CompetitionService.stop();
+    try { SerialService.sendStop(); } catch {}   // para el Master BART (no-op DS/sim)
     res.redirect('/training/competition');
+  }
+
+  // POST /training/go — GO manual para BART/simulación (no llega el race_started
+  // del hardware). Activa el entrenamiento en standby (libre o competición) y
+  // arranca el Master BART. sendStart es no-op en DS-300/simulación.
+  static go(req, res) {
+    const isComp = req.body.mode === 'competition';
+    const svc    = isComp ? CompetitionService : TrainingService;
+    const dest   = isComp ? '/training/competition/live' : '/training/live';
+    if (!svc.isStandby) return res.redirect(dest);
+
+    const durMin = parseInt(req.body.duration_minutes, 10);
+    const durationMs = (Number.isFinite(durMin) && durMin > 0) ? durMin * 60000 : null;
+
+    // Semáforo F1 (3s) y al verde activa + arranca el Master — como en carrera.
+    const SEMAPHORE_MS = 3000;
+    SocketService.emit('race:semaphore');
+    setTimeout(() => {
+      svc.activate(durationMs);
+      SocketService.emit('training:autostart');   // → semáforo verde en el cliente
+      try { SerialService.sendStart(); } catch {}
+    }, SEMAPHORE_MS);
+
+    if (req.xhr || (req.get('accept') || '').includes('application/json')) return res.json({ ok: true, semaphore: true });
+    res.redirect(dest);
+  }
+
+  // POST /training/pause — pausa la grabación + pausa el Master BART
+  static pause(req, res) {
+    const isComp = req.body.mode === 'competition';
+    const svc    = isComp ? CompetitionService : TrainingService;
+    svc.pause();
+    try { SerialService.sendPause(); } catch {}
+    SocketService.emit('training:paused');
+    if (req.xhr || (req.get('accept') || '').includes('application/json')) return res.json({ ok: true });
+    res.redirect(isComp ? '/training/competition/live' : '/training/live');
+  }
+
+  // POST /training/resume — semáforo (3s) y reanuda al verde
+  static resume(req, res) {
+    const isComp = req.body.mode === 'competition';
+    const svc    = isComp ? CompetitionService : TrainingService;
+    const SEMAPHORE_MS = 3000;
+    SocketService.emit('race:semaphore');
+    setTimeout(() => {
+      svc.resume();
+      SocketService.emit('training:resumed');
+      try { SerialService.sendResume(); } catch {}
+    }, SEMAPHORE_MS);
+    if (req.xhr || (req.get('accept') || '').includes('application/json')) return res.json({ ok: true, semaphore: true });
+    res.redirect(isComp ? '/training/competition/live' : '/training/live');
+  }
+
+  // POST /training/halt — STOP: para el Master y vuelve a standby (conserva datos)
+  static halt(req, res) {
+    const isComp = req.body.mode === 'competition';
+    const svc    = isComp ? CompetitionService : TrainingService;
+    svc.stopToStandby();
+    try { SerialService.sendStop(); } catch {}
+    if (req.xhr || (req.get('accept') || '').includes('application/json')) return res.json({ ok: true });
+    res.redirect(isComp ? '/training/competition/live' : '/training/live');
   }
 
   // POST /training/start (legacy / manual)
@@ -136,12 +203,14 @@ class TrainingController {
   // POST /training/stop
   static stop(req, res) {
     TrainingService.stop();
+    try { SerialService.sendStop(); } catch {}
     res.redirect('/training');
   }
 
   // POST /training/free/reset
   static freeReset(req, res) {
     TrainingService.resetSession();
+    try { SerialService.sendStop(); } catch {}
     res.redirect('/training/free');
   }
 
@@ -150,6 +219,7 @@ class TrainingController {
   static exit(req, res) {
     if (CompetitionService.isReady) CompetitionService.stop();
     TrainingService.resetSession();
+    try { SerialService.sendStop(); } catch {}
     res.redirect('/');
   }
 
@@ -164,6 +234,9 @@ class TrainingController {
       durationMs:     TrainingService.durationMs,
       standby:        TrainingService.isStandby,
       sessionRecords: TrainingService.getSessionRecords(),
+      isSimulating:   SerialService.isSimulating,
+      isBart:         SerialService.isBart,
+      isPaused:       TrainingService.isPaused,
     });
   }
 }

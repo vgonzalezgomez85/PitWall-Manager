@@ -131,6 +131,25 @@ class TrainingServiceClass {
     console.log(`[TrainingService] Standby — ${lanesCount} lanes`);
   }
 
+  // Activación pública desde standby (GO manual en simulación/BART, donde no
+  // llega el race_started del hardware). durationMs → countdown; null → cuenta
+  // hacia arriba. Emite training:go para que el cliente fije el cronómetro.
+  activate(durationMs = null) {
+    if (!this._standby || this._active) return;
+    if (durationMs != null) this._durationMs = durationMs;
+    this._activate();
+    SocketService.emit('training:go', { durationMs: this._durationMs });
+  }
+
+  // Pausa/reanuda la grabación (botón PAUSE en BART/sim). Reusa _pausedCircuits:
+  // BART es un Master = circuito 0, así que pausar el 0 pausa todos sus carriles.
+  pause()  { if (this._active) this._setCircuitPaused(0, true); }
+  resume() { if (this._active) this._setCircuitPaused(0, false); }
+  get isPaused() { return this._active && this._pausedCircuits.has(0); }
+
+  // STOP que conserva los datos y vuelve a standby (se puede dar GO otra vez).
+  stopToStandby() { if (this._active) this._pauseToStandby(); }
+
   // ── Activate from standby: start recording laps ───────────────────────────
   _activate() {
     if (this._active) return;
@@ -235,12 +254,6 @@ class TrainingServiceClass {
   // ── Manual full start (legacy / form submit) ──────────────────────────────
   start(lanesCount) {
     this.prepare(lanesCount);
-    this._activate();
-  }
-
-  // Public activation — used when entering /training/free while the DS-300 is
-  // already running a manga, so the operator doesn't have to press GO again.
-  activate() {
     this._activate();
   }
 

@@ -107,9 +107,26 @@ class SettingsController {
     const fg = parseInt(serial_frame_gap_ms, 10);
     const fgClean = (Number.isFinite(fg) && fg >= 10 && fg <= 500) ? fg : 75;
 
+    // BART source: TCP bridge (emulator or BLE→TCP). Stored as a single circuit
+    // entry with type:'bart' so SerialService.connectMultiple builds a
+    // BartConnection. Lanes still numbered globally like the DS-300 path.
+    const bartTransport = req.body.bart_transport === 'ble' ? 'ble' : 'tcp';
+    const bartHost  = String(req.body.bart_host || '127.0.0.1').trim() || '127.0.0.1';
+    const bartPort  = parseInt(req.body.bart_port  || '9300', 10) || 9300;
+    const bartName  = String(req.body.bart_name || 'BART_MST').trim() || 'BART_MST';
+    const bartLanes = parseInt(req.body.bart_lanes || '4', 10) || 4;
+    if (serial_mode === 'bart') {
+      circuits = [{ type: 'bart', transport: bartTransport, host: bartHost, port: bartPort, name: bartName, lanes: bartLanes }];
+    }
+
     Settings.setMany({
       serial_mode:          serial_mode || 'simulation',
       circuits_serial:      JSON.stringify(circuits),
+      bart_transport:       bartTransport,
+      bart_host:            bartHost,
+      bart_port:            String(bartPort),
+      bart_name:            bartName,
+      bart_lanes:           String(bartLanes),
       sim_lanes:            sim_lanes   || '6',
       sim_avg_ms:           sim_avg_ms  || '12000',
       training_circuit_id:  String(trainingCircuitId),
@@ -130,9 +147,9 @@ class SettingsController {
       if (!infolapOn && InfolapServer.isRunning)  InfolapServer.stop();
     } catch (e) { console.warn('[Settings] Infolap toggle failed:', e.message); }
 
-    if (serial_mode === 'serial' && circuits.length > 0) {
+    if ((serial_mode === 'serial' || serial_mode === 'bart') && circuits.length > 0) {
       await SerialService.closeAll();
-      SerialService.init(); // re-reads frame gap + reconnects
+      SerialService.init(); // re-reads frame gap + reconnects (DS-300 or BART)
     } else {
       await SerialService.closeAll();
       SerialService.startSimulation(
@@ -140,6 +157,21 @@ class SettingsController {
         parseInt(sim_avg_ms || '12000', 10),
       );
     }
+
+    // Confirmación visible (flash): así el usuario SABE que se aplicó y con qué
+    // fuente/transporte (antes no había feedback → "parece que no aplica").
+    const isEs = (req.session && req.session.lang) !== 'en';
+    let src;
+    if (serial_mode === 'bart') {
+      src = bartTransport === 'ble'
+        ? (isEs ? `BART (BLE) — buscando "${bartName}"…` : `BART (BLE) — searching "${bartName}"…`)
+        : (isEs ? `BART (TCP ${bartHost}:${bartPort})` : `BART (TCP ${bartHost}:${bartPort})`);
+    } else if (serial_mode === 'serial') {
+      src = isEs ? `DS-300 (${circuits.length} circuito${circuits.length === 1 ? '' : 's'})` : `DS-300 (${circuits.length} circuit${circuits.length === 1 ? '' : 's'})`;
+    } else {
+      src = isEs ? 'Simulación' : 'Simulation';
+    }
+    req.session.flash = { type: 'success', text: (isEs ? 'Configuración aplicada · Fuente: ' : 'Settings applied · Source: ') + src };
 
     res.redirect('/settings');
   }
