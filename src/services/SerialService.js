@@ -580,7 +580,7 @@ class SerialServiceClass extends EventEmitter {
         // engancha cuando aparezca. (El DS-300 sí propaga el fallo: puerto serie
         // ausente es un error de config.)
         try {
-          await conn.connect(cfg.host || '127.0.0.1', cfg.port || 9300, { minlap: cfg.minlap, start: cfg.start });
+          await conn.connect(cfg.host || '127.0.0.1', cfg.port || 9300, { transport: cfg.transport || 'tcp', name: cfg.name, minlap: cfg.minlap, start: cfg.start });
         } catch (e) {
           console.warn(`[SerialService] BART C${i + 1}: ${e.message} — reintentando en segundo plano`);
         }

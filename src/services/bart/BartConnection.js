@@ -24,6 +24,12 @@ const MIN_CROSSING_MS = 500;     // igual que el DS-300: descarta rebotes
 const MAX_LAP_MS      = 240000;  // > 240s → coche parado, no se registra
 const RECONNECT_MAX_MS = 10000;
 
+// Nordic UART Service (UUIDs 128-bit en minúsculas sin guiones, formato noble)
+const NUS_SERVICE = '6e400001b5a3f393e0a9e50e24dcca9e';
+const NUS_RX      = '6e400002b5a3f393e0a9e50e24dcca9e'; // phone → master (write)
+const NUS_TX      = '6e400003b5a3f393e0a9e50e24dcca9e'; // master → phone (notify)
+const _u = (s) => String(s || '').replace(/-/g, '').toLowerCase();
+
 class BartConnection {
   constructor(circuitIndex, laneOffset, onCrossing, onGo, onStop, onPause, onResume, onGoSignal, onFinish, onResumeSignal, onSemaphoreStep) {
     this._circuitIndex    = circuitIndex;
@@ -38,8 +44,11 @@ class BartConnection {
     this._onResumeSignal  = onResumeSignal  || (() => {});
     this._onSemaphoreStep = onSemaphoreStep || (() => {});
 
-    this.isBart     = true;          // marca de fuente (SerialService.isBart, UI)
-    this._sock      = null;
+    this.isBart      = true;         // marca de fuente (SerialService.isBart, UI)
+    this._sock       = null;         // socket TCP (transporte tcp)
+    this._peripheral = null;         // periférico BLE (transporte ble)
+    this._rxChar     = null;         // característica RX para escribir comandos (BLE)
+    this._bleScanTimer = null;
     this._connected = true;          // optimista hasta que algo diga lo contrario
     this._raceState = null;          // 'running' | 'paused' | 'stopped' | null
     this._rawLog    = [];
@@ -66,7 +75,10 @@ class BartConnection {
   }
 
   // ── Surface esperada por SerialService ──────────────────────────────────
-  get path()   { return this._host ? `bart://${this._host}:${this._port}` : null; }
+  get path()   {
+    if (this._opts && this._opts.transport === 'ble') return `bart-ble://${this._opts.name || 'BART_MST'}`;
+    return this._host ? `bart://${this._host}:${this._port}` : null;
+  }
   get rawLog() { return [...this._rawLog]; }
 
   // ── Conexión ────────────────────────────────────────────────────────────
@@ -80,6 +92,11 @@ class BartConnection {
   }
 
   _openTransport() {
+    return this._opts.transport === 'ble' ? this._openBle() : this._openTcp();
+  }
+
+  // ── Transporte TCP (emulador o puente BLE→TCP) ───────────────────────────
+  _openTcp() {
     return new Promise((resolve, reject) => {
       const sock = net.connect(this._port, this._host);
       let settled = false;
@@ -101,10 +118,80 @@ class BartConnection {
     });
   }
 
+  // ── Transporte BLE real (central, noble) ─────────────────────────────────
+  // Escanea por el servicio NUS, conecta al Master, suscribe TX (notify) y
+  // escribe comandos en RX. El día de mañana, un BART físico entra por aquí
+  // igual que el emulador BLE.
+  _openBle() {
+    return new Promise((resolve, reject) => {
+      let noble;
+      try { noble = require('@abandonware/noble'); }
+      catch (e) { return reject(new Error('falta @abandonware/noble (npm install) — ' + e.message)); }
+
+      const wantName = this._opts.name || 'BART_MST';
+      let settled = false;
+      const fail = (e) => { if (!settled) { settled = true; reject(e); } };
+
+      const startScan = () => {
+        console.log(`[BART C${this._circuitIndex + 1}] escaneando BLE (NUS / "${wantName}")…`);
+        try { noble.startScanning([NUS_SERVICE], false); } catch (e) { fail(e); }
+      };
+
+      const onDiscover = async (peripheral) => {
+        const adv = peripheral.advertisement || {};
+        const matchSvc  = (adv.serviceUuids || []).map(_u).includes(NUS_SERVICE);
+        const matchName = adv.localName && adv.localName === wantName;
+        if (!matchSvc && !matchName) return;             // no es nuestro BART
+        noble.removeListener('discover', onDiscover);
+        try { await noble.stopScanningAsync(); } catch {}
+        try {
+          this._peripheral = peripheral;
+          await peripheral.connectAsync();
+          const { characteristics } = await peripheral.discoverSomeServicesAndCharacteristicsAsync([NUS_SERVICE], [NUS_RX, NUS_TX]);
+          const rx = characteristics.find(c => _u(c.uuid) === NUS_RX);
+          const tx = characteristics.find(c => _u(c.uuid) === NUS_TX);
+          if (!rx || !tx) throw new Error('características NUS RX/TX no encontradas');
+          this._rxChar = rx;
+          tx.on('data', (d) => this._onData(d));
+          await tx.subscribeAsync();                     // CCCD notify on
+          peripheral.once('disconnect', () => {
+            this._rxChar = null; this._peripheral = null;
+            this._setConnected(false);
+            this._scheduleReconnect();
+          });
+          this._reconnectMs = 1500;
+          this._setConnected(true);
+          console.log(`[BART C${this._circuitIndex + 1}] conectado por BLE a ${peripheral.address || wantName}`);
+          this._sendSetup();
+          if (!settled) { settled = true; resolve(); }
+        } catch (e) {
+          console.warn(`[BART C${this._circuitIndex + 1}] BLE: ${e.message}`);
+          fail(e);
+        }
+      };
+
+      noble.on('discover', onDiscover);
+      if (noble.state === 'poweredOn') startScan();
+      else noble.once('stateChange', (s) => {
+        if (s === 'poweredOn') startScan();
+        else fail(new Error('BLE no disponible: ' + s));
+      });
+
+      // Si en 15s no aparece, falla (init no cae a sim en BART; reintenta solo).
+      this._bleScanTimer = setTimeout(() => {
+        if (!settled) { try { noble.stopScanning(); } catch {} noble.removeListener('discover', onDiscover); fail(new Error('BLE: periférico no encontrado (timeout)')); }
+      }, 15000);
+    });
+  }
+
   // ── Comandos de salida (inversión de control) ────────────────────────────
   // Best-effort: el timing NO depende de ellos. Si un comando se pierde, la
   // carrera sigue cronometrando con los cruces que lleguen.
-  _write(buf) { if (this._sock && !this._sock.destroyed) this._sock.write(buf); }
+  _write(buf) {
+    const b = Buffer.from(buf);
+    if (this._rxChar) { try { this._rxChar.write(b, true, () => {}); } catch {} return; }  // BLE (writeWithoutResponse)
+    if (this._sock && !this._sock.destroyed) this._sock.write(b);                            // TCP
+  }
   _cmd(op)    { this._write(P.seal([P.SYNC, P.MSG.CMD, op])); }
 
   sendStart()   { this._cmd(P.OP.START); }
@@ -142,7 +229,10 @@ class BartConnection {
   async close() {
     this._explicitClose = true;
     if (this._reconnectTimer) { clearTimeout(this._reconnectTimer); this._reconnectTimer = null; }
+    if (this._bleScanTimer) { clearTimeout(this._bleScanTimer); this._bleScanTimer = null; }
     if (this._sock) { try { this._sock.destroy(); } catch {} this._sock = null; }
+    if (this._peripheral) { try { await this._peripheral.disconnectAsync(); } catch {} this._peripheral = null; }
+    this._rxChar = null;
   }
 
   _setConnected(connected) {

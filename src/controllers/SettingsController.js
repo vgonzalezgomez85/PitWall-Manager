@@ -110,18 +110,22 @@ class SettingsController {
     // BART source: TCP bridge (emulator or BLE→TCP). Stored as a single circuit
     // entry with type:'bart' so SerialService.connectMultiple builds a
     // BartConnection. Lanes still numbered globally like the DS-300 path.
+    const bartTransport = req.body.bart_transport === 'ble' ? 'ble' : 'tcp';
     const bartHost  = String(req.body.bart_host || '127.0.0.1').trim() || '127.0.0.1';
     const bartPort  = parseInt(req.body.bart_port  || '9300', 10) || 9300;
+    const bartName  = String(req.body.bart_name || 'BART_MST').trim() || 'BART_MST';
     const bartLanes = parseInt(req.body.bart_lanes || '4', 10) || 4;
     if (serial_mode === 'bart') {
-      circuits = [{ type: 'bart', host: bartHost, port: bartPort, lanes: bartLanes }];
+      circuits = [{ type: 'bart', transport: bartTransport, host: bartHost, port: bartPort, name: bartName, lanes: bartLanes }];
     }
 
     Settings.setMany({
       serial_mode:          serial_mode || 'simulation',
       circuits_serial:      JSON.stringify(circuits),
+      bart_transport:       bartTransport,
       bart_host:            bartHost,
       bart_port:            String(bartPort),
+      bart_name:            bartName,
       bart_lanes:           String(bartLanes),
       sim_lanes:            sim_lanes   || '6',
       sim_avg_ms:           sim_avg_ms  || '12000',
