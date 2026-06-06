@@ -18,26 +18,38 @@
     .panel-body {
       display: flex; flex-direction: column; height: 100vh; overflow: hidden;
       background:#000000; font-family: 'Inter', system-ui, sans-serif; color: #e6edf3;
+      /* Toda la vista escala con --pt-font (lo fija fitTable). Usamos em en los
+         tamaños para que cabecera, círculos de posición y celdas se ajusten
+         juntos al achicar la ventana. */
+      font-size: var(--pt-font, .92rem);
     }
     .panel-header {
       display: flex; align-items: center; justify-content: space-between;
-      padding: .55rem 1.2rem;
+      padding: .6em 1.3em;
       background:#000000; border-bottom: 2px solid #161b22;
       flex-shrink: 0;
     }
-    .panel-header__left { display: flex; align-items: center; gap: .75rem; }
+    .panel-header__left { display: flex; align-items: center; gap: .8em; }
     .panel-title {
-      font-size: .65rem; font-weight: 700; letter-spacing: .15em;
+      font-size: .72em; font-weight: 700; letter-spacing: .15em;
       color: #6e7681; text-transform: uppercase;
     }
     .panel-manga {
-      font-family: 'Rajdhani', sans-serif; font-size: 1rem; font-weight: 700;
+      font-family: 'Rajdhani', sans-serif; font-size: 1.15em; font-weight: 700;
       color: #e6edf3; letter-spacing: .04em;
     }
-    .panel-race { font-size: .72rem; color: #6e7681; }
-    .panel-status { display: flex; align-items: center; gap: .4rem; }
+    .panel-race { font-size: .8em; color: #6e7681; }
+    .panel-timer {
+      font-family: 'Share Tech Mono', monospace; font-size: 1.25em; font-weight: 700;
+      color: #f6c90e; letter-spacing: .03em; margin-left: .2em;
+    }
+    .panel-status { display: flex; align-items: center; gap: .4em; }
+    .panel-status .status-text { font-size: .9em; }   /* escala con la vista (override del .88rem de live.css) */
 
-    .panel-table-wrap { flex: 1; overflow-y: auto; }
+    /* min-width:0 = clave: deja que el wrap (flex item) encoja al ancho real de
+       la ventana en vez de expandirse al ancho de la tabla; si no, fitTable mide
+       mal el espacio disponible y no encoge la fuente (P/Subir se salía). */
+    .panel-table-wrap { flex: 1; overflow: auto; min-width: 0; }
     .panel-table {
       width: 100%; border-collapse: collapse;
       font-size: var(--pt-font, .92rem); table-layout: auto;
@@ -45,12 +57,12 @@
     .panel-table th, .panel-table td { white-space: nowrap; }
     .panel-table thead { position: sticky; top: 0; z-index: 5; }
     .panel-table thead th {
-      padding: .5rem 1rem; font-size: .68rem; font-weight: 700;
+      padding: .55em .9em; font-size: .74em; font-weight: 700;
       letter-spacing: .09em; color: #4e555e; text-transform: uppercase;
       background:#000000; border-bottom: 1px solid #161b22; text-align: left;
     }
     .panel-table td {
-      padding: var(--pt-pad, .55rem) 1rem;
+      padding: var(--pt-pad, .55rem) .9em;
       border-bottom: 1px solid #0f1419; vertical-align: middle;
     }
     .pt-right { text-align: right !important; }
@@ -69,8 +81,8 @@
 
     .pt-pos {
       display: inline-flex; align-items: center; justify-content: center;
-      width: 28px; height: 28px; border-radius: 50%;
-      font-family: 'Rajdhani', sans-serif; font-size: .88rem; font-weight: 700;
+      width: 2em; height: 2em; border-radius: 50%;
+      font-family: 'Rajdhani', sans-serif; font-size: .95em; font-weight: 700;
     }
     .pt-pos.p1 { background: #f6c90e; color: #0d1117; }
     .pt-pos.p2 { background: #b0b8c0; color: #0d1117; }
@@ -95,7 +107,7 @@
       0%,  15%  { transform: translateX(0); }
       85%, 100% { transform: translateX(var(--pt-name-shift, -50%)); }
     }
-    .pt-proj    { font-family: 'Share Tech Mono', monospace; color: #f6c90e; font-weight: 700; font-size: 1.05rem; }
+    .pt-proj    { font-family: 'Share Tech Mono', monospace; color: #f6c90e; font-weight: 700; font-size: 1.05em; }
     .pt-ontrack { font-family: 'Share Tech Mono', monospace; color: #e6edf3; font-weight: 700; }
     .pt-avg     { font-family: 'Share Tech Mono', monospace; color: #58a6ff; }
     .pt-tocatch { font-family: 'Share Tech Mono', monospace; color: #3fb950; }
@@ -108,9 +120,10 @@
     <div class="panel-header__left">
       <span class="panel-title"><%= lang === 'es' ? 'Clasificación General' : 'Overall Standings' %></span>
       <span class="panel-manga">
-        <% if (tanda) { %><%= lang === 'es' ? 'Tanda' : 'Round' %> <%= tanda.number %> · <% } %>
-        <%= lang === 'es' ? 'Manga' : 'Heat' %> #<%= manga.number %>
+        <% if (tanda) { %><%= lang === 'es' ? 'Tanda' : 'Round' %> <%= tanda.number %><% if (typeof totalTandas !== 'undefined' && totalTandas) { %>/<%= totalTandas %><% } %> · <% } %>
+        <%= lang === 'es' ? 'Manga' : 'Heat' %> <%= manga.number %><% if (typeof totalMangasInTanda !== 'undefined' && totalMangasInTanda) { %>/<%= totalMangasInTanda %><% } %>
       </span>
+      <span class="panel-timer" id="panelTimer">--:--</span>
     </div>
     <div class="panel-header__left">
       <div id="panelStatus" class="panel-status">
@@ -132,13 +145,13 @@
       <thead>
         <tr>
           <th>#</th>
+          <th title="<%= lang === 'es' ? 'Tendencia' : 'Trend' %>">↕</th>
           <th><%= lang === 'es' ? 'Participante' : 'Participant' %></th>
           <th class="pt-right" title="<%= lang === 'es' ? 'Vueltas proyectadas totales al final de la carrera' : 'Projected total laps at end of race' %>"><%= lang === 'es' ? 'V. Proy.' : 'Proj.' %></th>
           <th class="pt-right"><%= lang === 'es' ? 'Total' : 'Total' %></th>
           <th class="pt-right" title="<%= lang === 'es' ? 'Vueltas proyectadas respecto al de delante' : 'Projected laps behind the car ahead' %>"><%= lang === 'es' ? 'Gap V' : 'Gap L' %></th>
           <th class="pt-right"><%= lang === 'es' ? 'Media' : 'Avg' %></th>
           <th class="pt-right" title="<%= lang === 'es' ? 'Media que necesitas en lo que queda de carrera para alcanzar al de delante (— = inalcanzable con el tiempo restante)' : 'Average pace needed for the rest of the race to catch the car ahead (— = unreachable in the time left)' %>"><%= lang === 'es' ? 'P/Subir' : 'To pass' %></th>
-          <th title="<%= lang === 'es' ? 'Tendencia' : 'Trend' %>">↕</th>
         </tr>
       </thead>
       <tbody id="panelBody"></tbody>
@@ -175,6 +188,7 @@
     const PANEL_DATA = <%- JSON.stringify({
       raceId:           race.id,
       mangaId:          manga.id,
+      mangaStatus:      manga.status,
       isActive:         isActive,
       lanesCount:       race.lanes_count,
       mangaDurationMs:  (typeof effectiveMangaDurationMs !== 'undefined' && effectiveMangaDurationMs > 0)
@@ -462,16 +476,16 @@
         return `
         <tr class="pt-row${r.hasData ? '' : ' pt-row--idle'}" data-lane="${r.lane != null ? r.lane : ''}">
           <td><span class="pt-pos ${posClass(i+1)}">${i+1}</span></td>
+          <td class="pt-arrows">
+            <span class="pt-arrow-up${upCls}">${upCh}</span>
+            <span class="pt-arrow-down${downCls}">${downCh}</span>
+          </td>
           <td class="pt-name-cell"><span class="pt-name${r.onTrack ? ' pt-name--ontrack' : ''}">${r.name}</span></td>
           <td class="pt-right"><span class="pt-proj">${r.projectedTotalRaw == null ? '—' : fmtLaps1(r.projectedTotalRaw) + 'v'}</span></td>
           <td class="pt-right"><span class="pt-ontrack">${r.total}</span></td>
           <td class="pt-right"><span class="pt-gap">${r._gapV  > 0 ? 'a ' + fmtLaps1(r._gapV) + 'v' : '—'}</span></td>
           <td class="pt-right"><span class="pt-avg">${formatMs(r.avgLapMs)}</span></td>
           <td class="pt-right"><span class="pt-tocatch">${r._avgToCatch != null ? formatMs(r._avgToCatch) : '—'}</span></td>
-          <td class="pt-arrows">
-            <span class="pt-arrow-up${upCls}">${upCh}</span>
-            <span class="pt-arrow-down${downCls}">${downCh}</span>
-          </td>
         </tr>`;
       }).join('');
       applyPausedRows();
@@ -508,6 +522,26 @@
     // incluida la primera de una tanda nueva— sin tener que cerrarlo y reabrirlo.
     const RACE_ID  = PANEL_DATA.raceId;
     const MANGA_ID = PANEL_DATA.mangaId;
+
+    // ── Cronómetro de la manga en la cabecera ────────────────────────────────
+    // Activa: cuenta atrás desde remainingMs (se refresca con cada standings).
+    // Pendiente: muestra la duración total. Finalizada: 00:00.
+    const panelTimer = document.getElementById('panelTimer');
+    function fmtClock(ms) {
+      if (ms == null || ms < 0) ms = 0;
+      const s = Math.floor(ms / 1000);
+      return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+    }
+    let _remainMs = (PANEL_DATA.standings && PANEL_DATA.standings.remainingMs != null)
+      ? PANEL_DATA.standings.remainingMs
+      : (PANEL_DATA.mangaStatus === 'finished' ? 0 : (PANEL_DATA.mangaDurationMs || 0));
+    let _timerRunning = !!PANEL_DATA.isActive;
+    function renderTimer() { if (panelTimer) panelTimer.textContent = fmtClock(_remainMs); }
+    renderTimer();
+    setInterval(() => {
+      if (_timerRunning && _remainMs > 0) { _remainMs = Math.max(0, _remainMs - 1000); renderTimer(); }
+    }, 1000);
+
     // Reapunta el panel a otra manga de NUESTRA carrera (recarga sobre ella).
     function repointTo(mangaId) {
       if (mangaId && mangaId !== MANGA_ID) {
@@ -523,7 +557,10 @@
       // Si hay una manga ACTIVA distinta en nuestra carrera (otra manga/tanda
       // ya en marcha), saltamos a ella. Si es la nuestra, render normal.
       if (data.raceId === RACE_ID && data.mangaId !== MANGA_ID) { repointTo(data.mangaId); return; }
-      if (data.mangaId === MANGA_ID) render(data);
+      if (data.mangaId === MANGA_ID) {
+        if (typeof data.remainingMs === 'number') { _remainMs = data.remainingMs; _timerRunning = true; renderTimer(); }
+        render(data);
+      }
     });
 
     // Arranque de una manga nueva (misma carrera, incluye nueva tanda) → saltar.
@@ -540,6 +577,7 @@
     });
     socket.on('manga:stopped', (data) => {
       if (data && data.mangaId != null && data.mangaId !== MANGA_ID) return;
+      _timerRunning = false; _remainMs = 0; renderTimer();
       const s = document.getElementById('panelStatus');
       if (s) s.innerHTML = `<span class="status-text status-text--finished">${LANG === 'es' ? 'Finalizada' : 'Finished'}</span>`;
     });
