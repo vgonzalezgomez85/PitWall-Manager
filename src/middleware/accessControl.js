@@ -68,9 +68,11 @@ function reqIp(req) {
 }
 
 // Rutas PÚBLICAS (accesibles desde cualquier IP): el index (que a externos
-// muestra solo el botón) y las estadísticas en vivo.
+// muestra solo los accesos públicos), las estadísticas en vivo y los
+// resultados de carreras finalizadas (landing + por carrera, sin corrección).
 function isPublicPath(p) {
-  return p === '/' || p === '/race-stats' || /^\/races\/\d+\/live-stats(\.json)?$/.test(p);
+  return p === '/' || p === '/race-stats' || /^\/races\/\d+\/live-stats(\.json)?$/.test(p)
+      || p === '/results' || /^\/results\/\d+$/.test(p);
 }
 
 // ── Express middleware ──────────────────────────────────────────────────────
