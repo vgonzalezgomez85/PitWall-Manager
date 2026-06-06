@@ -71,12 +71,17 @@ class Lap {
     // asociado a esa fila. La versión anterior usaba una subquery correlada
     // que escaneaba ~N²; medido 776ms con 4800 filas vs <1ms con esta.
     return db.prepare(`
-      WITH best_per_lane AS (
+      WITH pt AS (SELECT COALESCE(min_lap_ms, 0) AS minms FROM races WHERE id = ?),
+      best_per_lane AS (
         SELECT lane, MIN(lap_time_ms) AS bestLapMs
         FROM laps
         -- lap_number > 1: la 1ª vuelta de cada manga (salida desde parado /
         -- primera referencia del DS) NO puede contar como vuelta rápida.
+        -- lap_time_ms >= Pt: una vuelta MÁS RÁPIDA que el mínimo físico del
+        -- circuito es un fantasma por definición — la descartamos aunque no
+        -- esté marcada is_ghost (p.ej. el Pt se configuró después de correr).
         WHERE race_id = ? AND is_ghost = 0 AND is_exit = 0 AND is_warmup = 0 AND lap_number > 1
+          AND lap_time_ms >= (SELECT minms FROM pt)
         GROUP BY lane
       )
       SELECT b.lane,
@@ -89,7 +94,7 @@ class Lap {
       LEFT JOIN teams   t ON t.id = l.team_id
       LEFT JOIN drivers d ON d.id = l.driver_id
       GROUP BY b.lane
-    `).all(raceId, raceId);
+    `).all(raceId, raceId, raceId);
   }
 
   // Aggregate results per entity (team or driver) across all mangas of a race
