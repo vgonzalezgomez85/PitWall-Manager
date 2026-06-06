@@ -2,6 +2,7 @@ const TrainingService     = require('../services/TrainingService');
 const CompetitionService  = require('../services/CompetitionTrainingService');
 const TimingService       = require('../services/TimingService');
 const SerialService       = require('../services/SerialService');
+const SocketService       = require('../services/SocketService');
 const Settings            = require('../models/Settings');
 const Circuit             = require('../models/Circuit');
 
@@ -114,6 +115,7 @@ class TrainingController {
       heatNumber: CompetitionService.heatNumber,
       isSimulating: SerialService.isSimulating,
       isBart:       SerialService.isBart,
+      isPaused:     CompetitionService.isPaused,
     });
   }
 
@@ -128,14 +130,61 @@ class TrainingController {
   // del hardware). Activa el entrenamiento en standby (libre o competición) y
   // arranca el Master BART. sendStart es no-op en DS-300/simulación.
   static go(req, res) {
-    if (req.body.mode === 'competition') {
-      CompetitionService.activate();
+    const isComp = req.body.mode === 'competition';
+    const svc    = isComp ? CompetitionService : TrainingService;
+    const dest   = isComp ? '/training/competition/live' : '/training/live';
+    if (!svc.isStandby) return res.redirect(dest);
+
+    const durMin = parseInt(req.body.duration_minutes, 10);
+    const durationMs = (Number.isFinite(durMin) && durMin > 0) ? durMin * 60000 : null;
+
+    // Semáforo F1 (3s) y al verde activa + arranca el Master — como en carrera.
+    const SEMAPHORE_MS = 3000;
+    SocketService.emit('race:semaphore');
+    setTimeout(() => {
+      svc.activate(durationMs);
+      SocketService.emit('training:autostart');   // → semáforo verde en el cliente
       try { SerialService.sendStart(); } catch {}
-      return res.redirect('/training/competition/live');
-    }
-    TrainingService.activate();
-    try { SerialService.sendStart(); } catch {}
-    res.redirect('/training/live');
+    }, SEMAPHORE_MS);
+
+    if (req.xhr || (req.get('accept') || '').includes('application/json')) return res.json({ ok: true, semaphore: true });
+    res.redirect(dest);
+  }
+
+  // POST /training/pause — pausa la grabación + pausa el Master BART
+  static pause(req, res) {
+    const isComp = req.body.mode === 'competition';
+    const svc    = isComp ? CompetitionService : TrainingService;
+    svc.pause();
+    try { SerialService.sendPause(); } catch {}
+    SocketService.emit('training:paused');
+    if (req.xhr || (req.get('accept') || '').includes('application/json')) return res.json({ ok: true });
+    res.redirect(isComp ? '/training/competition/live' : '/training/live');
+  }
+
+  // POST /training/resume — semáforo (3s) y reanuda al verde
+  static resume(req, res) {
+    const isComp = req.body.mode === 'competition';
+    const svc    = isComp ? CompetitionService : TrainingService;
+    const SEMAPHORE_MS = 3000;
+    SocketService.emit('race:semaphore');
+    setTimeout(() => {
+      svc.resume();
+      SocketService.emit('training:resumed');
+      try { SerialService.sendResume(); } catch {}
+    }, SEMAPHORE_MS);
+    if (req.xhr || (req.get('accept') || '').includes('application/json')) return res.json({ ok: true, semaphore: true });
+    res.redirect(isComp ? '/training/competition/live' : '/training/live');
+  }
+
+  // POST /training/halt — STOP: para el Master y vuelve a standby (conserva datos)
+  static halt(req, res) {
+    const isComp = req.body.mode === 'competition';
+    const svc    = isComp ? CompetitionService : TrainingService;
+    svc.stopToStandby();
+    try { SerialService.sendStop(); } catch {}
+    if (req.xhr || (req.get('accept') || '').includes('application/json')) return res.json({ ok: true });
+    res.redirect(isComp ? '/training/competition/live' : '/training/live');
   }
 
   // POST /training/start (legacy / manual)
@@ -187,6 +236,7 @@ class TrainingController {
       sessionRecords: TrainingService.getSessionRecords(),
       isSimulating:   SerialService.isSimulating,
       isBart:         SerialService.isBart,
+      isPaused:       TrainingService.isPaused,
     });
   }
 }

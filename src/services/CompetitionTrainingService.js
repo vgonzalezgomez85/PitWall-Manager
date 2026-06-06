@@ -151,9 +151,22 @@ class CompetitionTrainingServiceClass {
     console.log(`[CompetitionTraining] Circuito ${ci + 1} ${paused ? 'pausado' : 'reanudado'}`);
   }
 
-  // Activación pública desde standby (GO manual en simulación/BART). No-op si
-  // no está en standby.
-  activate() { if (this._standby && !this._active) this._activate(); }
+  // Activación pública desde standby (GO manual en simulación/BART). durationMs
+  // → countdown. Emite training:go para el cronómetro del cliente.
+  activate(durationMs = null) {
+    if (!this._standby || this._active) return;
+    if (durationMs != null) this._durationMs = durationMs;
+    this._activate();
+    SocketService.emit('training:go', { durationMs: this._durationMs });
+  }
+
+  // Pausa/reanuda la grabación (botón PAUSE en BART/sim). circuito 0 = BART.
+  pause()  { if (this._active) this._setCircuitPaused(0, true); }
+  resume() { if (this._active) this._setCircuitPaused(0, false); }
+  get isPaused() { return this._active && this._pausedCircuits.has(0); }
+
+  // STOP que conserva datos y se queda en el mismo heat (forced stop).
+  stopToStandby() { if (this._active) this._stopHeat(false); }
 
   // ── Activate (start recording) ────────────────────────────────────────────
   _activate() {
