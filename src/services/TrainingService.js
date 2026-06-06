@@ -131,6 +131,10 @@ class TrainingServiceClass {
     console.log(`[TrainingService] Standby — ${lanesCount} lanes`);
   }
 
+  // Activación pública desde standby (GO manual en simulación/BART, donde no
+  // llega el race_started del hardware). No-op si no está en standby.
+  activate() { if (this._standby && !this._active) this._activate(); }
+
   // ── Activate from standby: start recording laps ───────────────────────────
   _activate() {
     if (this._active) return;
