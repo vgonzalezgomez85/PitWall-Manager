@@ -202,6 +202,7 @@ if (document.readyState === 'loading') {
 let remainingMs = RACE_DATA.durationMs;
 let lastTickAt  = null;
 let timerInt    = null;
+let _pendingActionReload = false;  // recarga tras semáforo verde para quien pulsó RESUME
 const timerEl   = document.getElementById('raceTimer');
 const circuitTimersEl = document.getElementById('circuitTimers');
 const statusEl  = document.getElementById('timerStatus');
@@ -1198,7 +1199,13 @@ if (RACE_DATA.standings) {
   if (RACE_DATA.standings.remainingMs != null) {
     if (RACE_DATA.standings.elapsedMs != null)
       RACE_DATA.durationMs = RACE_DATA.standings.remainingMs + RACE_DATA.standings.elapsedMs;
-    startCountdown(RACE_DATA.standings.remainingMs);
+    if (RACE_DATA.isPaused) {
+      // Manga pausada: mostrar el tiempo congelado, sin arrancar la cuenta atrás.
+      remainingMs = RACE_DATA.standings.remainingMs;
+      if (timerEl) timerEl.textContent = formatRemaining(remainingMs);
+    } else {
+      startCountdown(RACE_DATA.standings.remainingMs);
+    }
   }
 } else {
   // Non-active: render initial state from DB laps (passed in lanes array)
@@ -1350,7 +1357,11 @@ function announce(text) {
       renderCircuitTimers(data.circuits);
       if (data.remainingMs != null) {
         if (data.elapsedMs != null) RACE_DATA.durationMs = data.remainingMs + data.elapsedMs;
-        if (!timerInt) {
+        if (RACE_DATA.isPaused) {
+          // Pausada: sincroniza el valor congelado sin arrancar la cuenta atrás.
+          remainingMs = data.remainingMs;
+          if (timerEl) timerEl.textContent = formatRemaining(remainingMs);
+        } else if (!timerInt) {
           startCountdown(data.remainingMs);
         } else if (lastTickAt) {
           remainingMs = data.remainingMs;
@@ -1422,7 +1433,7 @@ function announce(text) {
     socket.on('tick', ({ elapsedMs, circuits }) => {
       renderCircuitTimers(circuits);
       // durationMs is set from standings data; this fires only if standings was missed
-      if (timerInt === null && RACE_DATA.durationMs) {
+      if (timerInt === null && RACE_DATA.durationMs && !RACE_DATA.isPaused) {
         startCountdown(RACE_DATA.durationMs - elapsedMs);
       }
     });
@@ -1493,6 +1504,7 @@ function announce(text) {
     });
 
     socket.on('manga:paused', () => {
+      RACE_DATA.isPaused = true;
       if (timerInt) { clearInterval(timerInt); timerInt = null; }
       let ov = document.getElementById('pause-overlay');
       if (!ov) {
@@ -1505,10 +1517,22 @@ function announce(text) {
     });
 
     socket.on('manga:resumed', () => {
+      RACE_DATA.isPaused = false;
       document.getElementById('pause-overlay')?.remove();
+      const hasSema = !!document.getElementById('semaphore-overlay');
+      // Quien pulsó RESUME (AJAX) recarga tras el verde para refrescar el botón
+      // (RESUME → PAUSE) y el reloj. El resto de clientes reanudan en caliente.
+      if (_pendingActionReload) {
+        _pendingActionReload = false;
+        if (hasSema) semaphoreGo(() => location.reload());
+        else location.reload();
+        return;
+      }
+      // Reanuda la cuenta atrás (clientes que no recargan, p.ej. la vista TV).
+      if (!timerInt && remainingMs > 0) startCountdown(remainingMs);
       // If the resume semaphore is on screen (lit during the 3s A6→A3 window),
       // flip it to green and dismiss — same flow as the GO countdown.
-      if (document.getElementById('semaphore-overlay')) semaphoreGo(null);
+      if (hasSema) semaphoreGo(null);
     });
 
     // Pausa POR CIRCUITO: marca/desmarca los carriles de ese circuito (cuando
@@ -1534,6 +1558,35 @@ function announce(text) {
 
   socket.on('race:semaphore', () => showSemaphore());
   socket.on('race:semaphore_step', () => semaphoreStep());
+
+  // GO / REANUDAR manual (simulación/BART): enviar por AJAX para NO recargar la
+  // página, así la animación del semáforo (race:semaphore) no se pierde. El
+  // arranque/reanudación real lo dispara el server al ponerse verde:
+  //   GO     → manga:started  (recarga todos los clientes a la carrera)
+  //   RESUME → manga:resumed  (recarga SOLO a quien pulsó, vía _pendingActionReload)
+  function wireAjaxAction(formId, reloadOnDone) {
+    const form = document.getElementById(formId);
+    if (!form) return;
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = form.querySelector('button[type="submit"]');
+      if (btn) btn.disabled = true;
+      if (reloadOnDone) _pendingActionReload = true;
+      try {
+        await fetch(form.action, {
+          method: 'POST',
+          headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams(new FormData(form)),
+        });
+        // No recargamos aquí: los eventos socket conducen la transición.
+      } catch (err) {
+        _pendingActionReload = false;
+        location.reload();   // fallback si el fetch falla
+      }
+    });
+  }
+  wireAjaxAction('goForm', false);      // GO: manga:started ya recarga
+  wireAjaxAction('resumeForm', true);   // RESUME: recargar tras el verde
 
   // ── Driver check-in ────────────────────────────────────────────────────────
   socket.on('driver_checkin', ({ lane, driverName }) => {

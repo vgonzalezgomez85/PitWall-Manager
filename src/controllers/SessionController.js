@@ -65,8 +65,74 @@ class SessionController {
     const teams   = Team.findByTanda(manga.tanda_id);
     const drivers = Driver.findByTanda(manga.tanda_id);
 
-    TimingService.startManga(manga, race, lanes, teams, drivers);
-    Tanda.updateStatus(tanda.id, 'active');
+    // En simulación/BART SlotTime inicia la carrera, así que el usuario puede
+    // fijar la duración al dar GO (en DS-300 la manda la caja). Si llega, se usa
+    // para esta manga y se recuerda en la carrera para el próximo GO.
+    const durMin = parseInt(req.body.duration_minutes, 10);
+    let durationMs = null;
+    if (Number.isFinite(durMin) && durMin > 0) {
+      durationMs = durMin * 60000;
+      race.manga_duration_minutes = durMin;
+      try { require('../config/database').prepare('UPDATE races SET manga_duration_minutes=? WHERE id=?').run(durMin, race.id); } catch {}
+    }
+
+    const softwareGo = SerialService.isBart || SerialService.isSimulating;
+
+    const doStart = () => {
+      TimingService.startManga(manga, race, lanes, teams, drivers, durationMs);
+      // BART/sim: un único GO arranca TODOS los circuitos (no hay caja DS por
+      // circuito). En DS-300 cada caja manda su GO.
+      if (softwareGo) TimingService.startAllCircuits(durationMs);
+      Tanda.updateStatus(tanda.id, 'active');
+    };
+
+    // BART/sim: el GO lo da SlotTime, así que lanzamos el semáforo F1 (3s) y
+    // arrancamos al ponerse verde — mismo flujo que la trama GO del DS-300.
+    // El botón es AJAX para que la animación no se pierda en una recarga.
+    const SEMAPHORE_MS = 3000;
+    if (softwareGo && req.body.semaphore !== '0') {
+      SocketService.emit('race:semaphore');
+      setTimeout(doStart, SEMAPHORE_MS);
+      if (req.xhr || (req.get('accept') || '').includes('application/json')) {
+        return res.json({ ok: true, semaphore: true });
+      }
+      return res.redirect(`/races/${race.id}/mangas/${manga.id}/live`);
+    }
+
+    doStart();
+    res.redirect(`/races/${race.id}/mangas/${manga.id}/live`);
+  }
+
+  // POST /races/:id/mangas/:mangaId/pause  — pausa manual (simulación/BART)
+  static pause(req, res) {
+    const race  = Race.findById(req.params.id);
+    const manga = Manga.findById(req.params.mangaId);
+    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+    if (TimingService.activeMangaId === manga.id) TimingService.pauseManga();
+    res.redirect(`/races/${race.id}/mangas/${manga.id}/live`);
+  }
+
+  // POST /races/:id/mangas/:mangaId/resume  — reanuda manual (simulación/BART)
+  static resume(req, res) {
+    const race  = Race.findById(req.params.id);
+    const manga = Manga.findById(req.params.mangaId);
+    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+    if (TimingService.activeMangaId !== manga.id) return res.redirect(`/races/${race.id}/mangas/${manga.id}/live`);
+
+    // Igual que el GO: en BART/sim mostramos el semáforo de reanudación (3s) y
+    // reanudamos al ponerse verde — mismo flujo que la trama de resume del DS-300.
+    const softwareGo = SerialService.isBart || SerialService.isSimulating;
+    const SEMAPHORE_MS = 3000;
+    if (softwareGo && req.body.semaphore !== '0') {
+      SocketService.emit('race:semaphore');
+      setTimeout(() => TimingService.resumeManga(), SEMAPHORE_MS);
+      if (req.xhr || (req.get('accept') || '').includes('application/json')) {
+        return res.json({ ok: true, semaphore: true });
+      }
+      return res.redirect(`/races/${race.id}/mangas/${manga.id}/live`);
+    }
+
+    TimingService.resumeManga();
     res.redirect(`/races/${race.id}/mangas/${manga.id}/live`);
   }
 
@@ -296,7 +362,9 @@ class SessionController {
     const hasQrCheckin = LicenseService.has('qr_checkin');
 
     const isSimulating = SerialService.isSimulating;
-    res.render('races/live', { t: req.t, race, manga, tanda, lanes, laps, isActive, standings, prevLapsByLane, totalMangas, totalTandas, totalRaceMs, effectiveMangaDurationMs, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, allParticipants, nextLaneByLane, nextMangaInfo, isSimulating });
+    const isBart       = SerialService.isBart;
+    const isPaused     = TimingService.isPaused && isActive;
+    res.render('races/live', { t: req.t, race, manga, tanda, lanes, laps, isActive, standings, prevLapsByLane, totalMangas, totalTandas, totalRaceMs, effectiveMangaDurationMs, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, allParticipants, nextLaneByLane, nextMangaInfo, isSimulating, isBart, isPaused });
   }
 
   // GET /races/:id/mangas/:mangaId/panel/:type  (standalone popup)
