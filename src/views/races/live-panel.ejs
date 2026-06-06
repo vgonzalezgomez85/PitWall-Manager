@@ -133,7 +133,7 @@
         <tr>
           <th>#</th>
           <th><%= lang === 'es' ? 'Participante' : 'Participant' %></th>
-          <th class="pt-right" title="<%= lang === 'es' ? 'Vueltas proyectadas al final de la carrera (líder) o gap al líder' : 'Projected total laps (leader) or gap to leader' %>"><%= lang === 'es' ? 'V. Proy.' : 'Proj.' %></th>
+          <th class="pt-right" title="<%= lang === 'es' ? 'Vueltas proyectadas totales al final de la carrera' : 'Projected total laps at end of race' %>"><%= lang === 'es' ? 'V. Proy.' : 'Proj.' %></th>
           <th class="pt-right"><%= lang === 'es' ? 'Total' : 'Total' %></th>
           <th class="pt-right" title="<%= lang === 'es' ? 'Vueltas proyectadas respecto al de delante' : 'Projected laps behind the car ahead' %>"><%= lang === 'es' ? 'Gap V' : 'Gap L' %></th>
           <th class="pt-right"><%= lang === 'es' ? 'Media' : 'Avg' %></th>
@@ -463,12 +463,7 @@
         <tr class="pt-row${r.hasData ? '' : ' pt-row--idle'}" data-lane="${r.lane != null ? r.lane : ''}">
           <td><span class="pt-pos ${posClass(i+1)}">${i+1}</span></td>
           <td class="pt-name-cell"><span class="pt-name${r.onTrack ? ' pt-name--ontrack' : ''}">${r.name}</span></td>
-          <td class="pt-right"><span class="pt-proj">${
-            r.projectedTotalRaw == null ? '—'
-              : (i === 0 ? fmtLaps1(r.projectedTotalRaw) + 'v'
-                         : (r._gapVT != null && r._gapVT > 0 ? 'a ' + fmtLaps1(r._gapVT) + 'v'
-                                                             : fmtLaps1(r.projectedTotalRaw) + 'v'))
-          }</span></td>
+          <td class="pt-right"><span class="pt-proj">${r.projectedTotalRaw == null ? '—' : fmtLaps1(r.projectedTotalRaw) + 'v'}</span></td>
           <td class="pt-right"><span class="pt-ontrack">${r.total}</span></td>
           <td class="pt-right"><span class="pt-gap">${r._gapV  > 0 ? 'a ' + fmtLaps1(r._gapV) + 'v' : '—'}</span></td>
           <td class="pt-right"><span class="pt-avg">${formatMs(r.avgLapMs)}</span></td>
