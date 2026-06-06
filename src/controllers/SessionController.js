@@ -77,6 +77,9 @@ class SessionController {
     }
 
     TimingService.startManga(manga, race, lanes, teams, drivers, durationMs);
+    // BART/simulación: hay un único GO (no una caja DS por circuito), así que
+    // arrancamos TODOS los circuitos a la vez. En DS-300 cada caja manda su GO.
+    if (SerialService.isBart || SerialService.isSimulating) TimingService.startAllCircuits(durationMs);
     Tanda.updateStatus(tanda.id, 'active');
     res.redirect(`/races/${race.id}/mangas/${manga.id}/live`);
   }

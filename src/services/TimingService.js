@@ -270,6 +270,16 @@ class TimingServiceClass {
     SocketService.emitStandings(this.getStandings());
   }
 
+  // Arranca TODOS los circuitos pendientes a la vez. En simulación/BART hay una
+  // sola señal de GO (no una caja DS por circuito), así que un único arranque
+  // cubre todos los carriles. No-op para los que ya corren.
+  startAllCircuits(durationMs = null) {
+    if (!this.session) return;
+    Object.values(this.session.circuits).forEach(c => {
+      if (c.status === 'pending') this.startCircuit(c.index, durationMs);
+    });
+  }
+
   // Finaliza un circuito (fin normal o tiempo agotado). La manga se cierra de
   // verdad cuando NINGÚN circuito sigue corriendo y al menos uno terminó.
   finishCircuit(ci) {
