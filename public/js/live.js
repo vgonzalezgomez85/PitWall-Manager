@@ -1198,7 +1198,13 @@ if (RACE_DATA.standings) {
   if (RACE_DATA.standings.remainingMs != null) {
     if (RACE_DATA.standings.elapsedMs != null)
       RACE_DATA.durationMs = RACE_DATA.standings.remainingMs + RACE_DATA.standings.elapsedMs;
-    startCountdown(RACE_DATA.standings.remainingMs);
+    if (RACE_DATA.isPaused) {
+      // Manga pausada: mostrar el tiempo congelado, sin arrancar la cuenta atrás.
+      remainingMs = RACE_DATA.standings.remainingMs;
+      if (timerEl) timerEl.textContent = formatRemaining(remainingMs);
+    } else {
+      startCountdown(RACE_DATA.standings.remainingMs);
+    }
   }
 } else {
   // Non-active: render initial state from DB laps (passed in lanes array)
@@ -1350,7 +1356,11 @@ function announce(text) {
       renderCircuitTimers(data.circuits);
       if (data.remainingMs != null) {
         if (data.elapsedMs != null) RACE_DATA.durationMs = data.remainingMs + data.elapsedMs;
-        if (!timerInt) {
+        if (RACE_DATA.isPaused) {
+          // Pausada: sincroniza el valor congelado sin arrancar la cuenta atrás.
+          remainingMs = data.remainingMs;
+          if (timerEl) timerEl.textContent = formatRemaining(remainingMs);
+        } else if (!timerInt) {
           startCountdown(data.remainingMs);
         } else if (lastTickAt) {
           remainingMs = data.remainingMs;
@@ -1422,7 +1432,7 @@ function announce(text) {
     socket.on('tick', ({ elapsedMs, circuits }) => {
       renderCircuitTimers(circuits);
       // durationMs is set from standings data; this fires only if standings was missed
-      if (timerInt === null && RACE_DATA.durationMs) {
+      if (timerInt === null && RACE_DATA.durationMs && !RACE_DATA.isPaused) {
         startCountdown(RACE_DATA.durationMs - elapsedMs);
       }
     });
@@ -1493,6 +1503,7 @@ function announce(text) {
     });
 
     socket.on('manga:paused', () => {
+      RACE_DATA.isPaused = true;
       if (timerInt) { clearInterval(timerInt); timerInt = null; }
       let ov = document.getElementById('pause-overlay');
       if (!ov) {
@@ -1505,7 +1516,10 @@ function announce(text) {
     });
 
     socket.on('manga:resumed', () => {
+      RACE_DATA.isPaused = false;
       document.getElementById('pause-overlay')?.remove();
+      // Reanuda la cuenta atrás (clientes que no recargan, p.ej. la vista TV).
+      if (!timerInt && remainingMs > 0) startCountdown(remainingMs);
       // If the resume semaphore is on screen (lit during the 3s A6→A3 window),
       // flip it to green and dismiss — same flow as the GO countdown.
       if (document.getElementById('semaphore-overlay')) semaphoreGo(null);
