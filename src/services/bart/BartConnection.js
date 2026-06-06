@@ -1,0 +1,210 @@
+'use strict';
+
+// ============================================================================
+//  BartConnection — fuente de cruces BART para SerialService.
+//
+//  Hermana de CircuitConnection (DS-300): misma firma de constructor y los
+//  MISMOS callbacks (onCrossing/onGo/…), de modo que SerialService la trata
+//  igual y nada aguas abajo (TimingService, etc.) se entera de que la fuente
+//  es BART y no un DS-300.
+//
+//  Hoy el transporte es TCP (contra el emulador o un puente BLE→TCP). El día
+//  que haya hardware, el BLE entra cambiando SOLO _openTransport() — el parser,
+//  el mapeo de carriles y la detección de huecos no se tocan.
+//
+//  BART es PASIVO para el timing: SlotTime consume cruces y lleva su propia
+//  lógica de carrera. Los comandos de salida (START/MinLap) son "higiene del
+//  hardware" best-effort: si no llegan, el cronometraje sigue igual.
+// ============================================================================
+
+const net = require('net');
+const P   = require('./protocol');
+
+const MIN_CROSSING_MS = 500;     // igual que el DS-300: descarta rebotes
+const MAX_LAP_MS      = 240000;  // > 240s → coche parado, no se registra
+const RECONNECT_MAX_MS = 10000;
+
+class BartConnection {
+  constructor(circuitIndex, laneOffset, onCrossing, onGo, onStop, onPause, onResume, onGoSignal, onFinish, onResumeSignal, onSemaphoreStep) {
+    this._circuitIndex    = circuitIndex;
+    this._laneOffset      = laneOffset;
+    this._onCrossing      = onCrossing;
+    this._onGo            = onGo            || (() => {});
+    this._onStop          = onStop          || (() => {});
+    this._onPause         = onPause         || (() => {});
+    this._onResume        = onResume        || (() => {});
+    this._onGoSignal      = onGoSignal      || (() => {});
+    this._onFinish        = onFinish        || (() => {});
+    this._onResumeSignal  = onResumeSignal  || (() => {});
+    this._onSemaphoreStep = onSemaphoreStep || (() => {});
+
+    this._sock      = null;
+    this._connected = true;          // optimista hasta que algo diga lo contrario
+    this._raceState = null;          // 'running' | 'paused' | 'stopped' | null
+    this._rawLog    = [];
+
+    // Detección de huecos: igual disciplina que el DS-300, pero el contador es
+    // el campo `laps` de cada paquete BART (acumulado por carril).
+    this._lastLapByLane  = new Map();
+    this._lapStatsByLane = new Map();
+
+    // Transporte / reconexión
+    this._host           = null;
+    this._port           = null;
+    this._opts           = {};
+    this._reconnectTimer = null;
+    this._reconnectMs    = 1500;
+    this._explicitClose  = false;
+
+    // Parser binario con resync 0xA5 + validación CRC (compartido con el emulador)
+    this._parser = new P.FrameParser(
+      (msgType /*, op */) => P.notifyLength(msgType),
+      ({ msgType, frame }) => this._onFrame(msgType, frame),
+      (err) => console.warn(`[BART C${this._circuitIndex + 1}] frame ${err.type}${err.frame ? ' [' + P.hex(err.frame) + ']' : ''}`),
+    );
+  }
+
+  // ── Surface esperada por SerialService ──────────────────────────────────
+  get path()   { return this._host ? `bart://${this._host}:${this._port}` : null; }
+  get rawLog() { return [...this._rawLog]; }
+
+  // ── Conexión ────────────────────────────────────────────────────────────
+  async connect(host, port, opts = {}) {
+    this._host = host;
+    this._port = port;
+    this._opts = opts;
+    this._explicitClose = false;
+    if (this._reconnectTimer) { clearTimeout(this._reconnectTimer); this._reconnectTimer = null; }
+    await this._openTransport();
+  }
+
+  _openTransport() {
+    return new Promise((resolve, reject) => {
+      const sock = net.connect(this._port, this._host);
+      let settled = false;
+
+      sock.on('connect', () => {
+        this._sock = sock;
+        this._reconnectMs = 1500;
+        this._setConnected(true);
+        console.log(`[BART C${this._circuitIndex + 1}] conectado a ${this.path}`);
+        this._sendSetup();              // NOTIFY ON (+ MinLap / START best-effort)
+        if (!settled) { settled = true; resolve(); }
+      });
+      sock.on('data',  chunk => this._onData(chunk));
+      sock.on('close', () => { this._setConnected(false); this._scheduleReconnect(); });
+      sock.on('error', err => {
+        console.warn(`[BART C${this._circuitIndex + 1}] socket: ${err.message}`);
+        if (!settled) { settled = true; reject(err); }   // 1er intento falla → init() hace fallback
+      });
+    });
+  }
+
+  // Comandos de salida (best-effort; el timing NO depende de ellos)
+  _write(buf) { if (this._sock && !this._sock.destroyed) this._sock.write(buf); }
+
+  _sendSetup() {
+    this._write(P.seal([P.SYNC, P.MSG.CMD, P.OP.NOTIFY, 0x01]));        // 7.1 habilitar notificaciones
+    if (this._opts.minlap != null) {
+      const ml = Buffer.alloc(5);
+      ml[0] = P.SYNC; ml[1] = P.MSG.CMD; ml[2] = P.OP.SET_MINLAP; ml.writeUInt16LE(this._opts.minlap & 0xFFFF, 3);
+      this._write(P.seal(ml));
+    }
+    // Armado: algunos Masters solo emiten en estado RUN. Por defecto lo armamos
+    // para que fluyan los cruces; SlotTime sigue llevando su propia carrera.
+    if (this._opts.start !== false) this._write(P.seal([P.SYNC, P.MSG.CMD, P.OP.START]));
+  }
+
+  _scheduleReconnect() {
+    if (this._explicitClose || this._reconnectTimer) return;
+    const delay = this._reconnectMs;
+    console.warn(`[BART C${this._circuitIndex + 1}] reconectando en ${delay}ms…`);
+    this._reconnectTimer = setTimeout(async () => {
+      this._reconnectTimer = null;
+      try { await this._openTransport(); }
+      catch { this._reconnectMs = Math.min(RECONNECT_MAX_MS, Math.round(this._reconnectMs * 2)); this._scheduleReconnect(); }
+    }, delay);
+  }
+
+  async close() {
+    this._explicitClose = true;
+    if (this._reconnectTimer) { clearTimeout(this._reconnectTimer); this._reconnectTimer = null; }
+    if (this._sock) { try { this._sock.destroy(); } catch {} this._sock = null; }
+  }
+
+  _setConnected(connected) {
+    if (this._connected === connected) return;
+    this._connected = connected;
+    console.log(`[BART C${this._circuitIndex + 1}] Link → ${connected ? 'connected' : 'DISCONNECTED'}`);
+    try {
+      const SocketService = require('../SocketService');
+      SocketService.emit('serial:status', { circuit: this._circuitIndex + 1, connected });
+    } catch {}
+  }
+
+  // ── Stream entrante ───────────────────────────────────────────────────────
+  _onData(chunk) {
+    const now = Date.now();
+    for (const b of chunk) {
+      this._rawLog.push({ byte: b, ts: now });
+      if (this._rawLog.length > 50000) this._rawLog.shift();
+    }
+    this._parser.push(chunk);
+  }
+
+  _onFrame(msgType, frame) {
+    if (msgType === P.MSG.LAP)         this._onLap(frame);
+    else if (msgType === P.MSG.STATUS) this._onStatus(frame);
+    // ACK: nada que hacer en el camino de timing.
+  }
+
+  _onStatus(frame) {
+    const state = frame[3];
+    this._raceState = state === P.STATE.RUN   ? 'running'
+                    : state === P.STATE.PAUSE ? 'paused'
+                    : state === P.STATE.STOP  ? 'stopped' : null;
+  }
+
+  // A5 01 01 lane laps[2] lap_ms[2] ts_d10[2] reserved[2] CRC
+  _onLap(frame) {
+    const localLane = frame[3];
+    const laps      = frame.readUInt16LE(4);
+    const lapMsRaw  = frame.readUInt16LE(6);
+    const ts        = Date.now();                          // NUESTRO reloj es la verdad
+    const globalLane = localLane + this._laneOffset;
+
+    // lap_ms es uint16 → 0xFFFF = desborde (coche parado >65s) → sin valor fiable
+    const lapTimeMs = lapMsRaw >= 0xFFFF ? null : lapMsRaw;
+
+    // Relleno de huecos por el contador acumulado (maneja wrap de uint16).
+    const prev = this._lastLapByLane.get(localLane);
+    if (prev != null) {
+      const delta = (laps - prev + 0x10000) & 0xFFFF;
+      if (delta > 1) {
+        const missed = delta - 1;
+        const stats  = this._lapStatsByLane.get(localLane);
+        const avgMs  = (stats && stats.count > 0) ? (stats.sum / stats.count) : null;
+        console.warn(`[BART C${this._circuitIndex + 1}] Lane ${localLane} → global ${globalLane} — hueco detectado (prev=${prev}, now=${laps}, ${missed} perdidas, avg=${avgMs ? avgMs.toFixed(1) + 'ms' : 'n/a'})`);
+        for (let k = 0; k < missed; k++) {
+          this._onCrossing({ lane: globalLane, timestamp: ts, lapTimeMs: avgMs, missed: true });
+        }
+      }
+    }
+    this._lastLapByLane.set(localLane, laps);
+
+    if (lapTimeMs === null) {
+      this._onCrossing({ lane: globalLane, timestamp: ts, lapTimeMs: null });
+      return;
+    }
+    if (lapTimeMs < MIN_CROSSING_MS || lapTimeMs > MAX_LAP_MS) return;
+
+    const stats = this._lapStatsByLane.get(localLane) || { sum: 0, count: 0 };
+    stats.sum += lapTimeMs; stats.count += 1;
+    this._lapStatsByLane.set(localLane, stats);
+
+    console.log(`[BART C${this._circuitIndex + 1}] Lane ${localLane} → global ${globalLane} — ${lapTimeMs}ms (lap ${laps})`);
+    this._onCrossing({ lane: globalLane, timestamp: ts, lapTimeMs });
+  }
+}
+
+module.exports = BartConnection;

@@ -547,12 +547,15 @@ class SerialServiceClass extends EventEmitter {
     const connections = [];
 
     for (let i = 0; i < circuitConfigs.length; i++) {
-      const { port, baud, lanes = 8, dataBits, parity, stopBits, flowControl } = circuitConfigs[i];
-      if (!baud) throw new Error(`Circuit ${i + 1}: baud rate missing in DB config`);
-      const conn = new CircuitConnection(
+      const cfg  = circuitConfigs[i];
+      const type = cfg.type || 'ds300';
+      // Callbacks idénticos para cualquier fuente: lo que cambia es de dónde
+      // salen los cruces, no cómo se reemiten. Aguas abajo nadie nota la fuente.
+      const source = type === 'bart' ? 'bart' : 'ds300';
+      const callbacks = [
         i,
         laneOffset,
-        data => { DebugLogger.log('crossing_raw', { source: 'ds300', circuit: i, ...data }); this.emit('lane_crossing', { circuit: i, ...data }); },
+        data => { DebugLogger.log('crossing_raw', { source, circuit: i, ...data }); this.emit('lane_crossing', { circuit: i, ...data }); },
         ()   => this.emit('race_started',       { circuit: i }),
         ()   => this.emit('race_stopped',       { circuit: i }),
         ()   => this.emit('race_paused',        { circuit: i }),
@@ -561,8 +564,22 @@ class SerialServiceClass extends EventEmitter {
         ()   => this.emit('race_finished',      { circuit: i }),
         ()   => this.emit('race_resume_signal', { circuit: i }),
         ()   => this.emit('semaphore_step',     { circuit: i }),
-      );
-      await conn.connect(port, baud, { dataBits, parity, stopBits, flowControl });
+      ];
+
+      let conn, lanes;
+      if (type === 'bart') {
+        // Circuito BART: { type:'bart', host, port, lanes, minlap?, start? }
+        const BartConnection = require('./bart/BartConnection');
+        lanes = cfg.lanes || 4;                         // dispositivos BART: 2 ó 4 carriles
+        conn  = new BartConnection(...callbacks);
+        await conn.connect(cfg.host || '127.0.0.1', cfg.port || 9300, { minlap: cfg.minlap, start: cfg.start });
+      } else {
+        // Circuito DS-300: { port, baud, lanes, dataBits, ... }
+        if (!cfg.baud) throw new Error(`Circuit ${i + 1}: baud rate missing in DB config`);
+        lanes = cfg.lanes || 8;
+        conn  = new CircuitConnection(...callbacks);
+        await conn.connect(cfg.port, cfg.baud, { dataBits: cfg.dataBits, parity: cfg.parity, stopBits: cfg.stopBits, flowControl: cfg.flowControl });
+      }
       connections.push(conn);
       laneOffset += lanes;
     }
