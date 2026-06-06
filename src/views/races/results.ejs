@@ -344,7 +344,7 @@
         </div>
         <div class="prog-control">
           <label for="progManga"><%= lang === 'es' ? 'Manga' : 'Heat' %></label>
-          <select id="progManga" class="prog-select"><option value="all"><%= lang === 'es' ? 'Todas' : 'All' %></option></select>
+          <select id="progManga" class="prog-select" disabled title="<%= lang === 'es' ? 'Siempre todas las mangas' : 'Always all heats' %>"><option value="all"><%= lang === 'es' ? 'Todas' : 'All' %></option></select>
         </div>
         <div class="prog-control">
           <label for="progDriver"><%= lang === 'es' ? 'Piloto' : 'Driver' %></label>
@@ -448,6 +448,7 @@
       .adv-card__big { font-family:'Share Tech Mono', monospace; color:#e6edf3; font-size:1.6rem; font-weight:700; margin-top:.15rem }
       .adv-card__hint { color:#6e7681; font-size:.75rem; margin-top:.15rem }
       .adv-card--wide { grid-column: 1 / -1 }
+      .adv-manga-chart { height:260px; background:#000000; border:1px solid #21262d; border-radius:10px; padding:.6rem; margin:.5rem 0 .8rem }
       .adv-mangas { display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.3rem }
       .adv-manga { flex:0 0 auto; background:#000000; border:1px solid #21262d; border-radius:8px; padding:.5rem .7rem; min-width:100px }
       .adv-manga__lbl { color:#6e7681; font-size:.7rem; text-transform:uppercase; letter-spacing:.05em }
@@ -520,6 +521,7 @@
             </div>
             <div class="adv-card adv-card--wide">
               <div class="adv-card__label">📈 Evolución por manga</div>
+              <div class="adv-manga-chart"><canvas id="advMangaChart"></canvas></div>
               <div class="adv-mangas">
                 ${e.perManga.map(p => `
                   <div class="adv-manga">
@@ -563,11 +565,55 @@
           }).join('');
         }
 
+        // Gráfico de evolución de la media por manga (entidad + comparada).
+        let mangaChart = null;
+        function drawMangaChart(a, b) {
+          const canvas = document.getElementById('advMangaChart');
+          if (!canvas || typeof Chart === 'undefined') return;   // Chart.js carga después en la 1ª pasada
+          if (mangaChart) { mangaChart.destroy(); mangaChart = null; }
+          const key = includeOutliers ? 'avgAll' : 'avgClean';
+          const labels = (a.perManga || []).map(p => 'M' + p.manga);
+          const datasets = [{
+            label: a.entityName,
+            data: (a.perManga || []).map(p => p[key] != null ? p[key] / 1000 : null),
+            borderColor: '#f6c90e', backgroundColor: 'rgba(246,201,14,.15)',
+            tension: .25, spanGaps: true, pointRadius: 3, borderWidth: 2,
+          }];
+          if (b) {
+            const bByManga = new Map((b.perManga || []).map(p => [p.manga, p]));
+            datasets.push({
+              label: b.entityName,
+              data: (a.perManga || []).map(p => { const bp = bByManga.get(p.manga); return bp && bp[key] != null ? bp[key] / 1000 : null; }),
+              borderColor: '#58a6ff', backgroundColor: 'rgba(88,166,255,.15)',
+              tension: .25, spanGaps: true, pointRadius: 3, borderWidth: 2,
+            });
+          }
+          mangaChart = new Chart(canvas, {
+            type: 'line',
+            data: { labels, datasets },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              interaction: { mode: 'index', intersect: false },
+              plugins: {
+                legend: { labels: { color: '#c9d1d9' } },
+                tooltip: { callbacks: { label: (ctx) => ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(3).replace('.', ',') + 's' } },
+              },
+              scales: {
+                x: { ticks: { color: '#8b949e' }, grid: { color: '#21262d' } },
+                y: { ticks: { color: '#8b949e', callback: (v) => v.toFixed(2).replace('.', ',') + 's' },
+                     grid: { color: '#21262d' },
+                     title: { display: true, text: 'Media por manga', color: '#6e7681' } },
+              },
+            },
+          });
+        }
+
         function update() {
           const a = data.find(e => e.key === selEntity.value);
           const b = data.find(e => e.key === selCompare.value);
           if (a) renderEntity(a);
           renderCompare(a, b);
+          if (a) drawMangaChart(a, b);
         }
 
         selEntity.addEventListener('change',  update);
@@ -674,7 +720,7 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         return;
       }
-      const mangaFilter  = selManga.value;
+      const mangaFilter  = 'all';   // selector deshabilitado: siempre todas las mangas
       const driverFilter = selDriver.value;
       const lanes = [...enabledLanes].sort((a,b)=>a-b);
       const datasets = [];
@@ -699,7 +745,10 @@
           const pointColors = filtered.map(l =>
             l.isPitStop ? '#ff9800' :
             l.isExit    ? '#e63946' : color);
-          const pointRadius = filtered.map(l => (l.isPitStop || l.isExit) ? 5 : 2.5);
+          // Vueltas normales sin punto (radio 0) → línea limpia aunque haya
+          // 100+ vueltas/manga; solo se ven los marcadores de salida y pit.
+          // pointHitRadius mantiene el tooltip al pasar por cualquier vuelta.
+          const pointRadius = filtered.map(l => (l.isPitStop || l.isExit) ? 5 : 0);
           datasets.push({
             label: entity.name + ' · P' + lane,
             data: points,
@@ -708,7 +757,9 @@
             borderDash: LANE_DASH[laneIdx % LANE_DASH.length],
             pointBackgroundColor: pointColors,
             pointBorderColor:     pointColors,
-            pointRadius, pointHoverRadius: pointRadius.map(r => r + 2),
+            pointRadius,
+            pointHoverRadius: filtered.map(l => (l.isPitStop || l.isExit) ? 7 : 4),
+            pointHitRadius: 6,
             tension: 0.2, borderWidth: 2,
           });
         });
