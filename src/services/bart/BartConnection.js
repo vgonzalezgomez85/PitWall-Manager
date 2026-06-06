@@ -134,7 +134,11 @@ class BartConnection {
 
       const startScan = () => {
         console.log(`[BART C${this._circuitIndex + 1}] escaneando BLE (NUS / "${wantName}")…`);
-        try { noble.startScanning([NUS_SERVICE], false); } catch (e) { fail(e); }
+        // Sin filtro de servicio: muchos periféricos (p.ej. bleno) NO meten el
+        // UUID del NUS en el paquete de anuncio (va en scan-response o falta),
+        // así que filtrar por servicio se los pierde. Emparejamos en onDiscover
+        // por servicio O por nombre.
+        try { noble.startScanning([], false); } catch (e) { fail(e); }
       };
 
       const onDiscover = async (peripheral) => {
