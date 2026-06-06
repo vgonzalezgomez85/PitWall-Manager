@@ -305,6 +305,7 @@
       mangaNumber:    manga.number,
       mangaStatus:    manga.status,
       isActive:       isActive,
+      isPaused:       typeof isPaused !== 'undefined' && isPaused,
       isTeam:         race.format === 'team',
       durationMs:     null,
       mangaDurationMs: race.manga_duration_minutes * 60000,

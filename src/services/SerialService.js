@@ -575,7 +575,15 @@ class SerialServiceClass extends EventEmitter {
         const BartConnection = require('./bart/BartConnection');
         lanes = cfg.lanes || 4;                         // dispositivos BART: 2 ó 4 carriles
         conn  = new BartConnection(...callbacks);
-        await conn.connect(cfg.host || '127.0.0.1', cfg.port || 9300, { minlap: cfg.minlap, start: cfg.start });
+        // BART va por TCP con reconexión propia: si el puente/emulador aún no
+        // está arriba, NO tiramos a simulación — la conexión reintenta sola y se
+        // engancha cuando aparezca. (El DS-300 sí propaga el fallo: puerto serie
+        // ausente es un error de config.)
+        try {
+          await conn.connect(cfg.host || '127.0.0.1', cfg.port || 9300, { minlap: cfg.minlap, start: cfg.start });
+        } catch (e) {
+          console.warn(`[SerialService] BART C${i + 1}: ${e.message} — reintentando en segundo plano`);
+        }
       } else {
         // Circuito DS-300: { port, baud, lanes, dataBits, ... }
         if (!cfg.baud) throw new Error(`Circuit ${i + 1}: baud rate missing in DB config`);
