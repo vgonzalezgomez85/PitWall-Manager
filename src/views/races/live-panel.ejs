@@ -502,23 +502,48 @@
 
     render(PANEL_DATA.standings);
 
-    if (PANEL_DATA.isActive) {
-      const socket = io();
-      socket.on('connect', () => socket.emit('standings:request'));
-      socket.on('standings', (data) => render(data));
-      // Pausa por circuito: atenúa las filas de los carriles del circuito pausado.
-      socket.on('circuit:state', ({ status, lanes }) => {
-        (lanes || []).forEach(l => {
-          if (status === 'paused') pausedLanes.add(l); else pausedLanes.delete(l);
-        });
-        applyPausedRows();
-      });
-      socket.on('manga:stopped', () => {
-        const s = document.getElementById('panelStatus');
-        if (s) s.innerHTML = `<span class="status-text status-text--finished">${LANG === 'es' ? 'Finalizada' : 'Finished'}</span>`;
-      });
-      socket.on('manga:cancelled', () => { location.reload(); });
+    // El panel de la estimada es un control de TODA la carrera, no de una manga
+    // concreta. El socket está SIEMPRE activo (aunque esta manga ya esté
+    // finalizada) para reapuntarse solo a la manga que arranque después —
+    // incluida la primera de una tanda nueva— sin tener que cerrarlo y reabrirlo.
+    const RACE_ID  = PANEL_DATA.raceId;
+    const MANGA_ID = PANEL_DATA.mangaId;
+    // Reapunta el panel a otra manga de NUESTRA carrera (recarga sobre ella).
+    function repointTo(mangaId) {
+      if (mangaId && mangaId !== MANGA_ID) {
+        location.href = `/races/${RACE_ID}/mangas/${mangaId}/panel/standings`;
+      }
     }
+
+    const socket = io();
+    socket.on('connect', () => socket.emit('standings:request'));
+
+    socket.on('standings', (data) => {
+      if (!data) return;
+      // Si hay una manga ACTIVA distinta en nuestra carrera (otra manga/tanda
+      // ya en marcha), saltamos a ella. Si es la nuestra, render normal.
+      if (data.raceId === RACE_ID && data.mangaId !== MANGA_ID) { repointTo(data.mangaId); return; }
+      if (data.mangaId === MANGA_ID) render(data);
+    });
+
+    // Arranque de una manga nueva (misma carrera, incluye nueva tanda) → saltar.
+    socket.on('manga:started', (data) => {
+      if (data && data.raceId === RACE_ID) repointTo(data.mangaId);
+    });
+
+    // Pausa por circuito: atenúa las filas de los carriles del circuito pausado.
+    socket.on('circuit:state', ({ status, lanes }) => {
+      (lanes || []).forEach(l => {
+        if (status === 'paused') pausedLanes.add(l); else pausedLanes.delete(l);
+      });
+      applyPausedRows();
+    });
+    socket.on('manga:stopped', (data) => {
+      if (data && data.mangaId != null && data.mangaId !== MANGA_ID) return;
+      const s = document.getElementById('panelStatus');
+      if (s) s.innerHTML = `<span class="status-text status-text--finished">${LANG === 'es' ? 'Finalizada' : 'Finished'}</span>`;
+    });
+    socket.on('manga:cancelled', (data) => { if (!data || data.raceId === RACE_ID) location.reload(); });
   </script>
 </body>
 </html>
