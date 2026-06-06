@@ -71,6 +71,16 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
           <div class="vt-opt__t">DS-300</div>
           <div class="vt-opt__d"><%= lang === 'es' ? 'Uno o varios DS-300 por USB/RS-232.' : 'One or more DS-300 via USB/RS-232.' %></div>
         </label>
+
+        <label class="vt-opt <%= cfg.serial_mode === 'bart' ? 'is-sel' : '' %>" id="optBart">
+          <input type="radio" name="serial_mode" value="bart" <%= cfg.serial_mode === 'bart' ? 'checked' : '' %>>
+          <div class="vt-opt__radio"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></div>
+          <div class="vt-opt__ico">
+            <svg viewBox="0 0 24 24"><path d="M7 7l10 10-5 4V3l5 4L7 17"/></svg>
+          </div>
+          <div class="vt-opt__t">BART</div>
+          <div class="vt-opt__d"><%= lang === 'es' ? 'Cronómetro BLE (Slot.it/Policar) vía puente.' : 'BLE timer (Slot.it/Policar) via bridge.' %></div>
+        </label>
       </div>
 
       <!-- ── Simulation ──────────────────────────────────────────────────── -->
@@ -84,6 +94,37 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
           <div class="vt-field">
             <label><%= lang === 'es' ? 'Vuelta media (ms)' : 'Avg lap time (ms)' %></label>
             <input class="vt-inp is-mono" type="number" name="sim_avg_ms" min="3000" max="60000" step="1000" value="<%= cfg.sim_avg_ms || 12000 %>">
+          </div>
+        </div>
+      </div>
+
+      <!-- ── BART (BLE timer via bridge) ──────────────────────────────────── -->
+      <div id="bartSettings" style="display:none;margin-top:26px">
+        <div class="vt-sub">
+          <div>
+            <h3><%= lang === 'es' ? 'Cronómetro BART (BLE)' : 'BART timer (BLE)' %></h3>
+            <p class="vt-sub__p">
+              <%= lang === 'es'
+                ? 'SlotTime se conecta por TCP a un puente BART (emulador o puente BLE→TCP). El puente entrega los cruces; SlotTime lleva la carrera. Carriles numerados de forma global.'
+                : 'SlotTime connects over TCP to a BART bridge (emulator or BLE→TCP bridge). The bridge delivers crossings; SlotTime runs the race. Lanes numbered globally.' %>
+            </p>
+          </div>
+        </div>
+        <div class="vt-fields vt-fields--3" style="margin-top:14px">
+          <div class="vt-field">
+            <label><%= lang === 'es' ? 'Host del puente' : 'Bridge host' %></label>
+            <input class="vt-inp is-mono" type="text" name="bart_host" placeholder="127.0.0.1"
+                   value="<%= cfg.bart_host || '127.0.0.1' %>">
+          </div>
+          <div class="vt-field">
+            <label><%= lang === 'es' ? 'Puerto' : 'Port' %></label>
+            <input class="vt-inp is-mono" type="number" name="bart_port" min="1" max="65535"
+                   value="<%= cfg.bart_port || 9300 %>">
+          </div>
+          <div class="vt-field">
+            <label><%= lang === 'es' ? 'Nº de carriles' : 'Lanes' %></label>
+            <input class="vt-inp is-mono" type="number" name="bart_lanes" min="2" max="32"
+                   value="<%= cfg.bart_lanes || 4 %>">
           </div>
         </div>
       </div>
@@ -336,14 +377,18 @@ const LANG = "<%= lang %>";
 /* ── radio source ── */
 const sim = document.getElementById('optSim');
 const ds  = document.getElementById('optDs');
+const bart = document.getElementById('optBart');
 const simDiv = document.getElementById('simSettings');
 const serialDiv = document.getElementById('serialSettings');
+const bartDiv = document.getElementById('bartSettings');
 function pickSource(){
   const mode = document.querySelector('input[name="serial_mode"]:checked')?.value;
   sim.classList.toggle('is-sel', mode === 'simulation');
   ds.classList.toggle('is-sel',  mode === 'serial');
+  if (bart) bart.classList.toggle('is-sel', mode === 'bart');
   simDiv.style.display    = mode === 'simulation' ? '' : 'none';
   serialDiv.style.display = mode === 'serial'     ? '' : 'none';
+  if (bartDiv) bartDiv.style.display = mode === 'bart' ? '' : 'none';
 }
 document.querySelectorAll('input[name="serial_mode"]').forEach(r => r.addEventListener('change', pickSource));
 pickSource();

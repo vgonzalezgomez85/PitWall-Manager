@@ -507,7 +507,10 @@ class SerialServiceClass extends EventEmitter {
     console.log(`[SerialService] FRAME_GAP_MS = ${FRAME_GAP_MS} ms`);
 
     const mode = Settings.get('serial_mode', 'simulation');
-    if (mode === 'serial') {
+    // 'serial' (DS-300) y 'bart' (BLE vía puente) comparten ruta: ambos
+    // conectan los circuitos de circuits_serial; el type de cada entrada
+    // decide CircuitConnection vs BartConnection.
+    if (mode === 'serial' || mode === 'bart') {
       const circuitsJson = Settings.get('circuits_serial', '[]');
       let circuits = [];
       try { circuits = JSON.parse(circuitsJson); } catch {}
