@@ -58,7 +58,7 @@
         <%# Duración por defecto: el 99 es el placeholder → ofrecer 10 min. %>
         <% const defaultDur = (race.manga_duration_minutes && race.manga_duration_minutes !== 99) ? race.manga_duration_minutes : 10; %>
         <% if (manga.status === 'pending' && !isActive) { %>
-          <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/start" method="POST" style="display:inline-flex;align-items:center;gap:8px">
+          <form id="goForm" action="/races/<%= race.id %>/mangas/<%= manga.id %>/start" method="POST" style="display:inline-flex;align-items:center;gap:8px">
             <label class="live-dur" title="<%= lang === 'es' ? 'Duración de la manga (minutos)' : 'Heat duration (minutes)' %>">
               <input class="vt-inp is-mono live-dur__inp" type="number" name="duration_minutes"
                      min="1" max="600" step="1" value="<%= defaultDur %>"
@@ -72,7 +72,7 @@
           </form>
         <% } else if (isActive) { %>
           <% if (isPaused) { %>
-            <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/resume" method="POST" style="display:inline">
+            <form id="resumeForm" action="/races/<%= race.id %>/mangas/<%= manga.id %>/resume" method="POST" style="display:inline">
               <button class="lbtn lbtn--go" type="submit" title="<%= lang === 'es' ? 'Reanudar manga' : 'Resume heat' %>">
                 <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
                 <span><%= lang === 'es' ? 'REANUDAR' : 'RESUME' %></span>
