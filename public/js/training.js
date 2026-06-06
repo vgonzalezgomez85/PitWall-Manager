@@ -31,6 +31,8 @@ let durationMs = TRAINING_DATA.durationMs || 0;
 let elapsedMs  = TRAINING_DATA.startedAt ? Date.now() - TRAINING_DATA.startedAt : 0;
 let standby    = TRAINING_DATA.standby || false;
 let heatNumber = TRAINING_DATA.heatNumber || null;
+let paused     = TRAINING_DATA.isPaused || false;   // pausa manual (BART/sim) → congela el reloj
+let _trPendingReload = false;                        // recargar tras activar (quien pulsó GO/RESUME)
 
 let warned60 = false;
 let warned30 = false;
@@ -63,13 +65,35 @@ function updateTimer() {
 
 updateTimer();
 setInterval(() => {
-  if (standby) return;
+  if (standby || paused) return;            // pausa manual → reloj congelado
   // No descontar mientras el semáforo (overlay) está visible — la cuenta atrás
   // empieza justo cuando desaparecen las luces verdes.
   if (document.getElementById('semaphore-overlay')) return;
   elapsedMs += 250;
   updateTimer();
 }, 250);
+
+// ── BART/sim: GO y REANUDAR por AJAX para que no se pierda el semáforo en la
+//    recarga. El server activa al ponerse verde; recargamos para refrescar los
+//    botones (GO→PAUSE/STOP). PAUSE y STOP van por POST normal (recargan solos).
+function wireTrAjax(id) {
+  const f = document.getElementById(id);
+  if (!f) return;
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = f.querySelector('button[type="submit"]'); if (btn) btn.disabled = true;
+    _trPendingReload = true;
+    try {
+      await fetch(f.action, {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams(new FormData(f)),
+      });
+    } catch (err) { _trPendingReload = false; location.reload(); }
+  });
+}
+wireTrAjax('trGoForm');
+wireTrAjax('trResumeForm');
 
 function setStandby(isStandby) {
   standby = isStandby;
@@ -298,7 +322,18 @@ const socket = io();
 socket.on('connect', () => socket.emit('training:request'));
 socket.on('race:semaphore', () => showSemaphore());
 socket.on('race:semaphore_step', () => semaphoreStep());
-socket.on('training:autostart', () => semaphoreGo());
+socket.on('training:autostart', () => {
+  semaphoreGo();
+  if (_trPendingReload) { _trPendingReload = false; setTimeout(() => location.reload(), 500); }
+});
+
+// Pausa/reanudación manual (BART/sim): congela/reactiva el reloj y refresca botones.
+socket.on('training:paused', () => { paused = true; });
+socket.on('training:resumed', () => {
+  paused = false;
+  if (document.getElementById('semaphore-overlay')) semaphoreGo(null);
+  if (_trPendingReload) { _trPendingReload = false; setTimeout(() => location.reload(), 500); }
+});
 
 // Pausa POR CIRCUITO (multi-DS): atenúa los carriles del circuito pausado.
 socket.on('training:circuit_state', ({ status, lanes }) => {

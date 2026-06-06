@@ -31,14 +31,34 @@
     </div>
 
     <div class="training-header__actions">
-      <%# GO manual: solo cuando SlotTime inicia (simulación o BART) y estamos en
-          standby. En DS-300 manda la caja. %>
-      <% const _swGo = (typeof isSimulating !== 'undefined' && isSimulating) || (typeof isBart !== 'undefined' && isBart); %>
-      <% if (standby && _swGo) { %>
-        <form action="/training/go" method="POST" style="display:inline">
-          <input type="hidden" name="mode" value="<%= (typeof heatNumber !== 'undefined' && heatNumber !== null) ? 'competition' : 'free' %>">
+      <%# Controles cuando SlotTime inicia la carrera (simulación o BART). En
+          DS-300 manda la caja, así que no se muestran. %>
+      <% const _swGo  = (typeof isSimulating !== 'undefined' && isSimulating) || (typeof isBart !== 'undefined' && isBart); %>
+      <% const _paused = typeof isPaused !== 'undefined' && isPaused; %>
+      <% const _mode  = (typeof heatNumber !== 'undefined' && heatNumber !== null) ? 'competition' : 'free'; %>
+      <% if (_swGo && standby) { %>
+        <form id="trGoForm" action="/training/go" method="POST" style="display:inline-flex;align-items:center;gap:6px">
+          <input type="hidden" name="mode" value="<%= _mode %>">
+          <input class="vt-inp is-mono" type="number" name="duration_minutes" min="1" max="600" value="10"
+                 style="width:58px;text-align:center" title="<%= lang === 'es' ? 'Duración (min)' : 'Duration (min)' %>">
           <button class="tr-btn" type="submit" style="background:#16a34a;color:#fff;font-weight:700"
                   title="<%= lang === 'es' ? 'Arrancar entrenamiento' : 'Start training' %>">▶ GO</button>
+        </form>
+      <% } else if (_swGo && !standby) { %>
+        <% if (_paused) { %>
+          <form id="trResumeForm" action="/training/resume" method="POST" style="display:inline">
+            <input type="hidden" name="mode" value="<%= _mode %>">
+            <button class="tr-btn" type="submit" style="background:#16a34a;color:#fff;font-weight:700">▶ <%= lang === 'es' ? 'REANUDAR' : 'RESUME' %></button>
+          </form>
+        <% } else { %>
+          <form id="trPauseForm" action="/training/pause" method="POST" style="display:inline">
+            <input type="hidden" name="mode" value="<%= _mode %>">
+            <button class="tr-btn" type="submit">⏸ <%= lang === 'es' ? 'Pausa' : 'Pause' %></button>
+          </form>
+        <% } %>
+        <form id="trStopForm" action="/training/halt" method="POST" style="display:inline">
+          <input type="hidden" name="mode" value="<%= _mode %>">
+          <button class="tr-btn" type="submit" style="background:#dc2626;color:#fff;font-weight:700">■ STOP</button>
         </form>
       <% } %>
       <button id="voiceBtn" class="tr-btn tr-btn--voice" onclick="toggleVoice()" title="<%= lang === 'es' ? 'Activar/silenciar voz' : 'Toggle voice' %>">🔊</button>
@@ -115,6 +135,7 @@
       startedAt:      startedAt,
       durationMs:     durationMs,
       standby:        standby,
+      isPaused:       typeof isPaused !== 'undefined' && isPaused,
       heatNumber:     typeof heatNumber !== 'undefined' ? heatNumber : null,
       isCompetition:  typeof heatNumber !== 'undefined' && heatNumber !== null,
       sessionRecords: typeof sessionRecords !== 'undefined' ? sessionRecords : {},
