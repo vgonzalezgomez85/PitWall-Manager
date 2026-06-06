@@ -175,6 +175,10 @@ class TimingServiceClass {
     DebugLogger.log('manga', { event: 'start', mangaNumber: manga.number, durationMs: sessionDurationMs, activeLanes });
     SocketService.emit('manga:started', { mangaId: manga.id, ...this.getStandings() });
     console.log(`[TimingService] Manga ${manga.number} started @ ${Date.now()} — ${activeLanes.length} active lanes — ${race.manga_duration_minutes}min`);
+
+    // Inversión de control: en fuentes que SlotTime pilota (BART) hay que
+    // ARRANCAR el hardware. No-op en DS-300 (manda la caja). Best-effort.
+    SerialService.sendStart();
   }
 
   // ── Estado por circuito (helpers) ───────────────────────────────────────────
@@ -291,6 +295,10 @@ class TimingServiceClass {
 
   stopManga(updateDb = true) {
     if (!this.session) return;
+
+    // Inversión de control: parar el hardware que SlotTime pilota (BART).
+    // No-op en DS-300. Best-effort.
+    SerialService.sendStop();
 
     clearInterval(this._tickInt);
     clearTimeout(this._autoStopTimer);
@@ -487,6 +495,10 @@ class TimingServiceClass {
 
   cancelManga() {
     if (!this.session) return;
+
+    // Inversión de control: parar el hardware que SlotTime pilota (BART).
+    // No-op en DS-300. Best-effort.
+    SerialService.sendStop();
 
     clearInterval(this._tickInt);
     clearTimeout(this._autoStopTimer);

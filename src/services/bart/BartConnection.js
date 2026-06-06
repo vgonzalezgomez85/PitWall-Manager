@@ -100,19 +100,31 @@ class BartConnection {
     });
   }
 
-  // Comandos de salida (best-effort; el timing NO depende de ellos)
+  // ── Comandos de salida (inversión de control) ────────────────────────────
+  // Best-effort: el timing NO depende de ellos. Si un comando se pierde, la
+  // carrera sigue cronometrando con los cruces que lleguen.
   _write(buf) { if (this._sock && !this._sock.destroyed) this._sock.write(buf); }
+  _cmd(op)    { this._write(P.seal([P.SYNC, P.MSG.CMD, op])); }
+
+  sendStart()   { this._cmd(P.OP.START); }
+  sendStop()    { this._cmd(P.OP.STOP); }
+  sendPause()   { this._cmd(P.OP.PAUSE); }
+  sendClear()   { this._cmd(P.OP.CLEAR); }
+  // No hay OP_RESUME en BART: reanudar = volver a START (4.1 / Apéndice H).
+  sendResume()  { this._cmd(P.OP.START); }
+  setMinLap(ms) {
+    const b = Buffer.alloc(5);
+    b[0] = P.SYNC; b[1] = P.MSG.CMD; b[2] = P.OP.SET_MINLAP; b.writeUInt16LE((ms | 0) & 0xFFFF, 3);
+    this._write(P.seal(b));
+  }
 
   _sendSetup() {
     this._write(P.seal([P.SYNC, P.MSG.CMD, P.OP.NOTIFY, 0x01]));        // 7.1 habilitar notificaciones
-    if (this._opts.minlap != null) {
-      const ml = Buffer.alloc(5);
-      ml[0] = P.SYNC; ml[1] = P.MSG.CMD; ml[2] = P.OP.SET_MINLAP; ml.writeUInt16LE(this._opts.minlap & 0xFFFF, 3);
-      this._write(P.seal(ml));
-    }
-    // Armado: algunos Masters solo emiten en estado RUN. Por defecto lo armamos
-    // para que fluyan los cruces; SlotTime sigue llevando su propia carrera.
-    if (this._opts.start !== false) this._write(P.seal([P.SYNC, P.MSG.CMD, P.OP.START]));
+    if (this._opts.minlap != null) this.setMinLap(this._opts.minlap);
+    // Por defecto NO armamos el Master: el GO/START lo manda SlotTime cuando
+    // arranca la manga (inversión de control). start:true fuerza armado (p.ej.
+    // monitor de cruces sin manga).
+    if (this._opts.start === true) this.sendStart();
   }
 
   _scheduleReconnect() {
