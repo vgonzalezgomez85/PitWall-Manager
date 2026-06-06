@@ -110,7 +110,25 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
             </p>
           </div>
         </div>
-        <div class="vt-fields vt-fields--3" style="margin-top:14px">
+        <div class="vt-fields vt-fields--2" style="margin-top:14px">
+          <div class="vt-field">
+            <label><%= lang === 'es' ? 'Transporte' : 'Transport' %></label>
+            <div class="vt-selw">
+              <select name="bart_transport" id="bartTransport">
+                <option value="tcp" <%= (cfg.bart_transport || 'tcp') === 'tcp' ? 'selected' : '' %>><%= lang === 'es' ? 'TCP (emulador / puente)' : 'TCP (emulator / bridge)' %></option>
+                <option value="ble" <%= cfg.bart_transport === 'ble' ? 'selected' : '' %>>BLE (<%= lang === 'es' ? 'directo' : 'direct' %>)</option>
+              </select>
+            </div>
+          </div>
+          <div class="vt-field">
+            <label><%= lang === 'es' ? 'Nº de carriles' : 'Lanes' %></label>
+            <input class="vt-inp is-mono" type="number" name="bart_lanes" min="2" max="32"
+                   value="<%= cfg.bart_lanes || 4 %>">
+          </div>
+        </div>
+
+        <!-- Campos de TCP -->
+        <div id="bartTcpFields" class="vt-fields vt-fields--2" style="margin-top:14px">
           <div class="vt-field">
             <label><%= lang === 'es' ? 'Host del puente' : 'Bridge host' %></label>
             <input class="vt-inp is-mono" type="text" name="bart_host" placeholder="127.0.0.1"
@@ -121,10 +139,14 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
             <input class="vt-inp is-mono" type="number" name="bart_port" min="1" max="65535"
                    value="<%= cfg.bart_port || 9300 %>">
           </div>
+        </div>
+
+        <!-- Campos de BLE -->
+        <div id="bartBleFields" class="vt-fields vt-fields--2" style="margin-top:14px;display:none">
           <div class="vt-field">
-            <label><%= lang === 'es' ? 'Nº de carriles' : 'Lanes' %></label>
-            <input class="vt-inp is-mono" type="number" name="bart_lanes" min="2" max="32"
-                   value="<%= cfg.bart_lanes || 4 %>">
+            <label><%= lang === 'es' ? 'Nombre BLE del Master' : 'Master BLE name' %></label>
+            <input class="vt-inp is-mono" type="text" name="bart_name" placeholder="BART_MST"
+                   value="<%= cfg.bart_name || 'BART_MST' %>">
           </div>
         </div>
       </div>
@@ -392,6 +414,17 @@ function pickSource(){
 }
 document.querySelectorAll('input[name="serial_mode"]').forEach(r => r.addEventListener('change', pickSource));
 pickSource();
+
+/* ── BART: transporte TCP vs BLE ── */
+const bartTransport = document.getElementById('bartTransport');
+const bartTcpFields = document.getElementById('bartTcpFields');
+const bartBleFields = document.getElementById('bartBleFields');
+function pickBartTransport(){
+  const t = bartTransport ? bartTransport.value : 'tcp';
+  if (bartTcpFields) bartTcpFields.style.display = t === 'ble' ? 'none' : '';
+  if (bartBleFields) bartBleFields.style.display = t === 'ble' ? '' : 'none';
+}
+if (bartTransport) { bartTransport.addEventListener('change', pickBartTransport); pickBartTransport(); }
 
 /* ── debug switch ── */
 const sw = document.getElementById('dbgSwitch');
