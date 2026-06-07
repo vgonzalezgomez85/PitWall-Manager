@@ -34,6 +34,9 @@ class SettingsController {
     const multiCircuit = LicenseService.has('multi_circuit');
     if (!multiCircuit && circuits.length > 1) circuits = circuits.slice(0, 1);
 
+    const net = require('../utils/network');
+    const bindIface = cfg.server_bind_iface || '';
+
     res.render('settings/index', {
       t: req.t,
       cfg,
@@ -44,6 +47,11 @@ class SettingsController {
       isSimulating:   SerialService.isSimulating,
       connectedPorts: SerialService.connectedPorts,
       rawLog:         SerialService.getRawLog().slice(-20),
+      // Red del servidor: interfaces disponibles, la elegida, y las IP de acceso.
+      netInterfaces:  net.listInterfaces(),
+      bindIface,
+      serverIps:      net.serverIPs(bindIface),
+      serverPort:     parseInt(process.env.PORT || '3000', 10),
     });
   }
 
@@ -138,6 +146,9 @@ class SettingsController {
       infolap_enabled:      infolapOn ? '1' : '0',
       access_restrict_enabled: accessOn ? '1' : '0',
       access_allowlist:        JSON.stringify(allowlist),
+      // Interfaz de red a la que se ata el server (vacío = todas). Solo aplica
+      // al reiniciar (no se puede re-atar un server en marcha).
+      server_bind_iface:       String(req.body.server_bind_iface || '').trim(),
     });
     DebugLogger.setEnabled(debugOn);
 

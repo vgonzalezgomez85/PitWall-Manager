@@ -48,6 +48,14 @@ const c = typeof counts !== 'undefined' ? counts : { drivers: 0, teams: 0, cars:
         </a>
       <% } %>
       <% } %>
+      <% if (typeof serverIps !== 'undefined' && serverIps && serverIps.length) { %>
+        <span class="vh-status vh-status--ok"
+              style="background:rgba(88,166,255,.12);border-color:rgba(88,166,255,.35);color:#58a6ff"
+              title="<%= (lang === 'es' ? 'Dirección(es) del servidor: ' : 'Server address(es): ') + serverIps.map(function(i){ return i.ip + ':' + serverPort + ' (' + i.name + ')'; }).join('  ·  ') %>">
+          <span class="vh-status__dot" style="background:#58a6ff"></span>
+          <span style="font-family:monospace"><%= serverIps[0].ip %>:<%= serverPort %><% if (serverIps.length > 1) { %> +<%= serverIps.length - 1 %><% } %></span>
+        </span>
+      <% } %>
     </div>
 
     <% if (isGuestAccess) { %>
