@@ -80,6 +80,14 @@
     </div>
   </header>
 
+  <% if (typeof raceWillStealGo !== 'undefined' && raceWillStealGo) { %>
+    <div class="flash flash--error" style="margin:10px 0">
+      ⚠️ <%= lang === 'es'
+        ? 'Hay una carrera activa: el GO irá a la carrera, no al entreno. Ciérrala en Solución de problemas → “Limpiar pendiente”, o complétala desde la carrera.'
+        : 'A race is active: GO will start the race, not training. Close it in Troubleshooting → “Clear pending”, or complete it from the race.' %>
+    </div>
+  <% } %>
+
   <!-- ── Lane cards ────────────────────────────────────────────────────────── -->
   <div class="training-grid" id="trainingGrid" style="--lanes: <%= lanes.length %>; --cols: <%= Math.min(8, lanes.length) %>"></div>
 
