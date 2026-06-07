@@ -115,8 +115,10 @@ class SettingsController {
     const bartPort  = parseInt(req.body.bart_port  || '9300', 10) || 9300;
     const bartName  = String(req.body.bart_name || 'BART_MST').trim() || 'BART_MST';
     const bartLanes = parseInt(req.body.bart_lanes || '4', 10) || 4;
+    const bm = parseInt(req.body.bart_minlap, 10);
+    const bartMinlap = (Number.isFinite(bm) && bm >= 0 && bm <= 65535) ? bm : 2000;
     if (serial_mode === 'bart') {
-      circuits = [{ type: 'bart', transport: bartTransport, host: bartHost, port: bartPort, name: bartName, lanes: bartLanes }];
+      circuits = [{ type: 'bart', transport: bartTransport, host: bartHost, port: bartPort, name: bartName, lanes: bartLanes, minlap: bartMinlap }];
     }
 
     Settings.setMany({
@@ -127,6 +129,7 @@ class SettingsController {
       bart_port:            String(bartPort),
       bart_name:            bartName,
       bart_lanes:           String(bartLanes),
+      bart_minlap:          String(bartMinlap),
       sim_lanes:            sim_lanes   || '6',
       sim_avg_ms:           sim_avg_ms  || '12000',
       training_circuit_id:  String(trainingCircuitId),
