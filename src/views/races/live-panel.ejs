@@ -163,7 +163,8 @@
     const laneInit2 = {};
     lanes.forEach(l => {
       laneInit2[l.lane] = {
-        lane: l.lane, name: l.team_name || l.driver_name || ('Lane ' + l.lane),
+        lane: l.lane, entityId: l.team_id || l.driver_id || null,
+        name: l.team_name || l.driver_name || ('Lane ' + l.lane),
         color: LC2[l.lane - 1] || '#8b949e', isRest: l.is_rest ? true : false,
         lapCount: 0, bestLapMs: null, lastLapMs: null, exitCount: 0,
         _sum: 0, _n: 0, avgLapMs: null,
@@ -230,16 +231,18 @@
     // popup cambia sin disparar resize del window (raro pero posible).
     // Auto-ajuste + paginación con carrusel:
     //   1) Calcula un tamaño de fuente basado en altura, con un MÍNIMO
-    //      legible (~0.72 rem). Si todas las filas no caben a ese tamaño,
-    //      no se sigue achicando — se pagina.
+    //      legible (~0.72 rem).
     //   2) Mide el ancho real y reduce la fuente si las columnas no caben.
-    //   3) Calcula cuántas filas caben con la fuente final y, si sobran,
-    //      activa un carrusel que rota la página visible cada PAGE_INTERVAL_MS.
-    const PAGE_INTERVAL_MS = 30000;   // 30 s entre páginas
+    //   3) Si aún así no caben todas, activa un carrusel que rota la página
+    //      visible cada PAGE_INTERVAL_MS. Si caben (o agrandas la ventana),
+    //      se muestran todas y el carrusel se detiene.
     const FONT_MIN_REM      = 0.72;
     const FONT_MAX_REM      = 1.4;
+    const PAGE_INTERVAL_MS  = 10000;   // 10 s entre páginas (carrusel)
     let _pageTimer = null;
     let _currentPage = 0;
+    let _pageSize = 0;
+    let _totalPages = 1;
     function fitTable() {
       const wrap = document.querySelector('.panel-table-wrap');
       const table = document.querySelector('.panel-table');
@@ -275,37 +278,46 @@
         document.documentElement.style.setProperty('--pt-pad',  pad.toFixed(3)      + 'rem');
       }
 
-      // 3) Paginación: con la fuente final, ¿caben todas las filas?
+      // 3) Paginación con carrusel: con la fuente final, ¿caben todas las filas?
       void table.offsetWidth;
       const actualRowH = allRows[0].offsetHeight || (fontSize * 16 * 2.4);
       const pageSize   = Math.max(1, Math.floor(availableH / actualRowH));
 
-      if (_pageTimer) { clearInterval(_pageTimer); _pageTimer = null; }
-
       if (pageSize >= allRows.length) {
-        // Cabe todo: nada que paginar
-        _currentPage = 0;
+        // Caben todas → mostrarlas y parar el carrusel.
+        _currentPage = 0; _pageSize = allRows.length; _totalPages = 1;
+        allRows.forEach(r => { r.style.display = ''; });
+        if (_pageTimer) { clearInterval(_pageTimer); _pageTimer = null; }
         return;
       }
 
-      // Hay overflow → rotar páginas
-      const totalPages = Math.ceil(allRows.length / pageSize);
-      if (_currentPage >= totalPages) _currentPage = 0;
-      showPage(allRows, pageSize, _currentPage);
-      _pageTimer = setInterval(() => {
-        _currentPage = (_currentPage + 1) % totalPages;
-        showPage(allRows, pageSize, _currentPage);
-        if (typeof refreshMarquees === 'function') refreshMarquees();
-      }, PAGE_INTERVAL_MS);
+      // Hay overflow → paginar. Guardamos pageSize/totalPages en variables que
+      // lee el timer, para NO recrear el intervalo en cada render (si no, las
+      // actualizaciones de standings lo reiniciaban antes de tiempo y nunca
+      // rotaba). El timer se crea UNA sola vez y sobrevive a los re-render.
+      _pageSize   = pageSize;
+      _totalPages = Math.ceil(allRows.length / pageSize);
+      if (_currentPage >= _totalPages) _currentPage = 0;
+      showPage(allRows, _pageSize, _currentPage);
+      if (!_pageTimer) {
+        _pageTimer = setInterval(() => {
+          if (_totalPages <= 1) return;
+          // Re-consultar filas: render() reconstruye la tabla en cada standings.
+          const rows = panelBody ? Array.from(panelBody.querySelectorAll('tr')) : [];
+          if (!rows.length) return;
+          _currentPage = (_currentPage + 1) % _totalPages;
+          showPage(rows, _pageSize, _currentPage);
+          if (typeof refreshMarquees === 'function') refreshMarquees();
+        }, PAGE_INTERVAL_MS);
+      }
     }
 
     function showPage(rows, pageSize, pageIdx) {
       const from = pageIdx * pageSize;
       const to   = from + pageSize;
-      rows.forEach((r, i) => {
-        r.style.display = (i >= from && i < to) ? '' : 'none';
-      });
+      rows.forEach((r, i) => { r.style.display = (i >= from && i < to) ? '' : 'none'; });
     }
+
     window.addEventListener('resize', fitTable);
     // ResizeObserver sobre el wrap: dispara fitTable si el contenedor cambia
     // (p.ej. al cambiar el tamaño de la ventana del popup sin un resize de window)
@@ -330,19 +342,26 @@
     function buildRows(data) {
       const MANGA_DURATION_MS = PANEL_DATA.mangaDurationMs || 0;
       const mangaRemainingMs  = (data && data.remainingMs > 0) ? data.remainingMs : 0;
+      // OJO: identificamos por ID de entidad (no por nombre). Hay carreras con
+      // equipos/pilotos de NOMBRE repetido; deduplicar por nombre los colapsaba
+      // en una sola fila (p.ej. 36 equipos → 23 nombres → 23 filas).
       const allPMap = new Map();
-      (PANEL_DATA.allParticipants || []).forEach(p => allPMap.set(p.entity_name, p));
+      (PANEL_DATA.allParticipants || []).forEach(p => { if (p.entity_id != null) allPMap.set(p.entity_id, p); });
 
-      // Activo en esta manga: media combinada (server emite raceAvgLapMs)
-      const activeByName = new Map();
+      // Carril → ID de entidad (de la asignación de la manga).
+      const laneToEntity = {};
+      (PANEL_DATA.lanes || []).forEach(l => { if (l.entityId != null) laneToEntity[l.lane] = l.entityId; });
+
+      // Activo en esta manga (media combinada raceAvgLapMs), indexado por ID.
+      const activeById = new Map();
       if (data?.standings) {
         data.standings.forEach(r => {
+          const id = laneToEntity[r.lane];
+          if (id == null) return;
           const prevLaps = (PANEL_DATA.prevLapsByLane || {})[r.lane] || 0;
           const total    = prevLaps + (r.lapCount || 0);
-          activeByName.set(r.name, {
-            name: r.name,
-            lane: r.lane,
-            total,
+          activeById.set(id, {
+            _id: id, name: r.name, lane: r.lane, total,
             avgLapMs:  r.raceAvgLapMs ?? r.avgLapMs ?? null,
             bestLapMs: r.bestLapMs ?? null,
             hasData: true,
@@ -351,19 +370,18 @@
         });
       }
 
-      // Combinar: todos los participantes de la carrera + activos sin histórico
+      // Combinar: TODOS los participantes de la carrera (por ID) + activos sin histórico
       const seen = new Set();
       const rows = [];
       (PANEL_DATA.allParticipants || []).forEach(p => {
-        const name = p.entity_name;
-        if (!name) return;                              // descarta entradas null
-        if (seen.has(name)) return;
-        seen.add(name);
-        if (activeByName.has(name)) {
-          rows.push(activeByName.get(name));
+        const id = p.entity_id;
+        if (id == null || seen.has(id)) return;
+        seen.add(id);
+        if (activeById.has(id)) {
+          rows.push(activeById.get(id));
         } else {
           rows.push({
-            name,
+            _id: id, name: p.entity_name,
             total: p.total_laps || 0,
             avgLapMs:  p.avg_lap_ms != null ? Math.round(p.avg_lap_ms) : null,
             bestLapMs: p.best_lap_ms ?? null,
@@ -371,11 +389,11 @@
           });
         }
       });
-      activeByName.forEach((r, name) => { if (!seen.has(name)) { rows.push(r); seen.add(name); } });
+      activeById.forEach((r, id) => { if (!seen.has(id)) { rows.push(r); seen.add(id); } });
 
       // Proyección anclada en lo ya hecho + lo que aún le queda por correr.
       rows.forEach(r => {
-        const p = allPMap.get(r.name);
+        const p = allPMap.get(r._id);
         const futureMangas = p?.remaining_mangas || 0;          // mangas futuras 'pending' (NO la activa)
         const currentLeftMs = r.onTrack ? mangaRemainingMs : 0; // lo que queda de su manga actual
         r._remRacingMs = currentLeftMs + futureMangas * MANGA_DURATION_MS; // tiempo de carrera que aún le queda
@@ -428,7 +446,7 @@
         r._gapBelow = (below && rRaw != null && below.projectedTotalRaw != null)
           ? scoreOf(r) - scoreOf(below) : null;
 
-        const prev = prevPanelGap[r.name] || {};
+        const prev = prevPanelGap[r._id] || {};
         r._trUp = 'neutral'; r._trDown = 'neutral';
         if (r._gapAbove != null && prev.above != null) {
           if (r._gapAbove < prev.above)      r._trUp = 'good';
@@ -441,7 +459,7 @@
       });
 
       prevPanelGap = {};
-      rows.forEach(r => { prevPanelGap[r.name] = { above: r._gapAbove, below: r._gapBelow }; });
+      rows.forEach(r => { prevPanelGap[r._id] = { above: r._gapAbove, below: r._gapBelow }; });
       return rows;
     }
     let prevPanelGap = {};
