@@ -302,6 +302,41 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
           <% }) %>
         </div>
 
+
+        <details>
+          <summary>
+            <span class="ar"></span>
+            <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+            <%= lang === 'es' ? 'Avanzado: timing del parser DS-300' : 'Advanced: DS-300 parser timing' %>
+          </summary>
+          <div class="vt-disc-body">
+            <div class="vt-field" style="max-width:160px;margin-top:10px">
+              <label>FRAME_GAP_MS</label>
+              <input class="vt-inp is-mono" type="number" name="serial_frame_gap_ms" min="10" max="500" value="<%= cfg.serial_frame_gap_ms || 75 %>">
+            </div>
+            <div class="vt-hint">
+              <%= lang === 'es'
+                ? 'Silencio (ms) entre bytes que separa dos tramas. Por defecto 75. Bájalo si tu DS encadena tramas muy rápido (Tic-Tac usa ~1).'
+                : 'Silence (ms) between bytes that separates two frames. Default 75. Lower it if your DS chains frames fast.' %>
+            </div>
+          </div>
+        </details>
+
+        <% if (rawLog.length > 0) { %>
+          <details>
+            <summary>
+              <span class="ar"></span>
+              <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 9l3 3-3 3M13 15h4"/></svg>
+              <%= lang === 'es' ? 'Ver bytes recibidos (debug)' : 'View received bytes (debug)' %>
+            </summary>
+            <div class="vt-disc-body">
+              <div class="vt-bytes"><% rawLog.forEach(({ byte }) => { %><%= '0x' + byte.toString(16).padStart(2,'0').toUpperCase() + ' ' %><% }) %></div>
+            </div>
+          </details>
+        <% } %>
+      </div>
+
+      <!-- ── Ajustes generales (siempre visibles, no dependen del modo) ── -->
         <!-- ── Debug mode ─────────────────────────────────────────────────── -->
         <div class="vt-debug">
           <button type="button" class="vt-switch <%= cfg.debug_mode === '1' ? 'is-on' : '' %>" id="dbgSwitch" aria-label="Toggle debug"></button>
@@ -358,38 +393,41 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
           </div>
         </div>
 
-        <details>
-          <summary>
-            <span class="ar"></span>
-            <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
-            <%= lang === 'es' ? 'Avanzado: timing del parser DS-300' : 'Advanced: DS-300 parser timing' %>
-          </summary>
-          <div class="vt-disc-body">
-            <div class="vt-field" style="max-width:160px;margin-top:10px">
-              <label>FRAME_GAP_MS</label>
-              <input class="vt-inp is-mono" type="number" name="serial_frame_gap_ms" min="10" max="500" value="<%= cfg.serial_frame_gap_ms || 75 %>">
+        <!-- ── Red del servidor ──────────────────────────────────────── -->
+        <div class="vt-debug">
+          <div style="flex:1">
+            <div class="vt-debug__t">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+              <%= lang === 'es' ? 'Red del servidor' : 'Server network' %>
             </div>
-            <div class="vt-hint">
+            <div class="vt-debug__d">
               <%= lang === 'es'
-                ? 'Silencio (ms) entre bytes que separa dos tramas. Por defecto 75. Bájalo si tu DS encadena tramas muy rápido (Tic-Tac usa ~1).'
-                : 'Silence (ms) between bytes that separates two frames. Default 75. Lower it if your DS chains frames fast.' %>
+                ? 'Elige por qué interfaz de red sirve el servidor. "Todas" lo hace accesible por LAN y WiFi a la vez; elige una para limitarlo a esa red. Requiere reiniciar el servidor.'
+                : 'Choose which network interface the server uses. "All" makes it reachable on LAN and WiFi at once; pick one to limit it. Requires a server restart.' %>
+            </div>
+            <div class="vt-field" style="max-width:440px;margin-top:.6rem">
+              <label><%= lang === 'es' ? 'Interfaz (requiere reiniciar)' : 'Interface (requires restart)' %></label>
+              <select name="server_bind_iface" class="vt-inp">
+                <option value="" <%= !bindIface ? 'selected' : '' %>><%= lang === 'es' ? 'Todas las interfaces (recomendado)' : 'All interfaces (recommended)' %></option>
+                <% (netInterfaces || []).forEach(function (i) { %>
+                  <option value="<%= i.name %>" <%= bindIface === i.name ? 'selected' : '' %>><%= i.name %> — <%= i.ip %></option>
+                <% }); %>
+              </select>
+            </div>
+            <span class="vt-debug__d" style="display:block;margin-top:.7rem">
+              <%= lang === 'es' ? 'Dirección(es) del servidor ahora mismo:' : 'Server address(es) right now:' %>
+            </span>
+            <div style="margin-top:.25rem;font-family:monospace;font-size:.9rem">
+              <% if (!serverIps || serverIps.length === 0) { %>
+                <span class="vt-debug__d"><%= lang === 'es' ? 'Sin interfaces de red detectadas.' : 'No network interfaces detected.' %></span>
+              <% } else { %>
+                <% serverIps.forEach(function (i) { %>
+                  <div>http://<%= i.ip %>:<%= serverPort %> <span class="vt-debug__d">(<%= i.name %>)</span></div>
+                <% }); %>
+              <% } %>
             </div>
           </div>
-        </details>
-
-        <% if (rawLog.length > 0) { %>
-          <details>
-            <summary>
-              <span class="ar"></span>
-              <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 9l3 3-3 3M13 15h4"/></svg>
-              <%= lang === 'es' ? 'Ver bytes recibidos (debug)' : 'View received bytes (debug)' %>
-            </summary>
-            <div class="vt-disc-body">
-              <div class="vt-bytes"><% rawLog.forEach(({ byte }) => { %><%= '0x' + byte.toString(16).padStart(2,'0').toUpperCase() + ' ' %><% }) %></div>
-            </div>
-          </details>
-        <% } %>
-      </div>
+        </div>
 
       <div class="vt-form-foot">
         <a href="/" class="vt-btn vt-btn--ghost vt-btn--lg"><%= lang === 'es' ? 'Cancelar' : 'Cancel' %></a>
