@@ -49,7 +49,7 @@ class BartConnection {
     this._peripheral = null;         // periférico BLE (transporte ble)
     this._rxChar     = null;         // característica RX para escribir comandos (BLE)
     this._bleScanTimer = null;
-    this._connected = true;          // optimista hasta que algo diga lo contrario
+    this._connected = false;         // false hasta que haya conexión REAL (estado honesto en la UI)
     this._raceState = null;          // 'running' | 'paused' | 'stopped' | null
     this._rawLog    = [];
 
@@ -76,6 +76,7 @@ class BartConnection {
 
   // ── Surface esperada por SerialService ──────────────────────────────────
   get path()   {
+    if (!this._connected) return null;     // sin conexión real → no cuenta como puerto conectado
     if (this._opts && this._opts.transport === 'ble') return `bart-ble://${this._opts.name || 'BART_MST'}`;
     return this._host ? `bart://${this._host}:${this._port}` : null;
   }
@@ -125,8 +126,13 @@ class BartConnection {
   _openBle() {
     return new Promise((resolve, reject) => {
       let noble;
-      try { noble = require('@abandonware/noble'); }
-      catch (e) { return reject(new Error('falta @abandonware/noble (npm install) — ' + e.message)); }
+      // @stoprocent/noble trae prebuilds N-API para win/mac/linux (multiplataforma,
+      // sin compilar). Fallback a @abandonware/noble si estuviera instalado.
+      try { noble = require('@stoprocent/noble'); }
+      catch (e1) {
+        try { noble = require('@abandonware/noble'); }
+        catch (e2) { return reject(new Error('falta el módulo BLE (@stoprocent/noble) — ' + e1.message)); }
+      }
 
       const wantName = this._opts.name || 'BART_MST';
       let settled = false;
