@@ -35,7 +35,7 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
       </div>
     <% } %>
 
-    <form action="/settings" method="POST" class="vt-panel">
+    <form action="/settings" method="POST" class="vt-panel" novalidate>
 
       <datalist id="baud-options">
         <option value="9600"></option>
