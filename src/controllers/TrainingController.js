@@ -19,6 +19,18 @@ function serialLaneTotal() {
   return 0;
 }
 
+// ¿Hay una carrera activa con manga pendiente? Si la hay, el GO del DS/sim la
+// arranca a ella (prioridad) y NO al entreno → conviene avisar en la vista.
+function raceWillStealGo() {
+  try {
+    const db = require('../config/database');
+    return !!db.prepare(
+      `SELECT 1 FROM races r JOIN mangas m ON m.race_id = r.id
+       WHERE r.status = 'active' AND m.status = 'pending' LIMIT 1`
+    ).get();
+  } catch { return false; }
+}
+
 function lanesFromSettings() {
   const total = serialLaneTotal();
   if (total > 0) return total;                                  // multi-DS: suma de circuitos
@@ -116,6 +128,7 @@ class TrainingController {
       isSimulating: SerialService.isSimulating,
       isBart:       SerialService.isBart,
       isPaused:     CompetitionService.isPaused,
+      raceWillStealGo: raceWillStealGo(),
     });
   }
 
@@ -237,6 +250,7 @@ class TrainingController {
       isSimulating:   SerialService.isSimulating,
       isBart:         SerialService.isBart,
       isPaused:       TrainingService.isPaused,
+      raceWillStealGo: raceWillStealGo(),
     });
   }
 }

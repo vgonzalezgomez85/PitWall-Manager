@@ -814,7 +814,9 @@ class SerialServiceClass extends EventEmitter {
   //   - at least one serial port open → connected
   //   - otherwise → disconnected
   getLinkStatus() {
-    const connected = this._simRunning || this._connections.length > 0;
+    // connectedPorts solo lista conexiones REALES (BART/DS con path no nulo), así
+    // que un BART que aún busca o falló no cuenta como conectado.
+    const connected = this._simRunning || this.connectedPorts.length > 0;
     return {
       connected,
       simulating: this._simRunning,

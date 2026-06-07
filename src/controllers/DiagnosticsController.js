@@ -65,7 +65,18 @@ class DiagnosticsController {
 
   static clearPending(req, res) {
     TimingService.clearPendingManga();
-    if (req.session) req.session.flash = { type: 'success', text: 'Pending setup eliminado.' };
+    // El "pendiente" se regenera en cada GO porque app.js auto-busca una manga
+    // pendiente en carreras ACTIVAS. Si no cerramos esas carreras, reaparece y
+    // sigue robando el GO (al entreno, p.ej.). Las completamos aquí.
+    const Race = require('../models/Race');
+    const ids = db.prepare(
+      `SELECT DISTINCT r.id FROM races r
+       JOIN mangas m ON m.race_id = r.id
+       WHERE r.status = 'active' AND m.status = 'pending'`
+    ).all().map(r => r.id);
+    ids.forEach(id => { try { Race.updateStatus(id, 'completed'); } catch {} });
+    const extra = ids.length ? ` · ${ids.length} carrera(s) activa(s) cerrada(s) (ya no desvían el GO)` : '';
+    if (req.session) req.session.flash = { type: 'success', text: 'Pending setup eliminado' + extra + '.' };
     res.redirect('/diagnostico');
   }
 
