@@ -243,8 +243,26 @@ app.use((err, req, res, next) => {
 module.exports = { app, server };
 
 if (require.main === module) {
-  server.listen(PORT, () => {
-    console.log(`\n  Voltrace Manager running at http://localhost:${PORT}\n`);
+  // Interfaz de red elegida en Settings (vacío = todas). Si la interfaz ya no
+  // existe (cambió la red), fallback a TODAS para que el server arranque igual.
+  const net      = require('./utils/network');
+  const Settings = require('./models/Settings');
+  const bindIface = Settings.get('server_bind_iface', '');
+  const bindIp    = bindIface ? net.ipOfInterface(bindIface) : null;
+  const listenArgs = bindIp ? [PORT, bindIp] : [PORT];
+
+  server.listen(...listenArgs, () => {
+    if (bindIface && !bindIp) {
+      console.warn(`  [Red] Interfaz "${bindIface}" no encontrada → escuchando en TODAS las interfaces`);
+    } else if (bindIp) {
+      console.log(`  [Red] Atado solo a la interfaz "${bindIface}" (${bindIp})`);
+    }
+    console.log(`\n  Voltrace Manager running at http://localhost:${PORT}`);
+    const ips = net.serverIPs(bindIface);
+    if (ips.length) {
+      console.log(`  En la red:  ${ips.map(i => `http://${i.ip}:${PORT} (${i.name})`).join('   ')}`);
+    }
+    console.log('');
     announceBonjour(PORT);
   });
 }

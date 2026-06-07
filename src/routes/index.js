@@ -41,7 +41,13 @@ router.get('/', (req, res) => {
   };
   const serial = SerialService.getLinkStatus();
 
-  res.render('home', { t: req.t, counts, activeRaceCount, serial });
+  // IP(s) por las que el server es accesible (para mostrarlas en la home).
+  const net        = require('../utils/network');
+  const Settings   = require('../models/Settings');
+  const serverIps  = net.serverIPs(Settings.get('server_bind_iface', ''));
+  const serverPort = parseInt(process.env.PORT || '3000', 10);
+
+  res.render('home', { t: req.t, counts, activeRaceCount, serial, serverIps, serverPort });
 });
 
 // ── License ───────────────────────────────────────────────────────────────────
