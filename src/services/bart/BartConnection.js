@@ -125,8 +125,13 @@ class BartConnection {
   _openBle() {
     return new Promise((resolve, reject) => {
       let noble;
-      try { noble = require('@abandonware/noble'); }
-      catch (e) { return reject(new Error('falta @abandonware/noble (npm install) — ' + e.message)); }
+      // @stoprocent/noble trae prebuilds N-API para win/mac/linux (multiplataforma,
+      // sin compilar). Fallback a @abandonware/noble si estuviera instalado.
+      try { noble = require('@stoprocent/noble'); }
+      catch (e1) {
+        try { noble = require('@abandonware/noble'); }
+        catch (e2) { return reject(new Error('falta el módulo BLE (@stoprocent/noble) — ' + e1.message)); }
+      }
 
       const wantName = this._opts.name || 'BART_MST';
       let settled = false;
