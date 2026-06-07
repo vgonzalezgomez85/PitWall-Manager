@@ -227,8 +227,14 @@
   align-items: center; justify-content: center;
   min-height: 90px; gap: .3rem;
   opacity: .75;
+  position: relative;
 }
-.lane-card__rest-icon { font-size: 1.6rem; line-height: 1; }
+/* 💤 + P.xx agrupados arriba a la izquierda de la tarjeta de descanso. */
+.lane-card__rest-head {
+  position: absolute; top: .35rem; left: .45rem;
+  display: flex; align-items: center; gap: .3rem; z-index: 1;
+}
+.lane-card__rest-icon { font-size: 1.1rem; line-height: 1; }
 .lane-card__rest-name {
   font-size: .95rem; font-weight: 700; color: var(--card-color, #8b949e);
   text-align: center; padding: 0 .5rem;
@@ -636,9 +642,10 @@ body.resizing-sidebar * { cursor: col-resize !important; }
   /* Aprovecha todo el ancho disponible: 1fr hace que las tarjetas estiren
      para llenar la pantalla; el min de 180px define cuántas columnas caben. */
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  /* min reducido a 55px: la fila que solo contiene tarjetas de descanso
-     se auto-compacta, liberando alto para las filas de activos. */
-  grid-auto-rows: minmax(55px, 160px);
+  /* min 100px: suficiente para header + 2 filas de stats sin que la etiqueta
+     se solape con el valor cuando hay muchas tarjetas. El contenedor hace
+     scroll (overflow:auto) si no caben todas. */
+  grid-auto-rows: minmax(112px, 170px);
   align-content: center;
   justify-content: stretch;
   gap: .5rem;
@@ -667,8 +674,8 @@ body.resizing-sidebar * { cursor: col-resize !important; }
    derecha de la TARJETA. P.1 se queda donde estaba. */
 .live-lanes--vertical .lane-card__label {
   position: absolute !important;
-  top: .4rem;
-  right: .4rem;
+  top: .3rem;
+  right: .3rem;
   grid-column: auto !important;
   grid-row: auto !important;
   z-index: 2;
@@ -680,7 +687,7 @@ body.resizing-sidebar * { cursor: col-resize !important; }
 .live-lanes--vertical .lane-card__col--name {
   grid-area: head;
   display: grid !important;
-  grid-template-columns: auto 1fr auto !important;
+  grid-template-columns: auto auto auto 1fr !important;
   grid-template-rows: auto auto !important;
   flex-direction: row !important;
   flex-wrap: nowrap !important;
@@ -742,8 +749,15 @@ body.resizing-sidebar * { cursor: col-resize !important; }
 }
 .live-lanes--vertical .lane-card__driver-row:empty { display: none !important; }
 .live-lanes--vertical .lane-card__driver-name { color: inherit; font-size: inherit; }
-.live-lanes--vertical .lane-card__pit { order: 4; }
-.live-lanes--vertical .lane-card__exit { order: 5; }
+/* pit/exit pegados a la posición (col 2 y 3). Antes caían en la columna
+   central (1fr) y bajo el nº de carril absoluto → se solapaban. Se excluye
+   --detailed, que tiene su propio grid de header. */
+.live-lanes--vertical:not(.live-lanes--detailed) .lane-card__pit  {
+  grid-column: 2 !important; grid-row: 1 !important; justify-self: start !important; align-self: center; margin: 0 !important;
+}
+.live-lanes--vertical:not(.live-lanes--detailed) .lane-card__exit {
+  grid-column: 3 !important; grid-row: 1 !important; justify-self: start !important; align-self: center; margin: 0 !important;
+}
 .live-lanes--vertical .lane-card__name {
   grid-column: 1 / -1 !important;
   grid-row: 2 !important;
@@ -808,22 +822,22 @@ body.resizing-sidebar * { cursor: col-resize !important; }
   flex: none;
 }
 .live-lanes--vertical .lane-card__col-label {
-  font-family: 'Inter', system-ui, sans-serif;
-  font-size: .58rem;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: .58rem !important;   /* !important: si no, la regla general .live-body lo agranda y se monta sobre el valor */
   font-weight: 700;
   color: #8b949e;
   letter-spacing: .06em;
   text-transform: uppercase;
-  line-height: 1;
+  line-height: 1 !important;
   width: auto;
   text-align: left;
 }
 .live-lanes--vertical .lane-card__col-val {
   font-family: 'Inter', system-ui, sans-serif !important;
-  font-size: clamp(.95rem, 2.2vh, 1.5rem) !important;
+  font-size: clamp(.9rem, 2vh, 1.2rem) !important;
   font-weight: 800 !important;
   letter-spacing: -.02em;
-  line-height: 1.05 !important;
+  line-height: 1.1 !important;
   color: #c9d1d9;
   white-space: nowrap;
   overflow: hidden;
@@ -1401,7 +1415,8 @@ body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__pos--3 {
   background: #21262d !important; color: #c9d1d9 !important;
 }
 body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__label {
-  order: 2;
+  order: 9;                 /* nº de carril SIEMPRE el último → extremo derecho */
+  margin-left: auto;        /* lo empuja a la derecha; pit/exit quedan a su izquierda */
   background: var(--card-color, #21262d) !important;
   color: #fff !important;
   border-radius: 5px !important;
@@ -1427,7 +1442,7 @@ body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__lane-num
   line-height: 1 !important;
 }
 body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__name {
-  order: 3;
+  order: 4;
   flex: 1 1 auto !important;
   font-family: 'Inter', system-ui, sans-serif !important;
   font-size: clamp(1.4rem, 4.2vh, 2.8rem) !important;
@@ -1451,8 +1466,8 @@ body:not(:has(.live-lanes--vertical)) .lane-card__name--overflow {
   animation: none !important;
   transform: none !important;
 }
-body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__pit { order: 4; }
-body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__exit { order: 5; }
+body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__pit { order: 2; }
+body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__exit { order: 3; }
 body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__trend {
   order: 0;
   flex-shrink: 0;
@@ -1557,7 +1572,7 @@ body.manga-finished:not(:has(.live-lanes--vertical)) .lane-card:not(:has(.next-l
     "head head head head"
     "tot  tot  ult  ult"
     "med  med  mej  mej"
-    "vlt  sal  pit  dlt" !important;
+    "vlt  sal  dlt  dlt" !important;
 }
 /* Mostrar las columnas extra que en V2 estaban ocultas */
 .live-lanes--detailed .lane-card__col--laps,
@@ -1606,28 +1621,10 @@ body.manga-finished:not(:has(.live-lanes--vertical)) .lane-card:not(:has(.next-l
 .live-lanes--detailed .lane-card__col-val--exits-active { color: #ef4444 !important; }
 .live-lanes--detailed .lane-card__col--delta .lane-card__col-val { color: #ff6b35 !important; }
 
-/* Placeholder PIT (la lógica real ya muestra 🔧 en el header cuando hay
-   pit-stops; aquí dejamos una celda etiquetada para que la cuadrícula 4×4
-   tenga las 4 columnas pobladas también cuando no hay pit-stop). */
-.live-lanes--detailed .lane-card::after {
-  content: 'PIT\A —';
-  white-space: pre;
-  grid-area: pit;
-  font-family: 'Inter', system-ui, sans-serif;
-  font-size: .55rem;
-  font-weight: 700;
-  color: #6b7280;
-  letter-spacing: .05em;
-  text-align: center;
-  border-top: 1px solid #161b22;
-  padding-top: .25rem;
-  line-height: 1.45;
-  align-self: stretch;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
+/* La celda PIT placeholder se eliminó: no contaba nada y le quitaba sitio a la
+   Δ (que se cortaba). El pit-stop ya se muestra con 🔧 en el header, y la Δ
+   ahora ocupa esa columna (área "vlt sal dlt dlt"). */
+.live-lanes--detailed .lane-card::after { content: none; }
 
 /* Pequeño aumento del tope de tamaño de tarjeta en V3 — necesitan más alto
    para alojar la fila extra. */
@@ -1721,6 +1718,10 @@ body.manga-finished:not(:has(.live-lanes--vertical)) .lane-card:not(:has(.next-l
 }
 .live-lanes--detailed .lane-card.is-rest::after,
 .live-lanes--vertical  .lane-card.is-rest::after { content: none !important; }
+.live-lanes--detailed .lane-card.is-rest .lane-card__rest-head,
+.live-lanes--vertical  .lane-card.is-rest .lane-card__rest-head {
+  position: static; display: flex; align-items: center; gap: .3rem; flex-shrink: 0;
+}
 .live-lanes--detailed .lane-card.is-rest .lane-card__rest-icon,
 .live-lanes--vertical  .lane-card.is-rest .lane-card__rest-icon {
   font-size: 1.1rem !important;
@@ -1796,33 +1797,63 @@ body.manga-finished:not(:has(.live-lanes--vertical)) .lane-card:not(:has(.next-l
    Solo activo cuando body.manga-finished. Toggle body.swap-show-next
    alterna qué se ve. */
 
-/* === V2 (cuadrícula compacta) === */
-/* Posiciona la badge en la fila inferior del grid de la tarjeta (med/mej) */
+/* === V2/tarjetas: VOLTEO de la tarjeta al finalizar manga ===
+   Cara A (swap-show-stats): los 4 stats. Cara B (swap-show-next): el cambio
+   de carril ocupando TODA el área de stats. El header (pos/nombre/carril) se
+   mantiene en ambas caras. Así no se solapa nada (idea: dar la vuelta a la
+   tarjeta — por una cara los datos, por la otra el cambio de carril). */
 body.manga-finished .live-lanes--vertical:not(.live-lanes--detailed) .lane-card .next-lane-badge {
   grid-column: 1 / -1;
-  grid-row: 3 / 4;
+  grid-row: 2 / -1;            /* toda el área de stats (tot/ult/med/mej) */
   grid-area: auto;
   margin: 0;
   padding: .25rem .5rem;
   align-self: stretch;
   justify-self: stretch;
   font-family: 'Inter', system-ui, sans-serif;
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 1.05rem;
   white-space: nowrap;
   display: flex; align-items: center; justify-content: center;
   opacity: 0; visibility: hidden; pointer-events: none;
-  transition: opacity .35s ease;
+  transition: opacity .3s ease;
+  z-index: 1;
 }
 body.manga-finished.swap-show-next .live-lanes--vertical:not(.live-lanes--detailed) .lane-card .next-lane-badge {
   opacity: 1; visibility: visible; pointer-events: auto;
 }
+/* Cara A: los 4 stats. Se ocultan al mostrar la cara B (cambio de carril). */
+.live-lanes--vertical:not(.live-lanes--detailed) .lane-card__col--total,
+.live-lanes--vertical:not(.live-lanes--detailed) .lane-card__col--last,
 .live-lanes--vertical:not(.live-lanes--detailed) .lane-card__col--avg,
 .live-lanes--vertical:not(.live-lanes--detailed) .lane-card__col--best {
-  transition: opacity .35s ease;
+  transition: opacity .3s ease;
 }
+body.manga-finished.swap-show-next .live-lanes--vertical:not(.live-lanes--detailed) .lane-card__col--total,
+body.manga-finished.swap-show-next .live-lanes--vertical:not(.live-lanes--detailed) .lane-card__col--last,
 body.manga-finished.swap-show-next .live-lanes--vertical:not(.live-lanes--detailed) .lane-card__col--avg,
 body.manga-finished.swap-show-next .live-lanes--vertical:not(.live-lanes--detailed) .lane-card__col--best {
   opacity: 0; visibility: hidden; pointer-events: none;
+}
+
+/* === Tarjetas de DESCANSO: también voltean al finalizar manga (vertical) ===
+   Cara A: info de descanso (vueltas + "DESCANSO x/y"). Cara B: su próximo
+   destino (badge --rest) cubriendo toda la tarjeta. La regla .is-rest es más
+   específica que la de tarjetas activas, así que anula su grid-row. */
+body.manga-finished .live-lanes--vertical:not(.live-lanes--detailed) .lane-card.is-rest .next-lane-badge {
+  position: absolute; inset: 0; margin: 0; min-width: 0;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity .3s ease; z-index: 3;
+}
+body.manga-finished.swap-show-next .live-lanes--vertical:not(.live-lanes--detailed) .lane-card.is-rest .next-lane-badge {
+  opacity: 1; visibility: visible; pointer-events: auto;
+}
+body.manga-finished.swap-show-next .live-lanes--vertical:not(.live-lanes--detailed) .lane-card.is-rest .lane-card__rest-head,
+body.manga-finished.swap-show-next .live-lanes--vertical:not(.live-lanes--detailed) .lane-card.is-rest .lane-card__rest-name,
+body.manga-finished.swap-show-next .live-lanes--vertical:not(.live-lanes--detailed) .lane-card.is-rest .lane-card__rest-laps,
+body.manga-finished.swap-show-next .live-lanes--vertical:not(.live-lanes--detailed) .lane-card.is-rest .lane-card__rest-label {
+  opacity: 0; visibility: hidden;
 }
 
 /* === V3 (tarjetas con detalles) === */

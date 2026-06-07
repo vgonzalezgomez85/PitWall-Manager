@@ -163,7 +163,7 @@ window.addEventListener('resize', _v1SchedulePaging);
 
 // ── Swap meta/stats ↔ next-lane cada 10s cuando manga finalizada ────────
 let _swapRotationTimer = null;
-const SWAP_INTERVAL_MS = 10000;
+const SWAP_INTERVAL_MS = 6000;
 function _startSwapRotation() {
   if (_swapRotationTimer) return;
   document.body.classList.add('swap-show-stats');
@@ -306,10 +306,11 @@ function buildCard(lane) {
       ? `${LANG === 'es' ? 'Descanso' : 'Rest'} ${lane.restPos}/${lane.restTotal}`
       : (LANG === 'es' ? 'Descansando' : 'Resting');
     card.innerHTML = `
-      <div class="lane-card__rest-icon">💤</div>
-      <div class="lane-card__rest-name">
-        <span class="lane-card__pos" id="card-pos-${lane.cardId || lane.lane}"></span> ${lane.name}
+      <div class="lane-card__rest-head">
+        <span class="lane-card__rest-icon">💤</span>
+        <span class="lane-card__pos" id="card-pos-${lane.cardId || lane.lane}"></span>
       </div>
+      <div class="lane-card__rest-name">${lane.name}</div>
       <div class="lane-card__rest-laps" id="card-rest-laps-${lane.cardId || lane.lane}">${restTotal}</div>
       <div class="lane-card__rest-label">${posLabel}</div>`;
     return card;
