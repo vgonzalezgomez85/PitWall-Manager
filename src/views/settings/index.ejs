@@ -110,7 +110,7 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
             </p>
           </div>
         </div>
-        <div class="vt-fields vt-fields--2" style="margin-top:14px">
+        <div class="vt-fields vt-fields--3" style="margin-top:14px">
           <div class="vt-field">
             <label><%= lang === 'es' ? 'Transporte' : 'Transport' %></label>
             <div class="vt-selw">
@@ -124,6 +124,12 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
             <label><%= lang === 'es' ? 'Nº de carriles' : 'Lanes' %></label>
             <input class="vt-inp is-mono" type="number" name="bart_lanes" min="2" max="32"
                    value="<%= cfg.bart_lanes || 4 %>">
+          </div>
+          <div class="vt-field">
+            <label><%= lang === 'es' ? 'MinLap del Master (ms)' : 'Master MinLap (ms)' %></label>
+            <input class="vt-inp is-mono" type="number" name="bart_minlap" min="0" max="65535" step="100"
+                   value="<%= cfg.bart_minlap || 2000 %>"
+                   title="<%= lang === 'es' ? 'Filtro anti-rebote del hardware: descarta cruces más rápidos que esto' : 'Hardware debounce: drops crossings faster than this' %>">
           </div>
         </div>
 
