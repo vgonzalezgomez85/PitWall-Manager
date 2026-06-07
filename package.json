@@ -65,7 +65,8 @@
       "**/node_modules/serialport/**/*",
       "**/node_modules/@serialport/**/*",
       "**/node_modules/bindings/**/*",
-      "**/node_modules/node-gyp-build/**/*"
+      "**/node_modules/node-gyp-build/**/*",
+      "**/node_modules/@abandonware/**/*"
     ],
     "npmRebuild": true,
     "mac": {
@@ -87,7 +88,11 @@
       ],
       "category": "public.app-category.sports-games",
       "identity": null,
-      "icon": "build/icon.icns"
+      "icon": "build/icon.icns",
+      "extendInfo": {
+        "NSBluetoothAlwaysUsageDescription": "Voltrace Manager usa Bluetooth para conectar con el cronómetro BART (BLE).",
+        "NSBluetoothPeripheralUsageDescription": "Voltrace Manager usa Bluetooth para conectar con el cronómetro BART (BLE)."
+      }
     },
     "dmg": {
       "title": "Instalar Voltrace Manager",
