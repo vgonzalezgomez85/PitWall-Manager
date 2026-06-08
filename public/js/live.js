@@ -87,7 +87,7 @@ function selectView(mode) {
 let _v1PageTimer = null;
 let _v1Page = 0;
 let _v1ScheduledRAF = false;
-const V1_PAGE_MS = 30000;
+const V1_PAGE_MS = 10000;
 
 function _v1ResetPaging(grid) {
   if (_v1PageTimer) { clearInterval(_v1PageTimer); _v1PageTimer = null; }
@@ -143,11 +143,16 @@ function _v1ApplyPaging() {
   }
   _v1Page = _v1Page % pages.length;
   showPage(_v1Page);
-  if (_v1PageTimer) clearInterval(_v1PageTimer);
-  _v1PageTimer = setInterval(() => {
-    _v1Page = (_v1Page + 1) % pages.length;
-    showPage(_v1Page);
-  }, V1_PAGE_MS);
+  // Crear el temporizador UNA sola vez: antes se recreaba en cada llamada y
+  // _v1ApplyPaging se invoca en cada actualización de standings, así que el
+  // intervalo se reiniciaba antes de cumplirse y NUNCA rotaba. El callback
+  // re-llama a _v1ApplyPaging (recalcula páginas, las tarjetas cambian).
+  if (!_v1PageTimer) {
+    _v1PageTimer = setInterval(() => {
+      _v1Page = _v1Page + 1;
+      _v1ApplyPaging();
+    }, V1_PAGE_MS);
+  }
 }
 
 function _v1SchedulePaging() {
