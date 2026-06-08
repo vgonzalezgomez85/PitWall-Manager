@@ -1486,6 +1486,20 @@ body:not(:has(.live-lanes--vertical)) .lane-card__name--overflow {
 }
 body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__pit { order: 2; }
 body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__exit { order: 3; }
+
+/* ── Flip nombre de equipo ↔ piloto activo (V1) ────────────────────────────
+   Con piloto asignado se ve el EQUIPO casi siempre; durante la ventana
+   body.show-driver (10s de cada 40s) se ve el PILOTO superpuesto. */
+body:not(:has(.live-lanes--vertical)) .lane-card__name { position: relative; transition: color .4s ease; }
+body:not(:has(.live-lanes--vertical)) .lane-card__driver-inline {
+  position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  display: inline-flex; align-items: center; gap: .3rem;
+  color: #58a6ff; font: inherit; font-weight: 700;
+  white-space: nowrap; max-width: 100%;
+  opacity: 0; pointer-events: none; transition: opacity .4s ease;
+}
+body.show-driver:not(:has(.live-lanes--vertical)) .lane-card.has-driver .lane-card__name { color: transparent !important; }
+body.show-driver:not(:has(.live-lanes--vertical)) .lane-card.has-driver .lane-card__driver-inline { opacity: 1; }
 body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__trend {
   order: 0;
   flex-shrink: 0;
