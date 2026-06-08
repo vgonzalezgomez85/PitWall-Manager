@@ -559,10 +559,12 @@ class SessionController {
     // Aggregate laps per unique team name across entire race, enriched with catalog metadata
     const teamRows = db.prepare(`
       SELECT
+        t.id,
         t.name,
-        MIN(t.color) AS color,
+        t.color AS color,
         COUNT(CASE WHEN l.is_ghost=0 AND l.is_exit=0 AND l.lap_number>0 THEN 1 END) AS total_laps,
         MIN(CASE WHEN l.is_ghost=0 AND l.is_exit=0 AND l.lap_number>0 THEN l.lap_time_ms END) AS best_lap_ms,
+        AVG(CASE WHEN l.is_ghost=0 AND l.is_exit=0 AND l.lap_number>0 THEN l.lap_time_ms END) AS avg_lap_ms,
         MAX(tc.categoria)  AS categoria,
         MAX(tc.coche)      AS coche,
         MAX(tc.car_photo)  AS car_photo,
@@ -571,68 +573,100 @@ class SessionController {
       LEFT JOIN laps l ON l.team_id = t.id
       LEFT JOIN teams_catalog tc ON tc.name = t.name
       WHERE t.race_id = ?
-      GROUP BY t.name
+      GROUP BY t.id
       ORDER BY total_laps DESC, best_lap_ms ASC
     `).all(race.id);
 
     // Laps from completed mangas only (for delta tracking in client)
     const prevLapRows = db.prepare(`
-      SELECT t.name, COUNT(*) AS prev_laps
+      SELECT l.team_id AS id, COUNT(*) AS prev_laps
       FROM laps l
-      JOIN teams t ON t.id = l.team_id
       JOIN mangas m ON m.id = l.manga_id
       WHERE l.race_id = ? AND l.is_ghost=0 AND l.is_exit=0 AND l.lap_number>0
         AND m.status = 'finished'
-      GROUP BY t.name
+      GROUP BY l.team_id
     `).all(race.id);
     const prevLapMap = {};
-    prevLapRows.forEach(r => { prevLapMap[r.name] = r.prev_laps; });
+    prevLapRows.forEach(r => { prevLapMap[r.id] = r.prev_laps; });
 
     // Most recent active driver per team (across all driver_shifts for this race)
     const shiftRows = db.prepare(`
-      SELECT t.name AS team_name, ds.driver_name
+      SELECT ds.team_id, ds.driver_name
       FROM driver_shifts ds
       JOIN teams t ON t.id = ds.team_id
       WHERE t.race_id = ?
       ORDER BY ds.id DESC
     `).all(race.id);
     const driverMap = {};
-    shiftRows.forEach(d => { if (!driverMap[d.team_name]) driverMap[d.team_name] = d.driver_name; });
+    shiftRows.forEach(d => { if (!driverMap[d.team_id]) driverMap[d.team_id] = d.driver_name; });
 
-    // Current active manga lane → team name (for live socket updates)
-    let activeMangaId = null;
+    // Manga activa: la verdad en memoria de TimingService (la BD puede ir
+    // desfasada). Mapeo carril → team_id para las actualizaciones en vivo.
+    let activeMangaId = TimingService.activeMangaId || null;
     let laneToTeam    = {};
-    const activeTanda = db.prepare(`
-      SELECT id FROM tandas WHERE race_id = ? AND status='active' ORDER BY id DESC LIMIT 1
-    `).get(race.id);
-    if (activeTanda) {
-      const activeManga = db.prepare(`
-        SELECT id FROM mangas WHERE tanda_id = ? AND status='active' LIMIT 1
-      `).get(activeTanda.id);
-      if (activeManga) {
-        activeMangaId = activeManga.id;
-        db.prepare(`
-          SELECT ml.lane, t.name AS team_name
-          FROM manga_lanes ml JOIN teams t ON t.id = ml.team_id
-          WHERE ml.manga_id = ? AND ml.is_rest = 0
-        `).all(activeManga.id).forEach(r => { laneToTeam[r.lane] = r.team_name; });
-      }
+    if (activeMangaId) {
+      db.prepare(`
+        SELECT ml.lane, ml.team_id
+        FROM manga_lanes ml
+        WHERE ml.manga_id = ? AND ml.is_rest = 0 AND ml.team_id IS NOT NULL
+      `).all(activeMangaId).forEach(r => { laneToTeam[r.lane] = r.team_id; });
     }
+
+    // ── Datos de proyección (como la vista estimada) ─────────────────────────
+    // Mangas pendientes por equipo (las que aún le quedan por correr).
+    const remainRows = db.prepare(`
+      SELECT ml.team_id AS id, COUNT(*) AS remaining
+      FROM manga_lanes ml
+      JOIN mangas m ON m.id = ml.manga_id
+      WHERE m.race_id = ? AND m.status='pending' AND ml.is_rest=0 AND ml.team_id IS NOT NULL
+      GROUP BY ml.team_id
+    `).all(race.id);
+    const remainMap = {};
+    remainRows.forEach(r => { remainMap[r.id] = r.remaining; });
+
+    // Duración efectiva de manga (real del DS, no el placeholder de 99 min).
+    const durManga = db.prepare(
+      "SELECT * FROM mangas WHERE race_id=? AND (status='active' OR actual_duration_ms>0) ORDER BY CASE WHEN status='active' THEN 0 ELSE 1 END, id DESC LIMIT 1"
+    ).get(race.id) || { id: -1, actual_duration_ms: 0 };
+    const effectiveMangaDurationMs = SessionController._getEffectiveMangaDurationMs(race, durManga);
+
+    // Tiempo restante de la manga activa (solo para los equipos en pista).
+    const liveStand = (TimingService.activeMangaId === activeMangaId) ? TimingService.getStandings() : null;
+    const currentRemainingMs = (liveStand && liveStand.remainingMs > 0) ? liveStand.remainingMs : 0;
+    const onTrackTeams = Object.values(laneToTeam);   // ahora son team_id
+    const teamToLane = {};
+    Object.entries(laneToTeam).forEach(([lane, id]) => { teamToLane[id] = parseInt(lane, 10); });
+
+    // Cabecera: manga X/total + estado de carrera.
+    const totalMangas = db.prepare('SELECT COUNT(*) AS n FROM mangas WHERE race_id = ?').get(race.id).n;
+    let mangaNumber = null;
+    if (activeMangaId) {
+      const am = db.prepare('SELECT number FROM mangas WHERE id = ?').get(activeMangaId);
+      mangaNumber = am?.number ?? null;
+    }
+    const raceStatus = TimingService.isRunning ? 'running'
+                     : TimingService.isPaused ? 'paused'
+                     : 'finished';
 
     const leaderLaps = teamRows[0]?.total_laps ?? 0;
     const standings = teamRows.map((t, i) => ({
-      position:      i + 1,
-      name:          t.name,
-      color:         t.color,
-      totalLaps:     t.total_laps,
-      prevLaps:      prevLapMap[t.name] ?? 0,
-      bestLapMs:     t.best_lap_ms,
-      gap:           leaderLaps - t.total_laps,
-      currentDriver: driverMap[t.name] ?? null,
-      categoria:     t.categoria  ?? null,
-      coche:         t.coche      ?? null,
-      car_photo:     t.car_photo  ?? null,
-      country:       t.country    ?? null,
+      position:        i + 1,
+      id:              t.id,
+      name:            t.name,
+      color:           t.color,
+      totalLaps:       t.total_laps,
+      prevLaps:        prevLapMap[t.id] ?? 0,
+      bestLapMs:       t.best_lap_ms,
+      avgLapMs:        t.avg_lap_ms ? Math.round(t.avg_lap_ms) : null,
+      remainingMangas: remainMap[t.id] ?? 0,
+      onTrack:         onTrackTeams.includes(t.id),
+      currentLane:     teamToLane[t.id] ?? null,
+      gap:             leaderLaps - t.total_laps,
+      currentDriver:   driverMap[t.id] ?? null,
+      categoria:       t.categoria  ?? null,
+      coche:           t.coche      ?? null,
+      car_photo:       t.car_photo  ?? null,
+      country:         t.country    ?? null,
     }));
 
     const isActive = TimingService.activeMangaId != null;
@@ -640,6 +674,8 @@ class SessionController {
     res.render('races/lemans', {
       t: req.t, race, lang, standings,
       activeMangaId, laneToTeam, isActive,
+      effectiveMangaDurationMs, currentRemainingMs,
+      mangaNumber, totalMangas, raceStatus,
     });
   }
 
