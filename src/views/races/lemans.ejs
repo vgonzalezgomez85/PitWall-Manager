@@ -86,13 +86,54 @@
       0%,100% { opacity: 1; }
       50%      { opacity: .3; }
     }
+    .lm-header__left { min-width: 0; }
+    .lm-header__mid { display: flex; align-items: center; gap: 1.3rem; }
+    .lm-stat { display: flex; flex-direction: column; align-items: center; line-height: 1.05; }
+    .lm-stat__lbl { font-size: .52rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+    .lm-stat__val { font-family: 'Share Tech Mono', monospace; font-size: 1.15rem; font-weight: 700; color: var(--text); }
+    #lmTimer { color: var(--gold); }
+    .lm-state { padding: .25rem .7rem; border-radius: 6px; font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .lm-state--running  { background: rgba(63,185,80,.15);  color: var(--green); }
+    .lm-state--paused   { background: rgba(246,201,14,.15); color: var(--gold); }
+    .lm-state--finished { background: #21262d; color: var(--muted); }
+    .lm-clock { font-family: 'Share Tech Mono', monospace; font-size: 1.25rem; font-weight: 700; color: var(--text); }
+    /* Carril: badge de color con el nº, mismo tamaño que V.Proy */
+    .lane-pill {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 30px; height: 30px; border-radius: 6px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1.05rem; font-weight: 700; color: #0d1117;
+    }
 
     /* ── Table ── */
     .lm-wrap {
       padding: .5rem 1rem 2rem;
-      max-width: 900px;
+      max-width: 1280px;
       margin: 0 auto;
     }
+
+    /* Columnas estilo "estimada": proyectadas, media, p/subir */
+    .td-proj {
+      width: 74px; text-align: right;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1.05rem; font-weight: 700; color: var(--gold);
+    }
+    .td-avg {
+      width: 78px; text-align: right;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .78rem; color: #9ca3af;
+    }
+    .td-psub {
+      width: 82px; text-align: right;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .78rem; color: #f97316;
+    }
+    /* Tendencia ▲▼ */
+    .lm-trend { display:inline-flex; flex-direction:column; line-height:.7; margin-right:.15rem; font-size:.6rem; }
+    .lm-trend .up   { color:#30363d; }
+    .lm-trend .down { color:#30363d; }
+    .lm-trend .up.good, .lm-trend .down.good { color:#3fb950; }
+    .lm-trend .up.bad,  .lm-trend .down.bad  { color:#e63946; }
 
     .lm-table {
       width: 100%;
@@ -196,8 +237,9 @@
 
     /* Color bar */
     .td-bar {
-      width: 6px;
-      padding: 0 0 0 2px;
+      width: 42px;
+      padding: 0 .3rem;
+      text-align: center;
     }
     .color-bar {
       width: 4px;
@@ -279,13 +321,17 @@
 <body>
 
   <header class="lm-header">
-    <div>
+    <div class="lm-header__left">
       <div class="lm-header__title"><%= lang === 'es' ? 'CLASIFICACIÓN GENERAL' : 'OVERALL STANDINGS' %></div>
       <div class="lm-header__race"><%= race.name %></div>
     </div>
-    <div class="lm-header__badge" id="liveStatus" style="display:<%= isActive ? 'flex' : 'none' %>">
-      <div class="lm-live-dot"></div>
-      <span><%= lang === 'es' ? 'EN DIRECTO' : 'LIVE' %></span>
+    <div class="lm-header__mid">
+      <div class="lm-stat"><span class="lm-stat__lbl"><%= lang === 'es' ? 'Manga' : 'Heat' %></span><span class="lm-stat__val" id="lmManga">—</span></div>
+      <div class="lm-stat"><span class="lm-stat__lbl"><%= lang === 'es' ? 'Restante' : 'Remaining' %></span><span class="lm-stat__val" id="lmTimer">--:--</span></div>
+      <div class="lm-state" id="lmState">—</div>
+    </div>
+    <div class="lm-header__right">
+      <div class="lm-clock" id="lmClock">--:--:--</div>
     </div>
   </header>
 
@@ -294,13 +340,16 @@
       <thead>
         <tr>
           <th class="td-pos">P</th>
-          <th class="td-bar" style="width:10px"></th>
+          <th class="td-bar" style="width:42px"><%= lang === 'es' ? 'Car.' : 'Ln' %></th>
           <th class="td-car"><%= lang === 'es' ? 'Coche' : 'Car' %></th>
           <th><%= lang === 'es' ? 'Equipo / Piloto activo' : 'Team / Active driver' %></th>
           <th style="width:80px"><%= lang === 'es' ? 'Categoría' : 'Category' %></th>
+          <th class="th-r" style="width:74px" title="<%= lang === 'es' ? 'Vueltas proyectadas' : 'Projected laps' %>"><%= lang === 'es' ? 'V.Proy' : 'Proj' %></th>
           <th class="th-r" style="width:70px"><%= lang === 'es' ? 'Vueltas' : 'Laps' %></th>
           <th class="th-r" style="width:80px">Gap</th>
+          <th class="th-r" style="width:78px"><%= lang === 'es' ? 'Media' : 'Avg' %></th>
           <th class="th-r" style="width:90px"><%= lang === 'es' ? 'Mejor' : 'Best' %></th>
+          <th class="th-r" style="width:82px" title="<%= lang === 'es' ? 'Media necesaria para subir' : 'Avg needed to climb' %>"><%= lang === 'es' ? 'P/Subir' : 'To climb' %></th>
         </tr>
       </thead>
       <tbody id="lmBody"></tbody>
@@ -313,6 +362,11 @@
       activeMangaId: activeMangaId,
       laneToTeam:   laneToTeam,
       isActive:     isActive,
+      mangaDurationMs:   effectiveMangaDurationMs,
+      currentRemainingMs: currentRemainingMs,
+      mangaNumber:  mangaNumber,
+      totalMangas:  totalMangas,
+      raceStatus:   raceStatus,
     }) %>;
     const LANG = "<%= lang %>";
   </script>
@@ -321,6 +375,7 @@
     // ── Helpers ───────────────────────────────────────────────────────────────
     function formatMs(ms) {
       if (ms == null) return '—';
+      ms = Math.round(ms);   // sin esto, ms%1000 sobre un float arrastra basura de coma flotante
       const totalSec = Math.floor(ms / 1000);
       const millis   = ms % 1000;
       const secs = totalSec % 60;
@@ -341,22 +396,54 @@
 
     // ── State ─────────────────────────────────────────────────────────────────
     // standings keyed by team name
+    // Indexado por ID de equipo (no por nombre): hay equipos con nombre
+    // repetido y por nombre se fusionaban (36 → 23).
     const state = {};
     LM_DATA.standings.forEach(s => {
-      state[s.name] = {
+      state[s.id] = {
         ...s,
         currentLaps: s.totalLaps - s.prevLaps, // laps in current/last manga
       };
     });
 
-    // Track active drivers (updated via socket)
+    // Track active drivers (updated via socket), por ID
     const activeDrivers = {};
     LM_DATA.standings.forEach(s => {
-      if (s.currentDriver) activeDrivers[s.name] = s.currentDriver;
+      if (s.currentDriver) activeDrivers[s.id] = s.currentDriver;
     });
 
     // ── Render ────────────────────────────────────────────────────────────────
     const tbody = document.getElementById('lmBody');
+
+    // ── Carrusel: si las filas no caben en la ventana, rota por páginas ───────
+    const LM_PAGE_MS = 12000;
+    let _lmPage = 0, _lmTimer = null;
+    function applyCarousel() {
+      const allRows = Array.from(tbody.querySelectorAll('tr'));
+      if (!allRows.length) return;
+      allRows.forEach(r => { r.style.display = ''; });   // mostrar todo para medir
+      const header = document.querySelector('.lm-header');
+      const thead  = document.querySelector('.lm-table thead');
+      const headerH = header ? header.offsetHeight : 0;
+      const theadH  = thead ? thead.offsetHeight : 0;
+      const avail   = window.innerHeight - headerH - theadH - 36;
+      const rowH    = (allRows[0].getBoundingClientRect().height || 58) + 3; // + border-spacing
+      const pageSize = Math.max(1, Math.floor(avail / rowH));
+      if (pageSize >= allRows.length) {                  // caben todas → sin carrusel
+        if (_lmTimer) { clearInterval(_lmTimer); _lmTimer = null; }
+        _lmPage = 0;
+        return;
+      }
+      const pages = Math.ceil(allRows.length / pageSize);
+      _lmPage = _lmPage % pages;
+      const from = _lmPage * pageSize, to = from + pageSize;
+      allRows.forEach((r, i) => { r.style.display = (i >= from && i < to) ? '' : 'none'; });
+      // Temporizador UNA sola vez (si se recrea en cada render nunca rota).
+      if (!_lmTimer) {
+        _lmTimer = setInterval(() => { _lmPage = _lmPage + 1; applyCarousel(); }, LM_PAGE_MS);
+      }
+    }
+    window.addEventListener('resize', applyCarousel);
 
     function render() {
       const rows = Object.values(state).sort((a, b) =>
@@ -370,8 +457,27 @@
         r.gap = leaderLaps - r.totalLaps;
       });
 
+      // Proyección (como la vista estimada): vueltas al final según la media y
+      // el tiempo de carrera que aún le queda (mangas pendientes + lo que reste
+      // de la manga en curso si está en pista).
+      const MANGA_DUR = LM_DATA.mangaDurationMs || 0;
+      const CUR_REM   = LM_DATA.currentRemainingMs || 0;
+      rows.forEach(r => {
+        const remMs = (r.remainingMangas || 0) * MANGA_DUR + (r.onTrack ? CUR_REM : 0);
+        r._remMs = remMs;
+        r.projectedRaw = (r.avgLapMs > 0) ? r.totalLaps + remMs / r.avgLapMs : null;
+        r.projected = r.projectedRaw != null ? Math.round(r.projectedRaw) : null;
+      });
+      rows.forEach((r, i) => {
+        const above = rows[i - 1];
+        if (i === 0 || !above || above.projectedRaw == null || !(r._remMs > 0)) { r.psubir = null; return; }
+        const lapsNeeded = above.projectedRaw - r.totalLaps;
+        const req = lapsNeeded > 0 ? r._remMs / lapsNeeded : null;
+        r.psubir = (req != null && req > 0 && (!r.bestLapMs || req >= r.bestLapMs)) ? req : null;
+      });
+
       tbody.innerHTML = rows.map(r => {
-        const driver = activeDrivers[r.name] ?? r.currentDriver;
+        const driver = activeDrivers[r.id] ?? r.currentDriver;
         const driverHtml = driver
           ? `<div class="team-driver"><span>${driver}</span></div>`
           : '';
@@ -386,9 +492,11 @@
           ? `<span class="cat-badge">${r.categoria}</span>`
           : `<span style="color:#30363d">—</span>`;
 
-        return `<tr class="lm-row ${r.position===1?'row--leader':''}" data-team="${encodeURIComponent(r.name)}">
+        return `<tr class="lm-row ${r.position===1?'row--leader':''}" data-team="${r.id}">
           <td class="td-pos"><span class="pos-badge ${posClass(r.position)}">${r.position}</span></td>
-          <td class="td-bar"><div class="color-bar" style="background:${r.color}"></div></td>
+          <td class="td-bar">${r.currentLane != null
+            ? `<span class="lane-pill" style="background:${r.color}">${r.currentLane}</span>`
+            : `<span class="lane-pill" style="background:#21262d;color:#8b949e">—</span>`}</td>
           <td class="td-car">${carHtml}</td>
           <td class="td-team">
             <div class="team-name">${r.name}</div>
@@ -396,27 +504,77 @@
             ${driverHtml}
           </td>
           <td>${catHtml}</td>
-          <td class="td-laps" id="laps-${encodeURIComponent(r.name)}">${r.totalLaps}</td>
+          <td class="td-proj">${r.projected != null ? r.projected : '—'}</td>
+          <td class="td-laps" id="laps-${r.id}">${r.totalLaps}</td>
           <td class="td-gap">${gapLabel(r.gap)}</td>
+          <td class="td-avg">${r.avgLapMs != null ? formatMs(r.avgLapMs) : '—'}</td>
           <td class="td-best">${bestHtml}</td>
+          <td class="td-psub">${r.psubir != null ? formatMs(r.psubir) : '—'}</td>
         </tr>`;
       }).join('');
+      applyCarousel();
     }
 
     render();
 
-    // ── Socket.io ─────────────────────────────────────────────────────────────
-    if (LM_DATA.isActive && LM_DATA.activeMangaId) {
+    // ── Cabecera: reloj del sistema, manga X/total, estado y countdown ─────────
+    function tickClock() {
+      document.getElementById('lmClock').textContent =
+        new Date().toLocaleTimeString(LANG === 'es' ? 'es-ES' : 'en-GB', { hour12: false });
+    }
+    tickClock(); setInterval(tickClock, 1000);
+
+    document.getElementById('lmManga').textContent =
+      (LM_DATA.mangaNumber != null) ? `${LM_DATA.mangaNumber}/${LM_DATA.totalMangas}`
+      : (LM_DATA.totalMangas ? `–/${LM_DATA.totalMangas}` : '—');
+
+    function setState(s) {
+      const el = document.getElementById('lmState');
+      const map = LANG === 'es'
+        ? { running: 'EN CARRERA', paused: 'PAUSA', finished: 'FINALIZADA' }
+        : { running: 'RACING', paused: 'PAUSED', finished: 'FINISHED' };
+      const key = map[s] ? s : 'finished';
+      el.textContent = map[key];
+      el.className = 'lm-state lm-state--' + key;
+    }
+    setState(LM_DATA.raceStatus);
+
+    let _remMs   = LM_DATA.currentRemainingMs || 0;
+    let _running = LM_DATA.raceStatus === 'running';
+    function fmtTimer(ms) {
+      ms = Math.max(0, Math.round(ms));
+      const t = Math.floor(ms / 1000), m = Math.floor(t / 60), s = t % 60;
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+    function paintTimer() {
+      document.getElementById('lmTimer').textContent = (_running || _remMs > 0) ? fmtTimer(_remMs) : '--:--';
+    }
+    paintTimer();
+    setInterval(() => { if (_running && _remMs > 0) { _remMs -= 1000; paintTimer(); } }, 1000);
+
+    // ── Socket.io (SIEMPRE conectado) ─────────────────────────────────────────
+    // Si una manga arranca después de cargar la página, recargamos para traer
+    // el nuevo mapeo carril→equipo y el nº de manga.
+    {
       const socket = io();
       const laneToTeam = LM_DATA.laneToTeam;
 
+      socket.on('manga:started',   () => location.reload());
+      socket.on('manga:paused',    () => { _running = false; setState('paused'); });
+      socket.on('manga:resumed',   () => { _running = true;  setState('running'); });
+      socket.on('manga:stopped',   () => { _running = false; setState('finished'); _remMs = 0; paintTimer(); });
+      socket.on('manga:cancelled', () => { _running = false; setState('finished'); _remMs = 0; paintTimer(); });
+
       socket.on('standings', (data) => {
         if (!data?.standings) return;
+        // Countdown + estado en vivo
+        if (typeof data.remainingMs === 'number') _remMs = data.remainingMs;
+        _running = true; setState('running'); paintTimer();
         let changed = false;
         data.standings.forEach(row => {
-          const teamName = laneToTeam[row.lane];
-          if (!teamName || !state[teamName]) return;
-          const s = state[teamName];
+          const teamId = laneToTeam[row.lane];   // laneToTeam ahora mapea carril → team_id
+          if (teamId == null || !state[teamId]) return;
+          const s = state[teamId];
           const newTotal = s.prevLaps + row.lapCount;
           if (newTotal !== s.totalLaps) { s.totalLaps = newTotal; changed = true; }
           if (row.bestLapMs != null && (s.bestLapMs == null || row.bestLapMs < s.bestLapMs)) {
@@ -427,9 +585,9 @@
       });
 
       socket.on('driver_checkin', (data) => {
-        const teamName = laneToTeam[data.lane];
-        if (teamName && data.driverName) {
-          activeDrivers[teamName] = data.driverName;
+        const teamId = laneToTeam[data.lane];
+        if (teamId != null && data.driverName) {
+          activeDrivers[teamId] = data.driverName;
           render();
         }
       });
