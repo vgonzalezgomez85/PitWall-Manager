@@ -182,6 +182,18 @@ function _stopSwapRotation() {
   if (_swapRotationTimer) { clearInterval(_swapRotationTimer); _swapRotationTimer = null; }
   document.body.classList.remove('swap-show-stats', 'swap-show-next');
 }
+
+// ── Flip nombre de equipo ↔ piloto activo: 30s equipo / 10s piloto ──────────
+// Solo afecta a tarjetas con piloto asignado (.has-driver). Inocuo si no hay.
+let _driverFlipTimer = null;
+function _startDriverFlip() {
+  if (_driverFlipTimer) return;
+  const TEAM_MS = 30000, DRIVER_MS = 10000;
+  _driverFlipTimer = setInterval(() => {
+    document.body.classList.add('show-driver');
+    setTimeout(() => document.body.classList.remove('show-driver'), DRIVER_MS);
+  }, TEAM_MS + DRIVER_MS);
+}
 // Restaurar la vista guardada. El botón siempre se muestra.
 function _initViewPicker() {
   const nonRest = (RACE_DATA.lanes || []).filter(l => !l.isRest).length;
@@ -425,6 +437,7 @@ function initCards() {
     lanesGrid.appendChild(buildCard(lane));
     if (lane.activeDriver) setActiveDriver(lane.lane, lane.activeDriver);
   });
+  _startDriverFlip();   // flip nombre↔piloto en tarjetas con piloto asignado
   if (RACE_DATA.mangaStatus === 'finished') {
     document.body.classList.add('manga-finished');
     renderNextLaneHints();
@@ -1627,14 +1640,18 @@ function setActiveDriver(lane, driverName) {
     }
   }
 
-  // 2) Span inline dentro del nombre del equipo (visible en V1)
+  // 2) Flip nombre equipo ↔ piloto (V1). El span se superpone al nombre y solo
+  //    se ve durante la ventana body.show-driver (10s de cada 40s).
   if (nameSpan) {
     nameSpan.querySelector('.lane-card__driver-inline')?.remove();
     if (driverName) {
       const inline = document.createElement('span');
       inline.className = 'lane-card__driver-inline';
-      inline.textContent = '· 👤 ' + driverName;
+      inline.textContent = '👤 ' + driverName;
       nameSpan.appendChild(inline);
+      card?.classList.add('has-driver');
+    } else {
+      card?.classList.remove('has-driver');
     }
   }
 
