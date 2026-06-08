@@ -248,6 +248,24 @@
   text-transform: uppercase; color: #484f58;
   background: #21262d; border-radius: 4px; padding: .15rem .45rem;
 }
+/* Vista V1 (filas): la tarjeta de descanso es una FILA. El rest-head vuelve a
+   ser inline (en el grid de tarjetas va absoluto arriba-izq, pero aquí eso
+   superpone zzz+P.x sobre el nombre/vueltas). Todo en fila, a la izquierda. */
+body:not(:has(.live-lanes--vertical)) .lane-card.is-rest {
+  flex-direction: row !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+  gap: .6rem;
+}
+body:not(:has(.live-lanes--vertical)) .lane-card.is-rest .lane-card__rest-head {
+  position: static !important;
+  display: flex; align-items: center; gap: .3rem; flex-shrink: 0;
+}
+body:not(:has(.live-lanes--vertical)) .lane-card.is-rest .lane-card__rest-name,
+body:not(:has(.live-lanes--vertical)) .lane-card.is-rest .lane-card__rest-laps,
+body:not(:has(.live-lanes--vertical)) .lane-card.is-rest .lane-card__rest-label {
+  flex-shrink: 0;
+}
 
 .lane-card__label {
   display: inline-flex; align-items: baseline; gap: .5rem;
