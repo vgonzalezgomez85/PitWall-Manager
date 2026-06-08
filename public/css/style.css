@@ -277,6 +277,7 @@ input, button, select { font-family: inherit; }
 .form-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(88,166,255,.15); }
 .form-input--error { border-color: var(--red) !important; }
 .form-input--sm { width: 100px; }
+.form-input::placeholder { color: var(--text-muted); opacity: .85; }
 .form-hint { font-size: .8rem; color: var(--text-muted); }
 .input-row { display: flex; align-items: center; gap: .75rem; }
 .form-actions {
@@ -329,14 +330,15 @@ input, button, select { font-family: inherit; }
 
 /* ── Teams form ────────────────────────────────────────────────────────── */
 .teams-container { display: flex; flex-direction: column; gap: .75rem; max-height: 75vh; overflow-y: auto; padding-right: .25rem; }
-.team-block { background: var(--bg-input); border-radius: var(--radius); overflow: hidden; }
+.team-block { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; flex-shrink: 0; }
 .team-block__header {
   display: flex; align-items: center; gap: .75rem;
   padding: .6rem .75rem; border-left: 4px solid var(--border);
-  background: rgba(255,255,255,.02);
+  background: rgba(255,255,255,.03);
 }
-.team-name-input { flex: 1; background: transparent; border-color: transparent; padding: .3rem .5rem; }
-.team-name-input:focus { background: var(--bg-card); border-color: var(--blue); }
+/* El nombre de equipo es una caja visible (antes era transparente y parecía vacía). */
+.team-name-input { flex: 1; background: var(--bg-input); border-color: var(--border); padding: .4rem .6rem; font-weight: 600; }
+.team-name-input:focus { background: var(--bg-input); border-color: var(--blue); }
 .team-members { display: flex; flex-direction: column; gap: .3rem; padding: .3rem .75rem .6rem 3.25rem; }
 .member-row { display: flex; align-items: center; gap: .6rem; }
 .member-num {

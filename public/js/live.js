@@ -87,7 +87,7 @@ function selectView(mode) {
 let _v1PageTimer = null;
 let _v1Page = 0;
 let _v1ScheduledRAF = false;
-const V1_PAGE_MS = 30000;
+const V1_PAGE_MS = 10000;
 
 function _v1ResetPaging(grid) {
   if (_v1PageTimer) { clearInterval(_v1PageTimer); _v1PageTimer = null; }
@@ -143,11 +143,16 @@ function _v1ApplyPaging() {
   }
   _v1Page = _v1Page % pages.length;
   showPage(_v1Page);
-  if (_v1PageTimer) clearInterval(_v1PageTimer);
-  _v1PageTimer = setInterval(() => {
-    _v1Page = (_v1Page + 1) % pages.length;
-    showPage(_v1Page);
-  }, V1_PAGE_MS);
+  // Crear el temporizador UNA sola vez: antes se recreaba en cada llamada y
+  // _v1ApplyPaging se invoca en cada actualización de standings, así que el
+  // intervalo se reiniciaba antes de cumplirse y NUNCA rotaba. El callback
+  // re-llama a _v1ApplyPaging (recalcula páginas, las tarjetas cambian).
+  if (!_v1PageTimer) {
+    _v1PageTimer = setInterval(() => {
+      _v1Page = _v1Page + 1;
+      _v1ApplyPaging();
+    }, V1_PAGE_MS);
+  }
 }
 
 function _v1SchedulePaging() {
@@ -163,7 +168,7 @@ window.addEventListener('resize', _v1SchedulePaging);
 
 // ── Swap meta/stats ↔ next-lane cada 10s cuando manga finalizada ────────
 let _swapRotationTimer = null;
-const SWAP_INTERVAL_MS = 10000;
+const SWAP_INTERVAL_MS = 6000;
 function _startSwapRotation() {
   if (_swapRotationTimer) return;
   document.body.classList.add('swap-show-stats');
@@ -176,6 +181,18 @@ function _startSwapRotation() {
 function _stopSwapRotation() {
   if (_swapRotationTimer) { clearInterval(_swapRotationTimer); _swapRotationTimer = null; }
   document.body.classList.remove('swap-show-stats', 'swap-show-next');
+}
+
+// ── Flip nombre de equipo ↔ piloto activo: 30s equipo / 10s piloto ──────────
+// Solo afecta a tarjetas con piloto asignado (.has-driver). Inocuo si no hay.
+let _driverFlipTimer = null;
+function _startDriverFlip() {
+  if (_driverFlipTimer) return;
+  const TEAM_MS = 30000, DRIVER_MS = 10000;
+  _driverFlipTimer = setInterval(() => {
+    document.body.classList.add('show-driver');
+    setTimeout(() => document.body.classList.remove('show-driver'), DRIVER_MS);
+  }, TEAM_MS + DRIVER_MS);
 }
 // Restaurar la vista guardada. El botón siempre se muestra.
 function _initViewPicker() {
@@ -306,10 +323,11 @@ function buildCard(lane) {
       ? `${LANG === 'es' ? 'Descanso' : 'Rest'} ${lane.restPos}/${lane.restTotal}`
       : (LANG === 'es' ? 'Descansando' : 'Resting');
     card.innerHTML = `
-      <div class="lane-card__rest-icon">💤</div>
-      <div class="lane-card__rest-name">
-        <span class="lane-card__pos" id="card-pos-${lane.cardId || lane.lane}"></span> ${lane.name}
+      <div class="lane-card__rest-head">
+        <span class="lane-card__rest-icon">💤</span>
+        <span class="lane-card__pos" id="card-pos-${lane.cardId || lane.lane}"></span>
       </div>
+      <div class="lane-card__rest-name">${lane.name}</div>
       <div class="lane-card__rest-laps" id="card-rest-laps-${lane.cardId || lane.lane}">${restTotal}</div>
       <div class="lane-card__rest-label">${posLabel}</div>`;
     return card;
@@ -419,6 +437,7 @@ function initCards() {
     lanesGrid.appendChild(buildCard(lane));
     if (lane.activeDriver) setActiveDriver(lane.lane, lane.activeDriver);
   });
+  _startDriverFlip();   // flip nombre↔piloto en tarjetas con piloto asignado
   if (RACE_DATA.mangaStatus === 'finished') {
     document.body.classList.add('manga-finished');
     renderNextLaneHints();
@@ -1621,14 +1640,18 @@ function setActiveDriver(lane, driverName) {
     }
   }
 
-  // 2) Span inline dentro del nombre del equipo (visible en V1)
+  // 2) Flip nombre equipo ↔ piloto (V1). El span se superpone al nombre y solo
+  //    se ve durante la ventana body.show-driver (10s de cada 40s).
   if (nameSpan) {
     nameSpan.querySelector('.lane-card__driver-inline')?.remove();
     if (driverName) {
       const inline = document.createElement('span');
       inline.className = 'lane-card__driver-inline';
-      inline.textContent = '· 👤 ' + driverName;
+      inline.textContent = '👤 ' + driverName;
       nameSpan.appendChild(inline);
+      card?.classList.add('has-driver');
+    } else {
+      card?.classList.remove('has-driver');
     }
   }
 
