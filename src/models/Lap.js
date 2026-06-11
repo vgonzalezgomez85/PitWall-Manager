@@ -100,7 +100,9 @@ class Lap {
   // Aggregate results per entity (team or driver) across all mangas of a race
   static aggregateByRace(raceId) {
     // total_laps counts every recorded lap (including exits and pit-stops);
-    // best_lap_ms still excludes exits so a crashed lap can't become "best".
+    // best_lap_ms still excludes exits so a crashed lap can't become "best",
+    // y también la vuelta 1 (cruce de salida: en datos antiguos se guardó sin
+    // is_warmup y un cruce a 3s del GO salía como mejor vuelta de la carrera).
     return db.prepare(`
       SELECT
         COALESCE(t.id,   d.id)   AS entity_id,
@@ -108,20 +110,30 @@ class Lap {
         CASE WHEN t.id IS NOT NULL THEN 'team' ELSE 'driver' END AS entity_type,
         t.color,
         COUNT(l.id)                              AS total_laps,
-        MIN(CASE WHEN l.is_exit = 0 AND l.is_warmup = 0 THEN l.lap_time_ms END) AS best_lap_ms,
+        MIN(CASE WHEN l.is_exit = 0 AND l.is_warmup = 0 AND l.lap_number > 1 THEN l.lap_time_ms END) AS best_lap_ms,
         -- Media "sucia" (incluye salidas) pero SIN warmup: representa el
         -- ritmo real de carrera con sus mistakes incluidos. Es la métrica
         -- correcta para la proyección "vueltas al final de la carrera".
         AVG(CASE WHEN l.is_warmup = 0 THEN l.lap_time_ms END) AS avg_lap_ms,
         SUM(l.lap_time_ms)                       AS total_time_ms,
         COUNT(DISTINCT l.manga_id)               AS mangas_raced,
-        SUM(l.is_exit)                           AS exit_count
+        SUM(l.is_exit)                           AS exit_count,
+        -- Coma acumulada: fracción de vuelta en curso al caer la bandera de
+        -- cada manga (estimada en stopManga). Desempate a igualdad de vueltas:
+        -- más coma = llegó más lejos en las vueltas que no llegó a marcar.
+        COALESCE((
+          SELECT SUM(ml.coma) FROM manga_lanes ml
+          JOIN mangas mg ON mg.id = ml.manga_id
+          WHERE mg.race_id = l.race_id AND ml.is_rest = 0
+            AND ((t.id IS NOT NULL AND ml.team_id = t.id)
+              OR (t.id IS NULL    AND ml.driver_id = d.id))
+        ), 0) AS coma_total
       FROM laps l
       LEFT JOIN teams   t ON t.id = l.team_id
       LEFT JOIN drivers d ON d.id = l.driver_id
       WHERE l.race_id = ? AND l.is_ghost = 0
       GROUP BY entity_id, entity_type
-      ORDER BY total_laps DESC, total_time_ms ASC
+      ORDER BY total_laps DESC, coma_total DESC, total_time_ms ASC
     `).all(raceId);
   }
 

@@ -323,6 +323,11 @@ const migrations = [
   // TimingService.startManga. La usa la clasificación estimada para no caer al
   // placeholder manga_duration_minutes (p.ej. 99) en mangas terminadas/recargas.
   `ALTER TABLE mangas ADD COLUMN actual_duration_ms INTEGER`,
+  // "Coma": fracción estimada de la vuelta en curso cuando cayó la bandera de
+  // la manga (0..0.99). La escribe TimingService.stopManga. Con un solo sensor
+  // en meta es una estimación: (fin − último cruce) / media limpia del carril.
+  // Se acumula por entidad en la clasificación como desempate a igual vueltas.
+  `ALTER TABLE manga_lanes ADD COLUMN coma REAL NOT NULL DEFAULT 0`,
 ];
 for (const sql of migrations) {
   try {

@@ -95,7 +95,8 @@ class TimingServiceClass {
         // se marca como "warmup" y NO cuenta para mejor vuelta. Muchas mangas
         // arrancan con un cruce inicial que infla/desinfla artificialmente
         // ese primer tiempo; ignorarlo evita que aparezca como vuelta rápida
-        // espuria. Sí cuenta para totales, media y proyección.
+        // espuria. Cuenta para el total de vueltas, pero queda fuera de la
+        // media (y por tanto de la proyección).
         firstRealLapDone: false,
         exitCount:     0,
         pitStopCount:  0,
@@ -336,6 +337,28 @@ class TimingServiceClass {
     let nextTandaNumber = null;
 
     if (updateDb) {
+      // "Coma": fracción de la vuelta en curso al caer la bandera, estimada
+      // como (fin del circuito − último cruce) / media limpia del carril y
+      // capada a 0.99 (con un solo sensor en meta nunca puede ser vuelta
+      // entera). Se persiste en manga_lanes.coma para el desempate a igual
+      // número de vueltas en la clasificación.
+      const dbConn = require('../config/database');
+      const comaStmt = dbConn.prepare('UPDATE manga_lanes SET coma = ? WHERE manga_id = ? AND lane = ?');
+      const nowTs = Date.now();
+      for (const ld of Object.values(this.session.laneMap)) {
+        const ci = this.session.laneToCircuit[ld.lane];
+        const c  = ci != null ? this.session.circuits[ci] : null;
+        const endTs = c ? Math.min(nowTs, c.startTime + (c.durationMs || this.session.durationMs)) : nowTs;
+        const refAvg = ld.cleanAvgMs > 0 ? ld.cleanAvgMs : ld.lapAvgMs;
+        let coma = 0;
+        if (ld.lapCount > 0 && refAvg > 0 && ld.lastCrossing) {
+          coma = Math.min(0.99, Math.max(0, (endTs - ld.lastCrossing) / refAvg));
+        }
+        try {
+          comaStmt.run(+coma.toFixed(3), this.session.manga.id, ld.lane);
+        } catch (err) { console.error('[TimingService] persist coma error:', err.message); }
+      }
+
       Manga.updateStatus(this.session.manga.id, 'finished');
       const next = Manga.nextPending(this.session.manga.tanda_id);
 
@@ -606,8 +629,11 @@ class TimingServiceClass {
       ld.pendingPauseAdjustMs = 0;
     }
 
-    // Debounce only applies to timestamp-based measurements (not device-timed)
-    if (!deviceLapTimeMs && lapTimeMs < DEBOUNCE_MS) return;
+    // Debounce only applies to timestamp-based measurements (not device-timed).
+    // El cruce de salida (lapCount 0) queda exento: con el coche parado pegado
+    // a la línea puede llegar a <3s del GO y es un cruce legítimo que debe
+    // contar como vuelta (regla del club: cuenta como vuelta, no como VR).
+    if (!deviceLapTimeMs && ld.lapCount > 0 && lapTimeMs < DEBOUNCE_MS) return;
 
     // First crossing from device (no device-reported lap time): count it as
     // lap 1 with elapsed time from race start → first crossing.
@@ -631,6 +657,10 @@ class TimingServiceClass {
             lane, lap_number: lapNum,
             lap_time_ms: firstLapMs, elapsed_ms: firstLapMs,
             is_exit: 0,
+            // Cruce de salida: cuenta como vuelta pero nunca como VR/mejor ni
+            // en la media — is_warmup=1 lo excluye en todas las queries (sin
+            // esto, un cruce a 3s del GO sale como "mejor vuelta" en resultados).
+            is_warmup: 1,
           });
         } catch (err) { console.error('[TimingService] DB error:', err.message); }
       });
@@ -876,21 +906,27 @@ class TimingServiceClass {
       raceBestLaps[l.lane] = { bestLapMs: l.raceBestLapMs, entityName: l.raceBestEntity };
     });
 
-    // Race-wide running average per lane: combines all prior mangas (from DB)
-    // with the current manga's in-memory state, so the sidebar can show a
-    // race-wide projected average that updates lap by lap.
+    // Race-wide running average per ENTITY (equipo/piloto): combines all prior
+    // mangas (from DB) with the current manga's in-memory state, so the sidebar
+    // can show a race-wide projected average that updates lap by lap. Las mangas
+    // anteriores se agrupan por entidad — NO por carril — porque los carriles
+    // rotan cada manga: agrupar por carril imputaba a cada equipo el ritmo de
+    // quienes pasaron antes por su carril físico.
     const db = require('../config/database');
     const priorStats = db.prepare(`
-      SELECT lane, COUNT(*) AS cnt, AVG(lap_time_ms) AS avg_ms
+      SELECT CASE WHEN team_id IS NOT NULL THEN 't' || team_id ELSE 'd' || driver_id END AS ekey,
+             COUNT(*) AS cnt, AVG(lap_time_ms) AS avg_ms
       FROM laps
       WHERE race_id = ? AND manga_id != ?
         AND is_ghost = 0 AND is_warmup = 0 AND lap_number > 0
-      GROUP BY lane
+      GROUP BY ekey
     `).all(race.id, manga.id);
-    const priorByLane = {};
-    priorStats.forEach(p => { priorByLane[p.lane] = { count: p.cnt, avg: p.avg_ms }; });
+    const priorByEntity = {};
+    priorStats.forEach(p => { priorByEntity[p.ekey] = { count: p.cnt, avg: p.avg_ms }; });
     rows.forEach(r => {
-      const prior = priorByLane[r.lane];
+      const ld = laneMap[r.lane];
+      const ekey = ld?.teamId ? 't' + ld.teamId : (ld?.driverId ? 'd' + ld.driverId : null);
+      const prior = ekey ? priorByEntity[ekey] : null;
       const priorCount = prior?.count || 0;
       const priorSum   = prior ? prior.avg * prior.count : 0;
       const currCount  = r.lapCount;
