@@ -176,7 +176,11 @@
     <div class="results-panel active" id="tab-matrix">
       <%
         const orderedLanes = (laneSequence || []).filter(l => l > 0);
-        const byTotalM = [...results].sort((a,b) => b.total_laps - a.total_laps || (a.best_lap_ms||Infinity) - (b.best_lap_ms||Infinity));
+        // Desempate a igual vueltas: primero la coma acumulada (fracción de
+        // vuelta en curso al caer la bandera de cada manga), luego mejor vuelta.
+        const byTotalM = [...results].sort((a,b) => b.total_laps - a.total_laps
+          || (b.coma_total||0) - (a.coma_total||0)
+          || (a.best_lap_ms||Infinity) - (b.best_lap_ms||Infinity));
 
         // VR general de cada carril = mejor `best_ms` de ese carril entre todos
         // los participantes. Se marca con un redondel azul en la fila "Rápida".
@@ -241,7 +245,9 @@
                     <span class="start-lane-tag" title="<%= lang === 'es' ? 'Carril de inicio' : 'Starting lane' %>">🚦 P<%= startLane %></span>
                   <% } %>
                 </td>
-                <td class="matrix-laps matrix-total"><%= r.total_laps %></td>
+                <td class="matrix-laps matrix-total">
+                  <%= r.total_laps %><% if (r.coma_total > 0) { %><span style="font-size:.6em; color:#8b949e; margin-left:4px; font-weight:normal;" title="<%= lang === 'es' ? 'Coma: vuelta en curso no marcada al final de cada manga (acumulada). Desempata a igualdad de vueltas.' : 'Coma: unfinished lap in progress at the end of each manga (accumulated). Breaks ties on equal laps.' %>">+<%= r.coma_total.toFixed(2).replace('.', ',') %></span><% } %>
+                </td>
                 <% orderedLanes.forEach(lane => {
                      const pl = laneMap.get(lane);
                      const isStart = lane === startLane;
