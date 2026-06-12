@@ -65,6 +65,33 @@ function getOrCreateSecret(userData) {
   }
 }
 
+// ── Migración de datos Voltrace Manager → PitWall ────────────────────────────
+// El renombrado de la app cambió la carpeta userData (en Windows:
+// %APPDATA%\Voltrace Manager → %APPDATA%\PitWall). Si la nueva carpeta aún no
+// tiene base de datos y la antigua existe, copiamos la BD (con su -wal/-shm),
+// el secreto de sesión y los logs para no perder carreras ni configuración.
+// La carpeta antigua se conserva como respaldo (no se borra).
+function migrateLegacyUserData(userData) {
+  try {
+    const newDb = path.join(userData, 'slotime.db');
+    if (fs.existsSync(newDb)) return; // ya hay datos en PitWall — nada que hacer
+    const oldDir = path.join(path.dirname(userData), 'Voltrace Manager');
+    if (!fs.existsSync(path.join(oldDir, 'slotime.db'))) return;
+    fs.mkdirSync(userData, { recursive: true });
+    for (const f of ['slotime.db', 'slotime.db-wal', 'slotime.db-shm', '.session_secret']) {
+      const src = path.join(oldDir, f);
+      if (fs.existsSync(src)) fs.copyFileSync(src, path.join(userData, f));
+    }
+    const oldLogs = path.join(oldDir, 'logs');
+    if (fs.existsSync(oldLogs)) {
+      fs.cpSync(oldLogs, path.join(userData, 'logs'), { recursive: true, force: false });
+    }
+    console.log('[PitWall] Datos migrados desde "Voltrace Manager":', oldDir, '→', userData);
+  } catch (err) {
+    console.error('[PitWall] Error migrando datos antiguos:', err.message);
+  }
+}
+
 // ── Start Express as forked child process ─────────────────────────────────────
 function startServer(userData) {
   return new Promise((resolve, reject) => {
@@ -107,7 +134,7 @@ function loadAppIcon() {
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400, height: 900, minWidth: 900, minHeight: 600,
-    title: 'Voltrace Manager',
+    title: 'PitWall',
     backgroundColor: '#0a0d13',
     icon: loadAppIcon(),
     webPreferences: {
@@ -139,7 +166,7 @@ function loadTrayIcon() {
     return null;
   }
   if (process.platform === 'darwin') {
-    const tplPath = pick('voltraceTemplate.png');
+    const tplPath = pick('pitwallTemplate.png');
     if (tplPath) {
       const img = nativeImage.createFromPath(tplPath);
       img.setTemplateImage(true);
@@ -154,9 +181,9 @@ function loadTrayIcon() {
 
 function createTray() {
   tray = new Tray(loadTrayIcon());
-  tray.setToolTip('Voltrace Manager');
+  tray.setToolTip('PitWall');
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Abrir Voltrace Manager', click: () => mainWindow ? (mainWindow.show(), mainWindow.focus()) : createWindow() },
+    { label: 'Abrir PitWall', click: () => mainWindow ? (mainWindow.show(), mainWindow.focus()) : createWindow() },
     { label: 'Abrir en navegador',     click: () => shell.openExternal(`http://127.0.0.1:${PORT}`) },
     { type: 'separator' },
     { label: 'Salir',                  click: () => { app.isQuiting = true; app.quit(); } },
@@ -167,10 +194,11 @@ function createTray() {
 // ── App lifecycle ─────────────────────────────────────────────────────────────
 app.whenReady().then(async () => {
   const userData = app.getPath('userData');
+  migrateLegacyUserData(userData);
   try {
     await startServer(userData);
   } catch (err) {
-    dialog.showErrorBox('Slot Timer Pro', `No se pudo iniciar el servidor:\n${err.message}`);
+    dialog.showErrorBox('PitWall', `No se pudo iniciar el servidor:\n${err.message}`);
     app.quit();
     return;
   }

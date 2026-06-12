@@ -52,7 +52,7 @@ function formatRemaining(ms) {
 
 // ── View picker: modal con 4 layouts (V1 horizontal, V2 compacta, V3/V4 soon) ─
 function _viewStorageKey() {
-  return `voltrace.liveView.race-${RACE_DATA.raceId}`;
+  return `pitwall.liveView.race-${RACE_DATA.raceId}`;
 }
 function openViewPicker() {
   const ov = document.getElementById('viewPickerOverlay');

@@ -45,7 +45,7 @@ input, button, select { font-family: inherit; }
 .navbar--slim .brand-flag { width: 20px; height: 20px; }
 .navbar--slim .brand-logo { height: 95px; }
 
-/* Navbar brand (VOLTRACE wordmark) — used on every non-home page */
+/* Navbar brand (PITWALL wordmark) — used on every non-home page */
 .navbar--brand { background: #000; border-bottom-color: rgba(255,255,255,.10); padding: .85rem 1.5rem; }
 .vh-brand--nav {
   display: inline-flex; align-items: center; gap: .8rem;
@@ -2285,7 +2285,7 @@ input, button, select { font-family: inherit; }
 }
 
 /* ──────────────────────────────────────────────────────────────
-   HOME (vol-home) — VOLTRACE topbar + secciones con accent
+   HOME (vol-home) — PITWALL topbar + secciones con accent
    ────────────────────────────────────────────────────────────── */
 .vol-home {
   --vh-bg: #000;
@@ -2485,7 +2485,7 @@ body:has(.vol-home) .main-content { padding: 0; }
 }
 
 /* ══════════════════════════════════════════════════════════════
-   VOLTRACE THEME (vt-*) — sistema compartido para todas las vistas
+   PITWALL THEME (vt-*) — sistema compartido para todas las vistas
    Inspirado en home + vistas dadas por el usuario (diagnostico,
    settings, races-list, races/show). Usar sobre <body> o un
    contenedor raíz envolviendo el contenido.

@@ -44,7 +44,7 @@ SerialService.init(); // start with saved settings (or simulation if not configu
 
 // ── Infolap server (opt-in en Settings) ────────────────────────────────────────
 // Emula el protocolo Tic Tac Slot Infolap para que la app Android legacy se
-// pueda conectar a Voltrace y recibir vueltas en vivo. Es OPT-IN porque
+// pueda conectar a PitWall y recibir vueltas en vivo. Es OPT-IN porque
 // ocupa el puerto UDP 4441 y no lo queremos abierto si nadie lo usa.
 const InfolapServer = require('./services/InfolapServer');
 if (SettingsModel.get('infolap_enabled', '0') === '1') {
@@ -257,7 +257,7 @@ if (require.main === module) {
     } else if (bindIp) {
       console.log(`  [Red] Atado solo a la interfaz "${bindIface}" (${bindIp})`);
     }
-    console.log(`\n  Voltrace Manager running at http://localhost:${PORT}`);
+    console.log(`\n  PitWall running at http://localhost:${PORT}`);
     const ips = net.serverIPs(bindIface);
     if (ips.length) {
       console.log(`  En la red:  ${ips.map(i => `http://${i.ip}:${PORT} (${i.name})`).join('   ')}`);
@@ -271,8 +271,11 @@ function announceBonjour(port) {
   try {
     const { Bonjour } = require('bonjour-service');
     const bonjour = new Bonjour();
-    bonjour.publish({ name: 'Voltrace Manager', type: 'voltrace-manager', port });
-    console.log(`  [mDNS] Voltrace Manager announced on local network (port ${port})\n`);
+    // OJO: el `type` se mantiene como 'voltrace-manager' a propósito — es el
+    // identificador de servicio que busca la app Android Infolap para
+    // descubrir el servidor; cambiarlo rompería esa integración.
+    bonjour.publish({ name: 'PitWall', type: 'voltrace-manager', port });
+    console.log(`  [mDNS] PitWall announced on local network (port ${port})\n`);
     process.on('exit', () => bonjour.destroy());
   } catch (e) {
     console.warn('  [mDNS] Could not start Bonjour:', e.message);
