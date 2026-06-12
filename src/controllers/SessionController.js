@@ -320,6 +320,7 @@ class SessionController {
     // All-race participant totals + remaining pending mangas (for full-race projection).
     // Includes ALL entities assigned to any manga of the race (even tandas not started yet).
     const allParticipants = Lap.aggregateByRace(race.id);
+    SessionController._applyProjAvg(allParticipants);
     const db = require('../config/database');
     const isTeamRace = race.format === 'team';
     const idCol = isTeamRace ? 'ml.team_id' : 'ml.driver_id';
@@ -381,6 +382,7 @@ class SessionController {
 
     // All-race participants (includes pending tandas) — see live() for details
     const allParticipants = Lap.aggregateByRace(race.id);
+    SessionController._applyProjAvg(allParticipants);
     const db = require('../config/database');
     const isTeamRace = race.format === 'team';
     const idCol = isTeamRace ? 'ml.team_id' : 'ml.driver_id';
@@ -795,63 +797,80 @@ class SessionController {
       });
     });
 
-    // ── Position timeline ────────────────────────────────────────────────
-    // For each lap inserted in chronological order, recompute the standings
-    // of every entity (active or resting) and record their position. Result:
-    // one polyline per entity = position over time of the race.
-    const allLapsOrdered = db.prepare(`
-      SELECT l.team_id, l.driver_id, l.lap_time_ms
-      FROM laps l
-      JOIN mangas m ON m.id = l.manga_id
+    // ── Posiciones por manga ─────────────────────────────────────────────
+    // Una instantánea de la clasificación acumulada al cierre de cada manga,
+    // con el criterio oficial: vueltas DESC, coma DESC, tiempo total ASC.
+    const mangaSeq = db.prepare(`
+      SELECT m.id, m.number AS manga_number, t.number AS tanda_number
+      FROM mangas m
       JOIN tandas t ON t.id = m.tanda_id
-      WHERE l.race_id = ? AND l.is_ghost = 0 AND l.lap_number > 0
-      ORDER BY t.number ASC, m.number ASC, l.elapsed_ms ASC, l.id ASC
+      WHERE t.race_id = ?
+      ORDER BY t.number ASC, m.number ASC
+    `).all(race.id);
+
+    const lapTotalsByManga = db.prepare(`
+      SELECT l.manga_id, l.team_id, l.driver_id,
+             COUNT(*) AS laps, SUM(l.lap_time_ms) AS time_ms
+      FROM laps l
+      WHERE l.race_id = ? AND l.is_ghost = 0
+      GROUP BY l.manga_id, l.team_id, l.driver_id
+    `).all(race.id);
+
+    const comaByManga = db.prepare(`
+      SELECT ml.manga_id, ml.team_id, ml.driver_id, COALESCE(ml.coma, 0) AS coma
+      FROM manga_lanes ml
+      JOIN mangas mg ON mg.id = ml.manga_id
+      WHERE mg.race_id = ? AND ml.is_rest = 0
     `).all(race.id);
 
     const entityKeys = results.map(r => `${r.entity_type}_${r.entity_id}`);
-    const entityState = {};
-    results.forEach(r => {
-      const k = `${r.entity_type}_${r.entity_id}`;
-      entityState[k] = { totalLaps: 0, bestMs: null, name: r.entity_name, color: r.color };
-    });
-    const positionTimeline = {};
-    entityKeys.forEach(k => { positionTimeline[k] = []; });
+    const cum = {};
+    entityKeys.forEach(k => { cum[k] = { laps: 0, coma: 0, timeMs: 0 }; });
 
-    function snapshotPositions(tick) {
-      const sorted = entityKeys
-        .map(key => ({ key, ...entityState[key] }))
-        .sort((a, b) =>
-          b.totalLaps - a.totalLaps ||
-          (a.bestMs ?? Infinity) - (b.bestMs ?? Infinity)
-        );
-      sorted.forEach((row, idx) => {
-        const series = positionTimeline[row.key];
-        const last = series[series.length - 1];
-        if (!last || last.y !== idx + 1) series.push({ x: tick, y: idx + 1 });
+    const lapsIdx = new Map();
+    lapTotalsByManga.forEach(r => {
+      if (!lapsIdx.has(r.manga_id)) lapsIdx.set(r.manga_id, []);
+      lapsIdx.get(r.manga_id).push(r);
+    });
+    const comaIdx = new Map();
+    comaByManga.forEach(r => {
+      if (!comaIdx.has(r.manga_id)) comaIdx.set(r.manga_id, []);
+      comaIdx.get(r.manga_id).push(r);
+    });
+
+    const entityKeyOf = (r) => r.team_id ? `team_${r.team_id}` : `driver_${r.driver_id}`;
+    const multiTanda = tandas.length > 1;
+    const positionLabels = [];
+    const positionSeries = {};
+    entityKeys.forEach(k => { positionSeries[k] = []; });
+
+    mangaSeq.forEach(m => {
+      const mLaps = lapsIdx.get(m.id);
+      if (!mLaps || mLaps.length === 0) return;   // manga sin disputar
+      mLaps.forEach(r => {
+        const k = entityKeyOf(r);
+        if (!cum[k]) return;
+        cum[k].laps   += r.laps;
+        cum[k].timeMs += r.time_ms || 0;
       });
-    }
-
-    allLapsOrdered.forEach((lap, idx) => {
-      const k = lap.team_id ? `team_${lap.team_id}` : `driver_${lap.driver_id}`;
-      const s = entityState[k];
-      if (!s) return;
-      s.totalLaps += 1;
-      if (s.bestMs == null || lap.lap_time_ms < s.bestMs) s.bestMs = lap.lap_time_ms;
-      snapshotPositions(idx + 1);
-    });
-    // Add a final point at the last tick for every entity so lines terminate
-    // cleanly even if their position hasn't changed in a while.
-    const lastTick = allLapsOrdered.length;
-    entityKeys.forEach(k => {
-      const series = positionTimeline[k];
-      const last = series[series.length - 1];
-      if (last && last.x < lastTick) series.push({ x: lastTick, y: last.y });
+      (comaIdx.get(m.id) || []).forEach(r => {
+        const k = entityKeyOf(r);
+        if (cum[k]) cum[k].coma += r.coma || 0;
+      });
+      positionLabels.push(multiTanda
+        ? `T${m.tanda_number}·M${m.manga_number}`
+        : `Manga ${m.manga_number}`);
+      const sorted = [...entityKeys].sort((a, b) =>
+        cum[b].laps - cum[a].laps ||
+        cum[b].coma - cum[a].coma ||
+        cum[a].timeMs - cum[b].timeMs);
+      sorted.forEach((k, idx) => positionSeries[k].push(idx + 1));
     });
 
     const positionData = {};
-    entityKeys.forEach(k => {
-      const s = entityState[k];
-      positionData[k] = { name: s.name, color: s.color, points: positionTimeline[k] };
+    results.forEach(r => {
+      const k = `${r.entity_type}_${r.entity_id}`;
+      positionData[k] = { name: r.entity_name, color: r.color, positions: positionSeries[k] };
     });
 
     // ── Advanced stats por entidad (race-wide) ────────────────────────────
@@ -924,8 +943,7 @@ class SessionController {
     res.render('races/results', {
       t: req.t, race, results, laneSequence, tandas, LANE_COLORS,
       raceBestLapMs, raceBestEntity, raceBestLane, startLaneByEntity,
-      progressionByEntity, positionData,
-      totalLapEvents: allLapsOrdered.length,
+      progressionByEntity, positionData, positionLabels,
       advancedStats,
       publicView: !!req._publicResults,
     });
@@ -1771,6 +1789,65 @@ class SessionController {
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     // BOM para que Excel detecte UTF-8 al abrir el CSV directamente
     res.send('﻿' + lines.join('\r\n') + '\r\n');
+  }
+
+  // GET /races/:id/results/control.csv
+  // Clasificación general en formato TicTacSlot, compatible con el importador
+  // de resultados de PitWall Control (Posición, Nombre, Vueltas, Coma, Pole).
+  // Control solo aplica posición + nombre; vueltas/coma/pole son informativas
+  // en su vista previa. El nombre debe coincidir con el equipo en Control
+  // (la copa puede ir como sufijo: "APR SPORT GT").
+  static controlCsv(req, res) {
+    const race = Race.findById(req.params.id);
+    if (!race) return res.status(404).send('Not found');
+
+    // Orden oficial: vueltas DESC, coma DESC, tiempo total ASC (igual que /results)
+    const rows = Lap.aggregateByRace(race.id)
+      .filter(r => r.entity_id != null);
+
+    // Poleman: mejor tiempo de la sesión de pole, casado por nombre de entidad
+    let poleName = null;
+    const PoleSession = require('../models/PoleSession');
+    const pole = PoleSession.findByRace(race.id);
+    if (pole) {
+      const best = PoleSession.getEntriesSorted(pole.id)[0];
+      if (best && best.lap_time_ms != null) poleName = best.entity_name;
+    }
+
+    // El parser de Control usa coma como separador y acepta punto decimal en
+    // la columna Coma (fracción de vuelta, ×1000 = milésimas).
+    const esc = (v) => {
+      const s = v == null ? '' : String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const lines = ['Posición,Nombre,Vueltas,Coma,Pole'];
+    rows.forEach((r, i) => {
+      lines.push([
+        i + 1,
+        r.entity_name,
+        r.total_laps,
+        r.coma_total != null ? Number(r.coma_total).toFixed(3) : '',
+        poleName != null && r.entity_name === poleName ? 1 : '',
+      ].map(esc).join(','));
+    });
+
+    const filename = `${race.name.replace(/[^a-zA-Z0-9_-]/g, '_')}_control.csv`;
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.send('﻿' + lines.join('\r\n') + '\r\n');
+  }
+
+  // Media de PROYECCIÓN base-tiempo (modelo TicTac): tiempo de pista de las
+  // mangas terminadas en las que corrió ÷ (vueltas + coma). Los descansos no
+  // aportan ni tiempo ni vueltas. Fallback a la media de vueltas cuando aún
+  // no hay manga terminada (p.ej. carrera antigua sin actual_duration_ms).
+  static _applyProjAvg(allParticipants) {
+    allParticipants.forEach(p => {
+      const lapsFrac = (p.total_laps || 0) + (p.coma_total || 0);
+      p.proj_avg_ms = (p.race_dur_ms > 0 && lapsFrac > 0)
+        ? p.race_dur_ms / lapsFrac
+        : (p.avg_lap_ms ?? null);
+    });
   }
 
   static _buildPointsRanking(raceId) {

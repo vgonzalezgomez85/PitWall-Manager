@@ -906,33 +906,54 @@ class TimingServiceClass {
       raceBestLaps[l.lane] = { bestLapMs: l.raceBestLapMs, entityName: l.raceBestEntity };
     });
 
-    // Race-wide running average per ENTITY (equipo/piloto): combines all prior
-    // mangas (from DB) with the current manga's in-memory state, so the sidebar
-    // can show a race-wide projected average that updates lap by lap. Las mangas
-    // anteriores se agrupan por entidad — NO por carril — porque los carriles
-    // rotan cada manga: agrupar por carril imputaba a cada equipo el ritmo de
-    // quienes pasaron antes por su carril físico.
+    // Media de carrera BASE-TIEMPO por ENTIDAD (modelo TicTac, verificado con
+    // la final de RESISBARNA): tiempo de pista de las mangas en las que corre
+    // (las de descanso no aportan ni tiempo ni vueltas: el coche está parado)
+    // ÷ vueltas fraccionales (vueltas + coma). Es la media correcta para
+    // proyectar — reparte TODO el tiempo de pista, incluida la vuelta de
+    // salida y la fracción de vuelta al caer la bandera. Las mangas anteriores
+    // se agrupan por entidad, NO por carril (los carriles rotan cada manga).
     const db = require('../config/database');
-    const priorStats = db.prepare(`
+    const defaultDurMs = (race.manga_duration_minutes || 0) * 60000;
+    const priorTB = db.prepare(`
+      SELECT CASE WHEN ml.team_id IS NOT NULL THEN 't' || ml.team_id ELSE 'd' || ml.driver_id END AS ekey,
+             SUM(COALESCE(mg.actual_duration_ms, ?)) AS dur_ms,
+             SUM(COALESCE(ml.coma, 0))               AS coma
+      FROM manga_lanes ml
+      JOIN mangas mg ON mg.id = ml.manga_id
+      WHERE mg.race_id = ? AND mg.id != ? AND mg.status = 'finished' AND ml.is_rest = 0
+        AND (ml.team_id IS NOT NULL OR ml.driver_id IS NOT NULL)
+      GROUP BY ekey
+    `).all(defaultDurMs, race.id, manga.id);
+    const priorLaps = db.prepare(`
       SELECT CASE WHEN team_id IS NOT NULL THEN 't' || team_id ELSE 'd' || driver_id END AS ekey,
-             COUNT(*) AS cnt, AVG(lap_time_ms) AS avg_ms
+             COUNT(*) AS cnt
       FROM laps
-      WHERE race_id = ? AND manga_id != ?
-        AND is_ghost = 0 AND is_warmup = 0 AND lap_number > 0
+      WHERE race_id = ? AND manga_id != ? AND is_ghost = 0 AND lap_number > 0
       GROUP BY ekey
     `).all(race.id, manga.id);
     const priorByEntity = {};
-    priorStats.forEach(p => { priorByEntity[p.ekey] = { count: p.cnt, avg: p.avg_ms }; });
+    priorTB.forEach(p => { priorByEntity[p.ekey] = { dur: p.dur_ms || 0, coma: p.coma || 0, laps: 0 }; });
+    priorLaps.forEach(p => {
+      if (!priorByEntity[p.ekey]) priorByEntity[p.ekey] = { dur: 0, coma: 0, laps: 0 };
+      priorByEntity[p.ekey].laps = p.cnt;
+    });
+    // Tiempo transcurrido de la manga actual (congelado durante pausa)
+    const nowRef = (this.isPaused && this.session.pauseStart) ? this.session.pauseStart : Date.now();
+    const currElapsedMs = Math.min(Math.max(0, nowRef - startTime), this.session.durationMs || Infinity);
     rows.forEach(r => {
       const ld = laneMap[r.lane];
       const ekey = ld?.teamId ? 't' + ld.teamId : (ld?.driverId ? 'd' + ld.driverId : null);
-      const prior = ekey ? priorByEntity[ekey] : null;
-      const priorCount = prior?.count || 0;
-      const priorSum   = prior ? prior.avg * prior.count : 0;
-      const currCount  = r.lapCount;
-      const currSum    = laneMap[r.lane].lapsMsSum || 0;
-      const totalCount = priorCount + currCount;
-      r.raceAvgLapMs = totalCount > 0 ? Math.round((priorSum + currSum) / totalCount) : null;
+      const prior = (ekey && priorByEntity[ekey]) || { dur: 0, coma: 0, laps: 0 };
+      // Fracción de vuelta en curso ahora mismo (≈0 justo tras cada cruce,
+      // que es cuando se emiten standings).
+      let frac = 0;
+      if (ld?.lapAvgMs > 0 && ld.lastCrossing) {
+        frac = Math.min(0.99, Math.max(0, (nowRef - ld.lastCrossing) / ld.lapAvgMs));
+      }
+      const lapsFrac = prior.laps + prior.coma + r.lapCount + frac;
+      const durTot   = prior.dur + currElapsedMs;
+      r.raceAvgLapMs = lapsFrac > 0 ? Math.round(durTot / lapsFrac) : null;
     });
 
     // Tiempo TOTAL acumulado de carrera por ENTIDAD (equipo/piloto), para el

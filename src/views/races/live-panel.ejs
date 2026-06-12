@@ -383,7 +383,8 @@
           rows.push({
             _id: id, name: p.entity_name,
             total: p.total_laps || 0,
-            avgLapMs:  p.avg_lap_ms != null ? Math.round(p.avg_lap_ms) : null,
+            // proj_avg_ms = media base-tiempo (estilo TicTac); fallback a media de vueltas
+            avgLapMs:  (p.proj_avg_ms ?? p.avg_lap_ms) != null ? Math.round(p.proj_avg_ms ?? p.avg_lap_ms) : null,
             bestLapMs: p.best_lap_ms ?? null,
             hasData: (p.total_laps || 0) > 0 || p.avg_lap_ms != null,
           });
