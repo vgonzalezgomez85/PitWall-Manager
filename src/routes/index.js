@@ -98,6 +98,7 @@ router.get( '/races/:id/results',      SessionController.results);
 router.get( '/races/:id/results/xlsx', requireModule('export'), SessionController.excel);
 router.get( '/races/:id/results/points.xlsx', requireModule('export'), SessionController.pointsExcel);
 router.get( '/races/:id/results/points.csv',  requireModule('export'), SessionController.pointsCsv);
+router.get( '/races/:id/results/control.csv', requireModule('export'), SessionController.controlCsv);
 router.post('/races/:id/complete',     RaceController.complete);
 
 // ── Pole position ─────────────────────────────────────────────────────────────

@@ -80,18 +80,77 @@
 }
 
 @media print {
-  .navbar, .footer, .vt-head__actions, .results-tabs, .vt-back-link,
-  .results-panel:not(.active) { display: none !important; }
-  .results-panel.active { display: block !important; }
-  body, .vt-page, .main-content { background: #fff !important; color: #000 !important; }
+  @page { size: A3 portrait; margin: 10mm; }
+  .print-hide { display: none !important; }
+
+  /* El layout de pantalla fija body a 100vh con overflow hidden: en papel
+     eso recorta todo lo que no cabe en la primera página. */
+  html, body { height: auto !important; overflow: visible !important; }
+  .main-content { overflow: visible !important; height: auto !important; padding: 0 !important; }
+  .vt-page { padding: 0 !important; min-height: 0 !important; }
+  .vt-wrap { max-width: none !important; margin: 0 !important; padding: 0 !important; }
+
+  .navbar, .footer, .vt-head__actions, .results-tabs, .vt-back-link { display: none !important; }
+  /* Las gráficas (canvas sobre fondo negro) no son imprimibles: siempre se
+     imprime la comparativa, esté o no activa esa pestaña. */
+  .results-panel { display: none !important; }
+  #tab-matrix { display: block !important; }
+
+  html, body, .vt-page, .vt-wrap, .main-content { background: #fff !important; color: #000 !important; }
   .vt-page h1 { color: #000 !important; }
-  .vt-lead { color: #555 !important; }
-  .results-table { border-collapse: collapse; width: 100%; }
-  .results-table th, .results-table td { border: 1px solid #ccc; padding: 6px 10px; color: #000 !important; }
-  .results-table thead th { background: #f0f0f0 !important; color: #000 !important; }
-  .pos-badge { border: 1px solid #999; color: #000 !important; background: none !important; }
-  .result-highlight { font-weight: 700; }
   .vt-page h1::before { content: "<%= race.name %> — "; font-size: 1rem; color: #555; display: block; font-weight: 400; }
+  .vt-lead, .vt-lead strong { color: #555 !important; }
+
+  /* Banner de vuelta rápida: blanco con borde, texto negro */
+  .race-best-banner {
+    background: #fff !important; color: #000 !important;
+    border: 2px solid #b45309; box-shadow: none; border-radius: 8px;
+  }
+  .race-best-banner__label, .race-best-banner__meta { color: #555 !important; opacity: 1; }
+
+  /* Matriz comparativa en claro */
+  .matrix-wrapper { overflow: visible; border: none; background: #fff !important; border-radius: 0; }
+  .matrix-table { font-size: .72rem; }
+  .matrix-table th, .matrix-table td { border: 1px solid #ccc; padding: .3rem .45rem; color: #000 !important; }
+  .matrix-table thead th {
+    background: #f0f0f0 !important; color: #000 !important;
+    border-bottom: 2px solid #999; position: static;
+  }
+  .matrix-lane__label { color: #555; }
+  .matrix-entity { background: #f6f6f6 !important; border-top: 2px solid #999; }
+  .matrix-entity td { font-weight: 700; }
+  .matrix-entity .matrix-total, .matrix-entity .matrix-lane-laps { color: #000 !important; }
+  .matrix-entity.top-1 .matrix-total { color: #b45309 !important; }
+  .matrix-stat { background: #fff !important; }
+  .matrix-stat td { color: #000 !important; }
+  .matrix-stat__label { color: #555 !important; padding-left: .5rem !important; }
+  .matrix-stat__total { color: #555 !important; }
+  .matrix-stat--best td { color: #166534 !important; }
+  .matrix-stat--worst td, .matrix-stat--pit td { color: #444 !important; font-size: .68rem; }
+  .matrix-stat--worst .exit-count.has-exits, .matrix-stat--pit .exit-count.has-exits,
+  .exit-total { color: #b91c1c !important; }
+  .matrix-stat--worst .exit-count:not(.has-exits) { color: #aaa !important; }
+  .pit-laps { color: #555 !important; }
+
+  /* Elementos con color de fondo: forzar que se impriman */
+  .lane-pill, .pos-badge, .lane-dot, .lane-fastest-dot {
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .pos-badge { border: 1px solid #999; color: #000 !important; background: none !important; }
+  .race-best {
+    background: none !important; color: #000 !important;
+    outline: 2px solid #b45309; outline-offset: -2px;
+  }
+  .race-best-star { color: #b45309; }
+  .matrix-lane-cell--start {
+    background: #e8f0fe !important; box-shadow: none;
+    border-left: 3px solid #1a56db !important;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .start-lane-tag { background: none !important; color: #1a56db !important; border: 1px solid #1a56db; }
+
+  /* Evitar cortar las filas de un participante entre páginas */
+  .matrix-table tr { break-inside: avoid; page-break-inside: avoid; }
 }
 </style>
 <div class="vt-page vt-page--results">
@@ -127,6 +186,10 @@
       <a href="/races/<%= race.id %>/results/points.csv?lang=<%= lang %>" class="vt-btn vt-btn--ghost vt-btn--sm" title="<%= lang === 'es' ? 'Exportar puntos (CSV)' : 'Export points (CSV)' %>">
         <svg viewBox="0 0 24 24"><path d="M14 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
         <%= lang === 'es' ? 'Puntos (csv)' : 'Points (csv)' %>
+      </a>
+      <a href="/races/<%= race.id %>/results/control.csv" class="vt-btn vt-btn--ghost vt-btn--sm" title="<%= lang === 'es' ? 'Exportar para PitWall Control (CSV TicTacSlot)' : 'Export for PitWall Control (TicTacSlot CSV)' %>">
+        <svg viewBox="0 0 24 24"><path d="M14 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M8 13h8M8 17h5"/></svg>
+        Control
       </a>
       <% } %>
       <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" onclick="window.print()" title="<%= lang === 'es' ? 'Guardar como PDF' : 'Save as PDF' %>">
@@ -631,7 +694,46 @@
       })();
     </script>
 
+<script>
+  // Ajuste a una sola hoja al imprimir: escala el contenido (zoom) para que la
+  // comparativa completa quepa en un A3 apaisado, por largo que sea el listado.
+  (function () {
+    const PAGE_W = 1040, PAGE_H = 1500; // A3 vertical menos márgenes de 10mm, en px CSS
+    const wrap = document.querySelector('.vt-page--results .vt-wrap');
+    if (!wrap) return;
+    let prev = null;
+    window.addEventListener('beforeprint', () => {
+      const table = wrap.querySelector('.matrix-table');
+      if (!table) return;
+      prev = { width: wrap.style.width, zoom: wrap.style.zoom };
+      // Siempre se imprime la comparativa: forzarla visible para medirla
+      // aunque el usuario esté en otra pestaña.
+      wrap.querySelectorAll('.results-panel').forEach(p => {
+        p.style.display = p.id === 'tab-matrix' ? 'block' : 'none';
+      });
+      // Anchura natural de la tabla: el contenido se maqueta a ese ancho y se
+      // escala; así las celdas no cambian de altura entre pantalla y papel.
+      const w = Math.max(table.scrollWidth, PAGE_W);
+      wrap.style.width = w + 'px';
+      // Altura del flujo a ese ancho, descontando lo que el CSS de impresión
+      // oculta. Sin tope superior: si sobra hoja, la fuente crece hasta llenarla.
+      let hiddenH = 0;
+      wrap.querySelectorAll('.results-tabs, .vt-back-link, .print-hide')
+          .forEach(el => { hiddenH += el.offsetHeight; });
+      const h = wrap.scrollHeight - hiddenH;
+      wrap.style.zoom = Math.min(PAGE_W / w, PAGE_H / h);
+    });
+    window.addEventListener('afterprint', () => {
+      if (!prev) return;
+      wrap.style.width = prev.width;
+      wrap.style.zoom  = prev.zoom;
+      wrap.querySelectorAll('.results-panel').forEach(p => { p.style.display = ''; });
+      prev = null;
+    });
+  })();
+</script>
 <script id="positionsData" type="application/json"><%- JSON.stringify(positionData || {}) %></script>
+<script id="positionsLabels" type="application/json"><%- JSON.stringify(positionLabels || []) %></script>
 <script id="progressionData" type="application/json"><%- JSON.stringify(progressionByEntity || {}) %></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
@@ -838,9 +940,11 @@
     });
   })();
 
-  // ── Position timeline chart ────────────────────────────────────────────
+  // ── Position-per-manga chart ───────────────────────────────────────────
+  // Clasificación acumulada al cierre de cada manga (no cruce a cruce).
   (function() {
-    const data = JSON.parse(document.getElementById('positionsData').textContent || '{}');
+    const data   = JSON.parse(document.getElementById('positionsData').textContent || '{}');
+    const labels = JSON.parse(document.getElementById('positionsLabels').textContent || '[]');
     const canvas = document.getElementById('positionsChart');
     if (!canvas) return;
     const PALETTE = ['#1F6FEB','#F6C90E','#2DA44E','#FB6A6B','#A371F7','#16BDCA','#F97316','#E63946','#FBBF24','#34D399','#FF6B9D','#56D4DD'];
@@ -848,20 +952,20 @@
 
     function build() {
       const entries = Object.entries(data);
-      if (entries.length === 0) return;
+      if (entries.length === 0 || labels.length === 0) return;
       const totalEntities = entries.length;
       const datasets = entries.map(([key, e], i) => ({
         label: e.name,
-        data: e.points,
+        data: e.positions,
         borderColor: e.color || PALETTE[i % PALETTE.length],
         backgroundColor: (e.color || PALETTE[i % PALETTE.length]) + '22',
-        tension: 0, stepped: 'before',
-        pointRadius: 0, pointHoverRadius: 4, borderWidth: 2.5,
+        tension: 0,
+        pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5,
       }));
       if (chart) chart.destroy();
       chart = new Chart(canvas, {
         type: 'line',
-        data: { datasets },
+        data: { labels, datasets },
         options: {
           responsive: true, maintainAspectRatio: false,
           interaction: { mode: 'nearest', intersect: false },
@@ -869,21 +973,20 @@
             legend: { position: 'right', labels: { color: '#c9d1d9', boxWidth: 14 } },
             tooltip: {
               callbacks: {
-                title: (items) => 'Cruce #' + items[0].parsed.x,
+                title: (items) => items[0].label,
                 label: (ctx) => ctx.dataset.label + ': P' + ctx.parsed.y,
               }
             }
           },
           scales: {
             x: {
-              type: 'linear',
-              title: { display: true, text: 'Vueltas acumuladas (orden cronológico)', color: '#8b949e' },
+              title: { display: true, text: '<%= lang === "es" ? "Manga (clasificación acumulada al cierre)" : "Heat (cumulative standings at close)" %>', color: '#8b949e' },
               ticks: { color: '#8b949e' }, grid: { color: '#21262d' },
             },
             y: {
               reverse: true, // P1 at top
               min: 1, max: totalEntities,
-              title: { display: true, text: 'Posición', color: '#8b949e' },
+              title: { display: true, text: '<%= lang === "es" ? "Posición" : "Position" %>', color: '#8b949e' },
               ticks: { color: '#8b949e', stepSize: 1, callback: (v) => 'P' + v },
               grid: { color: '#21262d' },
             }
@@ -900,7 +1003,7 @@
 
     <!-- Lap corrections per manga (oculto en la vista pública) -->
     <% if (!_publicView && tandas.some(t => t.mangas && t.mangas.length > 0)) { %>
-      <div style="margin-top:2.5rem">
+      <div class="print-hide" style="margin-top:2.5rem">
         <h2 class="section-title">
           🔧 <%= lang === 'es' ? 'Corrección de vueltas' : 'Lap Corrections' %>
         </h2>

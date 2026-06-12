@@ -912,10 +912,11 @@ function renderProjected(data) {
       rows.push(activeMap.get(name));
     } else {
       // No corre esta manga (descanso o tanda futura): usa media de BD
+      // (proj_avg_ms = base-tiempo estilo TicTac; fallback a media de vueltas)
       rows.push({
         name, color: p.color || '#8b949e',
         total: p.total_laps,
-        avgLapMs: p.avg_lap_ms != null ? Math.round(p.avg_lap_ms) : null,
+        avgLapMs: (p.proj_avg_ms ?? p.avg_lap_ms) != null ? Math.round(p.proj_avg_ms ?? p.avg_lap_ms) : null,
         bestLapMs: p.best_lap_ms ?? null,
       });
     }
