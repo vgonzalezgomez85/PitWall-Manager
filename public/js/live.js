@@ -346,7 +346,7 @@ function buildCard(lane) {
           <span class="lane-card__trend-up"></span>
           <span class="lane-card__trend-down"></span>
         </span>
-        <span class="lane-card__name">${lane.name}</span>
+        <span class="lane-card__name"><span class="lane-card__name-scroll">${lane.name}</span></span>
         <span class="lane-card__pit" id="card-pit-${lane.lane}" hidden title="Pit-stop">
           🔧<span class="lane-card__pit-count" id="card-pit-count-${lane.lane}"></span>
         </span>
@@ -438,6 +438,8 @@ function initCards() {
     if (lane.activeDriver) setActiveDriver(lane.lane, lane.activeDriver);
   });
   _startDriverFlip();   // flip nombre↔piloto en tarjetas con piloto asignado
+  // Mide los nombres una vez montadas las tarjetas (marquesina si no caben)
+  setTimeout(() => window.refreshLaneMarquees?.(), 50);
   if (RACE_DATA.mangaStatus === 'finished') {
     document.body.classList.add('manga-finished');
     renderNextLaneHints();
@@ -1843,7 +1845,10 @@ if (RACE_DATA.isTeam && RACE_DATA.hasQrCheckin) {
       // Quitamos el flag para medir el ancho real
       el.classList.remove('lane-card__name--overflow');
       el.style.removeProperty('--lane-name-shift');
-      const overflow = el.scrollWidth - container.clientWidth;
+      // El name-row es display:contents (mide 0): si el contenedor no tiene
+      // caja, medimos contra el propio span (su ancho flex/grid asignado).
+      const boxW = container.clientWidth > 0 ? container.clientWidth : el.clientWidth;
+      const overflow = el.scrollWidth - boxW;
       if (overflow > 4) {
         // shift = -(overflow + un pequeño margen para que se vea el final)
         const shiftPx = -(overflow + 8);

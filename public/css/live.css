@@ -1114,16 +1114,24 @@ body.resizing-sidebar * { cursor: col-resize !important; }
 .live-body .lane-card__name         { font-size: calc(var(--ln-font-name,    1.2rem) * var(--ln-zoom)); }
 .live-body .lane-card__track-text   { font-size: calc(var(--ln-font-track,    1rem)  * var(--ln-zoom)); }
 
-/* ── Marquee para nombres de pilotos que no caben ────────────────────────── */
+/* ── Marquee para nombres de pilotos que no caben ──────────────────────────
+   El span exterior (.lane-card__name) actúa de ventana recortada (overflow
+   hidden); el interior (.lane-card__name-scroll) se desplaza con transform
+   (composición GPU → fluido), sin pintarse nunca encima de los vecinos.
+   Ida y vuelta con pausas en los extremos para leer ambos lados. */
 .lane-card__name--overflow {
-  overflow: visible !important;
+  overflow: hidden !important;
   text-overflow: clip !important;
-  animation: lane-name-scroll 8s linear infinite;
-  transform-origin: left center;
+}
+.lane-card__name--overflow .lane-card__name-scroll {
+  display: inline-block;
+  animation: lane-name-scroll 9s linear infinite;
+  will-change: transform;
 }
 @keyframes lane-name-scroll {
-  0%,  15%  { transform: translateX(0); }
-  85%, 100% { transform: translateX(var(--lane-name-shift, -50%)); }
+  0%, 14%   { transform: translateX(0); }
+  46%, 64%  { transform: translateX(var(--lane-name-shift, -40%)); }
+  96%, 100% { transform: translateX(0); }
 }
 .lane-card__col--name .lane-card__name-row {
   overflow: hidden;
@@ -1433,8 +1441,7 @@ body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__pos--3 {
   background: #21262d !important; color: #c9d1d9 !important;
 }
 body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__label {
-  order: 9;                 /* nº de carril SIEMPRE el último → extremo derecho */
-  margin-left: auto;        /* lo empuja a la derecha; pit/exit quedan a su izquierda */
+  order: 3;                 /* posición → flechas → CARRIL → nombre */
   background: var(--card-color, #21262d) !important;
   color: #fff !important;
   border-radius: 5px !important;
@@ -1466,26 +1473,24 @@ body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__name {
   font-size: clamp(1.4rem, 4.2vh, 2.8rem) !important;
   font-weight: 700 !important;
   color: #fff !important;
-  /* Sin marquee: permite hasta 2 líneas y luego corta */
-  white-space: normal !important;
+  /* Una sola línea: si no cabe, marquesina (animación de text-indent abajo) */
+  white-space: nowrap !important;
   overflow: hidden;
   text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  display: block;
   line-height: 1.15;
   min-width: 0;
-  animation: none !important;
   transform: none !important;
 }
-/* Anula la clase overflow que activa el marquee */
+/* Marquee V1: la animación va en el span interior .lane-card__name-scroll
+   (regla global más arriba); aquí solo garantizamos el recorte de la ventana. */
 body:not(:has(.live-lanes--vertical)) .lane-card__name--overflow {
-  animation: none !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
   transform: none !important;
 }
-body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__pit { order: 2; }
-body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__exit { order: 3; }
+body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__pit { order: 5; }
+body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__exit { order: 6; }
 
 /* ── Flip nombre de equipo ↔ piloto activo (V1) ────────────────────────────
    Con piloto asignado se ve el EQUIPO casi siempre; durante la ventana
@@ -1501,7 +1506,7 @@ body:not(:has(.live-lanes--vertical)) .lane-card__driver-inline {
 body.show-driver:not(:has(.live-lanes--vertical)) .lane-card.has-driver .lane-card__name { color: transparent !important; }
 body.show-driver:not(:has(.live-lanes--vertical)) .lane-card.has-driver .lane-card__driver-inline { opacity: 1; }
 body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__trend {
-  order: 0;
+  order: 2;
   flex-shrink: 0;
   margin-right: .15rem;
   font-size: 1.4rem !important;
