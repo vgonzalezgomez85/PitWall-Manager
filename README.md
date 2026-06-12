@@ -1,4 +1,4 @@
-# Voltrace Manager — README Técnico
+# PitWall — README Técnico
 
 Sistema de cronometraje y gestión de carreras de scalextric. Aplicación web local que corre en el PC del evento y es accesible desde cualquier dispositivo en la misma red WiFi.
 
@@ -21,7 +21,7 @@ Sistema de cronometraje y gestión de carreras de scalextric. Aplicación web lo
 ## Estructura del proyecto
 
 ```
-voltrace-manager/
+pitwall/
 ├── electron/           # Proceso principal de Electron
 │   └── main.js         # Arranque, ventana, fork del servidor Express
 ├── src/
@@ -49,7 +49,7 @@ voltrace-manager/
 
 ```bash
 # Clonar / descomprimir el proyecto
-cd voltrace-manager
+cd pitwall
 
 # Instalar dependencias
 npm install
@@ -159,7 +159,7 @@ Aplicación React Native (Expo) que permite a los pilotos ver su clasificación 
 **Repositorio:** `slotime-mobile/`
 
 ### Descubrimiento automático
-La app escanea la subred WiFi buscando el servidor. El PC con Voltrace Manager y el móvil deben estar en la misma red WiFi.
+La app escanea la subred WiFi buscando el servidor. El PC con PitWall y el móvil deben estar en la misma red WiFi.
 
 ### Arranque del servidor de desarrollo
 
@@ -187,13 +187,13 @@ Genera `dist/slotime-mobile-windows.zip`. En el PC Windows: extraer → `1-setup
 ### macOS
 ```bash
 npm run dist:mac
-# Genera: dist-app/Voltrace Manager-1.0.0-arm64.dmg
+# Genera: dist-app/PitWall-1.0.0-arm64.dmg
 ```
 
 ### Windows
 ```bash
 npm run dist:win
-# Genera: dist-app/Voltrace Manager Setup 1.0.0.exe
+# Genera: dist-app/PitWall Setup 1.0.0.exe
 ```
 
 ### Todas las plataformas

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= race.name %> — <%= lang === 'es' ? 'Manga' : 'Heat' %> <%= manga.number %> — Voltrace Manager</title>
+  <title><%= race.name %> — <%= lang === 'es' ? 'Manga' : 'Heat' %> <%= manga.number %> — PitWall</title>
   <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
   <link rel="icon" type="image/png" sizes="32x32"  href="/img/favicon-32.png">
   <link rel="icon" type="image/png" sizes="256x256" href="/img/favicon-256.png">
@@ -366,7 +366,7 @@
       const sidebar = document.getElementById('liveSidebar');
       if (!resizer || !sidebar) return;
 
-      const KEY = 'voltrace.liveSidebarW';
+      const KEY = 'pitwall.liveSidebarW';
       const MIN = 260, MAX_FRACTION = 0.75;
 
       const saved = parseInt(localStorage.getItem(KEY), 10);

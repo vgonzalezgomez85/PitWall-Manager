@@ -23,7 +23,7 @@ modo Node (`ELECTRON_RUN_AS_NODE`), así que los módulos nativos del servidor
 ```bash
 # build sin firmar (rápido, solo la .app):
 npx electron-builder --dir --mac --arm64
-# → dist-app/mac-arm64/Voltrace Manager.app
+# → dist-app/mac-arm64/PitWall.app
 
 # o el instalable:
 npm run dist:mac
@@ -35,7 +35,7 @@ Luego: Ajustes → fuente **BART** → Transporte **BLE** → Guardar, con el
 emulador/Master anunciando.
 
 > App **sin firmar**: Gatekeeper la bloqueará al abrirla (botón derecho → Abrir,
-> o `xattr -dr com.apple.quarantine "Voltrace Manager.app"`). El permiso de
+> o `xattr -dr com.apple.quarantine "PitWall.app"`). El permiso de
 > Bluetooth en apps sin firmar es algo inestable; para distribución conviene
 > firmar+notarizar (ver abajo).
 

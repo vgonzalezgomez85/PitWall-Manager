@@ -27,7 +27,7 @@ class DatabaseController {
     const pad   = n => String(n).padStart(2, '0');
     const d     = new Date();
     const stamp = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
-    const fileName = `voltrace-backup-${stamp}.db`;
+    const fileName = `pitwall-backup-${stamp}.db`;
     const tmpPath  = path.join(os.tmpdir(), `vt-backup-${Date.now()}.db`);
 
     try {

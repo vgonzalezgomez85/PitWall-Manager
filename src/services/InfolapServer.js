@@ -1,5 +1,5 @@
 // Servidor compatible con el protocolo Infolap (Tic Tac Slot legacy), para
-// que la app Android Infolap pueda conectarse a Voltrace y recibir vueltas
+// que la app Android Infolap pueda conectarse a PitWall y recibir vueltas
 // en tiempo real como si fuera el "Gestor de Carreras" v5.8.8 de TTS.
 //
 // Protocolo (verificado contra capturas reales — ver scripts/test-infolap-codec.js):

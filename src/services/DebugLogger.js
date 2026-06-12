@@ -7,9 +7,9 @@ const path = require('path');
 // va dentro de un `.asar` de solo lectura. Tenemos que escribir en una
 // carpeta de datos del usuario. main.js pasa SLOTIME_DATA al fork con
 // `app.getPath('userData')`:
-//   Windows: C:\Users\<user>\AppData\Roaming\Voltrace Manager\logs\debug\
-//   macOS:   ~/Library/Application Support/Voltrace Manager/logs/debug/
-//   Linux:   ~/.config/Voltrace Manager/logs/debug/
+//   Windows: C:\Users\<user>\AppData\Roaming\PitWall\logs\debug\
+//   macOS:   ~/Library/Application Support/PitWall/logs/debug/
+//   Linux:   ~/.config/PitWall/logs/debug/
 // En dev (node src/app.js) caemos al fallback de la raíz del proyecto.
 const DATA_BASE = process.env.SLOTIME_DATA || path.join(__dirname, '..', '..');
 const LOG_DIR   = path.join(DATA_BASE, 'logs', 'debug');

@@ -1,8 +1,8 @@
 {
   "name": "slot-timer-pro",
-  "productName": "Voltrace Manager",
+  "productName": "PitWall",
   "version": "1.0.0",
-  "description": "Voltrace Manager — Slot car race management and timing system",
+  "description": "PitWall — Slot car race management and timing system",
   "main": "electron/main.js",
   "scripts": {
     "start": "node src/app.js",
@@ -37,9 +37,9 @@
     "nodemon": "^3.1.0"
   },
   "build": {
-    "appId": "com.voltrace.manager",
-    "productName": "Voltrace Manager",
-    "copyright": "Copyright © 2026 Voltrace Manager",
+    "appId": "com.pitwall.app",
+    "productName": "PitWall",
+    "copyright": "Copyright © 2026 PitWall",
     "directories": {
       "output": "dist-app"
     },
@@ -89,12 +89,12 @@
       "identity": null,
       "icon": "build/icon.icns",
       "extendInfo": {
-        "NSBluetoothAlwaysUsageDescription": "Voltrace Manager usa Bluetooth para conectar con el cronómetro BART (BLE).",
-        "NSBluetoothPeripheralUsageDescription": "Voltrace Manager usa Bluetooth para conectar con el cronómetro BART (BLE)."
+        "NSBluetoothAlwaysUsageDescription": "PitWall usa Bluetooth para conectar con el cronómetro BART (BLE).",
+        "NSBluetoothPeripheralUsageDescription": "PitWall usa Bluetooth para conectar con el cronómetro BART (BLE)."
       }
     },
     "dmg": {
-      "title": "Instalar Voltrace Manager",
+      "title": "Instalar PitWall",
       "contents": [
         {
           "x": 410,
@@ -149,7 +149,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Voltrace Manager",
+      "shortcutName": "PitWall",
       "include": "build/installer.nsh"
     }
   }

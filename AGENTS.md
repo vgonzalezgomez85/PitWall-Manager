@@ -1,4 +1,4 @@
-# Voltrace Manager — AGENTS.md
+# PitWall — AGENTS.md
 
 Guía para agentes de IA (Claude Code u otros LLMs) que trabajen en este proyecto.
 
@@ -6,7 +6,7 @@ Guía para agentes de IA (Claude Code u otros LLMs) que trabajen en este proyect
 
 ## Qué es este proyecto
 
-**Voltrace Manager** es una aplicación de gestión y cronometraje de carreras de slot cars.
+**PitWall** es una aplicación de gestión y cronometraje de carreras de slot cars.
 Corre como aplicación web local (Node.js + Express) o como app de escritorio (Electron).
 El hardware de cronometraje es el **DS-300**, un detector de cruces de carriles que comunica
 por puerto serie a 56000 baudios con tramas de ~19 bytes codificadas en BCD.

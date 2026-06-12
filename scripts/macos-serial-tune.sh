@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Voltrace Manager — macOS USB-Serial tuning
+# PitWall — macOS USB-Serial tuning
 # Run once to reduce byte loss on USB-Serial adapters (FTDI / PL2303 / CH340).
 # Requires sudo.
 
 set -e
 
-echo "=== Voltrace macOS Serial Tuning ==="
+echo "=== PitWall macOS Serial Tuning ==="
 echo
 
 # 1) Disable USB selective suspend (avoids micro-disconnects)

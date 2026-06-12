@@ -55,7 +55,7 @@ class LicenseServiceClass {
   get info() {
     return {
       tier:       'pro',
-      licensee:   'Voltrace Manager',
+      licensee:   'PitWall',
       expiresAt:  null,
       error:      null,
       hardwareId: hardwareId(),
