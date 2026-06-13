@@ -248,6 +248,17 @@
   text-transform: uppercase; color: #484f58;
   background: #21262d; border-radius: 4px; padding: .15rem .45rem;
 }
+/* FINAL: ya corrió todas sus mangas. Se distingue del descanso con un tinte
+   verde y opacidad plena (ya no está "descansando a la espera", ha acabado). */
+.lane-card.is-final {
+  opacity: 1;
+  border-color: #2ea043 !important;
+  background: linear-gradient(180deg, rgba(46,160,67,.10), #000);
+}
+.lane-card.is-final .lane-card__rest-label {
+  color: #000; background: #2ea043; letter-spacing: .14em;
+}
+.lane-card.is-final .lane-card__rest-laps { color: #7ee787; }
 /* Vista V1 (filas): la tarjeta de descanso es una FILA. El rest-head vuelve a
    ser inline (en el grid de tarjetas va absoluto arriba-izq, pero aquí eso
    superpone zzz+P.x sobre el nombre/vueltas). Todo en fila, a la izquierda. */
