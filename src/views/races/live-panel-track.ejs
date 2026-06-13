@@ -32,7 +32,34 @@
     .tk-race { font-size: .72rem; color: #6e7681; }
 
     .tk-stage { flex: 1; position: relative; min-height: 0; overflow: hidden; }
-    #trackCanvas { display: block; width: 100%; height: 100%; }
+    .tk-grid  { width: 100%; height: 100%; display: grid; gap: 6px; padding: 6px; }
+    .tk-cell  {
+      position: relative; background: #000;
+      border: 1px solid #161b22; border-radius: 8px; overflow: hidden;
+      min-width: 0; min-height: 0;
+    }
+    .tk-cell canvas { display: block; width: 100%; height: 100%; }
+    .tk-cell__hd {
+      position: absolute; top: 5px; left: 5px; right: 5px; z-index: 2;
+      display: flex; align-items: center; gap: 5px; pointer-events: none;
+    }
+    .tk-cell__n {
+      font: 700 .72rem 'Rajdhani', sans-serif; letter-spacing: .06em;
+      color: #c9d1d9; background: rgba(0,0,0,.55);
+      padding: 2px 8px; border-radius: 6px;
+    }
+    .tk-cell__sp { flex: 1; }
+    .tk-cell__btn {
+      pointer-events: auto; cursor: pointer;
+      width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center;
+      background: rgba(22,27,34,.85); border: 1px solid #30363d; border-radius: 7px;
+      color: #c9d1d9; font-size: 1rem; line-height: 1; user-select: none;
+      transition: background .12s, border-color .12s;
+    }
+    .tk-cell__btn:hover  { background: #21262d; border-color: #58a6ff; color: #fff; }
+    .tk-cell__btn:active { transform: scale(.92); }
+    .tk-cell__btn.on     { border-color: #fbbf24; color: #fbbf24; }
+
     .tk-empty {
       position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
       color: #6e7681; text-align: center; padding: 2rem;
@@ -54,7 +81,7 @@
   </header>
 
   <div class="tk-stage">
-    <canvas id="trackCanvas"></canvas>
+    <div class="tk-grid" id="tkGrid"></div>
     <% if (!circuit || trackOutline.length < 3) { %>
       <div class="tk-empty">
         <div>
@@ -83,280 +110,239 @@
       raceId:           race.id,
       mangaId:          manga.id,
       lanes:            laneRows,
-      trackImage:       (circuit && circuit.track_image_b64) ? circuit.track_image_b64 : null,
       trackOutline:     trackOutline,
       trackDirection:   (circuit && circuit.track_direction === 'ccw') ? 'ccw' : 'cw',
       lastLapByLane:    lastLapByLane,
       isActive:         isActive,
+      circuits:         (circuitsLayout && circuitsLayout.length) ? circuitsLayout
+                          : [{ index: 0, laneStart: 1, laneCount: laneRows.length || 1, rot: 0, flip: false }],
     }) %>;
     const LANG = "<%= lang %>";
   </script>
   <script src="/socket.io/socket.io.js"></script>
   <script>
   (function () {
-    const canvas  = document.getElementById('trackCanvas');
-    if (!canvas) return;
-    const ctx     = canvas.getContext('2d');
+    const grid    = document.getElementById('tkGrid');
     const outline = PANEL_DATA.trackOutline || [];
     const hasTrack = outline.length >= 3;
+    if (!grid || !hasTrack) return;
 
-    // ── Carga imagen de fondo si existe ─────────────────────────────────
-    let bgImg = null;
-    if (PANEL_DATA.trackImage) {
-      const i = new Image();
-      i.onload = () => { bgImg = i; };
-      i.src = PANEL_DATA.trackImage;
-    }
+    const circuits = PANEL_DATA.circuits;
+    const DIR = PANEL_DATA.trackDirection;
 
-    // ── Suavizado Catmull-Rom del trazado ───────────────────────────────
-    // Resamplea la polilínea original a un polígono cerrado con muchos más
-    // puntos siguiendo una curva Catmull-Rom centrípeta. Sirve tanto para
-    // DIBUJAR el trazado (curvas redondas en vez de ángulos) como para
-    // INTERPOLAR la posición de los coches a lo largo del mismo.
+    // ── Suavizado Catmull-Rom (igual que antes) ─────────────────────────
     const SAMPLES_PER_SEG = 16;
     function catmullRom(p0, p1, p2, p3, t) {
-      const t2 = t * t, t3 = t2 * t;
+      const t2 = t*t, t3 = t2*t;
       return [
-        0.5 * ((2 * p1[0]) + (-p0[0] + p2[0]) * t
-             + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2
-             + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3),
-        0.5 * ((2 * p1[1]) + (-p0[1] + p2[1]) * t
-             + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2
-             + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3),
+        0.5*((2*p1[0]) + (-p0[0]+p2[0])*t + (2*p0[0]-5*p1[0]+4*p2[0]-p3[0])*t2 + (-p0[0]+3*p1[0]-3*p2[0]+p3[0])*t3),
+        0.5*((2*p1[1]) + (-p0[1]+p2[1])*t + (2*p0[1]-5*p1[1]+4*p2[1]-p3[1])*t2 + (-p0[1]+3*p1[1]-3*p2[1]+p3[1])*t3),
       ];
     }
     function smoothOutline(pts) {
       if (pts.length < 3) return pts;
-      const N = pts.length;
-      const out = [];
+      const N = pts.length, out = [];
       for (let i = 0; i < N; i++) {
-        const p0 = pts[(i - 1 + N) % N];
-        const p1 = pts[i];
-        const p2 = pts[(i + 1) % N];
-        const p3 = pts[(i + 2) % N];
-        for (let s = 0; s < SAMPLES_PER_SEG; s++) {
-          out.push(catmullRom(p0, p1, p2, p3, s / SAMPLES_PER_SEG));
-        }
+        const p0 = pts[(i-1+N)%N], p1 = pts[i], p2 = pts[(i+1)%N], p3 = pts[(i+2)%N];
+        for (let s = 0; s < SAMPLES_PER_SEG; s++) out.push(catmullRom(p0, p1, p2, p3, s/SAMPLES_PER_SEG));
       }
       return out;
     }
-    // Versión suave usada para todo (dibujar + posicionar coches)
-    const trackPath = hasTrack ? smoothOutline(outline) : [];
-
     function polyLen(pts) {
-      let total = 0;
-      const seg = [];
+      let total = 0; const seg = [];
       for (let i = 0; i < pts.length; i++) {
-        const a = pts[i], b = pts[(i + 1) % pts.length];
-        const d = Math.hypot(b[0] - a[0], b[1] - a[1]);
-        seg.push(d);
-        total += d;
+        const a = pts[i], b = pts[(i+1)%pts.length];
+        const d = Math.hypot(b[0]-a[0], b[1]-a[1]); seg.push(d); total += d;
       }
       return { total, seg };
     }
-    const { total: PERIM, seg: SEG } = hasTrack ? polyLen(trackPath) : { total: 0, seg: [] };
 
-    // Sentido del circuito: 'cw' (default, sigue el orden en que se dibujaron
-    // los puntos) o 'ccw' (recorre la curva al revés). Si los puntos del
-    // editor van en sentido contrario al real, se selecciona 'ccw' para que
-    // las bolitas avancen en el sentido correcto del minimapa.
-    const TRACK_DIR = (PANEL_DATA.trackDirection === 'ccw') ? 'ccw' : 'cw';
-
-    // Devuelve [x, y] (relativos 0..1) para un progreso 0..1 sobre la curva
-    function pointAtProgress(p) {
-      if (!hasTrack) return [0.5, 0.5];
-      p = ((p % 1) + 1) % 1;     // wrap 0..1
-      if (TRACK_DIR === 'ccw') p = 1 - p;   // invertir sentido si procede
-      const target = p * PERIM;
-      let acc = 0;
-      for (let i = 0; i < trackPath.length; i++) {
-        const len = SEG[i];
-        if (acc + len >= target) {
-          const t = len > 0 ? (target - acc) / len : 0;
-          const a = trackPath[i];
-          const b = trackPath[(i + 1) % trackPath.length];
-          return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
-        }
-        acc += len;
-      }
-      return trackPath[0];
+    // Transforma un punto relativo (0..1) según orientación: espejo horizontal
+    // + rotación en pasos de 90° alrededor del centro (0.5,0.5).
+    function orientPoint([x, y], rot, flip) {
+      if (flip) x = 1 - x;
+      let steps = (((rot / 90) | 0) % 4 + 4) % 4;
+      for (let k = 0; k < steps; k++) { const nx = 1 - y, ny = x; x = nx; y = ny; }
+      return [x, y];
     }
 
-    // ── Estado por carril ───────────────────────────────────────────────
-    const laneState = {};
-    PANEL_DATA.lanes.forEach(l => {
-      const last = (PANEL_DATA.lastLapByLane || {})[l.lane];
-      laneState[l.lane] = {
-        ...l,
-        lastCrossingTs: last && last.timestampMs ? last.timestampMs : null,
-        lapTimeMs:      last && last.lapTimeMs   ? last.lapTimeMs   : null,
-      };
-    });
+    // ── Un renderer por circuito ────────────────────────────────────────
+    function makeRenderer(canvas, circ) {
+      const ctx = canvas.getContext('2d');
+      let path, PERIM, SEG, bbox, laneState;
 
-    // ── Render loop ─────────────────────────────────────────────────────
-    function resize() {
-      const r = canvas.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width  = Math.round(r.width  * dpr);
-      canvas.height = Math.round(r.height * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    }
-    window.addEventListener('resize', resize);
-    resize();
-
-    // Calcula el rectángulo en pantalla donde se ajusta el contenido del track
-    // (imagen o polilínea) manteniendo la proporción original. Coords relativas
-    // 0..1 se mapean a este rectángulo, así el aspect ratio del trazado se
-    // respeta independientemente del tamaño de la ventana.
-    function getStage() {
-      const W = canvas.clientWidth, H = canvas.clientHeight;
-      const PAD = 20;
-      let aspect = 1;
-      if (bgImg) {
-        aspect = bgImg.naturalWidth / bgImg.naturalHeight;
-      } else if (hasTrack) {
-        // bounding box del trazado (de la versión suave para que cuadre exacto)
-        let minX = 1, minY = 1, maxX = 0, maxY = 0;
-        trackPath.forEach(([x, y]) => { if (x < minX) minX = x; if (y < minY) minY = y; if (x > maxX) maxX = x; if (y > maxY) maxY = y; });
-        aspect = Math.max(.1, (maxX - minX) / Math.max(.001, (maxY - minY)));
-      }
-      const availW = W - PAD * 2, availH = H - PAD * 2;
-      let w = availW, h = availW / aspect;
-      if (h > availH) { h = availH; w = availH * aspect; }
-      return { x: (W - w) / 2, y: (H - h) / 2, w, h };
-    }
-
-    function relToScreen(rx, ry, stage) {
-      return [stage.x + rx * stage.w, stage.y + ry * stage.h];
-    }
-
-    function draw() {
-      const W = canvas.clientWidth, H = canvas.clientHeight;
-      ctx.clearRect(0, 0, W, H);
-      ctx.fillStyle = '#000';
-      ctx.fillRect(0, 0, W, H);
-
-      const stage = getStage();
-
-      // 1) imagen de fondo si la hay
-      if (bgImg) ctx.drawImage(bgImg, stage.x, stage.y, stage.w, stage.h);
-      else {
-        // lienzo en negro con un borde sutil para enmarcar
-        ctx.strokeStyle = '#161b22';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(stage.x, stage.y, stage.w, stage.h);
-      }
-
-      // 2) trazado suave (Catmull-Rom resampleado)
-      if (hasTrack) {
-        ctx.beginPath();
-        trackPath.forEach(([rx, ry], i) => {
-          const [px, py] = relToScreen(rx, ry, stage);
-          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      function rebuild() {
+        const tOutline = outline.map(p => orientPoint(p, circ.rot, circ.flip));
+        path = smoothOutline(tOutline);
+        const pl = polyLen(path); PERIM = pl.total; SEG = pl.seg;
+        let minX=1,minY=1,maxX=0,maxY=0;
+        path.forEach(([x,y]) => { if(x<minX)minX=x; if(y<minY)minY=y; if(x>maxX)maxX=x; if(y>maxY)maxY=y; });
+        bbox = { minX, minY, maxX, maxY };
+        const lanesHere = PANEL_DATA.lanes.filter(l =>
+          l.lane >= circ.laneStart && l.lane < circ.laneStart + circ.laneCount);
+        laneState = {};
+        lanesHere.forEach(l => {
+          const last = (PANEL_DATA.lastLapByLane || {})[l.lane];
+          laneState[l.lane] = {
+            ...l,
+            lastCrossingTs: last && last.timestampMs ? last.timestampMs : null,
+            lapTimeMs:      last && last.lapTimeMs   ? last.lapTimeMs   : null,
+            renderedRx: null, renderedRy: null,
+          };
         });
+      }
+      rebuild();
+
+      function pointAtProgress(prog) {
+        let p = ((prog % 1) + 1) % 1;
+        if (DIR === 'ccw') p = 1 - p;
+        let target = p * PERIM, acc = 0;
+        for (let i = 0; i < path.length; i++) {
+          const segLen = SEG[i];
+          if (acc + segLen >= target) {
+            const f = segLen > 0 ? (target - acc) / segLen : 0;
+            const a = path[i], b = path[(i+1)%path.length];
+            return [a[0] + (b[0]-a[0])*f, a[1] + (b[1]-a[1])*f];
+          }
+          acc += segLen;
+        }
+        return path[0];
+      }
+
+      function resize() {
+        const r = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.round(r.width*dpr); canvas.height = Math.round(r.height*dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+
+      function getStage() {
+        const W = canvas.clientWidth, H = canvas.clientHeight, PAD = 16;
+        const aspect = Math.max(.1, (bbox.maxX-bbox.minX) / Math.max(.001, (bbox.maxY-bbox.minY)));
+        const availW = W-PAD*2, availH = H-PAD*2;
+        let w = availW, h = availW/aspect;
+        if (h > availH) { h = availH; w = availH*aspect; }
+        return { x:(W-w)/2, y:(H-h)/2, w, h };
+      }
+      // Mapea coord relativa (0..1, ya orientada) al rect del stage, encajando
+      // el bounding box del trazado para que llene la celda.
+      function relToScreen(rx, ry, stage) {
+        const nx = (rx - bbox.minX) / Math.max(.001, bbox.maxX-bbox.minX);
+        const ny = (ry - bbox.minY) / Math.max(.001, bbox.maxY-bbox.minY);
+        return [stage.x + nx*stage.w, stage.y + ny*stage.h];
+      }
+
+      function draw() {
+        resize();
+        const W = canvas.clientWidth, H = canvas.clientHeight;
+        ctx.clearRect(0,0,W,H); ctx.fillStyle = '#000'; ctx.fillRect(0,0,W,H);
+        const stage = getStage();
+
+        ctx.beginPath();
+        path.forEach(([rx,ry], i) => { const [px,py]=relToScreen(rx,ry,stage); i===0?ctx.moveTo(px,py):ctx.lineTo(px,py); });
         ctx.closePath();
-        ctx.lineWidth   = Math.max(2, Math.min(stage.w, stage.h) / 250);
-        ctx.strokeStyle = 'rgba(251,191,36,.45)';   // gold tenue
+        ctx.lineWidth = Math.max(2, Math.min(stage.w, stage.h)/250);
+        ctx.strokeStyle = 'rgba(251,191,36,.45)';
         ctx.stroke();
 
-        // 3) bolitas — coches
-        const now = Date.now();
-        // Suavizado temporal: la posición renderizada persigue al target con
-        // un factor (interpolación exponencial). Hace el movimiento más
-        // fluido y absorbe pequeños saltos en cálculo.
-        const SMOOTH = 0.25;
-        // Detección de "atascado": si lleva > 1.3 veces su lapTime sin cruzar,
-        // probablemente está fuera de pista o parado → parpadea.
-        const STUCK_RATIO = 1.3;
-
+        const now = Date.now(), SMOOTH = 0.25, STUCK_RATIO = 1.3;
         Object.values(laneState).forEach(l => {
-          let prog = 0;
-          let stuckness = 0;   // 0..1, fuerza del "atasco" para el parpadeo
+          let prog = 0, stuckness = 0;
           if (l.lastCrossingTs && l.lapTimeMs > 0) {
             const ratio = (now - l.lastCrossingTs) / l.lapTimeMs;
             prog = ratio;
-            if (ratio > STUCK_RATIO) {
-              stuckness = Math.min(1, (ratio - STUCK_RATIO) / 0.5);
-              prog = 1.5;     // se "estaciona" al final del recorrido teórico
-            }
-            if (prog > 1.5) prog = 1.5;
+            if (ratio > STUCK_RATIO) { stuckness = Math.min(1,(ratio-STUCK_RATIO)/0.5); if(prog>1.5)prog=1.5; }
           }
-
-          // Posición objetivo en el trazado
           const [trx, tryY] = pointAtProgress(prog);
-
-          // Suavizado: persigue al target con inercia. En el primer frame
-          // se inicializa al target (sin "drift" inicial desde 0,0).
           if (l.renderedRx == null) { l.renderedRx = trx; l.renderedRy = tryY; }
-          else {
-            l.renderedRx += (trx - l.renderedRx) * SMOOTH;
-            l.renderedRy += (tryY - l.renderedRy) * SMOOTH;
-          }
-
+          else { l.renderedRx += (trx-l.renderedRx)*SMOOTH; l.renderedRy += (tryY-l.renderedRy)*SMOOTH; }
           const [px, py] = relToScreen(l.renderedRx, l.renderedRy, stage);
-          const dotR = Math.max(8, Math.min(stage.w, stage.h) / 40);
+          const dotR = Math.max(7, Math.min(stage.w, stage.h)/22);
 
-          // Parpadeo si está atascado (oscilación senoidal de opacidad)
           let alpha = 1;
-          if (stuckness > 0) {
-            const blink = 0.5 + 0.5 * Math.sin(now / 150);  // 0..1
-            alpha = 1 - stuckness * (1 - blink) * 0.7;       // mín ~0.3 cuando atascado
-          }
+          if (stuckness > 0) { const blink = 0.5+0.5*Math.sin(now/150); alpha = 1 - stuckness*(1-blink)*0.7; }
           ctx.globalAlpha = alpha;
-
-          // sombra
-          ctx.beginPath();
-          ctx.arc(px, py + 1, dotR, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(0,0,0,.6)';
-          ctx.fill();
-
-          // bolita coloreada
-          ctx.beginPath();
-          ctx.arc(px, py, dotR, 0, Math.PI * 2);
-          ctx.fillStyle = l.color;
-          ctx.fill();
-          ctx.lineWidth = 2;
-          // Si está atascado, borde rojo para alertar visualmente
-          ctx.strokeStyle = stuckness > 0 ? '#e63946' : '#0a0a0a';
-          ctx.stroke();
-
-          // número del carril
-          ctx.fillStyle = '#fff';
-          ctx.font = `700 ${Math.round(dotR * 1.1)}px Rajdhani, sans-serif`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(String(l.lane), px, py + 1);
-
-          // nombre debajo
-          ctx.font = `600 ${Math.round(dotR * 0.85)}px Inter, sans-serif`;
-          ctx.fillStyle = '#fff';
-          ctx.fillText(l.name, px, py + dotR + Math.round(dotR * 0.9));
-
+          ctx.beginPath(); ctx.arc(px, py+1, dotR, 0, Math.PI*2); ctx.fillStyle='rgba(0,0,0,.6)'; ctx.fill();
+          ctx.beginPath(); ctx.arc(px, py, dotR, 0, Math.PI*2); ctx.fillStyle=l.color; ctx.fill();
+          ctx.lineWidth = 2; ctx.strokeStyle = stuckness>0 ? '#e63946' : '#0a0a0a'; ctx.stroke();
+          ctx.fillStyle='#fff'; ctx.font=`700 ${Math.round(dotR*1.1)}px Rajdhani, sans-serif`;
+          ctx.textAlign='center'; ctx.textBaseline='middle';
+          ctx.fillText(String(l.lane), px, py+1);
+          ctx.font=`600 ${Math.round(dotR*0.8)}px Inter, sans-serif`;
+          ctx.fillText(l.name, px, py+dotR+Math.round(dotR*0.9));
           ctx.globalAlpha = 1;
         });
       }
+
+      return { draw, rebuild, laneState: () => laneState };
     }
 
-    function loop() {
-      draw();
-      requestAnimationFrame(loop);
+    // ── Construir la rejilla de celdas + controles ──────────────────────
+    const N = circuits.length;
+    const cols = Math.ceil(Math.sqrt(N));
+    const rows = Math.ceil(N / cols);
+    grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    grid.style.gridTemplateRows    = `repeat(${rows}, 1fr)`;
+
+    const renderers = [];
+    function persist() {
+      fetch(`/races/${PANEL_DATA.raceId}/circuit-orientation`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orientations: circuits.map(c => ({ rot: c.rot, flip: c.flip })) }),
+      }).catch(() => {});
     }
-    requestAnimationFrame(loop);
 
-    // ── Socket: actualiza estado al cruzar línea ────────────────────────
-    const socket = io({ transports: ['websocket', 'polling'] });
-    socket.on('connect', () => socket.emit('race:live:join'));
+    circuits.forEach((circ, idx) => {
+      const cell = document.createElement('div');
+      cell.className = 'tk-cell';
+      const canvas = document.createElement('canvas');
+      cell.appendChild(canvas);
 
-    socket.on('lap', (lap) => {
-      if (!lap || !lap.lane) return;
-      const l = laneState[lap.lane];
-      if (!l) return;
-      // Cruce nuevo: el coche acaba de pasar la línea → reinicia progreso a 0
-      l.lastCrossingTs = Date.now();
-      if (lap.lapTimeMs && lap.lapTimeMs > 0) l.lapTimeMs = lap.lapTimeMs;
+      // Cabecera con controles (solo si hay más de 1 circuito mostramos nº)
+      const hd = document.createElement('div');
+      hd.className = 'tk-cell__hd';
+      const label = N > 1 ? `Circuito ${idx + 1}` : (LANG === 'es' ? 'Circuito' : 'Track');
+      hd.innerHTML = `<span class="tk-cell__n">${label}</span><span class="tk-cell__sp"></span>`;
+      const rotBtn  = document.createElement('span');
+      rotBtn.className = 'tk-cell__btn'; rotBtn.title = LANG==='es'?'Girar 90°':'Rotate 90°'; rotBtn.textContent = '⟳';
+      const flipBtn = document.createElement('span');
+      flipBtn.className = 'tk-cell__btn' + (circ.flip ? ' on' : ''); flipBtn.title = LANG==='es'?'Espejo':'Mirror'; flipBtn.textContent = '⇄';
+      hd.appendChild(rotBtn); hd.appendChild(flipBtn);
+      cell.appendChild(hd);
+      grid.appendChild(cell);
+
+      const r = makeRenderer(canvas, circ);
+      renderers.push(r);
+
+      rotBtn.addEventListener('click', () => {
+        circ.rot = (circ.rot + 90) % 360;
+        r.rebuild(); persist();
+      });
+      flipBtn.addEventListener('click', () => {
+        circ.flip = !circ.flip;
+        flipBtn.classList.toggle('on', circ.flip);
+        r.rebuild(); persist();
+      });
     });
 
-    socket.on('manga:stopped', () => { /* deja el último estado en pantalla */ });
+    function loop() { renderers.forEach(r => r.draw()); requestAnimationFrame(loop); }
+    requestAnimationFrame(loop);
+
+    // ── Socket: cruces ──────────────────────────────────────────────────
+    const socket = io({ transports: ['websocket', 'polling'] });
+    socket.on('connect', () => socket.emit('race:live:join'));
+    socket.on('lap', (lap) => {
+      if (!lap || !lap.lane) return;
+      for (const r of renderers) {
+        const ls = r.laneState();
+        if (ls[lap.lane]) {
+          ls[lap.lane].lastCrossingTs = Date.now();
+          if (lap.lapTimeMs && lap.lapTimeMs > 0) ls[lap.lane].lapTimeMs = lap.lapTimeMs;
+          break;
+        }
+      }
+    });
+    socket.on('manga:stopped', () => { /* deja el último estado */ });
   })();
   </script>
 </body>
