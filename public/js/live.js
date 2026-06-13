@@ -397,6 +397,16 @@ function buildCard(lane) {
 }
 
 function renderNextLaneHints() {
+  // Carrera ACABADA (última manga finalizada): la columna PRÓX = FINAL para
+  // todos los que corrían (ya no tienen próxima manga). Los que descansaban ya
+  // salen como FINAL en su propio card.
+  if (RACE_DATA.raceOver) {
+    document.querySelectorAll('#lanesGrid .lane-card:not(.is-rest)').forEach(card => {
+      if (card.querySelector('.next-lane-badge')) return;
+      appendFinalBadge(card);
+    });
+    return;
+  }
   const map = RACE_DATA.nextLaneByLane || {};
   Object.entries(map).forEach(([cardKey, info]) => {
     const card = document.getElementById(`card-${cardKey}`);
@@ -404,6 +414,13 @@ function renderNextLaneHints() {
     if (card.querySelector('.next-lane-badge')) return;
     appendNextLaneBadge(card, info);
   });
+}
+
+function appendFinalBadge(card) {
+  const badge = document.createElement('div');
+  badge.className = 'next-lane-badge next-lane-badge--final';
+  badge.innerHTML = `<span class="next-lane-arrow">🏁</span> <strong>FINAL</strong>`;
+  card.appendChild(badge);
 }
 
 function appendNextLaneBadge(card, info) {
