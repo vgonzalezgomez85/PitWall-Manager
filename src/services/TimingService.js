@@ -15,10 +15,15 @@ const DEBOUNCE_MS    = 3000;
 // regardless of how fast the lane normally laps.
 //   lap_time ≥ avg + EXIT_MARGIN_MS  → exit (salida)
 //
+// Umbral +1.7s: punto medio entre detectar solo crashes graves (+3s perdía
+// salidas reales) y contar tráfico/toques leves como piño (TicTac usa ~+1.2s
+// para su "vuelta lenta", demasiado sensible). A +1.7s captura las salidas de
+// pista de verdad sin marcar cada vuelta lenta de tráfico.
+//
 // Pit-stop: a much longer outlier (lap_time ≥ avg × PIT_STOP_MULTIPLIER) is
 // flagged as pit-stop instead of a plain exit. Same in-memory treatment
 // (doesn't pollute the average), different DB flag and UI icon (🔧).
-const EXIT_MARGIN_MS     = 3000;
+const EXIT_MARGIN_MS     = 1700;
 const PIT_STOP_MULTIPLIER = 2;
 
 class TimingServiceClass {
