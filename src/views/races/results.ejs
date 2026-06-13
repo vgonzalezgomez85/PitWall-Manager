@@ -736,7 +736,6 @@
   })();
 </script>
 <script id="positionsData" type="application/json"><%- JSON.stringify(positionData || {}) %></script>
-<script id="positionsLabels" type="application/json"><%- JSON.stringify(positionLabels || []) %></script>
 <script id="progressionData" type="application/json"><%- JSON.stringify(progressionByEntity || {}) %></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
@@ -961,7 +960,6 @@
   // Clasificación acumulada al cierre de cada manga (no cruce a cruce).
   (function() {
     const data   = JSON.parse(document.getElementById('positionsData').textContent || '{}');
-    const labels = JSON.parse(document.getElementById('positionsLabels').textContent || '[]');
     const canvas = document.getElementById('positionsChart');
     if (!canvas) return;
     const PALETTE = ['#1F6FEB','#F6C90E','#2DA44E','#FB6A6B','#A371F7','#16BDCA','#F97316','#E63946','#FBBF24','#34D399','#FF6B9D','#56D4DD'];
@@ -969,20 +967,20 @@
 
     function build() {
       const entries = Object.entries(data);
-      if (entries.length === 0 || labels.length === 0) return;
+      if (entries.length === 0) return;
       const totalEntities = entries.length;
       const datasets = entries.map(([key, e], i) => ({
         label: e.name,
-        data: e.positions,
+        data: (e.points || []),   // {x: minuto de carrera, y: posición proyectada}
         borderColor: e.color || PALETTE[i % PALETTE.length],
         backgroundColor: (e.color || PALETTE[i % PALETTE.length]) + '22',
-        tension: 0,
-        pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5,
+        tension: 0.25, spanGaps: true,
+        pointRadius: 3, pointHoverRadius: 6, borderWidth: 2.5,
       }));
       if (chart) chart.destroy();
       chart = new Chart(canvas, {
         type: 'line',
-        data: { labels, datasets },
+        data: { datasets },
         options: {
           responsive: true, maintainAspectRatio: false,
           interaction: { mode: 'nearest', intersect: false },
@@ -990,20 +988,21 @@
             legend: { position: 'right', labels: { color: '#c9d1d9', boxWidth: 14 } },
             tooltip: {
               callbacks: {
-                title: (items) => items[0].label,
+                title: (items) => 'min ' + items[0].parsed.x,
                 label: (ctx) => ctx.dataset.label + ': P' + ctx.parsed.y,
               }
             }
           },
           scales: {
             x: {
-              title: { display: true, text: '<%= lang === "es" ? "Manga (clasificación acumulada al cierre)" : "Heat (cumulative standings at close)" %>', color: '#8b949e' },
+              type: 'linear',
+              title: { display: true, text: '<%= lang === "es" ? "Tiempo de carrera (min)" : "Race time (min)" %>', color: '#8b949e' },
               ticks: { color: '#8b949e' }, grid: { color: '#21262d' },
             },
             y: {
               reverse: true, // P1 at top
               min: 1, max: totalEntities,
-              title: { display: true, text: '<%= lang === "es" ? "Posición" : "Position" %>', color: '#8b949e' },
+              title: { display: true, text: '<%= lang === "es" ? "Posición (proyectada)" : "Position (projected)" %>', color: '#8b949e' },
               ticks: { color: '#8b949e', stepSize: 1, callback: (v) => 'P' + v },
               grid: { color: '#21262d' },
             }
