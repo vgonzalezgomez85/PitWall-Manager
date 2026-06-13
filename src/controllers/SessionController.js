@@ -357,6 +357,26 @@ class SessionController {
       p.planned_mangas   = a.planned_mangas || 0;
     });
 
+    // FINAL por POSICIÓN (no por estado): una entidad ha acabado cuando no le
+    // queda ninguna manga por CORRER después de la manga actual. Funciona tanto
+    // en vivo (mangas futuras 'pending') como revisando una carrera ya cerrada
+    // (todas 'finished'): lo que importa es la posición, no el estado.
+    const racesAfterRows = db.prepare(`
+      SELECT DISTINCT CASE WHEN ml.team_id IS NOT NULL THEN 't'||ml.team_id ELSE 'd'||ml.driver_id END AS ekey
+      FROM manga_lanes ml
+      JOIN mangas m ON m.id = ml.manga_id
+      JOIN tandas t ON t.id = m.tanda_id
+      WHERE m.race_id = ? AND ml.is_rest = 0
+        AND (ml.team_id IS NOT NULL OR ml.driver_id IS NOT NULL)
+        AND ( t.number > ? OR (t.number = ? AND m.number > ?) )
+    `).all(race.id, tanda.number, tanda.number, manga.number);
+    const racesAfter = new Set(racesAfterRows.map(r => r.ekey));
+    allParticipants.forEach(p => {
+      if (p.entity_id == null || typeof p.entity_id === 'string') { p.finished_race = false; return; }
+      const k = `${p.entity_type === 'team' ? 't' : 'd'}${p.entity_id}`;
+      p.finished_race = !racesAfter.has(k);
+    });
+
     const LicenseService = require('../services/LicenseService');
     const hasBestLaps  = LicenseService.has('best_laps');
     const hasQrCheckin = LicenseService.has('qr_checkin');
