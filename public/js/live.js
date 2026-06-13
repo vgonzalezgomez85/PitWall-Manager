@@ -717,18 +717,23 @@ function sortCards(rows) {
   const totalOf = r => r.isRest ? (r.prevLapCount || 0) : getTotalLaps(r.lane, r.lapCount);
   const cardKey = r => r.isRest ? r.cardId : r.lane;
 
-  // Orden por vueltas totales desc; a igualdad de vueltas, desempate "por coma":
-  // va delante quien hizo esas vueltas en menos tiempo total acumulado.
-  const sorted = [...rows.filter(r => !r.isRest), ...restRows]
-    .sort((a, b) => totalOf(b) - totalOf(a) || (a.totalTimeMs ?? Infinity) - (b.totalTimeMs ?? Infinity));
+  // Posición GENERAL de carrera (todas las tandas) por vueltas proyectadas,
+  // calculada en renderProjected. Si no está disponible, cae al total dentro
+  // de la tanda (comportamiento anterior).
+  const hasGlobal = _globalProjPos && _globalProjPos.size > 0;
+  const posOf = r => { const g = _globalProjPos.get(r.name); return g ? g.pos : 9999; };
+  const rawOf = r => { const g = _globalProjPos.get(r.name); return (g && g.raw != null) ? g.raw : (totalOf(r) || -1); };
 
-  const BIG = 1e9;
-  const scoreOf = r => totalOf(r) * BIG - (r.avgLapMs ?? BIG);
+  const sorted = [...rows.filter(r => !r.isRest), ...restRows].sort((a, b) =>
+    hasGlobal ? (posOf(a) - posOf(b))
+              : (totalOf(b) - totalOf(a) || (a.totalTimeMs ?? Infinity) - (b.totalTimeMs ?? Infinity)));
+
+  // Gaps entre tarjetas consecutivas (en vueltas proyectadas si hay global).
   const gapAbove = {}, gapBelow = {};
   sorted.forEach((r, i) => {
     const k = cardKey(r);
-    gapAbove[k] = i === 0 ? null : scoreOf(sorted[i-1]) - scoreOf(r);
-    gapBelow[k] = i === sorted.length - 1 ? null : scoreOf(r) - scoreOf(sorted[i+1]);
+    gapAbove[k] = i === 0 ? null : rawOf(sorted[i-1]) - rawOf(r);
+    gapBelow[k] = i === sorted.length - 1 ? null : rawOf(r) - rawOf(sorted[i+1]);
   });
 
   sorted.forEach((r, i) => {
@@ -737,8 +742,9 @@ function sortCards(rows) {
     if (card) card.style.order = i;
     const posEl = document.getElementById(`card-pos-${k}`);
     if (posEl) {
-      posEl.textContent = `P.${i + 1}`;
-      posEl.className = `lane-card__pos lane-card__pos--${['1','2','3'][i] ?? 'n'}`;
+      const gpos = hasGlobal ? posOf(r) : (i + 1);   // posición general real (1..N)
+      posEl.textContent = `P.${gpos}`;
+      posEl.className = `lane-card__pos lane-card__pos--${['1','2','3'][gpos-1] ?? 'n'}`;
     }
 
     if (r.isRest) return;   // los descansos ya tienen su orden y P.x; sin trend
@@ -851,15 +857,21 @@ function renderStandings(data) {
   data.standings.forEach(r => updateCard(r.lane, r.lapCount, r.lastLapMs, r.bestLapMs, r.avgLapMs, r.exitCount));
   data.standings.forEach(r => updatePitIndicator(r.lane, r.pitStopCount ?? 0));
   data.standings.forEach(r => updateExitIndicator(r.lane, r.exitCount ?? 0));
-  sortCards(data.standings);
 
   updateRaceBestLaps(data.raceBestLaps);
+  // renderProjected ANTES que sortCards: calcula la posición general (todas las
+  // tandas) que las tarjetas usan para su orden y su P.x.
   renderProjected(data);
+  sortCards(data.standings);
   // Re-evaluar paginación tras reordenar cards en V1
   _v1SchedulePaging();
 }
 
 let prevProjGap = {};
+// Posición GENERAL de carrera (todas las tandas) por vueltas proyectadas.
+// La rellena renderProjected y la consumen las tarjetas (sortCards) para
+// mostrar la P.x real del conjunto de la carrera, no solo de la tanda.
+let _globalProjPos = new Map();
 
 function renderProjected(data) {
   if (!data?.standings) return;
@@ -949,6 +961,10 @@ function renderProjected(data) {
     return b.projectedTotalRaw - a.projectedTotalRaw
         || (a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity);
   });
+
+  // Exponer la posición general (1..N) por entidad para que las tarjetas la usen.
+  _globalProjPos = new Map();
+  rows.forEach((r, i) => _globalProjPos.set(r.name, { pos: i + 1, raw: r.projectedTotalRaw }));
 
   // Calculate projected gaps en vueltas + a numeric score for trend tracking
   // score = projectedTotal*BIG - avgLapMs (so closer to leader = higher; avg as tiebreaker)
