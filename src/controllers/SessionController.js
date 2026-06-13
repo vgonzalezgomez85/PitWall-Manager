@@ -861,11 +861,14 @@ class SessionController {
       });
     });
 
-    // ── Posiciones por manga ─────────────────────────────────────────────
-    // Una instantánea de la clasificación acumulada al cierre de cada manga,
-    // con el criterio oficial: vueltas DESC, coma DESC, tiempo total ASC.
+    // ── Posiciones por TIEMPO de carrera (tandas fusionadas) ──────────────
+    // Eje X = tiempo total de carrera (min), una sola línea continua (las tandas
+    // se concatenan). En cada cierre de manga la posición = ranking por vueltas
+    // PROYECTADAS al final (vueltas hechas + mangas que le quedan × duración ÷
+    // media de vuelta hasta ese momento). Así un coche de la tanda 2 se compara
+    // por dónde va a ACABAR, no por las pocas vueltas que lleva → pelea real.
     const mangaSeq = db.prepare(`
-      SELECT m.id, m.number AS manga_number, t.number AS tanda_number
+      SELECT m.id, m.number AS manga_number, t.number AS tanda_number, m.actual_duration_ms
       FROM mangas m
       JOIN tandas t ON t.id = m.tanda_id
       WHERE t.race_id = ?
@@ -874,67 +877,73 @@ class SessionController {
 
     const lapTotalsByManga = db.prepare(`
       SELECT l.manga_id, l.team_id, l.driver_id,
-             COUNT(*) AS laps, SUM(l.lap_time_ms) AS time_ms
+             COUNT(*) AS laps,
+             SUM(CASE WHEN l.is_warmup = 0 THEN l.lap_time_ms END) AS clean_time,
+             SUM(CASE WHEN l.is_warmup = 0 THEN 1 ELSE 0 END)      AS clean_laps
       FROM laps l
       WHERE l.race_id = ? AND l.is_ghost = 0
       GROUP BY l.manga_id, l.team_id, l.driver_id
     `).all(race.id);
 
-    const comaByManga = db.prepare(`
-      SELECT ml.manga_id, ml.team_id, ml.driver_id, COALESCE(ml.coma, 0) AS coma
-      FROM manga_lanes ml
-      JOIN mangas mg ON mg.id = ml.manga_id
-      WHERE mg.race_id = ? AND ml.is_rest = 0
-    `).all(race.id);
-
     const entityKeys = results.map(r => `${r.entity_type}_${r.entity_id}`);
-    const cum = {};
-    entityKeys.forEach(k => { cum[k] = { laps: 0, coma: 0, timeMs: 0 }; });
+    const entityKeyOf = (r) => r.team_id ? `team_${r.team_id}` : `driver_${r.driver_id}`;
 
     const lapsIdx = new Map();
     lapTotalsByManga.forEach(r => {
       if (!lapsIdx.has(r.manga_id)) lapsIdx.set(r.manga_id, []);
       lapsIdx.get(r.manga_id).push(r);
     });
-    const comaIdx = new Map();
-    comaByManga.forEach(r => {
-      if (!comaIdx.has(r.manga_id)) comaIdx.set(r.manga_id, []);
-      comaIdx.get(r.manga_id).push(r);
-    });
 
-    const entityKeyOf = (r) => r.team_id ? `team_${r.team_id}` : `driver_${r.driver_id}`;
-    const multiTanda = tandas.length > 1;
-    const positionLabels = [];
-    const positionSeries = {};
-    entityKeys.forEach(k => { positionSeries[k] = []; });
+    // Mangas asignadas (a correr) por entidad → para saber cuántas le quedan.
+    const assignedRows = db.prepare(`
+      SELECT CASE WHEN ml.team_id IS NOT NULL THEN 'team_'||ml.team_id ELSE 'driver_'||ml.driver_id END AS k
+      FROM manga_lanes ml JOIN mangas m ON m.id = ml.manga_id
+      WHERE m.race_id = ? AND ml.is_rest = 0 AND (ml.team_id IS NOT NULL OR ml.driver_id IS NOT NULL)
+    `).all(race.id);
+    const assignedCount = {};
+    assignedRows.forEach(r => { assignedCount[r.k] = (assignedCount[r.k] || 0) + 1; });
+
+    const durDefault = (race.manga_duration_minutes || 0) * 60000;
+    const cumE = {};
+    entityKeys.forEach(k => { cumE[k] = { laps: 0, cleanTime: 0, cleanCount: 0, raced: 0 }; });
+
+    const positionPoints = {};
+    entityKeys.forEach(k => { positionPoints[k] = []; });
+    let cumTimeMs = 0;
 
     mangaSeq.forEach(m => {
       const mLaps = lapsIdx.get(m.id);
       if (!mLaps || mLaps.length === 0) return;   // manga sin disputar
+      cumTimeMs += (m.actual_duration_ms || durDefault);
       mLaps.forEach(r => {
         const k = entityKeyOf(r);
-        if (!cum[k]) return;
-        cum[k].laps   += r.laps;
-        cum[k].timeMs += r.time_ms || 0;
+        if (!cumE[k]) return;
+        cumE[k].laps       += r.laps;
+        cumE[k].cleanTime  += r.clean_time || 0;
+        cumE[k].cleanCount += r.clean_laps || 0;
+        cumE[k].raced      += 1;
       });
-      (comaIdx.get(m.id) || []).forEach(r => {
-        const k = entityKeyOf(r);
-        if (cum[k]) cum[k].coma += r.coma || 0;
+      // Proyección causal de vueltas al final (datos sólo hasta este cierre).
+      const proj = {};
+      entityKeys.forEach(k => {
+        const c = cumE[k];
+        if (c.laps === 0) { proj[k] = 0; return; }   // aún no ha corrido → al fondo
+        const media     = c.cleanCount > 0 ? c.cleanTime / c.cleanCount : null;
+        const remaining = Math.max(0, (assignedCount[k] || 0) - c.raced);
+        proj[k] = media ? c.laps + (remaining * durDefault) / media : c.laps;
       });
-      positionLabels.push(multiTanda
-        ? `T${m.tanda_number}·M${m.manga_number}`
-        : `Manga ${m.manga_number}`);
-      const sorted = [...entityKeys].sort((a, b) =>
-        cum[b].laps - cum[a].laps ||
-        cum[b].coma - cum[a].coma ||
-        cum[a].timeMs - cum[b].timeMs);
-      sorted.forEach((k, idx) => positionSeries[k].push(idx + 1));
+      const sorted = [...entityKeys].sort((a, b) => proj[b] - proj[a] || cumE[b].laps - cumE[a].laps);
+      const tMin = +(cumTimeMs / 60000).toFixed(2);
+      // Solo se pinta a quien ya ha corrido (proyección > 0). Así su línea
+      // empieza cuando entra su tanda, en su posición proyectada real, sin
+      // líneas planas al fondo de quien aún no ha salido.
+      sorted.forEach((k, idx) => { if (proj[k] > 0) positionPoints[k].push({ x: tMin, y: idx + 1 }); });
     });
 
     const positionData = {};
     results.forEach(r => {
       const k = `${r.entity_type}_${r.entity_id}`;
-      positionData[k] = { name: r.entity_name, color: r.color, positions: positionSeries[k] };
+      positionData[k] = { name: r.entity_name, color: r.color, points: positionPoints[k] };
     });
 
     // ── Advanced stats por entidad (race-wide) ────────────────────────────
@@ -1009,7 +1018,7 @@ class SessionController {
     res.render('races/results', {
       t: req.t, race, results, laneSequence, tandas, LANE_COLORS,
       raceBestLapMs, raceBestEntity, raceBestLane, startLaneByEntity,
-      progressionByEntity, positionData, positionLabels,
+      progressionByEntity, positionData,
       advancedStats,
       publicView: !!req._publicResults,
     });
