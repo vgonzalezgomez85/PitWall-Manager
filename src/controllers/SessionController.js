@@ -515,11 +515,32 @@ class SessionController {
     // Minimapa: para el panel `track` necesitamos el trazado del circuito
     // (imagen base64 + polilínea) y, por carril, la última vuelta para
     // calcular la posición inicial al abrir la ventana.
-    let circuit = null, trackOutline = [], lastLapByLane = {};
+    let circuit = null, trackOutline = [], lastLapByLane = {}, circuitsLayout = [];
     if (req.params.type === 'track') {
       const Circuit = require('../models/Circuit');
       circuit = race.circuit_id ? Circuit.findById(race.circuit_id) : null;
       if (circuit) trackOutline = Circuit.getTrackOutline(circuit);
+
+      // Reparto de carriles por circuito (circuits_config = [6] o [6,6,6,6]) +
+      // orientación guardada por circuito (girado 90° / espejo) para el minimapa
+      // en rejilla. La orientación se persiste en settings por circuito.
+      const Settings = require('../models/Settings');
+      let cfg;
+      try { cfg = JSON.parse((circuit && circuit.circuits_config) || race.circuits_config || '[]'); }
+      catch { cfg = []; }
+      if (!Array.isArray(cfg) || cfg.length === 0) cfg = [race.lanes_count || 1];
+      let savedOrient = [];
+      try { savedOrient = JSON.parse(Settings.get(`minimap_orient:c${circuit ? circuit.id : 0}`, '[]')) || []; }
+      catch { savedOrient = []; }
+      let laneStart = 1;
+      circuitsLayout = cfg.map((cnt, i) => {
+        const o = savedOrient[i] || {};
+        const item = { index: i, laneStart, laneCount: cnt,
+                       rot: [0,90,180,270].includes(+o.rot) ? +o.rot : 0,
+                       flip: !!o.flip };
+        laneStart += cnt;
+        return item;
+      });
 
       const db = require('../config/database');
       // Última vuelta no-fantasma por carril en esta manga
@@ -554,9 +575,24 @@ class SessionController {
     res.render(view, {
       t: req.t, race, manga, tanda, lanes, laps, isActive, standings,
       allParticipants, prevLapsByLane, raceBestLaps,
-      circuit, trackOutline, lastLapByLane,
+      circuit, trackOutline, lastLapByLane, circuitsLayout,
       effectiveMangaDurationMs, totalTandas, totalMangasInTanda,
     });
+  }
+
+  // POST /races/:id/circuit-orientation
+  // Guarda la orientación (rot 0/90/180/270 + espejo) por circuito del minimapa.
+  // Body: { orientations: [{ rot, flip }, ...] }. Se persiste por circuito.
+  static saveCircuitOrientation(req, res) {
+    const race = Race.findById(req.params.id);
+    if (!race) return res.status(404).json({ error: 'not_found' });
+    const arr = Array.isArray(req.body?.orientations) ? req.body.orientations : [];
+    const clean = arr.map(o => ({
+      rot:  [0,90,180,270].includes(+o?.rot) ? +o.rot : 0,
+      flip: !!o?.flip,
+    }));
+    require('../models/Settings').set(`minimap_orient:c${race.circuit_id || 0}`, JSON.stringify(clean));
+    res.json({ ok: true });
   }
 
   // GET /races/:id/mangas/:mangaId/tv  (fullscreen TV projection)
