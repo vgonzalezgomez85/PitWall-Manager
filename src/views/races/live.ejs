@@ -325,6 +325,7 @@
       hasQrCheckin:   hasQrCheckin,
       nextLaneByLane: nextLaneByLane || {},
       nextMangaInfo:  nextMangaInfo  || null,
+      raceOver:       typeof raceOver !== 'undefined' && raceOver,
     }) %>;
     RACE_DATA.allParticipants = <%- JSON.stringify(allParticipants) %>;
     const LANG = "<%= lang %>";

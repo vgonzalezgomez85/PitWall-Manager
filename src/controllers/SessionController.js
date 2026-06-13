@@ -377,6 +377,16 @@ class SessionController {
       p.finished_race = !racesAfter.has(k);
     });
 
+    // Carrera ACABADA: esta es la última manga de la carrera (no hay ninguna
+    // después, por posición) y ya ha finalizado. Cuando es así, la columna PRÓX
+    // muestra FINAL para todos (nadie tiene próxima manga). Por posición, así no
+    // se dispara al revisar mangas intermedias de una carrera ya cerrada.
+    const hasMangaAfter = db.prepare(`
+      SELECT 1 FROM mangas m JOIN tandas t ON t.id = m.tanda_id
+      WHERE m.race_id = ? AND ( t.number > ? OR (t.number = ? AND m.number > ?) ) LIMIT 1
+    `).get(race.id, tanda.number, tanda.number, manga.number);
+    const raceOver = !hasMangaAfter && (manga.status === 'finished' || manga.status === 'cancelled');
+
     const LicenseService = require('../services/LicenseService');
     const hasBestLaps  = LicenseService.has('best_laps');
     const hasQrCheckin = LicenseService.has('qr_checkin');
@@ -384,7 +394,7 @@ class SessionController {
     const isSimulating = SerialService.isSimulating;
     const isBart       = SerialService.isBart;
     const isPaused     = TimingService.isPaused && isActive;
-    res.render('races/live', { t: req.t, race, manga, tanda, lanes, laps, isActive, standings, prevLapsByLane, totalMangas, totalTandas, totalRaceMs, effectiveMangaDurationMs, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, allParticipants, nextLaneByLane, nextMangaInfo, isSimulating, isBart, isPaused });
+    res.render('races/live', { t: req.t, race, manga, tanda, lanes, laps, isActive, standings, prevLapsByLane, totalMangas, totalTandas, totalRaceMs, effectiveMangaDurationMs, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, allParticipants, nextLaneByLane, nextMangaInfo, raceOver, isSimulating, isBart, isPaused });
   }
 
   // GET /races/:id/mangas/:mangaId/panel/:type  (standalone popup)

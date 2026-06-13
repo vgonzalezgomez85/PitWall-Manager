@@ -630,6 +630,9 @@ body.resizing-sidebar * { cursor: col-resize !important; }
 .next-lane-badge--rest { background: #2a1f0e; border-color: #f97316aa; }
 .next-lane-badge--rest strong { color: #f97316; }
 .next-lane-badge--rest .next-lane-arrow { color: #f97316; }
+/* PRÓX = FINAL: la carrera ha terminado (última manga finalizada). */
+.next-lane-badge--final { background: #0f2e1a; border-color: #2ea043aa; }
+.next-lane-badge--final strong { color: #7ee787; letter-spacing: .1em; }
 
 /* ── Next-manga ready banner ──────────────────────────────────────────────── */
 .next-manga-banner {
