@@ -592,12 +592,12 @@
               <div class="adv-card__hint">≈ ${e.lostLapsEquiv} vueltas</div>
             </div>
             <div class="adv-card adv-card--wide">
-              <div class="adv-card__label">📈 Evolución por manga</div>
+              <div class="adv-card__label">📈 Evolución por carril</div>
               <div class="adv-manga-chart"><canvas id="advMangaChart"></canvas></div>
               <div class="adv-mangas">
-                ${e.perManga.map(p => `
+                ${(e.perLane || []).map(p => `
                   <div class="adv-manga">
-                    <div class="adv-manga__lbl">Manga ${p.manga}</div>
+                    <div class="adv-manga__lbl">Pista ${p.lane}</div>
                     <div class="adv-manga__val">${fmtMs(includeOutliers ? p.avgAll : p.avgClean)}</div>
                     <div class="adv-manga__meta">${p.totalLaps}v · ${p.exitCount} salidas</div>
                   </div>
@@ -637,25 +637,25 @@
           }).join('');
         }
 
-        // Gráfico de evolución de la media por manga (entidad + comparada).
+        // Gráfico de evolución de la media POR CARRIL (entidad + comparada).
         let mangaChart = null;
         function drawMangaChart(a, b) {
           const canvas = document.getElementById('advMangaChart');
           if (!canvas || typeof Chart === 'undefined') return;   // Chart.js carga después en la 1ª pasada
           if (mangaChart) { mangaChart.destroy(); mangaChart = null; }
           const key = includeOutliers ? 'avgAll' : 'avgClean';
-          const labels = (a.perManga || []).map(p => 'M' + p.manga);
+          const labels = (a.perLane || []).map(p => 'P' + p.lane);
           const datasets = [{
             label: a.entityName,
-            data: (a.perManga || []).map(p => p[key] != null ? p[key] / 1000 : null),
+            data: (a.perLane || []).map(p => p[key] != null ? p[key] / 1000 : null),
             borderColor: '#f6c90e', backgroundColor: 'rgba(246,201,14,.15)',
             tension: .25, spanGaps: true, pointRadius: 3, borderWidth: 2,
           }];
           if (b) {
-            const bByManga = new Map((b.perManga || []).map(p => [p.manga, p]));
+            const bByLane = new Map((b.perLane || []).map(p => [p.lane, p]));
             datasets.push({
               label: b.entityName,
-              data: (a.perManga || []).map(p => { const bp = bByManga.get(p.manga); return bp && bp[key] != null ? bp[key] / 1000 : null; }),
+              data: (a.perLane || []).map(p => { const bp = bByLane.get(p.lane); return bp && bp[key] != null ? bp[key] / 1000 : null; }),
               borderColor: '#58a6ff', backgroundColor: 'rgba(88,166,255,.15)',
               tension: .25, spanGaps: true, pointRadius: 3, borderWidth: 2,
             });
@@ -674,7 +674,7 @@
                 x: { ticks: { color: '#8b949e' }, grid: { color: '#21262d' } },
                 y: { ticks: { color: '#8b949e', callback: (v) => v.toFixed(2).replace('.', ',') + 's' },
                      grid: { color: '#21262d' },
-                     title: { display: true, text: 'Media por manga', color: '#6e7681' } },
+                     title: { display: true, text: 'Media por carril', color: '#6e7681' } },
               },
             },
           });

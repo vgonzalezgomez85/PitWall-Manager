@@ -941,7 +941,7 @@ class SessionController {
     // Repite el cálculo de LiveStatsController.buildEntityStats pero a nivel
     // de carrera completa (no de una manga), y añade evolución por manga.
     const advancedLaps = db.prepare(`
-      SELECT l.team_id, l.driver_id, l.manga_id,
+      SELECT l.team_id, l.driver_id, l.manga_id, l.lane,
              l.lap_time_ms, l.elapsed_ms, l.is_exit, l.is_pit_stop, l.is_ghost,
              m.number AS manga_number
       FROM laps l
@@ -957,7 +957,7 @@ class SessionController {
         key:    `${r.entity_type}_${r.entity_id}`,
         name:   r.entity_name,
         color:  r.color,
-        mangas: new Map(),   // mangaNumber -> [laps]
+        lanes:  new Map(),   // lane (pista) -> [laps]  (en slot el carril manda)
         all:    [],
       });
     });
@@ -966,8 +966,8 @@ class SessionController {
       const e = advByEntity.get(key);
       if (!e) return;
       e.all.push(l);
-      if (!e.mangas.has(l.manga_number)) e.mangas.set(l.manga_number, []);
-      e.mangas.get(l.manga_number).push(l);
+      if (!e.lanes.has(l.lane)) e.lanes.set(l.lane, []);
+      e.lanes.get(l.lane).push(l);
     });
 
     function stats(laps) {
@@ -998,10 +998,12 @@ class SessionController {
 
     const advancedStats = [...advByEntity.values()].map(e => {
       const s = stats(e.all);
-      const perManga = [...e.mangas.entries()]
+      // Evolución POR CARRIL (pista): cada equipo corre cada carril una vez, y
+      // en slot el carril es lo determinante. Ordenado por nº de carril.
+      const perLane = [...e.lanes.entries()]
         .sort((a,b) => a[0] - b[0])
-        .map(([mn, laps]) => ({ manga: mn, ...stats(laps) }));
-      return { key: e.key, entityName: e.name, color: e.color, ...s, perManga };
+        .map(([lane, laps]) => ({ lane, ...stats(laps) }));
+      return { key: e.key, entityName: e.name, color: e.color, ...s, perLane };
     });
 
     res.render('races/results', {
