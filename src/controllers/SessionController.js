@@ -907,6 +907,7 @@ class SessionController {
     const cumE = {};
     entityKeys.forEach(k => { cumE[k] = { laps: 0, cleanTime: 0, cleanCount: 0, raced: 0 }; });
 
+    const N = entityKeys.length;
     const positionPoints = {};
     entityKeys.forEach(k => { positionPoints[k] = []; });
     let cumTimeMs = 0;
@@ -914,7 +915,9 @@ class SessionController {
     mangaSeq.forEach(m => {
       const mLaps = lapsIdx.get(m.id);
       if (!mLaps || mLaps.length === 0) return;   // manga sin disputar
-      cumTimeMs += (m.actual_duration_ms || durDefault);
+      const durMs = m.actual_duration_ms || durDefault;
+      const tStartMin = +(cumTimeMs / 60000).toFixed(2);   // inicio de esta manga
+      cumTimeMs += durMs;
       mLaps.forEach(r => {
         const k = entityKeyOf(r);
         if (!cumE[k]) return;
@@ -934,10 +937,14 @@ class SessionController {
       });
       const sorted = [...entityKeys].sort((a, b) => proj[b] - proj[a] || cumE[b].laps - cumE[a].laps);
       const tMin = +(cumTimeMs / 60000).toFixed(2);
-      // Solo se pinta a quien ya ha corrido (proyección > 0). Así su línea
-      // empieza cuando entra su tanda, en su posición proyectada real, sin
-      // líneas planas al fondo de quien aún no ha salido.
-      sorted.forEach((k, idx) => { if (proj[k] > 0) positionPoints[k].push({ x: tMin, y: idx + 1 }); });
+      // Cada entidad SALE desde la última posición (P=N) al entrar (inicio de su
+      // 1ª manga) y desde ahí la línea sube/baja según su proyección mejora o no.
+      // Solo se pinta a quien ya ha corrido (sin líneas planas de quien no salió).
+      sorted.forEach((k, idx) => {
+        if (proj[k] <= 0) return;
+        if (positionPoints[k].length === 0) positionPoints[k].push({ x: tStartMin, y: N });
+        positionPoints[k].push({ x: tMin, y: idx + 1 });
+      });
     });
 
     const positionData = {};
