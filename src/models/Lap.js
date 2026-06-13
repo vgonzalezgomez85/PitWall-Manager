@@ -133,7 +133,11 @@ class Lap {
       LEFT JOIN drivers d ON d.id = l.driver_id
       WHERE l.race_id = ? AND l.is_ghost = 0
       GROUP BY entity_id, entity_type
-      ORDER BY total_laps DESC, coma_total DESC, total_time_ms ASC
+      -- Desempate: coma MEDIA por manga (no la suma), para que la escala sea < 1
+      -- e intuitiva; con mangas iguales el orden es idéntico al de la suma.
+      ORDER BY total_laps DESC,
+               (coma_total * 1.0 / NULLIF(mangas_raced, 0)) DESC,
+               total_time_ms ASC
     `).all(raceId);
   }
 
