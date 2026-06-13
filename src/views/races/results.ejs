@@ -878,7 +878,7 @@
         });
       });
 
-      // Eje Y centrado en la media ± 3s: las vueltas normales llenan la gráfica
+      // Eje Y centrado en la media ± 2s: las vueltas normales llenan la gráfica
       // y la salida (~2s) y las salidas de pista (~14s) quedan fuera, en vez de
       // aplastar todo en una línea plana. Mediana = centro robusto a outliers.
       let yMin, yMax;
@@ -886,7 +886,7 @@
         const sorted = [...allMs].sort((a, b) => a - b);
         const medMs = sorted[Math.floor(sorted.length / 2)];
         const center = mode === 'abs' ? medMs / 1000 : 0;
-        yMin = center - 3; yMax = center + 3;
+        yMin = center - 2; yMax = center + 2;
       }
 
       if (chart) chart.destroy();
