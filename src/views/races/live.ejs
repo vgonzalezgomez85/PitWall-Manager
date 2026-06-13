@@ -240,26 +240,29 @@
     // Number resting entities (1..N) alphabetically by name so each rest
     // entity has its own card with "Descanso n/N".
     // Totales y mangas PENDIENTES por ENTIDAD (de aggregateByRace + asignaciones).
-    // remaining_mangas == 0 → la entidad ya ha corrido todas sus mangas (FINAL).
+    // finished_race (del controlador) = ya no le quedan mangas por CORRER
+    // después de la actual (por POSICIÓN, no por estado). Así funciona tanto en
+    // vivo como revisando una carrera cerrada: en la manga 7/11 un equipo que
+    // aún corre la 9/10/11 NO está FINAL.
     const entityTotalLaps = {};
     const entityTotalTime = {};
-    const entityRemaining = {};
+    const entityFinished  = {};
     (allParticipants || []).forEach(p => {
       if (p.entity_id == null) return;
       const k = `${p.entity_type === 'team' ? 't' : 'd'}${p.entity_id}`;
       entityTotalLaps[k] = p.total_laps || 0;
       entityTotalTime[k] = p.total_time_ms || 0;
-      entityRemaining[k] = p.remaining_mangas || 0;
+      entityFinished[k]  = !!p.finished_race;
     });
     // Entidades que NO corren esta manga: separar las que aún volverán a correr
-    // (DESCANSO, con mangas pendientes) de las que ya han ACABADO todo (FINAL).
-    // Solo las que descansan entran en la "rueda de descansos" (numeración x/y);
+    // (DESCANSO, le quedan carriles) de las que ya han corrido TODOS sus carriles
+    // (FINAL). Solo las que descansan entran en la "rueda de descansos" (x/y);
     // las acabadas salen de esa rueda y se marcan como FINAL.
     const keyOf = l => l.team_id ? `t${l.team_id}` : `d${l.driver_id}`;
     const notRacing = lanes.filter(l => l.is_rest)
       .sort((a, b) => (a.team_name || a.driver_name || '').localeCompare(b.team_name || b.driver_name || ''));
-    const restingEntries  = notRacing.filter(l => (entityRemaining[keyOf(l)] || 0) > 0);
-    const finishedEntries = notRacing.filter(l => (entityRemaining[keyOf(l)] || 0) === 0);
+    const restingEntries  = notRacing.filter(l => !entityFinished[keyOf(l)]);
+    const finishedEntries = notRacing.filter(l =>  entityFinished[keyOf(l)]);
     const restTotal = restingEntries.length;
     const cardInfoByKey = {};
     restingEntries.forEach((l, i)  => { cardInfoByKey[keyOf(l)] = { cardId: 'r' + (i + 1), restPos: i + 1, finished: false }; });
