@@ -835,6 +835,7 @@
       const driverFilter = selDriver.value;
       const lanes = [...enabledLanes].sort((a,b)=>a-b);
       const datasets = [];
+      const allMs = [];   // para centrar el eje Y en la media ± 3s
 
       [...selectedEntities].forEach(key => {
         const entity = data[key];
@@ -847,6 +848,7 @@
             && (driverFilter === 'all' || l.driver === driverFilter)
           );
           if (filtered.length === 0) return;
+          filtered.forEach(l => allMs.push(l.ms));
           const avg = filtered.reduce((s, l) => s + l.ms, 0) / filtered.length;
           const points = filtered.map((l, idx) => ({
             x: idx + 1,
@@ -875,6 +877,17 @@
           });
         });
       });
+
+      // Eje Y centrado en la media ± 3s: las vueltas normales llenan la gráfica
+      // y la salida (~2s) y las salidas de pista (~14s) quedan fuera, en vez de
+      // aplastar todo en una línea plana. Mediana = centro robusto a outliers.
+      let yMin, yMax;
+      if (allMs.length) {
+        const sorted = [...allMs].sort((a, b) => a - b);
+        const medMs = sorted[Math.floor(sorted.length / 2)];
+        const center = mode === 'abs' ? medMs / 1000 : 0;
+        yMin = center - 3; yMax = center + 3;
+      }
 
       if (chart) chart.destroy();
       chart = new Chart(canvas, {
@@ -908,6 +921,7 @@
               grid:  { color: '#21262d' },
             },
             y: {
+              min: yMin, max: yMax,
               title: { display: true,
                 text: mode === 'abs' ? 'Segundos' : 'Δ vs media (s)', color: '#8b949e' },
               ticks: { color: '#8b949e' },
