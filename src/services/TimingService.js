@@ -962,15 +962,96 @@ class TimingServiceClass {
       r.totalTimeMs = priorTime + (ld?.lapsMsSum || 0);
     });
 
+    // ── Proyección de carrera (para web y app móvil) ──────────────────────
+    // Clasificación estimada por entidad sobre TODA la carrera: vueltas
+    // proyectadas al final, posición general, gap al de delante y "P/Subir"
+    // (media que necesita en lo que queda para alcanzar al de delante). Se
+    // calcula aquí en el servidor para que la app móvil solo tenga que leerlo.
+    const projection = this._buildProjection(race, laneMap, startTime);
+
     return {
       mangaId:      manga.id,
       raceId:       race.id,
       elapsedMs:    Date.now() - startTime,
       remainingMs:  Math.max(0, this.session.durationMs - (Date.now() - startTime)),
       standings:    rows,
+      projection,
       raceBestLaps,
       circuits:     this._circuitClocks(),
     };
+  }
+
+  // Proyección de carrera por ENTIDAD (mismo modelo que el panel web). Devuelve
+  // un array ordenado por vueltas proyectadas con: projectedTotal, posición,
+  // gap en vueltas al de delante, y avgToCatch ("P/Subir": media ms/vuelta que
+  // necesita en lo que le queda para alcanzar la proyección del de delante;
+  // null = líder / sin tiempo / inalcanzable < mejor vuelta). Pensado para que
+  // la app móvil lo lea tal cual sin recalcular.
+  _buildProjection(race, laneMap, startTime) {
+    const db = require('../config/database');
+    const Lap = require('../models/Lap');
+    const durMs = this.session.durationMs || 0;
+    const remCurMs = Math.max(0, durMs - (Date.now() - startTime));
+
+    // Mangas pendientes (a CORRER) por entidad.
+    const idCol = race.format === 'team' ? 'ml.team_id' : 'ml.driver_id';
+    const remRows = db.prepare(`
+      SELECT ${idCol} AS eid,
+             SUM(CASE WHEN m.status = 'pending' THEN 1 ELSE 0 END) AS pending
+      FROM manga_lanes ml JOIN mangas m ON m.id = ml.manga_id
+      WHERE m.race_id = ? AND ml.is_rest = 0 AND ${idCol} IS NOT NULL
+      GROUP BY eid
+    `).all(race.id);
+    const remById = {};
+    remRows.forEach(r => { remById[r.eid] = r.pending || 0; });
+
+    // Entidades que corren la manga actual (onTrack → le queda la manga actual).
+    const activeKeys = new Set();
+    Object.values(laneMap).forEach(l => {
+      if (l.isRest) return;
+      const k = l.teamId ? 't' + l.teamId : (l.driverId ? 'd' + l.driverId : null);
+      if (k) activeKeys.add(k);
+    });
+
+    const agg = Lap.aggregateByRace(race.id).filter(p => p.entity_id != null);
+    const proj = agg.map(p => {
+      const k = (p.entity_type === 'team' ? 't' : 'd') + p.entity_id;
+      const onTrack = activeKeys.has(k);
+      const avg = p.avg_lap_ms;
+      const remMs = (onTrack ? remCurMs : 0) + (remById[p.entity_id] || 0) * durMs;
+      const comaPM = p.mangas_raced > 0 ? (p.coma_total || 0) / p.mangas_raced : 0;
+      const projRaw = (avg > 0) ? p.total_laps + (remMs > 0 ? remMs / avg : comaPM) : null;
+      return {
+        entityId: p.entity_id, entityType: p.entity_type, name: p.entity_name,
+        total: p.total_laps, bestLapMs: p.best_lap_ms,
+        avgLapMs: avg != null ? Math.round(avg) : null, projRaw, remMs,
+      };
+    });
+
+    proj.sort((a, b) =>
+      (b.projRaw ?? -1) - (a.projRaw ?? -1) ||
+      (a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity));
+
+    return proj.map((r, i) => {
+      const ahead = proj[i - 1];
+      const aheadRaw = ahead ? ahead.projRaw : null;
+      const gapV = (i === 0 || aheadRaw == null || r.projRaw == null) ? null : (aheadRaw - r.projRaw);
+      let avgToCatch = null;
+      if (!(i === 0 || aheadRaw == null || !(r.remMs > 0))) {
+        const lapsNeeded = aheadRaw - r.total;
+        const req = lapsNeeded > 0 ? r.remMs / lapsNeeded : null;
+        if (req != null && req > 0 && (!r.bestLapMs || req >= r.bestLapMs)) avgToCatch = Math.round(req);
+      }
+      return {
+        position: i + 1,
+        entityId: r.entityId, entityType: r.entityType, name: r.name,
+        total: r.total,
+        projectedTotal: r.projRaw != null ? +r.projRaw.toFixed(1) : null,
+        gapV: gapV != null ? +gapV.toFixed(2) : null,
+        avgToCatch,
+        avgLapMs: r.avgLapMs,
+      };
+    });
   }
 
   // Derivados del estado por circuito: la manga "corre" si algún circuito corre;
