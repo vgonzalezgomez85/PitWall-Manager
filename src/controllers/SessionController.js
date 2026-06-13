@@ -942,12 +942,12 @@ class SessionController {
     // de carrera completa (no de una manga), y añade evolución por manga.
     const advancedLaps = db.prepare(`
       SELECT l.team_id, l.driver_id, l.manga_id, l.lane,
-             l.lap_time_ms, l.elapsed_ms, l.is_exit, l.is_pit_stop, l.is_ghost,
+             l.lap_time_ms, l.elapsed_ms, l.is_exit, l.is_pit_stop, l.is_ghost, l.is_warmup,
              m.number AS manga_number
       FROM laps l
       JOIN mangas m ON m.id = l.manga_id
       JOIN tandas t ON t.id = m.tanda_id
-      WHERE t.race_id = ? AND l.is_ghost = 0
+      WHERE t.race_id = ? AND l.is_ghost = 0 AND l.is_warmup = 0
       ORDER BY t.number ASC, m.number ASC, l.elapsed_ms ASC
     `).all(race.id);
 
