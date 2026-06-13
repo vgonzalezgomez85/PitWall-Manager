@@ -318,13 +318,18 @@ function buildCard(lane) {
   card.style.setProperty('--card-color', lane.color);
 
   if (lane.isRest) {
+    if (lane.finished) card.classList.add('is-final');
     const restTotal = lane.prevLapCount || 0;
-    const posLabel = (lane.restPos && lane.restTotal)
-      ? `${LANG === 'es' ? 'Descanso' : 'Rest'} ${lane.restPos}/${lane.restTotal}`
-      : (LANG === 'es' ? 'Descansando' : 'Resting');
+    // FINAL: ya corrió todas sus mangas (fuera de la rueda de descansos).
+    const posLabel = lane.finished
+      ? 'FINAL'
+      : (lane.restPos && lane.restTotal)
+        ? `${LANG === 'es' ? 'Descanso' : 'Rest'} ${lane.restPos}/${lane.restTotal}`
+        : (LANG === 'es' ? 'Descansando' : 'Resting');
+    const icon = lane.finished ? '🏁' : '💤';
     card.innerHTML = `
       <div class="lane-card__rest-head">
-        <span class="lane-card__rest-icon">💤</span>
+        <span class="lane-card__rest-icon">${icon}</span>
         <span class="lane-card__pos" id="card-pos-${lane.cardId || lane.lane}"></span>
       </div>
       <div class="lane-card__rest-name">${lane.name}</div>

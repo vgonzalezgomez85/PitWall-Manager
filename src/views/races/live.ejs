@@ -239,37 +239,44 @@
     const laneInit = {};
     // Number resting entities (1..N) alphabetically by name so each rest
     // entity has its own card with "Descanso n/N".
-    const restEntries = lanes.filter(l => l.is_rest)
-      .sort((a, b) => (a.team_name || a.driver_name || '').localeCompare(b.team_name || b.driver_name || ''));
-    const restTotal = restEntries.length;
-    const restPosByEntityKey = {};
-    restEntries.forEach((r, i) => {
-      const key = r.team_id ? `t${r.team_id}` : `d${r.driver_id}`;
-      restPosByEntityKey[key] = i + 1;
-    });
-    // Total de vueltas de carrera por ENTIDAD (equipo/piloto) — para los que
-    // descansan, que no están en ningún carril esta manga (lane=0) y por tanto
-    // no pueden mirarse por `prevLapsByLane[lane]`. allParticipants ya es
-    // aggregateByRace(race.id): total acumulado por entidad en toda la carrera.
+    // Totales y mangas PENDIENTES por ENTIDAD (de aggregateByRace + asignaciones).
+    // remaining_mangas == 0 → la entidad ya ha corrido todas sus mangas (FINAL).
     const entityTotalLaps = {};
     const entityTotalTime = {};
+    const entityRemaining = {};
     (allParticipants || []).forEach(p => {
       if (p.entity_id == null) return;
       const k = `${p.entity_type === 'team' ? 't' : 'd'}${p.entity_id}`;
       entityTotalLaps[k] = p.total_laps || 0;
       entityTotalTime[k] = p.total_time_ms || 0;
+      entityRemaining[k] = p.remaining_mangas || 0;
     });
+    // Entidades que NO corren esta manga: separar las que aún volverán a correr
+    // (DESCANSO, con mangas pendientes) de las que ya han ACABADO todo (FINAL).
+    // Solo las que descansan entran en la "rueda de descansos" (numeración x/y);
+    // las acabadas salen de esa rueda y se marcan como FINAL.
+    const keyOf = l => l.team_id ? `t${l.team_id}` : `d${l.driver_id}`;
+    const notRacing = lanes.filter(l => l.is_rest)
+      .sort((a, b) => (a.team_name || a.driver_name || '').localeCompare(b.team_name || b.driver_name || ''));
+    const restingEntries  = notRacing.filter(l => (entityRemaining[keyOf(l)] || 0) > 0);
+    const finishedEntries = notRacing.filter(l => (entityRemaining[keyOf(l)] || 0) === 0);
+    const restTotal = restingEntries.length;
+    const cardInfoByKey = {};
+    restingEntries.forEach((l, i)  => { cardInfoByKey[keyOf(l)] = { cardId: 'r' + (i + 1), restPos: i + 1, finished: false }; });
+    finishedEntries.forEach((l, i) => { cardInfoByKey[keyOf(l)] = { cardId: 'f' + (i + 1), restPos: null,    finished: true  }; });
     lanes.forEach(l => {
       const entityKey = l.team_id ? `t${l.team_id}` : (l.driver_id ? `d${l.driver_id}` : null);
-      const restPos = l.is_rest && entityKey ? restPosByEntityKey[entityKey] : null;
-      const cardId  = l.is_rest ? ('r' + (restPos || 0)) : String(l.lane);
+      const info    = (l.is_rest && entityKey) ? cardInfoByKey[entityKey] : null;
+      const cardId  = l.is_rest ? (info ? info.cardId : 'r0') : String(l.lane);
       laneInit[cardId] = {
         cardId,
         lane:         l.lane,
         name:         l.team_name || l.driver_name || ('Lane ' + l.lane),
         color:        l.is_rest ? (l.team_color || '#484f58') : (LC[l.lane - 1] || '#8b949e'),
         isRest:       l.is_rest ? true : false,
-        restPos, restTotal,
+        finished:     info ? info.finished : false,
+        restPos:      info ? info.restPos : null,
+        restTotal,
         lapCount:     0, bestLapMs: null, lastLapMs: null, exitCount: 0,
         prevLapCount: l.is_rest
           ? (entityKey ? (entityTotalLaps[entityKey] || 0) : 0)
