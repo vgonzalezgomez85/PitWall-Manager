@@ -320,7 +320,6 @@ class SessionController {
     // All-race participant totals + remaining pending mangas (for full-race projection).
     // Includes ALL entities assigned to any manga of the race (even tandas not started yet).
     const allParticipants = Lap.aggregateByRace(race.id);
-    SessionController._applyProjAvg(allParticipants);
     const db = require('../config/database');
     const isTeamRace = race.format === 'team';
     const idCol = isTeamRace ? 'ml.team_id' : 'ml.driver_id';
@@ -382,7 +381,6 @@ class SessionController {
 
     // All-race participants (includes pending tandas) — see live() for details
     const allParticipants = Lap.aggregateByRace(race.id);
-    SessionController._applyProjAvg(allParticipants);
     const db = require('../config/database');
     const isTeamRace = race.format === 'team';
     const idCol = isTeamRace ? 'ml.team_id' : 'ml.driver_id';
@@ -1835,19 +1833,6 @@ class SessionController {
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.send('﻿' + lines.join('\r\n') + '\r\n');
-  }
-
-  // Media de PROYECCIÓN base-tiempo (modelo TicTac): tiempo de pista de las
-  // mangas terminadas en las que corrió ÷ (vueltas + coma). Los descansos no
-  // aportan ni tiempo ni vueltas. Fallback a la media de vueltas cuando aún
-  // no hay manga terminada (p.ej. carrera antigua sin actual_duration_ms).
-  static _applyProjAvg(allParticipants) {
-    allParticipants.forEach(p => {
-      const lapsFrac = (p.total_laps || 0) + (p.coma_total || 0);
-      p.proj_avg_ms = (p.race_dur_ms > 0 && lapsFrac > 0)
-        ? p.race_dur_ms / lapsFrac
-        : (p.avg_lap_ms ?? null);
-    });
   }
 
   static _buildPointsRanking(raceId) {
