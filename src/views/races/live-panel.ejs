@@ -561,6 +561,24 @@
     let _timerRunning = !!PANEL_DATA.isActive;
     function renderTimer() { if (panelTimer) panelTimer.textContent = fmtClock(_remainMs); }
     renderTimer();
+
+    // Estado de la cabecera (En espera / En carrera / Finalizada). Se pinta al
+    // cargar según isActive, pero hay que ACTUALIZARLO en vivo: si abriste el
+    // panel en "En espera" y luego dio GO, debe pasar a "En carrera".
+    let _statusShown = PANEL_DATA.isActive ? 'active'
+                     : (PANEL_DATA.mangaStatus === 'finished' ? 'finished' : 'pending');
+    function setPanelStatus(state) {
+      if (state === _statusShown) return;
+      _statusShown = state;
+      const s = document.getElementById('panelStatus');
+      if (!s) return;
+      if (state === 'active')
+        s.innerHTML = `<span class="status-dot status-dot--active"></span><span class="status-text status-text--active">${LANG === 'es' ? 'En carrera' : 'Racing'}</span>`;
+      else if (state === 'finished')
+        s.innerHTML = `<span class="status-text status-text--finished">${LANG === 'es' ? 'Finalizada' : 'Finished'}</span>`;
+      else
+        s.innerHTML = `<span class="status-text status-text--pending">${LANG === 'es' ? 'En espera' : 'Pending'}</span>`;
+    }
     setInterval(() => {
       if (_timerRunning && _remainMs > 0) { _remainMs = Math.max(0, _remainMs - 1000); renderTimer(); }
     }, 1000);
@@ -581,7 +599,7 @@
       // ya en marcha), saltamos a ella. Si es la nuestra, render normal.
       if (data.raceId === RACE_ID && data.mangaId !== MANGA_ID) { repointTo(data.mangaId); return; }
       if (data.mangaId === MANGA_ID) {
-        if (typeof data.remainingMs === 'number') { _remainMs = data.remainingMs; _timerRunning = true; renderTimer(); }
+        if (typeof data.remainingMs === 'number') { _remainMs = data.remainingMs; _timerRunning = true; renderTimer(); setPanelStatus('active'); }
         render(data);
       }
     });
@@ -601,8 +619,7 @@
     socket.on('manga:stopped', (data) => {
       if (data && data.mangaId != null && data.mangaId !== MANGA_ID) return;
       _timerRunning = false; _remainMs = 0; renderTimer();
-      const s = document.getElementById('panelStatus');
-      if (s) s.innerHTML = `<span class="status-text status-text--finished">${LANG === 'es' ? 'Finalizada' : 'Finished'}</span>`;
+      setPanelStatus('finished');
     });
     socket.on('manga:cancelled', (data) => { if (!data || data.raceId === RACE_ID) location.reload(); });
   </script>
