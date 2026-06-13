@@ -929,7 +929,11 @@ function renderProjected(data) {
     if (r.avgLapMs && r.avgLapMs > 0) {
       const currentLeftMs = r.onTrack ? mangaRemainingMs : 0; // lo que queda de su manga actual
       const futureMs      = futureMangas * MANGA_DURATION_MS;  // mangas futuras completas
-      r.projectedTotalRaw = (r.total || 0) + (currentLeftMs + futureMs) / r.avgLapMs;
+      const remMs         = currentLeftMs + futureMs;
+      // Al terminar (sin tiempo restante), ancla en la coma media por manga
+      // (misma que desempata en resultados) para mostrar la fracción de vuelta.
+      const comaPM = (p && p.mangas_raced > 0) ? (p.coma_total || 0) / p.mangas_raced : 0;
+      r.projectedTotalRaw = (r.total || 0) + (remMs > 0 ? remMs / r.avgLapMs : comaPM);
       r.projectedTotal    = Math.round(r.projectedTotalRaw);
     } else {
       r.projectedTotalRaw = null;

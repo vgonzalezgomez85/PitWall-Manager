@@ -398,7 +398,12 @@
         const currentLeftMs = r.onTrack ? mangaRemainingMs : 0; // lo que queda de su manga actual
         r._remRacingMs = currentLeftMs + futureMangas * MANGA_DURATION_MS; // tiempo de carrera que aún le queda
         if (r.avgLapMs && r.avgLapMs > 0) {
-          r.projectedTotalRaw = (r.total || 0) + r._remRacingMs / r.avgLapMs;
+          // Si aún le queda carrera, extrapola las vueltas futuras. Si ya terminó,
+          // ancla en la coma media por manga (la MISMA que desempata en resultados)
+          // para mostrar la fracción de vuelta y no un entero seco (468,0 → 468,5).
+          const comaPM = (p && p.mangas_raced > 0) ? (p.coma_total || 0) / p.mangas_raced : 0;
+          const extra  = r._remRacingMs > 0 ? r._remRacingMs / r.avgLapMs : comaPM;
+          r.projectedTotalRaw = (r.total || 0) + extra;
           r.projectedTotal    = Math.round(r.projectedTotalRaw);
         } else {
           r.projectedTotalRaw = null;
