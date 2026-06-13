@@ -127,19 +127,7 @@ class Lap {
           WHERE mg.race_id = l.race_id AND ml.is_rest = 0
             AND ((t.id IS NOT NULL AND ml.team_id = t.id)
               OR (t.id IS NULL    AND ml.driver_id = d.id))
-        ), 0) AS coma_total,
-        -- Tiempo de pista de la entidad: duración real de las mangas TERMINADAS
-        -- en las que corrió (los descansos no aportan tiempo ni vueltas). Base
-        -- de la media de proyección estilo TicTac: tiempo ÷ (vueltas + coma).
-        COALESCE((
-          SELECT SUM(COALESCE(mg2.actual_duration_ms,
-                     (SELECT manga_duration_minutes * 60000 FROM races WHERE id = l.race_id)))
-          FROM manga_lanes ml2
-          JOIN mangas mg2 ON mg2.id = ml2.manga_id
-          WHERE mg2.race_id = l.race_id AND mg2.status = 'finished' AND ml2.is_rest = 0
-            AND ((t.id IS NOT NULL AND ml2.team_id = t.id)
-              OR (t.id IS NULL    AND ml2.driver_id = d.id))
-        ), 0) AS race_dur_ms
+        ), 0) AS coma_total
       FROM laps l
       LEFT JOIN teams   t ON t.id = l.team_id
       LEFT JOIN drivers d ON d.id = l.driver_id
