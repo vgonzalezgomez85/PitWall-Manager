@@ -1,0 +1,38 @@
+name: Build Windows installer
+
+# Lánzalo a mano desde la pestaña "Actions" de GitHub (botón "Run workflow"),
+# o automáticamente al crear un tag de versión (v1.0.0, v1.1.0, ...).
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-win:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Windows installer
+        run: npm run dist:win
+        env:
+          # Evita que electron-builder intente firmar el ejecutable (no tenemos certificado)
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: PitWall-Windows
+          path: |
+            dist-app/*.exe
+          if-no-files-found: error
