@@ -12,3 +12,7 @@ out/
 logs/
 public/uploads/
 src/data/slotime.license
+
+# Backups locales del portátil (no se suben a git)
+bkp_portatil/
+database/_backup_pre_portatil/
