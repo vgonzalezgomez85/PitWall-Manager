@@ -32,7 +32,7 @@ class ControlController {
       SELECT m.id AS manga_id, m.number AS manga_number, m.status AS manga_status,
              m.tanda_id, r.id AS race_id, r.name AS race_name, r.type, r.format,
              r.manga_duration_minutes, r.driver_min_total_ms, r.driver_max_total_ms,
-             r.driver_change_lockout_ms
+             r.driver_change_lockout_ms, r.driver_max_runs
       FROM mangas m
       JOIN races r ON r.id = m.race_id
       WHERE r.type = 'championship'
@@ -53,6 +53,7 @@ class ControlController {
         driver_min_total_ms: row.driver_min_total_ms,
         driver_max_total_ms: row.driver_max_total_ms,
         driver_change_lockout_ms: row.driver_change_lockout_ms,
+        driver_max_runs: row.driver_max_runs,
       },
       liveStatus: row.manga_status === 'active' ? 'unknown' : 'standby',
     };
