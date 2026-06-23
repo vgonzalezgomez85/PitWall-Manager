@@ -25,6 +25,7 @@ const totalsByName = {};
 const minMs = current && current.race ? (current.race.driver_min_total_ms || 0) : 0;
 const maxMs = current && current.race ? (current.race.driver_max_total_ms || 0) : 0;
 const lockoutMs = current && current.race ? (current.race.driver_change_lockout_ms || 120000) : 120000;
+const maxRuns = current && current.race ? (current.race.driver_max_runs || 0) : 0;
 %>
 
 <div class="vt-page vt-page--shifts">
@@ -77,7 +78,11 @@ const lockoutMs = current && current.race ? (current.race.driver_change_lockout_
       <div class="sc-scan-bar" id="scScanBar">
         <span class="sc-scan-led" id="scLed"></span>
         <span class="sc-scan-msg" id="scMsg"><%= lang === 'es' ? 'Listo para escanear' : 'Ready to scan' %></span>
-        <span class="sc-remaining" id="scRemaining" style="margin-left:auto"></span>
+        <button type="button" class="sc-cam-btn" id="scCamBtn" style="margin-left:auto">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <%= lang === 'es' ? 'Cámara' : 'Camera' %>
+        </button>
+        <span class="sc-remaining" id="scRemaining"></span>
       </div>
 
       <!-- Input invisible que captura el lector USB-QR -->
@@ -146,6 +151,10 @@ const lockoutMs = current && current.race ? (current.race.driver_change_lockout_
               else if (underMin) badge = 'is-info';
               const pct = maxMs > 0 ? Math.min(100, Math.round(t / maxMs * 100)) : 0;
               const minPct = maxMs > 0 && minMs > 0 ? Math.min(100, Math.round(minMs / maxMs * 100)) : 0;
+              const runs = r.runs_count || 0;
+              const overRuns = maxRuns > 0 && runs >= maxRuns;
+              const nearRuns = maxRuns > 0 && runs === maxRuns - 1 && !overRuns;
+              const runsCls = overRuns ? 'is-over' : (nearRuns ? 'is-near' : '');
             %>
               <div class="sc-pilot-row" data-profile-name="<%= r.profile_name %>">
                 <div class="sc-pilot-row__name">
@@ -160,6 +169,10 @@ const lockoutMs = current && current.race ? (current.race.driver_change_lockout_
                     <% } %>
                   </div>
                 <% } %>
+                <div class="sc-pilot-row__runs <%= runsCls %>" title="<%= lang === 'es' ? 'Veces que ha corrido (turnos)' : 'Times driven (stints)' %><%= maxRuns > 0 ? (lang === 'es' ? ' · máx ' : ' · max ') + maxRuns : '' %>">
+                  <span class="sc-pilot-row__runs-n"><%= runs %><% if (maxRuns > 0) { %><span class="sc-pilot-row__runs-max">/<%= maxRuns %></span><% } %></span>
+                  <span class="sc-pilot-row__runs-l"><%= overRuns ? (lang === 'es' ? 'pasado' : 'over') : (lang === 'es' ? 'turnos' : 'stints') %></span>
+                </div>
                 <div class="sc-pilot-row__total" data-total-ms="<%= t %>">
                   <%= fmtTime(t) %>
                   <% if (maxMs > 0) { %><span style="color:var(--vt-mute)"> / <%= fmtTime(maxMs) %></span><% } %>
@@ -181,6 +194,24 @@ const lockoutMs = current && current.race ? (current.race.driver_change_lockout_
         <% } %>
       </div>
 
+      <!-- ── Modal lector por webcam ─────────────────────────────────── -->
+      <div class="sc-cam-modal" id="scCamModal" hidden>
+        <div class="sc-cam-box">
+          <div class="sc-cam-head">
+            <span class="sc-cam-status" id="scCamStatus"><%= lang === 'es' ? 'Iniciando cámara…' : 'Starting camera…' %></span>
+            <div class="sc-cam-acts">
+              <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="scCamSwitch" style="display:none"><%= lang === 'es' ? 'Cambiar cámara' : 'Switch camera' %></button>
+              <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="scCamClose"><%= lang === 'es' ? 'Cerrar' : 'Close' %></button>
+            </div>
+          </div>
+          <div class="sc-cam-view">
+            <video id="scCamVideo" playsinline muted></video>
+            <div class="sc-cam-reticle" id="scCamReticle"></div>
+          </div>
+          <div class="sc-cam-hint"><%= lang === 'es' ? 'Apunta la cámara al QR del piloto' : 'Point the camera at the pilot QR' %></div>
+        </div>
+      </div>
+
       <!-- ── Toast contenedor ───────────────────────────────────────── -->
       <div class="sc-toast-wrap" id="scToasts" aria-live="polite"></div>
 
@@ -191,6 +222,7 @@ const lockoutMs = current && current.race ? (current.race.driver_change_lockout_
 
 <% if (current) { %>
 <script src="/socket.io/socket.io.js"></script>
+<script src="/js/jsQR.js"></script>
 <script>
 const RACE_ID  = <%= current.race.id %>;
 const MANGA_ID = <%= current.manga.id %>;
@@ -230,12 +262,9 @@ document.addEventListener('click', e => { if (e.target.tagName !== 'A' && e.targ
 window.addEventListener('focus', refocus);
 refocus(); updateFocus();
 
-// ── Submit en Enter (el lector USB termina con Enter) ─────────────
-input.addEventListener('keydown', async e => {
-  if (e.key !== 'Enter') return;
-  e.preventDefault();
-  const code = input.value.trim();
-  input.value = '';
+// ── Envío de un código (lo comparten el lector USB y la webcam) ───
+async function submitCode(code) {
+  code = (code || '').trim();
   if (!code) return;
   setLed('busy', LANG === 'es' ? 'Procesando…' : 'Processing…');
   try {
@@ -274,9 +303,129 @@ input.addEventListener('keydown', async e => {
     toast('error', err.message || 'Network error');
   } finally {
     updateFocus();
-    refocus();
   }
+}
+
+// ── Submit en Enter (el lector USB termina con Enter) ─────────────
+input.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const code = input.value.trim();
+  input.value = '';
+  submitCode(code).finally(refocus);
 });
+
+// ── Lector por webcam (jsQR) ──────────────────────────────────────
+// Reutiliza el mismo endpoint de check-in: la webcam solo es otra forma
+// de obtener el string del QR (DRV:<id>). El USB-HID sigue funcionando.
+const camBtn     = document.getElementById('scCamBtn');
+const camModal   = document.getElementById('scCamModal');
+const camVideo   = document.getElementById('scCamVideo');
+const camClose   = document.getElementById('scCamClose');
+const camSwitch  = document.getElementById('scCamSwitch');
+const camStatus  = document.getElementById('scCamStatus');
+const camReticle = document.getElementById('scCamReticle');
+let camStream = null, camRAF = null, camCanvas = null, camCtx = null;
+let camDevices = [], camDeviceIdx = 0;
+let camLastCode = '', camLastTs = 0;
+
+function camSetStatus(t) { if (camStatus) camStatus.textContent = t; }
+function camFlash() {
+  if (!camReticle) return;
+  camReticle.classList.add('is-hit');
+  setTimeout(() => camReticle.classList.remove('is-hit'), 350);
+}
+
+async function camStart(deviceId) {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    camSetStatus(LANG === 'es' ? 'Cámara no disponible en este navegador' : 'Camera not available in this browser');
+    return;
+  }
+  if (!window.isSecureContext) {
+    camSetStatus(LANG === 'es'
+      ? 'La cámara necesita HTTPS o localhost (no funciona abriendo por IP de red)'
+      : 'Camera needs HTTPS or localhost (does not work over a network IP)');
+    return;
+  }
+  try {
+    const constraints = deviceId
+      ? { video: { deviceId: { exact: deviceId } } }
+      : { video: { facingMode: { ideal: 'environment' } } };
+    camStream = await navigator.mediaDevices.getUserMedia(constraints);
+    camVideo.srcObject = camStream;
+    await camVideo.play();
+    camSetStatus(LANG === 'es' ? 'Apunta al QR del piloto' : 'Point at the pilot QR');
+    // Con permiso ya concedido, los labels de las cámaras están disponibles.
+    if (!camDevices.length) {
+      const devs = await navigator.mediaDevices.enumerateDevices();
+      camDevices = devs.filter(d => d.kind === 'videoinput');
+      camSwitch.style.display = camDevices.length > 1 ? '' : 'none';
+    }
+    camCanvas = camCanvas || document.createElement('canvas');
+    camCtx = camCtx || camCanvas.getContext('2d', { willReadFrequently: true });
+    cancelAnimationFrame(camRAF);
+    camLoop();
+  } catch (err) {
+    const map = {
+      NotAllowedError:  LANG === 'es' ? 'Permiso de cámara denegado' : 'Camera permission denied',
+      NotFoundError:    LANG === 'es' ? 'No se encontró ninguna cámara' : 'No camera found',
+      NotReadableError: LANG === 'es' ? 'La cámara está en uso por otra app' : 'Camera is in use by another app',
+    };
+    camSetStatus(map[err.name] || ((LANG === 'es' ? 'Error de cámara: ' : 'Camera error: ') + (err.message || err.name)));
+  }
+}
+
+function camLoop() {
+  camRAF = requestAnimationFrame(camLoop);
+  if (camVideo.readyState !== camVideo.HAVE_ENOUGH_DATA) return;
+  const w = camVideo.videoWidth, h = camVideo.videoHeight;
+  if (!w || !h) return;
+  camCanvas.width = w; camCanvas.height = h;
+  camCtx.drawImage(camVideo, 0, 0, w, h);
+  let img;
+  try { img = camCtx.getImageData(0, 0, w, h); } catch (e) { return; }
+  const result = jsQR(img.data, w, h, { inversionAttempts: 'dontInvert' });
+  if (!result || !result.data) return;
+  const code = result.data.trim();
+  // Solo nos interesan los QR de piloto (DRV:<id>); ignoramos otros códigos.
+  if (!/^DRV:/i.test(code)) return;
+  const now = Date.now();
+  // Anti-rebote: no reenviar el mismo código en una ráfaga de frames.
+  if (code === camLastCode && now - camLastTs < 3000) return;
+  camLastCode = code; camLastTs = now;
+  camFlash();
+  submitCode(code);
+}
+
+function camStop() {
+  if (camRAF) { cancelAnimationFrame(camRAF); camRAF = null; }
+  if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+  if (camVideo) camVideo.srcObject = null;
+}
+
+function camOpen() {
+  camModal.hidden = false;
+  camLastCode = ''; camLastTs = 0;
+  camStart();
+}
+function camCloseFn() {
+  camModal.hidden = true;
+  camStop();
+  refocus();
+}
+
+camBtn.addEventListener('click', camOpen);
+camClose.addEventListener('click', camCloseFn);
+camSwitch.addEventListener('click', async () => {
+  if (camDevices.length < 2) return;
+  camDeviceIdx = (camDeviceIdx + 1) % camDevices.length;
+  camStop();
+  await camStart(camDevices[camDeviceIdx].deviceId);
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !camModal.hidden) camCloseFn();
+});
+window.addEventListener('beforeunload', camStop);
 
 // ── Toast ─────────────────────────────────────────────────────────
 const toastWrap = document.getElementById('scToasts');
@@ -409,12 +558,25 @@ socket.on('manga:started', () => location.reload());
 .vt-page--shifts .sc-section { margin-top: 28px; }
 .vt-page--shifts .sc-summary { display: flex; flex-direction: column; gap: 6px; }
 .vt-page--shifts .sc-pilot-row {
-  display: grid; grid-template-columns: 200px 1fr 140px 90px;
+  display: grid; grid-template-columns: 200px 1fr 76px 140px 90px;
   gap: 14px; align-items: center;
   padding: 10px 14px; border-radius: 10px;
   background: var(--vt-panel-2); border: 1px solid var(--vt-border);
 }
 .vt-page--shifts .sc-pilot-row__name { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--vt-text); }
+.vt-page--shifts .sc-pilot-row__runs { text-align: center; line-height: 1; }
+.vt-page--shifts .sc-pilot-row__runs-n {
+  display: block; font-family: 'IBM Plex Mono', monospace;
+  font-size: 20px; font-weight: 700; color: var(--vt-text);
+}
+.vt-page--shifts .sc-pilot-row__runs-l {
+  display: block; margin-top: 3px; font-size: 9.5px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--vt-mute);
+}
+.vt-page--shifts .sc-pilot-row__runs-max { color: var(--vt-mute); font-size: 14px; }
+.vt-page--shifts .sc-pilot-row__runs.is-near .sc-pilot-row__runs-n { color: var(--vt-amber); }
+.vt-page--shifts .sc-pilot-row__runs.is-over .sc-pilot-row__runs-n,
+.vt-page--shifts .sc-pilot-row__runs.is-over .sc-pilot-row__runs-l { color: var(--vt-red); }
 .vt-page--shifts .sc-pilot-row__bar {
   position: relative; height: 8px; border-radius: 4px;
   background: var(--vt-surface-2); overflow: hidden;
@@ -452,6 +614,65 @@ socket.on('manga:started', () => location.reload());
 .vt-page--shifts .sc-toast--ok    { background: linear-gradient(180deg, #16a34a, #15803d); }
 .vt-page--shifts .sc-toast--error { background: linear-gradient(180deg, var(--vt-red), var(--vt-red-deep)); }
 .vt-page--shifts .sc-toast--out   { transform: translateX(20px); opacity: 0; }
+
+/* Botón cámara */
+.vt-page--shifts .sc-cam-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 7px 14px; border-radius: 10px; cursor: pointer;
+  background: var(--vt-surface-2); color: var(--vt-text);
+  border: 1px solid var(--vt-border);
+  font-family: 'Saira Condensed', sans-serif; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase; font-size: 13px;
+  transition: background .15s, border-color .15s;
+}
+.vt-page--shifts .sc-cam-btn:hover { background: var(--vt-panel); border-color: var(--vt-blue); }
+.vt-page--shifts .sc-cam-btn svg { width: 18px; height: 18px; }
+
+/* Modal webcam */
+.vt-page--shifts .sc-cam-modal {
+  position: fixed; inset: 0; z-index: 10000;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.78); backdrop-filter: blur(4px);
+  padding: 20px;
+}
+.vt-page--shifts .sc-cam-modal[hidden] { display: none; }
+.vt-page--shifts .sc-cam-box {
+  background: var(--vt-panel); border: 1px solid var(--vt-border);
+  border-radius: 16px; padding: 16px;
+  width: min(560px, 100%);
+  box-shadow: 0 24px 60px -16px rgba(0,0,0,.85);
+}
+.vt-page--shifts .sc-cam-head {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
+}
+.vt-page--shifts .sc-cam-status {
+  font-family: 'Saira Condensed', sans-serif; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase; font-size: 14px;
+  color: var(--vt-text);
+}
+.vt-page--shifts .sc-cam-acts { display: flex; gap: 8px; margin-left: auto; }
+.vt-page--shifts .sc-cam-view {
+  position: relative; width: 100%; aspect-ratio: 4 / 3;
+  background: #000; border-radius: 12px; overflow: hidden;
+}
+.vt-page--shifts .sc-cam-view video {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.vt-page--shifts .sc-cam-reticle {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 56%; aspect-ratio: 1; border-radius: 16px;
+  border: 3px solid rgba(255,255,255,.7);
+  box-shadow: 0 0 0 9999px rgba(0,0,0,.25);
+  transition: border-color .15s, box-shadow .15s;
+}
+.vt-page--shifts .sc-cam-reticle.is-hit {
+  border-color: var(--vt-green);
+  box-shadow: 0 0 0 9999px rgba(0,0,0,.25), 0 0 24px var(--vt-green);
+}
+.vt-page--shifts .sc-cam-hint {
+  margin-top: 10px; text-align: center; color: var(--vt-mute);
+  font-size: 13px;
+}
 </style>
 
 <%- include('../partials/footer') %>

@@ -76,7 +76,8 @@ class DriverShift {
         dp.name                  AS profile_name,
         dp.category              AS profile_category,
         SUM(ds.driving_ms)       AS total_ms,
-        COUNT(*)                 AS shifts_count
+        COUNT(*)                 AS shifts_count,
+        SUM(CASE WHEN ds.started_at_ms IS NOT NULL THEN 1 ELSE 0 END) AS runs_count
       FROM driver_shifts ds
       JOIN drivers d                 ON d.id = ds.driver_id
       JOIN teams_catalog_members tcm ON tcm.name = d.name

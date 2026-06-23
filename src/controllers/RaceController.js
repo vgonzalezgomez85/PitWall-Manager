@@ -114,14 +114,16 @@ class RaceController {
 
     // Reglas de turnos por piloto (solo si type === 'championship'; en otros
     // casos se guardan a 0 = sin límite y se ignoran).
-    let driverMinMs = 0, driverMaxMs = 0, lockoutMs = 120000;
+    let driverMinMs = 0, driverMaxMs = 0, lockoutMs = 120000, driverMaxRuns = 0;
     if (type === 'championship') {
       const minMin = parseInt(req.body.driver_min_total_min, 10);
       const maxMin = parseInt(req.body.driver_max_total_min, 10);
       const lockS  = parseInt(req.body.driver_change_lockout_s, 10);
+      const maxRuns = parseInt(req.body.driver_max_runs, 10);
       if (!isNaN(minMin) && minMin > 0) driverMinMs = minMin * 60 * 1000;
       if (!isNaN(maxMin) && maxMin > 0) driverMaxMs = maxMin * 60 * 1000;
       if (!isNaN(lockS)  && lockS  >= 0) lockoutMs = lockS * 1000;
+      if (!isNaN(maxRuns) && maxRuns > 0) driverMaxRuns = maxRuns;
       // Validación coherencia: max debe ser >= min si ambos > 0
       if (driverMinMs > 0 && driverMaxMs > 0 && driverMaxMs < driverMinMs) {
         errors.push('driver_max_below_min');
@@ -150,6 +152,7 @@ class RaceController {
       driver_min_total_ms:      driverMinMs,
       driver_max_total_ms:      driverMaxMs,
       driver_change_lockout_ms: lockoutMs,
+      driver_max_runs:          driverMaxRuns,
     };
     res.redirect('/races/new/step2');
   }
@@ -310,6 +313,7 @@ class RaceController {
       driver_min_total_ms:      wizard.driver_min_total_ms      || 0,
       driver_max_total_ms:      wizard.driver_max_total_ms      || 0,
       driver_change_lockout_ms: wizard.driver_change_lockout_ms || 120000,
+      driver_max_runs:          wizard.driver_max_runs          || 0,
     });
 
     // If pole enabled, create session + entries from wizard participants
