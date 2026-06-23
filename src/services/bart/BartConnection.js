@@ -34,6 +34,7 @@ class BartConnection {
   constructor(circuitIndex, laneOffset, onCrossing, onGo, onStop, onPause, onResume, onGoSignal, onFinish, onResumeSignal, onSemaphoreStep) {
     this._circuitIndex    = circuitIndex;
     this._laneOffset      = laneOffset;
+    this._lanesPerDevice  = 4;       // topología Master+Slaves: carriles por dispositivo (se fija en connect())
     this._onCrossing      = onCrossing;
     this._onGo            = onGo            || (() => {});
     this._onStop          = onStop          || (() => {});
@@ -87,6 +88,7 @@ class BartConnection {
     this._host = host;
     this._port = port;
     this._opts = opts;
+    this._lanesPerDevice = opts.lanesPerDevice || 4;
     this._explicitClose = false;
     if (this._reconnectTimer) { clearTimeout(this._reconnectTimer); this._reconnectTimer = null; }
     await this._openTransport();
@@ -279,31 +281,47 @@ class BartConnection {
   }
 
   // A5 01 01 lane laps[2] lap_ms[2] ts_d10[2] reserved[2] CRC
+  //
+  // Topología Master + Slaves (§2): un Master agrega hasta 7 Slaves. Cada
+  // dispositivo aporta `lanesPerDevice` carriles con lane_id 1..N, así que
+  // lane_id POR SÍ SOLO no es único (el carril 1 del Master y el carril 1 de un
+  // Slave colisionan). El device_id viaja en el byte reservado bajo (frame[10]):
+  // 0 = Master, 1..7 = Slaves (ver §11.6 "mapear (device_id, lane_id) → global").
+  //
+  //   masterLane = device_id × lanesPerDevice + lane_id
+  //
+  // Con device_id=0 (un solo equipo, o un Master que ya renumera global) esto se
+  // reduce a lane_id, así que el mismo cálculo sirve para ambas topologías y es
+  // retrocompatible. Luego se suma _laneOffset para encadenar varios Masters.
   _onLap(frame) {
     const localLane = frame[3];
+    const deviceId  = frame[10];                           // reservado bajo = device_id (0=Master, 1..7=Slaves)
     const laps      = frame.readUInt16LE(4);
     const lapMsRaw  = frame.readUInt16LE(6);
     const ts        = Date.now();                          // NUESTRO reloj es la verdad
-    const globalLane = localLane + this._laneOffset;
+    const masterLane = deviceId * this._lanesPerDevice + localLane;  // carril único dentro del Master
+    const globalLane = masterLane + this._laneOffset;
+    const tag = deviceId ? `dev${deviceId}/L${localLane}` : `L${localLane}`;
 
     // lap_ms es uint16 → 0xFFFF = desborde (coche parado >65s) → sin valor fiable
     const lapTimeMs = lapMsRaw >= 0xFFFF ? null : lapMsRaw;
 
     // Relleno de huecos por el contador acumulado (maneja wrap de uint16).
-    const prev = this._lastLapByLane.get(localLane);
+    // Cazado por masterLane: cada (device,lane) lleva su propio contador.
+    const prev = this._lastLapByLane.get(masterLane);
     if (prev != null) {
       const delta = (laps - prev + 0x10000) & 0xFFFF;
       if (delta > 1) {
         const missed = delta - 1;
-        const stats  = this._lapStatsByLane.get(localLane);
+        const stats  = this._lapStatsByLane.get(masterLane);
         const avgMs  = (stats && stats.count > 0) ? (stats.sum / stats.count) : null;
-        console.warn(`[BART C${this._circuitIndex + 1}] Lane ${localLane} → global ${globalLane} — hueco detectado (prev=${prev}, now=${laps}, ${missed} perdidas, avg=${avgMs ? avgMs.toFixed(1) + 'ms' : 'n/a'})`);
+        console.warn(`[BART C${this._circuitIndex + 1}] ${tag} → global ${globalLane} — hueco detectado (prev=${prev}, now=${laps}, ${missed} perdidas, avg=${avgMs ? avgMs.toFixed(1) + 'ms' : 'n/a'})`);
         for (let k = 0; k < missed; k++) {
           this._onCrossing({ lane: globalLane, timestamp: ts, lapTimeMs: avgMs, missed: true });
         }
       }
     }
-    this._lastLapByLane.set(localLane, laps);
+    this._lastLapByLane.set(masterLane, laps);
 
     if (lapTimeMs === null) {
       this._onCrossing({ lane: globalLane, timestamp: ts, lapTimeMs: null });
@@ -311,11 +329,11 @@ class BartConnection {
     }
     if (lapTimeMs < MIN_CROSSING_MS || lapTimeMs > MAX_LAP_MS) return;
 
-    const stats = this._lapStatsByLane.get(localLane) || { sum: 0, count: 0 };
+    const stats = this._lapStatsByLane.get(masterLane) || { sum: 0, count: 0 };
     stats.sum += lapTimeMs; stats.count += 1;
-    this._lapStatsByLane.set(localLane, stats);
+    this._lapStatsByLane.set(masterLane, stats);
 
-    console.log(`[BART C${this._circuitIndex + 1}] Lane ${localLane} → global ${globalLane} — ${lapTimeMs}ms (lap ${laps})`);
+    console.log(`[BART C${this._circuitIndex + 1}] ${tag} → global ${globalLane} — ${lapTimeMs}ms (lap ${laps})`);
     this._onCrossing({ lane: globalLane, timestamp: ts, lapTimeMs });
   }
 }
