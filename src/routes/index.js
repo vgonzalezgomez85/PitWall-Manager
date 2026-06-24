@@ -81,6 +81,7 @@ router.get( '/races/:id/mangas/:mangaId/panel/:type',  SessionController.panel);
 router.post('/races/:id/circuit-orientation',          SessionController.saveCircuitOrientation);
 router.post('/races/:id/mangas/:mangaId/start',        SessionController.start);
 router.post('/races/:id/mangas/:mangaId/checkin',      requireModule('qr_checkin'), SessionController.driverCheckin);
+router.post('/races/:id/mangas/:mangaId/correct-time', requireModule('qr_checkin'), SessionController.correctShiftTime);
 router.post('/races/:id/mangas/:mangaId/stop',         SessionController.stop);
 router.post('/races/:id/mangas/:mangaId/pause',        SessionController.pause);
 router.post('/races/:id/mangas/:mangaId/resume',       SessionController.resume);

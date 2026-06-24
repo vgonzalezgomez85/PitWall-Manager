@@ -308,6 +308,8 @@ const migrations = [
   `ALTER TABLE driver_shifts ADD COLUMN ended_at_ms   INTEGER`,
   `ALTER TABLE driver_shifts ADD COLUMN driving_ms    INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE driver_shifts ADD COLUMN pre_armed     INTEGER NOT NULL DEFAULT 0`,
+  // manual=1: turno creado a mano (corrección) porque el equipo olvidó fichar.
+  `ALTER TABLE driver_shifts ADD COLUMN manual        INTEGER NOT NULL DEFAULT 0`,
   `CREATE INDEX IF NOT EXISTS idx_driver_shifts_open ON driver_shifts(manga_id, lane) WHERE ended_at_ms IS NULL`,
 
   // ── Race: límites de tiempo por piloto + ventana de bloqueo ─────────────
