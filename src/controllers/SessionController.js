@@ -1996,6 +1996,10 @@ class SessionController {
 
       const assignments = DriverShift.findAssignmentsByProfile(profile.id, manga.id);
       if (assignments.length === 0) {
+        // Si su equipo descansa esta manga, el motivo es ese (no "no está").
+        if (DriverShift.isProfileTeamResting(profile.id, manga.id)) {
+          return res.status(409).json({ error: 'team_resting', name: profile.name });
+        }
         return res.status(404).json({ error: 'driver_not_in_manga', name: profile.name });
       }
       if (assignments.length > 1) {
@@ -2091,6 +2095,44 @@ class SessionController {
       driverName: assignment.driver_name,
       shiftId,
     });
+  }
+
+  // ── Corrección manual de tiempo ─────────────────────────────────────────────
+  // Cuando un equipo olvidó fichar por QR, el staff añade a mano el tiempo que
+  // condujo un piloto (p.ej. la duración completa de la manga). Crea un turno
+  // manual cerrado. Funciona en cualquier estado de manga (incluida finalizada),
+  // por eso NO comparte las guardas de driverCheckin.
+  static correctShiftTime(req, res) {
+    const race  = Race.findById(req.params.id);
+    const manga = Manga.findById(req.params.mangaId);
+    if (!race || !manga) return res.status(404).json({ error: 'not_found' });
+    if (race.type !== 'championship') return res.status(400).json({ error: 'not_championship_race' });
+    if (race.format !== 'team')       return res.status(400).json({ error: 'not_team_race' });
+
+    const driverId = parseInt(req.body.driver_id, 10);
+    const ms       = Math.round(Number(req.body.ms));
+    if (!driverId || !Number.isFinite(ms) || ms <= 0) {
+      return res.status(400).json({ error: 'invalid_params' });
+    }
+    // Tope de cordura: 24 h.
+    if (ms > 24 * 3600 * 1000) return res.status(400).json({ error: 'time_too_large' });
+
+    const db = require('../config/database');
+    const drv = db.prepare('SELECT id, name, team_id FROM drivers WHERE id = ? AND race_id = ?').get(driverId, race.id);
+    if (!drv) return res.status(404).json({ error: 'driver_not_found' });
+
+    // Carril del equipo en esta manga (0 si descansa / sin carril).
+    const laneRow = db.prepare('SELECT lane FROM manga_lanes WHERE manga_id = ? AND team_id = ?').get(manga.id, drv.team_id);
+    const lane = laneRow ? laneRow.lane : 0;
+
+    const shiftId = DriverShift.addManualTime({
+      mangaId: manga.id, raceId: race.id, lane,
+      teamId: drv.team_id, driverId: drv.id, driverName: drv.name,
+      drivingMs: ms,
+    });
+
+    SocketService.emit('driver_checkin', { mangaId: manga.id, lane, driverName: drv.name, driverId: drv.id, teamId: drv.team_id, mode: 'manual_correction' });
+    return res.json({ ok: true, driverName: drv.name, ms, lane, shiftId });
   }
 
   // ── Activate next tanda: register its first manga for DS-300 GO ──────────────
