@@ -1597,6 +1597,75 @@ input, button, select { font-family: inherit; }
 .pole-results-card { margin-top: 24px; }
 .pole-tower--results { padding: 4px 12px 14px; }
 
+/* ── Pole timing: encajar TODO en una pantalla (scroll interno por lista) ──────
+   La página se acota al viewport y cada lista (orden de salida / clasificación)
+   hace scroll dentro de su tarjeta, en vez de hacer scroll toda la página. Así
+   se ven a la vez el orden de salida y la clasificación en vivo. */
+body:has(.pole-timing-fit) { overflow: hidden; }
+.pole-broadcast.pole-timing-fit {
+  height: calc(100vh - 80px); min-height: 0; overflow: hidden;
+  padding-top: 14px; padding-bottom: 12px;
+  display: flex; flex-direction: column;
+}
+.pole-timing-fit .pole-bcast-wrap {
+  flex: 1 1 auto; min-height: 0; width: 100%;
+  display: flex; flex-direction: column;
+}
+/* Cabecera HORIZONTAL a lo ancho (no se reduce): título · meta · carril ·
+   progreso en una fila. Libera la columna izquierda para "En pista" y las 3
+   columnas empiezan justo debajo. */
+.pole-timing-fit .pole-topbar {
+  display: flex; align-items: center; gap: 28px; flex-wrap: wrap;
+  margin: 4px 0 14px;
+}
+.pole-timing-fit .pole-topbar .pole-title-row,
+.pole-timing-fit .pole-topbar .pole-meta { margin: 0; }
+.pole-timing-fit .pole-topbar .pole-progress {
+  margin: 0; flex: 1 1 240px; min-width: 220px; max-width: 460px;
+}
+.pole-timing-fit .pole-bcast-grid {
+  flex: 1 1 auto; min-height: 0; margin-top: 0; align-items: stretch;
+}
+/* Fuente un poco más pequeña en orden de salida y clasificación → más equipos */
+.pole-timing-fit .pole-bcast-name { font-size: 18px; }
+.pole-timing-fit .pole-tower-name { font-size: 18px; }
+.pole-timing-fit .pole-tower-time { font-size: 14px; }
+.pole-timing-fit .pole-tower-pos  { font-size: 14px; }
+
+/* Clasificación en vivo: columnas AUTOMÁTICAS que llenan el alto disponible y
+   crean tantas como hagan falta para ver todos los equipos en orden (relleno por
+   columnas: 1ª col 1..k, 2ª col k+1.., …). Sin scroll vertical. */
+.pole-timing-fit .pole-tower {
+  display: block;
+  column-width: 200px; column-gap: 16px;   /* tantas columnas como quepan a lo ANCHO (sin desbordar) */
+  overflow-x: hidden; overflow-y: auto;     /* nunca scroll horizontal */
+}
+.pole-timing-fit .pole-tower-row { break-inside: avoid; -webkit-column-break-inside: avoid; }
+/* La clasificación ocupa más parte derecha para que quepan las columnas */
+@media (min-width: 981px) {
+  .pole-timing-fit .pole-bcast-grid { grid-template-columns: 300px 1fr 1.9fr; }
+}
+/* Nombre del equipo en "En pista" un poco más pequeño */
+.pole-timing-fit .pole-driver-big { font-size: 46px; }
+.pole-timing-fit .pole-bcast-card {
+  display: flex; flex-direction: column; min-height: 0; overflow: hidden;
+}
+/* Las listas largas hacen scroll dentro de su tarjeta; sin hueco arriba */
+.pole-timing-fit .pole-bcast-list,
+.pole-timing-fit .pole-tower {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-top: 2px;
+}
+/* Filas más compactas → caben más equipos en las columnas 2 y 3 */
+.pole-timing-fit .pole-bcast-row { padding: 7px 12px; }
+.pole-timing-fit .pole-bcast-pos { width: 26px; height: 26px; font-size: 14px; }
+.pole-timing-fit .pole-tower-row { padding: 8px 12px; }
+/* "En pista": la tarjeta tiene scroll propio (así el botón "Siguiente piloto"
+   siempre es alcanzable) y el historial de vueltas hace scroll interno. */
+.pole-timing-fit .pole-live { overflow-y: auto; }
+.pole-timing-fit .pole-live .pole-laps      { min-height: 0; display: flex; flex-direction: column; margin-bottom: 12px; }
+.pole-timing-fit .pole-live .pole-laps-list { max-height: 190px; overflow-y: auto; }
+.pole-timing-fit .pole-bcast-foot { flex: 0 0 auto; margin-top: 8px; }
+
 .pole-results-actions {
   display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
   margin-top: 24px;
