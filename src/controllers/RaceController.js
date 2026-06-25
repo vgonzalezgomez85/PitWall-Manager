@@ -240,8 +240,10 @@ class RaceController {
     if (!w?.lane_sequence) return res.redirect('/races/new');
     if (!w.has_pole)       return res.redirect('/races/new/confirm');
     const DriverProfile = require('../models/DriverProfile');
+    const TeamCatalog   = require('../models/TeamCatalog');
     res.render('races/new-step4', {
-      t: req.t, wizard: w, LANE_COLORS, profiles: DriverProfile.findAll(), errors: [], body: {}
+      t: req.t, wizard: w, LANE_COLORS, profiles: DriverProfile.findAll(),
+      teamsCatalog: TeamCatalog.findAll(), errors: [], body: {}
     });
   }
 
@@ -273,8 +275,10 @@ class RaceController {
     }
 
     if (errors.length) {
+      const TeamCatalog = require('../models/TeamCatalog');
       return res.render('races/new-step4', {
-        t: req.t, wizard: w, LANE_COLORS, profiles: DriverProfile.findAll(), errors, body: req.body
+        t: req.t, wizard: w, LANE_COLORS, profiles: DriverProfile.findAll(),
+        teamsCatalog: TeamCatalog.findAll(), errors, body: req.body
       });
     }
 
