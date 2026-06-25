@@ -91,6 +91,17 @@ const poleHolderName = entries[0]?.entity_name || '';
               <span class="pole-laneboard-owner" id="lane-owner-<%= lane %>"></span>
             </button>
           <% }) %>
+          <%# Descansos seleccionables: uno por cada equipo que sobra de los carriles %>
+          <% const restCount = Math.max(0, entries.length - activeLanes.length); %>
+          <% for (let r = 0; r < restCount; r++) { %>
+            <button type="button"
+                    class="pole-laneboard-btn pole-laneboard-btn--rest"
+                    id="rest-btn-<%= r %>"
+                    data-rest="<%= r %>">
+              <span class="pole-laneboard-num">💤</span>
+              <span class="pole-laneboard-owner" id="rest-owner-<%= r %>"><%= lang === 'es' ? 'Descanso' : 'Rest' %></span>
+            </button>
+          <% } %>
         </div>
       </section>
 
@@ -99,8 +110,8 @@ const poleHolderName = entries[0]?.entity_name || '';
     <% if (entries.length > activeLanes.length) { %>
       <p class="pole-rest-note">
         ℹ️ <%= lang === 'es'
-          ? `Los últimos ${entries.length - activeLanes.length} participante(s) descansarán en la manga 1 y entrarán en rotación en las siguientes.`
-          : `The last ${entries.length - activeLanes.length} participant(s) will rest in heat 1 and rotate in from heat 2.` %>
+          ? `Hay ${entries.length - activeLanes.length} plaza(s) de descanso (💤): cada equipo, en su turno, elige carril o descanso. Quien elija descanso no corre la manga 1 y entra en rotación desde la 2.`
+          : `There are ${entries.length - activeLanes.length} rest slot(s) (💤): each team picks a lane or rest on their turn. Resting teams skip heat 1 and rotate in from heat 2.` %>
       </p>
     <% } %>
 
@@ -127,10 +138,12 @@ const LANG          = "<%= lang %>";
 const ACTIVE_LANES  = <%- JSON.stringify(activeLanes) %>;
 const LANE_COLORS   = <%- JSON.stringify(LANE_COLORS) %>;
 const ENTRIES       = <%- JSON.stringify(entries.map(e => ({ name: e.entity_name }))) %>;
-const TOTAL_PICKERS = Math.min(ENTRIES.length, ACTIVE_LANES.length);
+// Eligen TODOS: los carriles (ACTIVE_LANES) + los descansos (el resto).
+const TOTAL_PICKERS = ENTRIES.length;
 
 let currentPicker = 0;
 const laneOrder = Array(ACTIVE_LANES.length).fill(null);
+const restOrder = [];   // equipos que han elegido descanso, en orden de elección
 
 function pickerName(idx) { return ENTRIES[idx]?.name || ''; }
 
@@ -172,10 +185,34 @@ function pickLane(lane) {
     picked.innerHTML = `<span class="pole-picker-lane-chip" style="background:${LANE_COLORS[lane-1]}">${lane}</span>`;
   }
 
+  advancePicker();
+}
+
+// Elegir DESCANSO (slot equivalente a un carril, pero sin carril → is_rest).
+function pickRest(restIdx) {
+  if (currentPicker >= TOTAL_PICKERS) return;
+  const name = pickerName(currentPicker);
+  restOrder.push(name);
+
+  const btn = document.getElementById('rest-btn-' + restIdx);
+  if (btn) {
+    btn.classList.add('pole-laneboard-btn--taken');
+    btn.disabled = true;
+    document.getElementById('rest-owner-' + restIdx).textContent = name;
+  }
+
+  const picked = document.getElementById('picked-' + currentPicker);
+  if (picked) {
+    picked.innerHTML = `<span class="pole-picker-lane--rest">💤 ${LANG === 'es' ? 'Descanso' : 'Rest'}</span>`;
+  }
+
+  advancePicker();
+}
+
+function advancePicker() {
   currentPicker++;
   updatePrompt();
   highlightCurrentPicker();
-
   if (currentPicker >= TOTAL_PICKERS) {
     buildForm();
     document.getElementById('formActions').style.display = '';
@@ -185,23 +222,26 @@ function pickLane(lane) {
 function buildForm() {
   const wrap = document.getElementById('hiddenInputs');
   wrap.innerHTML = '';
-  laneOrder.forEach((name, i) => {
+  // Primero los equipos con carril (en orden de carril), luego los de descanso.
+  laneOrder.forEach(name => {
     if (name) {
       const inp = document.createElement('input');
       inp.type = 'hidden'; inp.name = 'order[]'; inp.value = name;
       wrap.appendChild(inp);
     }
   });
-  ENTRIES.slice(TOTAL_PICKERS).forEach(e => {
+  restOrder.forEach(name => {
     const inp = document.createElement('input');
-    inp.type = 'hidden'; inp.name = 'order[]'; inp.value = e.name;
+    inp.type = 'hidden'; inp.name = 'order[]'; inp.value = name;
     wrap.appendChild(inp);
   });
 }
 
 document.getElementById('laneGrid').addEventListener('click', e => {
   const btn = e.target.closest('.pole-laneboard-btn');
-  if (btn && !btn.disabled) pickLane(parseInt(btn.dataset.lane, 10));
+  if (!btn || btn.disabled) return;
+  if (btn.dataset.rest != null) pickRest(parseInt(btn.dataset.rest, 10));
+  else                          pickLane(parseInt(btn.dataset.lane, 10));
 });
 
 highlightCurrentPicker();

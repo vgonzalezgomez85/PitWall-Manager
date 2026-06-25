@@ -406,6 +406,52 @@ class RaceController {
   // lap, for races configured by hand). Manga duration is NOT editable here —
   // it's taken live from the DS-300 GO signal.
 
+  // Nº de descansos (slots de carril 0) que tiene la carrera. Prioriza ceros
+  // explícitos en la secuencia; si no, lo deriva de una manga existente o de
+  // las inscripciones de pole; si no hay nada, 0.
+  static _restSlots(race, activeLanesLen) {
+    const db = require('../config/database');
+    let seq = []; try { seq = JSON.parse(race.lane_sequence || '[]'); } catch {}
+    const explicit = seq.filter(x => x === 0).length;
+    if (explicit > 0) return explicit;
+    const mg = db.prepare('SELECT id FROM mangas WHERE race_id=? ORDER BY id ASC LIMIT 1').get(race.id);
+    if (mg) {
+      const slots = db.prepare('SELECT COUNT(*) c FROM manga_lanes WHERE manga_id=?').get(mg.id).c;
+      return Math.max(0, slots - activeLanesLen);
+    }
+    const pe = db.prepare('SELECT COUNT(*) c FROM pole_entries pe JOIN pole_sessions ps ON ps.id=pe.pole_session_id WHERE ps.race_id=?').get(race.id);
+    return Math.max(0, (pe.c || 0) - activeLanesLen);
+  }
+
+  // Secuencia para el editor: la guardada + tantos descansos (0) como falten
+  // para llegar al total de descansos de la carrera (añadidos al final).
+  static _editorSequence(race, restCount) {
+    let seq = []; try { seq = JSON.parse(race.lane_sequence || '[]'); } catch {}
+    const have = seq.filter(x => x === 0).length;
+    if (have < restCount) seq = [...seq, ...Array(restCount - have).fill(0)];
+    return seq;
+  }
+
+  // Regenera el horario de las tandas PENDIENTES (todas sus mangas pending) con
+  // la secuencia actual de la carrera, conservando equipos/pilotos y su orden.
+  // No toca tandas con mangas ya corridas. `race` debe estar recién leído.
+  static _regeneratePendingTandas(race) {
+    const db    = require('../config/database');
+    const Manga = require('../models/Manga');
+    const laneSequence = Race.getLaneSequence(race);
+    const tandas = db.prepare('SELECT id FROM tandas WHERE race_id = ?').all(race.id);
+    for (const t of tandas) {
+      const mangas = db.prepare('SELECT status FROM mangas WHERE tanda_id = ?').all(t.id);
+      if (mangas.length && !mangas.every(m => m.status === 'pending')) continue;  // hay mangas corridas → no tocar
+      const entities = race.format === 'team'
+        ? db.prepare('SELECT id, name FROM teams WHERE tanda_id = ? ORDER BY id ASC').all(t.id).map(x => ({ id: x.id, type: 'team', name: x.name }))
+        : db.prepare('SELECT id, name FROM drivers WHERE tanda_id = ? AND team_id IS NULL ORDER BY id ASC').all(t.id).map(x => ({ id: x.id, type: 'driver', name: x.name }));
+      if (!entities.length) continue;
+      db.prepare('DELETE FROM mangas WHERE tanda_id = ?').run(t.id);
+      Manga.persistSchedule(t.id, race.id, Manga.buildSchedule(laneSequence, entities));
+    }
+  }
+
   static editForm(req, res) {
     const race = Race.findById(req.params.id);
     if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
@@ -416,9 +462,13 @@ class RaceController {
       const times = Circuit.getCategoryTimes(c.id);
       if (times.length) circuitCategoryTimes[c.id] = times;
     }
+    const activeLen  = Race.getLaneSequence(race).filter(l => l > 0).length;
+    const restCount  = RaceController._restSlots(race, activeLen);
     res.render('races/edit', {
       t: req.t, race, savedCircuits, circuitCategoryTimes,
       hasLaps: Race.hasRecordedLaps(race.id), errors: [],
+      laneSequence: RaceController._editorSequence(race, restCount),
+      restCount, LANE_COLORS,
     });
   }
 
@@ -454,10 +504,31 @@ class RaceController {
         // Invalid/missing circuit → keep the current one untouched.
       }
     } else {
-      // Manual race: just the minimum lap threshold. Safe to change anytime —
-      // it only affects detection from the next manga onward.
+      // Manual race: minimum lap threshold…
       const minLapS = parseFloat(req.body.min_lap_s);
       patch.min_lap_ms = (!isNaN(minLapS) && minLapS > 0) ? Math.round(minLapS * 1000) : 0;
+
+      // …y reordenar la SECUENCIA de carriles (circuito manual, sin catálogo).
+      // Solo se permite REORDENAR: el nuevo orden debe contener exactamente los
+      // mismos carriles que el actual (mismo multiconjunto), no añadir/quitar.
+      if (req.body.lane_sequence != null && String(req.body.lane_sequence).trim() !== '') {
+        const current   = Race.getLaneSequence(race);
+        const activeLen  = current.filter(l => l > 0).length;
+        const expectRest = RaceController._restSlots(race, activeLen);
+        let seq = [];
+        try { seq = JSON.parse(req.body.lane_sequence); } catch {}
+        if (!Array.isArray(seq)) seq = String(req.body.lane_sequence).split(',');
+        seq = seq.map(n => parseInt(n, 10)).filter(n => Number.isFinite(n) && n >= 0);
+        const lanesOf = a => a.filter(x => x > 0);
+        const restsOf = a => a.filter(x => x === 0).length;
+        const norm    = a => [...a].sort((x, y) => x - y).join(',');
+        // Solo reordenar: mismos carriles (>0) y mismo nº de descansos (0).
+        if (seq.length && norm(lanesOf(seq)) === norm(lanesOf(current)) && restsOf(seq) === expectRest) {
+          patch.lane_sequence = JSON.stringify(seq);
+        } else {
+          errors.push('sequence_invalid');
+        }
+      }
     }
 
     if (errors.length) {
@@ -467,12 +538,23 @@ class RaceController {
         const times = Circuit.getCategoryTimes(c.id);
         if (times.length) circuitCategoryTimes[c.id] = times;
       }
+      const activeLen = Race.getLaneSequence(race).filter(l => l > 0).length;
+      const restCount = RaceController._restSlots(race, activeLen);
       return res.render('races/edit', {
         t: req.t, race: { ...race, name }, savedCircuits, circuitCategoryTimes, hasLaps, errors,
+        laneSequence: RaceController._editorSequence(race, restCount), restCount, LANE_COLORS,
       });
     }
 
     Race.update(race.id, patch);
+
+    // Si cambió la secuencia de carriles, regenerar las tandas pendientes para
+    // que la rotación (y los descansos) reflejen el nuevo orden al instante.
+    if (patch.lane_sequence) {
+      try { RaceController._regeneratePendingTandas(Race.findById(race.id)); } catch (e) {
+        console.warn('[RaceController] regen tandas falló:', e.message);
+      }
+    }
     res.redirect(`/races/${race.id}`);
   }
 

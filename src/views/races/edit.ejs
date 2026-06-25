@@ -91,6 +91,40 @@
             : 'Crossings faster than this are discarded as bounces. Empty = disabled. Applies from the next heat.' %>
         </p>
       </div>
+
+      <!-- Circuito manual: reordenar la secuencia de carriles -->
+      <div class="form-group">
+        <label class="form-label"><%= lang === 'es' ? 'Secuencia de carriles' : 'Lane sequence' %></label>
+        <p class="form-hint" style="margin:.2rem 0 .8rem">
+          <%= lang === 'es'
+            ? 'Orden de rotación de salida. Arrastra para reordenar carriles y descansos (💤). No cambia su número.'
+            : 'Starting rotation order. Drag to reorder lanes and rests (💤). Count unchanged.' %>
+          <% if (restCount > 0) { %>
+            <strong style="color:#8fb6ff">· <%= restCount %> <%= lang === 'es' ? 'descanso(s)' : 'rest(s)' %></strong>
+          <% } %>
+        </p>
+        <div id="laneSeqList" class="lane-seq-list">
+          <% (laneSequence || []).forEach(l => { %>
+            <% if (l === 0) { %>
+              <div class="lane-seq-chip lane-seq-chip--rest" draggable="true" data-lane="0"
+                   title="<%= lang === 'es' ? 'Descanso' : 'Rest' %>">
+                <span class="lane-seq-grip">⋮⋮</span>💤
+              </div>
+            <% } else { %>
+              <div class="lane-seq-chip" draggable="true" data-lane="<%= l %>"
+                   style="--lane-color: <%= LANE_COLORS[(l - 1) % LANE_COLORS.length] %>">
+                <span class="lane-seq-grip">⋮⋮</span><%= l %>
+              </div>
+            <% } %>
+          <% }) %>
+        </div>
+        <input type="hidden" name="lane_sequence" id="laneSeqInput" value="<%= JSON.stringify(laneSequence || []) %>">
+        <p class="form-hint" style="margin-top:.6rem">
+          ↻ <%= lang === 'es'
+            ? 'Las tandas pendientes (sin mangas corridas) se regeneran automáticamente con el nuevo orden al guardar. Las que ya tengan mangas corridas se mantienen.'
+            : 'Pending heats (no completed mangas) are regenerated automatically with the new order on save. Heats with completed mangas are kept.' %>
+        </p>
+      </div>
     <% } %>
 
     <div class="form-actions">
@@ -156,6 +190,56 @@ function applyCategory() {
 
 categorySelect.addEventListener('change', applyCategory);
 applyCircuit(circuitSelect.value);
+</script>
+<% } %>
+
+<% if (!race.circuit_id) { %>
+<style>
+.lane-seq-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.lane-seq-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  min-width: 46px; justify-content: center;
+  padding: 8px 10px; border-radius: 9px; cursor: grab;
+  background: #000; color: #fff; border: 2px solid var(--lane-color);
+  font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 15px;
+  user-select: none; transition: transform .1s, box-shadow .12s;
+}
+.lane-seq-chip:hover { box-shadow: 0 6px 16px -8px var(--lane-color); }
+.lane-seq-chip:active { cursor: grabbing; }
+.lane-seq-chip.is-dragging { opacity: .4; }
+.lane-seq-grip { opacity: .45; font-size: 11px; letter-spacing: -3px; }
+.lane-seq-chip--rest { --lane-color: #3a86ff; border-style: dashed; }
+</style>
+<script>
+(function () {
+  const list  = document.getElementById('laneSeqList');
+  const input = document.getElementById('laneSeqInput');
+  if (!list || !input) return;
+  let dragEl = null;
+
+  function syncInput() {
+    const order = [...list.querySelectorAll('.lane-seq-chip')].map(c => parseInt(c.dataset.lane, 10));
+    input.value = JSON.stringify(order);
+  }
+  list.addEventListener('dragstart', e => {
+    const chip = e.target.closest('.lane-seq-chip');
+    if (!chip) return;
+    dragEl = chip; chip.classList.add('is-dragging');
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  list.addEventListener('dragend', () => {
+    if (dragEl) dragEl.classList.remove('is-dragging');
+    dragEl = null; syncInput();
+  });
+  list.addEventListener('dragover', e => {
+    e.preventDefault();
+    const target = e.target.closest('.lane-seq-chip');
+    if (!target || !dragEl || target === dragEl) return;
+    const r = target.getBoundingClientRect();
+    const before = (e.clientX - r.left) < r.width / 2;
+    list.insertBefore(dragEl, before ? target : target.nextSibling);
+  });
+})();
 </script>
 <% } %>
 

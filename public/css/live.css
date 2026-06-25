@@ -1859,13 +1859,13 @@ body.manga-finished:not(:has(.live-lanes--vertical)) .lane-card:not(:has(.next-l
    mantiene en ambas caras. Así no se solapa nada (idea: dar la vuelta a la
    tarjeta — por una cara los datos, por la otra el cambio de carril). */
 body.manga-finished .live-lanes--vertical:not(.live-lanes--detailed) .lane-card .next-lane-badge {
-  grid-column: 1 / -1;
-  grid-row: 2 / -1;            /* toda el área de stats (tot/ult/med/mej) */
+  /* Absoluta (fuera del grid): un elemento de grid oculto con visibility:hidden
+     SIGUE ocupando su pista y, con texto nowrap, imponía un ancho mínimo que
+     estrechaba las celdas de stats (ÚLTIMA/MEJOR se recortaban). Al sacarla del
+     flujo, las celdas conservan su tamaño y los valores se ven completos. */
+  position: absolute; inset: 0; margin: 0; min-width: 0;
   grid-area: auto;
-  margin: 0;
   padding: .25rem .5rem;
-  align-self: stretch;
-  justify-self: stretch;
   font-family: 'Inter', system-ui, sans-serif;
   font-weight: 700;
   font-size: 1.05rem;
@@ -1873,7 +1873,7 @@ body.manga-finished .live-lanes--vertical:not(.live-lanes--detailed) .lane-card 
   display: flex; align-items: center; justify-content: center;
   opacity: 0; visibility: hidden; pointer-events: none;
   transition: opacity .3s ease;
-  z-index: 1;
+  z-index: 3;
 }
 body.manga-finished.swap-show-next .live-lanes--vertical:not(.live-lanes--detailed) .lane-card .next-lane-badge {
   opacity: 1; visibility: visible; pointer-events: auto;
@@ -1915,19 +1915,18 @@ body.manga-finished.swap-show-next .live-lanes--vertical:not(.live-lanes--detail
 /* === V3 (tarjetas con detalles) === */
 /* Posiciona la badge en la fila meta del grid (vlt/sal/pit/dlt) */
 body.manga-finished .live-lanes--detailed .lane-card .next-lane-badge {
-  grid-column: 1 / -1;
-  grid-row: 4 / 5;
+  /* Absoluta (fuera del grid): si es un item de grid oculto, su texto nowrap
+     impone un ancho mínimo que deforma las columnas y recorta los valores. */
+  position: absolute; inset: 0; margin: 0; min-width: 0;
   grid-area: auto;
-  margin: 0;
   padding: .25rem .5rem;
-  align-self: stretch;
-  justify-self: stretch;
   font-family: 'Inter', system-ui, sans-serif;
   font-weight: 600;
   white-space: nowrap;
   display: flex; align-items: center; justify-content: center;
   opacity: 0; visibility: hidden; pointer-events: none;
   transition: opacity .35s ease;
+  z-index: 3;
 }
 body.manga-finished.swap-show-next .live-lanes--detailed .lane-card .next-lane-badge {
   opacity: 1; visibility: visible; pointer-events: auto;
