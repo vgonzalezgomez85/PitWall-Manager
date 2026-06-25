@@ -130,6 +130,14 @@ class RaceController {
       }
     }
 
+    // El formato se DERIVA del tipo (ya no es una elección del usuario):
+    //   Sprint (club) → individual · Resistencia (championship) → equipos.
+    const format = type === 'championship' ? 'team' : 'individual';
+    const LicenseService = require('../services/LicenseService');
+    if (format === 'team' && !LicenseService.has('team_races')) {
+      errors.push('team_requires_license');
+    }
+
     if (errors.length) {
       const savedCircuits = Circuit.findAll();
       const circuitCategoryTimes = {};
@@ -141,7 +149,7 @@ class RaceController {
     }
 
     req.session.wizard = {
-      name: trimmedName, type,
+      name: trimmedName, type, format,
       lanes_count: totalLanes,
       circuits,
       manga_duration_minutes: duration,
@@ -154,54 +162,48 @@ class RaceController {
       driver_change_lockout_ms: lockoutMs,
       driver_max_runs:          driverMaxRuns,
     };
-    res.redirect('/races/new/step2');
+    // El paso 2 (Formato) ya no existe: enrutamos directamente.
+    return RaceController._routeAfterFormat(req, res);
   }
 
-  // ─── Step 2: format ───────────────────────────────────────────────────────
+  // ─── Step 2 (Formato) — ELIMINADO del flujo. El formato se deriva del tipo en
+  //     postStep1. Los handlers se conservan como reenvío por compatibilidad. ──
 
   static newStep2(req, res) {
-    if (!req.session.wizard?.name) return res.redirect('/races/new');
-    res.render('races/new-step2', { t: req.t, wizard: req.session.wizard, errors: [] });
+    if (!req.session.wizard?.format) return res.redirect('/races/new');
+    return RaceController._routeAfterFormat(req, res);
   }
 
   static postStep2(req, res) {
-    if (!req.session.wizard?.name) return res.redirect('/races/new');
-    const { format } = req.body;
-    if (!['individual', 'team'].includes(format)) {
-      return res.render('races/new-step2', { t: req.t, wizard: req.session.wizard, errors: ['format_required'] });
-    }
-    const LicenseService = require('../services/LicenseService');
-    if (format === 'team' && !LicenseService.has('team_races')) {
-      const lang = req.session?.lang || 'es';
-      req.session.flash = { type: 'error', text: (lang === 'es'
-        ? 'Las carreras por equipos requieren licencia Pro.'
-        : 'Team races require a Pro license.')
-        + ' <a href="/license">Ver licencia</a>' };
-      return res.redirect('/races/new/step2');
-    }
-    req.session.wizard.format = format;
+    if (!req.session.wizard?.format) return res.redirect('/races/new');
+    return RaceController._routeAfterFormat(req, res);
+  }
 
-    // Lane sequence now comes from the assigned circuit (or natural order
-    // as fallback). The dedicated step3 form is no longer shown.
+  // Enrutado tras fijar el formato: con circuito asignado la secuencia la manda
+  // el circuito y el paso 3 se salta (no accesible ni con "atrás"); en carrera
+  // manual va al editor de secuencia (paso 3).
+  static _routeAfterFormat(req, res) {
     const w = req.session.wizard;
-    let seq = null;
     if (w.circuit_id) {
       const Circuit = require('../models/Circuit');
       const c = Circuit.findById(w.circuit_id);
-      if (c) seq = Circuit.getLaneSequence(c);
+      let seq = c ? Circuit.getLaneSequence(c) : null;
+      if (!seq || seq.length === 0) seq = defaultSequence(w.lanes_count);
+      w.lane_sequence = seq;
+      return res.redirect(w.has_pole ? '/races/new/step4' : '/races/new/confirm');
     }
-    if (!seq || seq.length === 0) seq = defaultSequence(w.lanes_count);
-    w.lane_sequence = seq;
-
-    if (w.has_pole) return res.redirect('/races/new/step4');
-    return res.redirect('/races/new/confirm');
+    if (!w.lane_sequence || !w.lane_sequence.length) w.lane_sequence = defaultSequence(w.lanes_count);
+    return res.redirect('/races/new/step3');
   }
 
-  // ─── Step 3: lane rotation sequence (legacy — kept for races without circuit) ─
+  // ─── Step 3: lane rotation sequence (solo carreras manuales sin circuito) ─────
 
   static newStep3(req, res) {
     if (!req.session.wizard?.format) return res.redirect('/races/new');
     const w = req.session.wizard;
+    // Con circuito asignado la secuencia es la del circuito: el paso 3 no se
+    // muestra ni es accesible (redirige hacia delante).
+    if (w.circuit_id) return res.redirect(w.has_pole ? '/races/new/step4' : '/races/new/confirm');
     const seq = w.lane_sequence || defaultSequence(w.lanes_count);
     const circuits = w.circuits || [w.lanes_count];
     res.render('races/new-step3-sequence', { t: req.t, wizard: w, sequence: seq, circuits, errors: [] });
@@ -209,6 +211,10 @@ class RaceController {
 
   static postStep3(req, res) {
     if (!req.session.wizard?.format) return res.redirect('/races/new');
+    // Blindaje: una carrera con circuito no edita secuencia aquí.
+    if (req.session.wizard.circuit_id) {
+      return res.redirect(req.session.wizard.has_pole ? '/races/new/step4' : '/races/new/confirm');
+    }
     const raw = req.body.lane_sequence || '';
     // Allow 0 for explicit rest slots
     const seq = raw.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n >= 0);

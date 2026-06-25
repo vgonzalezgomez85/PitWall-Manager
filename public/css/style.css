@@ -1102,12 +1102,52 @@ input, button, select { font-family: inherit; }
   display: flex; align-items: center; gap: .5rem;
   padding: .45rem .65rem;
   background: #161b22; border: 1px solid #30363d; border-radius: 6px;
-  cursor: grab; font-size: .9rem; color: #e6edf3;
-  transition: border-color .15s, opacity .15s;
+  cursor: pointer; font-size: .9rem; color: #e6edf3;
+  transition: border-color .15s, opacity .15s, box-shadow .15s;
   user-select: none;
 }
 .catalog-card:hover { border-color: #58a6ff; }
-.catalog-card:active { cursor: grabbing; }
+.catalog-card--selected { border-color: #58a6ff; box-shadow: 0 0 0 2px rgba(88,166,255,.45) inset; }
+.catalog-card--used { opacity: .35; pointer-events: none; }
+
+/* ── Tablero de asignación de tanda (estilo post-pole, compacto) ───────────── */
+.tanda-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: .5rem;
+}
+.tanda-lane-btn {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 5px; min-height: 66px; padding: .5rem .4rem;
+  background: #0d1117; border: 2px solid var(--lane-color, #30363d); border-radius: 10px;
+  cursor: pointer; color: #e6edf3;
+  transition: transform .12s, box-shadow .12s, filter .12s;
+}
+.tanda-lane-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px -8px var(--lane-color, #30363d); }
+.tanda-lane-num {
+  font-size: 20px; font-weight: 700; line-height: 1;
+  color: var(--lane-color, #8b949e); font-variant-numeric: tabular-nums;
+}
+.tanda-lane-owner {
+  font-size: 11px; font-weight: 600; text-transform: uppercase; text-align: center;
+  line-height: 1.15; letter-spacing: .02em; min-height: 1.1em;
+  display: flex; align-items: center; gap: 3px; max-width: 100%;
+}
+.tanda-lane-owner span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tanda-lane-btn--taken { background: color-mix(in srgb, var(--lane-color, #3a86ff) 16%, #0d1117 84%); }
+.tanda-lane-btn--rest { --lane-color: #3a86ff; border-style: dashed; }
+.tanda-lane-btn--rest .tanda-lane-num { font-size: 18px; }
+.tanda-lane-btn--missing { animation: tandaMissing 1s ease 2; }
+@keyframes tandaMissing {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(248,81,73,0); }
+  50%      { box-shadow: 0 0 0 3px rgba(248,81,73,.8); }
+}
+.tanda-rest-remove {
+  position: absolute; top: 2px; right: 5px;
+  font-size: 11px; color: #8b949e; cursor: pointer; line-height: 1;
+}
+.tanda-rest-remove:hover { color: #f85149; }
 
 .lane-slot {
   display: flex; align-items: center; gap: .6rem;

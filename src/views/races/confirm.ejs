@@ -1,7 +1,7 @@
 <%- include('../partials/header', { pageTitle: t('wizard.confirm_title') }) %>
 <div class="container container--narrow">
 
-  <%- include('../partials/wizard-progress', { step: wizard.has_pole ? 5 : 4, hasPole: wizard.has_pole }) %>
+  <%- include('../partials/wizard-progress', { current: 'confirm', hasPole: wizard.has_pole, skipSequence: !!wizard.circuit_id }) %>
 
   <h1 class="page-title"><%= t('wizard.confirm_title') %></h1>
 
@@ -73,7 +73,7 @@
 
   <form action="/races" method="POST">
     <div class="form-actions">
-      <a href="<%= wizard.has_pole ? '/races/new/step4' : '/races/new/step3' %>" class="btn btn--ghost">← <%= t('wizard.back') %></a>
+      <a href="<%= wizard.has_pole ? '/races/new/step4' : (wizard.circuit_id ? '/races/new' : '/races/new/step3') %>" class="btn btn--ghost">← <%= t('wizard.back') %></a>
       <button type="submit" class="btn btn--primary btn--lg">
         🏁 <%= t('wizard.confirm_create') %>
       </button>

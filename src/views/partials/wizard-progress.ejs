@@ -1,17 +1,23 @@
 <div class="wizard-progress">
   <%
+    // El stepper se define por CLAVE de paso (no por número). El formato ya no
+    // es un paso (se deriva del tipo). La "secuencia" solo existe en carreras
+    // manuales (sin circuito): con circuito, skipSequence=true la oculta.
     const _hasPole = typeof hasPole !== 'undefined' ? !!hasPole : false;
-    const _steps   = _hasPole
-      ? ['type', 'format', 'sequence', 'participants', 'confirm']
-      : ['type', 'format', 'sequence', 'confirm'];
+    const _skipSeq = typeof skipSequence !== 'undefined' && !!skipSequence;
+    const _steps = ['type'];
+    if (!_skipSeq) _steps.push('sequence');
+    if (_hasPole)  _steps.push('participants');
+    _steps.push('confirm');
+    const _curIdx = _steps.indexOf(current);
   %>
   <% _steps.forEach((s, i) => { %>
-    <div class="wizard-step <%= i + 1 < step ? 'done' : (i + 1 === step ? 'active' : '') %>">
-      <div class="wizard-step__dot"><%= i + 1 < step ? '✓' : (i + 1) %></div>
+    <div class="wizard-step <%= i < _curIdx ? 'done' : (i === _curIdx ? 'active' : '') %>">
+      <div class="wizard-step__dot"><%= i < _curIdx ? '✓' : (i + 1) %></div>
       <span class="wizard-step__label"><%= t('wizard.steps.' + s) %></span>
     </div>
     <% if (i < _steps.length - 1) { %>
-      <div class="wizard-connector <%= i + 1 < step ? 'done' : '' %>"></div>
+      <div class="wizard-connector <%= i < _curIdx ? 'done' : '' %>"></div>
     <% } %>
   <% }) %>
 </div>

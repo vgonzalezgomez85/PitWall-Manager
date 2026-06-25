@@ -1,7 +1,7 @@
 <%- include('../partials/header', { pageTitle: t('wizard.step3_seq_title') }) %>
 <div class="container container--narrow">
 
-  <%- include('../partials/wizard-progress', { step: 3, hasPole: wizard.has_pole }) %>
+  <%- include('../partials/wizard-progress', { current: 'sequence', hasPole: wizard.has_pole }) %>
 
   <h1 class="page-title"><%= t('wizard.step3_seq_title') %></h1>
   <%
@@ -56,6 +56,9 @@
       <button type="button" id="btnSmartSeq" class="btn btn--primary">
         ⚡ <%= lang === 'es' ? 'Generar secuencia' : 'Generate sequence' %>
       </button>
+      <button type="button" id="btnAddRest" class="btn btn--ghost">
+        ➕ <%= lang === 'es' ? 'Añadir descanso' : 'Add rest' %>
+      </button>
       <% if (circuits.length >= 2) { %>
         <span class="form-hint" style="color:#8b949e">
           💡 <%= lang === 'es' ? 'C impares: DSC después del carril 2 · C pares: DSC después del penúltimo' : 'Odd C: rest after lane 2 · Even C: rest after second-to-last' %>
@@ -95,7 +98,7 @@
       <input type="hidden" name="lane_sequence" id="seqInput">
 
       <div class="form-actions">
-        <a href="/races/new/step2" class="btn btn--ghost">← <%= t('wizard.back') %></a>
+        <a href="/races/new" class="btn btn--ghost">← <%= t('wizard.back') %></a>
         <button type="submit" class="btn btn--primary"><%= t('wizard.next') %> →</button>
       </div>
     </form>
@@ -228,6 +231,12 @@ function applySeq(seq) {
 document.getElementById('btnSmartSeq').addEventListener('click', () => {
   const n = parseInt(document.getElementById('numParticipants').value, 10) || LANES;
   applySeq(buildSmartSeq(n));
+});
+
+// ── Add a single rest slot (al final; luego se arrastra a su posición) ─────────
+document.getElementById('btnAddRest').addEventListener('click', () => {
+  list.appendChild(makeRestEl());
+  updatePreview();
 });
 
 document.getElementById('seqForm').addEventListener('submit', () => {
