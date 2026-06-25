@@ -77,7 +77,8 @@
                 <% } %>
               </div>
               <div class="team-members">
-                <% for (let m = 0; m < 4; m++) { %>
+                <% const _mem = (body.teams && body.teams[i] && body.teams[i].members) || []; const _mrows = Math.max(4, _mem.length); %>
+                <% for (let m = 0; m < _mrows; m++) { %>
                   <div class="member-row">
                     <span class="member-num"><%= m + 1 %></span>
                     <input
@@ -85,11 +86,15 @@
                       type="text"
                       name="teams[<%= i %>][members][]"
                       placeholder="<%= t('wizard.member_ph') %> <%= m + 1 %><%= m === 0 ? '' : (' (' + t('wizard.optional') + ')') %>"
-                      value="<%= (body.teams && body.teams[i] && body.teams[i].members && body.teams[i].members[m]) || '' %>"
+                      value="<%= _mem[m] || '' %>"
                       autocomplete="off">
+                    <button type="button" class="btn btn--danger btn--sm member-remove" tabindex="-1" title="<%= lang === 'es' ? 'Quitar piloto' : 'Remove driver' %>">✕</button>
                   </div>
                 <% } %>
               </div>
+              <button type="button" class="btn btn--ghost btn--sm add-member" style="margin-top:.4rem">
+                + <%= lang === 'es' ? 'Añadir piloto' : 'Add driver' %>
+              </button>
             </div>
           <% } %>
         </div>
@@ -97,6 +102,13 @@
         <button type="button" id="addTeam" class="btn btn--ghost btn--sm" style="margin-top:.75rem">
           + <%= lang === 'es' ? 'Añadir equipo' : 'Add team' %>
         </button>
+        <% if ((teamsCatalog || []).length) { %>
+          <p class="form-hint" style="margin-top:.5rem;font-size:.82rem">
+            <%= lang === 'es'
+              ? '💡 Empieza a escribir el nombre de un equipo del catálogo y elígelo para rellenar sus pilotos automáticamente.'
+              : '💡 Start typing a catalog team name and pick it to auto-fill its drivers.' %>
+          </p>
+        <% } %>
 
       <% } %>
 
@@ -118,13 +130,14 @@ const MEMBER_PH = "<%= t('wizard.member_ph') %>";
 const OPT_LBL   = "<%= t('wizard.optional') %>";
 
 const ALL_PROFILES = <%- JSON.stringify((profiles || []).map(p => ({ name: p.name, category: p.category }))) %>;
+const CATALOG      = <%- JSON.stringify((teamsCatalog || []).map(ct => ({ id: ct.id, name: ct.name, members: (ct.members || []).map(m => m.name) }))) %>;
 const CAT_ICONS    = { platino: '💎', oro: '🥇', plata: '🥈', bronce: '🥉' };
 
 // ── Autocomplete ──────────────────────────────────────────────────────────────
 const acDrop = document.createElement('div');
 acDrop.className = 'ac-dropdown';
 document.body.appendChild(acDrop);
-let acTarget = null, acActive = -1;
+let acTarget = null, acActive = -1, acMode = 'pilot';
 
 function acFilter(q) { return !q ? [] : ALL_PROFILES.filter(p => p.name.toLowerCase().includes(q.toLowerCase())).slice(0, 10); }
 function acShow(input, results) {
@@ -144,17 +157,53 @@ function acHighlight(idx) {
   items.forEach((el, i) => el.classList.toggle('ac-item--active', i === idx));
   if (items[idx]) items[idx].scrollIntoView({ block: 'nearest' });
 }
-document.addEventListener('input', e => { if (e.target.classList.contains('participant-name')) acShow(e.target, acFilter(e.target.value)); });
+
+// Autocomplete de EQUIPOS del catálogo sobre el nombre del equipo.
+function teamFilter(q) {
+  q = (q || '').toLowerCase();
+  const list = !q ? CATALOG : CATALOG.filter(t => t.name.toLowerCase().includes(q));
+  return list.slice(0, 10);
+}
+function acShowTeams(input) {
+  const results = teamFilter(input.value);
+  if (!results.length) { acHide(); return; }
+  acMode = 'team'; acTarget = input; acActive = -1;
+  const rect = input.getBoundingClientRect();
+  acDrop.style.cssText = `left:${rect.left + scrollX}px;top:${rect.bottom + scrollY + 2}px;width:${Math.max(rect.width, 220)}px`;
+  acDrop.innerHTML = results.map(t =>
+    `<div class="ac-item" data-team-id="${t.id}"><span class="ac-name">${escAttr(t.name)}</span>`
+    + `<span class="ac-cat" style="margin-left:auto;color:var(--vt-mute,#9aa0a6);font-size:.85em">${t.members.length} 👤</span></div>`
+  ).join('');
+  acDrop.classList.add('ac-dropdown--open');
+}
+// Aplica la selección según el modo (piloto = set value · equipo = rellena bloque).
+function acChoose(item) {
+  if (acMode === 'team') {
+    const team = CATALOG.find(t => t.id === parseInt(item.dataset.teamId, 10));
+    if (team && acTarget) { fillTeamBlock(acTarget.closest('.participant-row'), team.name, team.members); }
+    acHide();
+  } else {
+    acSelect(item.dataset.name);
+  }
+}
+
+document.addEventListener('input', e => {
+  if (e.target.classList.contains('team-name-input')) { acShowTeams(e.target); }
+  else if (e.target.classList.contains('participant-name')) { acMode = 'pilot'; acShow(e.target, acFilter(e.target.value)); }
+});
+document.addEventListener('focusin', e => { if (e.target.classList.contains('team-name-input')) acShowTeams(e.target); });
 document.addEventListener('keydown', e => {
   if (!acDrop.classList.contains('ac-dropdown--open')) return;
   const items = acDrop.querySelectorAll('.ac-item');
   if (e.key === 'ArrowDown') { e.preventDefault(); acActive = Math.min(acActive+1, items.length-1); acHighlight(acActive); }
   else if (e.key === 'ArrowUp') { e.preventDefault(); acActive = Math.max(acActive-1, 0); acHighlight(acActive); }
-  else if (e.key === 'Enter' && acActive >= 0) { e.preventDefault(); acSelect(items[acActive].dataset.name); }
+  else if (e.key === 'Enter' && acActive >= 0) { e.preventDefault(); acChoose(items[acActive]); }
   else if (e.key === 'Escape') acHide();
 });
-acDrop.addEventListener('mousedown', e => { const item = e.target.closest('.ac-item'); if (item) { e.preventDefault(); acSelect(item.dataset.name); } });
-document.addEventListener('focusout', e => { if (e.target.classList.contains('participant-name')) setTimeout(acHide, 150); });
+acDrop.addEventListener('mousedown', e => { const item = e.target.closest('.ac-item'); if (item) { e.preventDefault(); acChoose(item); } });
+document.addEventListener('focusout', e => {
+  if (e.target.classList.contains('participant-name') || e.target.classList.contains('team-name-input')) setTimeout(acHide, 150);
+});
 
 // ── Re-number ─────────────────────────────────────────────────────────────────
 function renumber(containerId) {
@@ -191,27 +240,87 @@ document.getElementById('driversGrid')?.addEventListener('click', e => {
   if (e.target.classList.contains('remove-row')) { e.target.closest('.participant-row').remove(); renumber('driversGrid'); }
 });
 
-// ── Add team ──────────────────────────────────────────────────────────────────
-document.getElementById('addTeam')?.addEventListener('click', () => {
+// ── Add team (manual o desde catálogo) ─────────────────────────────────────────
+function escAttr(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+function memberRowHtml(idx, m, value) {
+  return `<div class="member-row"><span class="member-num">${m+1}</span>`
+    + `<input class="form-input participant-name" type="text" name="teams[${idx}][members][]"`
+    + ` placeholder="${MEMBER_PH} ${m+1}${m>0?' ('+OPT_LBL+')':''}" value="${escAttr(value)}" autocomplete="off">`
+    + `<button type="button" class="btn btn--danger btn--sm member-remove" tabindex="-1" title="${LANG==='es'?'Quitar piloto':'Remove driver'}">✕</button></div>`;
+}
+
+// Renumera las filas de piloto (1..N) y refresca placeholders dentro de un bloque.
+function renumberMembers(block) {
+  block.querySelectorAll('.team-members .member-row').forEach((row, m) => {
+    const num = row.querySelector('.member-num'); if (num) num.textContent = m + 1;
+    const inp = row.querySelector('.participant-name');
+    if (inp && !inp.value) inp.placeholder = `${MEMBER_PH} ${m+1}${m>0?' ('+OPT_LBL+')':''}`;
+  });
+}
+
+// Crea y añade un bloque de equipo (vacío o relleno) y lo devuelve.
+function appendTeamBlock(name, memberNames) {
+  memberNames = memberNames || [];
   const container = document.getElementById('teamsContainer');
   const idx   = container.querySelectorAll('.participant-row').length;
   const color = COLORS[idx % COLORS.length];
-  const members = [0,1,2,3].map(m =>
-    `<div class="member-row"><span class="member-num">${m+1}</span><input class="form-input participant-name" type="text" name="teams[${idx}][members][]" placeholder="${MEMBER_PH} ${m+1}${m>0?' ('+OPT_LBL+')':''}" autocomplete="off"></div>`
-  ).join('');
+  const rows  = Math.max(4, memberNames.length);
+  let members = '';
+  for (let m = 0; m < rows; m++) members += memberRowHtml(idx, m, memberNames[m] || '');
   const block = document.createElement('div');
   block.className = 'team-block participant-row'; block.dataset.row = idx;
   block.innerHTML = `
     <div class="team-block__header" style="border-left-color:${color}">
       <span class="lane-badge participant-badge" style="background:${color}" data-index="${idx}">${idx+1}</span>
-      <input class="form-input team-name-input" type="text" name="teams[${idx}][name]" placeholder="${TEAM_PH}" autocomplete="off" required>
+      <input class="form-input team-name-input" type="text" name="teams[${idx}][name]" placeholder="${TEAM_PH}" value="${escAttr(name)}" autocomplete="off" required>
       <button type="button" class="btn btn--danger btn--sm remove-row" style="margin-left:.5rem">✕</button>
     </div>
-    <div class="team-members">${members}</div>`;
-  container.appendChild(block); block.querySelector('input').focus();
+    <div class="team-members">${members}</div>
+    <button type="button" class="btn btn--ghost btn--sm add-member" style="margin-top:.4rem">+ ${LANG==='es'?'Añadir piloto':'Add driver'}</button>`;
+  container.appendChild(block);
+  return block;
+}
+
+// Primer bloque con el nombre de equipo vacío (para reutilizar las filas iniciales).
+function firstEmptyTeamBlock() {
+  const blocks = document.querySelectorAll('#teamsContainer .participant-row');
+  for (const b of blocks) { const ni = b.querySelector('.team-name-input'); if (ni && !ni.value.trim()) return b; }
+  return null;
+}
+
+// Rellena un bloque existente con un equipo del catálogo (nombre + pilotos).
+function fillTeamBlock(block, name, memberNames) {
+  block.querySelector('.team-name-input').value = name || '';
+  const idx  = block.dataset.row;
+  const wrap = block.querySelector('.team-members');
+  let inputs = wrap.querySelectorAll('.participant-name');
+  for (let m = inputs.length; m < memberNames.length; m++) wrap.insertAdjacentHTML('beforeend', memberRowHtml(idx, m, ''));
+  inputs = wrap.querySelectorAll('.participant-name');
+  inputs.forEach((inp, m) => { inp.value = memberNames[m] || ''; });
+}
+
+document.getElementById('addTeam')?.addEventListener('click', () => {
+  const b = appendTeamBlock(); b.querySelector('.team-name-input').focus();
 });
+
 document.getElementById('teamsContainer')?.addEventListener('click', e => {
-  if (e.target.classList.contains('remove-row')) { e.target.closest('.participant-row').remove(); renumber('teamsContainer'); }
+  if (e.target.classList.contains('remove-row')) {
+    e.target.closest('.participant-row').remove(); renumber('teamsContainer');
+  } else if (e.target.classList.contains('add-member')) {
+    const block = e.target.closest('.participant-row');
+    const wrap  = block.querySelector('.team-members');
+    const m     = wrap.querySelectorAll('.member-row').length;
+    wrap.insertAdjacentHTML('beforeend', memberRowHtml(block.dataset.row, m, ''));
+    renumberMembers(block);
+    wrap.lastElementChild.querySelector('.participant-name').focus();
+  } else if (e.target.classList.contains('member-remove')) {
+    const block = e.target.closest('.participant-row');
+    const wrap  = block.querySelector('.team-members');
+    if (wrap.querySelectorAll('.member-row').length <= 1) return;   // dejar al menos 1
+    e.target.closest('.member-row').remove();
+    renumberMembers(block);
+  }
 });
 </script>
 
