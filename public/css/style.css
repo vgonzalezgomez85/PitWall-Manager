@@ -1637,10 +1637,20 @@ body:has(.pole-timing-fit) { overflow: hidden; }
    columnas: 1ª col 1..k, 2ª col k+1.., …). Sin scroll vertical. */
 .pole-timing-fit .pole-tower {
   display: block;
-  column-width: 200px; column-gap: 16px;   /* tantas columnas como quepan a lo ANCHO (sin desbordar) */
-  overflow-x: hidden; overflow-y: auto;     /* nunca scroll horizontal */
+  column-width: 175px; column-gap: 14px;    /* columnas más estrechas → caben más (todos los equipos) */
+  overflow-x: hidden; overflow-y: auto;      /* nunca scroll horizontal */
 }
-.pole-timing-fit .pole-tower-row { break-inside: avoid; -webkit-column-break-inside: avoid; }
+.pole-timing-fit .pole-tower-row {
+  break-inside: avoid; -webkit-column-break-inside: avoid; padding: 6px 10px;
+  /* Altura uniforme y una sola línea → las columnas quedan alineadas. */
+  min-height: 42px; overflow: hidden;
+}
+/* El nombre nunca parte la fila (elipsis si no cabe) */
+.pole-timing-fit .pole-tower-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* En columnas estrechas no caben los badges verbosos del líder/en pista:
+   se ocultan (el líder ya se distingue por el color y "Líder"/gap). */
+.pole-timing-fit .pole-tower-fastest,
+.pole-timing-fit .pole-tower-livetag { display: none; }
 /* La clasificación ocupa más parte derecha para que quepan las columnas */
 @media (min-width: 981px) {
   .pole-timing-fit .pole-bcast-grid { grid-template-columns: 300px 1fr 1.9fr; }
@@ -1816,6 +1826,17 @@ body:has(.pole-timing-fit) { overflow: hidden; }
 }
 .pole-picker-row--done .pole-picker-name { color: var(--pb-muted); }
 
+/* Equipos que descansan (sobran respecto a los carriles): badge "Descanso" */
+.pole-picker-row--rest { opacity: .72; }
+.pole-picker-row--rest .pole-picker-name { color: var(--pb-muted); }
+.pole-picker-lane--rest {
+  font-family: 'Saira Condensed', sans-serif; font-weight: 700;
+  letter-spacing: .05em; text-transform: uppercase; font-size: 12px;
+  color: #8fb6ff; background: rgba(58,134,255,.14);
+  border: 1px solid rgba(58,134,255,.4);
+  padding: 3px 9px; border-radius: 8px; white-space: nowrap;
+}
+
 /* Tablero de carriles */
 .pole-laneboard-grid {
   display: grid;
@@ -1857,6 +1878,9 @@ body:has(.pole-timing-fit) { overflow: hidden; }
 }
 .pole-laneboard-btn--taken:hover { transform: none; filter: none; box-shadow: none; }
 .pole-laneboard-btn--taken .pole-laneboard-num { opacity: .6; }
+/* Botón de DESCANSO (seleccionable como un carril) */
+.pole-laneboard-btn--rest { --lane-color: #3a86ff; border-style: dashed; }
+.pole-laneboard-btn--rest .pole-laneboard-num { font-size: 30px; }
 
 /* Nota de descansos + acciones del form */
 .pole-rest-note {
