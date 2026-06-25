@@ -20,11 +20,13 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
 <link rel="stylesheet" href="/css/semaphore.css">
 <script src="/js/semaphore.js"></script>
 
-<div class="pole-broadcast">
+<div class="pole-broadcast pole-timing-fit">
   <div class="pole-bcast-wrap">
 
-    <!-- ── Cabecera ──────────────────────────────────────────────────── -->
     <a href="/races/<%= race.id %>" class="pole-back">← <%= t('race.back_to_list') %></a>
+
+    <!-- ── Cabecera horizontal (título · meta · carril · progreso) ───── -->
+    <div class="pole-topbar">
 
     <div class="pole-title-row">
       <div class="pole-flag" aria-hidden="true"></div>
@@ -50,6 +52,8 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
       <div class="pole-bar"><div class="pole-bar-fill" style="width: <%= progressPct %>%"></div></div>
     </div>
 
+    </div><!-- /.pole-topbar -->
+
     <!-- ── Grid principal ────────────────────────────────────────────── -->
     <div class="pole-bcast-grid">
 
@@ -64,11 +68,6 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
         <div class="pole-live-sub" id="js-state-sub"><%= lang === 'es' ? 'Cronometrando vuelta' : 'Timing lap' %></div>
 
         <div class="pole-driver-big" id="js-current-name"><%= current.entity_name %></div>
-        <div class="pole-driver-lane">
-          <%= lang === 'es' ? 'Carril' : 'Lane' %>
-          <b><%= session.lane %></b> ·
-          <%= lang === 'es' ? 'Salida P' : 'Start P' %><%= session.current_idx + 1 %>
-        </div>
 
         <!-- Chrono live (oculto hasta running) -->
         <div id="js-chrono-wrap" class="pole-chrono-wrap" style="display:none">
