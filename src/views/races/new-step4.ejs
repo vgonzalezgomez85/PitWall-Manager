@@ -1,7 +1,7 @@
 <%- include('../partials/header', { pageTitle: lang === 'es' ? 'Nueva Carrera — Participantes' : 'New Race — Participants' }) %>
 <div class="container container--narrow">
 
-  <%- include('../partials/wizard-progress', { step: 4, hasPole: wizard.has_pole }) %>
+  <%- include('../partials/wizard-progress', { current: 'participants', hasPole: wizard.has_pole, skipSequence: !!wizard.circuit_id }) %>
 
   <h1 class="page-title"><%= lang === 'es' ? 'Participantes de Pole Position' : 'Pole Position Participants' %></h1>
   <p class="page-subtitle">
@@ -113,7 +113,7 @@
       <% } %>
 
       <div class="form-actions" style="margin-top:1.5rem">
-        <a href="/races/new/step3" class="btn btn--ghost">← <%= t('wizard.back') %></a>
+        <a href="<%= wizard.circuit_id ? '/races/new' : '/races/new/step3' %>" class="btn btn--ghost">← <%= t('wizard.back') %></a>
         <button type="submit" class="btn btn--primary"><%= t('wizard.next') %> →</button>
       </div>
 

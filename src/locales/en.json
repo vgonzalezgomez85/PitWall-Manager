@@ -22,8 +22,8 @@
       "finished": "Finished"
     },
     "type": {
-      "club": "Club",
-      "championship": "Championship"
+      "club": "Sprint",
+      "championship": "Endurance"
     },
     "format": {
       "individual": "Individual",
@@ -47,10 +47,10 @@
     "race_name": "Race name",
     "race_name_placeholder": "E.g.: Christmas Grand Prix",
     "race_type": "Race type",
-    "club_race": "Club Race",
-    "club_race_desc": "Informal race between hobbyists",
-    "championship_race": "Championship Race",
-    "championship_race_desc": "Counts towards the official championship",
+    "club_race": "Sprint Race",
+    "club_race_desc": "Short race · individual format",
+    "championship_race": "Endurance Race",
+    "championship_race_desc": "Long-duration · team format",
     "lanes_count": "Number of lanes",
     "lanes_hint": "Between 2 and 32 lanes",
     "manga_duration": "Heat duration",
@@ -107,6 +107,7 @@
     "lanes_invalid": "Number of lanes must be between 2 and 32",
     "duration_invalid": "Heat duration must be between 1 and 120 minutes",
     "format_required": "You must select a race format",
+    "team_requires_license": "Endurance (team) races require a Pro license. See /license",
     "sequence_invalid": "The sequence must contain each lane exactly once",
     "members_count_invalid": "Number of members must be between 1 and 10",
     "not_enough_teams": "Number of teams must equal the number of lanes in the sequence",
