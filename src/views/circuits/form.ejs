@@ -1,8 +1,8 @@
 <%
   const isEdit = !!circuit;
   const formTitle = isEdit
-    ? (lang === 'es' ? 'Editar circuito' : 'Edit circuit')
-    : (lang === 'es' ? 'Nuevo circuito' : 'New circuit');
+    ? (lang === 'es' ? 'Editar escenario' : 'Edit scenario')
+    : (lang === 'es' ? 'Nuevo escenario' : 'New scenario');
   const formAction = isEdit ? '/circuits/' + circuit.id : '/circuits';
   const CIRCUIT_COLORS = ['#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4'];
 %>
@@ -12,7 +12,7 @@
 
   <a href="/circuits" class="vt-back-link">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-    <%= lang === 'es' ? 'Volver a circuitos' : 'Back to circuits' %>
+    <%= lang === 'es' ? 'Volver a escenarios' : 'Back to scenarios' %>
   </a>
   <h1><%= formTitle %></h1>
 
@@ -45,7 +45,7 @@
 
       <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem">
         <span class="form-hint" style="flex-shrink:0">
-          <%= lang === 'es' ? 'Número de circuitos:' : 'Number of sub-circuits:' %>
+          <%= lang === 'es' ? 'Número de circuitos:' : 'Number of circuits:' %>
         </span>
         <div class="circ-pills" id="circPills">
           <% for (let i = 1; i <= 6; i++) { %>
@@ -277,7 +277,7 @@
     <div class="vt-form-actions">
       <a href="/circuits" class="vt-btn vt-btn--ghost"><%= lang === 'es' ? 'Cancelar' : 'Cancel' %></a>
       <button type="submit" class="vt-btn vt-btn--primary">
-        <%= isEdit ? (lang === 'es' ? 'Guardar cambios' : 'Save changes') : (lang === 'es' ? 'Crear circuito' : 'Create circuit') %>
+        <%= isEdit ? (lang === 'es' ? 'Guardar cambios' : 'Save changes') : (lang === 'es' ? 'Crear escenario' : 'Create scenario') %>
       </button>
     </div>
 
