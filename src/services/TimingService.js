@@ -79,6 +79,7 @@ class TimingServiceClass {
         teamId:       ml.team_id   || null,
         driverId:     ml.driver_id || null,
         color:        ml.team_color || '#8b949e',
+        country:      ml.team_country || null,
         lapCount:      0,
         bestLapMs:     null,
         lastLapMs:     null,
@@ -895,7 +896,7 @@ class TimingServiceClass {
 
     const rows = Object.values(laneMap)
       .map(l => ({
-        lane: l.lane, color: l.color, name: l.name,
+        lane: l.lane, color: l.color, name: l.name, country: l.country,
         lapCount: l.lapCount, lastLapMs: l.lastLapMs, bestLapMs: l.bestLapMs,
         exitCount: l.exitCount,
         pitStopCount: l.pitStopCount || 0,

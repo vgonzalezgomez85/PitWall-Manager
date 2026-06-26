@@ -275,6 +275,7 @@
         cardId,
         lane:         l.lane,
         name:         l.team_name || l.driver_name || ('Lane ' + l.lane),
+        country:      l.team_country || null,
         color:        l.is_rest ? (l.team_color || '#484f58') : (LC[l.lane - 1] || '#8b949e'),
         isRest:       l.is_rest ? true : false,
         finished:     info ? info.finished : false,

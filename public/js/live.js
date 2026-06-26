@@ -1,4 +1,14 @@
 // ── Helpers ───────────────────────────────────────────────────────────────────
+// Bandera del país del equipo. country viene como "Nombre|🇪🇸" o "Nombre|__SVG__"
+// (senyera). Devuelve el HTML de la bandera (+ espacio) o '' si no hay.
+const SENYERA_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 6" width="16" height="11" style="border-radius:2px;flex-shrink:0;vertical-align:middle"><rect width="9" height="6" fill="#FCDD09"/><rect y="0.667" width="9" height="0.889" fill="#DA121A"/><rect y="2.222" width="9" height="0.889" fill="#DA121A"/><rect y="3.778" width="9" height="0.889" fill="#DA121A"/><rect y="5.333" width="9" height="0.667" fill="#DA121A"/></svg>';
+function flagHtml(country) {
+  if (!country) return '';
+  const flag = String(country).split('|')[1];
+  if (!flag) return '';
+  const inner = flag === '__SVG__' ? SENYERA_SVG : `<span style="line-height:1">${flag}</span>`;
+  return `<span class="lane-flag">${inner}</span>`;
+}
 function formatMs(ms) {
   if (ms == null) return '—';
   // 2 decimales (centésimas) TRUNCANDO, sin redondear (12.069s → 12.06).
@@ -332,7 +342,7 @@ function buildCard(lane) {
         <span class="lane-card__rest-icon">${icon}</span>
         <span class="lane-card__pos" id="card-pos-${lane.cardId || lane.lane}"></span>
       </div>
-      <div class="lane-card__rest-name">${lane.name}</div>
+      <div class="lane-card__rest-name">${flagHtml(lane.country)}${lane.name}</div>
       <div class="lane-card__rest-laps" id="card-rest-laps-${lane.cardId || lane.lane}">${restTotal}</div>
       <div class="lane-card__rest-label">${posLabel}</div>`;
     return card;
@@ -351,7 +361,7 @@ function buildCard(lane) {
           <span class="lane-card__trend-up"></span>
           <span class="lane-card__trend-down"></span>
         </span>
-        <span class="lane-card__name"><span class="lane-card__name-scroll">${lane.name}</span></span>
+        <span class="lane-card__name"><span class="lane-card__name-scroll">${flagHtml(lane.country)}${lane.name}</span></span>
         <span class="lane-card__pit" id="card-pit-${lane.lane}" hidden title="Pit-stop">
           🔧<span class="lane-card__pit-count" id="card-pit-count-${lane.lane}"></span>
         </span>
@@ -810,7 +820,7 @@ function renderStandings(data) {
   if (!data?.standings) return;
   // Merge active lanes with resting entities (lapCount=0 this manga)
   const restRows = restLanes.map(l => ({
-    lane: l.lane, name: l.name, color: l.color,
+    lane: l.lane, name: l.name, color: l.color, country: l.country,
     lapCount: 0, lastLapMs: null, bestLapMs: null, avgLapMs: null,
     exitCount: 0, isRest: true, prevLapCount: l.prevLapCount || 0,
   }));
@@ -849,7 +859,7 @@ function renderStandings(data) {
       return `
       <tr class="srow srow--rest" id="srow-rest-${i}">
         <td><span class="sr-pos">${i+1}</span></td>
-        <td style="max-width:80px"><span class="sr-name sr-name--rest" title="${r.name}">💤 ${r.name}</span></td>
+        <td style="max-width:80px"><span class="sr-name sr-name--rest" title="${r.name}">💤 ${flagHtml(r.country)}${r.name}</span></td>
         <td class="sr-right">—</td>
         <td class="sr-right"><span class="sr-total">${r.prevLapCount}</span></td>
         <td class="sr-right">—</td>
@@ -864,7 +874,7 @@ function renderStandings(data) {
     return `
     <tr class="srow" id="srow-${r.lane}">
       <td style="width:28px"><span class="sr-pos ${posClass(i+1)}">${i+1}</span></td>
-      <td style="max-width:80px"><span class="sr-name" title="${r.name}">${r.name}</span></td>
+      <td style="max-width:80px"><span class="sr-name" title="${r.name}">${flagHtml(r.country)}${r.name}</span></td>
       <td class="sr-right"><span class="sr-laps">${r.lapCount}</span></td>
       <td class="sr-right"><span class="sr-total">${getTotalLaps(r.lane, r.lapCount)}</span></td>
       <td class="sr-right"><span class="sr-best">${formatMs(r.bestLapMs)}</span></td>

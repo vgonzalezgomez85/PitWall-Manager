@@ -117,6 +117,7 @@ const migrations = [
   `ALTER TABLE laps     ADD COLUMN manga_id    INTEGER REFERENCES mangas(id) ON DELETE SET NULL`,
   `ALTER TABLE laps     ADD COLUMN team_id     INTEGER REFERENCES teams(id)  ON DELETE SET NULL`,
   `ALTER TABLE teams    ADD COLUMN tanda_id    INTEGER REFERENCES tandas(id) ON DELETE SET NULL`,
+  `ALTER TABLE teams    ADD COLUMN country     TEXT`,
   `ALTER TABLE drivers  ADD COLUMN tanda_id    INTEGER REFERENCES tandas(id) ON DELETE SET NULL`,
   `ALTER TABLE races    ADD COLUMN lane_sequence          TEXT NOT NULL DEFAULT '[]'`,
   `ALTER TABLE races    ADD COLUMN manga_duration_minutes INTEGER NOT NULL DEFAULT 5`,
