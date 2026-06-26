@@ -4815,5 +4815,117 @@
     }
    ]
   }
+ ],
+ "rot22": [
+  {
+   "lane": 5,
+   "name": "TUSCANY FACTORY P1",
+   "coma": 3
+  },
+  {
+   "lane": 3,
+   "name": "SLOTMANIA PALMARES P1",
+   "coma": 79
+  },
+  {
+   "lane": 10,
+   "name": "CATANIA SLOT P1",
+   "coma": 134
+  },
+  {
+   "lane": 1,
+   "name": "MRC SLOT P1",
+   "coma": 7
+  },
+  {
+   "lane": 4,
+   "name": "ZOO SLOT P1",
+   "coma": 20
+  },
+  {
+   "lane": 2,
+   "name": "PEG 1 P1",
+   "coma": 44
+  },
+  {
+   "lane": 20,
+   "name": "DSCA1 P1",
+   "coma": 83
+  },
+  {
+   "lane": 12,
+   "name": "DZERO TEAM P1",
+   "coma": 82
+  },
+  {
+   "lane": 8,
+   "name": "CAMPIDOGLIO 1 P1",
+   "coma": 90
+  },
+  {
+   "lane": 22,
+   "name": "BOSLOT ROSSO P1",
+   "coma": 39
+  },
+  {
+   "lane": 9,
+   "name": "GARGANO SLOT CLUB P1",
+   "coma": 52
+  },
+  {
+   "lane": 7,
+   "name": "PEG 2 P2",
+   "coma": 65
+  },
+  {
+   "lane": 14,
+   "name": "IMOLA SLOT RACING P2",
+   "coma": 40
+  },
+  {
+   "lane": 18,
+   "name": "RAL 2009 P2",
+   "coma": 50
+  },
+  {
+   "lane": 21,
+   "name": "PIUSLOT CONEGLIANO P2",
+   "coma": 43
+  },
+  {
+   "lane": 13,
+   "name": "FLBT P1",
+   "coma": 23
+  },
+  {
+   "lane": 16,
+   "name": "BOSLOT BLU P2",
+   "coma": 79
+  },
+  {
+   "lane": 6,
+   "name": "CMF P2",
+   "coma": 0
+  },
+  {
+   "lane": 17,
+   "name": "DSCA2 P2",
+   "coma": 63
+  },
+  {
+   "lane": 15,
+   "name": "TUSCANY 2 P2",
+   "coma": 96
+  },
+  {
+   "lane": 19,
+   "name": "CALABRONI ROSSI ASTI P2",
+   "coma": 100
+  },
+  {
+   "lane": 11,
+   "name": "JAMAICA BOB CAMPI P1",
+   "coma": 82
+  }
  ]
 }
