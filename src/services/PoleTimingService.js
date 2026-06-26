@@ -23,6 +23,9 @@ class PoleTimingServiceClass {
     this._pausedAt   = null;
     this._totalPausedMs = 0;
     this._pendingDurationMs = null;
+    // Omitir el primer cruce (out-lap). Por defecto sí; la organización puede
+    // desactivarlo desde la vista de pole. Persiste entre pilotos de la sesión.
+    this._omitFirstCrossing = true;
 
     // Trama 1: guarda duración (la UI ya sabe la durationMs, pero la real
     // viene del DS-300 al recibir GO; respetamos la del DS-300 si llega).
@@ -65,15 +68,17 @@ class PoleTimingServiceClass {
 
   // Llamado desde POST /races/:id/pole/participant/start
   // No arranca el cronómetro: queda en standby, esperando el GO del DS-300.
-  start({ poleSessionId, entryId, entryName, poleLane, durationMs }) {
+  start({ poleSessionId, entryId, entryName, poleLane, durationMs, minLapMs = 0 }) {
     if (this.session) this.stop(false);
 
     this.session = {
       poleSessionId, entryId, entryName, poleLane, durationMs,
+      minLapMs,                       // mínimo de vuelta (Pt): por debajo = cruce espurio
       startTime:    null,
       lapCount:     0,
       bestLapMs:    null,
       lastCrossing: null,
+      firstCrossingDone: false,       // el primer cruce (out-lap) siempre se omite
     };
     this._standby = true;
     this._active  = false;
@@ -130,13 +135,34 @@ class PoleTimingServiceClass {
 
   _onCrossing(timestamp, lapTimeMs) {
     if (!this.session || !this._active) return;
-    if (lapTimeMs === null) {
-      this.session.lastCrossing = timestamp;
+    const s = this.session;
+
+    // El PRIMER cruce de cada piloto se omite (si la organización lo activa):
+    // es el out-lap (cruce de salida), solo fija la referencia para medir la
+    // primera vuelta voladora.
+    if (this._omitFirstCrossing && !s.firstCrossingDone) {
+      s.firstCrossingDone = true;
+      s.lastCrossing = timestamp;
+      SocketService.emit('pole:lap_ignored', { reason: 'out_lap' });
+      console.log('[PoleTimingService] Primer cruce omitido (out-lap)');
       return;
     }
-    const s = this.session;
+
+    if (lapTimeMs === null) {
+      s.lastCrossing = timestamp;
+      return;
+    }
     const elapsed = timestamp - s.lastCrossing;
     if (elapsed < DEBOUNCE_MS && s.lapCount > 0) return;
+
+    // Vuelta por debajo del mínimo (Pt) = cruce espurio (p.ej. 3s cuando la
+    // vuelta real es ~11s): se descarta, NO puede convertirse en la mejor.
+    if (s.minLapMs > 0 && lapTimeMs < s.minLapMs) {
+      s.lastCrossing = timestamp;
+      SocketService.emit('pole:lap_ignored', { reason: 'below_min', lapTimeMs });
+      console.log(`[PoleTimingService] Vuelta ignorada — ${lapTimeMs}ms < Pt ${s.minLapMs}ms`);
+      return;
+    }
 
     s.lapCount++;
     s.lastCrossing = timestamp;
@@ -203,6 +229,8 @@ class PoleTimingServiceClass {
   get isPaused()        { return this._paused; }
   get currentEntryId()  { return this.session?.entryId ?? null; }
   get currentBestLap()  { return this.session?.bestLapMs ?? null; }
+  get omitFirstCrossing() { return this._omitFirstCrossing; }
+  set omitFirstCrossing(v) { this._omitFirstCrossing = !!v; }
 
   // Snapshot puntual del cronómetro para consumidores que no escuchan
   // pole:tick por socket (ej. polling HTTP de la app móvil). Devuelve null

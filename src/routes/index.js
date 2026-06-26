@@ -110,6 +110,7 @@ router.get( '/races/:id/pole/timing',            requireModule('pole'), PoleCont
 router.post('/races/:id/pole/participant/start', requireModule('pole'), PoleController.startParticipant);
 router.post('/races/:id/pole/participant/stop',  requireModule('pole'), PoleController.stopParticipant);
 router.post('/races/:id/pole/next',              requireModule('pole'), PoleController.advanceParticipant);
+router.post('/races/:id/pole/omit-first',        requireModule('pole'), PoleController.setOmitFirstCrossing);
 router.get( '/races/:id/pole/results',           requireModule('pole'), PoleController.results);
 router.post('/races/:id/pole/times',             requireModule('pole'), PoleController.saveTimes);
 router.get( '/races/:id/pole/lanes',             requireModule('pole'), PoleController.laneSelection);
