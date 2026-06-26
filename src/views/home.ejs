@@ -270,10 +270,10 @@ const c = typeof counts !== 'undefined' ? counts : { drivers: 0, teams: 0, cars:
           </div>
           <div class="vh-body">
             <div class="vh-t">
-              <%= lang === 'es' ? 'Circuitos' : 'Circuits' %>
+              <%= lang === 'es' ? 'Escenarios' : 'Scenarios' %>
               <% if (c.circuits > 0) { %><span class="vh-count"><%= c.circuits %></span><% } %>
             </div>
-            <div class="vh-d"><%= lang === 'es' ? 'Define los circuitos y su configuración de carriles.' : 'Define circuits and their lane configuration.' %></div>
+            <div class="vh-d"><%= lang === 'es' ? 'Define los escenarios y su configuración de circuitos y carriles.' : 'Define scenarios and their circuit and lane configuration.' %></div>
           </div>
           <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
         </a>
