@@ -879,7 +879,8 @@ class SessionController {
       SELECT l.manga_id, l.team_id, l.driver_id,
              COUNT(*) AS laps,
              SUM(CASE WHEN l.is_warmup = 0 THEN l.lap_time_ms END) AS clean_time,
-             SUM(CASE WHEN l.is_warmup = 0 THEN 1 ELSE 0 END)      AS clean_laps
+             SUM(CASE WHEN l.is_warmup = 0 THEN 1 ELSE 0 END)      AS clean_laps,
+             SUM(l.is_pit_stop)                                    AS pits
       FROM laps l
       WHERE l.race_id = ? AND l.is_ghost = 0
       GROUP BY l.manga_id, l.team_id, l.driver_id
@@ -909,15 +910,19 @@ class SessionController {
 
     const N = entityKeys.length;
     const positionPoints = {};
-    entityKeys.forEach(k => { positionPoints[k] = []; });
+    const gapPoints = {};   // gap de VUELTAS frente al líder, por tiempo de carrera
+    entityKeys.forEach(k => { positionPoints[k] = []; gapPoints[k] = []; });
     let cumTimeMs = 0;
+    let mangaOrd  = 0;   // ordinal de manga disputada (M1, M2, … para el eje X del gap)
 
     mangaSeq.forEach(m => {
       const mLaps = lapsIdx.get(m.id);
       if (!mLaps || mLaps.length === 0) return;   // manga sin disputar
+      mangaOrd++;
       const durMs = m.actual_duration_ms || durDefault;
       const tStartMin = +(cumTimeMs / 60000).toFixed(2);   // inicio de esta manga
       cumTimeMs += durMs;
+      const pitThisManga = {};
       mLaps.forEach(r => {
         const k = entityKeyOf(r);
         if (!cumE[k]) return;
@@ -925,6 +930,7 @@ class SessionController {
         cumE[k].cleanTime  += r.clean_time || 0;
         cumE[k].cleanCount += r.clean_laps || 0;
         cumE[k].raced      += 1;
+        pitThisManga[k]     = (pitThisManga[k] || 0) + (r.pits || 0);
       });
       // Proyección causal de vueltas al final (datos sólo hasta este cierre).
       const proj = {};
@@ -945,12 +951,21 @@ class SessionController {
         if (positionPoints[k].length === 0) positionPoints[k].push({ x: tStartMin, y: N });
         positionPoints[k].push({ x: tMin, y: idx + 1 });
       });
+      // Gap de vueltas frente al líder (el que MÁS vueltas reales lleva a este
+      // cierre), por manga. Líder = 0; el resto NEGATIVO (vueltas perdidas).
+      const leaderLaps = Math.max(0, ...entityKeys.map(k => cumE[k].laps));
+      entityKeys.forEach(k => {
+        if (cumE[k].laps <= 0) return;   // aún no ha corrido
+        gapPoints[k].push({ x: mangaOrd, y: cumE[k].laps - leaderLaps, pit: pitThisManga[k] || 0 });
+      });
     });
 
     const positionData = {};
+    const gapData = {};
     results.forEach(r => {
       const k = `${r.entity_type}_${r.entity_id}`;
       positionData[k] = { name: r.entity_name, color: r.color, points: positionPoints[k] };
+      gapData[k]      = { name: r.entity_name, color: r.color, points: gapPoints[k] };
     });
 
     // ── Advanced stats por entidad (race-wide) ────────────────────────────
@@ -1022,13 +1037,55 @@ class SessionController {
       return { key: e.key, entityName: e.name, color: e.color, ...s, perLane };
     });
 
-    res.render('races/results', {
+    return SessionController._sendResults(req, res, {
       t: req.t, race, results, laneSequence, tandas, LANE_COLORS,
       raceBestLapMs, raceBestEntity, raceBestLane, startLaneByEntity,
-      progressionByEntity, positionData,
+      progressionByEntity, positionData, gapData,
       advancedStats,
       publicView: !!req._publicResults,
     });
+  }
+
+  // Renderiza la vista de resultados. En modo export devuelve un HTML
+  // AUTOCONTENIDO como descarga (para GitHub Pages / compartir sin PitWall);
+  // si no, render normal.
+  static _sendResults(req, res, data) {
+    if (!req._exportMode) return res.render('races/results', data);
+    res.render('races/results', { ...data, hideNavbar: true }, (err, html) => {
+      if (err) { console.error('[export] render error:', err.message); return res.status(500).send('Export error'); }
+      const out = SessionController._inlineForExport(html);
+      // index.html → se sube tal cual a un repo y GitHub Pages ya lo sirve.
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename="index.html"');
+      res.send(out);
+    });
+  }
+
+  // Convierte el HTML en autónomo: inline del CSS local y quita los assets/JS
+  // y la botonera que dependen del servidor. Chart.js y las fuentes (CDN) y los
+  // datos embebidos (JSON) se mantienen → funciona offline / en GitHub Pages.
+  static _inlineForExport(html) {
+    const fs   = require('fs');
+    const path = require('path');
+    let css = '', chartJs = '';
+    try { css     = fs.readFileSync(path.join(__dirname, '../../public/css/style.css'), 'utf8'); } catch {}
+    try { chartJs = fs.readFileSync(path.join(__dirname, '../../node_modules/chart.js/dist/chart.umd.min.js'), 'utf8'); } catch {}
+    let out = html;
+    out = out.replace(/<link[^>]*href="\/css\/style\.css"[^>]*>/i, '<style>\n' + css + '\n</style>');
+    out = out.replace(/<script[^>]*src="\/js\/app\.js"[^>]*><\/script>/i, '');
+    out = out.replace(/<link[^>]*rel="(?:icon|apple-touch-icon)"[^>]*>\s*/gi, '');
+    // SIN internet: Chart.js inline (CDN → local) y fuera las fuentes de Google
+    // (se usan las del sistema). Así el HTML funciona 100% offline.
+    if (chartJs) {
+      out = out.replace(/<script[^>]*src="https:\/\/cdn\.jsdelivr\.net\/npm\/chart\.js@[^"]*"[^>]*><\/script>/i,
+        '<script>\n' + chartJs + '\n</script>');
+    }
+    out = out.replace(/<link[^>]*fonts\.(?:googleapis|gstatic)\.com[^>]*>\s*/gi, '');
+    out = out.replace(/<link[^>]*rel="preconnect"[^>]*>\s*/gi, '');
+    // Oculta navegación/botonera/footer (dependen del servidor); deja el análisis.
+    out = out.replace(/<\/head>/i,
+      '<style>.vt-head__actions,.vt-back-link,.footer,.navbar{display:none!important}</style></head>');
+    return out;
   }
 
   // ── Resultados públicos ────────────────────────────────────────────────────
@@ -1044,6 +1101,15 @@ class SessionController {
   // GET /results/:id — resultados públicos de una carrera (misma vista que
   // /races/:id/results pero sin la sección de corrección de vueltas).
   static publicResults(req, res) {
+    req._publicResults = true;
+    return SessionController.results(req, res);
+  }
+
+  // GET /races/:id/results/export.html — descarga un index.html AUTOCONTENIDO
+  // de los resultados (gráficos + datos embebidos) listo para subir a GitHub
+  // Pages o compartir sin acceso a PitWall.
+  static exportResults(req, res) {
+    req._exportMode    = true;
     req._publicResults = true;
     return SessionController.results(req, res);
   }
