@@ -59,7 +59,7 @@ class Lap {
       FROM laps l
       LEFT JOIN drivers d ON d.id = l.driver_id
       LEFT JOIN teams   t ON t.id = l.team_id
-      WHERE l.race_id = ? AND l.is_ghost = 0
+      WHERE l.race_id = ? AND l.is_ghost = 0 AND l.manga_id IS NOT NULL
       ORDER BY l.elapsed_ms ASC
     `).all(raceId);
   }
@@ -81,6 +81,7 @@ class Lap {
         -- circuito es un fantasma por definición — la descartamos aunque no
         -- esté marcada is_ghost (p.ej. el Pt se configuró después de correr).
         WHERE race_id = ? AND is_ghost = 0 AND is_exit = 0 AND is_warmup = 0 AND lap_number > 1
+          AND manga_id IS NOT NULL
           AND lap_time_ms >= (SELECT minms FROM pt)
         GROUP BY lane
       )
@@ -131,7 +132,7 @@ class Lap {
       FROM laps l
       LEFT JOIN teams   t ON t.id = l.team_id
       LEFT JOIN drivers d ON d.id = l.driver_id
-      WHERE l.race_id = ? AND l.is_ghost = 0
+      WHERE l.race_id = ? AND l.is_ghost = 0 AND l.manga_id IS NOT NULL
       GROUP BY entity_id, entity_type
       -- Desempate: coma MEDIA por manga (no la suma), para que la escala sea < 1
       -- e intuitiva; con mangas iguales el orden es idéntico al de la suma.
@@ -158,7 +159,7 @@ class Lap {
         SUM(CASE WHEN l.is_pit_stop = 1 THEN 1 ELSE 0 END) AS pit_stop_count,
         GROUP_CONCAT(CASE WHEN l.is_pit_stop = 1 THEN l.lap_number END) AS pit_stop_laps
       FROM laps l
-      WHERE l.race_id = ? AND ${col} = ? AND l.is_ghost = 0
+      WHERE l.race_id = ? AND ${col} = ? AND l.is_ghost = 0 AND l.manga_id IS NOT NULL
       GROUP BY l.lane
       ORDER BY l.lane ASC
     `).all(raceId, raceId, entityId);
