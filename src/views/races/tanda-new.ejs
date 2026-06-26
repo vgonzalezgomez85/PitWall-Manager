@@ -206,6 +206,28 @@
                   <span class="tanda-lane-owner" id="lane-owner-<%= lane %>"></span>
                 </button>
               <% }) %>
+              <%# Descansos que ya trae la secuencia de la carrera (circuito con DSC):
+                  se muestran ya puestos y etiquetados por circuito (n/total). %>
+              <%
+                const _restIdxs = [];
+                laneSequence.forEach((ln, i) => { if (ln === 0) _restIdxs.push(i); });
+                const _restTotByC = {};
+                _restIdxs.forEach(i => { const ci = _dscCircuitFor(i); _restTotByC[ci] = (_restTotByC[ci] || 0) + 1; });
+                const _restNthByC = {};
+              %>
+              <% _restIdxs.forEach((i, r) => {
+                   const ci = _dscCircuitFor(i);
+                   _restNthByC[ci] = (_restNthByC[ci] || 0) + 1;
+                   const _lbl = (lang === 'es' ? 'DSC ' : 'REST ') + _restNthByC[ci] + '/' + _restTotByC[ci]
+                              + (_numCircuits > 1 ? ' · C' + (ci + 1) : '');
+              %>
+                <button type="button" class="tanda-lane-btn tanda-lane-btn--rest" data-rest="<%= r %>">
+                  <span class="tanda-rest-remove" title="<%= lang === 'es' ? 'Quitar descanso' : 'Remove rest' %>">✕</span>
+                  <span class="tanda-lane-num">💤</span>
+                  <span class="tanda-rest-label"><%= _lbl %></span>
+                  <span class="tanda-lane-owner"></span>
+                </button>
+              <% }) %>
             </div>
           </div>
 
@@ -428,7 +450,8 @@ if (document.getElementById('teamAssignUI')) {
   const pickHint     = document.getElementById('pickHint');
   const PICK_HINT    = pickHint ? pickHint.textContent : '';
   let selected = null;     // { id, name, country, el }
-  let restCounter = 0;
+  // Arranca tras los descansos ya pre-renderizados (los que trae la secuencia).
+  let restCounter = laneGrid.querySelectorAll('.tanda-lane-btn--rest').length;
 
   function resetHint() {
     if (!pickHint) return;
@@ -528,6 +551,7 @@ if (document.getElementById('teamAssignUI')) {
     btn.innerHTML =
       `<span class="tanda-rest-remove" title="${LANG === 'es' ? 'Quitar descanso' : 'Remove rest'}">✕</span>` +
       `<span class="tanda-lane-num">💤</span>` +
+      `<span class="tanda-rest-label">${LANG === 'es' ? 'DSC extra' : 'REST extra'}</span>` +
       `<span class="tanda-lane-owner"></span>`;
     laneGrid.appendChild(btn);
     updateRestBanner();

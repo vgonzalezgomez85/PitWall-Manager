@@ -1138,6 +1138,7 @@ input, button, select { font-family: inherit; }
 .tanda-lane-btn--taken { background: color-mix(in srgb, var(--lane-color, #3a86ff) 16%, #0d1117 84%); }
 .tanda-lane-btn--rest { --lane-color: #3a86ff; border-style: dashed; }
 .tanda-lane-btn--rest .tanda-lane-num { font-size: 18px; }
+.tanda-rest-label { font-size: 9.5px; font-weight: 700; color: #58a6ff; text-transform: uppercase; letter-spacing: .03em; line-height: 1; }
 .tanda-lane-btn--missing { animation: tandaMissing 1s ease 2; }
 @keyframes tandaMissing {
   0%, 100% { box-shadow: 0 0 0 0 rgba(248,81,73,0); }
@@ -1678,6 +1679,7 @@ body:has(.pole-timing-fit) { overflow: hidden; }
 .pole-timing-fit .pole-tower {
   display: block;
   column-width: 175px; column-gap: 14px;    /* columnas más estrechas → caben más (todos los equipos) */
+  column-fill: auto;                          /* llena la 1ª columna del todo y luego la 2ª (no reparte) */
   overflow-x: hidden; overflow-y: auto;      /* nunca scroll horizontal */
 }
 .pole-timing-fit .pole-tower-row {
