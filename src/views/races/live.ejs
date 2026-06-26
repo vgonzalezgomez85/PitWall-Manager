@@ -297,10 +297,14 @@
       const s = laneInit[l.lane];
       if (!s || s.isRest) return;
       s.lapCount = Math.max(s.lapCount, l.lap_number);
-      s.lastLapMs = l.lap_time_ms;
+      if (!l.is_warmup) s.lastLapMs = l.lap_time_ms;
       // lap_number > 1: la 1ª vuelta de la manga no cuenta como mejor vuelta.
       if (!l.is_exit && l.lap_number > 1 && (!s.bestLapMs || l.lap_time_ms < s.bestLapMs)) s.bestLapMs = l.lap_time_ms;
-      if (l.is_exit) { s.exitCount++; } else { s._lapSum += l.lap_time_ms; s._lapN++; }
+      if (l.is_exit) s.exitCount++;
+      // Media "sucia" = igual que el servidor: excluye SOLO el warmup (out-lap),
+      // incluye las salidas. (Antes incluía el warmup y excluía salidas → medias
+      // absurdas de 0,2-5s cuando el out-lap pesaba en pocas vueltas.)
+      if (!l.is_warmup) { s._lapSum += l.lap_time_ms; s._lapN++; }
     });
     Object.values(laneInit).forEach(s => {
       s.avgLapMs = s._lapN > 0 ? Math.round(s._lapSum / s._lapN) : null;
