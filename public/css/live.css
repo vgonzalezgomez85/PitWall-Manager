@@ -304,6 +304,10 @@ body:not(:has(.live-lanes--vertical)) .lane-card.is-rest .lane-card__rest-label 
   font-weight: 600; color: #e6edf3;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+/* Bandera del país del equipo (live de carrera y standings) */
+.lane-flag { display: inline-flex; align-items: center; margin-right: .35em; vertical-align: middle; }
+.lane-flag span { font-size: 1em; line-height: 1; }
+.sr-name .lane-flag { margin-right: .25em; }
 .lane-card__pit {
   font-size: 1.1rem; margin-left: .35rem; line-height: 1;
   display: inline-flex; align-items: baseline; gap: .15rem;

@@ -31,11 +31,11 @@ class Team {
     }));
   }
 
-  static create({ race_id, tanda_id, name, lane, color }) {
+  static create({ race_id, tanda_id, name, lane, color, country }) {
     const { lastInsertRowid } = db.prepare(`
-      INSERT INTO teams (race_id, tanda_id, name, lane, color)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(race_id, tanda_id ?? null, name, lane ?? 0, color || '#e63946');
+      INSERT INTO teams (race_id, tanda_id, name, lane, color, country)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(race_id, tanda_id ?? null, name, lane ?? 0, color || '#e63946', country ?? null);
     return lastInsertRowid;
   }
 

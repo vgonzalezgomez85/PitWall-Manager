@@ -100,7 +100,8 @@ class TandaController {
         const teamName = catalogTeam ? catalogTeam.name : `Equipo ${idx + 1}`;
         const teamId = Team.create({
           race_id: race.id, tanda_id: tandaId,
-          name: teamName, lane: 0, color: LANE_COLORS[idx % LANE_COLORS.length]
+          name: teamName, lane: 0, color: LANE_COLORS[idx % LANE_COLORS.length],
+          country: catalogTeam ? catalogTeam.country : null,
         });
         if (catalogTeam) {
           catalogTeam.members.forEach(m => {
