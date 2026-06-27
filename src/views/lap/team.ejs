@@ -23,6 +23,15 @@
       <span id="statusText"><%= race.name %></span>
     </div>
 
+    <div class="audiobar">
+      <button id="audioToggle" class="audiobtn" type="button" aria-pressed="false">🔇 Cantar vueltas</button>
+      <select id="audioMode" class="audiomode" title="Qué cantar">
+        <option value="time" selected>Tiempo</option>
+        <option value="number">Nº de vuelta</option>
+        <option value="both">Ambos</option>
+      </select>
+    </div>
+
     <div class="hero">
       <div class="pos"><span id="pos">—</span><small id="posOf"></small></div>
       <div class="heroSub" id="gapLeader">—</div>
@@ -53,6 +62,7 @@
   <script>
   (function(){
     var RACE_ID = <%= race.id %>, TEAM_ID = <%= team.id %>;
+    var TEAM_NAME = <%- JSON.stringify(team.name) %>;
 
     function fmtLap(ms){
       if (ms == null) return '—';
@@ -70,6 +80,50 @@
     function set(id, v){ var el = document.getElementById(id); if (el) el.textContent = v; }
 
     var lastLapShown = null;
+
+    // ── Audio: "cantar" cada vuelta del equipo (beep + voz) ──────────────────
+    var audioOn = false;
+    var audioMode = 'time';
+    var lastSpokenLaps = null;   // null hasta el primer render (no cantar el histórico)
+    var audioCtx = null;
+
+    function ensureAudio(){
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+      } catch(e){}
+    }
+    function tone(freq, start, dur){
+      var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = 'sine'; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, start);
+      g.gain.exponentialRampToValueAtTime(0.3, start + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(start); o.stop(start + dur + 0.02);
+    }
+    function beep(){
+      if (!audioCtx) return;
+      try { var t = audioCtx.currentTime; tone(880, t, 0.10); tone(1320, t + 0.11, 0.12); } catch(e){}
+    }
+    function speak(text){
+      try {
+        if (!('speechSynthesis' in window)) return;
+        var u = new SpeechSynthesisUtterance(text);
+        u.lang = 'es-ES'; u.rate = 1.05;
+        window.speechSynthesis.cancel();   // no encolar si llegan rápidas
+        window.speechSynthesis.speak(u);
+      } catch(e){}
+    }
+    // Frase a cantar para una vuelta completada.
+    function lapPhrase(lapNumber, lapMs){
+      var parts = [];
+      if ((audioMode === 'number' || audioMode === 'both') && lapNumber != null)
+        parts.push('Vuelta ' + lapNumber);
+      if ((audioMode === 'time' || audioMode === 'both') && lapMs != null)
+        parts.push((lapMs/1000).toFixed(1).replace('.', ' coma '));
+      return parts.join(', ');
+    }
 
     function render(snap){
       if (!snap || !snap.ok) return;
@@ -90,6 +144,14 @@
         c.classList.remove('flash'); void c.offsetWidth; c.classList.add('flash');
       }
       lastLapShown = t.lastLapMs;
+
+      // Cantar la(s) vuelta(s) nuevas del equipo. El primer render fija la base
+      // (no canta el histórico); a partir de ahí, cada incremento se anuncia.
+      if (lastSpokenLaps == null) lastSpokenLaps = (t.totalLaps || 0);
+      if (t.totalLaps != null && t.totalLaps > lastSpokenLaps) {
+        if (audioOn) { beep(); var ph = lapPhrase(t.totalLaps, t.lastLapMs); if (ph) speak(ph); }
+        lastSpokenLaps = t.totalLaps;
+      }
 
       set('bestLap', fmtLap(t.bestLapMs));
       set('laps', t.totalLaps != null ? t.totalLaps : '—');
@@ -140,10 +202,38 @@
     }
     function scheduleRefresh(){ if (timer) return; timer = setTimeout(function(){ timer = null; refresh(); }, 400); }
 
+    // ── Controles de audio (cantar vueltas) ─────────────────────────────────
+    var btn = document.getElementById('audioToggle');
+    var modeSel = document.getElementById('audioMode');
+    try { audioMode = localStorage.getItem('lapAudioMode') || 'time'; if (modeSel) modeSel.value = audioMode; } catch(e){}
+    function setAudio(on){
+      audioOn = on;
+      if (btn){
+        btn.textContent = (on ? '🔊' : '🔇') + ' Cantar vueltas';
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        btn.classList.toggle('on', on);
+      }
+    }
+    if (btn) btn.addEventListener('click', function(){
+      var on = !audioOn;
+      // El navegador exige un gesto para habilitar audio: lo desbloqueamos aquí.
+      if (on){ ensureAudio(); speak('Cantando vueltas'); }
+      setAudio(on);
+    });
+    if (modeSel) modeSel.addEventListener('change', function(){
+      audioMode = modeSel.value;
+      try { localStorage.setItem('lapAudioMode', audioMode); } catch(e){}
+    });
+
     // Socket: cualquier evento relevante dispara un refresco del snapshot.
     try {
       var socket = io({ query: { view: 'lap' } });
-      ['lap','standings','manga:started','manga:stopped','manga:paused','manga:resumed',
+      // Mi propia vuelta → refresco inmediato (para cantar al instante).
+      socket.on('lap', function(d){
+        if (d && d.name === TEAM_NAME) refresh();
+        else scheduleRefresh();
+      });
+      ['standings','manga:started','manga:stopped','manga:paused','manga:resumed',
        'manga:cancelled','race_finished','race:finished'].forEach(function(ev){
         socket.on(ev, scheduleRefresh);
       });
