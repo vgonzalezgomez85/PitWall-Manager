@@ -826,7 +826,10 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
   (function() {
-    const data = JSON.parse(document.getElementById('progressionData').textContent || '{}');
+    // Datos vuelta-a-vuelta: pueden ser muy grandes (carreras de 24h ≈ 12 MB).
+    // No los parseamos al cargar la página — eso bloquea móviles antes de cablear
+    // los botones. Se parsean en diferido al abrir la pestaña Progresión.
+    let data = {};
     const entitiesBox = document.getElementById('progEntities');
     const selManga    = document.getElementById('progManga');
     const selDriver   = document.getElementById('progDriver');
@@ -1052,14 +1055,21 @@
       });
     });
 
-    // Pre-select the first entity so the chart shows something on first visit
-    const firstKey = Object.keys(data)[0];
-    if (firstKey) selectedEntities.add(firstKey);
-    renderEntities();
-    refreshFilters();
+    // Inicialización perezosa: solo al abrir la pestaña por primera vez se
+    // parsean los datos (potencialmente enormes) y se pinta el primer equipo.
+    let initialized = false;
+    function initProgression() {
+      if (initialized) return;
+      initialized = true;
+      data = JSON.parse(document.getElementById('progressionData').textContent || '{}');
+      const firstKey = Object.keys(data)[0];
+      if (firstKey) selectedEntities.add(firstKey);
+      renderEntities();
+      refreshFilters();
+    }
 
     document.querySelector('[data-tab="progression"]')?.addEventListener('click', () => {
-      setTimeout(() => { renderEntities(); refreshFilters(); build(); }, 50);
+      setTimeout(() => { initProgression(); build(); }, 50);
     });
   })();
 
