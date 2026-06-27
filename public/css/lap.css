@@ -66,6 +66,10 @@ input.pin{letter-spacing:.4em;text-align:center;font-size:1.6rem;font-weight:700
 .audiobtn.on{background:rgba(63,185,80,.14);border-color:var(--good);color:#7ee787}
 .audiobtn:active{filter:brightness(.92)}
 .audiomode{width:auto;flex:0 0 auto;margin:0;padding:11px 12px;font-size:.9rem}
+.sung{min-height:1.1em;margin:-6px 0 12px;color:var(--good);font-size:.95rem;font-weight:700;
+  font-variant-numeric:tabular-nums;opacity:0;transition:opacity .2s}
+.sung.show{opacity:1;animation:sungpulse 1.2s ease}
+@keyframes sungpulse{0%{transform:scale(1.06)}100%{transform:scale(1)}}
 
 .hero{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:14px;text-align:center}
 .hero .pos{font-size:3.2rem;font-weight:800;line-height:1}
