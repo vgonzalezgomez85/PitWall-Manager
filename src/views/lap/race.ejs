@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <title><%= race.name %> — PitWall Lap</title>
+  <link rel="stylesheet" href="/css/lap.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="toprow">
+      <div class="brand"><span class="dot"></span> PitWall <small>Lap</small></div>
+      <a href="/lap">← Carreras</a>
+    </div>
+    <h1><%= race.name %></h1>
+    <p class="sub">Entra con tu equipo y el PIN que te dio la organización.</p>
+
+    <form class="card" method="POST" action="/lap/<%= race.id %>/login">
+      <% if (error) { %><div class="err"><%= error %></div><% } %>
+      <label for="teamId">Equipo</label>
+      <select id="teamId" name="teamId" required>
+        <option value="" disabled selected>— Elige tu equipo —</option>
+        <% teams.forEach(t => { %>
+          <option value="<%= t.id %>"><%= t.name %></option>
+        <% }) %>
+      </select>
+
+      <label for="pin">PIN (4 dígitos)</label>
+      <input class="pin" id="pin" name="pin" inputmode="numeric" pattern="[0-9]*"
+             maxlength="4" autocomplete="off" placeholder="••••" required>
+
+      <button class="btn" type="submit">Entrar</button>
+    </form>
+  </div>
+</body>
+</html>

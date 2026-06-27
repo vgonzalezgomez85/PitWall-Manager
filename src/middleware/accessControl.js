@@ -72,7 +72,13 @@ function reqIp(req) {
 // resultados de carreras finalizadas (landing + por carrera, sin corrección).
 function isPublicPath(p) {
   return p === '/' || p === '/race-stats' || /^\/races\/\d+\/live-stats(\.json)?$/.test(p)
-      || p === '/results' || /^\/results\/\d+$/.test(p);
+      || p === '/results' || /^\/results\/\d+$/.test(p)
+      // Cliente web "Lap" (timing del equipo desde el móvil). El acceso a los
+      // datos lo gatea el PIN por equipo; estas rutas deben ser alcanzables
+      // desde cualquier IP de la red del evento. (NO incluye /races/.../lap-pins,
+      // que es admin y se queda tras la restricción por IP.)
+      || p === '/lap' || /^\/lap\/\d+(\/team\/\d+|\/login)?$/.test(p)
+      || /^\/api\/lap\/\d+\/team\/\d+$/.test(p);
 }
 
 // ── Express middleware ──────────────────────────────────────────────────────
@@ -98,6 +104,7 @@ function isSocketAllowed(socket) {
   const q  = socket.handshake.query || {};
   const ua = socket.handshake.headers['user-agent'] || '';
   if (q.view === 'livestats') return true;   // espectador de estadísticas en vivo (público)
+  if (q.view === 'lap') return true;         // cliente web "Lap" del equipo (público)
   // app móvil: se identifica (client=mobile) o NO es un navegador (sin "Mozilla")
   return q.client === 'mobile' || !/mozilla/i.test(ua);
 }

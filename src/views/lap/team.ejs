@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <title><%= team.name %> — PitWall Lap</title>
+  <link rel="stylesheet" href="/css/lap.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="toprow">
+      <div class="brand"><span class="dot"></span> PitWall <small>Lap</small></div>
+      <a href="/lap/<%= race.id %>">Cambiar equipo</a>
+    </div>
+
+    <div class="teamhead">
+      <span class="swatch" style="background:<%= team.color || '#8b949e' %>"></span>
+      <h1><%= team.name %></h1>
+    </div>
+    <div class="status">
+      <span class="led" id="led"></span>
+      <span id="statusText"><%= race.name %></span>
+    </div>
+
+    <div class="hero">
+      <div class="pos"><span id="pos">—</span><small id="posOf"></small></div>
+      <div class="heroSub" id="gapLeader">—</div>
+    </div>
+
+    <div class="grid">
+      <div class="stat" id="cardLast"><div class="k">Última vuelta</div><div class="v" id="lastLap">—</div></div>
+      <div class="stat"><div class="k">Mejor vuelta</div><div class="v" id="bestLap">—</div></div>
+      <div class="stat"><div class="k">Vueltas</div><div class="v" id="laps">—</div></div>
+      <div class="stat"><div class="k">Media carrera</div><div class="v" id="avgLap">—</div></div>
+      <div class="stat"><div class="k">Pit stops</div><div class="v" id="pits">—</div></div>
+      <div class="stat"><div class="k">Gap al líder</div><div class="v" id="gapLapsCard">—</div></div>
+    </div>
+
+    <div id="projWrap" style="display:none">
+      <div class="section-title">Estimación al final</div>
+      <div class="proj">
+        <div class="p"><div class="k">Posición estimada</div><div class="v" id="projPos">—</div></div>
+        <div class="p"><div class="k">Vueltas proyectadas</div><div class="v" id="projTotal">—</div></div>
+      </div>
+    </div>
+
+    <div class="footnote" id="foot">—</div>
+  </div>
+
+  <script id="snap" type="application/json"><%- JSON.stringify(snapshot) %></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+  (function(){
+    var RACE_ID = <%= race.id %>, TEAM_ID = <%= team.id %>;
+
+    function fmtLap(ms){
+      if (ms == null) return '—';
+      if (ms < 60000) return (ms/1000).toFixed(3);
+      var s = ms/1000, m = Math.floor(s/60); s = (s - m*60);
+      return m + ':' + (s < 10 ? '0' : '') + s.toFixed(3);
+    }
+    function fmtClock(ms){
+      if (ms == null) return '—';
+      var s = Math.floor(ms/1000), h = Math.floor(s/3600);
+      var mm = Math.floor((s%3600)/60), ss = s%60;
+      var p = function(n){ return (n<10?'0':'')+n; };
+      return (h>0? h+':' : '') + p(mm) + ':' + p(ss);
+    }
+    function set(id, v){ var el = document.getElementById(id); if (el) el.textContent = v; }
+
+    var lastLapShown = null;
+
+    function render(snap){
+      if (!snap || !snap.ok) return;
+      var t = snap.timing, live = snap.live || {}, proj = snap.projection;
+
+      set('pos', t.position != null ? 'P' + t.position : '—');
+      set('posOf', snap.teamsTotal ? (' de ' + snap.teamsTotal) : '');
+
+      if (t.gapLaps > 0) set('gapLeader', t.gapLaps + (t.gapLaps === 1 ? ' vuelta tras el líder' : ' vueltas tras el líder'));
+      else if (t.position === 1) set('gapLeader', '🏁 Líder de la carrera');
+      else set('gapLeader', 'A la par del líder');
+
+      // Última vuelta: flash si cambió
+      var prev = lastLapShown;
+      set('lastLap', fmtLap(t.lastLapMs));
+      if (t.lastLapMs != null && prev != null && t.lastLapMs !== prev){
+        var c = document.getElementById('cardLast');
+        c.classList.remove('flash'); void c.offsetWidth; c.classList.add('flash');
+      }
+      lastLapShown = t.lastLapMs;
+
+      set('bestLap', fmtLap(t.bestLapMs));
+      set('laps', t.totalLaps != null ? t.totalLaps : '—');
+      set('avgLap', fmtLap(t.avgLapMs));
+      set('pits', t.pitStops != null ? t.pitStops : '—');
+      set('gapLapsCard', t.gapLaps != null ? '-' + t.gapLaps : '—');
+
+      // Proyección (solo en vivo)
+      if (proj && proj.position != null){
+        document.getElementById('projWrap').style.display = '';
+        set('projPos', 'P' + proj.position);
+        set('projTotal', proj.projectedTotal != null ? proj.projectedTotal : '—');
+      } else {
+        document.getElementById('projWrap').style.display = 'none';
+      }
+
+      // Estado
+      var led = document.getElementById('led');
+      led.className = 'led';
+      if (live.running){
+        led.classList.add('on');
+        var bits = [];
+        if (live.mangaNumber != null) bits.push('Manga ' + live.mangaNumber);
+        if (live.onTrack && live.lane != null) bits.push('Carril ' + live.lane);
+        else bits.push('En descanso');
+        if (live.remainingMs != null) bits.push('quedan ' + fmtClock(live.remainingMs));
+        set('statusText', bits.join(' · '));
+      } else {
+        led.classList.add(snap.race.status === 'finished' ? 'off' : '');
+        set('statusText', snap.race.status === 'finished' ? 'Carrera finalizada' : 'Esperando próxima manga');
+      }
+
+      var d = new Date(snap.updatedAt);
+      set('foot', 'Actualizado ' + d.toLocaleTimeString('es-ES'));
+    }
+
+    // Estado inicial (renderizado en servidor → instantáneo)
+    try { render(JSON.parse(document.getElementById('snap').textContent || '{}')); } catch(e){}
+
+    // Refresco bajo demanda (debounced) del snapshot.
+    var pending = false, timer = null;
+    function refresh(){
+      if (pending) return; pending = true;
+      fetch('/api/lap/' + RACE_ID + '/team/' + TEAM_ID, { headers: { 'Accept':'application/json' } })
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(j){ pending = false; if (j) render(j); })
+        .catch(function(){ pending = false; });
+    }
+    function scheduleRefresh(){ if (timer) return; timer = setTimeout(function(){ timer = null; refresh(); }, 400); }
+
+    // Socket: cualquier evento relevante dispara un refresco del snapshot.
+    try {
+      var socket = io({ query: { view: 'lap' } });
+      ['lap','standings','manga:started','manga:stopped','manga:paused','manga:resumed',
+       'manga:cancelled','race_finished','race:finished'].forEach(function(ev){
+        socket.on(ev, scheduleRefresh);
+      });
+    } catch(e){}
+
+    // Poll de respaldo (entre mangas el socket no emite standings).
+    setInterval(refresh, 5000);
+  })();
+  </script>
+</body>
+</html>
