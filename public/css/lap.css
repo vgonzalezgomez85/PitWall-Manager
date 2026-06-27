@@ -60,6 +60,13 @@ input.pin{letter-spacing:.4em;text-align:center;font-size:1.6rem;font-weight:700
 .status .led.on{background:var(--good);box-shadow:0 0 8px var(--good)}
 .status .led.off{background:var(--bad)}
 
+.audiobar{display:flex;gap:8px;margin:0 0 14px}
+.audiobtn{flex:1;background:var(--card);color:var(--text);border:1px solid var(--border);
+  border-radius:10px;padding:11px 12px;font-size:.95rem;font-weight:600;cursor:pointer}
+.audiobtn.on{background:rgba(63,185,80,.14);border-color:var(--good);color:#7ee787}
+.audiobtn:active{filter:brightness(.92)}
+.audiomode{width:auto;flex:0 0 auto;margin:0;padding:11px 12px;font-size:.9rem}
+
 .hero{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:14px;text-align:center}
 .hero .pos{font-size:3.2rem;font-weight:800;line-height:1}
 .hero .pos small{font-size:1rem;color:var(--muted);font-weight:600}
