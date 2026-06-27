@@ -31,6 +31,7 @@
         <option value="both">Ambos</option>
       </select>
     </div>
+    <div class="sung" id="lastSung"></div>
 
     <div class="hero">
       <div class="pos"><span id="pos">—</span><small id="posOf"></small></div>
@@ -84,8 +85,9 @@
     // ── Audio: "cantar" cada vuelta del equipo (beep + voz) ──────────────────
     var audioOn = false;
     var audioMode = 'time';
-    var lastSpokenLaps = null;   // null hasta el primer render (no cantar el histórico)
     var audioCtx = null;
+    var currentLane = null;      // carril actual del equipo (del snapshot en vivo)
+    var lastTotalLaps = null;    // vueltas acumuladas conocidas (para cantar el nº)
 
     function ensureAudio(){
       try {
@@ -110,10 +112,23 @@
       try {
         if (!('speechSynthesis' in window)) return;
         var u = new SpeechSynthesisUtterance(text);
-        u.lang = 'es-ES'; u.rate = 1.05;
-        window.speechSynthesis.cancel();   // no encolar si llegan rápidas
+        u.lang = 'es-ES'; u.rate = 1.08;
+        // iOS suspende la cola; resume() la reactiva. No usamos cancel() porque
+        // en algunos navegadores deja la síntesis muda tras la primera vez.
+        try { window.speechSynthesis.resume(); } catch(e){}
         window.speechSynthesis.speak(u);
       } catch(e){}
+    }
+    // Anuncia una vuelta del equipo: beep + voz (según el modo elegido).
+    function announceLap(lapMs, lapNumber){
+      if (!audioOn) return;
+      beep();
+      var ph = lapPhrase(lapNumber, lapMs);
+      if (ph) {
+        speak(ph);
+        var el = document.getElementById('lastSung');
+        if (el){ el.textContent = '🔊 ' + ph; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); }
+      }
     }
     // Frase a cantar para una vuelta completada.
     function lapPhrase(lapNumber, lapMs){
@@ -144,14 +159,8 @@
         c.classList.remove('flash'); void c.offsetWidth; c.classList.add('flash');
       }
       lastLapShown = t.lastLapMs;
-
-      // Cantar la(s) vuelta(s) nuevas del equipo. El primer render fija la base
-      // (no canta el histórico); a partir de ahí, cada incremento se anuncia.
-      if (lastSpokenLaps == null) lastSpokenLaps = (t.totalLaps || 0);
-      if (t.totalLaps != null && t.totalLaps > lastSpokenLaps) {
-        if (audioOn) { beep(); var ph = lapPhrase(t.totalLaps, t.lastLapMs); if (ph) speak(ph); }
-        lastSpokenLaps = t.totalLaps;
-      }
+      lastTotalLaps = (t.totalLaps != null) ? t.totalLaps : lastTotalLaps;
+      currentLane   = (snap.live && snap.live.lane != null) ? snap.live.lane : currentLane;
 
       set('bestLap', fmtLap(t.bestLapMs));
       set('laps', t.totalLaps != null ? t.totalLaps : '—');
@@ -228,10 +237,22 @@
     // Socket: cualquier evento relevante dispara un refresco del snapshot.
     try {
       var socket = io({ query: { view: 'lap' } });
-      // Mi propia vuelta → refresco inmediato (para cantar al instante).
+      // Mi propia vuelta → cantar al instante (el evento trae el tiempo exacto)
+      // + refresco visual. Identifico mi vuelta por nombre de equipo o por el
+      // carril en el que está ahora mismo (más robusto ante nombres con matices).
       socket.on('lap', function(d){
-        if (d && d.name === TEAM_NAME) refresh();
-        else scheduleRefresh();
+        if (!d) return;
+        var mine = (d.name === TEAM_NAME) || (currentLane != null && d.lane === currentLane);
+        if (mine) {
+          if (!d.isExit && !d.isFirstCrossing) {
+            var n = (lastTotalLaps != null) ? lastTotalLaps + 1 : (d.lapNumber || null);
+            announceLap(d.lapTimeMs, n);
+          }
+          if (lastTotalLaps != null) lastTotalLaps += 1;
+          refresh();
+        } else {
+          scheduleRefresh();
+        }
       });
       ['standings','manga:started','manga:stopped','manga:paused','manga:resumed',
        'manga:cancelled','race_finished','race:finished'].forEach(function(ev){
