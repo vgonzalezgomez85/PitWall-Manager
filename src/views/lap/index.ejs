@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <title>PitWall Lap</title>
+  <link rel="stylesheet" href="/css/lap.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand"><span class="dot"></span> PitWall <small>Lap</small></div>
+    <h1>Elige tu carrera</h1>
+    <p class="sub">Sigue el timing de tu equipo en directo desde el móvil.</p>
+
+    <% if (races.length === 0) { %>
+      <div class="card">No hay carreras de resistencia activas ahora mismo.</div>
+    <% } else { %>
+      <div class="list">
+        <% races.forEach(r => { %>
+          <a class="item" href="/lap/<%= r.id %>">
+            <span><%= r.name %></span>
+            <% if (r.status === 'active') { %>
+              <span class="chip live">EN VIVO</span>
+            <% } else { %>
+              <span class="chip"><%= r.teamsCount %> equipos</span>
+            <% } %>
+          </a>
+        <% }) %>
+      </div>
+    <% } %>
+  </div>
+</body>
+</html>

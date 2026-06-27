@@ -14,6 +14,7 @@ const ControlController           = require('../controllers/ControlController');
 const TeamCatalogController       = require('../controllers/TeamCatalogController');
 const TrainingController          = require('../controllers/TrainingController');
 const MobileController            = require('../controllers/MobileController');
+const LapController               = require('../controllers/LapController');
 const LicenseController           = require('../controllers/LicenseController');
 const DiagnosticsController       = require('../controllers/DiagnosticsController');
 const LiveStatsController         = require('../controllers/LiveStatsController');
@@ -281,5 +282,18 @@ router.get('/api/rawlog', (req, res) => {
   const hex = log.map(e => e.byte.toString(16).padStart(2, '0'));
   res.json({ count: hex.length, bytes: hex, raw: log });
 });
+
+// ── PitWall Lap — cliente web del equipo (resistencia) ──────────────────────
+// Rutas PÚBLICAS (accesibles desde el móvil de cualquier equipo): el acceso real
+// a los datos lo gatea el PIN por equipo (sesión). Ver accessControl.isPublicPath.
+router.get( '/lap',                          LapController.index);
+router.post('/lap/:raceId/login',            LapController.login);
+router.get( '/lap/:raceId/team/:teamId',     LapController.teamView);
+router.get( '/lap/:raceId',                  LapController.selectRace);
+router.get( '/api/lap/:raceId/team/:teamId', LapController.teamSnapshot);
+
+// Hoja de PINs para la organización (acceso admin vía restrictAccess).
+router.get( '/races/:id/lap-pins',                       LapController.pinsPage);
+router.post('/races/:id/lap-pins/:teamId/regenerate',    LapController.regeneratePin);
 
 module.exports = router;

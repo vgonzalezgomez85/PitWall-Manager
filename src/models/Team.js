@@ -42,6 +42,56 @@ class Team {
   static updateLane(id, lane) {
     db.prepare('UPDATE teams SET lane = ? WHERE id = ?').run(lane, id);
   }
+
+  static findById(id) {
+    return db.prepare('SELECT * FROM teams WHERE id = ?').get(id);
+  }
+
+  // ── Acceso "Lap" (cliente web del equipo) ──────────────────────────────────
+  // Cada equipo de una carrera tiene un PIN de 4 dígitos para entrar a su panel
+  // de timing en vivo desde el móvil. No es seguridad fuerte (igual que el resto
+  // del acceso de PitWall): evita que un equipo abra por error el panel de otro.
+
+  // Lista equipos de la carrera con su PIN, generando los que falten.
+  static withLapPins(raceId) {
+    Team.ensureLapPins(raceId);
+    return db.prepare(
+      'SELECT id, name, color, lap_pin FROM teams WHERE race_id = ? ORDER BY id ASC'
+    ).all(raceId);
+  }
+
+  // Asigna un PIN único (dentro de la carrera) a cada equipo que no tenga uno.
+  static ensureLapPins(raceId) {
+    const teams = db.prepare("SELECT id FROM teams WHERE race_id = ? AND (lap_pin IS NULL OR lap_pin = '')").all(raceId);
+    if (teams.length === 0) return;
+    const used = new Set(
+      db.prepare('SELECT lap_pin FROM teams WHERE race_id = ? AND lap_pin IS NOT NULL').all(raceId).map(r => r.lap_pin)
+    );
+    const upd = db.prepare('UPDATE teams SET lap_pin = ? WHERE id = ?');
+    for (const t of teams) {
+      let pin;
+      do { pin = String(Math.floor(1000 + Math.random() * 9000)); } while (used.has(pin));
+      used.add(pin);
+      upd.run(pin, t.id);
+    }
+  }
+
+  // Devuelve el equipo si el PIN coincide; null si no.
+  static verifyLapPin(raceId, teamId, pin) {
+    const t = db.prepare('SELECT * FROM teams WHERE id = ? AND race_id = ?').get(teamId, raceId);
+    if (!t) return null;
+    return (t.lap_pin && String(pin).trim() === String(t.lap_pin)) ? t : null;
+  }
+
+  static regenerateLapPin(raceId, teamId) {
+    const used = new Set(
+      db.prepare('SELECT lap_pin FROM teams WHERE race_id = ? AND lap_pin IS NOT NULL').all(raceId).map(r => r.lap_pin)
+    );
+    let pin;
+    do { pin = String(Math.floor(1000 + Math.random() * 9000)); } while (used.has(pin));
+    db.prepare('UPDATE teams SET lap_pin = ? WHERE id = ? AND race_id = ?').run(pin, teamId, raceId);
+    return pin;
+  }
 }
 
 module.exports = Team;

@@ -1,0 +1,93 @@
+/* PitWall Lap — cliente web del equipo (mobile-first). Standalone, no depende
+   del CSS de admin. Paleta alineada con PitWall (negro + acentos). */
+:root{
+  --bg:#000; --card:#0d0d0f; --card2:#141418; --border:#26262e;
+  --text:#e6edf3; --muted:#8b949e; --accent:#58a6ff; --good:#3fb950;
+  --warn:#f0b72f; --bad:#e5534b; --gold:#f0b72f;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased; line-height:1.4;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+.wrap{max-width:560px;margin:0 auto;padding:16px}
+a{color:var(--accent);text-decoration:none}
+h1{font-size:1.25rem;margin:.2rem 0 .1rem}
+.sub{color:var(--muted);font-size:.85rem;margin:0 0 1rem}
+.brand{display:flex;align-items:center;gap:.5rem;font-weight:700;letter-spacing:.5px;margin-bottom:.4rem}
+.brand .dot{width:10px;height:10px;border-radius:50%;background:var(--accent)}
+.brand small{font-weight:500;color:var(--muted);letter-spacing:0}
+
+/* listas (carreras / equipos) */
+.list{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.item{
+  display:flex;align-items:center;gap:12px;background:var(--card);
+  border:1px solid var(--border);border-radius:12px;padding:14px 16px;
+  color:var(--text);font-size:1rem;
+}
+.item:active{background:var(--card2)}
+.item .chip{margin-left:auto;font-size:.72rem;color:var(--muted);
+  border:1px solid var(--border);border-radius:999px;padding:3px 9px}
+.item .chip.live{color:#000;background:var(--good);border-color:var(--good);font-weight:700}
+.swatch{width:14px;height:14px;border-radius:4px;flex:0 0 auto}
+
+/* form PIN */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px}
+label{display:block;font-size:.8rem;color:var(--muted);margin:0 0 6px}
+select,input{
+  width:100%;background:var(--card2);color:var(--text);border:1px solid var(--border);
+  border-radius:10px;padding:13px 14px;font-size:1rem;margin-bottom:14px;
+}
+input.pin{letter-spacing:.4em;text-align:center;font-size:1.6rem;font-weight:700}
+.btn{
+  width:100%;background:var(--accent);color:#03101f;border:none;border-radius:10px;
+  padding:14px;font-size:1.05rem;font-weight:700;cursor:pointer;
+}
+.btn:active{filter:brightness(.92)}
+.btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--border);font-weight:600}
+.err{background:rgba(229,83,75,.12);border:1px solid var(--bad);color:#ffb4ae;
+  border-radius:10px;padding:10px 12px;font-size:.85rem;margin-bottom:12px}
+
+/* panel de timing */
+.teamhead{display:flex;align-items:center;gap:12px;margin-bottom:4px}
+.teamhead .swatch{width:18px;height:18px;border-radius:6px}
+.teamhead h1{margin:0;font-size:1.3rem;line-height:1.1}
+.status{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--muted);margin:2px 0 16px}
+.status .led{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.status .led.on{background:var(--good);box-shadow:0 0 8px var(--good)}
+.status .led.off{background:var(--bad)}
+
+.hero{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:14px;text-align:center}
+.hero .pos{font-size:3.2rem;font-weight:800;line-height:1}
+.hero .pos small{font-size:1rem;color:var(--muted);font-weight:600}
+.hero .heroSub{color:var(--muted);font-size:.85rem;margin-top:6px}
+
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
+.stat .k{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.stat .v{font-size:1.5rem;font-weight:700;margin-top:3px;font-variant-numeric:tabular-nums}
+.stat .v.sm{font-size:1.15rem}
+.stat .v .u{font-size:.8rem;color:var(--muted);font-weight:500;margin-left:2px}
+.stat.flash{animation:flash .9s ease}
+@keyframes flash{0%{border-color:var(--accent);background:rgba(88,166,255,.12)}100%{}}
+
+.section-title{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:18px 0 8px}
+.proj{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;display:flex;flex-wrap:wrap;gap:14px}
+.proj .p{flex:1 1 40%}
+.proj .p .k{font-size:.72rem;color:var(--muted)}
+.proj .p .v{font-size:1.2rem;font-weight:700;margin-top:2px}
+
+.footnote{color:var(--muted);font-size:.72rem;text-align:center;margin:18px 0 8px}
+.toprow{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.toprow a{font-size:.85rem;color:var(--muted)}
+
+/* hoja de PINs (admin) */
+table.pins{width:100%;border-collapse:collapse;margin-top:10px}
+table.pins th,table.pins td{padding:10px 8px;border-bottom:1px solid var(--border);text-align:left;font-size:.95rem}
+table.pins th{color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.4px}
+table.pins .pin{font-variant-numeric:tabular-nums;font-weight:800;font-size:1.2rem;letter-spacing:.15em}
+table.pins .regen{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:6px 10px;font-size:.8rem;cursor:pointer}
+.url{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:ui-monospace,Menlo,monospace;font-size:.85rem;word-break:break-all;margin:6px 0 0}
