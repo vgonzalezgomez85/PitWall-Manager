@@ -268,7 +268,10 @@
     function render(snap){
       if (!snap || !snap.ok) return;
       var t = snap.timing, live = snap.live || {}, proj = snap.projection;
-      set('pos', t.position != null ? 'P' + t.position : '—');
+      // Posición grande = la PROYECTADA (la misma que las tarjetas del directo);
+      // si no hay manga viva, cae a la posición por vueltas totales.
+      var heroPos = (proj && proj.position != null) ? proj.position : t.position;
+      set('pos', heroPos != null ? 'P' + heroPos : '—');
       set('posOf', snap.teamsTotal ? (' de ' + snap.teamsTotal) : '');
       if (t.gapLaps > 0) set('gapLeader', t.gapLaps + (t.gapLaps === 1 ? ' vuelta tras el líder' : ' vueltas tras el líder'));
       else if (t.position === 1) set('gapLeader', '🏁 Líder de la carrera');
@@ -282,13 +285,13 @@
       lastLapShown = t.lastLapMs;
       if (live.lane != null) myLane = live.lane;
 
-      // Cambio de posición GENERAL (clasificación acumulada de la carrera).
-      // Solo se canta en pista, para no soltar puestos mientras descansas.
+      // Cambio de posición = la PROYECTADA (la misma que canta/ve en el directo).
+      // Solo en pista, para no soltar puestos mientras descansas.
       if (S.enabled && S.sayPositionChange && live.running && live.onTrack
-          && prevOverallPos != null && t.position != null && t.position !== prevOverallPos){
-        say(ordinal(t.position));
+          && prevOverallPos != null && heroPos != null && heroPos !== prevOverallPos){
+        say(ordinal(heroPos));
       }
-      if (t.position != null) prevOverallPos = t.position;
+      if (heroPos != null) prevOverallPos = heroPos;
 
       set('bestLap', fmtLap(t.bestLapMs));
       set('laps', t.totalLaps != null ? t.totalLaps : '—');
