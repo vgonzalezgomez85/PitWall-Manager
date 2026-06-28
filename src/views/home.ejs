@@ -87,6 +87,20 @@ const c = typeof counts !== 'undefined' ? counts : { drivers: 0, teams: 0, cars:
             </div>
             <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
           </a>
+
+          <a class="vh-card" href="/lap" style="--a:#58a6ff;--a-bg:rgba(88,166,255,.12)">
+            <div class="vh-ico">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="7" y="2" width="10" height="20" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/>
+                <path d="M11 18.5h2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="vh-body">
+              <div class="vh-t">Lap</div>
+              <div class="vh-d"><%= lang === 'es' ? 'Sigue el timing de tu equipo en directo desde el móvil.' : 'Follow your team timing live from your phone.' %></div>
+            </div>
+            <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          </a>
         </div>
       </section>
     <% } else { %>
@@ -157,6 +171,20 @@ const c = typeof counts !== 'undefined' ? counts : { drivers: 0, teams: 0, cars:
           <div class="vh-body">
             <div class="vh-t"><%= lang === 'es' ? 'Resultados' : 'Results' %></div>
             <div class="vh-d"><%= lang === 'es' ? 'Consulta resultados y estadísticas de carreras finalizadas.' : 'Browse results and stats of finished races.' %></div>
+          </div>
+          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </a>
+
+        <a class="vh-card" href="/lap" style="--a:#58a6ff;--a-bg:rgba(88,166,255,.12)">
+          <div class="vh-ico">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="7" y="2" width="10" height="20" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/>
+              <path d="M11 18.5h2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="vh-body">
+            <div class="vh-t">Lap</div>
+            <div class="vh-d"><%= lang === 'es' ? 'Timing del equipo en directo desde el móvil (resistencia).' : 'Live team timing from the phone (endurance).' %></div>
           </div>
           <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
         </a>
