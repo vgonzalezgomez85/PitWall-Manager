@@ -994,6 +994,29 @@ function renderProjected(data) {
         || (a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity);
   });
 
+  // ── UNIFICACIÓN: si el servidor manda su proyección (getStandings /
+  //    _buildProjection), se usa TAL CUAL — es la MISMA que la tabla
+  //    "Clasificación General" y el panel Lap. Así las tarjetas dejan de
+  //    recalcular su propia proyección (que difería 1-3 puestos) y todo PitWall
+  //    muestra el mismo orden. El cálculo de arriba queda como fallback para
+  //    servidores antiguos que no envíen `projection`.
+  if (data.projection && data.projection.length) {
+    rows.length = 0;
+    data.projection.forEach(p => rows.push({
+      name: p.name, total: p.total, avgLapMs: p.avgLapMs,
+      projectedTotal: p.projectedTotal != null ? Math.round(p.projectedTotal) : null,
+      projectedTotalRaw: p.projectedTotal, bestLapMs: null,
+    }));
+    // Participantes sin proyección todavía (0 vueltas): al final, sin estimación.
+    const have = new Set(rows.map(r => r.name));
+    (RACE_DATA.allParticipants || []).forEach(p => {
+      if (!have.has(p.entity_name)) rows.push({
+        name: p.entity_name, total: p.total_laps || 0, avgLapMs: null,
+        projectedTotal: null, projectedTotalRaw: null, bestLapMs: null,
+      });
+    });
+  }
+
   // Exponer la posición general (1..N) por entidad para que las tarjetas la usen.
   _globalProjPos = new Map();
   rows.forEach((r, i) => _globalProjPos.set(r.name, { pos: i + 1, raw: r.projectedTotalRaw }));
