@@ -23,15 +23,25 @@
       <span id="statusText"><%= race.name %></span>
     </div>
 
-    <div class="audiobar">
-      <button id="audioToggle" class="audiobtn" type="button" aria-pressed="false">🔇 Cantar vueltas</button>
-      <select id="audioMode" class="audiomode" title="Qué cantar">
-        <option value="time" selected>Tiempo</option>
-        <option value="number">Nº de vuelta</option>
-        <option value="both">Ambos</option>
-      </select>
+    <div class="voicebar">
+      <button id="voiceToggle" class="audiobtn" type="button" aria-pressed="false">🔇 Voz</button>
+      <button id="voiceCfgBtn" class="audiomode" type="button" title="Ajustes de voz">⚙️</button>
     </div>
     <div class="sung" id="lastSung"></div>
+
+    <div id="voiceCfg" class="voicecfg" hidden>
+      <div class="vgrp">Básico</div>
+      <label class="vrow"><span>Tiempo de vuelta</span><input type="checkbox" data-k="sayLaps"></label>
+      <label class="vrow"><span>Cambio de posición</span><input type="checkbox" data-k="sayPositionChange"></label>
+      <label class="vrow"><span>Media manga</span><input type="checkbox" data-k="sayHalfManga"></label>
+      <label class="vrow"><span>Último minuto</span><input type="checkbox" data-k="sayLastMinute"></label>
+      <label class="vrow"><span>Últimos 30 s</span><input type="checkbox" data-k="sayLast30s"></label>
+      <div class="vgrp">Avanzado · cada N min (0 = off)</div>
+      <label class="vrow"><span>Media de carril</span><input type="number" min="0" max="60" step="1" data-k="sayAveragesEveryMin"></label>
+      <label class="vrow"><span>Gaps con rivales</span><input type="number" min="0" max="60" step="1" data-k="sayGapsEveryMin"></label>
+      <label class="vrow"><span>Media para subir</span><input type="number" min="0" max="60" step="1" data-k="sayCatchUpEveryMin"></label>
+      <div class="vnote" id="wakeNote"></div>
+    </div>
 
     <div class="hero">
       <div class="pos"><span id="pos">—</span><small id="posOf"></small></div>
@@ -65,6 +75,7 @@
     var RACE_ID = <%= race.id %>, TEAM_ID = <%= team.id %>;
     var TEAM_NAME = <%- JSON.stringify(team.name) %>;
 
+    // ── Helpers de formato ───────────────────────────────────────────────
     function fmtLap(ms){
       if (ms == null) return '—';
       if (ms < 60000) return (ms/1000).toFixed(3);
@@ -80,87 +91,197 @@
     }
     function set(id, v){ var el = document.getElementById(id); if (el) el.textContent = v; }
 
-    var lastLapShown = null;
+    // speakTime: igual que la app móvil — centésimas TRUNCADAS, sin "coma".
+    // 8739ms → "8 73"; exacto → "N segundos".
+    function speakTime(ms){
+      if (ms == null) return 'sin tiempo';
+      var totalCs = Math.floor(ms / 10);
+      var s = Math.floor(totalCs / 100), cs = totalCs % 100;
+      if (cs === 0) return s + ' segundos';
+      return s + ' ' + (cs < 10 ? '0' : '') + cs;
+    }
+    function ordinal(n){
+      switch (n){
+        case 1: return 'primero'; case 2: return 'segundo'; case 3: return 'tercero';
+        case 4: return 'cuarto';  case 5: return 'quinto';  case 6: return 'sexto';
+        case 7: return 'séptimo'; case 8: return 'octavo';  case 9: return 'noveno';
+        case 10: return 'décimo'; default: return 'puesto ' + n;
+      }
+    }
+    function lapsPhrase(n){ return n === 1 ? 'una vuelta' : (n + ' vueltas'); }
 
-    // ── Audio: "cantar" cada vuelta del equipo (beep + voz) ──────────────────
-    var audioOn = false;
-    var audioMode = 'time';
-    var audioCtx = null;
-    var currentLane = null;      // carril actual del equipo (del snapshot en vivo)
-    var lastTotalLaps = null;    // vueltas acumuladas conocidas (para cantar el nº)
+    // ── Ajustes de voz (mismos que la app móvil) ─────────────────────────
+    var DEF = {
+      enabled: false,            // en web hay que tocar para desbloquear audio
+      sayLaps: true, sayPositionChange: true, sayHalfManga: true,
+      sayLastMinute: true, sayLast30s: true,
+      sayAveragesEveryMin: 0, sayGapsEveryMin: 0, sayCatchUpEveryMin: 0
+    };
+    var S = (function(){
+      try { var raw = localStorage.getItem('lapVoice/v1'); if (raw) { var p = JSON.parse(raw); var o = {}; for (var k in DEF) o[k] = (k in p) ? p[k] : DEF[k]; o.enabled = false; return o; } } catch(e){}
+      return JSON.parse(JSON.stringify(DEF));
+    })();
+    function saveSettings(){ try { localStorage.setItem('lapVoice/v1', JSON.stringify(S)); } catch(e){} }
 
+    // ── Núcleo de audio / voz ────────────────────────────────────────────
+    var audioCtx = null, silentNode = null, wakeLock = null;
     function ensureAudio(){
       try {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (audioCtx.state === 'suspended') audioCtx.resume();
       } catch(e){}
     }
-    function tone(freq, start, dur){
-      var o = audioCtx.createOscillator(), g = audioCtx.createGain();
-      o.type = 'sine'; o.frequency.value = freq;
-      g.gain.setValueAtTime(0.0001, start);
-      g.gain.exponentialRampToValueAtTime(0.3, start + 0.012);
-      g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
-      o.connect(g); g.connect(audioCtx.destination);
-      o.start(start); o.stop(start + dur + 0.02);
-    }
-    function beep(){
-      if (!audioCtx) return;
-      try { var t = audioCtx.currentTime; tone(880, t, 0.10); tone(1320, t + 0.11, 0.12); } catch(e){}
-    }
     function speak(text){
       try {
         if (!('speechSynthesis' in window)) return;
         var u = new SpeechSynthesisUtterance(text);
-        u.lang = 'es-ES'; u.rate = 1.08;
-        // iOS suspende la cola; resume() la reactiva. No usamos cancel() porque
-        // en algunos navegadores deja la síntesis muda tras la primera vez.
+        u.lang = 'es-ES'; u.rate = 1.0;
         try { window.speechSynthesis.resume(); } catch(e){}
         window.speechSynthesis.speak(u);
       } catch(e){}
     }
-    // Anuncia una vuelta del equipo: beep + voz (según el modo elegido).
-    function announceLap(lapMs, lapNumber){
-      if (!audioOn) return;
-      beep();
-      var ph = lapPhrase(lapNumber, lapMs);
-      if (ph) {
-        speak(ph);
-        var el = document.getElementById('lastSung');
-        if (el){ el.textContent = '🔊 ' + ph; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); }
-      }
+    function showSung(text){
+      var el = document.getElementById('lastSung');
+      if (el){ el.textContent = '🔊 ' + text; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); }
     }
-    // Frase a cantar para una vuelta completada.
-    function lapPhrase(lapNumber, lapMs){
-      var parts = [];
-      if ((audioMode === 'number' || audioMode === 'both') && lapNumber != null)
-        parts.push('Vuelta ' + lapNumber);
-      if ((audioMode === 'time' || audioMode === 'both') && lapMs != null)
-        parts.push((lapMs/1000).toFixed(1).replace('.', ' coma '));
-      return parts.join(', ');
+    // Habla solo si la voz está activada (master). Pinta lo cantado.
+    function say(text){ if (!S.enabled || !text) return; speak(text); showSung(text); }
+
+    // Bucle silencioso: mantiene viva la sesión de audio (igual idea que la app).
+    function startSilent(){
+      if (!audioCtx || silentNode) return;
+      try {
+        var buf = audioCtx.createBuffer(1, audioCtx.sampleRate, audioCtx.sampleRate);
+        silentNode = audioCtx.createBufferSource(); silentNode.buffer = buf; silentNode.loop = true;
+        var g = audioCtx.createGain(); g.gain.value = 0.0001;
+        silentNode.connect(g); g.connect(audioCtx.destination); silentNode.start();
+      } catch(e){}
+    }
+    function stopSilent(){ try { if (silentNode){ silentNode.stop(); silentNode = null; } } catch(e){} }
+
+    // Wake Lock: evita que la pantalla se duerma → sigue cantando en reposo.
+    function requestWake(){
+      try {
+        if ('wakeLock' in navigator) {
+          navigator.wakeLock.request('screen').then(function(wl){
+            wakeLock = wl;
+            try { wl.addEventListener('release', function(){ wakeLock = null; }); } catch(e){}
+          }).catch(function(){});
+        }
+      } catch(e){}
+    }
+    function releaseWake(){ try { if (wakeLock){ wakeLock.release(); wakeLock = null; } } catch(e){} }
+    document.addEventListener('visibilitychange', function(){
+      if (document.visibilityState === 'visible' && S.enabled) { requestWake(); ensureAudio(); }
+    });
+    function updateWakeNote(){
+      var el = document.getElementById('wakeNote'); if (!el) return;
+      el.textContent = ('wakeLock' in navigator)
+        ? 'Reposo: la pantalla se mantiene activa para seguir cantando.'
+        : 'Reposo: este navegador no soporta Wake Lock; mantén la pantalla encendida.';
     }
 
+    // ── Motor de voz (deriva los mismos eventos que la app desde el socket)─
+    var prevPosition = null, bestLap = null, prevMyLane = null, prevMangaId = null;
+    var mangaDurationMs = 0, remAtSync = null, syncAt = 0;
+    var myStatus = 'rest', myLane = null, myCtx = {};
+    var firedHalf = false, firedLastMin = false, firedLast30 = false, firedFinish = false;
+    var lastAvgMin = -1, lastGapMin = -1, lastCatchMin = -1;
+
+    function resetManga(){ firedHalf = firedLastMin = firedLast30 = firedFinish = false; bestLap = null; prevPosition = null; }
+    function findMe(rows){ for (var i=0;i<rows.length;i++) if (rows[i].name === TEAM_NAME) return rows[i]; return null; }
+
+    function onStandings(st){
+      if (!st || !st.standings) return;
+      if (st.elapsedMs > 0 && st.remainingMs >= 0) mangaDurationMs = st.elapsedMs + st.remainingMs;
+      remAtSync = st.remainingMs; syncAt = Date.now();
+
+      var mangaChanged = (prevMangaId != null && st.mangaId !== prevMangaId);
+      if (mangaChanged) resetManga();
+      prevMangaId = st.mangaId;
+
+      var me = findMe(st.standings);
+      if (!me){ myStatus = 'rest'; myLane = null; prevMyLane = null; return; }
+      myStatus = 'my-turn';
+
+      // Entrada a tu turno / cambio de manga → "Tu turno, carril N".
+      if (prevMyLane == null || mangaChanged) say('Tu turno, carril ' + me.lane);
+      prevMyLane = me.lane; myLane = me.lane;
+
+      // Cambio de posición.
+      if (prevPosition != null && prevPosition !== me.position && S.sayPositionChange) say(ordinal(me.position));
+      prevPosition = me.position;
+
+      // Contexto de rivales (de delante / de detrás) + media para subir.
+      var sorted = st.standings.slice().sort(function(a,b){ return a.position - b.position; });
+      var idx = -1; for (var i=0;i<sorted.length;i++){ if (sorted[i].lane === me.lane){ idx = i; break; } }
+      var ahead = idx > 0 ? sorted[idx-1] : null;
+      var behind = (idx >= 0 && idx < sorted.length-1) ? sorted[idx+1] : null;
+      var pr = st.projection ? (function(){ for (var j=0;j<st.projection.length;j++){ var p=st.projection[j]; if (String(p.entityId)===String(TEAM_ID) || p.name===me.name) return p; } return null; })() : null;
+      myCtx = {
+        avgLapMs: me.avgLapMs,
+        gapAheadLaps: ahead ? ahead.lapCount - me.lapCount : null, aheadName: ahead ? ahead.name : null,
+        gapBehindLaps: behind ? me.lapCount - behind.lapCount : null, behindName: behind ? behind.name : null,
+        avgToCatchMs: pr ? pr.avgToCatch : null
+      };
+    }
+
+    function onLap(d){
+      if (!d) return;
+      var mine = (d.name === TEAM_NAME) || (myLane != null && d.lane === myLane);
+      if (!mine){ scheduleRefresh(); return; }
+      refresh();
+      if (d.isExit || d.isFirstCrossing) return;
+      if (!S.sayLaps) return;
+      var ms = d.lapTimeMs, t = speakTime(ms);
+      var isFastest = (d.lapNumber > 1) && (bestLap == null || ms < bestLap);
+      if (bestLap == null || ms < bestLap) bestLap = ms;
+      say(isFastest ? ('Vuelta rápida, ' + t) : t);
+    }
+
+    function tick(){
+      if (!S.enabled || myStatus !== 'my-turn') return;
+      var remaining = (remAtSync != null) ? (remAtSync - (Date.now() - syncAt)) : null;
+      if (remaining != null && mangaDurationMs > 0){
+        if (!firedHalf    && S.sayHalfManga  && remaining <= mangaDurationMs/2 && remaining > 60000){ firedHalf = true; say('Media manga'); }
+        if (!firedLastMin && S.sayLastMinute && remaining <= 60000 && remaining > 30000){ firedLastMin = true; say('Último minuto'); }
+        if (!firedLast30  && S.sayLast30s    && remaining <= 30000 && remaining > 0){ firedLast30 = true; say('Últimos treinta segundos'); }
+      }
+      var minute = Math.floor(Date.now()/1000/60);
+      if (S.sayAveragesEveryMin > 0 && minute % S.sayAveragesEveryMin === 0 && lastAvgMin !== minute && myCtx.avgLapMs != null){
+        lastAvgMin = minute; say('Media de carril ' + speakTime(myCtx.avgLapMs));
+      }
+      if (S.sayGapsEveryMin > 0 && minute % S.sayGapsEveryMin === 0 && lastGapMin !== minute){
+        lastGapMin = minute;
+        if (myCtx.gapAheadLaps != null && myCtx.gapAheadLaps <= 2 && myCtx.aheadName)
+          say(myCtx.gapAheadLaps === 0 ? ('A la par con ' + myCtx.aheadName) : ('A ' + lapsPhrase(myCtx.gapAheadLaps) + ' de ' + myCtx.aheadName));
+        if (myCtx.gapBehindLaps != null && myCtx.gapBehindLaps <= 2 && myCtx.behindName)
+          say(myCtx.gapBehindLaps === 0 ? (myCtx.behindName + ', a la par') : ('Tienes a ' + myCtx.behindName + ' a ' + lapsPhrase(myCtx.gapBehindLaps)));
+      }
+      if (S.sayCatchUpEveryMin > 0 && minute % S.sayCatchUpEveryMin === 0 && lastCatchMin !== minute && myCtx.avgToCatchMs != null){
+        lastCatchMin = minute; say('Para subir, ' + speakTime(myCtx.avgToCatchMs));
+      }
+    }
+    setInterval(tick, 1000);
+
+    // ── Render visual del panel (acumulado de la carrera) ────────────────
+    var lastLapShown = null;
     function render(snap){
       if (!snap || !snap.ok) return;
       var t = snap.timing, live = snap.live || {}, proj = snap.projection;
-
       set('pos', t.position != null ? 'P' + t.position : '—');
       set('posOf', snap.teamsTotal ? (' de ' + snap.teamsTotal) : '');
-
       if (t.gapLaps > 0) set('gapLeader', t.gapLaps + (t.gapLaps === 1 ? ' vuelta tras el líder' : ' vueltas tras el líder'));
       else if (t.position === 1) set('gapLeader', '🏁 Líder de la carrera');
       else set('gapLeader', 'A la par del líder');
 
-      // Última vuelta: flash si cambió
       var prev = lastLapShown;
       set('lastLap', fmtLap(t.lastLapMs));
       if (t.lastLapMs != null && prev != null && t.lastLapMs !== prev){
-        var c = document.getElementById('cardLast');
-        c.classList.remove('flash'); void c.offsetWidth; c.classList.add('flash');
+        var c = document.getElementById('cardLast'); c.classList.remove('flash'); void c.offsetWidth; c.classList.add('flash');
       }
       lastLapShown = t.lastLapMs;
-      lastTotalLaps = (t.totalLaps != null) ? t.totalLaps : lastTotalLaps;
-      currentLane   = (snap.live && snap.live.lane != null) ? snap.live.lane : currentLane;
+      if (live.lane != null) myLane = live.lane;
 
       set('bestLap', fmtLap(t.bestLapMs));
       set('laps', t.totalLaps != null ? t.totalLaps : '—');
@@ -168,39 +289,29 @@
       set('pits', t.pitStops != null ? t.pitStops : '—');
       set('gapLapsCard', t.gapLaps != null ? '-' + t.gapLaps : '—');
 
-      // Proyección (solo en vivo)
       if (proj && proj.position != null){
         document.getElementById('projWrap').style.display = '';
         set('projPos', 'P' + proj.position);
         set('projTotal', proj.projectedTotal != null ? proj.projectedTotal : '—');
-      } else {
-        document.getElementById('projWrap').style.display = 'none';
-      }
+      } else { document.getElementById('projWrap').style.display = 'none'; }
 
-      // Estado
-      var led = document.getElementById('led');
-      led.className = 'led';
+      var led = document.getElementById('led'); led.className = 'led';
       if (live.running){
         led.classList.add('on');
         var bits = [];
         if (live.mangaNumber != null) bits.push('Manga ' + live.mangaNumber);
-        if (live.onTrack && live.lane != null) bits.push('Carril ' + live.lane);
-        else bits.push('En descanso');
+        if (live.onTrack && live.lane != null) bits.push('Carril ' + live.lane); else bits.push('En descanso');
         if (live.remainingMs != null) bits.push('quedan ' + fmtClock(live.remainingMs));
         set('statusText', bits.join(' · '));
       } else {
         led.classList.add(snap.race.status === 'finished' ? 'off' : '');
         set('statusText', snap.race.status === 'finished' ? 'Carrera finalizada' : 'Esperando próxima manga');
       }
-
-      var d = new Date(snap.updatedAt);
-      set('foot', 'Actualizado ' + d.toLocaleTimeString('es-ES'));
+      set('foot', 'Actualizado ' + new Date(snap.updatedAt).toLocaleTimeString('es-ES'));
     }
 
-    // Estado inicial (renderizado en servidor → instantáneo)
     try { render(JSON.parse(document.getElementById('snap').textContent || '{}')); } catch(e){}
 
-    // Refresco bajo demanda (debounced) del snapshot.
     var pending = false, timer = null;
     function refresh(){
       if (pending) return; pending = true;
@@ -211,56 +322,51 @@
     }
     function scheduleRefresh(){ if (timer) return; timer = setTimeout(function(){ timer = null; refresh(); }, 400); }
 
-    // ── Controles de audio (cantar vueltas) ─────────────────────────────────
-    var btn = document.getElementById('audioToggle');
-    var modeSel = document.getElementById('audioMode');
-    try { audioMode = localStorage.getItem('lapAudioMode') || 'time'; if (modeSel) modeSel.value = audioMode; } catch(e){}
-    function setAudio(on){
-      audioOn = on;
-      if (btn){
-        btn.textContent = (on ? '🔊' : '🔇') + ' Cantar vueltas';
-        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-        btn.classList.toggle('on', on);
-      }
+    // ── UI: master de voz + panel de ajustes ─────────────────────────────
+    var vBtn = document.getElementById('voiceToggle');
+    var cfgBtn = document.getElementById('voiceCfgBtn');
+    var cfg = document.getElementById('voiceCfg');
+    function paintToggle(){
+      if (!vBtn) return;
+      vBtn.textContent = (S.enabled ? '🔊' : '🔇') + ' Voz';
+      vBtn.setAttribute('aria-pressed', S.enabled ? 'true' : 'false');
+      vBtn.classList.toggle('on', S.enabled);
     }
-    if (btn) btn.addEventListener('click', function(){
-      var on = !audioOn;
-      // El navegador exige un gesto para habilitar audio: lo desbloqueamos aquí.
-      if (on){ ensureAudio(); speak('Cantando vueltas'); }
-      setAudio(on);
-    });
-    if (modeSel) modeSel.addEventListener('change', function(){
-      audioMode = modeSel.value;
-      try { localStorage.setItem('lapAudioMode', audioMode); } catch(e){}
-    });
+    function enableVoice(on){
+      S.enabled = on; saveSettings(); paintToggle();
+      if (on){ ensureAudio(); startSilent(); requestWake(); speak('Voz activada'); }
+      else { releaseWake(); stopSilent(); try { window.speechSynthesis.cancel(); } catch(e){} }
+    }
+    if (vBtn) vBtn.addEventListener('click', function(){ enableVoice(!S.enabled); });
+    if (cfgBtn) cfgBtn.addEventListener('click', function(){ if (cfg) cfg.hidden = !cfg.hidden; });
 
-    // Socket: cualquier evento relevante dispara un refresco del snapshot.
+    // Pintar los controles del panel desde S y enlazarlos.
+    if (cfg){
+      cfg.querySelectorAll('[data-k]').forEach(function(inp){
+        var k = inp.getAttribute('data-k');
+        if (inp.type === 'checkbox') inp.checked = !!S[k]; else inp.value = S[k];
+        inp.addEventListener('change', function(){
+          if (inp.type === 'checkbox') S[k] = inp.checked;
+          else { var n = parseInt(inp.value, 10); S[k] = (isFinite(n) && n > 0) ? n : 0; inp.value = S[k]; }
+          saveSettings();
+        });
+      });
+    }
+    paintToggle(); updateWakeNote();
+
+    // ── Socket: alimenta el motor de voz y el refresco visual ────────────
     try {
       var socket = io({ query: { view: 'lap' } });
-      // Mi propia vuelta → cantar al instante (el evento trae el tiempo exacto)
-      // + refresco visual. Identifico mi vuelta por nombre de equipo o por el
-      // carril en el que está ahora mismo (más robusto ante nombres con matices).
-      socket.on('lap', function(d){
-        if (!d) return;
-        var mine = (d.name === TEAM_NAME) || (currentLane != null && d.lane === currentLane);
-        if (mine) {
-          if (!d.isExit && !d.isFirstCrossing) {
-            var n = (lastTotalLaps != null) ? lastTotalLaps + 1 : (d.lapNumber || null);
-            announceLap(d.lapTimeMs, n);
-          }
-          if (lastTotalLaps != null) lastTotalLaps += 1;
-          refresh();
-        } else {
-          scheduleRefresh();
-        }
+      socket.on('connect', function(){ try { socket.emit('standings:request'); } catch(e){} });
+      socket.on('standings', function(st){ onStandings(st); scheduleRefresh(); });
+      socket.on('lap', onLap);
+      socket.on('manga:started', function(){ resetManga(); prevMyLane = null; try { socket.emit('standings:request'); } catch(e){} scheduleRefresh(); });
+      ['manga:stopped','race_finished','race:finished'].forEach(function(ev){
+        socket.on(ev, function(){ if (myStatus === 'my-turn' && !firedFinish){ firedFinish = true; say('Fin de la manga'); } myStatus = 'rest'; prevMyLane = null; scheduleRefresh(); });
       });
-      ['standings','manga:started','manga:stopped','manga:paused','manga:resumed',
-       'manga:cancelled','race_finished','race:finished'].forEach(function(ev){
-        socket.on(ev, scheduleRefresh);
-      });
+      ['manga:paused','manga:resumed','manga:cancelled'].forEach(function(ev){ socket.on(ev, scheduleRefresh); });
     } catch(e){}
 
-    // Poll de respaldo (entre mangas el socket no emite standings).
     setInterval(refresh, 5000);
   })();
   </script>
