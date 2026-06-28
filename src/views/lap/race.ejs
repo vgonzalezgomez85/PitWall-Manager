@@ -1,0 +1,38 @@
+<%- include('../partials/header', { pageTitle: race.name + ' — Lap' }) %>
+<link rel="stylesheet" href="/css/lap.css">
+
+<div class="wrap">
+  <a href="/lap" class="vt-back-link" style="margin:0 0 10px">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Carreras
+  </a>
+
+  <div class="brand"><span class="dot"></span> PitWall <small>Lap</small></div>
+  <h1><%= race.name %></h1>
+  <p class="sub">Entra con tu equipo y el PIN que te dio la organización.</p>
+
+  <form class="card" method="POST" action="/lap/<%= race.id %>/login">
+    <% if (error) { %><div class="err"><%= error %></div><% } %>
+    <label for="teamId">Equipo</label>
+    <select id="teamId" name="teamId" required>
+      <option value="" disabled selected>— Elige tu equipo —</option>
+      <% teams.forEach(t => { %>
+        <option value="<%= t.id %>"><%= t.name %></option>
+      <% }) %>
+    </select>
+
+    <label for="pin">PIN (4 dígitos)</label>
+    <input class="pin" id="pin" name="pin" inputmode="numeric" pattern="[0-9]*"
+           maxlength="4" autocomplete="off" placeholder="••••" required>
+
+    <button class="btn" type="submit">Entrar</button>
+  </form>
+
+  <% if (typeof isAdminAccess !== 'undefined' && isAdminAccess) { %>
+    <p class="footnote" style="margin-top:18px">
+      <a href="/lap/<%= race.id %>/pins">Organización · hoja de PINs</a>
+    </p>
+  <% } %>
+</div>
+
+<%- include('../partials/footer') %>
