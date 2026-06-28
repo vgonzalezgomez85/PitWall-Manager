@@ -286,14 +286,15 @@ router.get('/api/rawlog', (req, res) => {
 // ── PitWall Lap — cliente web del equipo (resistencia) ──────────────────────
 // Rutas PÚBLICAS (accesibles desde el móvil de cualquier equipo): el acceso real
 // a los datos lo gatea el PIN por equipo (sesión). Ver accessControl.isPublicPath.
-router.get( '/lap',                          LapController.index);
-router.post('/lap/:raceId/login',            LapController.login);
-router.get( '/lap/:raceId/team/:teamId',     LapController.teamView);
-router.get( '/lap/:raceId',                  LapController.selectRace);
-router.get( '/api/lap/:raceId/team/:teamId', LapController.teamSnapshot);
-
-// Hoja de PINs para la organización (acceso admin vía restrictAccess).
-router.get( '/races/:id/lap-pins',                       LapController.pinsPage);
-router.post('/races/:id/lap-pins/:teamId/regenerate',    LapController.regeneratePin);
+router.get( '/lap',                              LapController.index);
+router.post('/lap/:raceId/login',                LapController.login);
+router.get( '/lap/:raceId/team/:teamId',         LapController.teamView);
+// Hoja de PINs para la organización: vive en el espacio público /lap (no bajo
+// /races) para que sea accesible desde la red del evento aunque el modo
+// restringido esté activo. Ver accessControl.isPublicPath.
+router.get( '/lap/:raceId/pins',                 LapController.pinsPage);
+router.post('/lap/:raceId/pins/:teamId/regenerate', LapController.regeneratePin);
+router.get( '/lap/:raceId',                      LapController.selectRace);
+router.get( '/api/lap/:raceId/team/:teamId',     LapController.teamSnapshot);
 
 module.exports = router;

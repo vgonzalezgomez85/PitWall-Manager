@@ -196,10 +196,10 @@ const LapController = {
     };
   },
 
-  // ── Admin: hoja de PINs para repartir a los equipos ────────────────────────
-  // GET /races/:id/lap-pins  (acceso admin vía restrictAccess)
+  // ── Hoja de PINs para repartir a los equipos (organización) ────────────────
+  // GET /lap/:raceId/pins  (pública: alcanzable desde la red del evento)
   pinsPage(req, res) {
-    const race = Race.findById(req.params.id);
+    const race = Race.findById(req.params.raceId);
     if (!race) return res.status(404).render('lap/error', { message: 'Carrera no encontrada.', layout: false });
     const teams = Team.withLapPins(race.id);
     res.render('lap/pins', {
@@ -210,10 +210,10 @@ const LapController = {
     });
   },
 
-  // POST /races/:id/lap-pins/:teamId/regenerate — nuevo PIN para un equipo
+  // POST /lap/:raceId/pins/:teamId/regenerate — nuevo PIN para un equipo
   regeneratePin(req, res) {
-    Team.regenerateLapPin(Number(req.params.id), Number(req.params.teamId));
-    res.redirect(`/races/${req.params.id}/lap-pins`);
+    Team.regenerateLapPin(Number(req.params.raceId), Number(req.params.teamId));
+    res.redirect(`/lap/${req.params.raceId}/pins`);
   },
 };
 

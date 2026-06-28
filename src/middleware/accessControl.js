@@ -73,11 +73,12 @@ function reqIp(req) {
 function isPublicPath(p) {
   return p === '/' || p === '/race-stats' || /^\/races\/\d+\/live-stats(\.json)?$/.test(p)
       || p === '/results' || /^\/results\/\d+$/.test(p)
-      // Cliente web "Lap" (timing del equipo desde el móvil). El acceso a los
-      // datos lo gatea el PIN por equipo; estas rutas deben ser alcanzables
-      // desde cualquier IP de la red del evento. (NO incluye /races/.../lap-pins,
-      // que es admin y se queda tras la restricción por IP.)
-      || p === '/lap' || /^\/lap\/\d+(\/team\/\d+|\/login)?$/.test(p)
+      // Cliente web "Lap" (timing del equipo desde el móvil) y la hoja de PINs
+      // de la organización. El acceso a los datos de timing lo gatea el PIN por
+      // equipo; todas estas rutas deben ser alcanzables desde cualquier IP de la
+      // red del evento, también con el modo restringido activo.
+      || p === '/lap'
+      || /^\/lap\/\d+(\/team\/\d+|\/login|\/pins(\/\d+\/regenerate)?)?$/.test(p)
       || /^\/api\/lap\/\d+\/team\/\d+$/.test(p);
 }
 
