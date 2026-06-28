@@ -311,6 +311,11 @@ function startCountdown(remaining) {
 
 // ── Previous-manga lap totals (race cumulative base per lane) ─────────────────
 const prevLapCountMap = {};
+// Tiempo (ms de manga) del último cruce de cada carril en la manga actual.
+// Sirve para desempatar el líder de vueltas de la manga: a igual VLT, va
+// delante quien cruzó antes (menor elapsed). Se rellena en el evento 'lap' y
+// se reinicia solo, porque manga:started recarga la página.
+const mangaCrossMs = {};
 RACE_DATA.lanes.forEach(l => { prevLapCountMap[l.lane] = l.prevLapCount || 0; });
 function getTotalLaps(lane, lapCount) { return (prevLapCountMap[lane] || 0) + lapCount; }
 
@@ -816,6 +821,29 @@ function sortCards(rows) {
 // Tracks previous gap (in total laps) from each lane to the driver ahead
 let prevGapToAhead = {};
 
+// Resalta (en verde, vía CSS .is-manga-leader) la VLT del equipo que más
+// vueltas lleva en la manga ACTUAL. A igualdad de vueltas, gana quien cruzó
+// antes (menor elapsed de su último cruce). Solo carriles activos (no descanso).
+function highlightMangaLeader(standings) {
+  if (!Array.isArray(standings)) return;
+  let best = null;
+  standings.forEach(r => {
+    if (r.isRest || (r.lapCount || 0) <= 0) return;
+    if (!best || r.lapCount > best.lapCount) { best = r; return; }
+    if (r.lapCount === best.lapCount) {
+      const a = mangaCrossMs[r.lane]    ?? Infinity;
+      const b = mangaCrossMs[best.lane] ?? Infinity;
+      if (a < b) best = r;
+    }
+  });
+  document.querySelectorAll('.lane-card__laps.is-manga-leader')
+    .forEach(el => el.classList.remove('is-manga-leader'));
+  if (best) {
+    const el = document.getElementById('card-laps-' + best.lane);
+    if (el) el.classList.add('is-manga-leader');
+  }
+}
+
 function renderStandings(data) {
   if (!data?.standings) return;
   // Merge active lanes with resting entities (lapCount=0 this manga)
@@ -889,6 +917,7 @@ function renderStandings(data) {
   data.standings.forEach(r => updateCard(r.lane, r.lapCount, r.lastLapMs, r.bestLapMs, r.avgLapMs, r.exitCount));
   data.standings.forEach(r => updatePitIndicator(r.lane, r.pitStopCount ?? 0));
   data.standings.forEach(r => updateExitIndicator(r.lane, r.exitCount ?? 0));
+  highlightMangaLeader(data.standings);
 
   updateRaceBestLaps(data.raceBestLaps);
   // renderProjected ANTES que sortCards: calcula la posición general (todas las
@@ -1480,6 +1509,8 @@ function announce(text) {
     socket.on('lap', (lap) => {
       addTick(lap);
       flashCard(lap.lane, lap.isExit);
+      // Marca de tiempo del cruce, para desempatar el líder de vueltas de manga.
+      if (lap.elapsedMs != null) mangaCrossMs[lap.lane] = lap.elapsedMs;
 
       // Pit-stop indicator next to the lane name. Stays visible once a lane
       // has had any pit-stop in the manga. If there's more than one, show

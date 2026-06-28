@@ -1672,6 +1672,17 @@ body.manga-finished:not(:has(.live-lanes--vertical)) .lane-card:not(:has(.next-l
 }
 .live-lanes--detailed .lane-card__col--laps  .lane-card__col-val,
 .live-lanes--detailed .lane-card__col--laps  .lane-card__laps { color: #f6c90e !important; }
+
+/* Líder de vueltas de la MANGA actual: VLT en verde. Solo en V1 (horizontal,
+   body sin .live-lanes--vertical) y V3 (.live-lanes--detailed). El .is-manga-
+   leader añade especificidad para ganar al blanco (V1) y al amarillo (V3), que
+   ya llevan !important. V2 (vertical sin detailed) se queda sin resaltar. */
+body:not(:has(.live-lanes--vertical)) .lane-card__laps.is-manga-leader,
+body:not(:has(.live-lanes--vertical)) .lane-card__col--laps .lane-card__laps.is-manga-leader,
+.live-lanes--detailed .lane-card__laps.is-manga-leader,
+.live-lanes--detailed .lane-card__col--laps .lane-card__laps.is-manga-leader {
+  color: #3fb950 !important;
+}
 .live-lanes--detailed .lane-card__col-val--exits        { color: #c9d1d9 !important; }
 .live-lanes--detailed .lane-card__col-val--exits-active { color: #ef4444 !important; }
 .live-lanes--detailed .lane-card__col--delta .lane-card__col-val { color: #ff6b35 !important; }
