@@ -56,11 +56,6 @@ function stepState(idx) {
       <a href="/races/<%= race.id %>/results" class="rs-btn rs-btn--ghost">
         <span>📊</span> <%= lang === 'es' ? 'Resultados' : 'Results' %>
       </a>
-      <% if (race.format === 'team') { %>
-        <a href="/races/<%= race.id %>/lap-pins" class="rs-btn rs-btn--ghost">
-          <span>📱</span> <%= lang === 'es' ? 'Lap (PINs)' : 'Lap (PINs)' %>
-        </a>
-      <% } %>
       <% if (race.type === 'championship') { %>
         <a href="/races/<%= race.id %>/shifts" class="rs-btn rs-btn--ghost">
           <span>🪪</span> <%= lang === 'es' ? 'Turnos' : 'Shifts' %>
