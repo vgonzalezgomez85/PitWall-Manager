@@ -116,24 +116,53 @@ const LapController = {
   _buildTeamSnapshot(race, team) {
     const TimingService = require('../services/TimingService');
 
-    // Acumulado de TODA la carrera (sobrevive entre mangas y a la rotación de
-    // carriles). Ordenado por vueltas → la posición general es el índice.
+    // Acumulado de TODA la carrera, agrupado por NOMBRE de equipo. En algunas
+    // carreras los equipos están duplicados (varias filas en `teams` con el
+    // mismo nombre y distinto id: una "maestra" sin tanda + una por tanda), y
+    // las vueltas se asignan a las filas por tanda. Si buscáramos por team_id
+    // exacto veríamos 0 vueltas. Agrupando por nombre, cada equipo ve su total
+    // real. Para Modena (una fila por equipo) el agrupado es idéntico.
+    const name = team.name;
     const agg = Lap.aggregateByRace(race.id);
-    const idx = agg.findIndex(r => r.entity_type === 'team' && r.entity_id === team.id);
-    const row = idx >= 0 ? agg[idx] : null;
-    const leader = agg[0] || null;
-    const ahead  = idx > 0 ? agg[idx - 1] : null;
+    const byName = {};
+    agg.forEach(r => {
+      let g = byName[r.entity_name];
+      if (!g) g = byName[r.entity_name] = {
+        name: r.entity_name, color: r.color, total_laps: 0, total_time_ms: 0,
+        best_lap_ms: null, exit_count: 0, mangas_raced: 0, _avgNum: 0, _avgDen: 0,
+      };
+      g.total_laps    += r.total_laps || 0;
+      g.total_time_ms += r.total_time_ms || 0;
+      g.exit_count    += r.exit_count || 0;
+      g.mangas_raced  += r.mangas_raced || 0;
+      if (r.best_lap_ms != null && (g.best_lap_ms == null || r.best_lap_ms < g.best_lap_ms)) g.best_lap_ms = r.best_lap_ms;
+      if (r.avg_lap_ms != null) { g._avgNum += r.avg_lap_ms * (r.total_laps || 0); g._avgDen += (r.total_laps || 0); }
+      if (!g.color && r.color) g.color = r.color;
+    });
+    const groups = Object.values(byName).map(g => ({
+      name: g.name, color: g.color, total_laps: g.total_laps, total_time_ms: g.total_time_ms,
+      best_lap_ms: g.best_lap_ms, exit_count: g.exit_count, mangas_raced: g.mangas_raced,
+      avg_lap_ms: g._avgDen > 0 ? g._avgNum / g._avgDen : null,
+    }));
+    groups.sort((a, b) => (b.total_laps - a.total_laps) || ((a.total_time_ms || 0) - (b.total_time_ms || 0)));
+    const idx = groups.findIndex(g => g.name === name);
+    const row = idx >= 0 ? groups[idx] : null;
+    const leader = groups[0] || null;
+    const ahead  = idx > 0 ? groups[idx - 1] : null;
 
-    // Pit stops acumulados (suma por carril de la carrera).
-    const perLane = Lap.perLaneByEntity(race.id, team.id, 'team');
-    const pitStops = perLane.reduce((s, l) => s + (l.pit_stop_count || 0), 0);
+    // Pit stops acumulados por NOMBRE de equipo.
+    const pitStops = db.prepare(`
+      SELECT COALESCE(SUM(l.is_pit_stop), 0) AS pits
+      FROM laps l JOIN teams t ON t.id = l.team_id
+      WHERE l.race_id = ? AND t.name = ? AND l.is_ghost = 0 AND l.manga_id IS NOT NULL
+    `).get(race.id, name).pits;
 
-    // Última vuelta válida registrada (fallback si no hay manga en vivo).
+    // Última vuelta válida registrada, por NOMBRE (fallback si no hay manga viva).
     const lastRow = db.prepare(`
-      SELECT lap_time_ms FROM laps
-      WHERE race_id = ? AND team_id = ? AND is_ghost = 0 AND is_warmup = 0 AND lap_number > 0
-      ORDER BY id DESC LIMIT 1
-    `).get(race.id, team.id);
+      SELECT l.lap_time_ms FROM laps l JOIN teams t ON t.id = l.team_id
+      WHERE l.race_id = ? AND t.name = ? AND l.is_ghost = 0 AND l.is_warmup = 0 AND l.lap_number > 0
+      ORDER BY l.id DESC LIMIT 1
+    `).get(race.id, name);
 
     const timing = {
       position:       row ? idx + 1 : null,
@@ -169,7 +198,8 @@ const LapController = {
           if (sr.lastLapMs != null) timing.lastLapMs = sr.lastLapMs;
         }
         // Proyección por entidad (posición estimada al final + vueltas proyectadas).
-        const pr = (st.projection || []).find(p => p.entityType === 'team' && p.entityId === team.id);
+        // Casamos por nombre (los ids pueden estar duplicados por tanda).
+        const pr = (st.projection || []).find(p => p.entityType === 'team' && p.name === team.name);
         if (pr) {
           projection = {
             position:       pr.position,
@@ -181,15 +211,15 @@ const LapController = {
       }
     }
 
-    const teamsTotal = db.prepare('SELECT COUNT(*) AS c FROM teams WHERE race_id = ?').get(race.id).c;
+    const teamsTotal = db.prepare('SELECT COUNT(DISTINCT name) AS c FROM teams WHERE race_id = ?').get(race.id).c;
 
     return {
       ok: true,
       updatedAt: Date.now(),
       race: { id: race.id, name: race.name, status: race.status },
-      team: { id: team.id, name: team.name, color: team.color },
+      team: { id: team.id, name: team.name, color: row && row.color ? row.color : team.color },
       teamsTotal,
-      leader: leader ? { name: leader.entity_name, totalLaps: leader.total_laps } : null,
+      leader: leader ? { name: leader.name, totalLaps: leader.total_laps } : null,
       timing,
       live,
       projection,

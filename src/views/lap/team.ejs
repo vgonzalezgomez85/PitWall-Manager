@@ -182,13 +182,13 @@
     }
 
     // ── Motor de voz (deriva los mismos eventos que la app desde el socket)─
-    var prevPosition = null, bestLap = null, prevMyLane = null, prevMangaId = null;
+    var prevOverallPos = null, bestLap = null, prevMyLane = null, prevMangaId = null;
     var mangaDurationMs = 0, remAtSync = null, syncAt = 0;
     var myStatus = 'rest', myLane = null, myCtx = {};
     var firedHalf = false, firedLastMin = false, firedLast30 = false, firedFinish = false;
     var lastAvgMin = -1, lastGapMin = -1, lastCatchMin = -1;
 
-    function resetManga(){ firedHalf = firedLastMin = firedLast30 = firedFinish = false; bestLap = null; prevPosition = null; }
+    function resetManga(){ firedHalf = firedLastMin = firedLast30 = firedFinish = false; bestLap = null; }
     function findMe(rows){ for (var i=0;i<rows.length;i++) if (rows[i].name === TEAM_NAME) return rows[i]; return null; }
 
     function onStandings(st){
@@ -208,9 +208,8 @@
       if (prevMyLane == null || mangaChanged) say('Tu turno, carril ' + me.lane);
       prevMyLane = me.lane; myLane = me.lane;
 
-      // Cambio de posición.
-      if (prevPosition != null && prevPosition !== me.position && S.sayPositionChange) say(ordinal(me.position));
-      prevPosition = me.position;
+      // OJO: el cambio de POSICIÓN se canta desde render() con la posición
+      // GENERAL de la clasificación (acumulada), no la de la manga en curso.
 
       // Contexto de rivales (de delante / de detrás) + media para subir.
       var sorted = st.standings.slice().sort(function(a,b){ return a.position - b.position; });
@@ -282,6 +281,14 @@
       }
       lastLapShown = t.lastLapMs;
       if (live.lane != null) myLane = live.lane;
+
+      // Cambio de posición GENERAL (clasificación acumulada de la carrera).
+      // Solo se canta en pista, para no soltar puestos mientras descansas.
+      if (S.enabled && S.sayPositionChange && live.running && live.onTrack
+          && prevOverallPos != null && t.position != null && t.position !== prevOverallPos){
+        say(ordinal(t.position));
+      }
+      if (t.position != null) prevOverallPos = t.position;
 
       set('bestLap', fmtLap(t.bestLapMs));
       set('laps', t.totalLaps != null ? t.totalLaps : '—');
