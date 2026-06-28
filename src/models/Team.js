@@ -52,12 +52,17 @@ class Team {
   // de timing en vivo desde el móvil. No es seguridad fuerte (igual que el resto
   // del acceso de PitWall): evita que un equipo abra por error el panel de otro.
 
-  // Lista equipos de la carrera con su PIN, generando los que falten.
+  // Lista equipos de la carrera con su PIN, generando los que falten. Se
+  // deduplica por NOMBRE: algunas carreras tienen varias filas por equipo (una
+  // "maestra" + una por tanda); para el cliente Lap basta una por nombre (la de
+  // menor id, canónica). El timing se agrega por nombre en LapController.
   static withLapPins(raceId) {
     Team.ensureLapPins(raceId);
-    return db.prepare(
-      'SELECT id, name, color, lap_pin FROM teams WHERE race_id = ? ORDER BY id ASC'
-    ).all(raceId);
+    return db.prepare(`
+      SELECT id, name, color, lap_pin FROM teams
+      WHERE race_id = ? AND id IN (SELECT MIN(id) FROM teams WHERE race_id = ? GROUP BY name)
+      ORDER BY name ASC
+    `).all(raceId, raceId);
   }
 
   // Asigna un PIN único (dentro de la carrera) a cada equipo que no tenga uno.
