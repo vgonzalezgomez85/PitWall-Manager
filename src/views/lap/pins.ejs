@@ -1,47 +1,44 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>PINs Lap — <%= race.name %></title>
-  <link rel="stylesheet" href="/css/lap.css">
-</head>
-<body>
-  <div class="wrap">
-    <div class="toprow">
-      <div class="brand"><span class="dot"></span> PitWall <small>Lap · PINs</small></div>
-      <a href="/lap/<%= race.id %>">← Acceso equipos</a>
-    </div>
-    <h1><%= race.name %></h1>
+<%- include('../partials/header', { pageTitle: 'PINs Lap — ' + race.name }) %>
+<link rel="stylesheet" href="/css/lap.css">
 
-    <% if (!isEndurance) { %>
-      <div class="err">Esta carrera no es por equipos: el cliente Lap solo aplica a carreras de resistencia.</div>
-    <% } else { %>
-      <p class="sub">Reparte a cada equipo su PIN. Para entrar abren esta dirección en el móvil:</p>
-      <div class="url" id="joinUrl">/lap/<%= race.id %></div>
+<div class="wrap">
+  <a href="/lap/<%= race.id %>" class="vt-back-link" style="margin:0 0 10px">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Acceso equipos
+  </a>
 
-      <table class="pins">
-        <thead><tr><th>Equipo</th><th>PIN</th><th></th></tr></thead>
-        <tbody>
-          <% teams.forEach(t => { %>
-            <tr>
-              <td><span class="swatch" style="display:inline-block;background:<%= t.color || '#8b949e' %>;vertical-align:middle;margin-right:8px"></span><%= t.name %></td>
-              <td class="pin"><%= t.lap_pin || '—' %></td>
-              <td>
-                <form method="POST" action="/lap/<%= race.id %>/pins/<%= t.id %>/regenerate" style="margin:0">
-                  <button class="regen" type="submit">↻ Nuevo</button>
-                </form>
-              </td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    <% } %>
-  </div>
-  <script>
-    // Mostrar la URL completa con el host/IP por el que entró el organizador.
-    var el = document.getElementById('joinUrl');
-    if (el) el.textContent = window.location.origin + '/lap/<%= race.id %>';
-  </script>
-</body>
-</html>
+  <div class="brand"><span class="dot"></span> PitWall <small>Lap · PINs</small></div>
+  <h1><%= race.name %></h1>
+
+  <% if (!isEndurance) { %>
+    <div class="err">Esta carrera no es por equipos: el cliente Lap solo aplica a carreras de resistencia.</div>
+  <% } else { %>
+    <p class="sub">Reparte a cada equipo su PIN. Para entrar abren esta dirección en el móvil:</p>
+    <div class="url" id="joinUrl">/lap/<%= race.id %></div>
+
+    <table class="pins">
+      <thead><tr><th>Equipo</th><th>PIN</th><th></th></tr></thead>
+      <tbody>
+        <% teams.forEach(t => { %>
+          <tr>
+            <td><span class="swatch" style="display:inline-block;background:<%= t.color || '#8b949e' %>;vertical-align:middle;margin-right:8px"></span><%= t.name %></td>
+            <td class="pin"><%= t.lap_pin || '—' %></td>
+            <td>
+              <form method="POST" action="/lap/<%= race.id %>/pins/<%= t.id %>/regenerate" style="margin:0">
+                <button class="regen" type="submit">↻ Nuevo</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<script>
+  // Mostrar la URL completa con el host/IP por el que entró el organizador.
+  var el = document.getElementById('joinUrl');
+  if (el) el.textContent = window.location.origin + '/lap/<%= race.id %>';
+</script>
+
+<%- include('../partials/footer') %>
