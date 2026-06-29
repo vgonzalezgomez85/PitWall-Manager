@@ -284,6 +284,7 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
                       <option value="">— <%= lang === 'es' ? 'Manual' : 'Manual' %> —</option>
                       <% allCircuits.forEach(ac => { %>
                         <option value="<%= ac.id %>" data-lanes="<%= ac.lanes_count %>"
+                          data-config='<%= (ac.circuits_config && ac.circuits_config !== "[]") ? ac.circuits_config : ("[" + ac.lanes_count + "]") %>'
                           <%= String(c.circuit_id || '') === String(ac.id) ? 'selected' : '' %>>
                           <%= ac.name %> (<%= ac.lanes_count %>)
                         </option>
@@ -295,6 +296,7 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
                   <label><%= lang === 'es' ? 'Nº de carriles' : 'Lanes' %></label>
                   <input class="vt-inp is-mono circuit-lanes-input" type="number" name="circuit_lanes" min="2" max="8"
                     value="<%= c.lanes || 8 %>" <%= c.circuit_id ? 'readonly' : '' %>>
+                  <input type="hidden" class="circuit-sub-input" name="circuit_sub" value="<%= (c.circuit_id != null && c.sub_index != null) ? c.sub_index : '' %>">
                 </div>
               </div>
             </div>
@@ -439,6 +441,7 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
 
 <script>
 const LANG = "<%= lang %>";
+const MULTI_CIRCUIT = <%= multiCircuit ? 'true' : 'false' %>;
 
 /* ── radio source ── */
 const sim = document.getElementById('optSim');
@@ -525,17 +528,61 @@ function wirePortFields(container){
 }
 document.querySelectorAll('.circuit-row__field--port').forEach(wirePortFields);
 
-/* ── saved-circuit ↔ lanes input ── */
+/* ── escenario (circuito guardado) ↔ filas de DS ───────────────────────────
+   Un escenario puede tener varios circuitos (sub-lazos de 2-8 carriles). Al
+   elegirlo, esta fila pasa a ser el circuito 1 y se crean automáticamente las
+   filas de DS restantes (una por circuito), cada una con SUS carriles. */
+function renumberCircuitRows(){
+  document.querySelectorAll('.circuit-row').forEach((row, i) => {
+    const num = row.querySelector('.cnum'); if (num) num.textContent = i + 1;
+    const title = row.querySelector('.cname'); if (title) title.textContent = (LANG === 'es' ? 'Circuito ' : 'Circuit ') + (i + 1);
+  });
+}
+
 function wireCircuitRef(row){
   const sel = row.querySelector('.circuit-ref-select');
   const inp = row.querySelector('.circuit-lanes-input');
+  const sub = row.querySelector('.circuit-sub-input');
   if (!sel || !inp) return;
   sel.addEventListener('change', () => {
-    const opt = sel.options[sel.selectedIndex];
-    const lanes = parseInt(opt?.dataset?.lanes || '0', 10);
-    if (sel.value && lanes > 0) { inp.value = lanes; inp.readOnly = true; }
-    else { inp.readOnly = false; }
-    updateLaneBadges();
+    // Quita las filas auto-creadas por una expansión previa de ESTA fila.
+    if (row.dataset.expandGroup){
+      document.querySelectorAll(`.circuit-row[data-expand-of="${row.dataset.expandGroup}"]`).forEach(r => r.remove());
+      delete row.dataset.expandGroup;
+    }
+    let config = [];
+    try { config = JSON.parse(sel.options[sel.selectedIndex]?.dataset?.config || '[]'); } catch {}
+    if (!sel.value || !config.length){
+      inp.readOnly = false; if (sub) sub.value = '';
+      updateLaneBadges(); renumberCircuitRows(); return;
+    }
+    if (config.length > 1 && !MULTI_CIRCUIT){
+      alert(LANG === 'es'
+        ? 'Este escenario tiene varios circuitos. El multi-circuito requiere licencia Pro.'
+        : 'This scenario has multiple circuits. Multi-circuit requires a Pro license.');
+      sel.value = ''; inp.readOnly = false; if (sub) sub.value = '';
+      updateLaneBadges(); renumberCircuitRows(); return;
+    }
+    // Esta fila = circuito 1 del escenario.
+    inp.value = config[0]; inp.readOnly = true; if (sub) sub.value = '0';
+    // Una fila de DS por cada circuito restante (carriles propios, readonly).
+    if (config.length > 1){
+      const gid = 'g' + (window.__cgid = (window.__cgid || 0) + 1);
+      row.dataset.expandGroup = gid;
+      let after = row;
+      for (let i = 1; i < config.length; i++){
+        const nr = makeCircuitRow();
+        nr.dataset.expandOf = gid;
+        const nsel = nr.querySelector('.circuit-ref-select');
+        const ninp = nr.querySelector('.circuit-lanes-input');
+        const nsub = nr.querySelector('.circuit-sub-input');
+        if (nsel) nsel.value = sel.value;
+        if (ninp){ ninp.value = config[i]; ninp.readOnly = true; }
+        if (nsub) nsub.value = String(i);
+        after.after(nr); after = nr;
+      }
+    }
+    updateLaneBadges(); renumberCircuitRows();
   });
 }
 document.querySelectorAll('.circuit-row').forEach(wireCircuitRef);
@@ -551,19 +598,15 @@ const portOptions = Array.from(document.querySelectorAll('select.port-select opt
 const circuitRefOptions = `<option value="">— ${LANG === 'es' ? 'Manual' : 'Manual'} —</option>` +
   Array.from(document.querySelector('.circuit-ref-select')?.options || [])
     .filter(o => o.value)
-    .map(o => `<option value="${o.value}" data-lanes="${o.dataset.lanes}">${o.textContent.trim()}</option>`)
+    .map(o => `<option value="${o.value}" data-lanes="${o.dataset.lanes}" data-config='${o.dataset.config || ''}'>${o.textContent.trim()}</option>`)
     .join('');
 
-/* ── add circuit ── */
-document.getElementById('addCircuit')?.addEventListener('click', () => {
-  const list = document.getElementById('circuitList');
-  const idx = list.querySelectorAll('.circuit-row').length;
-  const div = document.createElement('div');
-  div.className = 'vt-circuit-row circuit-row';
-  div.innerHTML = `
+/* ── fábrica de filas de DS ── */
+function circuitRowHTML(){
+  return `
     <div class="vt-circuit-row__h">
-      <div class="vt-circuit-row__num cnum">${idx+1}</div>
-      <div class="vt-circuit-row__title cname">${LANG === 'es' ? 'Circuito' : 'Circuit'} ${idx+1}</div>
+      <div class="vt-circuit-row__num cnum"></div>
+      <div class="vt-circuit-row__title cname"></div>
       <span class="vt-circuit-row__lanes-badge circuit-row__lanes-badge">${LANG === 'es' ? 'Carriles ?' : 'Lanes ?'}</span>
       <button type="button" class="vt-circuit-row__x btn-remove-circuit" title="Eliminar">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
@@ -611,11 +654,23 @@ document.getElementById('addCircuit')?.addEventListener('click', () => {
       <div class="vt-field circuit-row__field circuit-row__field--lanes">
         <label>${LANG === 'es' ? 'Nº de carriles' : 'Lanes'}</label>
         <input class="vt-inp is-mono circuit-lanes-input" type="number" name="circuit_lanes" min="2" max="8" value="8">
+        <input type="hidden" class="circuit-sub-input" name="circuit_sub" value="">
       </div>
     </div>`;
-  list.appendChild(div);
+}
+function makeCircuitRow(){
+  const div = document.createElement('div');
+  div.className = 'vt-circuit-row circuit-row';
+  div.innerHTML = circuitRowHTML();
   wirePortFields(div.querySelector('.circuit-row__field--port'));
   wireCircuitRef(div);
+  return div;
+}
+
+/* ── add circuit ── */
+document.getElementById('addCircuit')?.addEventListener('click', () => {
+  document.getElementById('circuitList').appendChild(makeCircuitRow());
+  renumberCircuitRows();
   updateLaneBadges();
 });
 
@@ -624,7 +679,7 @@ document.getElementById('circuitList').addEventListener('click', e => {
   const btn = e.target.closest('.btn-remove-circuit');
   if (!btn) return;
   const rows = document.querySelectorAll('.circuit-row');
-  if (rows.length > 1) { btn.closest('.circuit-row').remove(); updateLaneBadges(); }
+  if (rows.length > 1) { btn.closest('.circuit-row').remove(); renumberCircuitRows(); updateLaneBadges(); }
 });
 
 /* ── refresh COM ports ── */

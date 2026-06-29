@@ -20,11 +20,13 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
 <link rel="stylesheet" href="/css/semaphore.css">
 <script src="/js/semaphore.js"></script>
 
-<div class="pole-broadcast">
+<div class="pole-broadcast pole-timing-fit">
   <div class="pole-bcast-wrap">
 
-    <!-- ── Cabecera ──────────────────────────────────────────────────── -->
     <a href="/races/<%= race.id %>" class="pole-back">← <%= t('race.back_to_list') %></a>
+
+    <!-- ── Cabecera horizontal (título · meta · carril · progreso) ───── -->
+    <div class="pole-topbar">
 
     <div class="pole-title-row">
       <div class="pole-flag" aria-hidden="true"></div>
@@ -50,6 +52,23 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
       <div class="pole-bar"><div class="pole-bar-fill" style="width: <%= progressPct %>%"></div></div>
     </div>
 
+    <!-- ── Opción de organización: omitir el primer cruce (out-lap) ─────── -->
+    <div class="pole-omit<%= poleLocked ? ' pole-omit--locked' : '' %>">
+      <label class="pole-omit-switch" title="<%= poleLocked
+              ? (lang === 'es' ? 'Bloqueado: ya hay tiempos registrados, la regla no puede cambiar a mitad de pole' : 'Locked: times already recorded, the rule cannot change mid-session')
+              : (lang === 'es' ? 'Si está activo, el primer cruce de cada piloto (out-lap) no cuenta' : 'When on, each driver\'s first crossing (out-lap) is ignored') %>">
+        <input type="checkbox" id="omitFirstToggle" <%= omitFirstCrossing ? 'checked' : '' %> <%= poleLocked ? 'disabled' : '' %>>
+        <span class="pole-omit-track"><span class="pole-omit-thumb"></span></span>
+      </label>
+      <span class="pole-omit-text"><%= lang === 'es' ? 'Omitir 1er cruce (out-lap)' : 'Skip 1st crossing (out-lap)' %></span>
+      <span id="omitFirstState" class="pole-omit-state"></span>
+      <% if (poleLocked) { %>
+        <span class="pole-omit-lock" title="<%= lang === 'es' ? 'Bloqueado: ya hay tiempos' : 'Locked: times recorded' %>">🔒</span>
+      <% } %>
+    </div>
+
+    </div><!-- /.pole-topbar -->
+
     <!-- ── Grid principal ────────────────────────────────────────────── -->
     <div class="pole-bcast-grid">
 
@@ -64,11 +83,6 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
         <div class="pole-live-sub" id="js-state-sub"><%= lang === 'es' ? 'Cronometrando vuelta' : 'Timing lap' %></div>
 
         <div class="pole-driver-big" id="js-current-name"><%= current.entity_name %></div>
-        <div class="pole-driver-lane">
-          <%= lang === 'es' ? 'Carril' : 'Lane' %>
-          <b><%= session.lane %></b> ·
-          <%= lang === 'es' ? 'Salida P' : 'Start P' %><%= session.current_idx + 1 %>
-        </div>
 
         <!-- Chrono live (oculto hasta running) -->
         <div id="js-chrono-wrap" class="pole-chrono-wrap" style="display:none">
@@ -475,6 +489,45 @@ if (IS_RUNNING) {
   enterStandby();
   startTiming();
 }
+
+// ── Toggle: omitir el primer cruce (out-lap) — decisión de la organización ──
+(function () {
+  const tgl   = document.getElementById('omitFirstToggle');
+  const state = document.getElementById('omitFirstState');
+  if (!tgl) return;
+  const LANG_ES = <%= lang === 'es' ? 'true' : 'false' %>;
+  function paint() { if (state) state.textContent = tgl.checked ? (LANG_ES ? 'ON' : 'ON') : 'OFF'; }
+  paint();
+  tgl.addEventListener('change', async () => {
+    paint();
+    try {
+      const r = await fetch('/races/' + RACE_ID + '/pole/omit-first', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: tgl.checked }),
+      });
+      const j = await r.json();
+      tgl.checked = !!j.omitFirstCrossing;  // confirma el estado real del servidor
+      paint();
+    } catch (e) { /* sin red: el toggle vuelve a su estado al recargar */ }
+  });
+})();
 </script>
+
+<style>
+.pole-omit { display: flex; align-items: center; gap: .5rem; margin-top: .7rem; }
+.pole-omit-switch { position: relative; display: inline-block; width: 42px; height: 22px; cursor: pointer; flex: 0 0 auto; }
+.pole-omit-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.pole-omit-track { position: absolute; inset: 0; background: #30363d; border-radius: 999px; transition: background .15s; }
+.pole-omit-thumb { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; background: #8b949e; border-radius: 50%; transition: transform .15s, background .15s; }
+.pole-omit-switch input:checked + .pole-omit-track { background: #1f6feb; }
+.pole-omit-switch input:checked + .pole-omit-track .pole-omit-thumb { transform: translateX(20px); background: #fff; }
+.pole-omit-text { font-size: .78rem; color: #8b949e; text-transform: uppercase; letter-spacing: .03em; }
+.pole-omit-state { font-size: .72rem; font-weight: 700; color: #1f6feb; font-family: 'IBM Plex Mono', monospace; }
+.pole-omit--locked { opacity: .65; }
+.pole-omit--locked .pole-omit-switch { cursor: not-allowed; }
+.pole-omit-switch input:disabled + .pole-omit-track { cursor: not-allowed; }
+.pole-omit-lock { font-size: .8rem; }
+</style>
 
 <%- include('../partials/footer') %>

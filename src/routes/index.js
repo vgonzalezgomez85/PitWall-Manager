@@ -14,6 +14,7 @@ const ControlController           = require('../controllers/ControlController');
 const TeamCatalogController       = require('../controllers/TeamCatalogController');
 const TrainingController          = require('../controllers/TrainingController');
 const MobileController            = require('../controllers/MobileController');
+const LapController               = require('../controllers/LapController');
 const LicenseController           = require('../controllers/LicenseController');
 const DiagnosticsController       = require('../controllers/DiagnosticsController');
 const LiveStatsController         = require('../controllers/LiveStatsController');
@@ -81,6 +82,7 @@ router.get( '/races/:id/mangas/:mangaId/panel/:type',  SessionController.panel);
 router.post('/races/:id/circuit-orientation',          SessionController.saveCircuitOrientation);
 router.post('/races/:id/mangas/:mangaId/start',        SessionController.start);
 router.post('/races/:id/mangas/:mangaId/checkin',      requireModule('qr_checkin'), SessionController.driverCheckin);
+router.post('/races/:id/mangas/:mangaId/correct-time', requireModule('qr_checkin'), SessionController.correctShiftTime);
 router.post('/races/:id/mangas/:mangaId/stop',         SessionController.stop);
 router.post('/races/:id/mangas/:mangaId/pause',        SessionController.pause);
 router.post('/races/:id/mangas/:mangaId/resume',       SessionController.resume);
@@ -96,6 +98,7 @@ router.get( '/races/:id/lemans',       requireModule('lemans'), SessionControlle
 
 // ── Results ───────────────────────────────────────────────────────────────────
 router.get( '/races/:id/results',      SessionController.results);
+router.get( '/races/:id/results/export.html', requireModule('export'), SessionController.exportResults);
 router.get( '/races/:id/results/xlsx', requireModule('export'), SessionController.excel);
 router.get( '/races/:id/results/points.xlsx', requireModule('export'), SessionController.pointsExcel);
 router.get( '/races/:id/results/points.csv',  requireModule('export'), SessionController.pointsCsv);
@@ -109,6 +112,7 @@ router.get( '/races/:id/pole/timing',            requireModule('pole'), PoleCont
 router.post('/races/:id/pole/participant/start', requireModule('pole'), PoleController.startParticipant);
 router.post('/races/:id/pole/participant/stop',  requireModule('pole'), PoleController.stopParticipant);
 router.post('/races/:id/pole/next',              requireModule('pole'), PoleController.advanceParticipant);
+router.post('/races/:id/pole/omit-first',        requireModule('pole'), PoleController.setOmitFirstCrossing);
 router.get( '/races/:id/pole/results',           requireModule('pole'), PoleController.results);
 router.post('/races/:id/pole/times',             requireModule('pole'), PoleController.saveTimes);
 router.get( '/races/:id/pole/lanes',             requireModule('pole'), PoleController.laneSelection);
@@ -278,5 +282,19 @@ router.get('/api/rawlog', (req, res) => {
   const hex = log.map(e => e.byte.toString(16).padStart(2, '0'));
   res.json({ count: hex.length, bytes: hex, raw: log });
 });
+
+// ── PitWall Lap — cliente web del equipo (resistencia) ──────────────────────
+// Rutas PÚBLICAS (accesibles desde el móvil de cualquier equipo): el acceso real
+// a los datos lo gatea el PIN por equipo (sesión). Ver accessControl.isPublicPath.
+router.get( '/lap',                              LapController.index);
+router.post('/lap/:raceId/login',                LapController.login);
+router.get( '/lap/:raceId/team/:teamId',         LapController.teamView);
+// Hoja de PINs para la organización: vive en el espacio público /lap (no bajo
+// /races) para que sea accesible desde la red del evento aunque el modo
+// restringido esté activo. Ver accessControl.isPublicPath.
+router.get( '/lap/:raceId/pins',                 LapController.pinsPage);
+router.post('/lap/:raceId/pins/:teamId/regenerate', LapController.regeneratePin);
+router.get( '/lap/:raceId',                      LapController.selectRace);
+router.get( '/api/lap/:raceId/team/:teamId',     LapController.teamSnapshot);
 
 module.exports = router;

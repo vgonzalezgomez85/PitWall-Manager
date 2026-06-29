@@ -1,7 +1,7 @@
 <%- include('../partials/header', { pageTitle: t('wizard.step2_title') }) %>
 <div class="container container--narrow">
 
-  <%- include('../partials/wizard-progress', { step: 2, hasPole: wizard.has_pole }) %>
+  <%- include('../partials/wizard-progress', { current: 'type', hasPole: wizard.has_pole, skipSequence: !!wizard.circuit_id }) %>
 
   <h1 class="page-title"><%= t('wizard.step2_title') %></h1>
   <p class="page-subtitle"><%= wizard.name %> · <%= t('races.type.' + wizard.type) %> · <%= wizard.lanes_count %> <%= t('races.lanes') %></p>

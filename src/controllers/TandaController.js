@@ -100,7 +100,8 @@ class TandaController {
         const teamName = catalogTeam ? catalogTeam.name : `Equipo ${idx + 1}`;
         const teamId = Team.create({
           race_id: race.id, tanda_id: tandaId,
-          name: teamName, lane: 0, color: LANE_COLORS[idx % LANE_COLORS.length]
+          name: teamName, lane: 0, color: LANE_COLORS[idx % LANE_COLORS.length],
+          country: catalogTeam ? catalogTeam.country : null,
         });
         if (catalogTeam) {
           catalogTeam.members.forEach(m => {
@@ -218,6 +219,9 @@ class TandaController {
       const schedule = Manga.buildSchedule(laneSequence, entities);
 
       // Drop all mangas of this tanda (cascade kills manga_lanes) and re-persist.
+      // Las vueltas se borran explícitamente: la FK es ON DELETE SET NULL y
+      // quedarían huérfanas (manga_id NULL) contaminando medias/proyección.
+      db.prepare('DELETE FROM laps WHERE manga_id IN (SELECT id FROM mangas WHERE tanda_id = ?)').run(manga.tanda_id);
       db.prepare('DELETE FROM mangas WHERE tanda_id = ?').run(manga.tanda_id);
       Manga.persistSchedule(manga.tanda_id, race.id, schedule);
 
@@ -283,6 +287,7 @@ class TandaController {
             drivers, teams: [], canRestructure, errors: ['not_enough_drivers']
           });
         }
+        db.prepare('DELETE FROM laps WHERE manga_id IN (SELECT id FROM mangas WHERE tanda_id = ?)').run(tanda.id);
         db.prepare('DELETE FROM mangas WHERE tanda_id = ?').run(tanda.id);
         db.prepare('DELETE FROM drivers WHERE tanda_id = ?').run(tanda.id);
         const entities = [];
@@ -313,6 +318,7 @@ class TandaController {
             drivers: [], teams, canRestructure, errors: ['not_enough_teams']
           });
         }
+        db.prepare('DELETE FROM laps WHERE manga_id IN (SELECT id FROM mangas WHERE tanda_id = ?)').run(tanda.id);
         db.prepare('DELETE FROM mangas WHERE tanda_id = ?').run(tanda.id);
         db.prepare('DELETE FROM drivers WHERE tanda_id = ?').run(tanda.id);
         db.prepare('DELETE FROM teams   WHERE tanda_id = ?').run(tanda.id);

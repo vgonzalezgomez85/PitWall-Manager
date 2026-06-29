@@ -22,8 +22,8 @@
       "finished": "Finalizada"
     },
     "type": {
-      "club": "Club",
-      "championship": "Campeonato"
+      "club": "Sprint",
+      "championship": "Resistencia"
     },
     "format": {
       "individual": "Individual",
@@ -47,10 +47,10 @@
     "race_name": "Nombre de la carrera",
     "race_name_placeholder": "Ej: Gran Premio de Navidad",
     "race_type": "Tipo de carrera",
-    "club_race": "Carrera de Club",
-    "club_race_desc": "Carrera informal entre aficionados",
-    "championship_race": "Carrera de Campeonato",
-    "championship_race_desc": "Puntuable para el campeonato oficial",
+    "club_race": "Carrera Sprint",
+    "club_race_desc": "Carrera corta · formato individual",
+    "championship_race": "Carrera Resistencia",
+    "championship_race_desc": "Larga duración · por equipos",
     "lanes_count": "Número de carriles",
     "lanes_hint": "Entre 2 y 32 carriles",
     "manga_duration": "Duración de manga",
@@ -107,6 +107,7 @@
     "lanes_invalid": "El número de carriles debe estar entre 2 y 32",
     "duration_invalid": "La duración de la manga debe estar entre 1 y 120 minutos",
     "format_required": "Debes seleccionar el formato de carrera",
+    "team_requires_license": "Las carreras de resistencia (por equipos) requieren licencia Pro. Ver licencia en /license",
     "sequence_invalid": "La secuencia debe contener cada carril exactamente una vez",
     "members_count_invalid": "El número de integrantes debe ser entre 1 y 10",
     "not_enough_teams": "El número de equipos debe ser igual al número de carriles en la secuencia",

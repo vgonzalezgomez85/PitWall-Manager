@@ -54,6 +54,24 @@
             ? 'Todos los participantes harán su vuelta clasificatoria por este carril.'
             : 'All participants will run their qualifying lap on this lane.' %>
         </p>
+        <%
+          let _cfg = []; try { _cfg = JSON.parse(race.circuits_config || '[]'); } catch (e) {}
+          const _circuits = []; let _s = 1;
+          _cfg.forEach((c, i) => { _circuits.push({ index: i + 1, from: _s, to: _s + c - 1 }); _s += c; });
+        %>
+        <% if (_circuits.length > 1) { %>
+          <div class="pole-circuit-pick" style="display:flex;align-items:center;gap:.45rem;flex-wrap:wrap;margin-bottom:.85rem">
+            <span class="form-hint" style="margin:0"><%= lang === 'es' ? 'Acotar aleatorio a circuito:' : 'Limit random to circuit:' %></span>
+            <button type="button" class="btn btn--ghost btn--sm pole-circ-btn is-active" data-circ="all"><%= lang === 'es' ? 'Todos' : 'All' %></button>
+            <% _circuits.forEach(c => { %>
+              <button type="button" class="btn btn--ghost btn--sm pole-circ-btn" data-circ="<%= c.index %>"
+                      data-from="<%= c.from %>" data-to="<%= c.to %>"
+                      title="<%= lang === 'es' ? 'Carriles' : 'Lanes' %> <%= c.from %>–<%= c.to %>">
+                C<%= c.index %> <span style="opacity:.6;font-size:.85em">(<%= c.from %>–<%= c.to %>)</span>
+              </button>
+            <% }) %>
+          </div>
+        <% } %>
         <div class="pole-lane-picker">
           <button type="button" id="poleLaneDec" class="btn btn--ghost btn--sm pole-lane-btn">−</button>
           <div class="pole-lane-display" id="poleLaneDisplay">
@@ -78,6 +96,12 @@
   </div>
 </div>
 
+<style>
+.pole-circ-btn.is-active {
+  background: #1f6feb; border-color: #1f6feb; color: #fff;
+}
+.pole-circ-btn.is-active span { opacity: .85 !important; }
+</style>
 <script>
 const TOTAL_LANES = <%= race.lanes_count %>;
 const COLORS      = <%- JSON.stringify(LANE_COLORS) %>;
@@ -93,8 +117,21 @@ setPoleLane(1);
 
 document.getElementById('poleLaneDec').addEventListener('click', () => setPoleLane(poleLane - 1));
 document.getElementById('poleLaneInc').addEventListener('click', () => setPoleLane(poleLane + 1));
+
+// Circuito al que se acota el aleatorio (por defecto: todos los carriles).
+let circFrom = 1, circTo = TOTAL_LANES;
+document.querySelectorAll('.pole-circ-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.pole-circ-btn').forEach(b => b.classList.remove('is-active'));
+    btn.classList.add('is-active');
+    if (btn.dataset.circ === 'all') { circFrom = 1; circTo = TOTAL_LANES; }
+    else { circFrom = parseInt(btn.dataset.from, 10); circTo = parseInt(btn.dataset.to, 10); }
+  });
+});
+
 document.getElementById('poleLaneRandom').addEventListener('click', () => {
-  setPoleLane(Math.floor(Math.random() * TOTAL_LANES) + 1);
+  // Aleatorio acotado al circuito seleccionado (o a todos).
+  setPoleLane(circFrom + Math.floor(Math.random() * (circTo - circFrom + 1)));
 });
 
 // ── Shuffle de participantes ─────────────────────────────────────────────

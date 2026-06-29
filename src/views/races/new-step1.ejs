@@ -1,7 +1,7 @@
 <%- include('../partials/header', { pageTitle: t('wizard.step1_title') }) %>
 <div class="container container--narrow">
 
-  <%- include('../partials/wizard-progress', { step: 1 }) %>
+  <%- include('../partials/wizard-progress', { current: 'type' }) %>
 
   <h1 class="page-title"><%= t('wizard.step1_title') %></h1>
 
@@ -53,6 +53,7 @@
       const minMin = body.driver_min_total_min != null ? body.driver_min_total_min : '';
       const maxMin = body.driver_max_total_min != null ? body.driver_max_total_min : '';
       const lockS  = body.driver_change_lockout_s != null ? body.driver_change_lockout_s : 120;
+      const maxRuns = body.driver_max_runs != null ? body.driver_max_runs : '';
     %>
     <div class="form-group" id="champRulesGroup" style="display:<%= body.type === 'championship' ? 'block' : 'none' %>">
       <label class="form-label">
@@ -77,6 +78,13 @@
           </label>
           <input class="form-input form-input--sm" type="number" id="driverMaxMin" name="driver_max_total_min"
                  min="0" max="600" step="1" placeholder="0 = sin máximo" value="<%= maxMin %>">
+        </div>
+        <div>
+          <label class="form-label" for="driverMaxRuns" style="font-size:.85rem;color:var(--vt-mute,#9aa0a6)">
+            <%= lang === 'es' ? 'Máximo de turnos por piloto' : 'Max turns per driver' %>
+          </label>
+          <input class="form-input form-input--sm" type="number" id="driverMaxRuns" name="driver_max_runs"
+                 min="0" max="100" step="1" placeholder="0 = sin máximo" value="<%= maxRuns %>">
         </div>
         <div>
           <label class="form-label" for="lockoutS" style="font-size:.85rem;color:var(--vt-mute,#9aa0a6)">

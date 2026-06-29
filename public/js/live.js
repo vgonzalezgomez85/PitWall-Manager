@@ -1,4 +1,14 @@
 // ── Helpers ───────────────────────────────────────────────────────────────────
+// Bandera del país del equipo. country viene como "Nombre|🇪🇸" o "Nombre|__SVG__"
+// (senyera). Devuelve el HTML de la bandera (+ espacio) o '' si no hay.
+const SENYERA_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 6" width="16" height="11" style="border-radius:2px;flex-shrink:0;vertical-align:middle"><rect width="9" height="6" fill="#FCDD09"/><rect y="0.667" width="9" height="0.889" fill="#DA121A"/><rect y="2.222" width="9" height="0.889" fill="#DA121A"/><rect y="3.778" width="9" height="0.889" fill="#DA121A"/><rect y="5.333" width="9" height="0.667" fill="#DA121A"/></svg>';
+function flagHtml(country) {
+  if (!country) return '';
+  const flag = String(country).split('|')[1];
+  if (!flag) return '';
+  const inner = flag === '__SVG__' ? SENYERA_SVG : `<span style="line-height:1">${flag}</span>`;
+  return `<span class="lane-flag">${inner}</span>`;
+}
 function formatMs(ms) {
   if (ms == null) return '—';
   // 2 decimales (centésimas) TRUNCANDO, sin redondear (12.069s → 12.06).
@@ -301,6 +311,11 @@ function startCountdown(remaining) {
 
 // ── Previous-manga lap totals (race cumulative base per lane) ─────────────────
 const prevLapCountMap = {};
+// Tiempo (ms de manga) del último cruce de cada carril en la manga actual.
+// Sirve para desempatar el líder de vueltas de la manga: a igual VLT, va
+// delante quien cruzó antes (menor elapsed). Se rellena en el evento 'lap' y
+// se reinicia solo, porque manga:started recarga la página.
+const mangaCrossMs = {};
 RACE_DATA.lanes.forEach(l => { prevLapCountMap[l.lane] = l.prevLapCount || 0; });
 function getTotalLaps(lane, lapCount) { return (prevLapCountMap[lane] || 0) + lapCount; }
 
@@ -332,7 +347,7 @@ function buildCard(lane) {
         <span class="lane-card__rest-icon">${icon}</span>
         <span class="lane-card__pos" id="card-pos-${lane.cardId || lane.lane}"></span>
       </div>
-      <div class="lane-card__rest-name">${lane.name}</div>
+      <div class="lane-card__rest-name">${flagHtml(lane.country)}${lane.name}</div>
       <div class="lane-card__rest-laps" id="card-rest-laps-${lane.cardId || lane.lane}">${restTotal}</div>
       <div class="lane-card__rest-label">${posLabel}</div>`;
     return card;
@@ -351,7 +366,7 @@ function buildCard(lane) {
           <span class="lane-card__trend-up"></span>
           <span class="lane-card__trend-down"></span>
         </span>
-        <span class="lane-card__name"><span class="lane-card__name-scroll">${lane.name}</span></span>
+        <span class="lane-card__name"><span class="lane-card__name-scroll">${flagHtml(lane.country)}${lane.name}</span></span>
         <span class="lane-card__pit" id="card-pit-${lane.lane}" hidden title="Pit-stop">
           🔧<span class="lane-card__pit-count" id="card-pit-count-${lane.lane}"></span>
         </span>
@@ -806,11 +821,34 @@ function sortCards(rows) {
 // Tracks previous gap (in total laps) from each lane to the driver ahead
 let prevGapToAhead = {};
 
+// Resalta (en verde, vía CSS .is-manga-leader) la VLT del equipo que más
+// vueltas lleva en la manga ACTUAL. A igualdad de vueltas, gana quien cruzó
+// antes (menor elapsed de su último cruce). Solo carriles activos (no descanso).
+function highlightMangaLeader(standings) {
+  if (!Array.isArray(standings)) return;
+  let best = null;
+  standings.forEach(r => {
+    if (r.isRest || (r.lapCount || 0) <= 0) return;
+    if (!best || r.lapCount > best.lapCount) { best = r; return; }
+    if (r.lapCount === best.lapCount) {
+      const a = mangaCrossMs[r.lane]    ?? Infinity;
+      const b = mangaCrossMs[best.lane] ?? Infinity;
+      if (a < b) best = r;
+    }
+  });
+  document.querySelectorAll('.lane-card__laps.is-manga-leader')
+    .forEach(el => el.classList.remove('is-manga-leader'));
+  if (best) {
+    const el = document.getElementById('card-laps-' + best.lane);
+    if (el) el.classList.add('is-manga-leader');
+  }
+}
+
 function renderStandings(data) {
   if (!data?.standings) return;
   // Merge active lanes with resting entities (lapCount=0 this manga)
   const restRows = restLanes.map(l => ({
-    lane: l.lane, name: l.name, color: l.color,
+    lane: l.lane, name: l.name, color: l.color, country: l.country,
     lapCount: 0, lastLapMs: null, bestLapMs: null, avgLapMs: null,
     exitCount: 0, isRest: true, prevLapCount: l.prevLapCount || 0,
   }));
@@ -849,7 +887,7 @@ function renderStandings(data) {
       return `
       <tr class="srow srow--rest" id="srow-rest-${i}">
         <td><span class="sr-pos">${i+1}</span></td>
-        <td style="max-width:80px"><span class="sr-name sr-name--rest" title="${r.name}">💤 ${r.name}</span></td>
+        <td style="max-width:80px"><span class="sr-name sr-name--rest" title="${r.name}">💤 ${flagHtml(r.country)}${r.name}</span></td>
         <td class="sr-right">—</td>
         <td class="sr-right"><span class="sr-total">${r.prevLapCount}</span></td>
         <td class="sr-right">—</td>
@@ -864,7 +902,7 @@ function renderStandings(data) {
     return `
     <tr class="srow" id="srow-${r.lane}">
       <td style="width:28px"><span class="sr-pos ${posClass(i+1)}">${i+1}</span></td>
-      <td style="max-width:80px"><span class="sr-name" title="${r.name}">${r.name}</span></td>
+      <td style="max-width:80px"><span class="sr-name" title="${r.name}">${flagHtml(r.country)}${r.name}</span></td>
       <td class="sr-right"><span class="sr-laps">${r.lapCount}</span></td>
       <td class="sr-right"><span class="sr-total">${getTotalLaps(r.lane, r.lapCount)}</span></td>
       <td class="sr-right"><span class="sr-best">${formatMs(r.bestLapMs)}</span></td>
@@ -879,6 +917,7 @@ function renderStandings(data) {
   data.standings.forEach(r => updateCard(r.lane, r.lapCount, r.lastLapMs, r.bestLapMs, r.avgLapMs, r.exitCount));
   data.standings.forEach(r => updatePitIndicator(r.lane, r.pitStopCount ?? 0));
   data.standings.forEach(r => updateExitIndicator(r.lane, r.exitCount ?? 0));
+  highlightMangaLeader(data.standings);
 
   updateRaceBestLaps(data.raceBestLaps);
   // renderProjected ANTES que sortCards: calcula la posición general (todas las
@@ -983,6 +1022,29 @@ function renderProjected(data) {
     return b.projectedTotalRaw - a.projectedTotalRaw
         || (a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity);
   });
+
+  // ── UNIFICACIÓN: si el servidor manda su proyección (getStandings /
+  //    _buildProjection), se usa TAL CUAL — es la MISMA que la tabla
+  //    "Clasificación General" y el panel Lap. Así las tarjetas dejan de
+  //    recalcular su propia proyección (que difería 1-3 puestos) y todo PitWall
+  //    muestra el mismo orden. El cálculo de arriba queda como fallback para
+  //    servidores antiguos que no envíen `projection`.
+  if (data.projection && data.projection.length) {
+    rows.length = 0;
+    data.projection.forEach(p => rows.push({
+      name: p.name, total: p.total, avgLapMs: p.avgLapMs,
+      projectedTotal: p.projectedTotal != null ? Math.round(p.projectedTotal) : null,
+      projectedTotalRaw: p.projectedTotal, bestLapMs: null,
+    }));
+    // Participantes sin proyección todavía (0 vueltas): al final, sin estimación.
+    const have = new Set(rows.map(r => r.name));
+    (RACE_DATA.allParticipants || []).forEach(p => {
+      if (!have.has(p.entity_name)) rows.push({
+        name: p.entity_name, total: p.total_laps || 0, avgLapMs: null,
+        projectedTotal: null, projectedTotalRaw: null, bestLapMs: null,
+      });
+    });
+  }
 
   // Exponer la posición general (1..N) por entidad para que las tarjetas la usen.
   _globalProjPos = new Map();
@@ -1447,6 +1509,8 @@ function announce(text) {
     socket.on('lap', (lap) => {
       addTick(lap);
       flashCard(lap.lane, lap.isExit);
+      // Marca de tiempo del cruce, para desempatar el líder de vueltas de manga.
+      if (lap.elapsedMs != null) mangaCrossMs[lap.lane] = lap.elapsedMs;
 
       // Pit-stop indicator next to the lane name. Stays visible once a lane
       // has had any pit-stop in the manga. If there's more than one, show

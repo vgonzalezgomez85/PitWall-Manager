@@ -1,4 +1,4 @@
-<%- include('../partials/header', { pageTitle: lang === 'es' ? 'Circuitos' : 'Circuits' }) %>
+<%- include('../partials/header', { pageTitle: lang === 'es' ? 'Escenarios' : 'Scenarios' }) %>
 
 <div class="vt-page">
   <div class="vt-wrap">
@@ -14,23 +14,23 @@
 
     <div class="vt-head">
       <div class="vt-head__title">
-        <h1><%= lang === 'es' ? 'Circuitos' : 'Circuits' %></h1>
+        <h1><%= lang === 'es' ? 'Escenarios' : 'Scenarios' %></h1>
         <span class="vt-cnt"><%= circuits.length %></span>
       </div>
       <div class="vt-head__actions">
         <a href="/circuits/new" class="vt-btn vt-btn--primary">
-          + <%= lang === 'es' ? 'Nuevo circuito' : 'New circuit' %>
+          + <%= lang === 'es' ? 'Nuevo escenario' : 'New scenario' %>
         </a>
       </div>
     </div>
 
     <% if (circuits.length === 0) { %>
       <div class="vt-empty" style="margin-top:32px">
-        <div class="vt-empty__t"><%= lang === 'es' ? 'Sin circuitos' : 'No circuits' %></div>
+        <div class="vt-empty__t"><%= lang === 'es' ? 'Sin escenarios' : 'No scenarios' %></div>
         <p style="color:var(--vt-mute);margin:6px 0 16px">
           <%= lang === 'es' ? 'Crea uno para reutilizarlo en tus carreras.' : 'Create one to reuse it in your races.' %>
         </p>
-        <a href="/circuits/new" class="vt-btn vt-btn--primary">+ <%= lang === 'es' ? 'Crear circuito' : 'Create circuit' %></a>
+        <a href="/circuits/new" class="vt-btn vt-btn--primary">+ <%= lang === 'es' ? 'Crear escenario' : 'Create scenario' %></a>
       </div>
     <% } else { %>
 
@@ -39,7 +39,7 @@
           <thead>
             <tr>
               <th><%= lang === 'es' ? 'Nombre' : 'Name' %></th>
-              <th class="is-num"><%= lang === 'es' ? 'Sub-circuitos' : 'Sub-circuits' %></th>
+              <th class="is-num"><%= lang === 'es' ? 'Circuitos' : 'Circuits' %></th>
               <th><%= lang === 'es' ? 'Configuración' : 'Configuration' %></th>
               <th class="is-num"><%= lang === 'es' ? 'Carriles' : 'Lanes' %></th>
               <th><%= lang === 'es' ? 'Vuelta mín.' : 'Min lap' %></th>
@@ -92,7 +92,7 @@
                     <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
                   </a>
                   <form action="/circuits/<%= c.id %>/delete" method="POST" style="display:inline"
-                        onsubmit="return confirm('<%= lang === 'es' ? '¿Eliminar circuito?' : 'Delete circuit?' %>')">
+                        onsubmit="return confirm('<%= lang === 'es' ? '¿Eliminar escenario?' : 'Delete scenario?' %>')">
                     <button type="submit" class="vt-icon-btn is-danger" title="<%= lang === 'es' ? 'Eliminar' : 'Delete' %>">
                       <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/></svg>
                     </button>

@@ -571,16 +571,20 @@ class SerialServiceClass extends EventEmitter {
 
       let conn, lanes;
       if (type === 'bart') {
-        // Circuito BART: { type:'bart', host, port, lanes, minlap?, start? }
+        // Circuito BART: { type:'bart', host, port, lanes, lanesPerDevice?, minlap?, start? }
+        // `lanes` = TOTAL de carriles que expone este Master (Master + Slaves):
+        //   1 equipo solo → 4 · Master + 1 Slave → 8 · … · Master + 7 Slaves → 32.
+        // `lanesPerDevice` = carriles por dispositivo físico (4 típico, 2 en equipos
+        //   de 2 carriles); debe coincidir con cómo el hardware reparte device_id.
         const BartConnection = require('./bart/BartConnection');
-        lanes = cfg.lanes || 4;                         // dispositivos BART: 2 ó 4 carriles
+        lanes = cfg.lanes || 4;
         conn  = new BartConnection(...callbacks);
         // BART va por TCP con reconexión propia: si el puente/emulador aún no
         // está arriba, NO tiramos a simulación — la conexión reintenta sola y se
         // engancha cuando aparezca. (El DS-300 sí propaga el fallo: puerto serie
         // ausente es un error de config.)
         try {
-          await conn.connect(cfg.host || '127.0.0.1', cfg.port || 9300, { transport: cfg.transport || 'tcp', name: cfg.name, minlap: cfg.minlap, start: cfg.start });
+          await conn.connect(cfg.host || '127.0.0.1', cfg.port || 9300, { transport: cfg.transport || 'tcp', name: cfg.name, minlap: cfg.minlap, start: cfg.start, lanesPerDevice: cfg.lanesPerDevice || 4 });
         } catch (e) {
           console.warn(`[SerialService] BART C${i + 1}: ${e.message} — reintentando en segundo plano`);
         }

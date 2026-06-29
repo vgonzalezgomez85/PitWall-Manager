@@ -109,6 +109,7 @@ class PoleController {
         entryName:     current.entity_name,
         poleLane:      session.lane,
         durationMs,
+        minLapMs:      race.min_lap_ms || 0,
       });
     }
     const isTimingRunning = PoleTimingService.isRunning;
@@ -124,8 +125,28 @@ class PoleController {
 
     res.render('races/pole-timing', {
       t: req.t, race, session, entries, current, next, done,
-      LANE_COLORS, isTimingRunning, durationMs, poleBestMs, poleHolder
+      LANE_COLORS, isTimingRunning, durationMs, poleBestMs, poleHolder,
+      omitFirstCrossing: PoleTimingService.omitFirstCrossing,
+      poleLocked: timedEntries.length > 0,   // ya hay tiempos → no se puede cambiar la regla
     });
+  }
+
+  // POST /races/:id/pole/omit-first  — la organización decide si se omite el
+  // primer cruce (out-lap) de cada piloto. Flag de servicio (toda la sesión).
+  static setOmitFirstCrossing(req, res) {
+    const race = Race.findById(req.params.id);
+    if (!race) return res.status(404).json({ error: 'race_not_found' });
+    // Bloqueado si ya hay algún tiempo registrado: la regla no puede cambiar a
+    // mitad de pole (las vueltas crudas no se guardan → no se puede recalcular
+    // a los pilotos ya hechos, quedaría una clasificación incoherente).
+    const session = PoleSession.findByRace(race.id);
+    const entries = session ? PoleSession.getEntriesOrdered(session.id) : [];
+    if (entries.some(e => e.lap_time_ms != null)) {
+      return res.status(409).json({ ok: false, locked: true, omitFirstCrossing: PoleTimingService.omitFirstCrossing });
+    }
+    const value = req.body.value === true || req.body.value === 'true' || req.body.value === '1' || req.body.value === 'on';
+    PoleTimingService.omitFirstCrossing = value;
+    res.json({ ok: true, omitFirstCrossing: PoleTimingService.omitFirstCrossing });
   }
 
   // POST /races/:id/pole/participant/start  — begin timing for current participant
@@ -156,6 +177,7 @@ class PoleController {
       entryName:     current.entity_name,
       poleLane:      session.lane,
       durationMs,
+      minLapMs:      race.min_lap_ms || 0,
     });
 
     res.json({ ok: true, entryName: current.entity_name, durationMs });

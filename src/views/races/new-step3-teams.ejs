@@ -1,7 +1,7 @@
 <%- include('../partials/header', { pageTitle: t('wizard.step3_teams_title') }) %>
 <div class="container container--narrow">
 
-  <%- include('../partials/wizard-progress', { step: 3 }) %>
+  <%- include('../partials/wizard-progress', { current: 'sequence' }) %>
 
   <h1 class="page-title"><%= t('wizard.step3_teams_title') %></h1>
   <p class="page-subtitle"><%= wizard.name %> · <%= wizard.lanes_count %> <%= t('races.lanes') %></p>

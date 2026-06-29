@@ -1,0 +1,4931 @@
+{
+ "teams": [
+  "TUSCANY FACTORY P1",
+  "CATANIA SLOT P1",
+  "ZOO SLOT P1",
+  "PEG 1 P1",
+  "SLOTMANIA PALMARES P1",
+  "DSCA1 P1",
+  "DZERO TEAM P1",
+  "MRC SLOT P1",
+  "IMOLA SLOT RACING P2",
+  "PIUSLOT CONEGLIANO P2",
+  "CMF P2",
+  "FLBT P1",
+  "BOSLOT ROSSO P1",
+  "BOSLOT BLU P2",
+  "CALABRONI ROSSI ASTI P2",
+  "PEG 2 P2",
+  "RAL 2009 P2",
+  "TUSCANY 2 P2",
+  "DSCA2 P2",
+  "CAMPIDOGLIO 1 P1",
+  "GARGANO SLOT CLUB P1",
+  "JAMAICA BOB CAMPI P1"
+ ],
+ "finalCum": {
+  "TUSCANY FACTORY P1": 7486,
+  "SLOTMANIA PALMARES P1": 7435,
+  "CATANIA SLOT P1": 7397,
+  "MRC SLOT P1": 7346,
+  "ZOO SLOT P1": 7282,
+  "PEG 1 P1": 7278,
+  "DSCA1 P1": 7189,
+  "DZERO TEAM P1": 7188,
+  "CAMPIDOGLIO 1 P1": 7148,
+  "BOSLOT ROSSO P1": 7122,
+  "GARGANO SLOT CLUB P1": 7008,
+  "PEG 2 P2": 7003,
+  "IMOLA SLOT RACING P2": 6947,
+  "RAL 2009 P2": 6872,
+  "PIUSLOT CONEGLIANO P2": 6866,
+  "FLBT P1": 6800,
+  "BOSLOT BLU P2": 6799,
+  "CMF P2": 6757,
+  "DSCA2 P2": 6753,
+  "TUSCANY 2 P2": 6567,
+  "CALABRONI ROSSI ASTI P2": 6525,
+  "JAMAICA BOB CAMPI P1": 5581
+ },
+ "parciales": [
+  {
+   "n": 1,
+   "time": "12:42:59.828",
+   "startLine": 905,
+   "rows": [
+    {
+     "lane": 7,
+     "vp": 360,
+     "name": "TUSCANY FACTORY P1",
+     "cum": 360,
+     "coma": 8,
+     "rapida": 9161,
+     "media": 9497,
+     "lenta": 15135
+    },
+    {
+     "lane": 8,
+     "vp": 359,
+     "name": "CATANIA SLOT P1",
+     "cum": 359,
+     "coma": 13,
+     "rapida": 9152,
+     "media": 9522,
+     "lenta": 17270
+    },
+    {
+     "lane": 2,
+     "vp": 359,
+     "name": "ZOO SLOT P1",
+     "cum": 359,
+     "coma": 6,
+     "rapida": 9257,
+     "media": 9523,
+     "lenta": 11999
+    },
+    {
+     "lane": 1,
+     "vp": 353,
+     "name": "PEG 1 P1",
+     "cum": 353,
+     "coma": 21,
+     "rapida": 9186,
+     "media": 9667,
+     "lenta": 24772
+    },
+    {
+     "lane": 5,
+     "vp": 352,
+     "name": "SLOTMANIA PALMARES P1",
+     "cum": 352,
+     "coma": 64,
+     "rapida": 9389,
+     "media": 9697,
+     "lenta": 15511
+    },
+    {
+     "lane": 18,
+     "vp": 349,
+     "name": "DSCA1 P1",
+     "cum": 349,
+     "coma": 62,
+     "rapida": 9442,
+     "media": 9782,
+     "lenta": 21826
+    },
+    {
+     "lane": 10,
+     "vp": 345,
+     "name": "DZERO TEAM P1",
+     "cum": 345,
+     "coma": 89,
+     "rapida": 9440,
+     "media": 9886,
+     "lenta": 16695
+    },
+    {
+     "lane": 3,
+     "vp": 344,
+     "name": "MRC SLOT P1",
+     "cum": 344,
+     "coma": 17,
+     "rapida": 9385,
+     "media": 9936,
+     "lenta": 22606
+    },
+    {
+     "lane": 12,
+     "vp": 337,
+     "name": "IMOLA SLOT RACING P2",
+     "cum": 337,
+     "coma": 76,
+     "rapida": 9697,
+     "media": 10126,
+     "lenta": 18250
+    },
+    {
+     "lane": 22,
+     "vp": 336,
+     "name": "PIUSLOT CONEGLIANO P2",
+     "cum": 336,
+     "coma": 112,
+     "rapida": 9697,
+     "media": 10133,
+     "lenta": 14878
+    },
+    {
+     "lane": 4,
+     "vp": 336,
+     "name": "CMF P2",
+     "cum": 336,
+     "coma": 79,
+     "rapida": 9602,
+     "media": 10155,
+     "lenta": 15033
+    },
+    {
+     "lane": 15,
+     "vp": 336,
+     "name": "FLBT P1",
+     "cum": 336,
+     "coma": 7,
+     "rapida": 9669,
+     "media": 10175,
+     "lenta": 29539
+    },
+    {
+     "lane": 20,
+     "vp": 332,
+     "name": "BOSLOT ROSSO P1",
+     "cum": 332,
+     "coma": 43,
+     "rapida": 9780,
+     "media": 10287,
+     "lenta": 51468
+    },
+    {
+     "lane": 14,
+     "vp": 332,
+     "name": "BOSLOT BLU P2",
+     "cum": 332,
+     "coma": 31,
+     "rapida": 9729,
+     "media": 10291,
+     "lenta": 23642
+    },
+    {
+     "lane": 21,
+     "vp": 331,
+     "name": "CALABRONI ROSSI ASTI P2",
+     "cum": 331,
+     "coma": 61,
+     "rapida": 9802,
+     "media": 10312,
+     "lenta": 14502
+    },
+    {
+     "lane": 9,
+     "vp": 330,
+     "name": "PEG 2 P2",
+     "cum": 330,
+     "coma": 39,
+     "rapida": 9767,
+     "media": 10352,
+     "lenta": 15767
+    },
+    {
+     "lane": 16,
+     "vp": 325,
+     "name": "RAL 2009 P2",
+     "cum": 325,
+     "coma": 33,
+     "rapida": 8802,
+     "media": 10368,
+     "lenta": 17704
+    },
+    {
+     "lane": 17,
+     "vp": 323,
+     "name": "TUSCANY 2 P2",
+     "cum": 323,
+     "coma": 0,
+     "rapida": 10064,
+     "media": 10589,
+     "lenta": 14962
+    },
+    {
+     "lane": 19,
+     "vp": 320,
+     "name": "DSCA2 P2",
+     "cum": 320,
+     "coma": 87,
+     "rapida": 9896,
+     "media": 10642,
+     "lenta": 22036
+    },
+    {
+     "lane": 6,
+     "vp": 316,
+     "name": "CAMPIDOGLIO 1 P1",
+     "cum": 316,
+     "coma": 11,
+     "rapida": 9337,
+     "media": 10822,
+     "lenta": 210152
+    },
+    {
+     "lane": 11,
+     "vp": 315,
+     "name": "GARGANO SLOT CLUB P1",
+     "cum": 315,
+     "coma": 70,
+     "rapida": 9699,
+     "media": 10835,
+     "lenta": 26358
+    },
+    {
+     "lane": 13,
+     "vp": 284,
+     "name": "JAMAICA BOB CAMPI P1",
+     "cum": 284,
+     "coma": 2,
+     "rapida": 9747,
+     "media": 10442,
+     "lenta": 20001
+    }
+   ]
+  },
+  {
+   "n": 2,
+   "time": "13:47:07.947",
+   "startLine": 934,
+   "rows": [
+    {
+     "lane": 1,
+     "vp": 363,
+     "name": "ZOO SLOT P1",
+     "cum": 722,
+     "coma": 86,
+     "rapida": 9176,
+     "media": 9400,
+     "lenta": 13048
+    },
+    {
+     "lane": 3,
+     "vp": 366,
+     "name": "PEG 1 P1",
+     "cum": 719,
+     "coma": 17,
+     "rapida": 9087,
+     "media": 9345,
+     "lenta": 13290
+    },
+    {
+     "lane": 6,
+     "vp": 359,
+     "name": "CATANIA SLOT P1",
+     "cum": 718,
+     "coma": 36,
+     "rapida": 9071,
+     "media": 9521,
+     "lenta": 13488
+    },
+    {
+     "lane": 9,
+     "vp": 358,
+     "name": "TUSCANY FACTORY P1",
+     "cum": 718,
+     "coma": 4,
+     "rapida": 9282,
+     "media": 9554,
+     "lenta": 13124
+    },
+    {
+     "lane": 7,
+     "vp": 362,
+     "name": "SLOTMANIA PALMARES P1",
+     "cum": 714,
+     "coma": 85,
+     "rapida": 9166,
+     "media": 9442,
+     "lenta": 13916
+    },
+    {
+     "lane": 8,
+     "vp": 357,
+     "name": "DZERO TEAM P1",
+     "cum": 702,
+     "coma": 0,
+     "rapida": 9238,
+     "media": 9606,
+     "lenta": 21430
+    },
+    {
+     "lane": 16,
+     "vp": 348,
+     "name": "DSCA1 P1",
+     "cum": 697,
+     "coma": 76,
+     "rapida": 9374,
+     "media": 9826,
+     "lenta": 14388
+    },
+    {
+     "lane": 5,
+     "vp": 348,
+     "name": "MRC SLOT P1",
+     "cum": 692,
+     "coma": 83,
+     "rapida": 9298,
+     "media": 9807,
+     "lenta": 18390
+    },
+    {
+     "lane": 10,
+     "vp": 343,
+     "name": "IMOLA SLOT RACING P2",
+     "cum": 680,
+     "coma": 65,
+     "rapida": 9622,
+     "media": 9975,
+     "lenta": 15237
+    },
+    {
+     "lane": 17,
+     "vp": 340,
+     "name": "FLBT P1",
+     "cum": 676,
+     "coma": 71,
+     "rapida": 9679,
+     "media": 10039,
+     "lenta": 16333
+    },
+    {
+     "lane": 18,
+     "vp": 342,
+     "name": "BOSLOT ROSSO P1",
+     "cum": 674,
+     "coma": 86,
+     "rapida": 9607,
+     "media": 9988,
+     "lenta": 14206
+    },
+    {
+     "lane": 22,
+     "vp": 341,
+     "name": "CALABRONI ROSSI ASTI P2",
+     "cum": 672,
+     "coma": 66,
+     "rapida": 9730,
+     "media": 10029,
+     "lenta": 13363
+    },
+    {
+     "lane": 20,
+     "vp": 330,
+     "name": "PIUSLOT CONEGLIANO P2",
+     "cum": 666,
+     "coma": 73,
+     "rapida": 9666,
+     "media": 10366,
+     "lenta": 45625
+    },
+    {
+     "lane": 12,
+     "vp": 326,
+     "name": "BOSLOT BLU P2",
+     "cum": 658,
+     "coma": 0,
+     "rapida": 9779,
+     "media": 10506,
+     "lenta": 18775
+    },
+    {
+     "lane": 4,
+     "vp": 341,
+     "name": "CAMPIDOGLIO 1 P1",
+     "cum": 657,
+     "coma": 29,
+     "rapida": 9621,
+     "media": 10024,
+     "lenta": 30671
+    },
+    {
+     "lane": 11,
+     "vp": 327,
+     "name": "PEG 2 P2",
+     "cum": 657,
+     "coma": 16,
+     "rapida": 9718,
+     "media": 10467,
+     "lenta": 65720
+    },
+    {
+     "lane": 2,
+     "vp": 314,
+     "name": "CMF P2",
+     "cum": 650,
+     "coma": 27,
+     "rapida": 10010,
+     "media": 10910,
+     "lenta": 56688
+    },
+    {
+     "lane": 13,
+     "vp": 335,
+     "name": "GARGANO SLOT CLUB P1",
+     "cum": 650,
+     "coma": 19,
+     "rapida": 9570,
+     "media": 10224,
+     "lenta": 15820
+    },
+    {
+     "lane": 14,
+     "vp": 324,
+     "name": "RAL 2009 P2",
+     "cum": 649,
+     "coma": 46,
+     "rapida": 9815,
+     "media": 10554,
+     "lenta": 18165
+    },
+    {
+     "lane": 19,
+     "vp": 319,
+     "name": "TUSCANY 2 P2",
+     "cum": 642,
+     "coma": 88,
+     "rapida": 10074,
+     "media": 10692,
+     "lenta": 18628
+    },
+    {
+     "lane": 21,
+     "vp": 313,
+     "name": "DSCA2 P2",
+     "cum": 633,
+     "coma": 57,
+     "rapida": 9839,
+     "media": 10941,
+     "lenta": 34739
+    },
+    {
+     "lane": 15,
+     "vp": 295,
+     "name": "JAMAICA BOB CAMPI P1",
+     "cum": 579,
+     "coma": 93,
+     "rapida": 10080,
+     "media": 11567,
+     "lenta": 119820
+    }
+   ]
+  },
+  {
+   "n": 3,
+   "time": "14:52:30.342",
+   "startLine": 963,
+   "rows": [
+    {
+     "lane": 4,
+     "vp": 361,
+     "name": "CATANIA SLOT P1",
+     "cum": 1079,
+     "coma": 68,
+     "rapida": 9130,
+     "media": 9465,
+     "lenta": 14309
+    },
+    {
+     "lane": 3,
+     "vp": 349,
+     "name": "ZOO SLOT P1",
+     "cum": 1071,
+     "coma": 26,
+     "rapida": 9188,
+     "media": 9819,
+     "lenta": 70326
+    },
+    {
+     "lane": 9,
+     "vp": 355,
+     "name": "SLOTMANIA PALMARES P1",
+     "cum": 1069,
+     "coma": 55,
+     "rapida": 9316,
+     "media": 9644,
+     "lenta": 13165
+    },
+    {
+     "lane": 11,
+     "vp": 348,
+     "name": "TUSCANY FACTORY P1",
+     "cum": 1066,
+     "coma": 8,
+     "rapida": 9435,
+     "media": 9826,
+     "lenta": 39944
+    },
+    {
+     "lane": 5,
+     "vp": 341,
+     "name": "PEG 1 P1",
+     "cum": 1060,
+     "coma": 69,
+     "rapida": 9355,
+     "media": 10015,
+     "lenta": 54626
+    },
+    {
+     "lane": 6,
+     "vp": 353,
+     "name": "DZERO TEAM P1",
+     "cum": 1055,
+     "coma": 36,
+     "rapida": 9175,
+     "media": 9678,
+     "lenta": 15486
+    },
+    {
+     "lane": 7,
+     "vp": 350,
+     "name": "MRC SLOT P1",
+     "cum": 1042,
+     "coma": 83,
+     "rapida": 9211,
+     "media": 9774,
+     "lenta": 25555
+    },
+    {
+     "lane": 14,
+     "vp": 345,
+     "name": "DSCA1 P1",
+     "cum": 1042,
+     "coma": 49,
+     "rapida": 9456,
+     "media": 9921,
+     "lenta": 51647
+    },
+    {
+     "lane": 8,
+     "vp": 329,
+     "name": "IMOLA SLOT RACING P2",
+     "cum": 1009,
+     "coma": 89,
+     "rapida": 9660,
+     "media": 10390,
+     "lenta": 77230
+    },
+    {
+     "lane": 16,
+     "vp": 334,
+     "name": "BOSLOT ROSSO P1",
+     "cum": 1008,
+     "coma": 35,
+     "rapida": 9710,
+     "media": 10256,
+     "lenta": 30612
+    },
+    {
+     "lane": 15,
+     "vp": 347,
+     "name": "GARGANO SLOT CLUB P1",
+     "cum": 997,
+     "coma": 57,
+     "rapida": 9384,
+     "media": 9842,
+     "lenta": 14206
+    },
+    {
+     "lane": 19,
+     "vp": 319,
+     "name": "FLBT P1",
+     "cum": 995,
+     "coma": 47,
+     "rapida": 9943,
+     "media": 10730,
+     "lenta": 61196
+    },
+    {
+     "lane": 18,
+     "vp": 327,
+     "name": "PIUSLOT CONEGLIANO P2",
+     "cum": 993,
+     "coma": 70,
+     "rapida": 9846,
+     "media": 10461,
+     "lenta": 15339
+    },
+    {
+     "lane": 10,
+     "vp": 330,
+     "name": "BOSLOT BLU P2",
+     "cum": 988,
+     "coma": 38,
+     "rapida": 9732,
+     "media": 10352,
+     "lenta": 45748
+    },
+    {
+     "lane": 12,
+     "vp": 328,
+     "name": "RAL 2009 P2",
+     "cum": 977,
+     "coma": 59,
+     "rapida": 9694,
+     "media": 10425,
+     "lenta": 44972
+    },
+    {
+     "lane": 2,
+     "vp": 307,
+     "name": "CAMPIDOGLIO 1 P1",
+     "cum": 964,
+     "coma": 77,
+     "rapida": 9587,
+     "media": 11126,
+     "lenta": 85916
+    },
+    {
+     "lane": 21,
+     "vp": 322,
+     "name": "TUSCANY 2 P2",
+     "cum": 964,
+     "coma": 28,
+     "rapida": 9884,
+     "media": 10639,
+     "lenta": 46008
+    },
+    {
+     "lane": 20,
+     "vp": 290,
+     "name": "CALABRONI ROSSI ASTI P2",
+     "cum": 962,
+     "coma": 86,
+     "rapida": 10377,
+     "media": 11790,
+     "lenta": 101118
+    },
+    {
+     "lane": 1,
+     "vp": 311,
+     "name": "CMF P2",
+     "cum": 961,
+     "coma": 75,
+     "rapida": 9890,
+     "media": 10981,
+     "lenta": 71982
+    },
+    {
+     "lane": 13,
+     "vp": 300,
+     "name": "PEG 2 P2",
+     "cum": 957,
+     "coma": 97,
+     "rapida": 9923,
+     "media": 11376,
+     "lenta": 239309
+    },
+    {
+     "lane": 22,
+     "vp": 307,
+     "name": "DSCA2 P2",
+     "cum": 940,
+     "coma": 32,
+     "rapida": 10205,
+     "media": 11150,
+     "lenta": 18300
+    },
+    {
+     "lane": 17,
+     "vp": 307,
+     "name": "JAMAICA BOB CAMPI P1",
+     "cum": 886,
+     "coma": 16,
+     "rapida": 10123,
+     "media": 11169,
+     "lenta": 73370
+    }
+   ]
+  },
+  {
+   "n": 4,
+   "time": "15:55:59.565",
+   "startLine": 992,
+   "rows": [
+    {
+     "lane": 5,
+     "vp": 360,
+     "name": "ZOO SLOT P1",
+     "cum": 1431,
+     "coma": 47,
+     "rapida": 9226,
+     "media": 9494,
+     "lenta": 14175
+    },
+    {
+     "lane": 2,
+     "vp": 344,
+     "name": "CATANIA SLOT P1",
+     "cum": 1423,
+     "coma": 7,
+     "rapida": 9416,
+     "media": 9961,
+     "lenta": 51816
+    },
+    {
+     "lane": 13,
+     "vp": 353,
+     "name": "TUSCANY FACTORY P1",
+     "cum": 1419,
+     "coma": 45,
+     "rapida": 9425,
+     "media": 9678,
+     "lenta": 13497
+    },
+    {
+     "lane": 7,
+     "vp": 355,
+     "name": "PEG 1 P1",
+     "cum": 1415,
+     "coma": 64,
+     "rapida": 9399,
+     "media": 9636,
+     "lenta": 13751
+    },
+    {
+     "lane": 11,
+     "vp": 343,
+     "name": "SLOTMANIA PALMARES P1",
+     "cum": 1412,
+     "coma": 31,
+     "rapida": 9496,
+     "media": 9978,
+     "lenta": 41341
+    },
+    {
+     "lane": 4,
+     "vp": 340,
+     "name": "DZERO TEAM P1",
+     "cum": 1395,
+     "coma": 73,
+     "rapida": 9473,
+     "media": 10047,
+     "lenta": 76400
+    },
+    {
+     "lane": 9,
+     "vp": 350,
+     "name": "MRC SLOT P1",
+     "cum": 1392,
+     "coma": 46,
+     "rapida": 9274,
+     "media": 9783,
+     "lenta": 59638
+    },
+    {
+     "lane": 12,
+     "vp": 341,
+     "name": "DSCA1 P1",
+     "cum": 1383,
+     "coma": 41,
+     "rapida": 9610,
+     "media": 10033,
+     "lenta": 16447
+    },
+    {
+     "lane": 17,
+     "vp": 346,
+     "name": "GARGANO SLOT CLUB P1",
+     "cum": 1343,
+     "coma": 29,
+     "rapida": 9405,
+     "media": 9891,
+     "lenta": 56104
+    },
+    {
+     "lane": 14,
+     "vp": 335,
+     "name": "BOSLOT ROSSO P1",
+     "cum": 1343,
+     "coma": 13,
+     "rapida": 9711,
+     "media": 10216,
+     "lenta": 13864
+    },
+    {
+     "lane": 6,
+     "vp": 325,
+     "name": "IMOLA SLOT RACING P2",
+     "cum": 1334,
+     "coma": 79,
+     "rapida": 9855,
+     "media": 10529,
+     "lenta": 17239
+    },
+    {
+     "lane": 21,
+     "vp": 331,
+     "name": "FLBT P1",
+     "cum": 1326,
+     "coma": 59,
+     "rapida": 9740,
+     "media": 10330,
+     "lenta": 16955
+    },
+    {
+     "lane": 8,
+     "vp": 329,
+     "name": "BOSLOT BLU P2",
+     "cum": 1317,
+     "coma": 22,
+     "rapida": 9888,
+     "media": 10389,
+     "lenta": 14983
+    },
+    {
+     "lane": 1,
+     "vp": 351,
+     "name": "CAMPIDOGLIO 1 P1",
+     "cum": 1315,
+     "coma": 77,
+     "rapida": 9472,
+     "media": 9739,
+     "lenta": 13098
+    },
+    {
+     "lane": 16,
+     "vp": 311,
+     "name": "PIUSLOT CONEGLIANO P2",
+     "cum": 1304,
+     "coma": 66,
+     "rapida": 10105,
+     "media": 11000,
+     "lenta": 41435
+    },
+    {
+     "lane": 10,
+     "vp": 316,
+     "name": "RAL 2009 P2",
+     "cum": 1293,
+     "coma": 89,
+     "rapida": 9911,
+     "media": 10814,
+     "lenta": 45021
+    },
+    {
+     "lane": 3,
+     "vp": 328,
+     "name": "CMF P2",
+     "cum": 1289,
+     "coma": 71,
+     "rapida": 9909,
+     "media": 10413,
+     "lenta": 18207
+    },
+    {
+     "lane": 15,
+     "vp": 324,
+     "name": "PEG 2 P2",
+     "cum": 1281,
+     "coma": 109,
+     "rapida": 9686,
+     "media": 10554,
+     "lenta": 17176
+    },
+    {
+     "lane": 22,
+     "vp": 313,
+     "name": "TUSCANY 2 P2",
+     "cum": 1277,
+     "coma": 42,
+     "rapida": 10326,
+     "media": 10919,
+     "lenta": 17610
+    },
+    {
+     "lane": 18,
+     "vp": 300,
+     "name": "CALABRONI ROSSI ASTI P2",
+     "cum": 1262,
+     "coma": 91,
+     "rapida": 10363,
+     "media": 11390,
+     "lenta": 21872
+    },
+    {
+     "lane": 20,
+     "vp": 320,
+     "name": "DSCA2 P2",
+     "cum": 1260,
+     "coma": 69,
+     "rapida": 9901,
+     "media": 10677,
+     "lenta": 19149
+    },
+    {
+     "lane": 19,
+     "vp": 305,
+     "name": "JAMAICA BOB CAMPI P1",
+     "cum": 1191,
+     "coma": 74,
+     "rapida": 9823,
+     "media": 11195,
+     "lenta": 32276
+    }
+   ]
+  },
+  {
+   "n": 5,
+   "time": "17:01:10.604",
+   "startLine": 1019,
+   "rows": [
+    {
+     "lane": 1,
+     "vp": 353,
+     "name": "CATANIA SLOT P1",
+     "cum": 1776,
+     "coma": 51,
+     "rapida": 9244,
+     "media": 9675,
+     "lenta": 14397
+    },
+    {
+     "lane": 15,
+     "vp": 350,
+     "name": "TUSCANY FACTORY P1",
+     "cum": 1769,
+     "coma": 10,
+     "rapida": 9402,
+     "media": 9783,
+     "lenta": 47306
+    },
+    {
+     "lane": 9,
+     "vp": 353,
+     "name": "PEG 1 P1",
+     "cum": 1768,
+     "coma": 73,
+     "rapida": 9423,
+     "media": 9685,
+     "lenta": 12677
+    },
+    {
+     "lane": 13,
+     "vp": 347,
+     "name": "SLOTMANIA PALMARES P1",
+     "cum": 1759,
+     "coma": 12,
+     "rapida": 9365,
+     "media": 9863,
+     "lenta": 16458
+    },
+    {
+     "lane": 2,
+     "vp": 350,
+     "name": "DZERO TEAM P1",
+     "cum": 1745,
+     "coma": 81,
+     "rapida": 9394,
+     "media": 9769,
+     "lenta": 21303
+    },
+    {
+     "lane": 11,
+     "vp": 348,
+     "name": "MRC SLOT P1",
+     "cum": 1740,
+     "coma": 15,
+     "rapida": 9342,
+     "media": 9837,
+     "lenta": 16671
+    },
+    {
+     "lane": 7,
+     "vp": 297,
+     "name": "ZOO SLOT P1",
+     "cum": 1728,
+     "coma": 50,
+     "rapida": 9568,
+     "media": 11518,
+     "lenta": 244200
+    },
+    {
+     "lane": 10,
+     "vp": 338,
+     "name": "DSCA1 P1",
+     "cum": 1721,
+     "coma": 36,
+     "rapida": 9626,
+     "media": 10119,
+     "lenta": 51120
+    },
+    {
+     "lane": 3,
+     "vp": 342,
+     "name": "CAMPIDOGLIO 1 P1",
+     "cum": 1657,
+     "coma": 96,
+     "rapida": 9660,
+     "media": 9995,
+     "lenta": 19034
+    },
+    {
+     "lane": 12,
+     "vp": 313,
+     "name": "BOSLOT ROSSO P1",
+     "cum": 1656,
+     "coma": 52,
+     "rapida": 9555,
+     "media": 10916,
+     "lenta": 104160
+    },
+    {
+     "lane": 6,
+     "vp": 339,
+     "name": "BOSLOT BLU P2",
+     "cum": 1656,
+     "coma": 0,
+     "rapida": 9719,
+     "media": 10096,
+     "lenta": 14594
+    },
+    {
+     "lane": 22,
+     "vp": 328,
+     "name": "FLBT P1",
+     "cum": 1654,
+     "coma": 70,
+     "rapida": 9735,
+     "media": 10425,
+     "lenta": 70896
+    },
+    {
+     "lane": 4,
+     "vp": 317,
+     "name": "IMOLA SLOT RACING P2",
+     "cum": 1651,
+     "coma": 5,
+     "rapida": 9968,
+     "media": 10815,
+     "lenta": 61222
+    },
+    {
+     "lane": 19,
+     "vp": 307,
+     "name": "GARGANO SLOT CLUB P1",
+     "cum": 1650,
+     "coma": 35,
+     "rapida": 9688,
+     "media": 11140,
+     "lenta": 245932
+    },
+    {
+     "lane": 14,
+     "vp": 339,
+     "name": "PIUSLOT CONEGLIANO P2",
+     "cum": 1643,
+     "coma": 46,
+     "rapida": 9669,
+     "media": 10088,
+     "lenta": 15233
+    },
+    {
+     "lane": 8,
+     "vp": 320,
+     "name": "RAL 2009 P2",
+     "cum": 1613,
+     "coma": 86,
+     "rapida": 9870,
+     "media": 10684,
+     "lenta": 106542
+    },
+    {
+     "lane": 5,
+     "vp": 321,
+     "name": "CMF P2",
+     "cum": 1610,
+     "coma": 65,
+     "rapida": 9986,
+     "media": 10656,
+     "lenta": 141821
+    },
+    {
+     "lane": 17,
+     "vp": 324,
+     "name": "PEG 2 P2",
+     "cum": 1605,
+     "coma": 20,
+     "rapida": 9677,
+     "media": 10579,
+     "lenta": 17974
+    },
+    {
+     "lane": 16,
+     "vp": 318,
+     "name": "CALABRONI ROSSI ASTI P2",
+     "cum": 1580,
+     "coma": 51,
+     "rapida": 9909,
+     "media": 10760,
+     "lenta": 86622
+    },
+    {
+     "lane": 18,
+     "vp": 317,
+     "name": "DSCA2 P2",
+     "cum": 1577,
+     "coma": 56,
+     "rapida": 9933,
+     "media": 10794,
+     "lenta": 41857
+    },
+    {
+     "lane": 20,
+     "vp": 296,
+     "name": "TUSCANY 2 P2",
+     "cum": 1573,
+     "coma": 18,
+     "rapida": 9968,
+     "media": 11563,
+     "lenta": 356842
+    },
+    {
+     "lane": 21,
+     "vp": 328,
+     "name": "JAMAICA BOB CAMPI P1",
+     "cum": 1519,
+     "coma": 36,
+     "rapida": 9772,
+     "media": 10440,
+     "lenta": 37420
+    }
+   ]
+  },
+  {
+   "n": 6,
+   "time": "18:05:44.824",
+   "startLine": 1049,
+   "rows": [
+    {
+     "lane": 17,
+     "vp": 351,
+     "name": "TUSCANY FACTORY P1",
+     "cum": 2120,
+     "coma": 68,
+     "rapida": 9453,
+     "media": 9725,
+     "lenta": 14312
+    },
+    {
+     "lane": 3,
+     "vp": 343,
+     "name": "CATANIA SLOT P1",
+     "cum": 2119,
+     "coma": 38,
+     "rapida": 9162,
+     "media": 9976,
+     "lenta": 83892
+    },
+    {
+     "lane": 11,
+     "vp": 351,
+     "name": "PEG 1 P1",
+     "cum": 2119,
+     "coma": 0,
+     "rapida": 9427,
+     "media": 9765,
+     "lenta": 42932
+    },
+    {
+     "lane": 15,
+     "vp": 357,
+     "name": "SLOTMANIA PALMARES P1",
+     "cum": 2116,
+     "coma": 119,
+     "rapida": 9181,
+     "media": 9548,
+     "lenta": 32726
+    },
+    {
+     "lane": 13,
+     "vp": 351,
+     "name": "MRC SLOT P1",
+     "cum": 2091,
+     "coma": 59,
+     "rapida": 9233,
+     "media": 9731,
+     "lenta": 25621
+    },
+    {
+     "lane": 9,
+     "vp": 355,
+     "name": "ZOO SLOT P1",
+     "cum": 2083,
+     "coma": 73,
+     "rapida": 9299,
+     "media": 9627,
+     "lenta": 34969
+    },
+    {
+     "lane": 1,
+     "vp": 336,
+     "name": "DZERO TEAM P1",
+     "cum": 2081,
+     "coma": 0,
+     "rapida": 9453,
+     "media": 10204,
+     "lenta": 88042
+    },
+    {
+     "lane": 8,
+     "vp": 345,
+     "name": "DSCA1 P1",
+     "cum": 2066,
+     "coma": 7,
+     "rapida": 9542,
+     "media": 9920,
+     "lenta": 13977
+    },
+    {
+     "lane": 20,
+     "vp": 351,
+     "name": "FLBT P1",
+     "cum": 2005,
+     "coma": 14,
+     "rapida": 9532,
+     "media": 9758,
+     "lenta": 11846
+    },
+    {
+     "lane": 10,
+     "vp": 348,
+     "name": "BOSLOT ROSSO P1",
+     "cum": 2004,
+     "coma": 91,
+     "rapida": 9513,
+     "media": 9817,
+     "lenta": 14953
+    },
+    {
+     "lane": 5,
+     "vp": 333,
+     "name": "CAMPIDOGLIO 1 P1",
+     "cum": 1990,
+     "coma": 64,
+     "rapida": 9598,
+     "media": 10282,
+     "lenta": 62068
+    },
+    {
+     "lane": 2,
+     "vp": 335,
+     "name": "IMOLA SLOT RACING P2",
+     "cum": 1986,
+     "coma": 36,
+     "rapida": 9687,
+     "media": 10199,
+     "lenta": 20071
+    },
+    {
+     "lane": 12,
+     "vp": 341,
+     "name": "PIUSLOT CONEGLIANO P2",
+     "cum": 1984,
+     "coma": 0,
+     "rapida": 9712,
+     "media": 10043,
+     "lenta": 28168
+    },
+    {
+     "lane": 21,
+     "vp": 332,
+     "name": "GARGANO SLOT CLUB P1",
+     "cum": 1982,
+     "coma": 84,
+     "rapida": 9506,
+     "media": 10286,
+     "lenta": 19909
+    },
+    {
+     "lane": 4,
+     "vp": 294,
+     "name": "BOSLOT BLU P2",
+     "cum": 1950,
+     "coma": 0,
+     "rapida": 10013,
+     "media": 11632,
+     "lenta": 93834
+    },
+    {
+     "lane": 6,
+     "vp": 329,
+     "name": "RAL 2009 P2",
+     "cum": 1942,
+     "coma": 34,
+     "rapida": 9717,
+     "media": 10414,
+     "lenta": 57881
+    },
+    {
+     "lane": 19,
+     "vp": 333,
+     "name": "PEG 2 P2",
+     "cum": 1938,
+     "coma": 56,
+     "rapida": 9578,
+     "media": 10260,
+     "lenta": 83452
+    },
+    {
+     "lane": 7,
+     "vp": 323,
+     "name": "CMF P2",
+     "cum": 1933,
+     "coma": 72,
+     "rapida": 10048,
+     "media": 10588,
+     "lenta": 17208
+    },
+    {
+     "lane": 16,
+     "vp": 330,
+     "name": "DSCA2 P2",
+     "cum": 1907,
+     "coma": 47,
+     "rapida": 9960,
+     "media": 10375,
+     "lenta": 19580
+    },
+    {
+     "lane": 14,
+     "vp": 319,
+     "name": "CALABRONI ROSSI ASTI P2",
+     "cum": 1899,
+     "coma": 36,
+     "rapida": 9931,
+     "media": 10727,
+     "lenta": 66187
+    },
+    {
+     "lane": 18,
+     "vp": 319,
+     "name": "TUSCANY 2 P2",
+     "cum": 1892,
+     "coma": 90,
+     "rapida": 10002,
+     "media": 10697,
+     "lenta": 26195
+    },
+    {
+     "lane": 22,
+     "vp": 255,
+     "name": "JAMAICA BOB CAMPI P1",
+     "cum": 1774,
+     "coma": 33,
+     "rapida": 9936,
+     "media": 13417,
+     "lenta": 629407
+    }
+   ]
+  },
+  {
+   "n": 7,
+   "time": "19:10:22.940",
+   "startLine": 1080,
+   "rows": [
+    {
+     "lane": 19,
+     "vp": 355,
+     "name": "TUSCANY FACTORY P1",
+     "cum": 2475,
+     "coma": 52,
+     "rapida": 9268,
+     "media": 9638,
+     "lenta": 18358
+    },
+    {
+     "lane": 17,
+     "vp": 353,
+     "name": "SLOTMANIA PALMARES P1",
+     "cum": 2469,
+     "coma": 59,
+     "rapida": 9418,
+     "media": 9696,
+     "lenta": 14194
+    },
+    {
+     "lane": 5,
+     "vp": 349,
+     "name": "CATANIA SLOT P1",
+     "cum": 2468,
+     "coma": 57,
+     "rapida": 9422,
+     "media": 9780,
+     "lenta": 18020
+    },
+    {
+     "lane": 13,
+     "vp": 347,
+     "name": "PEG 1 P1",
+     "cum": 2466,
+     "coma": 71,
+     "rapida": 9444,
+     "media": 9835,
+     "lenta": 14139
+    },
+    {
+     "lane": 15,
+     "vp": 350,
+     "name": "MRC SLOT P1",
+     "cum": 2441,
+     "coma": 13,
+     "rapida": 9328,
+     "media": 9786,
+     "lenta": 17013
+    },
+    {
+     "lane": 11,
+     "vp": 357,
+     "name": "ZOO SLOT P1",
+     "cum": 2440,
+     "coma": 22,
+     "rapida": 9355,
+     "media": 9595,
+     "lenta": 13582
+    },
+    {
+     "lane": 6,
+     "vp": 338,
+     "name": "DSCA1 P1",
+     "cum": 2404,
+     "coma": 32,
+     "rapida": 9630,
+     "media": 9938,
+     "lenta": 13884
+    },
+    {
+     "lane": 3,
+     "vp": 286,
+     "name": "DZERO TEAM P1",
+     "cum": 2367,
+     "coma": 70,
+     "rapida": 9487,
+     "media": 11938,
+     "lenta": 256751
+    },
+    {
+     "lane": 8,
+     "vp": 333,
+     "name": "BOSLOT ROSSO P1",
+     "cum": 2337,
+     "coma": 95,
+     "rapida": 9687,
+     "media": 10271,
+     "lenta": 50129
+    },
+    {
+     "lane": 7,
+     "vp": 341,
+     "name": "CAMPIDOGLIO 1 P1",
+     "cum": 2331,
+     "coma": 92,
+     "rapida": 9612,
+     "media": 10022,
+     "lenta": 17352
+    },
+    {
+     "lane": 1,
+     "vp": 340,
+     "name": "IMOLA SLOT RACING P2",
+     "cum": 2326,
+     "coma": 21,
+     "rapida": 9633,
+     "media": 10063,
+     "lenta": 26706
+    },
+    {
+     "lane": 18,
+     "vp": 312,
+     "name": "FLBT P1",
+     "cum": 2317,
+     "coma": 86,
+     "rapida": 9921,
+     "media": 10939,
+     "lenta": 102294
+    },
+    {
+     "lane": 22,
+     "vp": 330,
+     "name": "GARGANO SLOT CLUB P1",
+     "cum": 2312,
+     "coma": 0,
+     "rapida": 9645,
+     "media": 10393,
+     "lenta": 20793
+    },
+    {
+     "lane": 21,
+     "vp": 342,
+     "name": "PEG 2 P2",
+     "cum": 2280,
+     "coma": 96,
+     "rapida": 9683,
+     "media": 9989,
+     "lenta": 15133
+    },
+    {
+     "lane": 10,
+     "vp": 294,
+     "name": "PIUSLOT CONEGLIANO P2",
+     "cum": 2278,
+     "coma": 69,
+     "rapida": 9883,
+     "media": 11614,
+     "lenta": 291536
+    },
+    {
+     "lane": 4,
+     "vp": 327,
+     "name": "RAL 2009 P2",
+     "cum": 2269,
+     "coma": 7,
+     "rapida": 9836,
+     "media": 10468,
+     "lenta": 19644
+    },
+    {
+     "lane": 12,
+     "vp": 339,
+     "name": "CALABRONI ROSSI ASTI P2",
+     "cum": 2238,
+     "coma": 90,
+     "rapida": 9775,
+     "media": 10072,
+     "lenta": 16336
+    },
+    {
+     "lane": 9,
+     "vp": 303,
+     "name": "CMF P2",
+     "cum": 2236,
+     "coma": 4,
+     "rapida": 9888,
+     "media": 11311,
+     "lenta": 200991
+    },
+    {
+     "lane": 14,
+     "vp": 321,
+     "name": "DSCA2 P2",
+     "cum": 2228,
+     "coma": 76,
+     "rapida": 10031,
+     "media": 10646,
+     "lenta": 58308
+    },
+    {
+     "lane": 2,
+     "vp": 277,
+     "name": "BOSLOT BLU P2",
+     "cum": 2227,
+     "coma": 999,
+     "rapida": 9918,
+     "media": 11760,
+     "lenta": 174733
+    },
+    {
+     "lane": 16,
+     "vp": 287,
+     "name": "TUSCANY 2 P2",
+     "cum": 2179,
+     "coma": 98,
+     "rapida": 10060,
+     "media": 11918,
+     "lenta": 191704
+    },
+    {
+     "lane": 20,
+     "vp": 322,
+     "name": "JAMAICA BOB CAMPI P1",
+     "cum": 2096,
+     "coma": 47,
+     "rapida": 9714,
+     "media": 10614,
+     "lenta": 21286
+    }
+   ]
+  },
+  {
+   "n": 8,
+   "time": "20:14:11.277",
+   "startLine": 1107,
+   "rows": [
+    {
+     "lane": 21,
+     "vp": 353,
+     "name": "TUSCANY FACTORY P1",
+     "cum": 2828,
+     "coma": 57,
+     "rapida": 9271,
+     "media": 9686,
+     "lenta": 56943
+    },
+    {
+     "lane": 19,
+     "vp": 355,
+     "name": "SLOTMANIA PALMARES P1",
+     "cum": 2824,
+     "coma": 63,
+     "rapida": 9224,
+     "media": 9634,
+     "lenta": 14660
+    },
+    {
+     "lane": 7,
+     "vp": 356,
+     "name": "CATANIA SLOT P1",
+     "cum": 2824,
+     "coma": 41,
+     "rapida": 9266,
+     "media": 9611,
+     "lenta": 16223
+    },
+    {
+     "lane": 15,
+     "vp": 347,
+     "name": "PEG 1 P1",
+     "cum": 2813,
+     "coma": 27,
+     "rapida": 9363,
+     "media": 9870,
+     "lenta": 86852
+    },
+    {
+     "lane": 17,
+     "vp": 345,
+     "name": "MRC SLOT P1",
+     "cum": 2786,
+     "coma": 75,
+     "rapida": 9413,
+     "media": 9895,
+     "lenta": 69717
+    },
+    {
+     "lane": 13,
+     "vp": 329,
+     "name": "ZOO SLOT P1",
+     "cum": 2769,
+     "coma": 19,
+     "rapida": 9330,
+     "media": 10398,
+     "lenta": 255327
+    },
+    {
+     "lane": 4,
+     "vp": 342,
+     "name": "DSCA1 P1",
+     "cum": 2746,
+     "coma": 38,
+     "rapida": 9643,
+     "media": 9999,
+     "lenta": 15491
+    },
+    {
+     "lane": 5,
+     "vp": 324,
+     "name": "DZERO TEAM P1",
+     "cum": 2691,
+     "coma": 17,
+     "rapida": 9493,
+     "media": 10576,
+     "lenta": 188109
+    },
+    {
+     "lane": 6,
+     "vp": 340,
+     "name": "BOSLOT ROSSO P1",
+     "cum": 2677,
+     "coma": 23,
+     "rapida": 9601,
+     "media": 10081,
+     "lenta": 32731
+    },
+    {
+     "lane": 9,
+     "vp": 336,
+     "name": "CAMPIDOGLIO 1 P1",
+     "cum": 2667,
+     "coma": 60,
+     "rapida": 9526,
+     "media": 10190,
+     "lenta": 52544
+    },
+    {
+     "lane": 20,
+     "vp": 334,
+     "name": "GARGANO SLOT CLUB P1",
+     "cum": 2646,
+     "coma": 16,
+     "rapida": 9559,
+     "media": 10224,
+     "lenta": 15223
+    },
+    {
+     "lane": 3,
+     "vp": 316,
+     "name": "IMOLA SLOT RACING P2",
+     "cum": 2642,
+     "coma": 48,
+     "rapida": 9735,
+     "media": 10805,
+     "lenta": 38759
+    },
+    {
+     "lane": 16,
+     "vp": 322,
+     "name": "FLBT P1",
+     "cum": 2639,
+     "coma": 23,
+     "rapida": 9908,
+     "media": 10641,
+     "lenta": 16454
+    },
+    {
+     "lane": 22,
+     "vp": 329,
+     "name": "PEG 2 P2",
+     "cum": 2609,
+     "coma": 21,
+     "rapida": 9762,
+     "media": 10419,
+     "lenta": 15844
+    },
+    {
+     "lane": 8,
+     "vp": 320,
+     "name": "PIUSLOT CONEGLIANO P2",
+     "cum": 2598,
+     "coma": 77,
+     "rapida": 9957,
+     "media": 10688,
+     "lenta": 16649
+    },
+    {
+     "lane": 2,
+     "vp": 325,
+     "name": "RAL 2009 P2",
+     "cum": 2594,
+     "coma": 74,
+     "rapida": 9699,
+     "media": 10502,
+     "lenta": 59793
+    },
+    {
+     "lane": 11,
+     "vp": 316,
+     "name": "CMF P2",
+     "cum": 2552,
+     "coma": 11,
+     "rapida": 9807,
+     "media": 10705,
+     "lenta": 93749
+    },
+    {
+     "lane": 12,
+     "vp": 324,
+     "name": "DSCA2 P2",
+     "cum": 2552,
+     "coma": 0,
+     "rapida": 9964,
+     "media": 10574,
+     "lenta": 18197
+    },
+    {
+     "lane": 1,
+     "vp": 312,
+     "name": "BOSLOT BLU P2",
+     "cum": 2539,
+     "coma": 83,
+     "rapida": 9680,
+     "media": 10254,
+     "lenta": 15830
+    },
+    {
+     "lane": 14,
+     "vp": 316,
+     "name": "TUSCANY 2 P2",
+     "cum": 2495,
+     "coma": 85,
+     "rapida": 10025,
+     "media": 10830,
+     "lenta": 24079
+    },
+    {
+     "lane": 10,
+     "vp": 234,
+     "name": "CALABRONI ROSSI ASTI P2",
+     "cum": 2472,
+     "coma": 104,
+     "rapida": 10622,
+     "media": 14630,
+     "lenta": 601863
+    },
+    {
+     "lane": 18,
+     "vp": 292,
+     "name": "JAMAICA BOB CAMPI P1",
+     "cum": 2388,
+     "coma": 64,
+     "rapida": 10041,
+     "media": 11646,
+     "lenta": 159610
+    }
+   ]
+  },
+  {
+   "n": 9,
+   "time": "21:18:25.565",
+   "startLine": 1134,
+   "rows": [
+    {
+     "lane": 22,
+     "vp": 359,
+     "name": "TUSCANY FACTORY P1",
+     "cum": 3187,
+     "coma": 92,
+     "rapida": 9320,
+     "media": 9517,
+     "lenta": 14091
+    },
+    {
+     "lane": 21,
+     "vp": 358,
+     "name": "SLOTMANIA PALMARES P1",
+     "cum": 3182,
+     "coma": 45,
+     "rapida": 9161,
+     "media": 9559,
+     "lenta": 34472
+    },
+    {
+     "lane": 9,
+     "vp": 343,
+     "name": "CATANIA SLOT P1",
+     "cum": 3167,
+     "coma": 43,
+     "rapida": 9439,
+     "media": 9971,
+     "lenta": 67296
+    },
+    {
+     "lane": 19,
+     "vp": 347,
+     "name": "MRC SLOT P1",
+     "cum": 3133,
+     "coma": 49,
+     "rapida": 9292,
+     "media": 9865,
+     "lenta": 22472
+    },
+    {
+     "lane": 17,
+     "vp": 297,
+     "name": "PEG 1 P1",
+     "cum": 3110,
+     "coma": 35,
+     "rapida": 9356,
+     "media": 11517,
+     "lenta": 520385
+    },
+    {
+     "lane": 2,
+     "vp": 343,
+     "name": "DSCA1 P1",
+     "cum": 3089,
+     "coma": 35,
+     "rapida": 9594,
+     "media": 9971,
+     "lenta": 45800
+    },
+    {
+     "lane": 7,
+     "vp": 350,
+     "name": "DZERO TEAM P1",
+     "cum": 3041,
+     "coma": 68,
+     "rapida": 9428,
+     "media": 9757,
+     "lenta": 16960
+    },
+    {
+     "lane": 11,
+     "vp": 353,
+     "name": "CAMPIDOGLIO 1 P1",
+     "cum": 3020,
+     "coma": 50,
+     "rapida": 9480,
+     "media": 9693,
+     "lenta": 14612
+    },
+    {
+     "lane": 4,
+     "vp": 330,
+     "name": "BOSLOT ROSSO P1",
+     "cum": 3007,
+     "coma": 14,
+     "rapida": 9597,
+     "media": 10368,
+     "lenta": 140206
+    },
+    {
+     "lane": 15,
+     "vp": 235,
+     "name": "ZOO SLOT P1",
+     "cum": 3004,
+     "coma": 86,
+     "rapida": 9248,
+     "media": 14544,
+     "lenta": 416002
+    },
+    {
+     "lane": 18,
+     "vp": 348,
+     "name": "GARGANO SLOT CLUB P1",
+     "cum": 2994,
+     "coma": 72,
+     "rapida": 9563,
+     "media": 9811,
+     "lenta": 12589
+    },
+    {
+     "lane": 14,
+     "vp": 334,
+     "name": "FLBT P1",
+     "cum": 2973,
+     "coma": 57,
+     "rapida": 9607,
+     "media": 10228,
+     "lenta": 87291
+    },
+    {
+     "lane": 5,
+     "vp": 311,
+     "name": "IMOLA SLOT RACING P2",
+     "cum": 2953,
+     "coma": 91,
+     "rapida": 9943,
+     "media": 10985,
+     "lenta": 38744
+    },
+    {
+     "lane": 20,
+     "vp": 344,
+     "name": "PEG 2 P2",
+     "cum": 2953,
+     "coma": 66,
+     "rapida": 9493,
+     "media": 9928,
+     "lenta": 15187
+    },
+    {
+     "lane": 6,
+     "vp": 341,
+     "name": "PIUSLOT CONEGLIANO P2",
+     "cum": 2939,
+     "coma": 45,
+     "rapida": 9703,
+     "media": 10037,
+     "lenta": 14656
+    },
+    {
+     "lane": 1,
+     "vp": 332,
+     "name": "RAL 2009 P2",
+     "cum": 2926,
+     "coma": 64,
+     "rapida": 9947,
+     "media": 10306,
+     "lenta": 18478
+    },
+    {
+     "lane": 13,
+     "vp": 341,
+     "name": "CMF P2",
+     "cum": 2893,
+     "coma": 11,
+     "rapida": 9773,
+     "media": 10027,
+     "lenta": 12194
+    },
+    {
+     "lane": 10,
+     "vp": 321,
+     "name": "DSCA2 P2",
+     "cum": 2873,
+     "coma": 96,
+     "rapida": 9896,
+     "media": 10622,
+     "lenta": 63596
+    },
+    {
+     "lane": 3,
+     "vp": 334,
+     "name": "BOSLOT BLU P2",
+     "cum": 2873,
+     "coma": 16,
+     "rapida": 9646,
+     "media": 10261,
+     "lenta": 18105
+    },
+    {
+     "lane": 12,
+     "vp": 327,
+     "name": "TUSCANY 2 P2",
+     "cum": 2822,
+     "coma": 25,
+     "rapida": 9855,
+     "media": 10477,
+     "lenta": 57327
+    },
+    {
+     "lane": 8,
+     "vp": 299,
+     "name": "CALABRONI ROSSI ASTI P2",
+     "cum": 2771,
+     "coma": 42,
+     "rapida": 10429,
+     "media": 11459,
+     "lenta": 52174
+    },
+    {
+     "lane": 16,
+     "vp": 311,
+     "name": "JAMAICA BOB CAMPI P1",
+     "cum": 2699,
+     "coma": 13,
+     "rapida": 10139,
+     "media": 11010,
+     "lenta": 24692
+    }
+   ]
+  },
+  {
+   "n": 10,
+   "time": "22:22:07.294",
+   "startLine": 1161,
+   "rows": [
+    {
+     "lane": 20,
+     "vp": 360,
+     "name": "TUSCANY FACTORY P1",
+     "cum": 3547,
+     "coma": 35,
+     "rapida": 9251,
+     "media": 9516,
+     "lenta": 14313
+    },
+    {
+     "lane": 22,
+     "vp": 353,
+     "name": "SLOTMANIA PALMARES P1",
+     "cum": 3535,
+     "coma": 60,
+     "rapida": 9339,
+     "media": 9684,
+     "lenta": 15834
+    },
+    {
+     "lane": 11,
+     "vp": 347,
+     "name": "CATANIA SLOT P1",
+     "cum": 3514,
+     "coma": 87,
+     "rapida": 9352,
+     "media": 9844,
+     "lenta": 16806
+    },
+    {
+     "lane": 21,
+     "vp": 350,
+     "name": "MRC SLOT P1",
+     "cum": 3483,
+     "coma": 37,
+     "rapida": 9255,
+     "media": 9773,
+     "lenta": 31116
+    },
+    {
+     "lane": 1,
+     "vp": 350,
+     "name": "DSCA1 P1",
+     "cum": 3439,
+     "coma": 7,
+     "rapida": 9564,
+     "media": 9779,
+     "lenta": 11530
+    },
+    {
+     "lane": 19,
+     "vp": 283,
+     "name": "PEG 1 P1",
+     "cum": 3393,
+     "coma": 71,
+     "rapida": 9278,
+     "media": 12080,
+     "lenta": 623414
+    },
+    {
+     "lane": 9,
+     "vp": 343,
+     "name": "DZERO TEAM P1",
+     "cum": 3384,
+     "coma": 5,
+     "rapida": 9630,
+     "media": 9988,
+     "lenta": 14562
+    },
+    {
+     "lane": 17,
+     "vp": 353,
+     "name": "ZOO SLOT P1",
+     "cum": 3357,
+     "coma": 76,
+     "rapida": 9310,
+     "media": 9692,
+     "lenta": 72250
+    },
+    {
+     "lane": 13,
+     "vp": 328,
+     "name": "CAMPIDOGLIO 1 P1",
+     "cum": 3348,
+     "coma": 72,
+     "rapida": 9562,
+     "media": 10421,
+     "lenta": 72443
+    },
+    {
+     "lane": 2,
+     "vp": 339,
+     "name": "BOSLOT ROSSO P1",
+     "cum": 3346,
+     "coma": 96,
+     "rapida": 9529,
+     "media": 10066,
+     "lenta": 71773
+    },
+    {
+     "lane": 16,
+     "vp": 328,
+     "name": "GARGANO SLOT CLUB P1",
+     "cum": 3322,
+     "coma": 33,
+     "rapida": 9639,
+     "media": 10440,
+     "lenta": 100897
+    },
+    {
+     "lane": 12,
+     "vp": 344,
+     "name": "FLBT P1",
+     "cum": 3317,
+     "coma": 21,
+     "rapida": 9563,
+     "media": 9951,
+     "lenta": 18394
+    },
+    {
+     "lane": 7,
+     "vp": 337,
+     "name": "IMOLA SLOT RACING P2",
+     "cum": 3290,
+     "coma": 27,
+     "rapida": 9587,
+     "media": 10168,
+     "lenta": 33166
+    },
+    {
+     "lane": 4,
+     "vp": 340,
+     "name": "PIUSLOT CONEGLIANO P2",
+     "cum": 3279,
+     "coma": 31,
+     "rapida": 9666,
+     "media": 10063,
+     "lenta": 51020
+    },
+    {
+     "lane": 18,
+     "vp": 312,
+     "name": "PEG 2 P2",
+     "cum": 3265,
+     "coma": 82,
+     "rapida": 9609,
+     "media": 10959,
+     "lenta": 199164
+    },
+    {
+     "lane": 3,
+     "vp": 325,
+     "name": "RAL 2009 P2",
+     "cum": 3251,
+     "coma": 0,
+     "rapida": 9803,
+     "media": 10545,
+     "lenta": 92426
+    },
+    {
+     "lane": 15,
+     "vp": 336,
+     "name": "CMF P2",
+     "cum": 3229,
+     "coma": 27,
+     "rapida": 9695,
+     "media": 10170,
+     "lenta": 16070
+    },
+    {
+     "lane": 8,
+     "vp": 322,
+     "name": "DSCA2 P2",
+     "cum": 3195,
+     "coma": 19,
+     "rapida": 10130,
+     "media": 10647,
+     "lenta": 15776
+    },
+    {
+     "lane": 5,
+     "vp": 302,
+     "name": "BOSLOT BLU P2",
+     "cum": 3175,
+     "coma": 11,
+     "rapida": 9779,
+     "media": 11329,
+     "lenta": 203115
+    },
+    {
+     "lane": 10,
+     "vp": 312,
+     "name": "TUSCANY 2 P2",
+     "cum": 3134,
+     "coma": 7,
+     "rapida": 10239,
+     "media": 10967,
+     "lenta": 41424
+    },
+    {
+     "lane": 6,
+     "vp": 327,
+     "name": "CALABRONI ROSSI ASTI P2",
+     "cum": 3098,
+     "coma": 53,
+     "rapida": 9880,
+     "media": 10453,
+     "lenta": 15498
+    },
+    {
+     "lane": 14,
+     "vp": 281,
+     "name": "JAMAICA BOB CAMPI P1",
+     "cum": 2980,
+     "coma": 35,
+     "rapida": 9940,
+     "media": 12135,
+     "lenta": 177087
+    }
+   ]
+  },
+  {
+   "n": 11,
+   "time": "23:24:32.908",
+   "startLine": 1191,
+   "rows": [
+    {
+     "lane": 18,
+     "vp": 349,
+     "name": "TUSCANY FACTORY P1",
+     "cum": 3896,
+     "coma": 57,
+     "rapida": 9417,
+     "media": 9792,
+     "lenta": 34010
+    },
+    {
+     "lane": 20,
+     "vp": 360,
+     "name": "SLOTMANIA PALMARES P1",
+     "cum": 3895,
+     "coma": 53,
+     "rapida": 9226,
+     "media": 9503,
+     "lenta": 13450
+    },
+    {
+     "lane": 13,
+     "vp": 361,
+     "name": "CATANIA SLOT P1",
+     "cum": 3875,
+     "coma": 39,
+     "rapida": 9143,
+     "media": 9488,
+     "lenta": 17158
+    },
+    {
+     "lane": 22,
+     "vp": 346,
+     "name": "MRC SLOT P1",
+     "cum": 3829,
+     "coma": 41,
+     "rapida": 9364,
+     "media": 9883,
+     "lenta": 40321
+    },
+    {
+     "lane": 3,
+     "vp": 333,
+     "name": "DSCA1 P1",
+     "cum": 3772,
+     "coma": 27,
+     "rapida": 9648,
+     "media": 10263,
+     "lenta": 56112
+    },
+    {
+     "lane": 21,
+     "vp": 356,
+     "name": "PEG 1 P1",
+     "cum": 3749,
+     "coma": 66,
+     "rapida": 9260,
+     "media": 9610,
+     "lenta": 13342
+    },
+    {
+     "lane": 11,
+     "vp": 332,
+     "name": "DZERO TEAM P1",
+     "cum": 3716,
+     "coma": 70,
+     "rapida": 9464,
+     "media": 9966,
+     "lenta": 16819
+    },
+    {
+     "lane": 19,
+     "vp": 355,
+     "name": "ZOO SLOT P1",
+     "cum": 3712,
+     "coma": 59,
+     "rapida": 9251,
+     "media": 9640,
+     "lenta": 32094
+    },
+    {
+     "lane": 15,
+     "vp": 343,
+     "name": "CAMPIDOGLIO 1 P1",
+     "cum": 3691,
+     "coma": 62,
+     "rapida": 9534,
+     "media": 9976,
+     "lenta": 19477
+    },
+    {
+     "lane": 1,
+     "vp": 344,
+     "name": "BOSLOT ROSSO P1",
+     "cum": 3690,
+     "coma": 0,
+     "rapida": 9610,
+     "media": 9974,
+     "lenta": 13980
+    },
+    {
+     "lane": 14,
+     "vp": 330,
+     "name": "GARGANO SLOT CLUB P1",
+     "cum": 3652,
+     "coma": 60,
+     "rapida": 9673,
+     "media": 10357,
+     "lenta": 21624
+    },
+    {
+     "lane": 9,
+     "vp": 341,
+     "name": "IMOLA SLOT RACING P2",
+     "cum": 3631,
+     "coma": 94,
+     "rapida": 9596,
+     "media": 10010,
+     "lenta": 21347
+    },
+    {
+     "lane": 10,
+     "vp": 313,
+     "name": "FLBT P1",
+     "cum": 3630,
+     "coma": 72,
+     "rapida": 9947,
+     "media": 10909,
+     "lenta": 85828
+    },
+    {
+     "lane": 5,
+     "vp": 342,
+     "name": "RAL 2009 P2",
+     "cum": 3593,
+     "coma": 44,
+     "rapida": 9668,
+     "media": 9986,
+     "lenta": 18079
+    },
+    {
+     "lane": 16,
+     "vp": 325,
+     "name": "PEG 2 P2",
+     "cum": 3590,
+     "coma": 55,
+     "rapida": 9670,
+     "media": 10534,
+     "lenta": 23941
+    },
+    {
+     "lane": 2,
+     "vp": 298,
+     "name": "PIUSLOT CONEGLIANO P2",
+     "cum": 3577,
+     "coma": 116,
+     "rapida": 9896,
+     "media": 11450,
+     "lenta": 331951
+    },
+    {
+     "lane": 17,
+     "vp": 308,
+     "name": "CMF P2",
+     "cum": 3537,
+     "coma": 26,
+     "rapida": 9804,
+     "media": 11103,
+     "lenta": 101072
+    },
+    {
+     "lane": 6,
+     "vp": 317,
+     "name": "DSCA2 P2",
+     "cum": 3512,
+     "coma": 49,
+     "rapida": 9948,
+     "media": 10780,
+     "lenta": 60463
+    },
+    {
+     "lane": 7,
+     "vp": 332,
+     "name": "BOSLOT BLU P2",
+     "cum": 3507,
+     "coma": 93,
+     "rapida": 9761,
+     "media": 10248,
+     "lenta": 21872
+    },
+    {
+     "lane": 8,
+     "vp": 315,
+     "name": "TUSCANY 2 P2",
+     "cum": 3449,
+     "coma": 36,
+     "rapida": 10236,
+     "media": 10845,
+     "lenta": 17485
+    },
+    {
+     "lane": 4,
+     "vp": 336,
+     "name": "CALABRONI ROSSI ASTI P2",
+     "cum": 3434,
+     "coma": 11,
+     "rapida": 9744,
+     "media": 10191,
+     "lenta": 16530
+    },
+    {
+     "lane": 12,
+     "vp": 325,
+     "name": "JAMAICA BOB CAMPI P1",
+     "cum": 3305,
+     "coma": 91,
+     "rapida": 9778,
+     "media": 10505,
+     "lenta": 23175
+    }
+   ]
+  },
+  {
+   "n": 12,
+   "time": "00:28:49.272",
+   "startLine": 1221,
+   "rows": [
+    {
+     "lane": 16,
+     "vp": 357,
+     "name": "TUSCANY FACTORY P1",
+     "cum": 4253,
+     "coma": 39,
+     "rapida": 9259,
+     "media": 9584,
+     "lenta": 15104
+    },
+    {
+     "lane": 15,
+     "vp": 363,
+     "name": "CATANIA SLOT P1",
+     "cum": 4238,
+     "coma": 11,
+     "rapida": 9117,
+     "media": 9428,
+     "lenta": 14148
+    },
+    {
+     "lane": 18,
+     "vp": 341,
+     "name": "SLOTMANIA PALMARES P1",
+     "cum": 4236,
+     "coma": 28,
+     "rapida": 9607,
+     "media": 10037,
+     "lenta": 47101
+    },
+    {
+     "lane": 20,
+     "vp": 347,
+     "name": "MRC SLOT P1",
+     "cum": 4176,
+     "coma": 19,
+     "rapida": 9382,
+     "media": 9862,
+     "lenta": 21244
+    },
+    {
+     "lane": 5,
+     "vp": 345,
+     "name": "DSCA1 P1",
+     "cum": 4117,
+     "coma": 43,
+     "rapida": 9573,
+     "media": 9908,
+     "lenta": 18397
+    },
+    {
+     "lane": 22,
+     "vp": 352,
+     "name": "PEG 1 P1",
+     "cum": 4101,
+     "coma": 16,
+     "rapida": 9241,
+     "media": 9731,
+     "lenta": 52304
+    },
+    {
+     "lane": 21,
+     "vp": 357,
+     "name": "ZOO SLOT P1",
+     "cum": 4069,
+     "coma": 65,
+     "rapida": 9180,
+     "media": 9579,
+     "lenta": 15444
+    },
+    {
+     "lane": 13,
+     "vp": 349,
+     "name": "DZERO TEAM P1",
+     "cum": 4065,
+     "coma": 14,
+     "rapida": 9401,
+     "media": 9817,
+     "lenta": 15503
+    },
+    {
+     "lane": 17,
+     "vp": 340,
+     "name": "CAMPIDOGLIO 1 P1",
+     "cum": 4031,
+     "coma": 46,
+     "rapida": 9444,
+     "media": 10065,
+     "lenta": 53466
+    },
+    {
+     "lane": 3,
+     "vp": 340,
+     "name": "BOSLOT ROSSO P1",
+     "cum": 4030,
+     "coma": 0,
+     "rapida": 9662,
+     "media": 10057,
+     "lenta": 14862
+    },
+    {
+     "lane": 12,
+     "vp": 330,
+     "name": "GARGANO SLOT CLUB P1",
+     "cum": 3982,
+     "coma": 13,
+     "rapida": 9500,
+     "media": 10378,
+     "lenta": 55640
+    },
+    {
+     "lane": 11,
+     "vp": 341,
+     "name": "IMOLA SLOT RACING P2",
+     "cum": 3972,
+     "coma": 8,
+     "rapida": 9554,
+     "media": 10055,
+     "lenta": 39571
+    },
+    {
+     "lane": 14,
+     "vp": 348,
+     "name": "PEG 2 P2",
+     "cum": 3938,
+     "coma": 22,
+     "rapida": 9514,
+     "media": 9837,
+     "lenta": 14737
+    },
+    {
+     "lane": 7,
+     "vp": 324,
+     "name": "RAL 2009 P2",
+     "cum": 3917,
+     "coma": 44,
+     "rapida": 9768,
+     "media": 10558,
+     "lenta": 40776
+    },
+    {
+     "lane": 1,
+     "vp": 325,
+     "name": "PIUSLOT CONEGLIANO P2",
+     "cum": 3902,
+     "coma": 17,
+     "rapida": 9904,
+     "media": 10546,
+     "lenta": 62820
+    },
+    {
+     "lane": 19,
+     "vp": 338,
+     "name": "CMF P2",
+     "cum": 3875,
+     "coma": 30,
+     "rapida": 9656,
+     "media": 10115,
+     "lenta": 17555
+    },
+    {
+     "lane": 8,
+     "vp": 244,
+     "name": "FLBT P1",
+     "cum": 3874,
+     "coma": 59,
+     "rapida": 9891,
+     "media": 14025,
+     "lenta": 828419
+    },
+    {
+     "lane": 4,
+     "vp": 334,
+     "name": "DSCA2 P2",
+     "cum": 3846,
+     "coma": 67,
+     "rapida": 9808,
+     "media": 10233,
+     "lenta": 16701
+    },
+    {
+     "lane": 9,
+     "vp": 327,
+     "name": "BOSLOT BLU P2",
+     "cum": 3834,
+     "coma": 56,
+     "rapida": 9715,
+     "media": 10471,
+     "lenta": 38258
+    },
+    {
+     "lane": 2,
+     "vp": 323,
+     "name": "CALABRONI ROSSI ASTI P2",
+     "cum": 3757,
+     "coma": 0,
+     "rapida": 9912,
+     "media": 10576,
+     "lenta": 63849
+    },
+    {
+     "lane": 6,
+     "vp": 306,
+     "name": "TUSCANY 2 P2",
+     "cum": 3755,
+     "coma": 41,
+     "rapida": 9981,
+     "media": 11175,
+     "lenta": 174117
+    },
+    {
+     "lane": 10,
+     "vp": 319,
+     "name": "JAMAICA BOB CAMPI P1",
+     "cum": 3624,
+     "coma": 76,
+     "rapida": 9976,
+     "media": 10727,
+     "lenta": 18731
+    }
+   ]
+  },
+  {
+   "n": 13,
+   "time": "01:33:00.212",
+   "startLine": 1250,
+   "rows": [
+    {
+     "lane": 14,
+     "vp": 363,
+     "name": "TUSCANY FACTORY P1",
+     "cum": 4616,
+     "coma": 89,
+     "rapida": 9125,
+     "media": 9406,
+     "lenta": 14368
+    },
+    {
+     "lane": 16,
+     "vp": 346,
+     "name": "SLOTMANIA PALMARES P1",
+     "cum": 4582,
+     "coma": 85,
+     "rapida": 9374,
+     "media": 9867,
+     "lenta": 34174
+    },
+    {
+     "lane": 17,
+     "vp": 344,
+     "name": "CATANIA SLOT P1",
+     "cum": 4582,
+     "coma": 44,
+     "rapida": 9405,
+     "media": 9931,
+     "lenta": 58921
+    },
+    {
+     "lane": 18,
+     "vp": 342,
+     "name": "MRC SLOT P1",
+     "cum": 4518,
+     "coma": 50,
+     "rapida": 9417,
+     "media": 9989,
+     "lenta": 43770
+    },
+    {
+     "lane": 7,
+     "vp": 344,
+     "name": "DSCA1 P1",
+     "cum": 4461,
+     "coma": 58,
+     "rapida": 9467,
+     "media": 9939,
+     "lenta": 54529
+    },
+    {
+     "lane": 20,
+     "vp": 354,
+     "name": "PEG 1 P1",
+     "cum": 4455,
+     "coma": 90,
+     "rapida": 9210,
+     "media": 9641,
+     "lenta": 32971
+    },
+    {
+     "lane": 22,
+     "vp": 360,
+     "name": "ZOO SLOT P1",
+     "cum": 4429,
+     "coma": 43,
+     "rapida": 9246,
+     "media": 9506,
+     "lenta": 12148
+    },
+    {
+     "lane": 15,
+     "vp": 343,
+     "name": "DZERO TEAM P1",
+     "cum": 4408,
+     "coma": 98,
+     "rapida": 9212,
+     "media": 9947,
+     "lenta": 83560
+    },
+    {
+     "lane": 19,
+     "vp": 352,
+     "name": "CAMPIDOGLIO 1 P1",
+     "cum": 4383,
+     "coma": 61,
+     "rapida": 9426,
+     "media": 9711,
+     "lenta": 17644
+    },
+    {
+     "lane": 5,
+     "vp": 342,
+     "name": "BOSLOT ROSSO P1",
+     "cum": 4372,
+     "coma": 70,
+     "rapida": 9526,
+     "media": 9979,
+     "lenta": 42664
+    },
+    {
+     "lane": 10,
+     "vp": 353,
+     "name": "GARGANO SLOT CLUB P1",
+     "cum": 4335,
+     "coma": 78,
+     "rapida": 9289,
+     "media": 9668,
+     "lenta": 13053
+    },
+    {
+     "lane": 13,
+     "vp": 322,
+     "name": "IMOLA SLOT RACING P2",
+     "cum": 4294,
+     "coma": 36,
+     "rapida": 9782,
+     "media": 10612,
+     "lenta": 19170
+    },
+    {
+     "lane": 12,
+     "vp": 348,
+     "name": "PEG 2 P2",
+     "cum": 4286,
+     "coma": 23,
+     "rapida": 9487,
+     "media": 9826,
+     "lenta": 13354
+    },
+    {
+     "lane": 9,
+     "vp": 331,
+     "name": "RAL 2009 P2",
+     "cum": 4248,
+     "coma": 38,
+     "rapida": 9990,
+     "media": 10335,
+     "lenta": 29485
+    },
+    {
+     "lane": 3,
+     "vp": 320,
+     "name": "PIUSLOT CONEGLIANO P2",
+     "cum": 4222,
+     "coma": 32,
+     "rapida": 10024,
+     "media": 10684,
+     "lenta": 18440
+    },
+    {
+     "lane": 21,
+     "vp": 325,
+     "name": "CMF P2",
+     "cum": 4200,
+     "coma": 53,
+     "rapida": 9585,
+     "media": 10515,
+     "lenta": 128390
+    },
+    {
+     "lane": 6,
+     "vp": 320,
+     "name": "FLBT P1",
+     "cum": 4194,
+     "coma": 8,
+     "rapida": 9882,
+     "media": 10701,
+     "lenta": 84549
+    },
+    {
+     "lane": 11,
+     "vp": 345,
+     "name": "BOSLOT BLU P2",
+     "cum": 4179,
+     "coma": 53,
+     "rapida": 9471,
+     "media": 9914,
+     "lenta": 18733
+    },
+    {
+     "lane": 2,
+     "vp": 323,
+     "name": "DSCA2 P2",
+     "cum": 4169,
+     "coma": 30,
+     "rapida": 9785,
+     "media": 10600,
+     "lenta": 84484
+    },
+    {
+     "lane": 4,
+     "vp": 327,
+     "name": "TUSCANY 2 P2",
+     "cum": 4082,
+     "coma": 64,
+     "rapida": 9930,
+     "media": 10451,
+     "lenta": 18395
+    },
+    {
+     "lane": 1,
+     "vp": 288,
+     "name": "CALABRONI ROSSI ASTI P2",
+     "cum": 4045,
+     "coma": 127,
+     "rapida": 10395,
+     "media": 11830,
+     "lenta": 20358
+    },
+    {
+     "lane": 8,
+     "vp": 306,
+     "name": "JAMAICA BOB CAMPI P1",
+     "cum": 3930,
+     "coma": 4,
+     "rapida": 9907,
+     "media": 11201,
+     "lenta": 90548
+    }
+   ]
+  },
+  {
+   "n": 14,
+   "time": "02:37:27.848",
+   "startLine": 1279,
+   "rows": [
+    {
+     "lane": 12,
+     "vp": 361,
+     "name": "TUSCANY FACTORY P1",
+     "cum": 4977,
+     "coma": 11,
+     "rapida": 9096,
+     "media": 9496,
+     "lenta": 48868
+    },
+    {
+     "lane": 14,
+     "vp": 367,
+     "name": "SLOTMANIA PALMARES P1",
+     "cum": 4949,
+     "coma": 56,
+     "rapida": 9011,
+     "media": 9327,
+     "lenta": 15529
+    },
+    {
+     "lane": 19,
+     "vp": 361,
+     "name": "CATANIA SLOT P1",
+     "cum": 4943,
+     "coma": 57,
+     "rapida": 9245,
+     "media": 9471,
+     "lenta": 14687
+    },
+    {
+     "lane": 16,
+     "vp": 364,
+     "name": "MRC SLOT P1",
+     "cum": 4882,
+     "coma": 23,
+     "rapida": 9159,
+     "media": 9403,
+     "lenta": 13068
+    },
+    {
+     "lane": 18,
+     "vp": 357,
+     "name": "PEG 1 P1",
+     "cum": 4812,
+     "coma": 8,
+     "rapida": 9217,
+     "media": 9603,
+     "lenta": 38668
+    },
+    {
+     "lane": 9,
+     "vp": 346,
+     "name": "DSCA1 P1",
+     "cum": 4807,
+     "coma": 12,
+     "rapida": 9641,
+     "media": 9898,
+     "lenta": 13590
+    },
+    {
+     "lane": 20,
+     "vp": 353,
+     "name": "ZOO SLOT P1",
+     "cum": 4782,
+     "coma": 59,
+     "rapida": 9219,
+     "media": 9683,
+     "lenta": 67841
+    },
+    {
+     "lane": 17,
+     "vp": 354,
+     "name": "DZERO TEAM P1",
+     "cum": 4762,
+     "coma": 7,
+     "rapida": 9312,
+     "media": 9681,
+     "lenta": 14631
+    },
+    {
+     "lane": 21,
+     "vp": 344,
+     "name": "CAMPIDOGLIO 1 P1",
+     "cum": 4727,
+     "coma": 66,
+     "rapida": 9515,
+     "media": 9942,
+     "lenta": 16787
+    },
+    {
+     "lane": 7,
+     "vp": 345,
+     "name": "BOSLOT ROSSO P1",
+     "cum": 4717,
+     "coma": 16,
+     "rapida": 9581,
+     "media": 9928,
+     "lenta": 13947
+    },
+    {
+     "lane": 8,
+     "vp": 334,
+     "name": "GARGANO SLOT CLUB P1",
+     "cum": 4669,
+     "coma": 80,
+     "rapida": 9636,
+     "media": 10239,
+     "lenta": 14787
+    },
+    {
+     "lane": 10,
+     "vp": 335,
+     "name": "PEG 2 P2",
+     "cum": 4621,
+     "coma": 79,
+     "rapida": 9581,
+     "media": 10192,
+     "lenta": 72317
+    },
+    {
+     "lane": 15,
+     "vp": 324,
+     "name": "IMOLA SLOT RACING P2",
+     "cum": 4618,
+     "coma": 47,
+     "rapida": 9633,
+     "media": 10552,
+     "lenta": 18646
+    },
+    {
+     "lane": 11,
+     "vp": 325,
+     "name": "RAL 2009 P2",
+     "cum": 4573,
+     "coma": 41,
+     "rapida": 9613,
+     "media": 10524,
+     "lenta": 79409
+    },
+    {
+     "lane": 5,
+     "vp": 341,
+     "name": "PIUSLOT CONEGLIANO P2",
+     "cum": 4563,
+     "coma": 6,
+     "rapida": 9703,
+     "media": 10033,
+     "lenta": 48039
+    },
+    {
+     "lane": 4,
+     "vp": 349,
+     "name": "FLBT P1",
+     "cum": 4543,
+     "coma": 30,
+     "rapida": 9507,
+     "media": 9792,
+     "lenta": 13900
+    },
+    {
+     "lane": 22,
+     "vp": 340,
+     "name": "CMF P2",
+     "cum": 4540,
+     "coma": 32,
+     "rapida": 9814,
+     "media": 10065,
+     "lenta": 13513
+    },
+    {
+     "lane": 13,
+     "vp": 331,
+     "name": "BOSLOT BLU P2",
+     "cum": 4510,
+     "coma": 92,
+     "rapida": 9714,
+     "media": 10321,
+     "lenta": 16989
+    },
+    {
+     "lane": 1,
+     "vp": 324,
+     "name": "DSCA2 P2",
+     "cum": 4493,
+     "coma": 62,
+     "rapida": 9859,
+     "media": 10546,
+     "lenta": 17670
+    },
+    {
+     "lane": 2,
+     "vp": 316,
+     "name": "TUSCANY 2 P2",
+     "cum": 4398,
+     "coma": 72,
+     "rapida": 9894,
+     "media": 10820,
+     "lenta": 104456
+    },
+    {
+     "lane": 3,
+     "vp": 316,
+     "name": "CALABRONI ROSSI ASTI P2",
+     "cum": 4361,
+     "coma": 44,
+     "rapida": 10147,
+     "media": 10829,
+     "lenta": 19208
+    },
+    {
+     "lane": 6,
+     "vp": 309,
+     "name": "JAMAICA BOB CAMPI P1",
+     "cum": 4239,
+     "coma": 14,
+     "rapida": 9949,
+     "media": 11063,
+     "lenta": 49008
+    }
+   ]
+  },
+  {
+   "n": 15,
+   "time": "03:40:40.064",
+   "startLine": 1306,
+   "rows": [
+    {
+     "lane": 10,
+     "vp": 355,
+     "name": "TUSCANY FACTORY P1",
+     "cum": 5332,
+     "coma": 56,
+     "rapida": 9311,
+     "media": 9620,
+     "lenta": 13773
+    },
+    {
+     "lane": 21,
+     "vp": 365,
+     "name": "CATANIA SLOT P1",
+     "cum": 5308,
+     "coma": 0,
+     "rapida": 9037,
+     "media": 9388,
+     "lenta": 12840
+    },
+    {
+     "lane": 12,
+     "vp": 354,
+     "name": "SLOTMANIA PALMARES P1",
+     "cum": 5303,
+     "coma": 95,
+     "rapida": 9147,
+     "media": 9645,
+     "lenta": 47922
+    },
+    {
+     "lane": 14,
+     "vp": 353,
+     "name": "MRC SLOT P1",
+     "cum": 5235,
+     "coma": 12,
+     "rapida": 9070,
+     "media": 9690,
+     "lenta": 31103
+    },
+    {
+     "lane": 16,
+     "vp": 343,
+     "name": "PEG 1 P1",
+     "cum": 5155,
+     "coma": 17,
+     "rapida": 9336,
+     "media": 9959,
+     "lenta": 81555
+    },
+    {
+     "lane": 11,
+     "vp": 338,
+     "name": "DSCA1 P1",
+     "cum": 5145,
+     "coma": 129,
+     "rapida": 9549,
+     "media": 10068,
+     "lenta": 50556
+    },
+    {
+     "lane": 18,
+     "vp": 356,
+     "name": "ZOO SLOT P1",
+     "cum": 5138,
+     "coma": 6,
+     "rapida": 9218,
+     "media": 9623,
+     "lenta": 58516
+    },
+    {
+     "lane": 19,
+     "vp": 346,
+     "name": "DZERO TEAM P1",
+     "cum": 5108,
+     "coma": 43,
+     "rapida": 9365,
+     "media": 9874,
+     "lenta": 16641
+    },
+    {
+     "lane": 22,
+     "vp": 338,
+     "name": "CAMPIDOGLIO 1 P1",
+     "cum": 5065,
+     "coma": 81,
+     "rapida": 9486,
+     "media": 10116,
+     "lenta": 73946
+    },
+    {
+     "lane": 9,
+     "vp": 342,
+     "name": "BOSLOT ROSSO P1",
+     "cum": 5059,
+     "coma": 37,
+     "rapida": 9562,
+     "media": 9994,
+     "lenta": 38013
+    },
+    {
+     "lane": 6,
+     "vp": 318,
+     "name": "GARGANO SLOT CLUB P1",
+     "cum": 4987,
+     "coma": 39,
+     "rapida": 9835,
+     "media": 10768,
+     "lenta": 20502
+    },
+    {
+     "lane": 17,
+     "vp": 337,
+     "name": "IMOLA SLOT RACING P2",
+     "cum": 4955,
+     "coma": 89,
+     "rapida": 9449,
+     "media": 10135,
+     "lenta": 24451
+    },
+    {
+     "lane": 8,
+     "vp": 326,
+     "name": "PEG 2 P2",
+     "cum": 4947,
+     "coma": 100,
+     "rapida": 9754,
+     "media": 10487,
+     "lenta": 21962
+    },
+    {
+     "lane": 7,
+     "vp": 324,
+     "name": "PIUSLOT CONEGLIANO P2",
+     "cum": 4887,
+     "coma": 88,
+     "rapida": 9899,
+     "media": 10529,
+     "lenta": 16304
+    },
+    {
+     "lane": 13,
+     "vp": 296,
+     "name": "RAL 2009 P2",
+     "cum": 4869,
+     "coma": 93,
+     "rapida": 9689,
+     "media": 11541,
+     "lenta": 301188
+    },
+    {
+     "lane": 20,
+     "vp": 325,
+     "name": "CMF P2",
+     "cum": 4865,
+     "coma": 70,
+     "rapida": 9622,
+     "media": 10511,
+     "lenta": 64656
+    },
+    {
+     "lane": 2,
+     "vp": 315,
+     "name": "FLBT P1",
+     "cum": 4858,
+     "coma": 26,
+     "rapida": 9797,
+     "media": 10861,
+     "lenta": 83603
+    },
+    {
+     "lane": 15,
+     "vp": 325,
+     "name": "BOSLOT BLU P2",
+     "cum": 4835,
+     "coma": 34,
+     "rapida": 9561,
+     "media": 10544,
+     "lenta": 50507
+    },
+    {
+     "lane": 3,
+     "vp": 327,
+     "name": "DSCA2 P2",
+     "cum": 4820,
+     "coma": 3,
+     "rapida": 9845,
+     "media": 10479,
+     "lenta": 36988
+    },
+    {
+     "lane": 1,
+     "vp": 319,
+     "name": "TUSCANY 2 P2",
+     "cum": 4717,
+     "coma": 24,
+     "rapida": 9954,
+     "media": 10736,
+     "lenta": 25502
+    },
+    {
+     "lane": 5,
+     "vp": 328,
+     "name": "CALABRONI ROSSI ASTI P2",
+     "cum": 4689,
+     "coma": 98,
+     "rapida": 9780,
+     "media": 10409,
+     "lenta": 50239
+    },
+    {
+     "lane": 4,
+     "vp": 321,
+     "name": "JAMAICA BOB CAMPI P1",
+     "cum": 4560,
+     "coma": 47,
+     "rapida": 9722,
+     "media": 10644,
+     "lenta": 77203
+    }
+   ]
+  },
+  {
+   "n": 16,
+   "time": "04:43:53.888",
+   "startLine": 1333,
+   "rows": [
+    {
+     "lane": 8,
+     "vp": 356,
+     "name": "TUSCANY FACTORY P1",
+     "cum": 5688,
+     "coma": 25,
+     "rapida": 9150,
+     "media": 9616,
+     "lenta": 55221
+    },
+    {
+     "lane": 10,
+     "vp": 353,
+     "name": "SLOTMANIA PALMARES P1",
+     "cum": 5656,
+     "coma": 63,
+     "rapida": 9430,
+     "media": 9697,
+     "lenta": 14040
+    },
+    {
+     "lane": 22,
+     "vp": 347,
+     "name": "CATANIA SLOT P1",
+     "cum": 5655,
+     "coma": 32,
+     "rapida": 9257,
+     "media": 9844,
+     "lenta": 50706
+    },
+    {
+     "lane": 12,
+     "vp": 351,
+     "name": "MRC SLOT P1",
+     "cum": 5586,
+     "coma": 89,
+     "rapida": 8999,
+     "media": 9720,
+     "lenta": 44068
+    },
+    {
+     "lane": 14,
+     "vp": 359,
+     "name": "PEG 1 P1",
+     "cum": 5514,
+     "coma": 83,
+     "rapida": 9137,
+     "media": 9506,
+     "lenta": 14869
+    },
+    {
+     "lane": 16,
+     "vp": 357,
+     "name": "ZOO SLOT P1",
+     "cum": 5495,
+     "coma": 42,
+     "rapida": 9202,
+     "media": 9570,
+     "lenta": 15678
+    },
+    {
+     "lane": 13,
+     "vp": 346,
+     "name": "DSCA1 P1",
+     "cum": 5491,
+     "coma": 95,
+     "rapida": 9587,
+     "media": 9879,
+     "lenta": 14271
+    },
+    {
+     "lane": 21,
+     "vp": 356,
+     "name": "DZERO TEAM P1",
+     "cum": 5464,
+     "coma": 47,
+     "rapida": 9342,
+     "media": 9604,
+     "lenta": 12882
+    },
+    {
+     "lane": 20,
+     "vp": 352,
+     "name": "CAMPIDOGLIO 1 P1",
+     "cum": 5417,
+     "coma": 33,
+     "rapida": 9392,
+     "media": 9729,
+     "lenta": 14914
+    },
+    {
+     "lane": 11,
+     "vp": 347,
+     "name": "BOSLOT ROSSO P1",
+     "cum": 5406,
+     "coma": 31,
+     "rapida": 9426,
+     "media": 9858,
+     "lenta": 17241
+    },
+    {
+     "lane": 4,
+     "vp": 326,
+     "name": "GARGANO SLOT CLUB P1",
+     "cum": 5313,
+     "coma": 63,
+     "rapida": 9618,
+     "media": 10479,
+     "lenta": 87834
+    },
+    {
+     "lane": 6,
+     "vp": 347,
+     "name": "PEG 2 P2",
+     "cum": 5294,
+     "coma": 11,
+     "rapida": 9499,
+     "media": 9870,
+     "lenta": 16316
+    },
+    {
+     "lane": 19,
+     "vp": 331,
+     "name": "IMOLA SLOT RACING P2",
+     "cum": 5286,
+     "coma": 13,
+     "rapida": 9524,
+     "media": 10351,
+     "lenta": 54433
+    },
+    {
+     "lane": 9,
+     "vp": 329,
+     "name": "PIUSLOT CONEGLIANO P2",
+     "cum": 5216,
+     "coma": 97,
+     "rapida": 9773,
+     "media": 10391,
+     "lenta": 47035
+    },
+    {
+     "lane": 18,
+     "vp": 329,
+     "name": "CMF P2",
+     "cum": 5194,
+     "coma": 65,
+     "rapida": 9724,
+     "media": 10396,
+     "lenta": 17725
+    },
+    {
+     "lane": 15,
+     "vp": 322,
+     "name": "RAL 2009 P2",
+     "cum": 5191,
+     "coma": 43,
+     "rapida": 9786,
+     "media": 10638,
+     "lenta": 70533
+    },
+    {
+     "lane": 1,
+     "vp": 320,
+     "name": "FLBT P1",
+     "cum": 5178,
+     "coma": 21,
+     "rapida": 9733,
+     "media": 10690,
+     "lenta": 77326
+    },
+    {
+     "lane": 17,
+     "vp": 333,
+     "name": "BOSLOT BLU P2",
+     "cum": 5168,
+     "coma": 74,
+     "rapida": 9797,
+     "media": 10257,
+     "lenta": 15265
+    },
+    {
+     "lane": 5,
+     "vp": 324,
+     "name": "DSCA2 P2",
+     "cum": 5144,
+     "coma": 95,
+     "rapida": 9792,
+     "media": 10527,
+     "lenta": 24655
+    },
+    {
+     "lane": 3,
+     "vp": 329,
+     "name": "TUSCANY 2 P2",
+     "cum": 5046,
+     "coma": 32,
+     "rapida": 9892,
+     "media": 10390,
+     "lenta": 15271
+    },
+    {
+     "lane": 7,
+     "vp": 328,
+     "name": "CALABRONI ROSSI ASTI P2",
+     "cum": 5017,
+     "coma": 97,
+     "rapida": 9767,
+     "media": 10429,
+     "lenta": 18871
+    },
+    {
+     "lane": 2,
+     "vp": 0,
+     "name": "JAMAICA BOB CAMPI P1",
+     "cum": 4560,
+     "coma": 47,
+     "rapida": 11999,
+     "media": null,
+     "lenta": null
+    }
+   ]
+  },
+  {
+   "n": 17,
+   "time": "05:49:54.963",
+   "startLine": 1360,
+   "rows": [
+    {
+     "lane": 6,
+     "vp": 362,
+     "name": "TUSCANY FACTORY P1",
+     "cum": 6050,
+     "coma": 19,
+     "rapida": 9194,
+     "media": 9449,
+     "lenta": 13301
+    },
+    {
+     "lane": 20,
+     "vp": 356,
+     "name": "CATANIA SLOT P1",
+     "cum": 6011,
+     "coma": 39,
+     "rapida": 9213,
+     "media": 9589,
+     "lenta": 35433
+    },
+    {
+     "lane": 8,
+     "vp": 354,
+     "name": "SLOTMANIA PALMARES P1",
+     "cum": 6010,
+     "coma": 64,
+     "rapida": 9280,
+     "media": 9662,
+     "lenta": 16342
+    },
+    {
+     "lane": 10,
+     "vp": 349,
+     "name": "MRC SLOT P1",
+     "cum": 5935,
+     "coma": 23,
+     "rapida": 9442,
+     "media": 9820,
+     "lenta": 16981
+    },
+    {
+     "lane": 12,
+     "vp": 365,
+     "name": "PEG 1 P1",
+     "cum": 5879,
+     "coma": 21,
+     "rapida": 9059,
+     "media": 9388,
+     "lenta": 16702
+    },
+    {
+     "lane": 14,
+     "vp": 357,
+     "name": "ZOO SLOT P1",
+     "cum": 5852,
+     "coma": 29,
+     "rapida": 9116,
+     "media": 9583,
+     "lenta": 26908
+    },
+    {
+     "lane": 15,
+     "vp": 346,
+     "name": "DSCA1 P1",
+     "cum": 5837,
+     "coma": 59,
+     "rapida": 9408,
+     "media": 9896,
+     "lenta": 48188
+    },
+    {
+     "lane": 22,
+     "vp": 351,
+     "name": "DZERO TEAM P1",
+     "cum": 5815,
+     "coma": 41,
+     "rapida": 9227,
+     "media": 9744,
+     "lenta": 92910
+    },
+    {
+     "lane": 18,
+     "vp": 350,
+     "name": "CAMPIDOGLIO 1 P1",
+     "cum": 5767,
+     "coma": 89,
+     "rapida": 9250,
+     "media": 9756,
+     "lenta": 83427
+    },
+    {
+     "lane": 13,
+     "vp": 339,
+     "name": "BOSLOT ROSSO P1",
+     "cum": 5745,
+     "coma": 48,
+     "rapida": 9430,
+     "media": 10085,
+     "lenta": 76599
+    },
+    {
+     "lane": 2,
+     "vp": 350,
+     "name": "GARGANO SLOT CLUB P1",
+     "cum": 5663,
+     "coma": 16,
+     "rapida": 9521,
+     "media": 9785,
+     "lenta": 12670
+    },
+    {
+     "lane": 4,
+     "vp": 344,
+     "name": "PEG 2 P2",
+     "cum": 5638,
+     "coma": 62,
+     "rapida": 9485,
+     "media": 9925,
+     "lenta": 18933
+    },
+    {
+     "lane": 21,
+     "vp": 344,
+     "name": "IMOLA SLOT RACING P2",
+     "cum": 5630,
+     "coma": 54,
+     "rapida": 9461,
+     "media": 9929,
+     "lenta": 15278
+    },
+    {
+     "lane": 11,
+     "vp": 324,
+     "name": "PIUSLOT CONEGLIANO P2",
+     "cum": 5540,
+     "coma": 100,
+     "rapida": 9952,
+     "media": 10555,
+     "lenta": 17944
+    },
+    {
+     "lane": 17,
+     "vp": 338,
+     "name": "RAL 2009 P2",
+     "cum": 5529,
+     "coma": 31,
+     "rapida": 9782,
+     "media": 10122,
+     "lenta": 14571
+    },
+    {
+     "lane": 3,
+     "vp": 350,
+     "name": "FLBT P1",
+     "cum": 5528,
+     "coma": 42,
+     "rapida": 9398,
+     "media": 9764,
+     "lenta": 15767
+    },
+    {
+     "lane": 16,
+     "vp": 325,
+     "name": "CMF P2",
+     "cum": 5519,
+     "coma": 88,
+     "rapida": 9581,
+     "media": 10516,
+     "lenta": 15950
+    },
+    {
+     "lane": 19,
+     "vp": 343,
+     "name": "BOSLOT BLU P2",
+     "cum": 5511,
+     "coma": 87,
+     "rapida": 9608,
+     "media": 9968,
+     "lenta": 16483
+    },
+    {
+     "lane": 7,
+     "vp": 323,
+     "name": "DSCA2 P2",
+     "cum": 5467,
+     "coma": 36,
+     "rapida": 9958,
+     "media": 10608,
+     "lenta": 51979
+    },
+    {
+     "lane": 5,
+     "vp": 322,
+     "name": "TUSCANY 2 P2",
+     "cum": 5368,
+     "coma": 30,
+     "rapida": 10002,
+     "media": 10620,
+     "lenta": 91613
+    },
+    {
+     "lane": 9,
+     "vp": 343,
+     "name": "CALABRONI ROSSI ASTI P2",
+     "cum": 5360,
+     "coma": 46,
+     "rapida": 9576,
+     "media": 9986,
+     "lenta": 17173
+    },
+    {
+     "lane": 1,
+     "vp": 310,
+     "name": "JAMAICA BOB CAMPI P1",
+     "cum": 4870,
+     "coma": 98,
+     "rapida": 9911,
+     "media": 11001,
+     "lenta": 29621
+    }
+   ]
+  },
+  {
+   "n": 18,
+   "time": "06:53:40.530",
+   "startLine": 1391,
+   "rows": [
+    {
+     "lane": 4,
+     "vp": 365,
+     "name": "TUSCANY FACTORY P1",
+     "cum": 6415,
+     "coma": 52,
+     "rapida": 9061,
+     "media": 9360,
+     "lenta": 12905
+    },
+    {
+     "lane": 6,
+     "vp": 366,
+     "name": "SLOTMANIA PALMARES P1",
+     "cum": 6376,
+     "coma": 67,
+     "rapida": 9040,
+     "media": 9343,
+     "lenta": 14153
+    },
+    {
+     "lane": 18,
+     "vp": 338,
+     "name": "CATANIA SLOT P1",
+     "cum": 6349,
+     "coma": 0,
+     "rapida": 9494,
+     "media": 10130,
+     "lenta": 71141
+    },
+    {
+     "lane": 8,
+     "vp": 364,
+     "name": "MRC SLOT P1",
+     "cum": 6299,
+     "coma": 12,
+     "rapida": 9103,
+     "media": 9397,
+     "lenta": 15069
+    },
+    {
+     "lane": 10,
+     "vp": 342,
+     "name": "PEG 1 P1",
+     "cum": 6221,
+     "coma": 90,
+     "rapida": 9250,
+     "media": 9981,
+     "lenta": 98129
+    },
+    {
+     "lane": 12,
+     "vp": 354,
+     "name": "ZOO SLOT P1",
+     "cum": 6206,
+     "coma": 19,
+     "rapida": 9192,
+     "media": 9665,
+     "lenta": 54886
+    },
+    {
+     "lane": 17,
+     "vp": 341,
+     "name": "DSCA1 P1",
+     "cum": 6178,
+     "coma": 73,
+     "rapida": 9586,
+     "media": 10027,
+     "lenta": 13806
+    },
+    {
+     "lane": 20,
+     "vp": 352,
+     "name": "DZERO TEAM P1",
+     "cum": 6167,
+     "coma": 90,
+     "rapida": 9343,
+     "media": 9702,
+     "lenta": 14350
+    },
+    {
+     "lane": 16,
+     "vp": 348,
+     "name": "CAMPIDOGLIO 1 P1",
+     "cum": 6115,
+     "coma": 62,
+     "rapida": 9297,
+     "media": 9837,
+     "lenta": 16019
+    },
+    {
+     "lane": 15,
+     "vp": 350,
+     "name": "BOSLOT ROSSO P1",
+     "cum": 6095,
+     "coma": 57,
+     "rapida": 9370,
+     "media": 9768,
+     "lenta": 17962
+    },
+    {
+     "lane": 1,
+     "vp": 336,
+     "name": "GARGANO SLOT CLUB P1",
+     "cum": 5999,
+     "coma": 42,
+     "rapida": 9570,
+     "media": 10148,
+     "lenta": 84915
+    },
+    {
+     "lane": 2,
+     "vp": 334,
+     "name": "PEG 2 P2",
+     "cum": 5972,
+     "coma": 23,
+     "rapida": 9531,
+     "media": 10250,
+     "lenta": 66386
+    },
+    {
+     "lane": 22,
+     "vp": 294,
+     "name": "IMOLA SLOT RACING P2",
+     "cum": 5924,
+     "coma": 97,
+     "rapida": 9952,
+     "media": 11624,
+     "lenta": 188680
+    },
+    {
+     "lane": 13,
+     "vp": 336,
+     "name": "PIUSLOT CONEGLIANO P2",
+     "cum": 5876,
+     "coma": 72,
+     "rapida": 9660,
+     "media": 10187,
+     "lenta": 114140
+    },
+    {
+     "lane": 19,
+     "vp": 342,
+     "name": "RAL 2009 P2",
+     "cum": 5871,
+     "coma": 17,
+     "rapida": 9655,
+     "media": 10003,
+     "lenta": 13685
+    },
+    {
+     "lane": 5,
+     "vp": 335,
+     "name": "FLBT P1",
+     "cum": 5863,
+     "coma": 56,
+     "rapida": 9585,
+     "media": 10206,
+     "lenta": 18314
+    },
+    {
+     "lane": 14,
+     "vp": 324,
+     "name": "CMF P2",
+     "cum": 5843,
+     "coma": 96,
+     "rapida": 9837,
+     "media": 10556,
+     "lenta": 132053
+    },
+    {
+     "lane": 21,
+     "vp": 304,
+     "name": "BOSLOT BLU P2",
+     "cum": 5815,
+     "coma": 24,
+     "rapida": 9868,
+     "media": 11275,
+     "lenta": 124382
+    },
+    {
+     "lane": 9,
+     "vp": 322,
+     "name": "DSCA2 P2",
+     "cum": 5789,
+     "coma": 60,
+     "rapida": 9803,
+     "media": 10613,
+     "lenta": 16859
+    },
+    {
+     "lane": 7,
+     "vp": 323,
+     "name": "TUSCANY 2 P2",
+     "cum": 5691,
+     "coma": 54,
+     "rapida": 10056,
+     "media": 10579,
+     "lenta": 21661
+    },
+    {
+     "lane": 11,
+     "vp": 292,
+     "name": "CALABRONI ROSSI ASTI P2",
+     "cum": 5652,
+     "coma": 999,
+     "rapida": 10008,
+     "media": 11070,
+     "lenta": 52476
+    },
+    {
+     "lane": 3,
+     "vp": 286,
+     "name": "JAMAICA BOB CAMPI P1",
+     "cum": 5156,
+     "coma": 162,
+     "rapida": 9597,
+     "media": 11941,
+     "lenta": 107300
+    }
+   ]
+  },
+  {
+   "n": 19,
+   "time": "07:56:31.194",
+   "startLine": 1418,
+   "rows": [
+    {
+     "lane": 2,
+     "vp": 345,
+     "name": "TUSCANY FACTORY P1",
+     "cum": 6760,
+     "coma": 68,
+     "rapida": 9347,
+     "media": 9909,
+     "lenta": 72136
+    },
+    {
+     "lane": 4,
+     "vp": 351,
+     "name": "SLOTMANIA PALMARES P1",
+     "cum": 6727,
+     "coma": 61,
+     "rapida": 9263,
+     "media": 9745,
+     "lenta": 45655
+    },
+    {
+     "lane": 16,
+     "vp": 353,
+     "name": "CATANIA SLOT P1",
+     "cum": 6702,
+     "coma": 43,
+     "rapida": 9355,
+     "media": 9677,
+     "lenta": 18607
+    },
+    {
+     "lane": 6,
+     "vp": 349,
+     "name": "MRC SLOT P1",
+     "cum": 6648,
+     "coma": 26,
+     "rapida": 9180,
+     "media": 9796,
+     "lenta": 27148
+    },
+    {
+     "lane": 8,
+     "vp": 355,
+     "name": "PEG 1 P1",
+     "cum": 6576,
+     "coma": 82,
+     "rapida": 9280,
+     "media": 9637,
+     "lenta": 15030
+    },
+    {
+     "lane": 10,
+     "vp": 366,
+     "name": "ZOO SLOT P1",
+     "cum": 6572,
+     "coma": 28,
+     "rapida": 9176,
+     "media": 9341,
+     "lenta": 11545
+    },
+    {
+     "lane": 19,
+     "vp": 338,
+     "name": "DSCA1 P1",
+     "cum": 6516,
+     "coma": 63,
+     "rapida": 9541,
+     "media": 10120,
+     "lenta": 68922
+    },
+    {
+     "lane": 18,
+     "vp": 335,
+     "name": "DZERO TEAM P1",
+     "cum": 6502,
+     "coma": 58,
+     "rapida": 9434,
+     "media": 10220,
+     "lenta": 80690
+    },
+    {
+     "lane": 14,
+     "vp": 334,
+     "name": "CAMPIDOGLIO 1 P1",
+     "cum": 6449,
+     "coma": 6,
+     "rapida": 9600,
+     "media": 10259,
+     "lenta": 60036
+    },
+    {
+     "lane": 17,
+     "vp": 342,
+     "name": "BOSLOT ROSSO P1",
+     "cum": 6437,
+     "coma": 75,
+     "rapida": 9644,
+     "media": 9991,
+     "lenta": 42836
+    },
+    {
+     "lane": 3,
+     "vp": 332,
+     "name": "GARGANO SLOT CLUB P1",
+     "cum": 6331,
+     "coma": 13,
+     "rapida": 9597,
+     "media": 10305,
+     "lenta": 17943
+    },
+    {
+     "lane": 1,
+     "vp": 338,
+     "name": "PEG 2 P2",
+     "cum": 6310,
+     "coma": 84,
+     "rapida": 9559,
+     "media": 10099,
+     "lenta": 18781
+    },
+    {
+     "lane": 20,
+     "vp": 345,
+     "name": "IMOLA SLOT RACING P2",
+     "cum": 6269,
+     "coma": 61,
+     "rapida": 9529,
+     "media": 9923,
+     "lenta": 16706
+    },
+    {
+     "lane": 21,
+     "vp": 338,
+     "name": "RAL 2009 P2",
+     "cum": 6209,
+     "coma": 71,
+     "rapida": 9601,
+     "media": 10103,
+     "lenta": 44845
+    },
+    {
+     "lane": 15,
+     "vp": 331,
+     "name": "PIUSLOT CONEGLIANO P2",
+     "cum": 6207,
+     "coma": 80,
+     "rapida": 9871,
+     "media": 10332,
+     "lenta": 16995
+    },
+    {
+     "lane": 7,
+     "vp": 305,
+     "name": "FLBT P1",
+     "cum": 6168,
+     "coma": 89,
+     "rapida": 10094,
+     "media": 11203,
+     "lenta": 99513
+    },
+    {
+     "lane": 22,
+     "vp": 332,
+     "name": "BOSLOT BLU P2",
+     "cum": 6147,
+     "coma": 45,
+     "rapida": 9801,
+     "media": 10295,
+     "lenta": 15934
+    },
+    {
+     "lane": 11,
+     "vp": 323,
+     "name": "DSCA2 P2",
+     "cum": 6112,
+     "coma": 94,
+     "rapida": 9811,
+     "media": 10572,
+     "lenta": 63410
+    },
+    {
+     "lane": 12,
+     "vp": 250,
+     "name": "CMF P2",
+     "cum": 6093,
+     "coma": 0,
+     "rapida": 9660,
+     "media": 13735,
+     "lenta": 739450
+    },
+    {
+     "lane": 9,
+     "vp": 316,
+     "name": "TUSCANY 2 P2",
+     "cum": 6007,
+     "coma": 60,
+     "rapida": 9881,
+     "media": 10820,
+     "lenta": 79028
+    },
+    {
+     "lane": 13,
+     "vp": 223,
+     "name": "CALABRONI ROSSI ASTI P2",
+     "cum": 5875,
+     "coma": 553,
+     "rapida": 10358,
+     "media": 13753,
+     "lenta": 321644
+    },
+    {
+     "lane": 5,
+     "vp": 243,
+     "name": "JAMAICA BOB CAMPI P1",
+     "cum": 5399,
+     "coma": 999,
+     "rapida": 9612,
+     "media": 11150,
+     "lenta": 22146
+    }
+   ]
+  },
+  {
+   "n": 20,
+   "time": "09:02:16.283",
+   "startLine": 1447,
+   "rows": [
+    {
+     "lane": 1,
+     "vp": 360,
+     "name": "TUSCANY FACTORY P1",
+     "cum": 7120,
+     "coma": 62,
+     "rapida": 9322,
+     "media": 9501,
+     "lenta": 13633
+    },
+    {
+     "lane": 2,
+     "vp": 352,
+     "name": "SLOTMANIA PALMARES P1",
+     "cum": 7079,
+     "coma": 80,
+     "rapida": 9385,
+     "media": 9711,
+     "lenta": 13821
+    },
+    {
+     "lane": 14,
+     "vp": 346,
+     "name": "CATANIA SLOT P1",
+     "cum": 7048,
+     "coma": 72,
+     "rapida": 9468,
+     "media": 9876,
+     "lenta": 16633
+    },
+    {
+     "lane": 4,
+     "vp": 343,
+     "name": "MRC SLOT P1",
+     "cum": 6991,
+     "coma": 19,
+     "rapida": 9221,
+     "media": 9973,
+     "lenta": 48224
+    },
+    {
+     "lane": 8,
+     "vp": 353,
+     "name": "ZOO SLOT P1",
+     "cum": 6925,
+     "coma": 120,
+     "rapida": 9147,
+     "media": 9663,
+     "lenta": 71414
+    },
+    {
+     "lane": 6,
+     "vp": 338,
+     "name": "PEG 1 P1",
+     "cum": 6914,
+     "coma": 69,
+     "rapida": 9226,
+     "media": 10123,
+     "lenta": 109687
+    },
+    {
+     "lane": 21,
+     "vp": 341,
+     "name": "DSCA1 P1",
+     "cum": 6857,
+     "coma": 62,
+     "rapida": 9542,
+     "media": 10028,
+     "lenta": 32040
+    },
+    {
+     "lane": 16,
+     "vp": 334,
+     "name": "DZERO TEAM P1",
+     "cum": 6836,
+     "coma": 42,
+     "rapida": 9114,
+     "media": 10247,
+     "lenta": 224649
+    },
+    {
+     "lane": 12,
+     "vp": 354,
+     "name": "CAMPIDOGLIO 1 P1",
+     "cum": 6803,
+     "coma": 70,
+     "rapida": 9325,
+     "media": 9632,
+     "lenta": 14799
+    },
+    {
+     "lane": 19,
+     "vp": 344,
+     "name": "BOSLOT ROSSO P1",
+     "cum": 6781,
+     "coma": 6,
+     "rapida": 9532,
+     "media": 9962,
+     "lenta": 15111
+    },
+    {
+     "lane": 5,
+     "vp": 336,
+     "name": "GARGANO SLOT CLUB P1",
+     "cum": 6667,
+     "coma": 91,
+     "rapida": 9476,
+     "media": 10149,
+     "lenta": 14655
+    },
+    {
+     "lane": 3,
+     "vp": 348,
+     "name": "PEG 2 P2",
+     "cum": 6658,
+     "coma": 7,
+     "rapida": 9387,
+     "media": 9851,
+     "lenta": 27742
+    },
+    {
+     "lane": 18,
+     "vp": 337,
+     "name": "IMOLA SLOT RACING P2",
+     "cum": 6606,
+     "coma": 48,
+     "rapida": 9589,
+     "media": 10155,
+     "lenta": 42742
+    },
+    {
+     "lane": 22,
+     "vp": 329,
+     "name": "RAL 2009 P2",
+     "cum": 6538,
+     "coma": 9,
+     "rapida": 9870,
+     "media": 10405,
+     "lenta": 31553
+    },
+    {
+     "lane": 17,
+     "vp": 328,
+     "name": "PIUSLOT CONEGLIANO P2",
+     "cum": 6535,
+     "coma": 58,
+     "rapida": 9995,
+     "media": 10432,
+     "lenta": 44123
+    },
+    {
+     "lane": 20,
+     "vp": 327,
+     "name": "BOSLOT BLU P2",
+     "cum": 6474,
+     "coma": 41,
+     "rapida": 9889,
+     "media": 10462,
+     "lenta": 59688
+    },
+    {
+     "lane": 9,
+     "vp": 295,
+     "name": "FLBT P1",
+     "cum": 6463,
+     "coma": 59,
+     "rapida": 10004,
+     "media": 11610,
+     "lenta": 178245
+    },
+    {
+     "lane": 10,
+     "vp": 330,
+     "name": "CMF P2",
+     "cum": 6423,
+     "coma": 62,
+     "rapida": 9783,
+     "media": 10342,
+     "lenta": 17282
+    },
+    {
+     "lane": 13,
+     "vp": 307,
+     "name": "DSCA2 P2",
+     "cum": 6419,
+     "coma": 44,
+     "rapida": 10038,
+     "media": 11160,
+     "lenta": 61458
+    },
+    {
+     "lane": 11,
+     "vp": 326,
+     "name": "TUSCANY 2 P2",
+     "cum": 6333,
+     "coma": 3,
+     "rapida": 9971,
+     "media": 10505,
+     "lenta": 16188
+    },
+    {
+     "lane": 15,
+     "vp": 324,
+     "name": "CALABRONI ROSSI ASTI P2",
+     "cum": 6199,
+     "coma": 54,
+     "rapida": 9900,
+     "media": 10555,
+     "lenta": 84419
+    },
+    {
+     "lane": 7,
+     "vp": 182,
+     "name": "JAMAICA BOB CAMPI P1",
+     "cum": 5581,
+     "coma": 82,
+     "rapida": 10030,
+     "media": 11057,
+     "lenta": 28951
+    }
+   ]
+  },
+  {
+   "n": 21,
+   "time": "10:05:04.641",
+   "startLine": 1476,
+   "rows": [
+    {
+     "lane": 3,
+     "vp": 366,
+     "name": "TUSCANY FACTORY P1",
+     "cum": 7486,
+     "coma": 3,
+     "rapida": 9116,
+     "media": 9361,
+     "lenta": 13451
+    },
+    {
+     "lane": 1,
+     "vp": 356,
+     "name": "SLOTMANIA PALMARES P1",
+     "cum": 7435,
+     "coma": 79,
+     "rapida": 9300,
+     "media": 9602,
+     "lenta": 15519
+    },
+    {
+     "lane": 12,
+     "vp": 349,
+     "name": "CATANIA SLOT P1",
+     "cum": 7397,
+     "coma": 134,
+     "rapida": 9219,
+     "media": 9784,
+     "lenta": 79066
+    },
+    {
+     "lane": 2,
+     "vp": 355,
+     "name": "MRC SLOT P1",
+     "cum": 7346,
+     "coma": 7,
+     "rapida": 9322,
+     "media": 9637,
+     "lenta": 13080
+    },
+    {
+     "lane": 6,
+     "vp": 357,
+     "name": "ZOO SLOT P1",
+     "cum": 7282,
+     "coma": 20,
+     "rapida": 9244,
+     "media": 9598,
+     "lenta": 36362
+    },
+    {
+     "lane": 4,
+     "vp": 364,
+     "name": "PEG 1 P1",
+     "cum": 7278,
+     "coma": 44,
+     "rapida": 9173,
+     "media": 9403,
+     "lenta": 12180
+    },
+    {
+     "lane": 22,
+     "vp": 332,
+     "name": "DSCA1 P1",
+     "cum": 7189,
+     "coma": 83,
+     "rapida": 9626,
+     "media": 10297,
+     "lenta": 58579
+    },
+    {
+     "lane": 14,
+     "vp": 352,
+     "name": "DZERO TEAM P1",
+     "cum": 7188,
+     "coma": 82,
+     "rapida": 9195,
+     "media": 9706,
+     "lenta": 41543
+    },
+    {
+     "lane": 10,
+     "vp": 345,
+     "name": "CAMPIDOGLIO 1 P1",
+     "cum": 7148,
+     "coma": 90,
+     "rapida": 9370,
+     "media": 9906,
+     "lenta": 48830
+    },
+    {
+     "lane": 21,
+     "vp": 341,
+     "name": "BOSLOT ROSSO P1",
+     "cum": 7122,
+     "coma": 39,
+     "rapida": 9490,
+     "media": 10020,
+     "lenta": 67615
+    },
+    {
+     "lane": 7,
+     "vp": 341,
+     "name": "GARGANO SLOT CLUB P1",
+     "cum": 7008,
+     "coma": 52,
+     "rapida": 9434,
+     "media": 10042,
+     "lenta": 60818
+    },
+    {
+     "lane": 5,
+     "vp": 345,
+     "name": "PEG 2 P2",
+     "cum": 7003,
+     "coma": 65,
+     "rapida": 9436,
+     "media": 9896,
+     "lenta": 53722
+    },
+    {
+     "lane": 16,
+     "vp": 341,
+     "name": "IMOLA SLOT RACING P2",
+     "cum": 6947,
+     "coma": 40,
+     "rapida": 9563,
+     "media": 10032,
+     "lenta": 14837
+    },
+    {
+     "lane": 20,
+     "vp": 334,
+     "name": "RAL 2009 P2",
+     "cum": 6872,
+     "coma": 50,
+     "rapida": 9760,
+     "media": 10228,
+     "lenta": 16526
+    },
+    {
+     "lane": 19,
+     "vp": 331,
+     "name": "PIUSLOT CONEGLIANO P2",
+     "cum": 6866,
+     "coma": 43,
+     "rapida": 9771,
+     "media": 10336,
+     "lenta": 18898
+    },
+    {
+     "lane": 11,
+     "vp": 337,
+     "name": "FLBT P1",
+     "cum": 6800,
+     "coma": 23,
+     "rapida": 9606,
+     "media": 10159,
+     "lenta": 16251
+    },
+    {
+     "lane": 18,
+     "vp": 325,
+     "name": "BOSLOT BLU P2",
+     "cum": 6799,
+     "coma": 79,
+     "rapida": 9825,
+     "media": 10512,
+     "lenta": 15476
+    },
+    {
+     "lane": 8,
+     "vp": 334,
+     "name": "CMF P2",
+     "cum": 6757,
+     "coma": 0,
+     "rapida": 9666,
+     "media": 10258,
+     "lenta": 18603
+    },
+    {
+     "lane": 15,
+     "vp": 334,
+     "name": "DSCA2 P2",
+     "cum": 6753,
+     "coma": 63,
+     "rapida": 9976,
+     "media": 10234,
+     "lenta": 14061
+    },
+    {
+     "lane": 13,
+     "vp": 234,
+     "name": "TUSCANY 2 P2",
+     "cum": 6567,
+     "coma": 96,
+     "rapida": 9715,
+     "media": 14566,
+     "lenta": 585062
+    },
+    {
+     "lane": 17,
+     "vp": 326,
+     "name": "CALABRONI ROSSI ASTI P2",
+     "cum": 6525,
+     "coma": 100,
+     "rapida": 9931,
+     "media": 10476,
+     "lenta": 20243
+    },
+    {
+     "lane": 9,
+     "vp": 0,
+     "name": "JAMAICA BOB CAMPI P1",
+     "cum": 5581,
+     "coma": 82,
+     "rapida": 12867,
+     "media": null,
+     "lenta": null
+    }
+   ]
+  }
+ ],
+ "rot22": [
+  {
+   "lane": 5,
+   "name": "TUSCANY FACTORY P1",
+   "coma": 3
+  },
+  {
+   "lane": 3,
+   "name": "SLOTMANIA PALMARES P1",
+   "coma": 79
+  },
+  {
+   "lane": 10,
+   "name": "CATANIA SLOT P1",
+   "coma": 134
+  },
+  {
+   "lane": 1,
+   "name": "MRC SLOT P1",
+   "coma": 7
+  },
+  {
+   "lane": 4,
+   "name": "ZOO SLOT P1",
+   "coma": 20
+  },
+  {
+   "lane": 2,
+   "name": "PEG 1 P1",
+   "coma": 44
+  },
+  {
+   "lane": 20,
+   "name": "DSCA1 P1",
+   "coma": 83
+  },
+  {
+   "lane": 12,
+   "name": "DZERO TEAM P1",
+   "coma": 82
+  },
+  {
+   "lane": 8,
+   "name": "CAMPIDOGLIO 1 P1",
+   "coma": 90
+  },
+  {
+   "lane": 22,
+   "name": "BOSLOT ROSSO P1",
+   "coma": 39
+  },
+  {
+   "lane": 9,
+   "name": "GARGANO SLOT CLUB P1",
+   "coma": 52
+  },
+  {
+   "lane": 7,
+   "name": "PEG 2 P2",
+   "coma": 65
+  },
+  {
+   "lane": 14,
+   "name": "IMOLA SLOT RACING P2",
+   "coma": 40
+  },
+  {
+   "lane": 18,
+   "name": "RAL 2009 P2",
+   "coma": 50
+  },
+  {
+   "lane": 21,
+   "name": "PIUSLOT CONEGLIANO P2",
+   "coma": 43
+  },
+  {
+   "lane": 13,
+   "name": "FLBT P1",
+   "coma": 23
+  },
+  {
+   "lane": 16,
+   "name": "BOSLOT BLU P2",
+   "coma": 79
+  },
+  {
+   "lane": 6,
+   "name": "CMF P2",
+   "coma": 0
+  },
+  {
+   "lane": 17,
+   "name": "DSCA2 P2",
+   "coma": 63
+  },
+  {
+   "lane": 15,
+   "name": "TUSCANY 2 P2",
+   "coma": 96
+  },
+  {
+   "lane": 19,
+   "name": "CALABRONI ROSSI ASTI P2",
+   "coma": 100
+  },
+  {
+   "lane": 11,
+   "name": "JAMAICA BOB CAMPI P1",
+   "coma": 82
+  }
+ ]
+}
