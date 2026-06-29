@@ -14,10 +14,11 @@ const LANE_COLORS = [
 ];
 
 function lanesFromSettings() {
-  // 1. Con varios DS-300 (modo serial), suma los carriles de TODOS los circuitos.
-  //    Imprescindible para que en multi-DS aparezcan todos los carriles (si no,
-  //    el training prepara solo sim_lanes y desaparece el 2º circuito).
-  if (Settings.get('serial_mode', '') === 'serial') {
+  // 1. Con DS-300 (modo serial) o BART (modo bart), suma los carriles de TODOS
+  //    los circuitos definidos en circuits_serial. Imprescindible para que
+  //    aparezcan todos los carriles (si no, el training prepara solo sim_lanes y
+  //    desaparecen carriles: el 2º DS, o los 8 del Master BART).
+  if (['serial', 'bart'].includes(Settings.get('serial_mode', ''))) {
     try {
       const cfg = JSON.parse(Settings.get('circuits_serial', '[]'));
       if (Array.isArray(cfg) && cfg.length > 0) {

@@ -23,6 +23,8 @@ const P   = require('./protocol');
 const MIN_CROSSING_MS = 500;     // igual que el DS-300: descarta rebotes
 const MAX_LAP_MS      = 240000;  // > 240s → coche parado, no se registra
 const RECONNECT_MAX_MS = 10000;
+const MAX_GAP_FILL    = 50;      // tope de vueltas a rellenar: un salto mayor es
+                                 // un reset de contador (CLEAR/START), no un hueco
 
 // Nordic UART Service (UUIDs 128-bit en minúsculas sin guiones, formato noble)
 const NUS_SERVICE = '6e400001b5a3f393e0a9e50e24dcca9e';
@@ -89,7 +91,17 @@ class BartConnection {
     this._opts = opts;
     this._explicitClose = false;
     if (this._reconnectTimer) { clearTimeout(this._reconnectTimer); this._reconnectTimer = null; }
-    await this._openTransport();
+    try {
+      await this._openTransport();
+    } catch (e) {
+      // Primer intento fallido (puente/emulador aún no arriba, BLE inestable o el
+      // Master todavía sin anunciarse tras un corte): NO nos rendimos. Reintentamos
+      // en segundo plano con backoff —igual que tras una desconexión—, honrando el
+      // contrato que espera SerialService ("la conexión reintenta sola"). Rechazamos
+      // igual la promesa para que init() continúe con el resto de circuitos.
+      this._scheduleReconnect();
+      throw e;
+    }
   }
 
   _openTransport() {
@@ -135,8 +147,21 @@ class BartConnection {
       }
 
       const wantName = this._opts.name || 'BART_MST';
+      const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+      // connectAsync/discover pueden colgarse si el Master deja de ser
+      // conectable a media negociación: acotamos cada paso para no bloquear.
+      const withTimeout = (p, ms, label) => Promise.race([
+        p,
+        new Promise((_, rej) => setTimeout(() => rej(new Error(`${label} (timeout ${ms}ms)`)), ms)),
+      ]);
       let settled = false;
-      const fail = (e) => { if (!settled) { settled = true; reject(e); } };
+
+      const cleanup = () => {
+        if (this._bleScanTimer) { clearTimeout(this._bleScanTimer); this._bleScanTimer = null; }
+        try { noble.removeListener('discover', onDiscover); } catch {}
+        try { noble.stopScanning(); } catch {}
+      };
+      const fail = (e) => { cleanup(); if (!settled) { settled = true; reject(e); } };
 
       const startScan = () => {
         console.log(`[BART C${this._circuitIndex + 1}] escaneando BLE (NUS / "${wantName}")…`);
@@ -149,35 +174,57 @@ class BartConnection {
 
       const onDiscover = async (peripheral) => {
         const adv = peripheral.advertisement || {};
-        const matchSvc  = (adv.serviceUuids || []).map(_u).includes(NUS_SERVICE);
-        const matchName = adv.localName && adv.localName === wantName;
-        if (!matchSvc && !matchName) return;             // no es nuestro BART
+        // Si el periférico anuncia nombre, EXIGIMOS que sea el nuestro: así no nos
+        // enganchamos a OTRO Master BART en rango (p.ej. "BART_VERONA") que también
+        // expone el servicio NUS. El match por servicio queda solo como respaldo
+        // para periféricos que no anuncian nombre en el paquete de advertising.
+        const hasName   = !!adv.localName;
+        const matchName = hasName && adv.localName === wantName;
+        const matchSvc  = !hasName && (adv.serviceUuids || []).map(_u).includes(NUS_SERVICE);
+        if (!matchName && !matchSvc) return;             // no es nuestro BART
         noble.removeListener('discover', onDiscover);
         try { await noble.stopScanningAsync(); } catch {}
-        try {
-          this._peripheral = peripheral;
-          await peripheral.connectAsync();
-          const { characteristics } = await peripheral.discoverSomeServicesAndCharacteristicsAsync([NUS_SERVICE], [NUS_RX, NUS_TX]);
-          const rx = characteristics.find(c => _u(c.uuid) === NUS_RX);
-          const tx = characteristics.find(c => _u(c.uuid) === NUS_TX);
-          if (!rx || !tx) throw new Error('características NUS RX/TX no encontradas');
-          this._rxChar = rx;
-          tx.on('data', (d) => this._onData(d));
-          await tx.subscribeAsync();                     // CCCD notify on
-          peripheral.once('disconnect', () => {
+        // Ya no necesitamos el guardia de "no encontrado": a partir de aquí los
+        // timeouts por intento (withTimeout) acotan cada paso.
+        if (this._bleScanTimer) { clearTimeout(this._bleScanTimer); this._bleScanTimer = null; }
+
+        // El Master corta a veces el enlace justo al descubrir servicios
+        // ("Disconnected unknown"). Reintentamos connect+discover un par de veces
+        // antes de rendirnos al backoff de reconexión de _scheduleReconnect().
+        let lastErr = null;
+        for (let attempt = 1; attempt <= 3 && !this._explicitClose; attempt++) {
+          try {
+            this._peripheral = peripheral;
+            await withTimeout(peripheral.connectAsync(), 8000, 'connect');
+            const { characteristics } = await withTimeout(
+              peripheral.discoverSomeServicesAndCharacteristicsAsync([NUS_SERVICE], [NUS_RX, NUS_TX]),
+              8000, 'discover');
+            const rx = characteristics.find(c => _u(c.uuid) === NUS_RX);
+            const tx = characteristics.find(c => _u(c.uuid) === NUS_TX);
+            if (!rx || !tx) throw new Error('características NUS RX/TX no encontradas');
+            this._rxChar = rx;
+            tx.on('data', (d) => this._onData(d));
+            await withTimeout(tx.subscribeAsync(), 8000, 'subscribe');   // CCCD notify on
+            peripheral.once('disconnect', () => {
+              this._rxChar = null; this._peripheral = null;
+              this._setConnected(false);
+              this._scheduleReconnect();
+            });
+            this._reconnectMs = 1500;
+            this._setConnected(true);
+            console.log(`[BART C${this._circuitIndex + 1}] conectado por BLE a ${peripheral.address || wantName} (intento ${attempt})`);
+            this._sendSetup();
+            if (!settled) { settled = true; resolve(); }
+            return;
+          } catch (e) {
+            lastErr = e;
+            console.warn(`[BART C${this._circuitIndex + 1}] BLE intento ${attempt}/3: ${e.message}`);
+            try { await peripheral.disconnectAsync(); } catch {}
             this._rxChar = null; this._peripheral = null;
-            this._setConnected(false);
-            this._scheduleReconnect();
-          });
-          this._reconnectMs = 1500;
-          this._setConnected(true);
-          console.log(`[BART C${this._circuitIndex + 1}] conectado por BLE a ${peripheral.address || wantName}`);
-          this._sendSetup();
-          if (!settled) { settled = true; resolve(); }
-        } catch (e) {
-          console.warn(`[BART C${this._circuitIndex + 1}] BLE: ${e.message}`);
-          fail(e);
+            await sleep(400);
+          }
         }
+        fail(lastErr || new Error('BLE: no se pudo establecer el enlace'));
       };
 
       noble.on('discover', onDiscover);
@@ -187,9 +234,10 @@ class BartConnection {
         else fail(new Error('BLE no disponible: ' + s));
       });
 
-      // Si en 15s no aparece, falla (init no cae a sim en BART; reintenta solo).
+      // Si en 15s no aparece nada que encaje, falla y deja que connect() /
+      // _scheduleReconnect reintenten en segundo plano (no caemos a sim en BART).
       this._bleScanTimer = setTimeout(() => {
-        if (!settled) { try { noble.stopScanning(); } catch {} noble.removeListener('discover', onDiscover); fail(new Error('BLE: periférico no encontrado (timeout)')); }
+        if (!settled) fail(new Error('BLE: periférico no encontrado (timeout)'));
       }, 15000);
     });
   }
@@ -280,7 +328,12 @@ class BartConnection {
 
   // A5 01 01 lane laps[2] lap_ms[2] ts_d10[2] reserved[2] CRC
   _onLap(frame) {
-    const localLane = frame[3];
+    // El hardware real empaqueta el carril en frame[3] como (device << 4 | lane),
+    // con lane 1-based y 4 carriles por dispositivo: device 0 → 1-4, device 1 →
+    // 0x11/0x12 (= carriles 5-6), etc. Lo desempaquetamos a un índice lineal
+    // 1-based. Para un único device (nibble alto 0) esto es idéntico a frame[3].
+    const raw       = frame[3];
+    const localLane = (raw >> 4) * 4 + (raw & 0x0F);
     const laps      = frame.readUInt16LE(4);
     const lapMsRaw  = frame.readUInt16LE(6);
     const ts        = Date.now();                          // NUESTRO reloj es la verdad
@@ -292,15 +345,21 @@ class BartConnection {
     // Relleno de huecos por el contador acumulado (maneja wrap de uint16).
     const prev = this._lastLapByLane.get(localLane);
     if (prev != null) {
-      const delta = (laps - prev + 0x10000) & 0xFFFF;
-      if (delta > 1) {
-        const missed = delta - 1;
+      const delta  = (laps - prev + 0x10000) & 0xFFFF;
+      const missed = delta - 1;
+      // Un hueco real son unas pocas vueltas perdidas (paquetes BLE caídos). Un
+      // salto enorme NO es un hueco: es un reset de contador (CLEAR/START al dar
+      // GO) o un resync — rellenarlo inyectaría decenas de miles de cruces
+      // fantasma y congelaría todo. En ese caso solo rebaselínamos sin rellenar.
+      if (delta > 1 && missed <= MAX_GAP_FILL) {
         const stats  = this._lapStatsByLane.get(localLane);
         const avgMs  = (stats && stats.count > 0) ? (stats.sum / stats.count) : null;
         console.warn(`[BART C${this._circuitIndex + 1}] Lane ${localLane} → global ${globalLane} — hueco detectado (prev=${prev}, now=${laps}, ${missed} perdidas, avg=${avgMs ? avgMs.toFixed(1) + 'ms' : 'n/a'})`);
         for (let k = 0; k < missed; k++) {
           this._onCrossing({ lane: globalLane, timestamp: ts, lapTimeMs: avgMs, missed: true });
         }
+      } else if (delta > 1) {
+        console.warn(`[BART C${this._circuitIndex + 1}] Lane ${localLane} → global ${globalLane} — contador reseteado/resync (prev=${prev}, now=${laps}) — sin relleno`);
       }
     }
     this._lastLapByLane.set(localLane, laps);
