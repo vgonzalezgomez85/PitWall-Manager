@@ -114,18 +114,28 @@ class RaceController {
 
     // Reglas de turnos por piloto (solo si type === 'championship'; en otros
     // casos se guardan a 0 = sin límite y se ignoran).
-    let driverMinMs = 0, driverMaxMs = 0, lockoutMs = 120000;
+    let driverMinMs = 0, driverMaxMs = 0, lockoutMs = 120000, driverMaxRuns = 0;
     if (type === 'championship') {
       const minMin = parseInt(req.body.driver_min_total_min, 10);
       const maxMin = parseInt(req.body.driver_max_total_min, 10);
       const lockS  = parseInt(req.body.driver_change_lockout_s, 10);
+      const maxRuns = parseInt(req.body.driver_max_runs, 10);
       if (!isNaN(minMin) && minMin > 0) driverMinMs = minMin * 60 * 1000;
       if (!isNaN(maxMin) && maxMin > 0) driverMaxMs = maxMin * 60 * 1000;
       if (!isNaN(lockS)  && lockS  >= 0) lockoutMs = lockS * 1000;
+      if (!isNaN(maxRuns) && maxRuns > 0) driverMaxRuns = maxRuns;
       // Validación coherencia: max debe ser >= min si ambos > 0
       if (driverMinMs > 0 && driverMaxMs > 0 && driverMaxMs < driverMinMs) {
         errors.push('driver_max_below_min');
       }
+    }
+
+    // El formato se DERIVA del tipo (ya no es una elección del usuario):
+    //   Sprint (club) → individual · Resistencia (championship) → equipos.
+    const format = type === 'championship' ? 'team' : 'individual';
+    const LicenseService = require('../services/LicenseService');
+    if (format === 'team' && !LicenseService.has('team_races')) {
+      errors.push('team_requires_license');
     }
 
     if (errors.length) {
@@ -139,7 +149,7 @@ class RaceController {
     }
 
     req.session.wizard = {
-      name: trimmedName, type,
+      name: trimmedName, type, format,
       lanes_count: totalLanes,
       circuits,
       manga_duration_minutes: duration,
@@ -150,55 +160,50 @@ class RaceController {
       driver_min_total_ms:      driverMinMs,
       driver_max_total_ms:      driverMaxMs,
       driver_change_lockout_ms: lockoutMs,
+      driver_max_runs:          driverMaxRuns,
     };
-    res.redirect('/races/new/step2');
+    // El paso 2 (Formato) ya no existe: enrutamos directamente.
+    return RaceController._routeAfterFormat(req, res);
   }
 
-  // ─── Step 2: format ───────────────────────────────────────────────────────
+  // ─── Step 2 (Formato) — ELIMINADO del flujo. El formato se deriva del tipo en
+  //     postStep1. Los handlers se conservan como reenvío por compatibilidad. ──
 
   static newStep2(req, res) {
-    if (!req.session.wizard?.name) return res.redirect('/races/new');
-    res.render('races/new-step2', { t: req.t, wizard: req.session.wizard, errors: [] });
+    if (!req.session.wizard?.format) return res.redirect('/races/new');
+    return RaceController._routeAfterFormat(req, res);
   }
 
   static postStep2(req, res) {
-    if (!req.session.wizard?.name) return res.redirect('/races/new');
-    const { format } = req.body;
-    if (!['individual', 'team'].includes(format)) {
-      return res.render('races/new-step2', { t: req.t, wizard: req.session.wizard, errors: ['format_required'] });
-    }
-    const LicenseService = require('../services/LicenseService');
-    if (format === 'team' && !LicenseService.has('team_races')) {
-      const lang = req.session?.lang || 'es';
-      req.session.flash = { type: 'error', text: (lang === 'es'
-        ? 'Las carreras por equipos requieren licencia Pro.'
-        : 'Team races require a Pro license.')
-        + ' <a href="/license">Ver licencia</a>' };
-      return res.redirect('/races/new/step2');
-    }
-    req.session.wizard.format = format;
+    if (!req.session.wizard?.format) return res.redirect('/races/new');
+    return RaceController._routeAfterFormat(req, res);
+  }
 
-    // Lane sequence now comes from the assigned circuit (or natural order
-    // as fallback). The dedicated step3 form is no longer shown.
+  // Enrutado tras fijar el formato: con circuito asignado la secuencia la manda
+  // el circuito y el paso 3 se salta (no accesible ni con "atrás"); en carrera
+  // manual va al editor de secuencia (paso 3).
+  static _routeAfterFormat(req, res) {
     const w = req.session.wizard;
-    let seq = null;
     if (w.circuit_id) {
       const Circuit = require('../models/Circuit');
       const c = Circuit.findById(w.circuit_id);
-      if (c) seq = Circuit.getLaneSequence(c);
+      let seq = c ? Circuit.getLaneSequence(c) : null;
+      if (!seq || seq.length === 0) seq = defaultSequence(w.lanes_count);
+      w.lane_sequence = seq;
+      return res.redirect(w.has_pole ? '/races/new/step4' : '/races/new/confirm');
     }
-    if (!seq || seq.length === 0) seq = defaultSequence(w.lanes_count);
-    w.lane_sequence = seq;
-
-    if (w.has_pole) return res.redirect('/races/new/step4');
-    return res.redirect('/races/new/confirm');
+    if (!w.lane_sequence || !w.lane_sequence.length) w.lane_sequence = defaultSequence(w.lanes_count);
+    return res.redirect('/races/new/step3');
   }
 
-  // ─── Step 3: lane rotation sequence (legacy — kept for races without circuit) ─
+  // ─── Step 3: lane rotation sequence (solo carreras manuales sin circuito) ─────
 
   static newStep3(req, res) {
     if (!req.session.wizard?.format) return res.redirect('/races/new');
     const w = req.session.wizard;
+    // Con circuito asignado la secuencia es la del circuito: el paso 3 no se
+    // muestra ni es accesible (redirige hacia delante).
+    if (w.circuit_id) return res.redirect(w.has_pole ? '/races/new/step4' : '/races/new/confirm');
     const seq = w.lane_sequence || defaultSequence(w.lanes_count);
     const circuits = w.circuits || [w.lanes_count];
     res.render('races/new-step3-sequence', { t: req.t, wizard: w, sequence: seq, circuits, errors: [] });
@@ -206,6 +211,10 @@ class RaceController {
 
   static postStep3(req, res) {
     if (!req.session.wizard?.format) return res.redirect('/races/new');
+    // Blindaje: una carrera con circuito no edita secuencia aquí.
+    if (req.session.wizard.circuit_id) {
+      return res.redirect(req.session.wizard.has_pole ? '/races/new/step4' : '/races/new/confirm');
+    }
     const raw = req.body.lane_sequence || '';
     // Allow 0 for explicit rest slots
     const seq = raw.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n >= 0);
@@ -237,8 +246,10 @@ class RaceController {
     if (!w?.lane_sequence) return res.redirect('/races/new');
     if (!w.has_pole)       return res.redirect('/races/new/confirm');
     const DriverProfile = require('../models/DriverProfile');
+    const TeamCatalog   = require('../models/TeamCatalog');
     res.render('races/new-step4', {
-      t: req.t, wizard: w, LANE_COLORS, profiles: DriverProfile.findAll(), errors: [], body: {}
+      t: req.t, wizard: w, LANE_COLORS, profiles: DriverProfile.findAll(),
+      teamsCatalog: TeamCatalog.findAll(), errors: [], body: {}
     });
   }
 
@@ -270,8 +281,10 @@ class RaceController {
     }
 
     if (errors.length) {
+      const TeamCatalog = require('../models/TeamCatalog');
       return res.render('races/new-step4', {
-        t: req.t, wizard: w, LANE_COLORS, profiles: DriverProfile.findAll(), errors, body: req.body
+        t: req.t, wizard: w, LANE_COLORS, profiles: DriverProfile.findAll(),
+        teamsCatalog: TeamCatalog.findAll(), errors, body: req.body
       });
     }
 
@@ -310,6 +323,7 @@ class RaceController {
       driver_min_total_ms:      wizard.driver_min_total_ms      || 0,
       driver_max_total_ms:      wizard.driver_max_total_ms      || 0,
       driver_change_lockout_ms: wizard.driver_change_lockout_ms || 120000,
+      driver_max_runs:          wizard.driver_max_runs          || 0,
     });
 
     // If pole enabled, create session + entries from wizard participants
@@ -398,6 +412,56 @@ class RaceController {
   // lap, for races configured by hand). Manga duration is NOT editable here —
   // it's taken live from the DS-300 GO signal.
 
+  // Nº de descansos (slots de carril 0) que tiene la carrera. Prioriza ceros
+  // explícitos en la secuencia; si no, lo deriva de una manga existente o de
+  // las inscripciones de pole; si no hay nada, 0.
+  static _restSlots(race, activeLanesLen) {
+    const db = require('../config/database');
+    let seq = []; try { seq = JSON.parse(race.lane_sequence || '[]'); } catch {}
+    const explicit = seq.filter(x => x === 0).length;
+    if (explicit > 0) return explicit;
+    const mg = db.prepare('SELECT id FROM mangas WHERE race_id=? ORDER BY id ASC LIMIT 1').get(race.id);
+    if (mg) {
+      const slots = db.prepare('SELECT COUNT(*) c FROM manga_lanes WHERE manga_id=?').get(mg.id).c;
+      return Math.max(0, slots - activeLanesLen);
+    }
+    const pe = db.prepare('SELECT COUNT(*) c FROM pole_entries pe JOIN pole_sessions ps ON ps.id=pe.pole_session_id WHERE ps.race_id=?').get(race.id);
+    return Math.max(0, (pe.c || 0) - activeLanesLen);
+  }
+
+  // Secuencia para el editor: la guardada + tantos descansos (0) como falten
+  // para llegar al total de descansos de la carrera (añadidos al final).
+  static _editorSequence(race, restCount) {
+    let seq = []; try { seq = JSON.parse(race.lane_sequence || '[]'); } catch {}
+    const have = seq.filter(x => x === 0).length;
+    if (have < restCount) seq = [...seq, ...Array(restCount - have).fill(0)];
+    return seq;
+  }
+
+  // Regenera el horario de las tandas PENDIENTES (todas sus mangas pending) con
+  // la secuencia actual de la carrera, conservando equipos/pilotos y su orden.
+  // No toca tandas con mangas ya corridas. `race` debe estar recién leído.
+  static _regeneratePendingTandas(race) {
+    const db    = require('../config/database');
+    const Manga = require('../models/Manga');
+    const laneSequence = Race.getLaneSequence(race);
+    const tandas = db.prepare('SELECT id FROM tandas WHERE race_id = ?').all(race.id);
+    for (const t of tandas) {
+      const mangas = db.prepare('SELECT status FROM mangas WHERE tanda_id = ?').all(t.id);
+      if (mangas.length && !mangas.every(m => m.status === 'pending')) continue;  // hay mangas corridas → no tocar
+      const entities = race.format === 'team'
+        ? db.prepare('SELECT id, name FROM teams WHERE tanda_id = ? ORDER BY id ASC').all(t.id).map(x => ({ id: x.id, type: 'team', name: x.name }))
+        : db.prepare('SELECT id, name FROM drivers WHERE tanda_id = ? AND team_id IS NULL ORDER BY id ASC').all(t.id).map(x => ({ id: x.id, type: 'driver', name: x.name }));
+      if (!entities.length) continue;
+      // Borra también las vueltas de esas mangas: la FK es ON DELETE SET NULL,
+      // así que sin esto quedarían huérfanas (manga_id NULL) y contaminarían
+      // medias/proyección de la carrera.
+      db.prepare('DELETE FROM laps WHERE manga_id IN (SELECT id FROM mangas WHERE tanda_id = ?)').run(t.id);
+      db.prepare('DELETE FROM mangas WHERE tanda_id = ?').run(t.id);
+      Manga.persistSchedule(t.id, race.id, Manga.buildSchedule(laneSequence, entities));
+    }
+  }
+
   static editForm(req, res) {
     const race = Race.findById(req.params.id);
     if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
@@ -408,9 +472,13 @@ class RaceController {
       const times = Circuit.getCategoryTimes(c.id);
       if (times.length) circuitCategoryTimes[c.id] = times;
     }
+    const activeLen  = Race.getLaneSequence(race).filter(l => l > 0).length;
+    const restCount  = RaceController._restSlots(race, activeLen);
     res.render('races/edit', {
       t: req.t, race, savedCircuits, circuitCategoryTimes,
       hasLaps: Race.hasRecordedLaps(race.id), errors: [],
+      laneSequence: RaceController._editorSequence(race, restCount),
+      restCount, LANE_COLORS,
     });
   }
 
@@ -446,10 +514,31 @@ class RaceController {
         // Invalid/missing circuit → keep the current one untouched.
       }
     } else {
-      // Manual race: just the minimum lap threshold. Safe to change anytime —
-      // it only affects detection from the next manga onward.
+      // Manual race: minimum lap threshold…
       const minLapS = parseFloat(req.body.min_lap_s);
       patch.min_lap_ms = (!isNaN(minLapS) && minLapS > 0) ? Math.round(minLapS * 1000) : 0;
+
+      // …y reordenar la SECUENCIA de carriles (circuito manual, sin catálogo).
+      // Solo se permite REORDENAR: el nuevo orden debe contener exactamente los
+      // mismos carriles que el actual (mismo multiconjunto), no añadir/quitar.
+      if (req.body.lane_sequence != null && String(req.body.lane_sequence).trim() !== '') {
+        const current   = Race.getLaneSequence(race);
+        const activeLen  = current.filter(l => l > 0).length;
+        const expectRest = RaceController._restSlots(race, activeLen);
+        let seq = [];
+        try { seq = JSON.parse(req.body.lane_sequence); } catch {}
+        if (!Array.isArray(seq)) seq = String(req.body.lane_sequence).split(',');
+        seq = seq.map(n => parseInt(n, 10)).filter(n => Number.isFinite(n) && n >= 0);
+        const lanesOf = a => a.filter(x => x > 0);
+        const restsOf = a => a.filter(x => x === 0).length;
+        const norm    = a => [...a].sort((x, y) => x - y).join(',');
+        // Solo reordenar: mismos carriles (>0) y mismo nº de descansos (0).
+        if (seq.length && norm(lanesOf(seq)) === norm(lanesOf(current)) && restsOf(seq) === expectRest) {
+          patch.lane_sequence = JSON.stringify(seq);
+        } else {
+          errors.push('sequence_invalid');
+        }
+      }
     }
 
     if (errors.length) {
@@ -459,12 +548,23 @@ class RaceController {
         const times = Circuit.getCategoryTimes(c.id);
         if (times.length) circuitCategoryTimes[c.id] = times;
       }
+      const activeLen = Race.getLaneSequence(race).filter(l => l > 0).length;
+      const restCount = RaceController._restSlots(race, activeLen);
       return res.render('races/edit', {
         t: req.t, race: { ...race, name }, savedCircuits, circuitCategoryTimes, hasLaps, errors,
+        laneSequence: RaceController._editorSequence(race, restCount), restCount, LANE_COLORS,
       });
     }
 
     Race.update(race.id, patch);
+
+    // Si cambió la secuencia de carriles, regenerar las tandas pendientes para
+    // que la rotación (y los descansos) reflejen el nuevo orden al instante.
+    if (patch.lane_sequence) {
+      try { RaceController._regeneratePendingTandas(Race.findById(race.id)); } catch (e) {
+        console.warn('[RaceController] regen tandas falló:', e.message);
+      }
+    }
     res.redirect(`/races/${race.id}`);
   }
 

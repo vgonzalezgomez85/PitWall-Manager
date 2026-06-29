@@ -117,6 +117,7 @@ const migrations = [
   `ALTER TABLE laps     ADD COLUMN manga_id    INTEGER REFERENCES mangas(id) ON DELETE SET NULL`,
   `ALTER TABLE laps     ADD COLUMN team_id     INTEGER REFERENCES teams(id)  ON DELETE SET NULL`,
   `ALTER TABLE teams    ADD COLUMN tanda_id    INTEGER REFERENCES tandas(id) ON DELETE SET NULL`,
+  `ALTER TABLE teams    ADD COLUMN country     TEXT`,
   `ALTER TABLE drivers  ADD COLUMN tanda_id    INTEGER REFERENCES tandas(id) ON DELETE SET NULL`,
   `ALTER TABLE races    ADD COLUMN lane_sequence          TEXT NOT NULL DEFAULT '[]'`,
   `ALTER TABLE races    ADD COLUMN manga_duration_minutes INTEGER NOT NULL DEFAULT 5`,
@@ -308,6 +309,8 @@ const migrations = [
   `ALTER TABLE driver_shifts ADD COLUMN ended_at_ms   INTEGER`,
   `ALTER TABLE driver_shifts ADD COLUMN driving_ms    INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE driver_shifts ADD COLUMN pre_armed     INTEGER NOT NULL DEFAULT 0`,
+  // manual=1: turno creado a mano (corrección) porque el equipo olvidó fichar.
+  `ALTER TABLE driver_shifts ADD COLUMN manual        INTEGER NOT NULL DEFAULT 0`,
   `CREATE INDEX IF NOT EXISTS idx_driver_shifts_open ON driver_shifts(manga_id, lane) WHERE ended_at_ms IS NULL`,
 
   // ── Race: límites de tiempo por piloto + ventana de bloqueo ─────────────
@@ -318,6 +321,9 @@ const migrations = [
   `ALTER TABLE races ADD COLUMN driver_min_total_ms     INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE races ADD COLUMN driver_max_total_ms     INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE races ADD COLUMN driver_change_lockout_ms INTEGER NOT NULL DEFAULT 120000`,
+  // driver_max_runs: nº máximo de turnos (relevos) que puede hacer un piloto a
+  //   lo largo de toda la carrera. 0 = sin límite. Solo aviso visual.
+  `ALTER TABLE races ADD COLUMN driver_max_runs INTEGER NOT NULL DEFAULT 0`,
   `CREATE INDEX IF NOT EXISTS idx_circuit_cat_times_circuit ON circuit_category_times(circuit_id, category_id)`,
   // Duración real (ms) que el DS-300 mandó al GO de cada manga. La escribe
   // TimingService.startManga. La usa la clasificación estimada para no caer al
@@ -328,6 +334,9 @@ const migrations = [
   // en meta es una estimación: (fin − último cruce) / media limpia del carril.
   // Se acumula por entidad en la clasificación como desempate a igual vueltas.
   `ALTER TABLE manga_lanes ADD COLUMN coma REAL NOT NULL DEFAULT 0`,
+  // PIN de 4 dígitos por equipo para el cliente web "Lap" (timing del equipo
+  // desde el móvil). Se genera bajo demanda; ver Team.ensureLapPins.
+  `ALTER TABLE teams ADD COLUMN lap_pin TEXT`,
 ];
 for (const sql of migrations) {
   try {

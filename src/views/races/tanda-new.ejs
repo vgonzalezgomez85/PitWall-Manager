@@ -184,24 +184,49 @@
             </div>
           </div>
 
-          <!-- Right: lane slots -->
-          <div style="flex:1;min-width:260px">
+          <!-- Right: tablero de carriles/descansos (estilo post-pole) -->
+          <div style="flex:1;min-width:280px">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;flex-wrap:wrap;gap:.5rem">
               <span class="form-label" style="margin:0"><%= lang === 'es' ? 'Asignación de carriles' : 'Lane assignment' %></span>
-              <button type="button" id="btnAddSlot" class="btn btn--ghost btn--sm">
-                + <%= lang === 'es' ? 'Añadir participante' : 'Add participant' %>
+              <button type="button" id="btnAddRest" class="btn btn--ghost btn--sm">
+                💤 <%= lang === 'es' ? 'Añadir descanso' : 'Add rest' %>
               </button>
             </div>
             <div id="restInfoTeams" class="alert" style="display:none;background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.25);color:#58a6ff;margin-bottom:.75rem;font-size:.85rem">
             </div>
-            <div id="slotList" style="display:flex;flex-direction:column;gap:.4rem">
-              <% activeLanes.forEach((lane, i) => { %>
-                <div class="lane-slot" data-slot="<%= i %>" data-lane="<%= lane %>">
-                  <span class="slot-lane-badge" style="background:<%= LANE_COLORS[lane-1] %>"><%= lane %></span>
-                  <span class="slot-empty-label"><%= lang === 'es' ? 'Arrastra un equipo aquí' : 'Drag a team here' %></span>
-                  <div class="slot-team" style="display:none"></div>
-                  <button type="button" class="slot-remove btn btn--danger btn--sm" style="display:none" title="<%= lang === 'es' ? 'Quitar' : 'Remove' %>">✕</button>
-                </div>
+            <p class="form-hint" id="pickHint" style="margin-bottom:.6rem">
+              <%= lang === 'es'
+                ? 'Selecciona un equipo de la izquierda y pulsa un carril o descanso. Pulsa uno asignado para liberarlo.'
+                : 'Select a team on the left and click a lane or rest. Click an assigned one to free it.' %>
+            </p>
+            <div class="tanda-board" id="laneGrid">
+              <% activeLanes.forEach(lane => { %>
+                <button type="button" class="tanda-lane-btn" id="lane-btn-<%= lane %>" data-lane="<%= lane %>" style="--lane-color:<%= LANE_COLORS[lane-1] %>">
+                  <span class="tanda-lane-num"><%= lane %></span>
+                  <span class="tanda-lane-owner" id="lane-owner-<%= lane %>"></span>
+                </button>
+              <% }) %>
+              <%# Descansos que ya trae la secuencia de la carrera (circuito con DSC):
+                  se muestran ya puestos y etiquetados por circuito (n/total). %>
+              <%
+                const _restIdxs = [];
+                laneSequence.forEach((ln, i) => { if (ln === 0) _restIdxs.push(i); });
+                const _restTotByC = {};
+                _restIdxs.forEach(i => { const ci = _dscCircuitFor(i); _restTotByC[ci] = (_restTotByC[ci] || 0) + 1; });
+                const _restNthByC = {};
+              %>
+              <% _restIdxs.forEach((i, r) => {
+                   const ci = _dscCircuitFor(i);
+                   _restNthByC[ci] = (_restNthByC[ci] || 0) + 1;
+                   const _lbl = (lang === 'es' ? 'DSC ' : 'REST ') + _restNthByC[ci] + '/' + _restTotByC[ci]
+                              + (_numCircuits > 1 ? ' · C' + (ci + 1) : '');
+              %>
+                <button type="button" class="tanda-lane-btn tanda-lane-btn--rest" data-rest="<%= r %>">
+                  <span class="tanda-rest-remove" title="<%= lang === 'es' ? 'Quitar descanso' : 'Remove rest' %>">✕</span>
+                  <span class="tanda-lane-num">💤</span>
+                  <span class="tanda-rest-label"><%= _lbl %></span>
+                  <span class="tanda-lane-owner"></span>
+                </button>
               <% }) %>
             </div>
           </div>
@@ -415,159 +440,168 @@ document.getElementById('driversGrid')?.addEventListener('click', e => {
   }
 });
 
-// ── Team drag-drop assignment ─────────────────────────────────────────────────
+// ── Team lane assignment (tablero estilo post-pole, clic) ─────────────────────
 if (document.getElementById('teamAssignUI')) {
   const ACTIVE_LANES = <%- JSON.stringify(laneSequence.filter(l => l !== 0)) %>;
-  const slotList     = document.getElementById('slotList');
+  const laneGrid     = document.getElementById('laneGrid');
   const hiddenInputs = document.getElementById('hiddenInputs');
   const restInfoEl   = document.getElementById('restInfoTeams');
   const catalogList  = document.getElementById('catalogList');
+  const pickHint     = document.getElementById('pickHint');
+  const PICK_HINT    = pickHint ? pickHint.textContent : '';
+  let selected = null;     // { id, name, country, el }
+  // Arranca tras los descansos ya pre-renderizados (los que trae la secuencia).
+  let restCounter = laneGrid.querySelectorAll('.tanda-lane-btn--rest').length;
 
-  const SENYERA = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 6" width="20" height="13" style="border-radius:2px;flex-shrink:0"><rect width="9" height="6" fill="#FCDD09"/><rect y="0.667" width="9" height="0.889" fill="#DA121A"/><rect y="2.222" width="9" height="0.889" fill="#DA121A"/><rect y="3.778" width="9" height="0.889" fill="#DA121A"/><rect y="5.333" width="9" height="0.667" fill="#DA121A"/></svg>`;
+  function resetHint() {
+    if (!pickHint) return;
+    pickHint.textContent = PICK_HINT; pickHint.style.color = '';
+  }
+
+  const SENYERA = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 6" width="18" height="12" style="border-radius:2px;flex-shrink:0"><rect width="9" height="6" fill="#FCDD09"/><rect y="0.667" width="9" height="0.889" fill="#DA121A"/><rect y="2.222" width="9" height="0.889" fill="#DA121A"/><rect y="3.778" width="9" height="0.889" fill="#DA121A"/><rect y="5.333" width="9" height="0.667" fill="#DA121A"/></svg>`;
 
   function flagHtml(country) {
     if (!country) return '';
     const flag = country.split('|')[1];
     if (!flag) return '';
     if (flag === '__SVG__') return SENYERA;
-    return `<span style="font-size:1.1rem;line-height:1">${flag}</span>`;
+    return `<span style="font-size:1rem;line-height:1">${flag}</span>`;
   }
 
+  // El contrato del controlador: team_catalog_ids[] en orden [carriles activos
+  // (orden de secuencia), luego descansos]. Igual que el order[] post-pole.
   function syncHidden() {
     hiddenInputs.innerHTML = '';
-    slotList.querySelectorAll('.lane-slot').forEach(slot => {
-      const tid = slot.dataset.assignedTeamId;
-      if (tid) {
-        const inp = document.createElement('input');
-        inp.type  = 'hidden';
-        inp.name  = 'team_catalog_ids[]';
-        inp.value = tid;
-        hiddenInputs.appendChild(inp);
-      }
+    const add = tid => {
+      const inp = document.createElement('input');
+      inp.type = 'hidden'; inp.name = 'team_catalog_ids[]'; inp.value = tid;
+      hiddenInputs.appendChild(inp);
+    };
+    ACTIVE_LANES.forEach(lane => {
+      const btn = document.getElementById('lane-btn-' + lane);
+      if (btn && btn.dataset.teamId) add(btn.dataset.teamId);
+    });
+    laneGrid.querySelectorAll('.tanda-lane-btn--rest').forEach(btn => {
+      if (btn.dataset.teamId) add(btn.dataset.teamId);
     });
   }
 
   function updateRestBanner() {
-    const total  = slotList.querySelectorAll('.lane-slot').length;
-    const lanes  = ACTIVE_LANES.length;
-    const filled = slotList.querySelectorAll('.lane-slot[data-assigned-team-id]').length;
-    if (total > lanes) {
+    const lanes = ACTIVE_LANES.length;
+    const restSlots = laneGrid.querySelectorAll('.tanda-lane-btn--rest').length;
+    const total = lanes + restSlots;
+    if (restSlots > 0) {
       restInfoEl.style.display = '';
       restInfoEl.textContent = LANG === 'es'
-        ? `Con ${total} equipos y ${lanes} carriles: ${total - lanes} descansarán por manga. Ciclo = ${total} mangas.`
-        : `With ${total} teams and ${lanes} lanes: ${total - lanes} will rest per heat. Cycle = ${total} heats.`;
+        ? `Con ${total} equipos y ${lanes} carriles: ${restSlots} descansarán por manga. Ciclo = ${total} mangas.`
+        : `With ${total} teams and ${lanes} lanes: ${restSlots} will rest per heat. Cycle = ${total} heats.`;
     } else {
       restInfoEl.style.display = 'none';
     }
   }
 
-  function greyUsed() {
-    const usedIds = new Set(
-      [...slotList.querySelectorAll('.lane-slot[data-assigned-team-id]')]
-        .map(s => s.dataset.assignedTeamId)
-    );
+  function markUsed() {
+    const usedIds = new Set();
+    laneGrid.querySelectorAll('.tanda-lane-btn').forEach(b => {
+      if (b.dataset.teamId) usedIds.add(b.dataset.teamId);
+    });
     catalogList.querySelectorAll('.catalog-card').forEach(card => {
       const used = usedIds.has(card.dataset.teamId);
-      card.style.opacity  = used ? '0.35' : '1';
-      card.draggable      = !used;
+      card.classList.toggle('catalog-card--used', used);
+      if (used && selected && selected.el === card) clearSelection();
     });
   }
 
-  function assignTeam(slot, teamId, teamName, teamCountry) {
-    slot.dataset.assignedTeamId = teamId;
-    slot.querySelector('.slot-empty-label').style.display = 'none';
-    const teamDiv = slot.querySelector('.slot-team');
-    teamDiv.style.display = 'flex';
-    teamDiv.innerHTML = `${flagHtml(teamCountry)}<span style="flex:1;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${teamName}</span>`;
-    slot.querySelector('.slot-remove').style.display = '';
-    greyUsed();
-    syncHidden();
+  function clearSelection() {
+    if (selected && selected.el) selected.el.classList.remove('catalog-card--selected');
+    selected = null;
+  }
+
+  function selectTeam(card) {
+    if (card.classList.contains('catalog-card--used')) return;
+    if (selected && selected.el === card) { clearSelection(); return; }
+    clearSelection();
+    selected = {
+      id: card.dataset.teamId, name: card.dataset.teamName,
+      country: card.dataset.teamCountry, el: card
+    };
+    card.classList.add('catalog-card--selected');
+  }
+
+  function assignBtn(btn, team) {
+    btn.dataset.teamId = team.id;
+    btn.classList.add('tanda-lane-btn--taken');
+    btn.querySelector('.tanda-lane-owner').innerHTML =
+      `${flagHtml(team.country)}<span>${team.name}</span>`;
+    markUsed(); syncHidden(); updateRestBanner();
+  }
+
+  function unassignBtn(btn) {
+    delete btn.dataset.teamId;
+    btn.classList.remove('tanda-lane-btn--taken');
+    btn.querySelector('.tanda-lane-owner').innerHTML = '';
+    markUsed(); syncHidden(); updateRestBanner();
+  }
+
+  function addRestButton() {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'tanda-lane-btn tanda-lane-btn--rest';
+    btn.dataset.rest = restCounter++;
+    btn.innerHTML =
+      `<span class="tanda-rest-remove" title="${LANG === 'es' ? 'Quitar descanso' : 'Remove rest'}">✕</span>` +
+      `<span class="tanda-lane-num">💤</span>` +
+      `<span class="tanda-rest-label">${LANG === 'es' ? 'DSC extra' : 'REST extra'}</span>` +
+      `<span class="tanda-lane-owner"></span>`;
+    laneGrid.appendChild(btn);
     updateRestBanner();
   }
 
-  function unassignSlot(slot) {
-    delete slot.dataset.assignedTeamId;
-    slot.querySelector('.slot-empty-label').style.display = '';
-    const teamDiv = slot.querySelector('.slot-team');
-    teamDiv.style.display = 'none';
-    teamDiv.innerHTML = '';
-    slot.querySelector('.slot-remove').style.display = 'none';
-    greyUsed();
-    syncHidden();
-    updateRestBanner();
-  }
-
-  function makeSlot(slotIdx, lane) {
-    const div = document.createElement('div');
-    div.className = 'lane-slot';
-    div.dataset.slot = slotIdx;
-    div.dataset.lane = lane || 'rest';
-    const badge = lane
-      ? `<span class="slot-lane-badge" style="background:${COLORS[lane-1]}">${lane}</span>`
-      : `<span class="slot-lane-badge" style="background:#30363d;font-size:.65rem">${LANG === 'es' ? 'DSC' : 'REST'}</span>`;
-    div.innerHTML = `
-      ${badge}
-      <span class="slot-empty-label" style="color:#8b949e;font-size:.85rem">${LANG === 'es' ? 'Arrastra un equipo aquí' : 'Drag a team here'}</span>
-      <div class="slot-team" style="display:none;align-items:center;gap:.4rem;flex:1;overflow:hidden"></div>
-      <button type="button" class="slot-remove btn btn--danger btn--sm" style="display:none" title="${LANG === 'es' ? 'Quitar' : 'Remove'}">✕</button>`;
-    return div;
-  }
-
-  // ── Drag from catalog ────────────────────────────────────────────────────────
-  let dragTeamId = null, dragTeamName = null, dragTeamCountry = null;
-
-  catalogList.addEventListener('dragstart', e => {
+  // ── Eventos ──────────────────────────────────────────────────────────────────
+  catalogList.addEventListener('click', e => {
     const card = e.target.closest('.catalog-card');
-    if (!card || !card.draggable) { e.preventDefault(); return; }
-    dragTeamId      = card.dataset.teamId;
-    dragTeamName    = card.dataset.teamName;
-    dragTeamCountry = card.dataset.teamCountry;
-    e.dataTransfer.effectAllowed = 'move';
-    card.style.opacity = '0.5';
+    if (card) selectTeam(card);
   });
 
-  catalogList.addEventListener('dragend', e => {
-    const card = e.target.closest('.catalog-card');
-    if (card) greyUsed();
-  });
-
-  slotList.addEventListener('dragover', e => {
-    if (dragTeamId) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }
-    const slot = e.target.closest('.lane-slot');
-    if (slot) slot.classList.add('slot--over');
-  });
-
-  slotList.addEventListener('dragleave', e => {
-    const slot = e.target.closest('.lane-slot');
-    if (slot) slot.classList.remove('slot--over');
-  });
-
-  slotList.addEventListener('drop', e => {
-    e.preventDefault();
-    const slot = e.target.closest('.lane-slot');
-    if (!slot || !dragTeamId) return;
-    slot.classList.remove('slot--over');
-    // If slot already had a team, free it first
-    if (slot.dataset.assignedTeamId) unassignSlot(slot);
-    assignTeam(slot, dragTeamId, dragTeamName, dragTeamCountry);
-    dragTeamId = null;
-  });
-
-  // ── Remove from slot ─────────────────────────────────────────────────────────
-  slotList.addEventListener('click', e => {
-    if (e.target.closest('.slot-remove')) {
-      unassignSlot(e.target.closest('.lane-slot'));
+  laneGrid.addEventListener('click', e => {
+    resetHint();
+    document.querySelectorAll('.tanda-lane-btn--missing').forEach(b => b.classList.remove('tanda-lane-btn--missing'));
+    const rm = e.target.closest('.tanda-rest-remove');
+    if (rm) {
+      rm.closest('.tanda-lane-btn').remove();
+      markUsed(); syncHidden(); updateRestBanner();
+      return;
     }
+    const btn = e.target.closest('.tanda-lane-btn');
+    if (!btn) return;
+    if (btn.dataset.teamId) { unassignBtn(btn); return; }
+    if (selected) { assignBtn(btn, selected); clearSelection(); }
   });
 
-  // ── Add extra participant slot ───────────────────────────────────────────────
-  document.getElementById('btnAddSlot').addEventListener('click', () => {
-    const slots = slotList.querySelectorAll('.lane-slot');
-    const idx   = slots.length;
-    const slot  = makeSlot(idx, null);
-    slotList.appendChild(slot);
-    updateRestBanner();
-  });
+  document.getElementById('btnAddRest').addEventListener('click', addRestButton);
+
+  // Al enviar: todos los carriles activos deben estar asignados (garantiza el
+  // orden del contrato team_catalog_ids[] = [activos en secuencia, luego descansos]).
+  const teamForm = laneGrid.closest('form');
+  if (teamForm) {
+    teamForm.addEventListener('submit', e => {
+      const empty = ACTIVE_LANES.filter(l => {
+        const b = document.getElementById('lane-btn-' + l);
+        return !(b && b.dataset.teamId);
+      });
+      if (empty.length) {
+        e.preventDefault();
+        empty.forEach(l => document.getElementById('lane-btn-' + l)?.classList.add('tanda-lane-btn--missing'));
+        if (pickHint) {
+          pickHint.style.color = '#f85149';
+          pickHint.textContent = LANG === 'es'
+            ? `Faltan ${empty.length} carril(es) por asignar: ${empty.join(', ')}.`
+            : `${empty.length} lane(s) still unassigned: ${empty.join(', ')}.`;
+        }
+        (document.getElementById('lane-btn-' + empty[0]) || laneGrid).scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+  }
 
   updateRestBanner();
 

@@ -59,6 +59,17 @@ class CompetitionTrainingServiceClass {
   // ── Setup ─────────────────────────────────────────────────────────────────
   setup(participants, numLanes, laneSequence) {
     if (this._active) this._deactivate();
+    // Enriquece cada participante con la bandera del país emparejando su nombre
+    // con el catálogo de equipos (los nombres se teclean a mano en competición).
+    try {
+      const TeamCatalog = require('../models/TeamCatalog');
+      const byName = {};
+      TeamCatalog.findAll().forEach(t => { if (t.country) byName[(t.name || '').trim().toLowerCase()] = t.country; });
+      participants = participants.map(p => ({
+        ...p,
+        country: p.country || byName[(p.name || '').trim().toLowerCase()] || null,
+      }));
+    } catch {}
     this._participants = participants;
     this._numLanes     = numLanes;
     this._laneSequence = this._normalizeLaneSequence(laneSequence, numLanes);
@@ -132,7 +143,7 @@ class CompetitionTrainingServiceClass {
   _restingNames() {
     return (this._restingIdx || []).map((idx, i) => {
       const p = this._participants[idx];
-      return p ? { restNum: i + 1, name: p.name, color: p.color } : null;
+      return p ? { restNum: i + 1, name: p.name, color: p.color, country: p.country ?? null } : null;
     }).filter(Boolean);
   }
 
@@ -264,6 +275,7 @@ class CompetitionTrainingServiceClass {
       lanes.push({
         lane,
         participantName: participant?.name ?? null,
+        country: participant?.country ?? null,
         color:  participant?.color ?? LANE_COLORS[lane - 1] ?? '#8b949e',
         count:  ld.count,
         avgMs:  ld.count > 0 ? Math.round(ld.sum / ld.count) : null,

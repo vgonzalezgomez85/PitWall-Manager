@@ -1102,12 +1102,53 @@ input, button, select { font-family: inherit; }
   display: flex; align-items: center; gap: .5rem;
   padding: .45rem .65rem;
   background: #161b22; border: 1px solid #30363d; border-radius: 6px;
-  cursor: grab; font-size: .9rem; color: #e6edf3;
-  transition: border-color .15s, opacity .15s;
+  cursor: pointer; font-size: .9rem; color: #e6edf3;
+  transition: border-color .15s, opacity .15s, box-shadow .15s;
   user-select: none;
 }
 .catalog-card:hover { border-color: #58a6ff; }
-.catalog-card:active { cursor: grabbing; }
+.catalog-card--selected { border-color: #58a6ff; box-shadow: 0 0 0 2px rgba(88,166,255,.45) inset; }
+.catalog-card--used { opacity: .35; pointer-events: none; }
+
+/* ── Tablero de asignación de tanda (estilo post-pole, compacto) ───────────── */
+.tanda-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: .5rem;
+}
+.tanda-lane-btn {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 5px; min-height: 66px; padding: .5rem .4rem;
+  background: #0d1117; border: 2px solid var(--lane-color, #30363d); border-radius: 10px;
+  cursor: pointer; color: #e6edf3;
+  transition: transform .12s, box-shadow .12s, filter .12s;
+}
+.tanda-lane-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px -8px var(--lane-color, #30363d); }
+.tanda-lane-num {
+  font-size: 20px; font-weight: 700; line-height: 1;
+  color: var(--lane-color, #8b949e); font-variant-numeric: tabular-nums;
+}
+.tanda-lane-owner {
+  font-size: 11px; font-weight: 600; text-transform: uppercase; text-align: center;
+  line-height: 1.15; letter-spacing: .02em; min-height: 1.1em;
+  display: flex; align-items: center; gap: 3px; max-width: 100%;
+}
+.tanda-lane-owner span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tanda-lane-btn--taken { background: color-mix(in srgb, var(--lane-color, #3a86ff) 16%, #0d1117 84%); }
+.tanda-lane-btn--rest { --lane-color: #3a86ff; border-style: dashed; }
+.tanda-lane-btn--rest .tanda-lane-num { font-size: 18px; }
+.tanda-rest-label { font-size: 9.5px; font-weight: 700; color: #58a6ff; text-transform: uppercase; letter-spacing: .03em; line-height: 1; }
+.tanda-lane-btn--missing { animation: tandaMissing 1s ease 2; }
+@keyframes tandaMissing {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(248,81,73,0); }
+  50%      { box-shadow: 0 0 0 3px rgba(248,81,73,.8); }
+}
+.tanda-rest-remove {
+  position: absolute; top: 2px; right: 5px;
+  font-size: 11px; color: #8b949e; cursor: pointer; line-height: 1;
+}
+.tanda-rest-remove:hover { color: #f85149; }
 
 .lane-slot {
   display: flex; align-items: center; gap: .6rem;
@@ -1597,6 +1638,86 @@ input, button, select { font-family: inherit; }
 .pole-results-card { margin-top: 24px; }
 .pole-tower--results { padding: 4px 12px 14px; }
 
+/* ── Pole timing: encajar TODO en una pantalla (scroll interno por lista) ──────
+   La página se acota al viewport y cada lista (orden de salida / clasificación)
+   hace scroll dentro de su tarjeta, en vez de hacer scroll toda la página. Así
+   se ven a la vez el orden de salida y la clasificación en vivo. */
+body:has(.pole-timing-fit) { overflow: hidden; }
+.pole-broadcast.pole-timing-fit {
+  height: calc(100vh - 80px); min-height: 0; overflow: hidden;
+  padding-top: 14px; padding-bottom: 12px;
+  display: flex; flex-direction: column;
+}
+.pole-timing-fit .pole-bcast-wrap {
+  flex: 1 1 auto; min-height: 0; width: 100%;
+  display: flex; flex-direction: column;
+}
+/* Cabecera HORIZONTAL a lo ancho (no se reduce): título · meta · carril ·
+   progreso en una fila. Libera la columna izquierda para "En pista" y las 3
+   columnas empiezan justo debajo. */
+.pole-timing-fit .pole-topbar {
+  display: flex; align-items: center; gap: 28px; flex-wrap: wrap;
+  margin: 4px 0 14px;
+}
+.pole-timing-fit .pole-topbar .pole-title-row,
+.pole-timing-fit .pole-topbar .pole-meta { margin: 0; }
+.pole-timing-fit .pole-topbar .pole-progress {
+  margin: 0; flex: 1 1 240px; min-width: 220px; max-width: 460px;
+}
+.pole-timing-fit .pole-bcast-grid {
+  flex: 1 1 auto; min-height: 0; margin-top: 0; align-items: stretch;
+}
+/* Fuente un poco más pequeña en orden de salida y clasificación → más equipos */
+.pole-timing-fit .pole-bcast-name { font-size: 18px; }
+.pole-timing-fit .pole-tower-name { font-size: 18px; }
+.pole-timing-fit .pole-tower-time { font-size: 14px; }
+.pole-timing-fit .pole-tower-pos  { font-size: 14px; }
+
+/* Clasificación en vivo: columnas AUTOMÁTICAS que llenan el alto disponible y
+   crean tantas como hagan falta para ver todos los equipos en orden (relleno por
+   columnas: 1ª col 1..k, 2ª col k+1.., …). Sin scroll vertical. */
+.pole-timing-fit .pole-tower {
+  display: block;
+  column-width: 175px; column-gap: 14px;    /* columnas más estrechas → caben más (todos los equipos) */
+  column-fill: auto;                          /* llena la 1ª columna del todo y luego la 2ª (no reparte) */
+  overflow-x: hidden; overflow-y: auto;      /* nunca scroll horizontal */
+}
+.pole-timing-fit .pole-tower-row {
+  break-inside: avoid; -webkit-column-break-inside: avoid; padding: 6px 10px;
+  /* Altura uniforme y una sola línea → las columnas quedan alineadas. */
+  min-height: 42px; overflow: hidden;
+}
+/* El nombre nunca parte la fila (elipsis si no cabe) */
+.pole-timing-fit .pole-tower-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* En columnas estrechas no caben los badges verbosos del líder/en pista:
+   se ocultan (el líder ya se distingue por el color y "Líder"/gap). */
+.pole-timing-fit .pole-tower-fastest,
+.pole-timing-fit .pole-tower-livetag { display: none; }
+/* La clasificación ocupa más parte derecha para que quepan las columnas */
+@media (min-width: 981px) {
+  .pole-timing-fit .pole-bcast-grid { grid-template-columns: 300px 1fr 1.9fr; }
+}
+/* Nombre del equipo en "En pista" un poco más pequeño */
+.pole-timing-fit .pole-driver-big { font-size: 46px; }
+.pole-timing-fit .pole-bcast-card {
+  display: flex; flex-direction: column; min-height: 0; overflow: hidden;
+}
+/* Las listas largas hacen scroll dentro de su tarjeta; sin hueco arriba */
+.pole-timing-fit .pole-bcast-list,
+.pole-timing-fit .pole-tower {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-top: 2px;
+}
+/* Filas más compactas → caben más equipos en las columnas 2 y 3 */
+.pole-timing-fit .pole-bcast-row { padding: 7px 12px; }
+.pole-timing-fit .pole-bcast-pos { width: 26px; height: 26px; font-size: 14px; }
+.pole-timing-fit .pole-tower-row { padding: 8px 12px; }
+/* "En pista": la tarjeta tiene scroll propio (así el botón "Siguiente piloto"
+   siempre es alcanzable) y el historial de vueltas hace scroll interno. */
+.pole-timing-fit .pole-live { overflow-y: auto; }
+.pole-timing-fit .pole-live .pole-laps      { min-height: 0; display: flex; flex-direction: column; margin-bottom: 12px; }
+.pole-timing-fit .pole-live .pole-laps-list { max-height: 190px; overflow-y: auto; }
+.pole-timing-fit .pole-bcast-foot { flex: 0 0 auto; margin-top: 8px; }
+
 .pole-results-actions {
   display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
   margin-top: 24px;
@@ -1747,6 +1868,17 @@ input, button, select { font-family: inherit; }
 }
 .pole-picker-row--done .pole-picker-name { color: var(--pb-muted); }
 
+/* Equipos que descansan (sobran respecto a los carriles): badge "Descanso" */
+.pole-picker-row--rest { opacity: .72; }
+.pole-picker-row--rest .pole-picker-name { color: var(--pb-muted); }
+.pole-picker-lane--rest {
+  font-family: 'Saira Condensed', sans-serif; font-weight: 700;
+  letter-spacing: .05em; text-transform: uppercase; font-size: 12px;
+  color: #8fb6ff; background: rgba(58,134,255,.14);
+  border: 1px solid rgba(58,134,255,.4);
+  padding: 3px 9px; border-radius: 8px; white-space: nowrap;
+}
+
 /* Tablero de carriles */
 .pole-laneboard-grid {
   display: grid;
@@ -1788,6 +1920,9 @@ input, button, select { font-family: inherit; }
 }
 .pole-laneboard-btn--taken:hover { transform: none; filter: none; box-shadow: none; }
 .pole-laneboard-btn--taken .pole-laneboard-num { opacity: .6; }
+/* Botón de DESCANSO (seleccionable como un carril) */
+.pole-laneboard-btn--rest { --lane-color: #3a86ff; border-style: dashed; }
+.pole-laneboard-btn--rest .pole-laneboard-num { font-size: 30px; }
 
 /* Nota de descansos + acciones del form */
 .pole-rest-note {

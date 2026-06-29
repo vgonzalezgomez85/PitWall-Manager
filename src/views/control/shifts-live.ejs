@@ -25,6 +25,45 @@ const totalsByName = {};
 const minMs = current && current.race ? (current.race.driver_min_total_ms || 0) : 0;
 const maxMs = current && current.race ? (current.race.driver_max_total_ms || 0) : 0;
 const lockoutMs = current && current.race ? (current.race.driver_change_lockout_ms || 120000) : 120000;
+const maxRuns = current && current.race ? (current.race.driver_max_runs || 0) : 0;
+
+// Mismos colores de carril que el directo (races/live.ejs) → coherencia visual.
+const LC = ['#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4','#ff5722','#607d8b','#795548','#e91e63','#3f51b5','#009688','#cddc39','#ffc107','#f44336','#673ab7','#03a9f4','#8bc34a','#ff6f00','#880e4f','#1a237e','#b71c1c','#004d40','#f57f17','#311b92','#0d47a1','#1b5e20','#33691e','#bf360c','#4a148c','#006064','#827717'];
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+// Roster del equipo: cada piloto con turnos + tiempo total, coloreado por límite
+// (verde ok/bajo mín · ámbar a punto · rojo pasado). driverName = piloto actual.
+function renderRoster(roster, driverName) {
+  if (!roster || !roster.length) return '';
+  const title = lang === 'es' ? 'Pilotos del equipo: tiempo y turnos' : 'Team drivers: time and stints';
+  let html = '<div class="sc-lane__roster" title="' + title + '">';
+  roster.forEach(p => {
+    const overT  = maxMs > 0 && p.total_ms >= maxMs;
+    const nearT  = maxMs > 0 && p.total_ms >= maxMs * 0.9 && !overT;
+    const overR  = maxRuns > 0 && p.runs >= maxRuns;
+    const nearR  = maxRuns > 0 && p.runs === maxRuns - 1 && !overR;
+    const underT = minMs > 0 && p.total_ms < minMs;
+    const rcls   = (overT || overR) ? 'is-over' : (nearT || nearR) ? 'is-near' : underT ? 'is-under' : 'is-ok';
+    const isNow  = driverName && p.name === driverName;
+    html += '<div class="sc-lane__rost ' + rcls + (isNow ? ' is-now' : '') + '">'
+          + '<span class="sc-lane__rost-name">' + esc(p.name) + '</span>'
+          + '<span class="sc-lane__rost-runs">' + p.runs + (maxRuns > 0 ? '/' + maxRuns : '') + (lang === 'es' ? 'T' : 'x') + '</span>'
+          + '<span class="sc-lane__rost-time">' + fmtTime(p.total_ms) + '</span>'
+          + '</div>';
+  });
+  return html + '</div>';
+}
+
+// Mapas para la corrección manual de tiempo (modal): pilotos y nombre por carril.
+const pilotsByLane   = {};
+const teamNameByLane = {};
+(lanes || []).forEach(l => {
+  pilotsByLane[l.lane]   = ((rosterByLane && rosterByLane[l.lane]) || []).map(p => ({ id: p.driver_id, name: p.name }));
+  teamNameByLane[l.lane] = l.team_name || l.driver_name || ('L' + l.lane);
+});
 %>
 
 <div class="vt-page vt-page--shifts">
@@ -73,20 +112,58 @@ const lockoutMs = current && current.race ? (current.race.driver_change_lockout_
       </div>
     <% } else { %>
 
-      <!-- ── Indicador de scan ──────────────────────────────────────── -->
-      <div class="sc-scan-bar" id="scScanBar">
-        <span class="sc-scan-led" id="scLed"></span>
-        <span class="sc-scan-msg" id="scMsg"><%= lang === 'es' ? 'Listo para escanear' : 'Ready to scan' %></span>
-        <span class="sc-remaining" id="scRemaining" style="margin-left:auto"></span>
-      </div>
+      <div class="sc-kiosk" id="scKiosk">
+        <!-- ── Columna izquierda: barra de scan + cuadro de cámara ───── -->
+        <aside class="sc-left">
+
+          <!-- Barra de scan (info + botón Cámara) ENCIMA del cuadro -->
+          <div class="sc-scan-bar" id="scScanBar">
+            <span class="sc-scan-led" id="scLed"></span>
+            <span class="sc-scan-msg" id="scMsg"><%= lang === 'es' ? 'Listo para escanear' : 'Ready to scan' %></span>
+            <button type="button" class="sc-cam-btn" id="scCamBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              <%= lang === 'es' ? 'Cámara' : 'Camera' %>
+            </button>
+            <span class="sc-remaining" id="scRemaining"></span>
+          </div>
+
+          <!-- Cuadro de cámara (modo quiosco) -->
+          <aside class="sc-cam-dock" id="scCamDock" hidden>
+            <div class="sc-cam-head">
+              <span class="sc-cam-status" id="scCamStatus"><%= lang === 'es' ? 'Iniciando cámara…' : 'Starting camera…' %></span>
+              <div class="sc-cam-acts">
+                <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="scCamSwitch" style="display:none"><%= lang === 'es' ? 'Cambiar' : 'Switch' %></button>
+              </div>
+            </div>
+            <div class="sc-cam-view">
+              <video id="scCamVideo" playsinline muted></video>
+              <div class="sc-cam-reticle" id="scCamReticle"></div>
+            </div>
+            <div class="sc-cam-hint" id="scCamHint"><%= lang === 'es' ? 'Apunta la cámara al QR del piloto' : 'Point the camera at the pilot QR' %></div>
+          </aside>
+
+        </aside><!-- /.sc-left -->
+
+        <div class="sc-kiosk__main">
 
       <!-- Input invisible que captura el lector USB-QR -->
       <input id="scScanInput" type="text" autocomplete="off" spellcheck="false"
              aria-label="<%= lang === 'es' ? 'Lector QR' : 'QR scanner' %>"
              class="sc-scan-input">
 
-      <!-- ── Cards por carril ───────────────────────────────────────── -->
-      <div class="sc-lane-grid">
+      <!-- ── Cards por carril (paginado si no caben) ─────────────────── -->
+      <div class="sc-lane-head">
+        <span class="vt-sec-lbl"><%= lang === 'es' ? 'Carriles' : 'Lanes' %></span>
+        <div class="sc-legend">
+          <span class="sc-legend__i"><span class="sc-legend__dot" style="background:#c792ea"></span><%= lang === 'es' ? 'Bajo mín.' : 'Under min' %></span>
+          <span class="sc-legend__i"><span class="sc-legend__dot" style="background:var(--vt-green)"></span>OK</span>
+          <span class="sc-legend__i"><span class="sc-legend__dot" style="background:var(--vt-amber)"></span><%= lang === 'es' ? 'A punto' : 'Near' %></span>
+          <span class="sc-legend__i"><span class="sc-legend__dot" style="background:var(--vt-red)"></span><%= lang === 'es' ? 'Pasado' : 'Over' %></span>
+        </div>
+        <span class="sc-pages-ind" id="scLaneInd"></span>
+      </div>
+      <div class="sc-lane-area" id="scLaneArea">
+      <div class="sc-lane-grid" id="scLaneGrid">
         <% lanes.forEach(l => {
           const s = openByLane[l.lane];
           const live = liveActive[l.lane] || {};
@@ -97,8 +174,9 @@ const lockoutMs = current && current.race ? (current.race.driver_change_lockout_
         %>
           <div class="sc-lane" data-lane="<%= l.lane %>">
             <div class="sc-lane__head">
-              <div class="sc-lane__num">L<%= l.lane %></div>
+              <div class="sc-lane__num" style="background:<%= LC[l.lane - 1] || '#8b949e' %>;color:#fff;border-color:transparent">L<%= l.lane %></div>
               <div class="sc-lane__team"><%= l.team_name || l.driver_name || '—' %></div>
+              <button type="button" class="sc-lane__fix" data-lane="<%= l.lane %>" title="<%= lang === 'es' ? 'Corregir tiempo (olvidó fichar)' : 'Correct time (forgot to scan)' %>">✎</button>
             </div>
             <div class="sc-lane__driver" data-driver-name>
               <% if (driverName) { %>
@@ -117,24 +195,38 @@ const lockoutMs = current && current.race ? (current.race.driver_change_lockout_
                 <span class="sc-lane__val" data-total-ms="<%= totalMs %>"><%= fmtTime(totalMs) %></span>
               </div>
             </div>
-            <% if (closed.length) { %>
-              <div class="sc-lane__history" title="<%= lang === 'es' ? 'Pilotos anteriores en este carril' : 'Previous drivers on this lane' %>">
-                <% closed.slice(-3).reverse().forEach(c => { %>
-                  <span><%= c.driver_name %> · <%= fmtTime(c.driving_ms) %></span>
-                <% }) %>
-              </div>
-            <% } %>
+            <%- renderRoster((rosterByLane && rosterByLane[l.lane]) || [], driverName) %>
+          </div>
+        <% }) %>
+
+        <!-- ── Equipos que descansan esta manga ──────────────────────── -->
+        <% (restingTeams || []).forEach(rt => { %>
+          <div class="sc-lane sc-lane--rest" data-rest="<%= rt.restPos %>">
+            <div class="sc-lane__head">
+              <div class="sc-lane__num sc-lane__num--rest"><%= lang === 'es' ? 'DESC' : 'REST' %></div>
+              <div class="sc-lane__team"><%= rt.team_name %></div>
+            </div>
+            <div class="sc-lane__rest-badge">
+              <%= lang === 'es' ? 'Descanso' : 'Rest' %> <%= rt.restPos %>/<%= rt.restTotal %>
+            </div>
+            <%- renderRoster(rt.roster, null) %>
           </div>
         <% }) %>
       </div>
+      </div><!-- /.sc-lane-area -->
 
-      <!-- ── Resumen por piloto a nivel carrera ──────────────────────── -->
-      <div class="sc-section">
-        <div class="vt-sec-lbl"><%= lang === 'es' ? 'Tiempo por piloto (carrera entera)' : 'Driver time (whole race)' %></div>
+        </div><!-- /.sc-kiosk__main -->
+
+      <!-- ── Pilotos por tiempo (panel lateral derecho, paginado) ─────── -->
+      <aside class="sc-pilots-panel" id="scPilotsPanel">
+        <div class="sc-pilots-panel__head">
+          <span class="vt-sec-lbl"><%= lang === 'es' ? 'Pilotos por tiempo' : 'Drivers by time' %></span>
+          <span class="sc-pages-ind" id="scPilotsInd"></span>
+        </div>
         <% if (summary.length === 0) { %>
           <p style="color:var(--vt-mute)"><%= lang === 'es' ? 'Aún no hay turnos registrados.' : 'No shifts recorded yet.' %></p>
         <% } else { %>
-          <div class="sc-summary">
+          <div class="sc-summary" id="scPilotsPages">
             <% summary.forEach(r => {
               const t = r.total_ms;
               const overMax = maxMs > 0 && t >= maxMs;
@@ -146,6 +238,10 @@ const lockoutMs = current && current.race ? (current.race.driver_change_lockout_
               else if (underMin) badge = 'is-info';
               const pct = maxMs > 0 ? Math.min(100, Math.round(t / maxMs * 100)) : 0;
               const minPct = maxMs > 0 && minMs > 0 ? Math.min(100, Math.round(minMs / maxMs * 100)) : 0;
+              const runs = r.runs_count || 0;
+              const overRuns = maxRuns > 0 && runs >= maxRuns;
+              const nearRuns = maxRuns > 0 && runs === maxRuns - 1 && !overRuns;
+              const runsCls = overRuns ? 'is-over' : (nearRuns ? 'is-near' : '');
             %>
               <div class="sc-pilot-row" data-profile-name="<%= r.profile_name %>">
                 <div class="sc-pilot-row__name">
@@ -160,6 +256,10 @@ const lockoutMs = current && current.race ? (current.race.driver_change_lockout_
                     <% } %>
                   </div>
                 <% } %>
+                <div class="sc-pilot-row__runs <%= runsCls %>" title="<%= lang === 'es' ? 'Veces que ha corrido (turnos)' : 'Times driven (stints)' %><%= maxRuns > 0 ? (lang === 'es' ? ' · máx ' : ' · max ') + maxRuns : '' %>">
+                  <span class="sc-pilot-row__runs-n"><%= runs %><% if (maxRuns > 0) { %><span class="sc-pilot-row__runs-max">/<%= maxRuns %></span><% } %></span>
+                  <span class="sc-pilot-row__runs-l"><%= overRuns ? (lang === 'es' ? 'pasado' : 'over') : (lang === 'es' ? 'turnos' : 'stints') %></span>
+                </div>
                 <div class="sc-pilot-row__total" data-total-ms="<%= t %>">
                   <%= fmtTime(t) %>
                   <% if (maxMs > 0) { %><span style="color:var(--vt-mute)"> / <%= fmtTime(maxMs) %></span><% } %>
@@ -179,10 +279,42 @@ const lockoutMs = current && current.race ? (current.race.driver_change_lockout_
             <% }) %>
           </div>
         <% } %>
-      </div>
+      </aside><!-- /.sc-pilots-panel -->
+
+      </div><!-- /.sc-kiosk -->
 
       <!-- ── Toast contenedor ───────────────────────────────────────── -->
       <div class="sc-toast-wrap" id="scToasts" aria-live="polite"></div>
+
+      <!-- ── Feedback grande para el piloto (✓/✗ + nombre + carril) ──── -->
+      <div class="sc-feedback" id="scFeedback" hidden aria-live="assertive">
+        <div class="sc-feedback__box">
+          <div class="sc-feedback__icon" id="scFbIcon"></div>
+          <div class="sc-feedback__title" id="scFbTitle"></div>
+          <div class="sc-feedback__sub" id="scFbSub"></div>
+        </div>
+      </div>
+
+      <!-- ── Modal corregir tiempo (equipo que olvidó fichar) ────────── -->
+      <div class="sc-fix-modal" id="scFixModal" hidden>
+        <div class="sc-fix-box">
+          <div class="sc-fix-head">
+            <span id="scFixTitle"><%= lang === 'es' ? 'Corregir tiempo' : 'Correct time' %></span>
+            <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="scFixClose">✕</button>
+          </div>
+          <p class="sc-fix-hint"><%= lang === 'es'
+            ? 'Añade tiempo a un piloto que corrió pero no se fichó por QR.'
+            : 'Add time to a driver who raced but was not checked in by QR.' %></p>
+          <label class="sc-fix-lbl"><%= lang === 'es' ? 'Piloto' : 'Driver' %></label>
+          <select id="scFixPilot" class="sc-fix-select"></select>
+          <label class="sc-fix-lbl"><%= lang === 'es' ? 'Tiempo a añadir (min:seg)' : 'Time to add (min:sec)' %></label>
+          <input id="scFixTime" class="sc-fix-input" type="text" inputmode="numeric" placeholder="10:00" autocomplete="off">
+          <div class="sc-fix-actions">
+            <button type="button" class="vt-btn vt-btn--ghost" id="scFixCancel"><%= lang === 'es' ? 'Cancelar' : 'Cancel' %></button>
+            <button type="button" class="vt-btn" id="scFixSubmit"><%= lang === 'es' ? 'Añadir tiempo' : 'Add time' %></button>
+          </div>
+        </div>
+      </div>
 
     <% } %>
 
@@ -191,6 +323,7 @@ const lockoutMs = current && current.race ? (current.race.driver_change_lockout_
 
 <% if (current) { %>
 <script src="/socket.io/socket.io.js"></script>
+<script src="/js/jsQR.js"></script>
 <script>
 const RACE_ID  = <%= current.race.id %>;
 const MANGA_ID = <%= current.manga.id %>;
@@ -198,6 +331,9 @@ const LOCKOUT_MS = <%= lockoutMs %>;
 const MIN_MS = <%= minMs %>;
 const MAX_MS = <%= maxMs %>;
 const LANG = "<%= lang %>";
+const MANGA_DURATION_MS = <%= mangaDurationMs || 0 %>;
+const TEAM_PILOTS = <%- JSON.stringify(pilotsByLane) %>;
+const TEAM_NAMES  = <%- JSON.stringify(teamNameByLane) %>;
 
 function fmtTime(ms) {
   if (ms == null || isNaN(ms)) return '—';
@@ -226,16 +362,67 @@ function updateFocus() {
 }
 input.addEventListener('focus', updateFocus);
 input.addEventListener('blur', () => setTimeout(updateFocus, 50));
-document.addEventListener('click', e => { if (e.target.tagName !== 'A' && e.target.tagName !== 'BUTTON') refocus(); });
+document.addEventListener('click', e => {
+  ensureAudio();
+  const t = e.target;
+  // No robar el foco al interactuar con el modal de corrección ni con campos.
+  if (t.closest && t.closest('.sc-fix-modal')) return;
+  if (['A', 'BUTTON', 'INPUT', 'SELECT', 'TEXTAREA', 'OPTION'].includes(t.tagName)) return;
+  refocus();
+});
 window.addEventListener('focus', refocus);
 refocus(); updateFocus();
 
-// ── Submit en Enter (el lector USB termina con Enter) ─────────────
-input.addEventListener('keydown', async e => {
-  if (e.key !== 'Enter') return;
-  e.preventDefault();
-  const code = input.value.trim();
-  input.value = '';
+// ── Feedback grande + sonido para el piloto ──────────────────────
+const fb      = document.getElementById('scFeedback');
+const fbIcon  = document.getElementById('scFbIcon');
+const fbTitle = document.getElementById('scFbTitle');
+const fbSub   = document.getElementById('scFbSub');
+let fbTimer = null, audioCtx = null;
+
+// El navegador exige un gesto del usuario para habilitar audio: lo
+// desbloqueamos en el primer clic / al activar la cámara.
+function ensureAudio() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  } catch (e) {}
+}
+function tone(freq, start, dur, type) {
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = type || 'sine'; o.frequency.value = freq;
+  g.gain.setValueAtTime(0.0001, start);
+  g.gain.exponentialRampToValueAtTime(0.3, start + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start(start); o.stop(start + dur + 0.02);
+}
+function beep(ok) {
+  if (!audioCtx) return;
+  try {
+    const t = audioCtx.currentTime;
+    if (ok) { tone(880, t, 0.11); tone(1320, t + 0.12, 0.13); }  // dos tonos ascendentes
+    else    { tone(200, t, 0.34, 'square'); }                    // zumbido grave
+  } catch (e) {}
+}
+function bigFeedback(kind, title, sub) {
+  if (!fb) return;
+  fb.className = 'sc-feedback ' + (kind === 'ok' ? 'is-ok' : 'is-error');
+  fbIcon.textContent  = kind === 'ok' ? '✓' : '✕';
+  fbTitle.textContent = title || '';
+  fbSub.textContent   = sub || '';
+  fb.hidden = false;
+  beep(kind === 'ok');
+  clearTimeout(fbTimer);
+  fbTimer = setTimeout(() => {
+    fb.classList.add('is-out');
+    setTimeout(() => { fb.hidden = true; fb.classList.remove('is-out'); }, 300);
+  }, kind === 'ok' ? 4000 : 5000);
+}
+
+// ── Envío de un código (lo comparten el lector USB y la webcam) ───
+async function submitCode(code) {
+  code = (code || '').trim();
   if (!code) return;
   setLed('busy', LANG === 'es' ? 'Procesando…' : 'Processing…');
   try {
@@ -252,9 +439,11 @@ input.addEventListener('keydown', async e => {
         swap_paused: LANG === 'es' ? 'Cambio en pausa' : 'Swap on pause',
       }[data.mode] || (LANG === 'es' ? 'Asignado' : 'Assigned');
       toast('ok', `${modeLabel}: ${data.driverName} → ${LANG === 'es' ? 'Carril' : 'Lane'} ${data.lane}`);
+      bigFeedback('ok', data.driverName, `${LANG === 'es' ? 'Carril' : 'Lane'} ${data.lane} · ${modeLabel}`);
     } else {
       const errMap = {
         unknown_qr:                LANG === 'es' ? 'QR desconocido' : 'Unknown QR',
+        team_resting:              LANG === 'es' ? 'Equipo descansando — no puede fichar' : 'Team resting — cannot check in',
         driver_not_in_manga:       LANG === 'es' ? 'El piloto no está en esta manga' : 'Driver not in this manga',
         not_championship_race:     LANG === 'es' ? 'No es carrera de campeonato' : 'Not a championship race',
         not_team_race:             LANG === 'es' ? 'No es carrera por equipos' : 'Not a team race',
@@ -269,14 +458,248 @@ input.addEventListener('keydown', async e => {
       };
       const text = errMap[data.error] || (data.error || 'Error');
       toast('error', text + (data.name ? ` (${data.name})` : ''));
+      bigFeedback('error', text, data.name || '');
     }
   } catch (err) {
     toast('error', err.message || 'Network error');
+    bigFeedback('error', LANG === 'es' ? 'Error de red' : 'Network error', '');
   } finally {
     updateFocus();
-    refocus();
   }
+}
+
+// ── Submit en Enter (el lector USB termina con Enter) ─────────────
+input.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const code = input.value.trim();
+  input.value = '';
+  submitCode(code).finally(refocus);
 });
+
+// ── Corregir tiempo manualmente (equipo que olvidó fichar) ────────
+const fixModal = document.getElementById('scFixModal');
+const fixTitle = document.getElementById('scFixTitle');
+const fixPilot = document.getElementById('scFixPilot');
+const fixTime  = document.getElementById('scFixTime');
+
+function msToClock(ms) {
+  const s = Math.max(0, Math.round(ms / 1000));
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+function clockToMs(str) {
+  str = (str || '').trim();
+  if (!str) return NaN;
+  if (str.indexOf(':') >= 0) {
+    const [m, s] = str.split(':');
+    return ((parseInt(m, 10) || 0) * 60 + (parseInt(s, 10) || 0)) * 1000;
+  }
+  const n = parseInt(str, 10);                       // sin ':' → segundos
+  return isNaN(n) ? NaN : n * 1000;
+}
+function openFix(lane) {
+  const pilots = (TEAM_PILOTS && TEAM_PILOTS[lane]) || [];
+  if (!pilots.length) { toast('error', LANG === 'es' ? 'Sin pilotos en este carril' : 'No drivers on this lane'); return; }
+  fixTitle.textContent = (LANG === 'es' ? 'Corregir · ' : 'Fix · ') + (TEAM_NAMES[lane] || ('L' + lane));
+  fixPilot.innerHTML = pilots.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+  fixTime.value = msToClock(MANGA_DURATION_MS || 0);
+  fixModal.hidden = false;
+  setTimeout(() => { fixTime.focus(); fixTime.select(); }, 50);
+}
+function closeFix() { fixModal.hidden = true; refocus(); }
+async function submitFix() {
+  const driverId = parseInt(fixPilot.value, 10);
+  const ms = clockToMs(fixTime.value);
+  if (!driverId || !Number.isFinite(ms) || ms <= 0) { toast('error', LANG === 'es' ? 'Tiempo no válido' : 'Invalid time'); return; }
+  try {
+    const res = await fetch(`/races/${RACE_ID}/mangas/${MANGA_ID}/correct-time`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ driver_id: driverId, ms }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.ok) {
+      toast('ok', `${LANG === 'es' ? 'Tiempo añadido' : 'Time added'}: ${data.driverName} +${msToClock(ms)}`);
+      closeFix();
+      setTimeout(() => location.reload(), 400);
+    } else {
+      toast('error', data.error || 'Error');
+    }
+  } catch (e) { toast('error', e.message || 'Network error'); }
+}
+document.addEventListener('click', e => {
+  const btn = e.target.closest && e.target.closest('.sc-lane__fix');
+  if (btn) { e.preventDefault(); openFix(parseInt(btn.dataset.lane, 10)); }
+});
+document.getElementById('scFixClose').addEventListener('click', closeFix);
+document.getElementById('scFixCancel').addEventListener('click', closeFix);
+document.getElementById('scFixSubmit').addEventListener('click', submitFix);
+fixTime.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); submitFix(); } });
+fixModal.addEventListener('click', e => { if (e.target === fixModal) closeFix(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !fixModal.hidden) closeFix(); });
+
+// ── Lector por webcam (jsQR) — modo quiosco embebido ──────────────
+// La cámara se queda fija en un dock al lado del panel, escaneando en
+// continuo, para que los pilotos se fichen de forma autónoma. Su estado
+// (on/off) se recuerda en localStorage y se auto-arranca al cargar.
+// Reutiliza el mismo endpoint de check-in; el lector USB-HID sigue activo.
+const camBtn     = document.getElementById('scCamBtn');
+const kioskWrap  = document.getElementById('scKiosk');
+const camDock    = document.getElementById('scCamDock');
+const camVideo   = document.getElementById('scCamVideo');
+const camSwitch  = document.getElementById('scCamSwitch');
+const camStatus  = document.getElementById('scCamStatus');
+const camReticle = document.getElementById('scCamReticle');
+const camHint    = document.getElementById('scCamHint');
+const CAM_PREF   = 'sc_cam_kiosk';
+let camStream = null, camRAF = null, camCanvas = null, camCtx = null;
+let camDevices = [], camDeviceIdx = 0;
+let camLastCode = '', camLastTs = 0;
+let camOn = false;
+
+function camSetStatus(t) { if (camStatus) camStatus.textContent = t; }
+
+// Pide a la cámara enfoque/exposición/balance automáticos y continuos.
+// No todas las webcams lo exponen (muchas son de foco fijo): en ese caso es
+// un no-op silencioso y avisamos para que acerquen el QR ~15-20 cm.
+async function camApplyFocus() {
+  try {
+    const track = camStream && camStream.getVideoTracks ? camStream.getVideoTracks()[0] : null;
+    if (!track || !track.getCapabilities) return;
+    const caps = track.getCapabilities();
+    const adv = [];
+    if (caps.focusMode && caps.focusMode.includes('continuous'))               adv.push({ focusMode: 'continuous' });
+    if (caps.exposureMode && caps.exposureMode.includes('continuous'))         adv.push({ exposureMode: 'continuous' });
+    if (caps.whiteBalanceMode && caps.whiteBalanceMode.includes('continuous')) adv.push({ whiteBalanceMode: 'continuous' });
+    if (adv.length) await track.applyConstraints({ advanced: adv });
+    if (camHint) {
+      const hasAF = caps.focusMode && caps.focusMode.includes('continuous');
+      camHint.textContent = LANG === 'es'
+        ? (hasAF ? 'Apunta la cámara al QR del piloto'
+                 : 'Cámara de foco fijo: acerca el QR a ~15-20 cm y mantenlo firme')
+        : (hasAF ? 'Point the camera at the pilot QR'
+                 : 'Fixed-focus camera: hold the QR ~15-20 cm away and steady');
+    }
+  } catch (e) { /* sin soporte de constraints avanzados: ignoramos */ }
+}
+function camFlash() {
+  if (!camReticle) return;
+  camReticle.classList.add('is-hit');
+  setTimeout(() => camReticle.classList.remove('is-hit'), 350);
+}
+
+async function camStart(deviceId) {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    camSetStatus(LANG === 'es' ? 'Cámara no disponible en este navegador' : 'Camera not available in this browser');
+    return;
+  }
+  if (!window.isSecureContext) {
+    camSetStatus(LANG === 'es'
+      ? 'La cámara necesita HTTPS o localhost (no funciona abriendo por IP de red)'
+      : 'Camera needs HTTPS or localhost (does not work over a network IP)');
+    return;
+  }
+  try {
+    // Pedimos resolución alta: un QR con más píxeles se decodifica mucho mejor.
+    const videoCfg = deviceId
+      ? { deviceId: { exact: deviceId } }
+      : { facingMode: { ideal: 'environment' } };
+    videoCfg.width  = { ideal: 1280 };
+    videoCfg.height = { ideal: 720 };
+    camStream = await navigator.mediaDevices.getUserMedia({ video: videoCfg });
+    camVideo.srcObject = camStream;
+    await camVideo.play();
+    camSetStatus(LANG === 'es' ? 'Escaneando…' : 'Scanning…');
+    // Autoenfoque continuo (+ exposición/balance auto) si la cámara lo soporta.
+    await camApplyFocus();
+    // Con permiso ya concedido, los labels de las cámaras están disponibles.
+    if (!camDevices.length) {
+      const devs = await navigator.mediaDevices.enumerateDevices();
+      camDevices = devs.filter(d => d.kind === 'videoinput');
+      camSwitch.style.display = camDevices.length > 1 ? '' : 'none';
+    }
+    camCanvas = camCanvas || document.createElement('canvas');
+    camCtx = camCtx || camCanvas.getContext('2d', { willReadFrequently: true });
+    cancelAnimationFrame(camRAF);
+    camLoop();
+  } catch (err) {
+    const map = {
+      NotAllowedError:  LANG === 'es' ? 'Permiso de cámara denegado' : 'Camera permission denied',
+      NotFoundError:    LANG === 'es' ? 'No se encontró ninguna cámara' : 'No camera found',
+      NotReadableError: LANG === 'es' ? 'La cámara está en uso por otra app' : 'Camera is in use by another app',
+    };
+    camSetStatus(map[err.name] || ((LANG === 'es' ? 'Error de cámara: ' : 'Camera error: ') + (err.message || err.name)));
+  }
+}
+
+function camLoop() {
+  camRAF = requestAnimationFrame(camLoop);
+  if (camVideo.readyState !== camVideo.HAVE_ENOUGH_DATA) return;
+  const w = camVideo.videoWidth, h = camVideo.videoHeight;
+  if (!w || !h) return;
+  camCanvas.width = w; camCanvas.height = h;
+  camCtx.drawImage(camVideo, 0, 0, w, h);
+  let img;
+  try { img = camCtx.getImageData(0, 0, w, h); } catch (e) { return; }
+  const result = jsQR(img.data, w, h, { inversionAttempts: 'dontInvert' });
+  if (!result || !result.data) return;
+  const code = result.data.trim();
+  // Solo nos interesan los QR de piloto (DRV:<id>); ignoramos otros códigos.
+  if (!/^DRV:/i.test(code)) return;
+  const now = Date.now();
+  // Anti-rebote: no reenviar el mismo código en una ráfaga de frames.
+  if (code === camLastCode && now - camLastTs < 3000) return;
+  camLastCode = code; camLastTs = now;
+  camFlash();
+  submitCode(code);
+}
+
+function camStopStream() {
+  if (camRAF) { cancelAnimationFrame(camRAF); camRAF = null; }
+  if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+  if (camVideo) camVideo.srcObject = null;
+}
+
+// Activa el dock de cámara (modo quiosco). persist=false al auto-arrancar.
+function camEnable(persist) {
+  camOn = true;
+  camDock.hidden = false;
+  kioskWrap.classList.add('is-cam');
+  camBtn.classList.add('is-active');
+  camBtn.setAttribute('aria-pressed', 'true');
+  if (persist !== false) { try { localStorage.setItem(CAM_PREF, '1'); } catch (e) {} }
+  camLastCode = ''; camLastTs = 0;
+  camStart();
+  setTimeout(() => { if (window.scRemeasure) window.scRemeasure(); }, 60);
+}
+
+function camDisable(persist) {
+  camOn = false;
+  camStopStream();
+  camDock.hidden = true;
+  kioskWrap.classList.remove('is-cam');
+  camBtn.classList.remove('is-active');
+  camBtn.setAttribute('aria-pressed', 'false');
+  if (persist !== false) { try { localStorage.removeItem(CAM_PREF); } catch (e) {} }
+  refocus();
+  setTimeout(() => { if (window.scRemeasure) window.scRemeasure(); }, 60);
+}
+
+camBtn.addEventListener('click', () => { camOn ? camDisable() : camEnable(); });
+camSwitch.addEventListener('click', async () => {
+  if (camDevices.length < 2) return;
+  camDeviceIdx = (camDeviceIdx + 1) % camDevices.length;
+  camStopStream();
+  await camStart(camDevices[camDeviceIdx].deviceId);
+});
+window.addEventListener('beforeunload', camStopStream);
+
+// Auto-arranque del quiosco: si quedó activada y el contexto es seguro,
+// la cámara se enciende sola al cargar (tras el primer permiso concedido).
+(function () {
+  let pref = false;
+  try { pref = localStorage.getItem(CAM_PREF) === '1'; } catch (e) {}
+  if (pref && window.isSecureContext) camEnable(false);
+})();
 
 // ── Toast ─────────────────────────────────────────────────────────
 const toastWrap = document.getElementById('scToasts');
@@ -326,6 +749,71 @@ socket.on('driver_checkin', data => {
 ['manga:started', 'manga:paused', 'manga:cancelled', 'manga:stopped'].forEach(ev => {
   socket.on(ev, () => setTimeout(() => location.reload(), 500));
 });
+
+</script>
+
+<!-- Paginación automática en bloque aislado: aunque algo del script
+     principal fallara, la rotación de páginas sigue funcionando. -->
+<script>
+(function () {
+  // Muestra una "página" de elementos a la vez y rota cada intervalo. El nº
+  // por página se mide según el alto visible (se adapta a la pantalla).
+  function makePager(viewport, container, indicator, intervalMs) {
+    if (!viewport || !container) return null;
+    const items = Array.from(container.children);
+    if (!items.length) return null;
+    let pageSize = items.length, pages = 1, page = 0;
+    function fits() {
+      items.forEach(it => { it.style.display = ''; });
+      const ch = viewport.clientHeight;
+      if (!ch) return items.length;               // aún sin layout: reintentaremos
+      const top = viewport.getBoundingClientRect().top;
+      let n = 0;
+      for (const it of items) {
+        const r = it.getBoundingClientRect();
+        if (r.bottom - top <= ch) n++; else break;   // estricto: solo filas 100% visibles
+      }
+      return Math.max(1, n);
+    }
+    function render() {
+      const start = page * pageSize, end = start + pageSize;
+      items.forEach((it, i) => { it.style.display = (i >= start && i < end) ? '' : 'none'; });
+      if (indicator) indicator.textContent = pages > 1 ? (page + 1) + '/' + pages : '';
+    }
+    function measure() {
+      pageSize = fits();
+      pages = Math.max(1, Math.ceil(items.length / pageSize));
+      if (page >= pages) page = 0;
+      render();
+    }
+    measure();
+    setInterval(() => { if (pages > 1) { page = (page + 1) % pages; render(); } }, intervalMs);
+    return { measure };
+  }
+
+  // Ajusta la altura del bloque al viewport real (sin depender de un offset
+  // fijo) → los paneles quedan acotados a lo visible y no hace falta scroll.
+  function fitKioskHeight() {
+    const k = document.getElementById('scKiosk');
+    if (!k) return;
+    const top = k.getBoundingClientRect().top;
+    k.style.height = Math.max(360, Math.floor(window.innerHeight - top - 12)) + 'px';
+  }
+  fitKioskHeight();
+
+  const lanePager   = makePager(document.getElementById('scLaneArea'),    document.getElementById('scLaneGrid'),    document.getElementById('scLaneInd'),   10000);
+  const pilotsPager = makePager(document.getElementById('scPilotsPages'), document.getElementById('scPilotsPages'), document.getElementById('scPilotsInd'), 10000);
+  function remeasure() { fitKioskHeight(); if (lanePager) lanePager.measure(); if (pilotsPager) pilotsPager.measure(); }
+  window.scRemeasure = remeasure;
+
+  // Re-medir cuando el layout ya está listo (carga, fuentes) y por si acaso
+  // tras unos instantes; también al redimensionar / abrir-cerrar la cámara.
+  window.addEventListener('load', remeasure);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(remeasure);
+  setTimeout(remeasure, 300);
+  setTimeout(remeasure, 1200);
+  let _rzT; window.addEventListener('resize', () => { clearTimeout(_rzT); _rzT = setTimeout(remeasure, 200); });
+})();
 </script>
 <% } else { %>
 <script src="/socket.io/socket.io.js"></script>
@@ -409,12 +897,25 @@ socket.on('manga:started', () => location.reload());
 .vt-page--shifts .sc-section { margin-top: 28px; }
 .vt-page--shifts .sc-summary { display: flex; flex-direction: column; gap: 6px; }
 .vt-page--shifts .sc-pilot-row {
-  display: grid; grid-template-columns: 200px 1fr 140px 90px;
+  display: grid; grid-template-columns: 200px 1fr 76px 140px 90px;
   gap: 14px; align-items: center;
   padding: 10px 14px; border-radius: 10px;
   background: var(--vt-panel-2); border: 1px solid var(--vt-border);
 }
 .vt-page--shifts .sc-pilot-row__name { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--vt-text); }
+.vt-page--shifts .sc-pilot-row__runs { text-align: center; line-height: 1; }
+.vt-page--shifts .sc-pilot-row__runs-n {
+  display: block; font-family: 'IBM Plex Mono', monospace;
+  font-size: 20px; font-weight: 700; color: var(--vt-text);
+}
+.vt-page--shifts .sc-pilot-row__runs-l {
+  display: block; margin-top: 3px; font-size: 9.5px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--vt-mute);
+}
+.vt-page--shifts .sc-pilot-row__runs-max { color: var(--vt-mute); font-size: 14px; }
+.vt-page--shifts .sc-pilot-row__runs.is-near .sc-pilot-row__runs-n { color: var(--vt-amber); }
+.vt-page--shifts .sc-pilot-row__runs.is-over .sc-pilot-row__runs-n,
+.vt-page--shifts .sc-pilot-row__runs.is-over .sc-pilot-row__runs-l { color: var(--vt-red); }
 .vt-page--shifts .sc-pilot-row__bar {
   position: relative; height: 8px; border-radius: 4px;
   background: var(--vt-surface-2); overflow: hidden;
@@ -437,6 +938,78 @@ socket.on('manga:started', () => location.reload());
   .vt-page--shifts .sc-pilot-row { grid-template-columns: 1fr; gap: 6px; }
 }
 
+/* Feedback grande de fichaje (✓/✗) para el piloto */
+.vt-page--shifts .sc-feedback {
+  position: fixed; inset: 0; z-index: 11000;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.vt-page--shifts .sc-feedback[hidden] { display: none; }
+.vt-page--shifts .sc-feedback__box {
+  text-align: center; padding: 40px 64px; border-radius: 26px;
+  backdrop-filter: blur(3px);
+  transform: scale(.88); animation: scFbIn .16s ease-out forwards;
+}
+.vt-page--shifts .sc-feedback.is-out .sc-feedback__box { animation: scFbOut .3s ease-in forwards; }
+.vt-page--shifts .sc-feedback.is-ok .sc-feedback__box {
+  background: linear-gradient(180deg, rgba(34,197,94,.26), rgba(34,197,94,.12));
+  border: 2px solid var(--vt-green); box-shadow: 0 0 80px -12px var(--vt-green);
+}
+.vt-page--shifts .sc-feedback.is-error .sc-feedback__box {
+  background: linear-gradient(180deg, rgba(239,68,68,.26), rgba(239,68,68,.12));
+  border: 2px solid var(--vt-red); box-shadow: 0 0 80px -12px var(--vt-red);
+}
+.vt-page--shifts .sc-feedback__icon { font-size: 92px; line-height: 1; font-weight: 700; }
+.vt-page--shifts .sc-feedback.is-ok    .sc-feedback__icon { color: var(--vt-green); }
+.vt-page--shifts .sc-feedback.is-error .sc-feedback__icon { color: var(--vt-red); }
+.vt-page--shifts .sc-feedback__title {
+  margin-top: 8px; font-family: 'Saira Condensed', sans-serif; font-weight: 700;
+  font-size: 46px; letter-spacing: .02em; color: var(--vt-text);
+}
+.vt-page--shifts .sc-feedback__sub { margin-top: 6px; font-size: 24px; color: var(--vt-mute); }
+@keyframes scFbIn  { to { transform: scale(1); } }
+@keyframes scFbOut { to { opacity: 0; transform: scale(1.04); } }
+
+/* Botón "corregir tiempo" en la card de carril */
+.vt-page--shifts .sc-lane__fix {
+  margin-left: auto; flex: 0 0 auto;
+  width: 26px; height: 26px; border-radius: 7px; cursor: pointer;
+  background: var(--vt-surface-2); border: 1px solid var(--vt-border);
+  color: var(--vt-mute); font-size: 13px; line-height: 1;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.vt-page--shifts .sc-lane__fix:hover { background: var(--vt-panel); color: var(--vt-blue); border-color: var(--vt-blue); }
+
+/* Modal corregir tiempo */
+.vt-page--shifts .sc-fix-modal {
+  position: fixed; inset: 0; z-index: 11500;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.6); backdrop-filter: blur(3px); padding: 20px;
+}
+.vt-page--shifts .sc-fix-modal[hidden] { display: none; }
+.vt-page--shifts .sc-fix-box {
+  width: min(420px, 100%); background: var(--vt-panel); border: 1px solid var(--vt-border);
+  border-radius: 16px; padding: 18px 20px; box-shadow: 0 24px 60px -16px rgba(0,0,0,.85);
+}
+.vt-page--shifts .sc-fix-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  font-family: 'Saira Condensed', sans-serif; font-weight: 700; font-size: 20px;
+  letter-spacing: .04em; text-transform: uppercase; margin-bottom: 6px;
+}
+.vt-page--shifts .sc-fix-hint { color: var(--vt-mute); font-size: 13px; margin: 0 0 8px; }
+.vt-page--shifts .sc-fix-lbl {
+  display: block; font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--vt-mute); margin: 10px 0 4px;
+}
+.vt-page--shifts .sc-fix-select, .vt-page--shifts .sc-fix-input {
+  width: 100%; padding: 10px 12px; border-radius: 10px;
+  background: var(--vt-surface-2); border: 1px solid var(--vt-border); color: var(--vt-text);
+  font-size: 15px; font-family: inherit; box-sizing: border-box;
+}
+.vt-page--shifts .sc-fix-input { font-family: 'IBM Plex Mono', monospace; }
+.vt-page--shifts .sc-fix-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+
 /* Toasts */
 .vt-page--shifts .sc-toast-wrap {
   position: fixed; bottom: 24px; right: 24px; z-index: 9999;
@@ -452,6 +1025,172 @@ socket.on('manga:started', () => location.reload());
 .vt-page--shifts .sc-toast--ok    { background: linear-gradient(180deg, #16a34a, #15803d); }
 .vt-page--shifts .sc-toast--error { background: linear-gradient(180deg, var(--vt-red), var(--vt-red-deep)); }
 .vt-page--shifts .sc-toast--out   { transform: translateX(20px); opacity: 0; }
+
+/* Botón cámara */
+.vt-page--shifts .sc-cam-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 7px 14px; border-radius: 10px; cursor: pointer;
+  background: var(--vt-surface-2); color: var(--vt-text);
+  border: 1px solid var(--vt-border);
+  font-family: 'Saira Condensed', sans-serif; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase; font-size: 13px;
+  transition: background .15s, border-color .15s;
+}
+.vt-page--shifts .sc-cam-btn:hover { background: var(--vt-panel); border-color: var(--vt-blue); }
+.vt-page--shifts .sc-cam-btn svg { width: 18px; height: 18px; }
+
+/* Modo quiosco: cámara embebida (dock) junto al panel.
+   (El layout/altura del .sc-kiosk se define más abajo con align-items:stretch;
+   NO redefinir aquí .sc-kiosk.is-cam con flex-start, rompía la paginación.) */
+.vt-page--shifts .sc-left { flex: 0 0 340px; width: 340px; display: flex; flex-direction: column; gap: 12px; }
+.vt-page--shifts .sc-left .sc-scan-bar { flex-wrap: wrap; }
+.vt-page--shifts .sc-left .sc-scan-bar .sc-cam-btn { flex: 1 1 100%; justify-content: center; margin-top: 2px; }
+.vt-page--shifts .sc-cam-dock {
+  width: 100%;
+  background: var(--vt-panel); border: 1px solid var(--vt-border);
+  border-radius: 16px; padding: 14px;
+  box-shadow: 0 18px 44px -18px rgba(0,0,0,.7);
+}
+.vt-page--shifts .sc-cam-dock[hidden] { display: none; }
+.vt-page--shifts .sc-cam-btn.is-active {
+  background: var(--vt-blue); border-color: var(--vt-blue); color: #fff;
+}
+@media (max-width: 900px) {
+  .vt-page--shifts .sc-kiosk.is-cam { flex-direction: column; }
+  .vt-page--shifts .sc-cam-dock { position: static; width: 100%; flex-basis: auto; }
+}
+.vt-page--shifts .sc-cam-head {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
+}
+.vt-page--shifts .sc-cam-status {
+  font-family: 'Saira Condensed', sans-serif; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase; font-size: 14px;
+  color: var(--vt-text);
+}
+.vt-page--shifts .sc-cam-acts { display: flex; gap: 8px; margin-left: auto; }
+.vt-page--shifts .sc-cam-view {
+  position: relative; width: 100%; aspect-ratio: 4 / 3;
+  background: #000; border-radius: 12px; overflow: hidden;
+}
+.vt-page--shifts .sc-cam-view video {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.vt-page--shifts .sc-cam-reticle {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 56%; aspect-ratio: 1; border-radius: 16px;
+  border: 3px solid rgba(255,255,255,.7);
+  box-shadow: 0 0 0 9999px rgba(0,0,0,.25);
+  transition: border-color .15s, box-shadow .15s;
+}
+.vt-page--shifts .sc-cam-reticle.is-hit {
+  border-color: var(--vt-green);
+  box-shadow: 0 0 0 9999px rgba(0,0,0,.25), 0 0 24px var(--vt-green);
+}
+.vt-page--shifts .sc-cam-hint {
+  margin-top: 10px; text-align: center; color: var(--vt-mute);
+  font-size: 13px;
+}
+
+/* ── Pantalla completa: sin márgenes laterales ───────────────────── */
+.vt-page--shifts .vt-wrap { max-width: none; margin: 0; padding-left: 18px; padding-right: 18px; }
+
+/* ── Layout a 3 zonas que llena el alto disponible ───────────────── */
+.vt-page--shifts .sc-kiosk {
+  display: flex; align-items: stretch; gap: 16px;
+  height: calc(100vh - 150px);
+}
+.vt-page--shifts .sc-kiosk__main { flex: 1 1 auto; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.vt-page--shifts .sc-lane-head { display: flex; align-items: center; gap: 18px; margin-top: 12px; margin-bottom: 2px; }
+.vt-page--shifts .sc-lane-head .sc-pages-ind { margin-left: auto; }
+.vt-page--shifts .sc-legend { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.vt-page--shifts .sc-legend__i { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--vt-mute); text-transform: uppercase; letter-spacing: .05em; }
+.vt-page--shifts .sc-legend__dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: 0 0 auto; }
+.vt-page--shifts .sc-lane-area { flex: 1 1 auto; min-height: 0; overflow: hidden; margin-top: 6px; }
+.vt-page--shifts .sc-lane-area .sc-lane-grid { margin-top: 0; }
+/* Tarjetas de carril con alto fijo → paginación limpia (filas uniformes) */
+.vt-page--shifts .sc-lane { height: 262px; overflow: hidden; }
+
+/* Tarjeta de equipo en DESCANSO */
+.vt-page--shifts .sc-lane--rest { border-style: dashed; }
+.vt-page--shifts .sc-lane__num--rest { background: var(--vt-blue); color: #fff; }
+.vt-page--shifts .sc-lane__rest-badge {
+  margin: 12px 0 8px; padding: 7px 10px; border-radius: 8px;
+  background: rgba(58,134,255,.14); color: var(--vt-blue);
+  font-family: 'Saira Condensed', sans-serif; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase; font-size: 14px; text-align: center;
+}
+
+/* Roster del equipo dentro de la card: cada piloto con turnos + tiempo total */
+.vt-page--shifts .sc-lane__roster {
+  margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--vt-border);
+  display: flex; flex-direction: column; gap: 1px;
+}
+.vt-page--shifts .sc-lane__rost {
+  display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center;
+  font-size: 12.5px; color: var(--vt-mute); padding: 1px 0;
+}
+.vt-page--shifts .sc-lane__rost-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vt-page--shifts .sc-lane__rost-runs { font-family: 'IBM Plex Mono', monospace; font-size: 11px; opacity: .85; }
+.vt-page--shifts .sc-lane__rost-time { font-family: 'IBM Plex Mono', monospace; color: var(--vt-text); min-width: 44px; text-align: right; }
+/* El piloto que conduce ahora, resaltado */
+.vt-page--shifts .sc-lane__rost.is-now .sc-lane__rost-name { color: var(--vt-text); font-weight: 600; }
+.vt-page--shifts .sc-lane__rost.is-now .sc-lane__rost-name::before { content: '▶ '; color: var(--vt-blue); }
+/* A punto de pasarse (tiempo o turnos) → ámbar; pasado → rojo */
+.vt-page--shifts .sc-lane__rost.is-near .sc-lane__rost-name,
+.vt-page--shifts .sc-lane__rost.is-near .sc-lane__rost-runs,
+.vt-page--shifts .sc-lane__rost.is-near .sc-lane__rost-time { color: var(--vt-amber); }
+.vt-page--shifts .sc-lane__rost.is-over .sc-lane__rost-name,
+.vt-page--shifts .sc-lane__rost.is-over .sc-lane__rost-runs,
+.vt-page--shifts .sc-lane__rost.is-over .sc-lane__rost-time { color: var(--vt-red); }
+/* Correcto (ok) → verde */
+.vt-page--shifts .sc-lane__rost.is-ok .sc-lane__rost-name,
+.vt-page--shifts .sc-lane__rost.is-ok .sc-lane__rost-runs,
+.vt-page--shifts .sc-lane__rost.is-ok .sc-lane__rost-time { color: var(--vt-green); }
+/* Aún por debajo del mínimo → lila */
+.vt-page--shifts .sc-lane__rost.is-under .sc-lane__rost-name,
+.vt-page--shifts .sc-lane__rost.is-under .sc-lane__rost-runs,
+.vt-page--shifts .sc-lane__rost.is-under .sc-lane__rost-time { color: #c792ea; }
+
+/* ── Panel lateral de pilotos (derecha), paginado ────────────────── */
+.vt-page--shifts .sc-pilots-panel {
+  flex: 0 0 340px; width: 340px;
+  display: flex; flex-direction: column;
+  background: var(--vt-panel-2); border: 1px solid var(--vt-border);
+  border-radius: 14px; padding: 12px 12px 10px; overflow: hidden; min-height: 0;
+}
+.vt-page--shifts .sc-pilots-panel__head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px; flex: 0 0 auto;
+}
+.vt-page--shifts .sc-pages-ind { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--vt-mute); }
+.vt-page--shifts .sc-pilots-panel .sc-summary { flex: 1 1 auto; min-height: 0; overflow: hidden; display: block; }
+/* Filas compactas para el panel estrecho */
+.vt-page--shifts .sc-pilots-panel .sc-pilot-row {
+  display: flex; align-items: center; gap: 8px;
+  grid-template-columns: none; padding: 6px 9px; margin-bottom: 4px;
+}
+.vt-page--shifts .sc-pilots-panel .sc-pilot-row__name {
+  flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px;
+}
+.vt-page--shifts .sc-pilots-panel .sc-pilot-row__bar { display: none; }
+.vt-page--shifts .sc-pilots-panel .sc-pilot-row__runs { flex: 0 0 auto; }
+.vt-page--shifts .sc-pilots-panel .sc-pilot-row__runs-n { font-size: 15px; }
+.vt-page--shifts .sc-pilots-panel .sc-pilot-row__runs-l { display: none; }
+.vt-page--shifts .sc-pilots-panel .sc-pilot-row__runs-max { font-size: 11px; }
+.vt-page--shifts .sc-pilots-panel .sc-pilot-row__total {
+  flex: 0 0 auto; font-family: 'IBM Plex Mono', monospace; font-size: 14px; min-width: 50px; text-align: right;
+}
+.vt-page--shifts .sc-pilots-panel .sc-pilot-row__total span { display: none; }
+.vt-page--shifts .sc-pilots-panel .sc-pilot-row__status .vt-badge { padding: 2px 6px; font-size: 10px; }
+.vt-page--shifts .sc-pilots-panel .sc-pilot-row__status .vt-badge__d { display: none; }
+
+@media (max-width: 1100px) {
+  .vt-page--shifts .sc-kiosk { flex-direction: column; height: auto; }
+  .vt-page--shifts .sc-lane-area { overflow: visible; }
+  .vt-page--shifts .sc-left { width: 100%; flex-basis: auto; }
+  .vt-page--shifts .sc-left .sc-scan-bar .sc-cam-btn { flex: 0 0 auto; margin-top: 0; }
+  .vt-page--shifts .sc-pilots-panel { width: 100%; flex-basis: auto; max-height: 320px; }
+}
 </style>
 
 <%- include('../partials/footer') %>

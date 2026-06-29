@@ -19,17 +19,18 @@ class Race {
   }
 
   static create({ name, type, format, lanes_count, lane_sequence, manga_duration_minutes, circuits, has_pole, circuit_id, min_lap_ms,
-                  driver_min_total_ms, driver_max_total_ms, driver_change_lockout_ms }) {
+                  driver_min_total_ms, driver_max_total_ms, driver_change_lockout_ms, driver_max_runs }) {
     const seq  = Array.isArray(lane_sequence) ? JSON.stringify(lane_sequence) : (lane_sequence || '[]');
     const circ = Array.isArray(circuits) ? JSON.stringify(circuits) : '[]';
     const { lastInsertRowid } = db.prepare(`
       INSERT INTO races (name, type, format, lanes_count, lane_sequence, manga_duration_minutes, circuits_config, has_pole, circuit_id, min_lap_ms,
-                          driver_min_total_ms, driver_max_total_ms, driver_change_lockout_ms)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                          driver_min_total_ms, driver_max_total_ms, driver_change_lockout_ms, driver_max_runs)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(name, type, format, lanes_count, seq, manga_duration_minutes || 5, circ, has_pole ? 1 : 0,
            circuit_id || null, min_lap_ms || 0,
            driver_min_total_ms || 0, driver_max_total_ms || 0,
-           (driver_change_lockout_ms != null ? driver_change_lockout_ms : 120000));
+           (driver_change_lockout_ms != null ? driver_change_lockout_ms : 120000),
+           driver_max_runs || 0);
     return lastInsertRowid;
   }
 

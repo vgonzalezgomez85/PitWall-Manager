@@ -76,7 +76,8 @@ class DriverShift {
         dp.name                  AS profile_name,
         dp.category              AS profile_category,
         SUM(ds.driving_ms)       AS total_ms,
-        COUNT(*)                 AS shifts_count
+        COUNT(*)                 AS shifts_count,
+        SUM(CASE WHEN ds.started_at_ms IS NOT NULL THEN 1 ELSE 0 END) AS runs_count
       FROM driver_shifts ds
       JOIN drivers d                 ON d.id = ds.driver_id
       JOIN teams_catalog_members tcm ON tcm.name = d.name
@@ -103,6 +104,20 @@ class DriverShift {
       preArmed ? null : (startedAtMs || Date.now()),
       preArmed ? 1 : 0
     );
+    return lastInsertRowid;
+  }
+
+  // Corrección manual: crea un turno YA CERRADO con el tiempo indicado, porque
+  // el equipo olvidó fichar. Cuenta como un turno (started_at_ms no nulo) y suma
+  // su driving_ms al total del piloto en la carrera. manual=1 para auditarlo.
+  static addManualTime({ mangaId, raceId, lane, teamId, driverId, driverName, drivingMs, atMs }) {
+    const now = atMs || Date.now();
+    const ms  = Math.max(0, Math.round(drivingMs || 0));
+    const { lastInsertRowid } = db.prepare(`
+      INSERT INTO driver_shifts
+        (manga_id, race_id, lane, team_id, driver_id, driver_name, started_at_ms, ended_at_ms, pre_armed, driving_ms, manual)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 1)
+    `).run(mangaId, raceId, lane, teamId || null, driverId || null, driverName, now - ms, now, ms);
     return lastInsertRowid;
   }
 
@@ -150,6 +165,22 @@ class DriverShift {
 
   static findProfileByQR(qrCode) {
     return db.prepare('SELECT * FROM driver_profiles WHERE qr_code = ?').get(qrCode);
+  }
+
+  // True si el equipo del piloto DESCANSA en esta manga (manga_lanes.is_rest=1).
+  // Se usa para rechazar el fichaje con un motivo claro: un piloto de un equipo
+  // que descansa no puede correr en ese momento.
+  static isProfileTeamResting(profileId, mangaId) {
+    const row = db.prepare(`
+      SELECT 1
+      FROM driver_profiles dp
+      JOIN teams_catalog_members tcm ON tcm.driver_id = dp.id
+      JOIN teams_catalog tc           ON tc.id = tcm.team_id
+      JOIN teams t                    ON t.name = tc.name
+      JOIN manga_lanes ml             ON ml.team_id = t.id AND ml.manga_id = ? AND ml.is_rest = 1
+      WHERE dp.id = ? LIMIT 1
+    `).get(mangaId, profileId);
+    return !!row;
   }
 
   // Dado un perfil de piloto y una manga, devuelve la asignación

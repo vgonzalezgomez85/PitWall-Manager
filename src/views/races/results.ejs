@@ -191,6 +191,10 @@
         <svg viewBox="0 0 24 24"><path d="M14 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M8 13h8M8 17h5"/></svg>
         Control
       </a>
+      <a href="/races/<%= race.id %>/results/export.html" class="vt-btn vt-btn--ghost vt-btn--sm" title="<%= lang === 'es' ? 'Descarga un index.html autocontenido para publicar en GitHub Pages' : 'Download a self-contained index.html to publish on GitHub Pages' %>">
+        <svg viewBox="0 0 24 24"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+        <%= lang === 'es' ? 'Exportar para GitHub' : 'Export for GitHub' %>
+      </a>
       <% } %>
       <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" onclick="window.print()" title="<%= lang === 'es' ? 'Guardar como PDF' : 'Save as PDF' %>">
         <svg viewBox="0 0 24 24"><path d="M6 9V4h12v5M6 18H4a1 1 0 0 1-1-1v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a1 1 0 0 1-1 1h-2M6 14h12v7H6z"/></svg>
@@ -229,6 +233,12 @@
       </button>
       <button class="results-tab" data-tab="positions">
         🏁 <%= lang === 'es' ? 'Posiciones' : 'Positions' %>
+      </button>
+      <button class="results-tab" data-tab="gap">
+        📉 <%= lang === 'es' ? 'Gap al líder' : 'Gap to leader' %>
+      </button>
+      <button class="results-tab" data-tab="gapgrid">
+        🔢 <%= lang === 'es' ? 'Gap (rejilla)' : 'Gap (grid)' %>
       </button>
       <button class="results-tab" data-tab="advanced">
         📊 <%= lang === 'es' ? 'Estadísticas avanzadas' : 'Advanced stats' %>
@@ -423,15 +433,28 @@
           <select id="progDriver" class="prog-select"><option value="all"><%= lang === 'es' ? 'Todos' : 'All' %></option></select>
         </div>
         <div class="prog-control">
-          <label><%= lang === 'es' ? 'Carriles' : 'Lanes' %></label>
+          <label>
+            <%= lang === 'es' ? 'Carriles' : 'Lanes' %>
+            <span class="prog-lane-actions">
+              <button type="button" id="progLanesAll"  class="prog-mini-btn"><%= lang === 'es' ? 'Todos' : 'All' %></button>
+              <button type="button" id="progLanesNone" class="prog-mini-btn"><%= lang === 'es' ? 'Ninguno' : 'None' %></button>
+            </span>
+          </label>
           <div id="progLanes" class="prog-lanes"></div>
+        </div>
+        <div class="prog-control">
+          <label><%= lang === 'es' ? 'Mostrar' : 'Show' %></label>
+          <div class="prog-checks">
+            <label class="prog-check"><input type="checkbox" id="progShowExits" checked> 🔴 <%= lang === 'es' ? 'Piños' : 'Crashes' %></label>
+            <label class="prog-check"><input type="checkbox" id="progShowPits" checked> 🔧 <%= lang === 'es' ? 'Pit stops' : 'Pit stops' %></label>
+          </div>
         </div>
         <div class="prog-subtabs">
           <button class="prog-subtab active" data-prog="abs">⏱ <%= lang === 'es' ? 'Tiempo' : 'Time' %></button>
           <button class="prog-subtab" data-prog="delta">Δ <%= lang === 'es' ? 'Delta vs media' : 'Delta vs avg' %></button>
         </div>
       </div>
-      <div class="prog-chart-wrap">
+      <div class="prog-chart-wrap" style="height: 620px;">
         <canvas id="progChart"></canvas>
       </div>
       <p class="prog-hint">
@@ -455,6 +478,12 @@
   .prog-lane-chip { display:inline-flex; align-items:center; gap:.3rem; padding:.25rem .55rem; border:1px solid #30363d; border-radius:14px; background:#161b22; color:#c9d1d9; font-size:.8rem; cursor:pointer; user-select:none; }
   .prog-lane-chip.active { background:rgba(31,111,235,.2); border-color:#1f6feb; color:#58a6ff; font-weight:600; }
   .prog-lane-chip__dot { width:8px; height:8px; border-radius:50%; }
+  .prog-lane-actions { display:inline-flex; gap:.3rem; margin-left:.5rem; }
+  .prog-mini-btn { background:#161b22; color:#8b949e; border:1px solid #30363d; border-radius:5px; padding:.1rem .5rem; font-size:.72rem; cursor:pointer; text-transform:none; letter-spacing:0; }
+  .prog-mini-btn:hover { border-color:#1f6feb; color:#58a6ff; }
+  .prog-checks { display:flex; gap:.8rem; padding:.35rem 0; }
+  .prog-check { display:inline-flex; align-items:center; gap:.3rem; color:#c9d1d9; font-size:.85rem; cursor:pointer; white-space:nowrap; }
+  .prog-check input { cursor:pointer; accent-color:#1f6feb; }
   .prog-subtabs { display:inline-flex; gap:.3rem; margin-left:auto; }
   .prog-subtab { background:#161b22; color:#8b949e; border:1px solid #30363d; padding:.45rem .8rem; border-radius:6px; cursor:pointer; font-size:.85rem; }
   .prog-subtab.active { background:#1f6feb; color:#fff; border-color:#1f6feb; }
@@ -473,6 +502,63 @@
           : 'Each line shows a team/driver position throughout the race. P1 is at the top. X axis is chronological lap order (each crossing is a point).' %>
       </p>
     </div>
+
+    <!-- ── Gap to leader (lap gap over race time) ── -->
+    <div class="results-panel" id="tab-gap">
+      <div class="progression-controls">
+        <div class="prog-control">
+          <label for="gapFrom"><%= lang === 'es' ? 'Desde manga' : 'From heat' %></label>
+          <select id="gapFrom" class="prog-select"></select>
+        </div>
+        <div class="prog-control">
+          <label for="gapTo"><%= lang === 'es' ? 'Hasta manga' : 'To heat' %></label>
+          <select id="gapTo" class="prog-select"></select>
+        </div>
+        <div class="prog-control">
+          <label>&nbsp;</label>
+          <button type="button" id="gapReset" class="prog-subtab">↺ <%= lang === 'es' ? 'Todas' : 'All' %></button>
+        </div>
+      </div>
+      <div class="prog-chart-wrap" style="height: 560px;">
+        <canvas id="gapChart"></canvas>
+      </div>
+      <p class="prog-hint">
+        <%= lang === 'es'
+          ? 'Vueltas que cada equipo/piloto lleva por detrás del líder a lo largo de la carrera. El líder va en 0 (arriba); cuanto más abajo, más vueltas perdidas.'
+          : 'Laps each team/driver is behind the leader through the race. The leader stays at 0 (top); lower = more laps down.' %>
+      </p>
+    </div>
+    <script id="gapData" type="application/json"><%- JSON.stringify(gapData || {}) %></script>
+
+    <!-- ── Gap to leader (grid / matrix) ── -->
+    <div class="results-panel" id="tab-gapgrid">
+      <div class="prog-control prog-control--wide">
+        <label><%= lang === 'es' ? 'Comparar equipos (elige 2–4; vacío = todos vs líder)' : 'Compare teams (pick 2–4; empty = all vs leader)' %></label>
+        <div id="gapgridEntities" class="prog-entities"></div>
+      </div>
+      <div class="gapgrid-wrap">
+        <table class="gapgrid" id="gapgridTable"></table>
+      </div>
+      <p class="prog-hint">
+        <%= lang === 'es'
+          ? 'Vueltas tras el líder al cierre de cada manga (0 = líder). Elige 2–4 equipos para ver el gap ENTRE ellos. Borde dorado = hubo pit-stop en esa manga.'
+          : 'Laps behind the leader at each heat close (0 = leader). Pick 2–4 teams to see the gap BETWEEN them. Gold border = pit-stop in that heat.' %>
+      </p>
+    </div>
+
+    <style>
+      .gapgrid-wrap { overflow-x: auto; border: 1px solid #21262d; border-radius: 12px; }
+      .gapgrid { border-collapse: collapse; width: 100%; font-size: .82rem; font-variant-numeric: tabular-nums; }
+      .gapgrid th, .gapgrid td { padding: .35rem .5rem; text-align: right; white-space: nowrap; border-bottom: 1px solid #161b22; }
+      .gapgrid thead th { position: sticky; top: 0; background: #1f3a5f; color: #fff; font-weight: 700; z-index: 2; }
+      .gapgrid__name { text-align: left !important; position: sticky; left: 0; background: #0d1117; z-index: 1; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+      .gapgrid thead .gapgrid__name { z-index: 3; background: #1f3a5f; }
+      .gapgrid tbody tr:hover td { background: rgba(255,255,255,.03); }
+      .gapgrid__dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: .4rem; vertical-align: middle; }
+      .gapgrid td { color: #c9d1d9; position: relative; }
+      /* Pit-stop en esa manga → borde dorado llamativo. */
+      .gapgrid td.gapgrid--pit { box-shadow: inset 0 0 0 2px #f0b72f; border-radius: 3px; font-weight: 700; }
+    </style>
 
     <!-- ── Advanced stats (per-pilot deep dive + head-to-head) ── -->
     <div class="results-panel" id="tab-advanced">
@@ -740,7 +826,10 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
   (function() {
-    const data = JSON.parse(document.getElementById('progressionData').textContent || '{}');
+    // Datos vuelta-a-vuelta: pueden ser muy grandes (carreras de 24h ≈ 12 MB).
+    // No los parseamos al cargar la página — eso bloquea móviles antes de cablear
+    // los botones. Se parsean en diferido al abrir la pestaña Progresión.
+    let data = {};
     const entitiesBox = document.getElementById('progEntities');
     const selManga    = document.getElementById('progManga');
     const selDriver   = document.getElementById('progDriver');
@@ -832,9 +921,12 @@
       }
       const mangaFilter  = 'all';   // selector deshabilitado: siempre todas las mangas
       const driverFilter = selDriver.value;
+      const showExits = document.getElementById('progShowExits')?.checked ?? true;
+      const showPits  = document.getElementById('progShowPits')?.checked  ?? true;
       const lanes = [...enabledLanes].sort((a,b)=>a-b);
       const datasets = [];
-      const allMs = [];   // para centrar el eje Y en la media ± 3s
+      const allMs = [];
+      const ys = [];   // todos los valores PINTADOS, para calcular el rango del eje Y
 
       [...selectedEntities].forEach(key => {
         const entity = data[key];
@@ -845,6 +937,9 @@
             l.lane === lane
             && (mangaFilter === 'all' || String(l.manga) === mangaFilter)
             && (driverFilter === 'all' || l.driver === driverFilter)
+            // Un pit-stop también lleva is_exit=1; las categorías son EXCLUYENTES:
+            // pit-stop → check de pits; salida pura (exit sin pit) → check de piños.
+            && (l.isPitStop ? showPits : (l.isExit ? showExits : true))
           );
           if (filtered.length === 0) return;
           filtered.forEach(l => allMs.push(l.ms));
@@ -854,6 +949,7 @@
             y: mode === 'abs' ? l.ms / 1000 : (l.ms - avg) / 1000,
             _meta: l, _entityName: entity.name,
           }));
+          points.forEach(p => ys.push(p.y));
           const pointColors = filtered.map(l =>
             l.isPitStop ? '#ff9800' :
             l.isExit    ? '#e63946' : color);
@@ -877,15 +973,16 @@
         });
       });
 
-      // Eje Y centrado en la media ± 2s: las vueltas normales llenan la gráfica
-      // y la salida (~2s) y las salidas de pista (~14s) quedan fuera, en vez de
-      // aplastar todo en una línea plana. Mediana = centro robusto a outliers.
+      // Eje Y: hasta el valor MÁS GRANDE pintado + 2 (para no cortar los picos),
+      // y abajo el percentil 1 − 1 (ignora outliers bajos puntuales —out-lap,
+      // parciales— que dejaban un hueco muerto abajo y aplastaban la información).
       let yMin, yMax;
-      if (allMs.length) {
-        const sorted = [...allMs].sort((a, b) => a - b);
-        const medMs = sorted[Math.floor(sorted.length / 2)];
-        const center = mode === 'abs' ? medMs / 1000 : 0;
-        yMin = center - 2; yMax = center + 2;
+      if (ys.length) {
+        ys.sort((a, b) => a - b);
+        const lo = ys[Math.floor(ys.length * 0.01)];
+        const hi = ys[ys.length - 1];
+        yMin = Math.floor(lo) - 1;
+        yMax = Math.ceil(hi) + 2;
       }
 
       if (chart) chart.destroy();
@@ -936,6 +1033,19 @@
 
     selManga.addEventListener('change', build);
     selDriver.addEventListener('change', build);
+    document.getElementById('progShowExits')?.addEventListener('change', build);
+    document.getElementById('progShowPits')?.addEventListener('change', build);
+    // Carriles: seleccionar / deseleccionar todos.
+    function setAllLanes(on) {
+      lanesBox.querySelectorAll('.prog-lane-chip').forEach(chip => {
+        const lane = Number(chip.dataset.lane);
+        if (on) { enabledLanes.add(lane);    chip.classList.add('active'); }
+        else    { enabledLanes.delete(lane); chip.classList.remove('active'); }
+      });
+      build();
+    }
+    document.getElementById('progLanesAll') ?.addEventListener('click', () => setAllLanes(true));
+    document.getElementById('progLanesNone')?.addEventListener('click', () => setAllLanes(false));
     document.querySelectorAll('.prog-subtab').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.prog-subtab').forEach(b => b.classList.remove('active'));
@@ -945,14 +1055,21 @@
       });
     });
 
-    // Pre-select the first entity so the chart shows something on first visit
-    const firstKey = Object.keys(data)[0];
-    if (firstKey) selectedEntities.add(firstKey);
-    renderEntities();
-    refreshFilters();
+    // Inicialización perezosa: solo al abrir la pestaña por primera vez se
+    // parsean los datos (potencialmente enormes) y se pinta el primer equipo.
+    let initialized = false;
+    function initProgression() {
+      if (initialized) return;
+      initialized = true;
+      data = JSON.parse(document.getElementById('progressionData').textContent || '{}');
+      const firstKey = Object.keys(data)[0];
+      if (firstKey) selectedEntities.add(firstKey);
+      renderEntities();
+      refreshFilters();
+    }
 
     document.querySelector('[data-tab="progression"]')?.addEventListener('click', () => {
-      setTimeout(() => { renderEntities(); refreshFilters(); build(); }, 50);
+      setTimeout(() => { initProgression(); build(); }, 50);
     });
   })();
 
@@ -1014,6 +1131,208 @@
     document.querySelector('[data-tab="positions"]')?.addEventListener('click', () => {
       setTimeout(build, 50);
     });
+  })();
+
+  // ── Gap-to-leader chart ────────────────────────────────────────────────
+  // Vueltas que cada equipo lleva por detrás del líder, por tiempo de carrera.
+  (function() {
+    const data   = JSON.parse(document.getElementById('gapData').textContent || '{}');
+    const canvas = document.getElementById('gapChart');
+    if (!canvas) return;
+    const PALETTE = ['#1F6FEB','#F6C90E','#2DA44E','#FB6A6B','#A371F7','#16BDCA','#F97316','#E63946','#FBBF24','#34D399','#FF6B9D','#56D4DD'];
+    let chart = null, built = false, maxManga = 1;
+    const fromSel  = document.getElementById('gapFrom');
+    const toSel    = document.getElementById('gapTo');
+    const resetBtn = document.getElementById('gapReset');
+
+    function fillSelects() {
+      if (!fromSel || !toSel || fromSel.options.length) return;
+      for (let i = 1; i <= maxManga; i++) {
+        fromSel.add(new Option('M' + i, i));
+        toSel.add(new Option('M' + i, i));
+      }
+      fromSel.value = '1';
+      toSel.value   = String(maxManga);
+    }
+
+    // Reescala el eje Y a lo VISIBLE: rango de mangas seleccionado + equipos NO
+    // ocultados con la leyenda. Usa min "duro" para que el eje también ENCOJA
+    // (suggestedMin solo expandía, por eso al quitar equipos no se reajustaba).
+    function rescaleY() {
+      if (!chart) return;
+      const from = parseInt(fromSel?.value, 10) || 1;
+      const to   = parseInt(toSel?.value, 10)   || maxManga;
+      let minGap = 0;
+      chart.data.datasets.forEach((ds, i) => {
+        if (chart.getDatasetMeta(i).hidden) return;   // equipo oculto por la leyenda
+        (ds.data || []).forEach(p => { if (p.x >= from && p.x <= to && p.y < minGap) minGap = p.y; });
+      });
+      chart.options.scales.y.min = Math.min(-1, Math.floor(minGap) - 1);
+      chart.update();
+    }
+
+    // Zoom: limita el rango de mangas (eje X) y reescala el eje Y a lo visible.
+    function applyRange() {
+      if (!chart) return;
+      let from = parseInt(fromSel?.value, 10) || 1;
+      let to   = parseInt(toSel?.value, 10)   || maxManga;
+      if (from > to) { const t = from; from = to; to = t; if (fromSel) fromSel.value = String(from); if (toSel) toSel.value = String(to); }
+      chart.options.scales.x.min = from;
+      chart.options.scales.x.max = to;
+      rescaleY();
+    }
+
+    function build() {
+      const entries = Object.entries(data);
+      if (entries.length === 0) return;
+      maxManga = 1; let minGap = 0;
+      entries.forEach(([, e]) => (e.points || []).forEach(p => { if (p.y < minGap) minGap = p.y; if (p.x > maxManga) maxManga = p.x; }));
+      const datasets = entries.map(([key, e], i) => ({
+        label: e.name,
+        data: (e.points || []),   // {x: nº de manga, y: vueltas tras el líder (≤0)}
+        borderColor: e.color || PALETTE[i % PALETTE.length],
+        backgroundColor: (e.color || PALETTE[i % PALETTE.length]) + '22',
+        tension: 0.2, spanGaps: true,
+        pointRadius: 2, pointHoverRadius: 6, borderWidth: 2.5,
+      }));
+      if (chart) chart.destroy();
+      chart = new Chart(canvas, {
+        type: 'line',
+        data: { datasets },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          interaction: { mode: 'nearest', intersect: false },
+          plugins: {
+            legend: {
+              position: 'right', labels: { color: '#c9d1d9', boxWidth: 14 },
+              // Al ocultar/mostrar un equipo, reescala el eje Y a los visibles.
+              onClick: (e, item, legend) => {
+                const ci = legend.chart;
+                if (ci.getDatasetMeta(item.datasetIndex).hidden) ci.show(item.datasetIndex);
+                else ci.hide(item.datasetIndex);
+                // tras el hide/show (que ya hace su update con animación), reescala
+                setTimeout(rescaleY, 0);
+              }
+            },
+            tooltip: {
+              callbacks: {
+                title: (items) => 'M' + items[0].parsed.x,
+                label: (ctx) => ctx.dataset.label + ': ' + (ctx.parsed.y === 0
+                  ? '<%= lang === "es" ? "líder" : "leader" %>'
+                  : ctx.parsed.y + ' <%= lang === "es" ? "vueltas" : "laps" %>'),
+              }
+            }
+          },
+          scales: {
+            x: {
+              type: 'linear',
+              min: 1, max: maxManga,
+              title: { display: true, text: '<%= lang === "es" ? "Manga" : "Heat" %>', color: '#8b949e' },
+              ticks: { color: '#8b949e', stepSize: 1, precision: 0, callback: (v) => 'M' + v },
+              grid: { color: '#21262d' },
+            },
+            y: {
+              // Líder en 0 (arriba); el resto NEGATIVO (vueltas perdidas) hacia abajo.
+              // min "duro" para que el eje encoja al quitar equipos/rango.
+              max: 0, min: Math.min(-1, Math.floor(minGap) - 1),
+              title: { display: true, text: '<%= lang === "es" ? "Vueltas tras el líder" : "Laps behind leader" %>', color: '#8b949e' },
+              // Divisiones del eje Y de 200 en 200.
+              ticks: { color: '#8b949e', precision: 0, stepSize: 200, maxTicksLimit: 30 },
+              grid: { color: '#21262d' },
+            }
+          }
+        }
+      });
+      built = true;
+      fillSelects();
+    }
+
+    fromSel?.addEventListener('change', applyRange);
+    toSel?.addEventListener('change', applyRange);
+    resetBtn?.addEventListener('click', () => {
+      if (fromSel) fromSel.value = '1';
+      if (toSel) toSel.value = String(maxManga);
+      applyRange();
+    });
+
+    document.querySelector('[data-tab="gap"]')?.addEventListener('click', () => {
+      setTimeout(() => { if (!built) build(); else if (chart) chart.resize(); }, 50);
+    });
+  })();
+
+  // ── Gap GRID (rejilla) — filtro entre 2-4 equipos + resaltado de pit-stops ──
+  (function() {
+    const data     = JSON.parse(document.getElementById('gapData').textContent || '{}');
+    const table    = document.getElementById('gapgridTable');
+    const chipsBox = document.getElementById('gapgridEntities');
+    if (!table) return;
+    const LBL_TEAM = '<%= lang === "es" ? "Equipo" : "Team" %>';
+    const entries  = Object.entries(data);   // [key, {name,color,points:[{x,y,pit}]}]
+    let maxM = 0;
+    const byM = {};
+    entries.forEach(([k, e]) => {
+      byM[k] = {};
+      (e.points || []).forEach(p => { byM[k][p.x] = p; if (p.x > maxM) maxM = p.x; });
+    });
+    const selected = new Set();
+
+    function renderChips() {
+      if (!chipsBox) return;
+      chipsBox.innerHTML = entries.map(([k, e]) =>
+        '<span class="prog-entity-chip' + (selected.has(k) ? ' active' : '') + '" data-k="' + k + '">' +
+          '<span class="prog-entity-chip__dot" style="background:' + (e.color || '#8b949e') + '"></span>' + e.name +
+        '</span>').join('');
+    }
+
+    function esc(s) { return String(s).replace(/"/g, '&quot;'); }
+
+    function build() {
+      const useSel = selected.size >= 2 && selected.size <= 4;
+      const rows = entries.filter(([k]) => !useSel || selected.has(k));
+      // Referencia por manga = el que MÁS vueltas lleva (y más alto) entre los mostrados.
+      const refByM = {};
+      for (let m = 1; m <= maxM; m++) {
+        let mx = -Infinity;
+        rows.forEach(([k]) => { const p = byM[k][m]; if (p && p.y > mx) mx = p.y; });
+        refByM[m] = (mx === -Infinity) ? undefined : mx;
+      }
+      let minGap = 0;
+      rows.forEach(([k]) => { for (let m = 1; m <= maxM; m++) { const p = byM[k][m]; if (p && refByM[m] !== undefined) { const g = p.y - refByM[m]; if (g < minGap) minGap = g; } } });
+
+      let html = '<thead><tr><th class="gapgrid__name">' + LBL_TEAM + '</th>';
+      for (let m = 1; m <= maxM; m++) html += '<th>M' + m + '</th>';
+      html += '</tr></thead><tbody>';
+      rows.forEach(([k, e]) => {
+        html += '<tr><td class="gapgrid__name" title="' + esc(e.name) + '"><span class="gapgrid__dot" style="background:' + (e.color || '#8b949e') + '"></span>' + e.name + '</td>';
+        for (let m = 1; m <= maxM; m++) {
+          const p = byM[k][m], ref = refByM[m];
+          if (!p || ref === undefined) { html += '<td></td>'; continue; }
+          const g = p.y - ref;
+          let style = '';
+          if (g < 0 && minGap < 0) { const a = Math.min(0.55, (g / minGap) * 0.55); style = 'background:rgba(248,81,73,' + a.toFixed(3) + ')'; }
+          else if (g === 0) { style = 'background:rgba(46,160,67,.18)'; }
+          const isPit = p.pit > 0;
+          const cls = isPit ? ' class="gapgrid--pit"' : '';
+          const tip = isPit ? ' title="' + p.pit + ' pit-stop' + (p.pit > 1 ? 's' : '') + '"' : '';
+          html += '<td' + cls + ' style="' + style + '"' + tip + '>' + g + '</td>';
+        }
+        html += '</tr>';
+      });
+      html += '</tbody>';
+      table.innerHTML = html;
+    }
+
+    chipsBox?.addEventListener('click', e => {
+      const chip = e.target.closest('.prog-entity-chip'); if (!chip) return;
+      const k = chip.dataset.k;
+      if (selected.has(k)) selected.delete(k);
+      else { if (selected.size >= 4) return; selected.add(k); }   // máximo 4
+      renderChips(); build();
+    });
+
+    renderChips();
+    build();
+    document.querySelector('[data-tab="gapgrid"]')?.addEventListener('click', () => setTimeout(build, 30));
   })();
 </script>
 

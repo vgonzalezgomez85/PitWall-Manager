@@ -78,16 +78,26 @@ class SettingsController {
     const parArr   = [].concat(req.body['circuit_parity']   || []);
     const sbArr    = [].concat(req.body['circuit_stopbits'] || []);
     const flowArr  = [].concat(req.body['circuit_flow']     || []);
+    const subArr   = [].concat(req.body['circuit_sub']      || []);
 
     let circuits = portArr
       .map((port, i) => {
         const refId = parseInt(refArr[i], 10);
         let lanes = parseInt(lanesArr[i] || '8', 10);
         let circuit_id = null;
-        // If a saved circuit is referenced, override lanes with its lanes_count
+        let sub_index = null;
+        // Si la fila referencia un escenario, los carriles son los de SU
+        // sub-circuito (no el total): un escenario de 3 circuitos × 8 se reparte
+        // en 3 filas de DS de 8, no en una de 24.
         if (refId) {
           const ref = Circuit.findById(refId);
-          if (ref) { lanes = ref.lanes_count; circuit_id = ref.id; }
+          if (ref) {
+            circuit_id = ref.id;
+            const cfg = Circuit.getConfig(ref);          // p.ej. [8,8,6]
+            const si  = parseInt(subArr[i], 10);
+            sub_index = (Number.isFinite(si) && si >= 0 && si < cfg.length) ? si : 0;
+            lanes = cfg[sub_index] || ref.lanes_count;
+          }
         }
         return {
           port:  port.trim(),
@@ -97,7 +107,7 @@ class SettingsController {
           stopBits:    parseInt(sbArr[i] || '1', 10),
           flowControl: flowArr[i] || 'none',
           lanes,
-          ...(circuit_id ? { circuit_id } : {}),
+          ...(circuit_id ? { circuit_id, sub_index } : {}),
         };
       })
       .filter(c => c.port);

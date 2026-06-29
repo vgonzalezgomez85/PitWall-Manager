@@ -1,4 +1,13 @@
 // ── Helpers ───────────────────────────────────────────────────────────────────
+// Bandera del país (country = "Nombre|🇪🇸" o "Nombre|__SVG__").
+const SENYERA_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 6" width="16" height="11" style="border-radius:2px;flex-shrink:0;vertical-align:middle"><rect width="9" height="6" fill="#FCDD09"/><rect y="0.667" width="9" height="0.889" fill="#DA121A"/><rect y="2.222" width="9" height="0.889" fill="#DA121A"/><rect y="3.778" width="9" height="0.889" fill="#DA121A"/><rect y="5.333" width="9" height="0.667" fill="#DA121A"/></svg>';
+function flagHtml(country) {
+  if (!country) return '';
+  const flag = String(country).split('|')[1];
+  if (!flag) return '';
+  const inner = flag === '__SVG__' ? SENYERA_SVG : `<span style="line-height:1">${flag}</span>`;
+  return `<span class="lane-flag">${inner}</span>`;
+}
 function formatMs(ms) {
   if (ms == null) return '—';
   const totalSec = Math.floor(ms / 1000);
@@ -122,7 +131,7 @@ function buildCard(lane) {
         ${lane.count} ${LANG === 'es' ? 'vlt' : 'lps'}
       </span>
     </div>
-    ${lane.participantName ? `<div class="tr-card__name" id="tr-name-${lane.lane}">${lane.participantName}</div>` : ''}
+    ${lane.participantName ? `<div class="tr-card__name" id="tr-name-${lane.lane}">${flagHtml(lane.country)}${lane.participantName}</div>` : ''}
     <div class="tr-card__session-record" id="tr-srec-${lane.lane}">
       <span class="tr-srec-label">🏆 ${LANG === 'es' ? 'Récord carril' : 'Lane record'}</span>
       <span class="tr-srec-time" id="tr-srec-time-${lane.lane}">${sessionRecords[lane.lane] ? formatMs(sessionRecords[lane.lane]) : '—'}</span>
@@ -446,7 +455,7 @@ function renderRestingBar(resting) {
     <div class="resting-chip">
       <span class="resting-chip__num">DSC${r.restNum}</span>
       <span class="resting-chip__dot" style="background:${r.color}"></span>
-      <span class="resting-chip__name">${r.name}</span>
+      <span class="resting-chip__name">${flagHtml(r.country)}${r.name}</span>
     </div>
   `).join('');
 }
