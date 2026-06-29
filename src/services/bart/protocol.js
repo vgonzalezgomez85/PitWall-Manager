@@ -67,19 +67,22 @@ function seal(bytes) {
 
 // ---- Packet builders ------------------------------------------------------
 
-// A5 01 01 lane laps[2] lap_ms[2] ts_d10[2] device_id reserved CRC   (13 bytes)
-// `lane` es lane_id 1..N (por dispositivo). En topología Master+Slaves el carril
-// único se reconstruye como device_id × lanesPerDevice + lane_id. device_id viaja
-// en el byte reservado bajo (byte 10); 0 = Master, 1..7 = Slaves.
-function buildLap(lane, laps, lapMs, tsD10, deviceId = 0) {
-  const b = Buffer.alloc(12);
+// A5 01 01 lane laps[2] lap_ms[2] ts_d10[2] reserved[2] seq CRC   (14 bytes)
+//
+// El hardware real (Policar FL_BLE) emite 14 bytes: igual que el layout
+// documentado pero con un byte extra ANTES del CRC que actúa de contador de
+// trama (`seq`, incremental por paquete). Lane/laps/lap_ms quedan en los mismos
+// offsets, así que _onLap no cambia; solo el encuadre. Mantenemos el emulador
+// alineado con el hardware (14 bytes) para que parser y builder concuerden.
+function buildLap(lane, laps, lapMs, tsD10, reserved = 0, seq = 0) {
+  const b = Buffer.alloc(13);
   b[0] = SYNC; b[1] = MSG.LAP; b[2] = 0x01;
   b[3] = lane & 0xFF;
   b.writeUInt16LE(laps & 0xFFFF, 4);
   b.writeUInt16LE(lapMs & 0xFFFF, 6);
   b.writeUInt16LE(tsD10 & 0xFFFF, 8);
-  b[10] = deviceId & 0xFF;   // device_id (0=Master, 1..7=Slaves)
-  b[11] = 0;                 // reservado
+  b.writeUInt16LE(reserved & 0xFFFF, 10);
+  b[12] = seq & 0xFF;
   return seal(b);
 }
 
@@ -128,7 +131,7 @@ function cmdLength(op) {
 // length of a Master->Phone notification given its MSG_TYPE
 function notifyLength(msgType) {
   switch (msgType) {
-    case MSG.LAP: return 13;
+    case MSG.LAP: return 14;   // hardware real Policar FL_BLE: 13 cuerpo + seq + CRC
     case MSG.ACK: return 5;
     case MSG.STATUS: return 12;
     default: return null;
