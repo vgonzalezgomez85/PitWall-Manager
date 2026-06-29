@@ -1,0 +1,26 @@
+'use strict';
+// Escaneo BLE ~15s con @stoprocent/noble (el módulo realmente instalado).
+// Lista cada dispositivo (nombre + servicios) y resalta lo que parezca BART.
+const noble = require('@stoprocent/noble');
+const NUS = '6e400001b5a3f393e0a9e50e24dcca9e';
+const seen = new Map();
+
+noble.on('stateChange', s => {
+  console.log('estado BLE:', s);
+  if (s === 'poweredOn') noble.startScanning([], true);
+});
+noble.on('discover', p => {
+  const a = p.advertisement || {};
+  const name = a.localName || '(sin nombre)';
+  const uuids = (a.serviceUuids || []).map(u => String(u).replace(/-/g, '').toLowerCase());
+  const isBart = uuids.includes(NUS) || /^BART_/i.test(name);
+  const key = p.id;
+  if (!seen.has(key)) {
+    seen.set(key, true);
+    console.log(`${isBart ? '★ BART →' : '       '} ${p.address || p.id}  rssi=${p.rssi}  name="${name}"  svc=[${uuids.join(',') || '-'}]`);
+  }
+});
+setTimeout(() => {
+  console.log(`\nTotal dispositivos vistos: ${seen.size}`);
+  process.exit(0);
+}, 15000);
