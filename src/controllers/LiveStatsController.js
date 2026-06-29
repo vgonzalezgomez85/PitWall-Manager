@@ -220,6 +220,9 @@ class LiveStatsController {
       entityName: e.entityName,
       lane:       e.lane,
       ...buildEntityStats({ laps: e.laps, mangaDurationMs }),
+      // Serie vuelta a vuelta (de la manga) para la gráfica de la comparativa.
+      // n = nº de vuelta, t = tiempo (ms), x = salida/pit (1) para marcarla.
+      lapSeries:  e.laps.map(l => ({ n: l.lap_number, t: l.lap_time_ms, x: l.is_exit ? 1 : 0 })),
     }));
 
     // Clasificación por total laps (desc), luego best (asc)
@@ -265,6 +268,42 @@ class LiveStatsController {
       e.mangasRaced     = rw.mangas_raced || 0;
     });
 
+    // Progreso de carrera: vueltas ACUMULADAS de cada equipo manga a manga
+    // (agrupado por NOMBRE para soportar equipos duplicados por tanda). Lo usa
+    // la gráfica "Gap de vueltas" para mostrar el gap entre equipos a lo largo
+    // de la carrera y su tendencia (se acercan / se alejan).
+    const progressRows = db.prepare(`
+      SELECT m.number AS manga, COALESCE(t.name, d.name) AS ename, COUNT(l.id) AS laps
+      FROM laps l
+      JOIN mangas m ON m.id = l.manga_id
+      LEFT JOIN teams   t ON t.id = l.team_id
+      LEFT JOIN drivers d ON d.id = l.driver_id
+      WHERE l.race_id = ? AND l.is_ghost = 0
+      GROUP BY m.number, ename
+      ORDER BY m.number ASC
+    `).all(race.id);
+    const progMangas = [...new Set(progressRows.map(r => r.manga))].sort((a, b) => a - b);
+    const lapsByNameManga = {};
+    progressRows.forEach(r => { (lapsByNameManga[r.ename] = lapsByNameManga[r.ename] || {})[r.manga] = r.laps; });
+    const raceProgress = { mangas: progMangas, byName: {} };
+    Object.keys(lapsByNameManga).forEach(name => {
+      let cum = 0;
+      raceProgress.byName[name] = progMangas.map(mn => { cum += (lapsByNameManga[name][mn] || 0); return cum; });
+    });
+
+    // Clasificación PROYECTADA de TODA la carrera: la MISMA proyección que el
+    // directo (getStandings().projection / _buildProjection), para que el
+    // espectador vea la clasificación estimada al final, no solo la manga.
+    // Disponible mientras corre una manga de esta carrera.
+    let projection = null;
+    try {
+      const TimingService = require('../services/TimingService');
+      if (TimingService.activeRaceId === race.id) {
+        const st = TimingService.getStandings();
+        projection = st ? st.projection : null;
+      }
+    } catch (e) { /* sin proyección si no hay sesión viva */ }
+
     // La comparativa en vivo (tú vs 1-2 rivales) se calcula en CLIENTE a partir
     // de `entities` (cada una trae lane, position, totalLaps, best/avg, última).
     res.json({
@@ -278,6 +317,8 @@ class LiveStatsController {
       remainingMangas,
       isActive,
       entities,
+      projection,
+      raceProgress,
     });
   }
 }
