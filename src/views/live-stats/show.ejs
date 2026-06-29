@@ -93,13 +93,41 @@
       <div class="ls-cmp-table-wrap">
         <table class="ls-cmp2" id="lsCmpTable"></table>
       </div>
+      <div class="ls-cmp-chart-modes" id="lsCmpModes">
+        <button type="button" class="ls-cmode is-active" data-cmode="pace"><%= lang === 'es' ? 'Tiempo por vuelta' : 'Lap time' %></button>
+        <button type="button" class="ls-cmode" data-cmode="gap"><%= lang === 'es' ? 'Sobre la media' : 'Vs average' %></button>
+        <button type="button" class="ls-cmode" data-cmode="gaplaps"><%= lang === 'es' ? 'Gap de vueltas' : 'Lap gap' %></button>
+      </div>
+      <div class="ls-cmp-chart-wrap"><canvas id="lsCmpChart"></canvas></div>
       <div class="ls-cmp__verdicts" id="lsCmpVerdicts"></div>
+    </div>
+  </section>
+
+  <!-- ── Clasificación PROYECTADA de carrera (toda la carrera) ──────────── -->
+  <section class="ls-section" id="lsProjSection" hidden>
+    <h2 class="ls-section__title">🏁 <%= lang === 'es' ? 'Clasificación proyectada de carrera' : 'Projected race standings' %></h2>
+    <p class="ls-proj-hint"><%= lang === 'es' ? 'Estimación al final de la carrera (no solo la manga en curso).' : 'Estimate at the end of the race (not just the current heat).' %></p>
+    <div class="ls-table-wrap">
+      <table class="ls-table" id="lsProjTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th><%= lang === 'es' ? 'Participante' : 'Participant' %></th>
+            <th title="<%= lang === 'es' ? 'Vueltas proyectadas al final' : 'Projected laps at the end' %>"><%= lang === 'es' ? 'V. Proy.' : 'Proj.' %></th>
+            <th><%= lang === 'es' ? 'Total' : 'Total' %></th>
+            <th title="<%= lang === 'es' ? 'Vueltas proyectadas respecto al líder' : 'Projected laps behind the leader' %>">Gap</th>
+            <th><%= lang === 'es' ? 'Media' : 'Avg' %></th>
+            <th title="<%= lang === 'es' ? 'Media por vuelta que necesitas para alcanzar al de delante' : 'Lap pace needed to catch the car ahead' %>"><%= lang === 'es' ? 'P/Subir' : 'To climb' %></th>
+          </tr>
+        </thead>
+        <tbody id="lsProjBody"></tbody>
+      </table>
     </div>
   </section>
 
   <!-- ── Dashboard general (modo A) ─────────────────────────────────────── -->
   <section class="ls-section">
-    <h2 class="ls-section__title">📋 <%= lang === 'es' ? 'Clasificación general' : 'Overall standings' %></h2>
+    <h2 class="ls-section__title">📋 <%= lang === 'es' ? 'Clasificación de manga actual' : 'Current heat standings' %></h2>
     <div class="ls-table-wrap">
       <table class="ls-table" id="lsTable">
         <thead>
@@ -180,6 +208,12 @@
   .ls-cmp { background:#161b22; border:1px solid #30363d; border-radius:10px; padding:.9rem 1rem }
   .ls-cmp-table-wrap { overflow-x:auto }
   .ls-cmp2 { width:100%; border-collapse:collapse; font-family:'Share Tech Mono', monospace }
+  .ls-cmp-chart-modes { display:flex; gap:6px; margin:1rem 0 .2rem; }
+  .ls-cmode { background:#161b22; color:#8b949e; border:1px solid #30363d; border-radius:8px;
+    padding:5px 12px; font-size:.82rem; font-weight:600; cursor:pointer; }
+  .ls-cmode.is-active { background:rgba(88,166,255,.16); border-color:#58a6ff; color:#e6edf3; }
+  .ls-cmp-chart-wrap { position:relative; height:280px; margin:.3rem 0 .4rem; }
+  @media (max-width:640px){ .ls-cmp-chart-wrap { height:230px; } }
   .ls-cmp2 th, .ls-cmp2 td { padding:.45rem .6rem; border-bottom:1px solid #21262d; text-align:center }
   .ls-cmp2 thead th { vertical-align:bottom }
   .ls-cmp2__lbl { color:#8b949e; font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; text-align:left; font-family:Saira, system-ui, sans-serif; font-weight:600; white-space:nowrap }
@@ -202,6 +236,9 @@
 
   .ls-table-wrap { overflow-x:auto }
   .ls-table { width:100%; border-collapse:collapse; font-size:.92rem }
+  .ls-proj-hint { color:#8b949e; font-size:.85rem; margin:-.3rem 0 .7rem }
+  .ls-row--me { background:rgba(88,166,255,.14) }
+  .ls-row--me td { color:#e6edf3; font-weight:600 }
   .ls-table th { color:#8b949e; font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; text-align:left; padding:.45rem .55rem; background:#000000 }
   .ls-table td { padding:.45rem .55rem; border-bottom:1px solid #21262d; color:#c9d1d9 }
   .ls-table tr.is-me { background:rgba(31,111,235,.12); color:#fff }
@@ -214,6 +251,7 @@
 </style>
 
 <script src="/socket.io/socket.io.js"></script>
+<script src="/js/chart.umd.min.js"></script>
 <script>
   const RACE_ID = <%= race.id %>;
   let MANGA_ID = <%= selectedMangaId %>;
@@ -253,6 +291,18 @@
     } catch (err) { console.error('[live-stats]', err); }
   }
 
+  // Posición que se muestra como "la del equipo": la PROYECTADA de carrera
+  // (la misma que la clasificación proyectada y el directo). Si no hay
+  // proyección (entre mangas), cae a la posición de la manga.
+  function racePosOf(data, e) {
+    const proj = data && data.projection;
+    if (Array.isArray(proj)) {
+      const p = proj.find(x => x.name === e.entityName);
+      if (p && p.position != null) return p.position;
+    }
+    return e.position;
+  }
+
   function render(data) {
     // Clock
     $('lsClockRemaining').textContent = data.isActive
@@ -285,8 +335,8 @@
     if (me) {
       $('lsMeSection').hidden = false;
       $('lsCmpSection').hidden = false;
-      $('lsMeName').textContent = me.entityName + ' · P' + me.position;
-      $('lsMePos').textContent = 'P' + me.position;
+      $('lsMeName').textContent = me.entityName + ' · P' + racePosOf(data, me);
+      $('lsMePos').textContent = 'P' + racePosOf(data, me);
       $('lsMeLaps').textContent = me.totalLaps;
       $('lsMeBest').textContent = fmtMs(me.bestMs);
       $('lsMeAvg').textContent  = fmtMs(me[useAvgKey]);
@@ -309,6 +359,36 @@
 
     // Comparativa en vivo
     renderComparison(data);
+    // Clasificación proyectada de carrera
+    renderProjectedClass(data);
+  }
+
+  // Clasificación PROYECTADA de toda la carrera (la misma del directo). Solo
+  // hay proyección mientras corre una manga; entre mangas la sección se oculta.
+  function renderProjectedClass(data) {
+    const sec = $('lsProjSection');
+    if (!sec) return;
+    const proj = data && data.projection;
+    if (!Array.isArray(proj) || proj.length === 0) { sec.hidden = true; return; }
+    sec.hidden = false;
+    const me = (data.entities || []).find(e => e.key === myKey);
+    const myName = me ? me.entityName : null;
+    const leader = proj[0];
+    $('lsProjBody').innerHTML = proj.map((p, i) => {
+      const isMe = myName != null && p.name === myName;
+      const gap = (i === 0 || p.projectedTotal == null || leader.projectedTotal == null)
+        ? '—' : '-' + (leader.projectedTotal - p.projectedTotal).toFixed(1) + 'v';
+      const proy = p.projectedTotal != null ? p.projectedTotal.toFixed(1) + 'v' : '—';
+      return `<tr class="${isMe ? 'ls-row--me' : ''}">
+        <td>${p.position}</td>
+        <td>${p.name}</td>
+        <td><b>${proy}</b></td>
+        <td>${p.total}</td>
+        <td>${gap}</td>
+        <td>${fmtMs(p.avgLapMs)}</td>
+        <td>${p.avgToCatch != null ? fmtMs(p.avgToCatch) : '—'}</td>
+      </tr>`;
+    }).join('');
   }
 
   // Diferencia de tiempo por vuelta, con signo y color implícito en el texto.
@@ -321,7 +401,7 @@
   // Rellena los dos selectores de rival mostrando el CARRIL de cada uno
   // ("C3 · P2 · Nombre"), excluyendo al propio piloto. Conserva la selección.
   function populateCompareOptions(data) {
-    const mk = e => `<option value="${e.key}">C${e.lane != null ? e.lane : '—'} · P${e.position} · ${e.entityName}</option>`;
+    const mk = e => `<option value="${e.key}">C${e.lane != null ? e.lane : '—'} · P${racePosOf(data, e)} · ${e.entityName}</option>`;
     [['lsCompare1', '— Compárate con… —', 'ls_cmp1_'],
      ['lsCompare2', '— y con… (opcional) —', 'ls_cmp2_']].forEach(([id, ph, lk]) => {
       const sel = $(id);
@@ -387,7 +467,7 @@
 
     let html = '<thead><tr><th></th>' + cols.map((e, i) =>
       `<th class="${cls(i)}"><div class="ls-cmp2__name">${e.entityName}</div>` +
-      `<div class="ls-cmp2__sub">C${e.lane != null ? e.lane : '—'} · P${e.position}</div></th>`
+      `<div class="ls-cmp2__sub">C${e.lane != null ? e.lane : '—'} · P${racePosOf(data, e)}</div></th>`
     ).join('') + '</tr></thead><tbody>';
     const row = (label, fn) => `<tr><td class="ls-cmp2__lbl">${label}</td>` +
       cols.map((e, i) => `<td class="${cls(i)}">${fn(e, i)}</td>`).join('') + '</tr>';
@@ -404,7 +484,100 @@
     $('lsCmpTable').innerHTML = html;
 
     $('lsCmpVerdicts').innerHTML = rivals.map(r => verdictChip(me, r)).join('');
+    renderCmpChart(cols, data);
   }
+
+  // Gráfica de la comparativa. Tres modos:
+  //  · 'pace'    : tiempo de vuelta (s) vs nº de vuelta — solo vueltas limpias.
+  //  · 'gap'     : ventaja ACUMULADA sobre la media de los comparados (segundos).
+  //  · 'gaplaps' : GAP REAL de vueltas entre los equipos seleccionados, manga a
+  //    manga. El de más vueltas de los seleccionados es la referencia (0); el
+  //    resto en negativo = vueltas por detrás. Si su línea sube hacia 0 recortan
+  //    (te alcanzan); si baja, se alejan. X = manga.
+  let cmpChart = null;
+  let cmpChartMode = 'pace';
+  const CMP_PALETTE = ['#58a6ff', '#f6c90e', '#3fb950', '#ff6b9d'];
+  function renderCmpChart(cols, data) {
+    const canvas = $('lsCmpChart');
+    if (!canvas || typeof Chart === 'undefined') return;
+    const ES_LAP = '<%= lang === "es" ? "Vuelta" : "Lap" %>';
+    const ES_MANGA = '<%= lang === "es" ? "Manga" : "Heat" %>';
+    let datasets, yTitle, xTitle = ES_LAP;
+
+    if (cmpChartMode === 'gaplaps') {
+      xTitle = ES_MANGA;
+      const rp = data && data.raceProgress;
+      const finalOf = e => { const a = rp && rp.byName[e.entityName]; return (a && a.length) ? a[a.length - 1] : 0; };
+      if (!rp || !rp.mangas || !rp.mangas.length) {
+        datasets = [];
+      } else {
+        const leader = cols.reduce((best, e) => finalOf(e) > finalOf(best) ? e : best, cols[0]);
+        const leaderArr = rp.byName[leader.entityName] || [];
+        datasets = cols.map((e, i) => {
+          const color = CMP_PALETTE[i % CMP_PALETTE.length];
+          const arr = rp.byName[e.entityName] || [];
+          const pts = rp.mangas.map((mn, k) => ({
+            x: mn, y: (arr[k] != null && leaderArr[k] != null) ? (arr[k] - leaderArr[k]) : null,
+          }));
+          return { label: e.entityName, data: pts, borderColor: color, backgroundColor: color,
+                   borderWidth: 2, tension: 0.2, pointRadius: 2, pointHoverRadius: 4, spanGaps: true };
+        });
+      }
+      yTitle = '<%= lang === "es" ? "Gap de vueltas (al líder seleccionado)" : "Lap gap (to selected leader)" %>';
+    } else if (cmpChartMode === 'gap') {
+      let sum = 0, cnt = 0;
+      cols.forEach(e => (e.lapSeries || []).forEach(p => { if (p.n > 1 && !p.x) { sum += p.t; cnt++; } }));
+      const ref = cnt ? sum / cnt : 0;   // media de referencia (vueltas limpias)
+      datasets = cols.map((e, i) => {
+        const color = CMP_PALETTE[i % CMP_PALETTE.length];
+        const series = (e.lapSeries || []).filter(p => p.n > 1).slice().sort((a, b) => a.n - b.n);
+        let cum = 0;
+        const pts = series.map(p => { cum += (ref - p.t) / 1000; return { x: p.n, y: +cum.toFixed(3) }; });
+        return { label: e.entityName, data: pts, borderColor: color, backgroundColor: color,
+                 borderWidth: 2, tension: 0.25, pointRadius: 2, pointHoverRadius: 4, spanGaps: true };
+      });
+      yTitle = '<%= lang === "es" ? "Ventaja sobre la media (s)" : "Advantage vs avg (s)" %>';
+    } else {
+      datasets = cols.map((e, i) => {
+        const color = CMP_PALETTE[i % CMP_PALETTE.length];
+        const pts = (e.lapSeries || []).filter(p => p.n > 1 && !p.x).map(p => ({ x: p.n, y: +(p.t / 1000).toFixed(3) }));
+        return { label: e.entityName, data: pts, borderColor: color, backgroundColor: color,
+                 borderWidth: 2, tension: 0.25, pointRadius: 2, pointHoverRadius: 4, spanGaps: true };
+      });
+      yTitle = '<%= lang === "es" ? "Tiempo (s)" : "Time (s)" %>';
+    }
+    if (!cmpChart) {
+      cmpChart = new Chart(canvas, {
+        type: 'line',
+        data: { datasets },
+        options: {
+          responsive: true, maintainAspectRatio: false, animation: false,
+          interaction: { mode: 'nearest', intersect: false },
+          scales: {
+            x: { type: 'linear', title: { display: true, text: xTitle, color: '#8b949e' },
+                 ticks: { stepSize: 1, precision: 0, color: '#8b949e' }, grid: { color: '#21262d' } },
+            y: { title: { display: true, text: yTitle, color: '#8b949e' },
+                 ticks: { color: '#8b949e' }, grid: { color: '#21262d' } },
+          },
+          plugins: { legend: { labels: { color: '#e6edf3', usePointStyle: true } } },
+        },
+      });
+    } else {
+      cmpChart.data.datasets = datasets;
+      cmpChart.options.scales.x.title.text = xTitle;
+      cmpChart.options.scales.y.title.text = yTitle;
+      cmpChart.update();
+    }
+  }
+
+  // Conmutador de modo de la gráfica de la comparativa.
+  document.querySelectorAll('#lsCmpModes .ls-cmode').forEach(btn => {
+    btn.addEventListener('click', () => {
+      cmpChartMode = btn.dataset.cmode;
+      document.querySelectorAll('#lsCmpModes .ls-cmode').forEach(b => b.classList.toggle('is-active', b === btn));
+      if (typeof latestData !== 'undefined' && latestData) renderComparison(latestData);
+    });
+  });
 
   // ── Events ────────────────────────────────────────────────────────────
   $('lsManga').addEventListener('change', () => {
