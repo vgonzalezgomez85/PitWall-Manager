@@ -8,6 +8,10 @@
   <link rel="stylesheet" href="/css/lap.css">
 </head>
 <body>
+  <!-- Capa de oscurecimiento: tras 30s sin tocar, casi negra (simula bajar el
+       brillo). Toca la pantalla para volver. La pantalla sigue activa (Wake
+       Lock) y la voz sigue cantando. -->
+  <div id="dimOverlay" aria-hidden="true"><span class="dim-hint">Toca para iluminar</span></div>
   <div class="wrap">
     <div class="toprow">
       <div class="brand"><span class="dot"></span> PitWall <small>Lap</small></div>
@@ -177,9 +181,27 @@
     function updateWakeNote(){
       var el = document.getElementById('wakeNote'); if (!el) return;
       el.textContent = ('wakeLock' in navigator)
-        ? 'Reposo: la pantalla se mantiene activa para seguir cantando.'
-        : 'Reposo: este navegador no soporta Wake Lock; mantén la pantalla encendida.';
+        ? 'Pantalla siempre activa; a los 30s se oscurece (toca para volver). La voz sigue cantando.'
+        : 'Este navegador no soporta Wake Lock; mantén la pantalla encendida.';
     }
+
+    // ── Pantalla siempre activa + oscurecer tras 30s sin tocar ──────────────
+    var dimEl = document.getElementById('dimOverlay');
+    var idleTimer = null;
+    function ensureAwake(){ requestWake(); }            // Wake Lock dentro de un gesto
+    function resetIdle(){
+      if (dimEl) dimEl.classList.remove('on');
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(function(){ if (dimEl) dimEl.classList.add('on'); }, 30000);
+    }
+    ['pointerdown', 'touchstart', 'keydown'].forEach(function(ev){
+      document.addEventListener(ev, function(){ ensureAwake(); resetIdle(); }, { passive: true });
+    });
+    // Al volver a primer plano, re-pedir el wake lock (se libera al ocultar).
+    document.addEventListener('visibilitychange', function(){
+      if (document.visibilityState === 'visible') { requestWake(); resetIdle(); }
+    });
+    resetIdle();   // arranca el contador de inactividad al cargar
 
     // ── Motor de voz (deriva los mismos eventos que la app desde el socket)─
     var prevOverallPos = null, bestLap = null, prevMyLane = null, prevMangaId = null;
@@ -345,7 +367,9 @@
     function enableVoice(on){
       S.enabled = on; saveSettings(); paintToggle();
       if (on){ ensureAudio(); startSilent(); requestWake(); speak('Voz activada'); }
-      else { releaseWake(); stopSilent(); try { window.speechSynthesis.cancel(); } catch(e){} }
+      // No liberamos el Wake Lock al apagar la voz: la pantalla sigue activa
+      // mientras el panel esté abierto (se libera sola al cerrar/ocultar).
+      else { stopSilent(); try { window.speechSynthesis.cancel(); } catch(e){} }
     }
     if (vBtn) vBtn.addEventListener('click', function(){ enableVoice(!S.enabled); });
     if (cfgBtn) cfgBtn.addEventListener('click', function(){ if (cfg) cfg.hidden = !cfg.hidden; });

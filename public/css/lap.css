@@ -78,6 +78,14 @@ input.pin{letter-spacing:.4em;text-align:center;font-size:1.6rem;font-weight:700
 .vrow input[type=checkbox]{width:42px;height:24px;margin:0;flex:0 0 auto;cursor:pointer}
 .vrow input[type=number]{width:64px;margin:0;padding:7px 8px;text-align:center;font-size:1rem}
 .vnote{color:var(--muted);font-size:.72rem;margin-top:10px;line-height:1.3}
+/* Oscurecimiento tras inactividad (mantiene la pantalla viva pero casi negra) */
+#dimOverlay{position:fixed;inset:0;z-index:9999;background:#000;opacity:0;
+  pointer-events:none;transition:opacity 1.2s ease;
+  display:flex;align-items:flex-end;justify-content:center;padding-bottom:14vh}
+#dimOverlay.on{opacity:.96;pointer-events:auto}
+#dimOverlay .dim-hint{color:#3a3a3a;font-size:.8rem;letter-spacing:.5px;opacity:0;transition:opacity .4s ease .6s}
+#dimOverlay.on .dim-hint{opacity:1}
+
 .sung{min-height:1.1em;margin:-6px 0 12px;color:var(--good);font-size:.95rem;font-weight:700;
   font-variant-numeric:tabular-nums;opacity:0;transition:opacity .2s}
 .sung.show{opacity:1;animation:sungpulse 1.2s ease}
