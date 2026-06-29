@@ -36,8 +36,15 @@
     <div class="ls-clock__meta" id="lsClockMeta">—</div>
   </div>
 
+  <!-- ── Pestañas: qué bloque de datos mostrar ──────────────────────────── -->
+  <div class="ls-tabs" id="lsTabs">
+    <button type="button" class="ls-tab is-active" data-lstab="manga">📊 <%= lang === 'es' ? 'Manga actual' : 'Current heat' %></button>
+    <button type="button" class="ls-tab" data-lstab="proj">🏁 <%= lang === 'es' ? 'Clasificación proyectada' : 'Projected standings' %></button>
+    <button type="button" class="ls-tab" data-lstab="carril">🛣️ <%= lang === 'es' ? 'Comparativa por carril' : 'Per-lane comparison' %></button>
+  </div>
+
   <!-- ── Panel del piloto (modo B) ──────────────────────────────────────── -->
-  <section class="ls-section" id="lsMeSection" hidden>
+  <section class="ls-section" id="lsMeSection" data-lsview="manga proj" hidden>
     <h2 class="ls-section__title">🏁 <span id="lsMeName">—</span></h2>
     <div class="ls-grid ls-grid--4">
       <div class="ls-card">
@@ -45,7 +52,7 @@
         <div class="ls-card__big" id="lsMePos">—</div>
       </div>
       <div class="ls-card">
-        <div class="ls-card__label">Vueltas manga</div>
+        <div class="ls-card__label" id="lsMeLapsLabel">Vueltas manga</div>
         <div class="ls-card__big" id="lsMeLaps">—</div>
       </div>
       <div class="ls-card">
@@ -65,12 +72,12 @@
         <div class="ls-card__label">Salidas / pit-stops</div>
         <div class="ls-card__big" id="lsMeExits">—</div>
       </div>
-      <div class="ls-card ls-card--wide">
+      <div class="ls-card ls-card--wide" id="lsMeLostCard">
         <div class="ls-card__label">⏱ Tiempo perdido en salidas</div>
         <div class="ls-card__big" id="lsMeLost">—</div>
         <div class="ls-card__hint" id="lsMeLostEquiv">≈ — vueltas</div>
       </div>
-      <div class="ls-card ls-card--wide">
+      <div class="ls-card ls-card--wide" id="lsMeSectorsCard">
         <div class="ls-card__label">📈 Tramos (pace por minuto)</div>
         <div class="ls-sectors" id="lsMeSectors">—</div>
       </div>
@@ -78,7 +85,7 @@
   </section>
 
   <!-- ── Comparativa en vivo ────────────────────────────────────────────── -->
-  <section class="ls-section" id="lsCmpSection" hidden>
+  <section class="ls-section" id="lsCmpSection" data-lsview="manga proj" hidden>
     <h2 class="ls-section__title">⚔️ <%= lang === 'es' ? 'Comparativa en vivo' : 'Live comparison' %></h2>
     <div class="ls-bar__controls" style="margin-bottom:.8rem">
       <select id="lsCompare1" class="ls-select" title="<%= lang === 'es' ? 'Rival 1' : 'Rival 1' %>">
@@ -104,7 +111,7 @@
   </section>
 
   <!-- ── Clasificación PROYECTADA de carrera (toda la carrera) ──────────── -->
-  <section class="ls-section" id="lsProjSection" hidden>
+  <section class="ls-section" id="lsProjSection" data-lsview="proj" hidden>
     <h2 class="ls-section__title">🏁 <%= lang === 'es' ? 'Clasificación proyectada de carrera' : 'Projected race standings' %></h2>
     <p class="ls-proj-hint"><%= lang === 'es' ? 'Estimación al final de la carrera (no solo la manga en curso).' : 'Estimate at the end of the race (not just the current heat).' %></p>
     <div class="ls-table-wrap">
@@ -125,8 +132,8 @@
     </div>
   </section>
 
-  <!-- ── Dashboard general (modo A) ─────────────────────────────────────── -->
-  <section class="ls-section">
+  <!-- ── Clasificación de la manga actual ───────────────────────────────── -->
+  <section class="ls-section" data-lsview="manga">
     <h2 class="ls-section__title">📋 <%= lang === 'es' ? 'Clasificación de manga actual' : 'Current heat standings' %></h2>
     <div class="ls-table-wrap">
       <table class="ls-table" id="lsTable">
@@ -149,7 +156,7 @@
 
   <!-- ── Comparativa por carril ──────────────────────────────────────────── -->
   <% if (typeof lanesList !== 'undefined' && lanesList.length) { %>
-  <section class="ls-section" id="lsLaneSection">
+  <section class="ls-section" id="lsLaneSection" data-lsview="carril">
     <h2 class="ls-section__title">🛣️ <%= lang === 'es' ? 'Comparativa por carril' : 'Per-lane comparison' %></h2>
     <div class="ls-bar__controls" style="margin-bottom:.8rem; display:flex; gap:.5rem; flex-wrap:wrap">
       <select id="lsLane" class="ls-select" title="<%= lang === 'es' ? 'Carril' : 'Lane' %>">
@@ -239,6 +246,14 @@
   .ls-proj-hint { color:#8b949e; font-size:.85rem; margin:-.3rem 0 .7rem }
   .ls-row--me { background:rgba(88,166,255,.14) }
   .ls-row--me td { color:#e6edf3; font-weight:600 }
+  /* Pestañas de vista (manga / proyectada / carril) */
+  .ls-tabs { display:flex; gap:8px; flex-wrap:wrap; margin:0 0 1.1rem }
+  .ls-tab { background:#161b22; color:#8b949e; border:1px solid #30363d; border-radius:10px;
+    padding:9px 16px; font-size:.95rem; font-weight:600; cursor:pointer }
+  .ls-tab.is-active { background:rgba(88,166,255,.16); border-color:#58a6ff; color:#e6edf3 }
+  .ls-wrap.ls-view-manga  [data-lsview]:not([data-lsview~="manga"])  { display:none !important }
+  .ls-wrap.ls-view-proj   [data-lsview]:not([data-lsview~="proj"])   { display:none !important }
+  .ls-wrap.ls-view-carril [data-lsview]:not([data-lsview~="carril"]) { display:none !important }
   .ls-table th { color:#8b949e; font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; text-align:left; padding:.45rem .55rem; background:#000000 }
   .ls-table td { padding:.45rem .55rem; border-bottom:1px solid #21262d; color:#c9d1d9 }
   .ls-table tr.is-me { background:rgba(31,111,235,.12); color:#fff }
@@ -291,14 +306,18 @@
     } catch (err) { console.error('[live-stats]', err); }
   }
 
-  // Posición que se muestra como "la del equipo": la PROYECTADA de carrera
-  // (la misma que la clasificación proyectada y el directo). Si no hay
-  // proyección (entre mangas), cae a la posición de la manga.
+  // Vista activa: 'manga' | 'proj' | 'carril'. La fijan las pestañas.
+  let currentLsView = 'manga';
+
+  // Posición que se muestra: en vista "manga" la de la MANGA; en vista
+  // "proyectada" la PROYECTADA de carrera (cae a la de manga si no hay proy.).
   function racePosOf(data, e) {
-    const proj = data && data.projection;
-    if (Array.isArray(proj)) {
-      const p = proj.find(x => x.name === e.entityName);
-      if (p && p.position != null) return p.position;
+    if (currentLsView === 'proj') {
+      const proj = data && data.projection;
+      if (Array.isArray(proj)) {
+        const p = proj.find(x => x.name === e.entityName);
+        if (p && p.position != null) return p.position;
+      }
     }
     return e.position;
   }
@@ -335,23 +354,44 @@
     if (me) {
       $('lsMeSection').hidden = false;
       $('lsCmpSection').hidden = false;
-      $('lsMeName').textContent = me.entityName + ' · P' + racePosOf(data, me);
-      $('lsMePos').textContent = 'P' + racePosOf(data, me);
-      $('lsMeLaps').textContent = me.totalLaps;
-      $('lsMeBest').textContent = fmtMs(me.bestMs);
-      $('lsMeAvg').textContent  = fmtMs(me[useAvgKey]);
-      $('lsMeDelta').textContent = me[useDeltaKey] != null ? '+' + fmtSec(me[useDeltaKey]) : '—';
-      $('lsMeDeltaHint').textContent = includeOutliers ? 'avg (con salidas) − best' : 'avg limpio − best';
-      $('lsMeExits').textContent = `${me.exitCount} salidas · ${me.pitStopCount} pit`;
-      $('lsMeLost').textContent  = fmtSec(me.lostMs);
-      $('lsMeLostEquiv').textContent = `≈ ${me.lostLapsEquiv} vueltas perdidas`;
-      $('lsMeSectors').innerHTML = me.sectors.map(s => `
-        <div class="ls-sector">
-          <div class="ls-sector__lbl">${s.label}</div>
-          <div class="ls-sector__val">${fmtMs(includeOutliers ? s.avgAll : s.avgClean)}</div>
-          <div class="ls-sector__meta">${s.laps}v · ${s.exits} salidas</div>
-        </div>
-      `).join('');
+      const isProj = currentLsView === 'proj';
+      const pos = racePosOf(data, me);   // manga o proyectada según la vista
+      $('lsMeName').textContent = me.entityName + ' · P' + pos;
+      $('lsMePos').textContent = 'P' + pos;
+      if (isProj) {
+        // ── Datos de TODA la carrera ─────────────────────────────────────
+        $('lsMeLapsLabel').textContent = '<%= lang === "es" ? "Vueltas carrera" : "Race laps" %>';
+        $('lsMeLaps').textContent = me.raceTotalLaps != null ? me.raceTotalLaps : '—';
+        $('lsMeBest').textContent = fmtMs(me.raceBestMs);
+        const rAvg = includeOutliers ? me.racePaceAllMs : me.racePaceCleanMs;
+        $('lsMeAvg').textContent  = fmtMs(rAvg);
+        const rDelta = (rAvg != null && me.raceBestMs != null) ? (rAvg - me.raceBestMs) : null;
+        $('lsMeDelta').textContent = rDelta != null ? '+' + fmtSec(rDelta) : '—';
+        $('lsMeDeltaHint').textContent = (includeOutliers ? 'media (con salidas)' : 'media limpia') + ' − mejor (carrera)';
+        $('lsMeExits').textContent = `${me.raceExits || 0} salidas · ${me.racePits || 0} pit`;
+        $('lsMeLostCard').hidden = true;
+        $('lsMeSectorsCard').hidden = true;
+      } else {
+        // ── Datos de la MANGA actual ─────────────────────────────────────
+        $('lsMeLapsLabel').textContent = '<%= lang === "es" ? "Vueltas manga" : "Heat laps" %>';
+        $('lsMeLaps').textContent = me.totalLaps;
+        $('lsMeBest').textContent = fmtMs(me.bestMs);
+        $('lsMeAvg').textContent  = fmtMs(me[useAvgKey]);
+        $('lsMeDelta').textContent = me[useDeltaKey] != null ? '+' + fmtSec(me[useDeltaKey]) : '—';
+        $('lsMeDeltaHint').textContent = includeOutliers ? 'avg (con salidas) − best' : 'avg limpio − best';
+        $('lsMeExits').textContent = `${me.exitCount} salidas · ${me.pitStopCount} pit`;
+        $('lsMeLostCard').hidden = false;
+        $('lsMeSectorsCard').hidden = false;
+        $('lsMeLost').textContent  = fmtSec(me.lostMs);
+        $('lsMeLostEquiv').textContent = `≈ ${me.lostLapsEquiv} vueltas perdidas`;
+        $('lsMeSectors').innerHTML = me.sectors.map(s => `
+          <div class="ls-sector">
+            <div class="ls-sector__lbl">${s.label}</div>
+            <div class="ls-sector__val">${fmtMs(includeOutliers ? s.avgAll : s.avgClean)}</div>
+            <div class="ls-sector__meta">${s.laps}v · ${s.exits} salidas</div>
+          </div>
+        `).join('');
+      }
     } else {
       $('lsMeSection').hidden = true;
       $('lsCmpSection').hidden = true;
@@ -471,13 +511,18 @@
     ).join('') + '</tr></thead><tbody>';
     const row = (label, fn) => `<tr><td class="ls-cmp2__lbl">${label}</td>` +
       cols.map((e, i) => `<td class="${cls(i)}">${fn(e, i)}</td>`).join('') + '</tr>';
-    html += row('Vueltas',   e => e.totalLaps);
-    html += row('Mejor',     e => fmtMs(e.bestMs));
-    html += row('Media',     e => fmtMs(e[avgKey]));
+    // En vista proyectada, los valores son de TODA la carrera.
+    const isProj = currentLsView === 'proj';
+    const lapsOf = e => isProj ? (e.raceTotalLaps != null ? e.raceTotalLaps : 0) : e.totalLaps;
+    const bestOf = e => isProj ? e.raceBestMs : e.bestMs;
+    const avgOf  = e => isProj ? (includeOutliers ? e.racePaceAllMs : e.racePaceCleanMs) : e[avgKey];
+    html += row(isProj ? 'Vueltas carrera' : 'Vueltas', e => lapsOf(e));
+    html += row('Mejor',     e => fmtMs(bestOf(e)));
+    html += row('Media',     e => fmtMs(avgOf(e)));
     html += row('Última',    e => fmtMs(e.lastLapMs));
     html += row('Δ vueltas', (e, i) => {
       if (i === 0) return '—';
-      const d = me.totalLaps - e.totalLaps;
+      const d = lapsOf(me) - lapsOf(e);
       return (d > 0 ? '+' : '') + d;
     });
     html += '</tbody>';
@@ -502,49 +547,87 @@
     if (!canvas || typeof Chart === 'undefined') return;
     const ES_LAP = '<%= lang === "es" ? "Vuelta" : "Lap" %>';
     const ES_MANGA = '<%= lang === "es" ? "Manga" : "Heat" %>';
-    let datasets, yTitle, xTitle = ES_LAP;
+    // En vista "manga" los gráficos usan la MANGA (lapSeries, X = vuelta); en
+    // "proyectada" usan la CARRERA (raceProgress por manga, X = manga).
+    const isProj = currentLsView === 'proj';
+    const rp = data && data.raceProgress;
+    const mangas = (rp && rp.mangas) ? rp.mangas : [];
+    const mk = (e, i, pts, tension) => ({
+      label: e.entityName, data: pts,
+      borderColor: CMP_PALETTE[i % CMP_PALETTE.length], backgroundColor: CMP_PALETTE[i % CMP_PALETTE.length],
+      borderWidth: 2, tension: tension != null ? tension : 0.25, pointRadius: 2, pointHoverRadius: 4, spanGaps: true,
+    });
+    let datasets = [], yTitle = '', xTitle = isProj ? ES_MANGA : ES_LAP;
 
-    if (cmpChartMode === 'gaplaps') {
-      xTitle = ES_MANGA;
-      const rp = data && data.raceProgress;
-      const finalOf = e => { const a = rp && rp.byName[e.entityName]; return (a && a.length) ? a[a.length - 1] : 0; };
-      if (!rp || !rp.mangas || !rp.mangas.length) {
-        datasets = [];
-      } else {
-        const leader = cols.reduce((best, e) => finalOf(e) > finalOf(best) ? e : best, cols[0]);
-        const leaderArr = rp.byName[leader.entityName] || [];
+    if (cmpChartMode === 'pace') {
+      if (isProj) {
         datasets = cols.map((e, i) => {
-          const color = CMP_PALETTE[i % CMP_PALETTE.length];
-          const arr = rp.byName[e.entityName] || [];
-          const pts = rp.mangas.map((mn, k) => ({
-            x: mn, y: (arr[k] != null && leaderArr[k] != null) ? (arr[k] - leaderArr[k]) : null,
-          }));
-          return { label: e.entityName, data: pts, borderColor: color, backgroundColor: color,
-                   borderWidth: 2, tension: 0.2, pointRadius: 2, pointHoverRadius: 4, spanGaps: true };
+          const avg = (rp && rp.avgByName[e.entityName]) || [];
+          return mk(e, i, mangas.map((mn, k) => ({ x: mn, y: avg[k] != null ? +(avg[k] / 1000).toFixed(3) : null })));
         });
+        yTitle = '<%= lang === "es" ? "Tiempo medio por manga (s)" : "Avg lap per heat (s)" %>';
+      } else {
+        datasets = cols.map((e, i) =>
+          mk(e, i, (e.lapSeries || []).filter(p => p.n > 1 && !p.x).map(p => ({ x: p.n, y: +(p.t / 1000).toFixed(3) }))));
+        yTitle = '<%= lang === "es" ? "Tiempo (s)" : "Time (s)" %>';
       }
-      yTitle = '<%= lang === "es" ? "Gap de vueltas (al líder seleccionado)" : "Lap gap (to selected leader)" %>';
     } else if (cmpChartMode === 'gap') {
-      let sum = 0, cnt = 0;
-      cols.forEach(e => (e.lapSeries || []).forEach(p => { if (p.n > 1 && !p.x) { sum += p.t; cnt++; } }));
-      const ref = cnt ? sum / cnt : 0;   // media de referencia (vueltas limpias)
-      datasets = cols.map((e, i) => {
-        const color = CMP_PALETTE[i % CMP_PALETTE.length];
-        const series = (e.lapSeries || []).filter(p => p.n > 1).slice().sort((a, b) => a.n - b.n);
-        let cum = 0;
-        const pts = series.map(p => { cum += (ref - p.t) / 1000; return { x: p.n, y: +cum.toFixed(3) }; });
-        return { label: e.entityName, data: pts, borderColor: color, backgroundColor: color,
-                 borderWidth: 2, tension: 0.25, pointRadius: 2, pointHoverRadius: 4, spanGaps: true };
-      });
-      yTitle = '<%= lang === "es" ? "Ventaja sobre la media (s)" : "Advantage vs avg (s)" %>';
-    } else {
-      datasets = cols.map((e, i) => {
-        const color = CMP_PALETTE[i % CMP_PALETTE.length];
-        const pts = (e.lapSeries || []).filter(p => p.n > 1 && !p.x).map(p => ({ x: p.n, y: +(p.t / 1000).toFixed(3) }));
-        return { label: e.entityName, data: pts, borderColor: color, backgroundColor: color,
-                 borderWidth: 2, tension: 0.25, pointRadius: 2, pointHoverRadius: 4, spanGaps: true };
-      });
-      yTitle = '<%= lang === "es" ? "Tiempo (s)" : "Time (s)" %>';
+      if (isProj) {
+        const refs = cols.map(e => e.racePaceCleanMs).filter(v => v != null);
+        const ref = refs.length ? refs.reduce((a, b) => a + b, 0) / refs.length : 0;
+        datasets = cols.map((e, i) => {
+          const cumL = (rp && rp.byName[e.entityName]) || [];
+          const avg  = (rp && rp.avgByName[e.entityName]) || [];
+          let cum = 0;
+          const pts = mangas.map((mn, k) => {
+            const mLaps = k === 0 ? (cumL[0] || 0) : ((cumL[k] || 0) - (cumL[k - 1] || 0));
+            if (avg[k] != null && mLaps > 0) cum += (ref - avg[k]) * mLaps / 1000;
+            return { x: mn, y: +cum.toFixed(2) };
+          });
+          return mk(e, i, pts, 0.2);
+        });
+        yTitle = '<%= lang === "es" ? "Ventaja sobre la media (s)" : "Advantage vs avg (s)" %>';
+      } else {
+        let sum = 0, cnt = 0;
+        cols.forEach(e => (e.lapSeries || []).forEach(p => { if (p.n > 1 && !p.x) { sum += p.t; cnt++; } }));
+        const ref = cnt ? sum / cnt : 0;
+        datasets = cols.map((e, i) => {
+          const series = (e.lapSeries || []).filter(p => p.n > 1).slice().sort((a, b) => a.n - b.n);
+          let cum = 0;
+          return mk(e, i, series.map(p => { cum += (ref - p.t) / 1000; return { x: p.n, y: +cum.toFixed(3) }; }));
+        });
+        yTitle = '<%= lang === "es" ? "Ventaja sobre la media (s)" : "Advantage vs avg (s)" %>';
+      }
+    } else { // gaplaps
+      if (isProj) {
+        if (!mangas.length) { datasets = []; }
+        else {
+          const finalOf = e => { const a = rp.byName[e.entityName]; return (a && a.length) ? a[a.length - 1] : 0; };
+          const leader = cols.reduce((b, e) => finalOf(e) > finalOf(b) ? e : b, cols[0]);
+          const leaderArr = rp.byName[leader.entityName] || [];
+          datasets = cols.map((e, i) => {
+            const arr = rp.byName[e.entityName] || [];
+            return mk(e, i, mangas.map((mn, k) => ({ x: mn, y: (arr[k] != null && leaderArr[k] != null) ? (arr[k] - leaderArr[k]) : null })), 0.2);
+          });
+        }
+        yTitle = '<%= lang === "es" ? "Gap de vueltas (al líder seleccionado)" : "Lap gap (to selected leader)" %>';
+      } else {
+        // Gap REAL de vueltas DENTRO de la manga: en cada momento (minuto) de la
+        // manga, cuántas vueltas lleva cada equipo respecto al líder seleccionado
+        // (el de más vueltas en la manga = línea 0). Se reconstruye el elapsed de
+        // cada vuelta sumando los tiempos de lapSeries.
+        const ceOf = e => { const s = (e.lapSeries || []).slice().sort((a, b) => a.n - b.n); let c = 0; return s.map(p => { c += p.t; return { n: p.n, e: c }; }); };
+        const ceByName = {}; cols.forEach(e => { ceByName[e.entityName] = ceOf(e); });
+        const leader = cols.reduce((b, e) => (e.totalLaps || 0) > (b.totalLaps || 0) ? e : b, cols[0]);
+        const leaderCE = ceByName[leader.entityName] || [];
+        const lapsAt = (ce, T) => { let n = 0; for (let k = 0; k < ce.length; k++) { if (ce[k].e <= T) n = ce[k].n; else break; } return n; };
+        datasets = cols.map((e, i) => {
+          const ce = ceByName[e.entityName] || [];
+          return mk(e, i, leaderCE.map(lp => ({ x: +(lp.e / 60000).toFixed(2), y: lapsAt(ce, lp.e) - lp.n })), 0.2);
+        });
+        xTitle = '<%= lang === "es" ? "Minutos (manga)" : "Minutes (heat)" %>';
+        yTitle = '<%= lang === "es" ? "Gap de vueltas (manga)" : "Lap gap (heat)" %>';
+      }
     }
     if (!cmpChart) {
       cmpChart = new Chart(canvas, {
@@ -578,6 +661,30 @@
       if (typeof latestData !== 'undefined' && latestData) renderComparison(latestData);
     });
   });
+
+  // ── Pestañas de vista: manga actual / proyectada / por carril ───────────
+  const LS_VIEW_KEY = 'ls_view_' + RACE_ID;
+  const lsWrap = document.querySelector('.ls-wrap');
+  function applyLsView(v) {
+    if (!lsWrap) return;
+    currentLsView = v;
+    lsWrap.classList.remove('ls-view-manga', 'ls-view-proj', 'ls-view-carril');
+    lsWrap.classList.add('ls-view-' + v);
+    document.querySelectorAll('#lsTabs .ls-tab').forEach(b => b.classList.toggle('is-active', b.dataset.lstab === v));
+    try { localStorage.setItem(LS_VIEW_KEY, v); } catch (e) {}
+    // Re-render: "Mi panel" y la comparativa (incl. la gráfica, que cambia de
+    // fuente de datos según la vista) se actualizan al cambiar de pestaña.
+    if (typeof latestData !== 'undefined' && latestData) render(latestData);
+    // Reajustar la gráfica (pudo crearse oculta = 0px) en manga/proyectada.
+    if ((v === 'manga' || v === 'proj') && cmpChart) setTimeout(() => { try { cmpChart.resize(); } catch (e) {} }, 30);
+  }
+  document.querySelectorAll('#lsTabs .ls-tab').forEach(b =>
+    b.addEventListener('click', () => applyLsView(b.dataset.lstab)));
+  (function () {
+    let v = 'manga';
+    try { v = localStorage.getItem(LS_VIEW_KEY) || 'manga'; } catch (e) {}
+    applyLsView(v);
+  })();
 
   // ── Events ────────────────────────────────────────────────────────────
   $('lsManga').addEventListener('change', () => {
