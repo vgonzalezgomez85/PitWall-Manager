@@ -4,6 +4,14 @@ const Tanda         = require('../models/Tanda');
 const Lap           = require('../models/Lap');
 const TimingService = require('../services/TimingService');
 const db            = require('../config/database');
+const {
+  CONSISTENCY_LEVELS,
+  consistencyLevel,
+  median,
+  filterIncidentLaps,
+  MIN_CONSISTENCY_LAPS,
+  robustConsistency,
+} = require('../lib/consistency');
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -12,15 +20,32 @@ const db            = require('../config/database');
 // pueden quedar vacíos — la UI lo muestra como "—".
 const SECTOR_BINS = 3;
 
+// Las funciones de consistencia (CONSISTENCY_LEVELS, consistencyLevel, median,
+// filterIncidentLaps, MIN_CONSISTENCY_LAPS, robustConsistency) viven ahora en
+// ../lib/consistency y se importan arriba. Comportamiento IDÉNTICO.
+
 function buildEntityStats({ laps, mangaDurationMs, minLapMs = 0 }) {
   // laps = array de filas para UN piloto/equipo en una manga, ordenadas por
   // elapsed_ms ASC. Cada fila { lap_time_ms, elapsed_ms, is_exit, is_pit_stop }.
   const racing = laps.filter(l => !l.is_ghost);  // ghosts no cuentan en nada
   const clean  = racing.filter(l => !l.is_exit); // sin exits ni pit-stops
+  // Bases de RITMO para MEDIAS: excluyen el calentamiento (is_warmup) — que
+  // incluye el primer cruce parcial (~0.5s) y la vuelta de warm-up — y también
+  // las vueltas SUB-MÍNIMO (cruces fantasma imposibles < min_lap_ms). Sin esto
+  // la media se hunde por debajo de las vueltas reales (y del "mejor", que ya
+  // exige >=min). Mantienen las salidas/pits (pace = con incidentes;
+  // paceClean = sin exits).
+  const pace      = racing.filter(l => !l.is_warmup && (minLapMs <= 0 || l.lap_time_ms >= minLapMs));
+  const paceClean = pace.filter(l => !l.is_exit);
   // Vueltas válidas para "mejor vuelta": ni salida, ni primer cruce (warmup /
   // lap_number <= 1), ni por debajo del tiempo mínimo de carrera (Pt).
   const bestEligible = racing.filter(l =>
     !l.is_exit && !l.is_warmup && l.lap_number > 1 && (minLapMs <= 0 || l.lap_time_ms >= minLapMs));
+  // Muestra "CON salidas y pit-stops": misma base pero INCLUYE is_exit (salidas
+  // y pits). Es la regularidad real del stint; el CV se calcula SIN filtrar
+  // incidentes (los sucesos no marcados cuentan).
+  const allEligible = racing.filter(l =>
+    !l.is_warmup && l.lap_number > 1 && (minLapMs <= 0 || l.lap_time_ms >= minLapMs));
   const exits  = racing.filter(l => !!l.is_exit);
 
   const sum   = a => a.reduce((s, l) => s + l.lap_time_ms, 0);
@@ -28,8 +53,8 @@ function buildEntityStats({ laps, mangaDurationMs, minLapMs = 0 }) {
   const avg   = a => a.length ? Math.round(sum(a) / a.length) : null;
 
   const bestMs       = min(bestEligible);
-  const avgAll       = avg(racing);
-  const avgClean     = avg(clean);
+  const avgAll       = avg(pace);       // media de ritmo (sin warmup, con exits)
+  const avgClean     = avg(paceClean);  // media limpia (sin warmup ni exits)
   const deltaAll     = (bestMs != null && avgAll   != null) ? avgAll   - bestMs : null;
   const deltaClean   = (bestMs != null && avgClean != null) ? avgClean - bestMs : null;
 
@@ -49,8 +74,9 @@ function buildEntityStats({ laps, mangaDurationMs, minLapMs = 0 }) {
   const sectorsAll   = Array.from({ length: SECTOR_BINS }, () => []);
   const sectorsClean = Array.from({ length: SECTOR_BINS }, () => []);
   if (binMs > 0) {
-    for (const l of racing) {
-      const idx = Math.min(SECTOR_BINS - 1, Math.floor(l.elapsed_ms / binMs));
+    for (const l of pace) {  // sin warmup: las medias por tramo cuadran con avgAll/avgClean
+      const raw = Math.floor(l.elapsed_ms / binMs);
+      const idx = Number.isFinite(raw) ? Math.min(SECTOR_BINS - 1, Math.max(0, raw)) : 0;
       sectorsAll[idx].push(l);
       if (!l.is_exit) sectorsClean[idx].push(l);
     }
@@ -67,6 +93,24 @@ function buildEntityStats({ laps, mangaDurationMs, minLapMs = 0 }) {
   // Última vuelta cronometrada (las filas vienen ordenadas por elapsed_ms ASC).
   const lastLapMs = racing.length ? racing[racing.length - 1].lap_time_ms : null;
 
+  // % de consistencia (coincide con TicTac): CV clásico con DE MUESTRAL (n−1)
+  // sobre las vueltas elegibles, PERO filtrando antes los incidentes (vueltas
+  // sueltas a >150% del ritmo / >3.5σ robusto) para que una salida no marcada
+  // no hunda la métrica. Mínimo 5 vueltas tras filtrar; si no, null.
+  const cons = robustConsistency(bestEligible.map(l => l.lap_time_ms), MIN_CONSISTENCY_LAPS);
+  const consistency      = cons ? cons.pct   : null;
+  const consistencyStdMs = cons ? cons.stdMs : null;
+  const consistencyLevelName = cons ? cons.level : null;
+  const consistencyMeanMs = cons ? cons.meanMs : null;
+
+  // Variante CON salidas/pits: incluye is_exit y NO filtra incidentes → mide la
+  // regularidad total del stint (paradas incluidas). Sale más baja que la SIN.
+  const consAll = robustConsistency(allEligible.map(l => l.lap_time_ms), MIN_CONSISTENCY_LAPS, { filterIncidents: false });
+  const consistencyAll      = consAll ? consAll.pct    : null;
+  const consistencyAllStdMs = consAll ? consAll.stdMs  : null;
+  const consistencyAllLevelName = consAll ? consAll.level : null;
+  const consistencyAllMeanMs = consAll ? consAll.meanMs : null;
+
   return {
     totalLaps:   racing.length,
     cleanLaps:   clean.length,
@@ -77,6 +121,14 @@ function buildEntityStats({ laps, mangaDurationMs, minLapMs = 0 }) {
     deltaAll, deltaClean,
     lastLapMs,
     lostMs, lostLapsEquiv,
+    consistency,
+    consistencyStdMs,
+    consistencyLevel: consistencyLevelName,
+    consistencyMeanMs,
+    consistencyAll,
+    consistencyAllStdMs,
+    consistencyAllLevel: consistencyAllLevelName,
+    consistencyAllMeanMs,
     sectors,
   };
 }
@@ -260,6 +312,49 @@ class LiveStatsController {
     const raceByKey = new Map();
     raceWide.forEach(r => raceByKey.set(r.key, r));
 
+    // Consistencia race-wide ROBUSTA: el CV clásico necesita mediana/MAD, que no
+    // se obtienen de sum/sumsq en SQL. Traemos las vueltas limpias elegibles de
+    // TODA la carrera por entidad (mismo filtro que el pace) y calculamos el CV
+    // filtrado en JS, igual que en manga. Una sola query agrupada; agregamos las
+    // vueltas por key en memoria (24h ≈ 150k filas: es un render de página, no
+    // tiempo real). Mínimo 5 vueltas tras filtrar (en carrera siempre hay).
+    // Una sola query trae las vueltas elegibles CON su flag is_exit (racing,
+    // !warmup, lap>1, ≥minLap, incluyendo salidas/pits). En memoria se parte en
+    // dos muestras por entidad: SIN (is_exit=0 + filtro incidentes → ritmo puro)
+    // y CON (todas, incluye is_exit, sin filtro → regularidad real del stint).
+    const eligibleLapRows = db.prepare(`
+      SELECT
+        CASE WHEN l.team_id IS NOT NULL THEN 'team_' || l.team_id ELSE 'driver_' || l.driver_id END AS key,
+        l.lap_time_ms AS t,
+        l.is_exit AS is_exit
+      FROM laps l
+      JOIN mangas m ON m.id = l.manga_id
+      JOIN tandas t ON t.id = m.tanda_id
+      WHERE t.race_id = ?
+        AND l.is_ghost = 0 AND l.is_warmup = 0
+        AND l.lap_number > 1 AND l.lap_time_ms >= ${race.min_lap_ms || 0}
+    `).all(race.id);
+    const raceCleanByKey = new Map();  // SIN salidas/pits
+    const raceAllByKey   = new Map();  // CON salidas/pits
+    for (const r of eligibleLapRows) {
+      let all = raceAllByKey.get(r.key);
+      if (!all) { all = []; raceAllByKey.set(r.key, all); }
+      all.push(r.t);
+      if (!r.is_exit) {
+        let cln = raceCleanByKey.get(r.key);
+        if (!cln) { cln = []; raceCleanByKey.set(r.key, cln); }
+        cln.push(r.t);
+      }
+    }
+    const raceConsByKey    = new Map();  // SIN
+    const raceConsAllByKey = new Map();  // CON
+    for (const [key, times] of raceCleanByKey) {
+      raceConsByKey.set(key, robustConsistency(times, MIN_CONSISTENCY_LAPS));
+    }
+    for (const [key, times] of raceAllByKey) {
+      raceConsAllByKey.set(key, robustConsistency(times, MIN_CONSISTENCY_LAPS, { filterIncidents: false }));
+    }
+
     // Mangas restantes en la carrera (pending) y duración media (para proyectar futuro).
     const remainingMangas = db.prepare(`
       SELECT COUNT(*) AS n FROM mangas m
@@ -275,6 +370,16 @@ class LiveStatsController {
       e.raceBestMs      = rw.best_ms != null ? rw.best_ms : null;
       e.raceExits       = rw.exits || 0;
       e.racePits        = rw.pits  || 0;
+      const rc = raceConsByKey.get(e.key) || null;
+      e.raceConsistency      = rc ? rc.pct    : null;
+      e.raceConsistencyStdMs = rc ? rc.stdMs  : null;
+      e.raceConsistencyLevel = rc ? rc.level  : null;
+      e.raceConsistencyMeanMs = rc ? rc.meanMs : null;
+      const rcA = raceConsAllByKey.get(e.key) || null;
+      e.raceConsistencyAll      = rcA ? rcA.pct    : null;
+      e.raceConsistencyAllStdMs = rcA ? rcA.stdMs  : null;
+      e.raceConsistencyAllLevel = rcA ? rcA.level  : null;
+      e.raceConsistencyAllMeanMs = rcA ? rcA.meanMs : null;
       e.mangasRaced     = rw.mangas_raced || 0;
     });
 

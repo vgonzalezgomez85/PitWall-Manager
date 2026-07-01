@@ -37,6 +37,7 @@ const counts = {
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           <input type="text" id="rcQuery" placeholder="<%= lang === 'es' ? 'Buscar carrera…' : 'Search race…' %>">
         </label>
+        <a href="/races/sim/new" class="vt-btn vt-btn--ghost">🎬 <%= lang === 'es' ? 'Carrera simulada' : 'Simulated race' %></a>
         <a href="/races/new" class="vt-btn vt-btn--primary">+ <%= t('nav.new_race') %></a>
       </div>
     </div>
@@ -81,6 +82,11 @@ const counts = {
                 <span class="vt-badge__d"></span> <%= st.label %>
               </span>
               <span class="vt-badge is-info"><%= t('races.type.' + race.type) %></span>
+              <% if (race.is_sim) { %>
+                <span class="vt-badge is-info" style="cursor:pointer"
+                      onclick="event.preventDefault();event.stopPropagation();location.href='/races/<%= race.id %>/sim'"
+                      title="<%= lang === 'es' ? 'Panel de simulación' : 'Simulation panel' %>">🎬 Sim</span>
+              <% } %>
             </div>
             <h3 class="vt-race-card__name"><%= race.name %></h3>
             <div class="vt-race-card__meta">

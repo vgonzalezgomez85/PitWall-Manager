@@ -153,7 +153,9 @@ class Lap {
         MIN(CASE WHEN l.is_exit = 0 AND l.is_warmup = 0 AND l.lap_number > 1
                   AND l.lap_time_ms >= (SELECT COALESCE(min_lap_ms, 0) FROM races WHERE id = ?)
                  THEN l.lap_time_ms END) AS best_ms,
-        AVG(CASE WHEN l.lap_number > 1 THEN l.lap_time_ms END) AS avg_ms,
+        AVG(CASE WHEN l.is_warmup = 0
+                  AND l.lap_time_ms >= (SELECT COALESCE(min_lap_ms, 0) FROM races WHERE id = ?)
+                 THEN l.lap_time_ms END) AS avg_ms,
         MAX(CASE WHEN l.lap_number > 1 THEN l.lap_time_ms END) AS worst_ms,
         SUM(l.is_exit)     AS exit_count,
         SUM(CASE WHEN l.is_pit_stop = 1 THEN 1 ELSE 0 END) AS pit_stop_count,
@@ -162,7 +164,39 @@ class Lap {
       WHERE l.race_id = ? AND ${col} = ? AND l.is_ghost = 0 AND l.manga_id IS NOT NULL
       GROUP BY l.lane
       ORDER BY l.lane ASC
-    `).all(raceId, raceId, entityId);
+    `).all(raceId, raceId, raceId, entityId);
+  }
+
+  // Per-(lane, manga) breakdown for one entity — usado en la parrilla de
+  // resultados cuando hay PASADAS o REPETIR-CARRIL (race.passes>1 ||
+  // race.lane_repeat>1): una entidad corre el mismo carril en VARIAS mangas y
+  // hay que verlas SEPARADAS. Idéntico a perLaneByEntity pero GROUP BY
+  // (lane, manga_id), añadiendo manga_id y el number de la manga, ORDER BY
+  // manga.number (así la k-ésima fila de un carril = ocurrencia k). Mismos
+  // agregados y MISMOS filtros (warmup/exit/min_lap donde corresponde).
+  static perLaneMangaByEntity(raceId, entityId, entityType) {
+    const col = entityType === 'team' ? 'l.team_id' : 'l.driver_id';
+    return db.prepare(`
+      SELECT l.lane,
+        l.manga_id        AS manga_id,
+        m.number          AS manga_number,
+        COUNT(l.id)        AS laps,
+        MIN(CASE WHEN l.is_exit = 0 AND l.is_warmup = 0 AND l.lap_number > 1
+                  AND l.lap_time_ms >= (SELECT COALESCE(min_lap_ms, 0) FROM races WHERE id = ?)
+                 THEN l.lap_time_ms END) AS best_ms,
+        AVG(CASE WHEN l.is_warmup = 0
+                  AND l.lap_time_ms >= (SELECT COALESCE(min_lap_ms, 0) FROM races WHERE id = ?)
+                 THEN l.lap_time_ms END) AS avg_ms,
+        MAX(CASE WHEN l.lap_number > 1 THEN l.lap_time_ms END) AS worst_ms,
+        SUM(l.is_exit)     AS exit_count,
+        SUM(CASE WHEN l.is_pit_stop = 1 THEN 1 ELSE 0 END) AS pit_stop_count,
+        GROUP_CONCAT(CASE WHEN l.is_pit_stop = 1 THEN l.lap_number END) AS pit_stop_laps
+      FROM laps l
+      JOIN mangas m ON m.id = l.manga_id
+      WHERE l.race_id = ? AND ${col} = ? AND l.is_ghost = 0 AND l.manga_id IS NOT NULL
+      GROUP BY l.lane, l.manga_id
+      ORDER BY l.lane ASC, m.number ASC
+    `).all(raceId, raceId, raceId, entityId);
   }
 
   // ── Ghost lap corrections ────────────────────────────────────────────────

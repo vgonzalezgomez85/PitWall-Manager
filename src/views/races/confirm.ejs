@@ -27,6 +27,18 @@
         <th><%= t('wizard.manga_duration') %></th>
         <td><%= wizard.manga_duration_minutes %> <%= lang === 'es' ? 'minutos' : 'minutes' %></td>
       </tr>
+      <% if (wizard.passes > 1) { %>
+      <tr>
+        <th><%= lang === 'es' ? 'Pasadas' : 'Passes' %></th>
+        <td><%= wizard.passes %></td>
+      </tr>
+      <% } %>
+      <% if (wizard.lane_repeat > 1) { %>
+      <tr>
+        <th><%= lang === 'es' ? 'Repetir carril' : 'Repeat lane' %></th>
+        <td><%= wizard.lane_repeat %></td>
+      </tr>
+      <% } %>
       <tr>
         <th><%= lang === 'es' ? 'Pole position' : 'Pole position' %></th>
         <td>
