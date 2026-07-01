@@ -168,6 +168,14 @@ const migrations = [
   // semáforo, etc.). Sí cuenta para totales, media y proyección.
   `ALTER TABLE laps ADD COLUMN is_warmup INTEGER NOT NULL DEFAULT 0`,
 
+  // Pasadas y repetir-carril (sprint + resistencia):
+  //   passes      = nº de veces que se repite la SECUENCIA de carriles entera
+  //                 (P pasadas → P× más mangas, la rotación encadenada).
+  //   lane_repeat = cada carril se corre R veces como UN solo stint más largo
+  //                 (la duración efectiva de cada manga = base × R).
+  `ALTER TABLE races ADD COLUMN passes      INTEGER NOT NULL DEFAULT 1`,
+  `ALTER TABLE races ADD COLUMN lane_repeat INTEGER NOT NULL DEFAULT 1`,
+
   // ── Teams catalog ──────────────────────────────────────────────────────────
   `CREATE TABLE IF NOT EXISTS teams_catalog (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,

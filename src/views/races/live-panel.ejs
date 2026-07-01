@@ -170,15 +170,19 @@
         _sum: 0, _n: 0, avgLapMs: null,
       };
     });
+    const PANEL_MIN_LAP_MS = (typeof race !== 'undefined' && race.min_lap_ms) ? race.min_lap_ms : 0;
     laps.forEach(l => {
       const s = laneInit2[l.lane];
       if (!s || s.isRest) return;
       s.lapCount = Math.max(s.lapCount, l.lap_number);
-      s.lastLapMs = l.lap_time_ms;
-      if (!l.is_exit) {
-        if (!s.bestLapMs || l.lap_time_ms < s.bestLapMs) s.bestLapMs = l.lap_time_ms;
-        s._sum += l.lap_time_ms; s._n++;
-      } else s.exitCount++;
+      // Media/última = ritmo real: excluye warmup (out-lap) y vueltas sub-mínimo
+      // (cruces fantasma); incluye salidas. Igual que live.ejs.
+      const aboveMin = (PANEL_MIN_LAP_MS <= 0 || l.lap_time_ms >= PANEL_MIN_LAP_MS);
+      if (!l.is_warmup && aboveMin) { s.lastLapMs = l.lap_time_ms; s._sum += l.lap_time_ms; s._n++; }
+      // Mejor vuelta: ni salida, ni warmup, ni 1ª vuelta, ni sub-mínimo.
+      if (!l.is_exit && !l.is_warmup && l.lap_number > 1 && aboveMin
+          && (!s.bestLapMs || l.lap_time_ms < s.bestLapMs)) s.bestLapMs = l.lap_time_ms;
+      if (l.is_exit) s.exitCount++;
     });
     Object.values(laneInit2).forEach(s => {
       s.avgLapMs = s._n > 0 ? Math.round(s._sum / s._n) : null;

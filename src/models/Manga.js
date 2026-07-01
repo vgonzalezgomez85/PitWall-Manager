@@ -42,9 +42,18 @@ class Manga {
   // entities: [{id, type:'team'|'driver', name}]
   // laneSequence: [1,3,5,6,4,2]
   // Returns array of mangas, each manga = array of {lane, entity, isRest}
-  static buildSchedule(laneSequence, entities) {
+  // `passes` (P, por defecto 1): nº de veces que se recorre la SECUENCIA entera.
+  // `laneRepeat` (R, por defecto 1): cada paso de carril se corre R mangas
+  //   SEGUIDAS (mismo carril); cada una a su tiempo normal y las vueltas se
+  //   suman (por nombre) en la clasificación. Con DS-300 la caja cierra cada
+  //   manga a su tiempo, así que "repetir carril" son R mangas contiguas, no
+  //   una manga más larga.
+  // Total de mangas = P × seqLen × R.
+  static buildSchedule(laneSequence, entities, passes = 1, laneRepeat = 1) {
     const N = entities.length;
     if (N === 0 || laneSequence.length === 0) return [];
+    const P = Math.max(1, parseInt(passes, 10) || 1);
+    const R = Math.max(1, parseInt(laneRepeat, 10) || 1);
 
     const activeLanes  = laneSequence.filter(l => l > 0);
     const hasExplicit0 = laneSequence.includes(0);
@@ -64,15 +73,18 @@ class Manga {
     }
 
     const seqLen = extended.length;
-    const totalMangas = seqLen;
 
+    // P pasadas de la rotación completa; en cada pasada, cada paso de carril
+    // se materializa como R mangas contiguas (repetir carril).
     const schedule = [];
-    for (let m = 0; m < totalMangas; m++) {
-      const slots = entities.map((entity, i) => {
-        const lane = extended[(i + m) % seqLen];
-        return { lane, entity, isRest: lane === 0 };
-      });
-      schedule.push(slots);
+    for (let p = 0; p < P; p++) {
+      for (let s = 0; s < seqLen; s++) {
+        const slots = entities.map((entity, i) => {
+          const lane = extended[(i + s) % seqLen];
+          return { lane, entity, isRest: lane === 0 };
+        });
+        for (let rep = 0; rep < R; rep++) schedule.push(slots.map(x => ({ ...x })));
+      }
     }
     return schedule;
   }

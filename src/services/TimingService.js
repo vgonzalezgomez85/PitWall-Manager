@@ -287,6 +287,23 @@ class TimingServiceClass {
     });
   }
 
+  // ── Reloj simulado ──────────────────────────────────────────────────────────
+  // En una carrera simulada el tiempo NO avanza con el reloj de pared: avanza
+  // según las tramas reproducidas (a ×N, o de golpe al "final de manga"). El
+  // reproductor llama aquí con los milisegundos transcurridos DESDE EL GO de la
+  // manga; anclamos startTime para que el cronómetro y el elapsed_ms de cada
+  // vuelta reflejen ese tiempo virtual. Así el contador va a ×N y, al volcar el
+  // final de manga de golpe, salta hasta el final con las vueltas repartidas en
+  // su minuto real (no amontonadas en el 0).
+  simSetClock(elapsedMs) {
+    if (!this.session) return;
+    const anchor = Date.now() - Math.max(0, elapsedMs);
+    this.session.startTime = anchor;
+    Object.values(this.session.circuits).forEach(c => {
+      if (c.status === 'running') c.startTime = anchor;
+    });
+  }
+
   // Finaliza un circuito (fin normal o tiempo agotado). La manga se cierra de
   // verdad cuando NINGÚN circuito sigue corriendo y al menos uno terminó.
   finishCircuit(ci) {
@@ -549,6 +566,16 @@ class TimingServiceClass {
   resumeManga() {
     if (!this.session) return;
     Object.values(this.session.circuits).forEach(c => { if (c.status === 'paused') this.resumeCircuit(c.index); });
+  }
+  // Reanudar en simulación: como resumeManga pero anulando la compensación de
+  // pausa del DS-300. En una carrera real la caja sigue contando durante la
+  // pausa y la primera vuelta tras reanudar viene inflada; en la simulación
+  // paramos de inyectar tramas, así que el tiempo de vuelta ya es el real del
+  // dato y NO hay que restarle nada.
+  simResumeManga() {
+    if (!this.session) return;
+    this.resumeManga();
+    Object.values(this.session.laneMap).forEach(ld => { ld.pendingPauseAdjustMs = 0; });
   }
 
   // ── Cancel manga (manual stop) — resets to pending, deletes laps ──────────

@@ -1,0 +1,89 @@
+<%- include('../partials/header', { pageTitle: 'Simulación — ' + race.name }) %>
+<div class="container container--narrow">
+  <a href="/races/<%= race.id %>" class="vt-back-link" style="margin-top:1rem">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Carrera
+  </a>
+  <h1 class="page-title">🎬 Simulación — <%= race.name %></h1>
+  <p class="form-hint" style="margin:-.4rem 0 1rem">
+    <%= meta.mangas || '?' %> mangas · <%= meta.durationMin || '?' %> min/manga ·
+    <%= meta.lanes || '?' %> carriles · <%= (meta.crossings || 0).toLocaleString('es-ES') %> cruces
+  </p>
+
+  <div class="form-card">
+    <div id="simState" style="font-family:ui-monospace,Menlo,monospace;font-size:1.05rem;
+         background:#0d1117;border:1px solid #30363d;border-radius:10px;padding:1rem;margin-bottom:1.2rem">
+      Cargando estado…
+    </div>
+
+    <label class="form-label">Velocidad</label>
+    <div class="form-actions" style="gap:6px;flex-wrap:wrap;margin-bottom:1rem">
+      <button type="button" class="vt-btn vt-btn--ghost spd" data-spd="1">Tiempo real</button>
+      <button type="button" class="vt-btn vt-btn--ghost spd" data-spd="5">×5</button>
+      <button type="button" class="vt-btn vt-btn--ghost spd" data-spd="10">×10</button>
+      <button type="button" class="vt-btn vt-btn--ghost spd" data-spd="25">×25</button>
+      <button type="button" class="vt-btn vt-btn--ghost spd" data-spd="50">×50</button>
+      <button type="button" class="vt-btn vt-btn--ghost spd" data-spd="100">×100</button>
+    </div>
+
+    <div class="form-actions" style="gap:8px;flex-wrap:wrap">
+      <button type="button" id="btnStart"  class="vt-btn vt-btn--primary">▶ Arrancar manga</button>
+      <button type="button" id="btnPause"  class="vt-btn vt-btn--ghost">⏸ Pausa</button>
+      <button type="button" id="btnResume" class="vt-btn vt-btn--ghost">▶ Reanudar</button>
+      <button type="button" id="btnSkip"   class="vt-btn vt-btn--ghost">⏭ Final de manga</button>
+      <button type="button" id="btnStop"   class="vt-btn vt-btn--ghost" style="color:#e5534b">⏹ Parar</button>
+    </div>
+
+    <p class="form-hint" style="margin-top:1.2rem">
+      Mira la carrera en vivo:
+      <a href="/races/<%= race.id %>/live-stats" target="_blank">Estadísticas en vivo</a> ·
+      <a href="/races/<%= race.id %>" target="_blank">Página de la carrera</a>.
+      <br>Nota: la simulación reemplaza la fuente serie mientras corre (no uses el director a la vez).
+    </p>
+  </div>
+</div>
+
+<script>
+(function(){
+  var RACE = <%= race.id %>;
+  var speed = 1;
+  function post(action){
+    return fetch('/races/'+RACE+'/sim/'+action, {
+      method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body: action==='start'||action==='speed' ? ('speed='+speed) : ''
+    }).then(function(r){ return r.json(); }).then(render).catch(function(){});
+  }
+  function render(s){
+    if (!s) return;
+    var el = document.getElementById('simState');
+    if (!s.active){ el.textContent = 'Detenida. Pulsa Arrancar manga.'; markSpeed(); return; }
+    var head, sub = 'Manga <b>'+s.rotation+' / '+s.totalRotations+'</b>';
+    if (s.phase === 'ready')      { head = '⏹ Manga lista — pulsa Arrancar para el GO'; }
+    else if (s.phase === 'paused'){ head = '⏸ En pausa · ×'+s.speed; }
+    else if (s.phase === 'done')  { head = '🏁 Carrera terminada'; }
+    else                          { head = '▶ En marcha · ×'+s.speed; }
+    el.innerHTML =
+      '<b>'+head+'</b><br>'+ sub +
+      (s.phase==='done' ? '' : '<br>Tramas: '+s.mangaFrame+' / '+s.mangaFrames);
+    speed = s.speed; markSpeed();
+  }
+  function markSpeed(){
+    document.querySelectorAll('.spd').forEach(function(b){
+      b.classList.toggle('vt-btn--primary', parseFloat(b.dataset.spd)===speed);
+      b.classList.toggle('vt-btn--ghost', parseFloat(b.dataset.spd)!==speed);
+    });
+  }
+  document.querySelectorAll('.spd').forEach(function(b){
+    b.addEventListener('click', function(){ speed = parseFloat(b.dataset.spd); markSpeed();
+      fetch('/races/'+RACE+'/sim/status').then(r=>r.json()).then(function(s){ if(s.active) post('speed'); }); });
+  });
+  document.getElementById('btnStart').addEventListener('click', function(){ post('start'); });
+  document.getElementById('btnPause').addEventListener('click', function(){ post('pause'); });
+  document.getElementById('btnResume').addEventListener('click', function(){ post('resume'); });
+  document.getElementById('btnSkip').addEventListener('click', function(){ post('skip-manga'); });
+  document.getElementById('btnStop').addEventListener('click', function(){ post('stop'); });
+  function poll(){ fetch('/races/'+RACE+'/sim/status').then(r=>r.json()).then(render).catch(function(){}); }
+  poll(); setInterval(poll, 1000);
+})();
+</script>
+<%- include('../partials/footer') %>
