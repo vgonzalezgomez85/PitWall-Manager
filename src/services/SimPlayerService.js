@@ -20,7 +20,7 @@ const Manga = require('../models/Manga');
 const Team = require('../models/Team');
 const Driver = require('../models/Driver');
 
-const SIM_DIR = path.join(__dirname, '..', '..', 'database', 'sim');
+const { SIM_DIR } = require('../lib/simPaths');
 const DS_INDEX = { DS1: 0, DS2: 1, DS3: 2 };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 

@@ -12,10 +12,11 @@ const Race = require('../models/Race');
 const Tanda = require('../models/Tanda');
 const Team = require('../models/Team');
 const Manga = require('../models/Manga');
+const { SIM_DIR, ensureSimDir } = require('../lib/simPaths');
 
-const SIM_DIR = path.join(__dirname, '..', '..', 'database', 'sim');
-const TMP_DIR = path.join(SIM_DIR, '_tmp');
-fs.mkdirSync(TMP_DIR, { recursive: true });
+// Carpeta escribible (userData en empaquetado, database/ en dev). ensureSimDir
+// NUNCA lanza, así que requerir este módulo no puede tumbar el arranque.
+const TMP_DIR = ensureSimDir('_tmp');
 
 // Multer: a disco, hasta 60 MB (los registros de 24h pesan ~15 MB).
 const upload = multer({ dest: TMP_DIR, limits: { fileSize: 60 * 1024 * 1024 } });
