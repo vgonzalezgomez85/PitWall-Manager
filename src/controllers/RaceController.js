@@ -174,17 +174,7 @@ class RaceController {
   }
 
   // ─── Step 2 (Formato) — ELIMINADO del flujo. El formato se deriva del tipo en
-  //     postStep1. Los handlers se conservan como reenvío por compatibilidad. ──
-
-  static newStep2(req, res) {
-    if (!req.session.wizard?.format) return res.redirect('/races/new');
-    return RaceController._routeAfterFormat(req, res);
-  }
-
-  static postStep2(req, res) {
-    if (!req.session.wizard?.format) return res.redirect('/races/new');
-    return RaceController._routeAfterFormat(req, res);
-  }
+  //     postStep1; el enrutado lo hace _routeAfterFormat. ──
 
   // Enrutado tras fijar el formato: con circuito asignado la secuencia la manda
   // el circuito y el paso 3 se salta (no accesible ni con "atrás"); en carrera

@@ -397,11 +397,6 @@ class CircuitConnection {
 
     // ── Control frame (no lane crossing) ──────────────────────────────────────
     if (!laneByte) {
-      // TEMPORARY: dump every control frame to capture pause sequence
-      console.log(`[DS-300 C${this._circuitIndex + 1}] CTRL frame @ ${Date.now()}: ` +
-        frame.map(b => b.toString(16).padStart(2,'0')).join(' ') +
-        `  (B7=0x${frame[7]?.toString(16)} B8=0x${frame[8]?.toString(16)})`);
-
       // Forced stop: byte8=0xa7
       if (frame[8] === 0xa7) {
         this._setRaceState('stopped');

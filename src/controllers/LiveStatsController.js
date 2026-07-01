@@ -1,7 +1,6 @@
 const Race          = require('../models/Race');
 const Manga         = require('../models/Manga');
 const Tanda         = require('../models/Tanda');
-const Lap           = require('../models/Lap');
 const TimingService = require('../services/TimingService');
 const db            = require('../config/database');
 const {

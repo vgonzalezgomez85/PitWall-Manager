@@ -1,7 +1,5 @@
 const SerialService = require('./SerialService');
 const SocketService = require('./SocketService');
-const Settings      = require('../models/Settings');
-const Circuit       = require('../models/Circuit');
 
 const LANE_COLORS = [
   '#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4',

@@ -3,8 +3,6 @@ const TrainingService   = require('../services/TrainingService');
 const PoleTimingService = require('../services/PoleTimingService');
 const PoleSession       = require('../models/PoleSession');
 const Race  = require('../models/Race');
-const Tanda = require('../models/Tanda');
-const Manga = require('../models/Manga');
 const Lap   = require('../models/Lap');
 const db = require('../config/database');
 
