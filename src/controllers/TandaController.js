@@ -137,10 +137,17 @@ class TandaController {
     }
 
     // Generate and persist the manga schedule (Basic tier: max 1 manga)
-    let schedule = Manga.buildSchedule(laneSequence, entities);
+    let schedule = Manga.buildSchedule(laneSequence, entities, race.passes, race.lane_repeat);
     const maxMangas = LicenseService.maxMangasPerRace;
     if (maxMangas !== Infinity && schedule.length > maxMangas) {
-      schedule = schedule.slice(0, maxMangas);
+      // Recorta a un múltiplo de la "unidad" (pasada completa = seqLen × R) para
+      // no dejar pasadas/repeticiones a medias con P>1 o R>1. Si el tope no
+      // llega ni a una unidad, recorta en crudo (licencia muy limitada).
+      const R = Math.max(1, race.lane_repeat || 1);
+      const P = Math.max(1, race.passes || 1);
+      const unit = schedule.length / P;           // mangas por pasada (= seqLen × R)
+      const keep = Math.floor(maxMangas / unit) * unit || maxMangas;
+      schedule = schedule.slice(0, keep);
     }
     Manga.persistSchedule(tandaId, race.id, schedule);
 
@@ -216,7 +223,7 @@ class TandaController {
       }
 
       const laneSequence = Race.getLaneSequence(race);
-      const schedule = Manga.buildSchedule(laneSequence, entities);
+      const schedule = Manga.buildSchedule(laneSequence, entities, race.passes, race.lane_repeat);
 
       // Drop all mangas of this tanda (cascade kills manga_lanes) and re-persist.
       // Las vueltas se borran explícitamente: la FK es ON DELETE SET NULL y
@@ -296,7 +303,7 @@ class TandaController {
           const id   = Driver.create({ race_id: race.id, tanda_id: tanda.id, team_id: null, name, lane: idx + 1, car_number: idx + 1 });
           entities.push({ id, type: 'driver', name });
         });
-        Manga.persistSchedule(tanda.id, race.id, Manga.buildSchedule(laneSequence, entities));
+        Manga.persistSchedule(tanda.id, race.id, Manga.buildSchedule(laneSequence, entities, race.passes, race.lane_repeat));
       } else {
         driversArray.forEach(d => {
           const id   = parseInt(d.id);
@@ -333,7 +340,7 @@ class TandaController {
           });
           entities.push({ id: teamId, type: 'team', name: teamName });
         });
-        Manga.persistSchedule(tanda.id, race.id, Manga.buildSchedule(laneSequence, entities));
+        Manga.persistSchedule(tanda.id, race.id, Manga.buildSchedule(laneSequence, entities, race.passes, race.lane_repeat));
       } else {
         teamsArray.forEach(team => {
           const teamId = parseInt(team.id);

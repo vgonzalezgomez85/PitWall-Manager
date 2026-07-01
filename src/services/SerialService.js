@@ -616,6 +616,50 @@ class SerialServiceClass extends EventEmitter {
     this._broadcastLinkStatus();
   }
 
+  // ── Modo simulación: circuitos virtuales alimentados con tramas ───────────
+  // No abren puerto serie; se les inyectan tramas con feedFrame() y reemiten los
+  // mismos eventos (lane_crossing, race_go, race_finished…) que un DS-300 real,
+  // así el resto del pipeline (TimingService, sockets) no nota la diferencia.
+  async startSimMode(circuits) {
+    await this.closeAll();
+    this.stopSimulation();
+    let laneOffset = 0;
+    const connections = [];
+    for (let i = 0; i < circuits.length; i++) {
+      const callbacks = [
+        i, laneOffset,
+        data => this.emit('lane_crossing', { circuit: i, ...data }),
+        ()   => this.emit('race_started',       { circuit: i }),
+        ()   => this.emit('race_stopped',       { circuit: i }),
+        ()   => this.emit('race_paused',        { circuit: i }),
+        ()   => this.emit('race_resumed',       { circuit: i }),
+        ms   => this.emit('race_go',            { circuit: i, durationMs: ms }),
+        ()   => this.emit('race_finished',      { circuit: i }),
+        ()   => this.emit('race_resume_signal', { circuit: i }),
+        ()   => this.emit('semaphore_step',     { circuit: i }),
+      ];
+      connections.push(new CircuitConnection(...callbacks));
+      laneOffset += (circuits[i].lanes || 8);
+    }
+    this._connections = connections;
+    this._simReplay = true;
+    this._broadcastLinkStatus();
+    console.log(`[SerialService] Modo simulación: ${connections.length} circuitos virtuales.`);
+  }
+
+  // Inyecta una trama (array/Buffer de 21 bytes) en el circuito indicado (0..N).
+  feedFrame(circuitIdx, bytes) {
+    const conn = this._connections[circuitIdx];
+    if (conn && typeof conn._processFrame === 'function') {
+      try { conn._processFrame(Buffer.from(bytes), Date.now()); } catch (e) {}
+    }
+  }
+
+  async stopSimMode() {
+    this._simReplay = false;
+    await this.closeAll();
+  }
+
   _broadcastLinkStatus() {
     try {
       const SocketService = require('./SocketService');
@@ -820,10 +864,13 @@ class SerialServiceClass extends EventEmitter {
   getLinkStatus() {
     // connectedPorts solo lista conexiones REALES (BART/DS con path no nulo), así
     // que un BART que aún busca o falló no cuenta como conectado.
-    const connected = this._simRunning || this.connectedPorts.length > 0;
+    // _simReplay = reproducción de carrera simulada: la fuente es el reproductor
+    // (no hay puerto serie), pero SÍ hay señal, así que cuenta como conectado y
+    // no debe salir el aviso "Sin señal del DS-300".
+    const connected = this._simRunning || this._simReplay || this.connectedPorts.length > 0;
     return {
       connected,
-      simulating: this._simRunning,
+      simulating: this._simRunning || this._simReplay,
       ports:      this.connectedPorts,
     };
   }

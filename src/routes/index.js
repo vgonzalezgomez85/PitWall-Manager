@@ -1,6 +1,7 @@
 const express  = require('express');
 const router   = express.Router();
 const RaceController              = require('../controllers/RaceController');
+const SimController               = require('../controllers/SimController');
 const TandaController             = require('../controllers/TandaController');
 const SessionController           = require('../controllers/SessionController');
 const SettingsController          = require('../controllers/SettingsController');
@@ -66,6 +67,20 @@ router.post('/races/new/step3',  requireModule('races_basic'), RaceController.po
 router.get('/races/new/step4',   requireModule('races_basic'), RaceController.newStep4);
 router.post('/races/new/step4',  requireModule('races_basic'), RaceController.postStep4);
 router.get('/races/new/confirm', requireModule('races_basic'), RaceController.newConfirm);
+
+// ── Carrera simulada (desde fichero de tramas DS-300) ───────────────────────
+router.get( '/races/sim/new',     requireModule('races_basic'), SimController.newForm);
+router.post('/races/sim/analyze', requireModule('races_basic'), SimController.upload.single('frames'),   SimController.analyze);
+router.post('/races/sim/create',  requireModule('races_basic'), SimController.upload.single('lane_csv'), SimController.create);
+// Panel de simulación (fase 2) + controles
+router.get( '/races/:id/sim',            requireModule('races_basic'), SimController.panel);
+router.get( '/races/:id/sim/status',     SimController.simStatus);
+router.post('/races/:id/sim/start',      requireModule('races_basic'), SimController.simStart);
+router.post('/races/:id/sim/speed',      SimController.simSpeed);
+router.post('/races/:id/sim/pause',      SimController.simPause);
+router.post('/races/:id/sim/resume',     SimController.simResume);
+router.post('/races/:id/sim/skip-manga', SimController.simSkip);
+router.post('/races/:id/sim/stop',       SimController.simStop);
 
 // ── Lap corrections ───────────────────────────────────────────────────────────
 router.get( '/races/:id/mangas/:mangaId/corrections',                LapCorrectionController.show);

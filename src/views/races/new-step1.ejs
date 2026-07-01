@@ -203,6 +203,39 @@
       </div>
     </div>
 
+    <!-- Pasadas y repetir carril (válido para sprint y resistencia) -->
+    <div class="form-group">
+      <label class="form-label">
+        <%= lang === 'es' ? 'Pasadas y repetición de carril' : 'Passes and lane repetition' %>
+      </label>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem">
+        <div>
+          <label class="form-label" for="passes" style="font-size:.85rem;color:var(--vt-mute,#9aa0a6)">
+            <%= lang === 'es' ? 'Pasadas' : 'Passes' %>
+          </label>
+          <input class="form-input form-input--sm" type="number" id="passes" name="passes"
+                 min="1" step="1" value="<%= body.passes || 1 %>">
+          <p class="form-hint" style="margin-top:.35rem">
+            <%= lang === 'es'
+              ? 'Nº de veces que se repite la secuencia de carriles entera. Ej.: 2 pasadas = la rotación completa se corre 2 veces.'
+              : 'Number of times the whole lane sequence repeats. E.g. 2 passes = the full rotation runs twice.' %>
+          </p>
+        </div>
+        <div>
+          <label class="form-label" for="laneRepeat" style="font-size:.85rem;color:var(--vt-mute,#9aa0a6)">
+            <%= lang === 'es' ? 'Repetir carril' : 'Repeat lane' %>
+          </label>
+          <input class="form-input form-input--sm" type="number" id="laneRepeat" name="lane_repeat"
+                 min="1" step="1" value="<%= body.lane_repeat || 1 %>">
+          <p class="form-hint" style="margin-top:.35rem">
+            <%= lang === 'es'
+              ? 'Cada carril se corre este nº de mangas seguidas (mismo carril); las vueltas se suman. Ej.: 2 = cada carril se hace 2 mangas contiguas.'
+              : 'Each lane runs this many consecutive heats (same lane); laps are summed. E.g. 2 = each lane runs 2 contiguous heats.' %>
+          </p>
+        </div>
+      </div>
+    </div>
+
     <!-- Pole position -->
     <div class="form-group">
       <label class="form-label">

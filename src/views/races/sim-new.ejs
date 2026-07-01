@@ -1,0 +1,33 @@
+<%- include('../partials/header', { pageTitle: 'Carrera simulada' }) %>
+<div class="container container--narrow">
+  <a href="/races" class="vt-back-link" style="margin-top:1rem">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Carreras
+  </a>
+  <h1 class="page-title">🎬 Carrera simulada</h1>
+  <p class="form-hint" style="margin:-.4rem 0 1rem">
+    Sube el registro de tramas DS-300 de una carrera ya disputada. PitWall lo analiza
+    (mangas, duración, carriles, circuitos) y crea la carrera para reproducirla.
+  </p>
+
+  <% if (error) { %><div class="alert alert--error"><p><%= error %></p></div><% } %>
+
+  <form action="/races/sim/analyze" method="POST" enctype="multipart/form-data" class="form-card">
+    <div class="form-group">
+      <label class="form-label" for="name">Nombre de la carrera</label>
+      <input class="form-input" id="name" name="name" placeholder="p. ej. 24h Italia (simulada)">
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="frames">Fichero de tramas (.txt o .csv)</label>
+      <input class="form-input" id="frames" name="frames" type="file" accept=".txt,.csv" required>
+      <p class="form-hint">
+        <b>.txt</b> = registro completo multi-circuito (<code>hora · DSn · bytes</code>).
+        <b>.csv</b> = export por vuelta (<code>vuelta;tiempo;hex;…</code>).
+      </p>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="vt-btn vt-btn--primary">Analizar tramas →</button>
+    </div>
+  </form>
+</div>
+<%- include('../partials/footer') %>
