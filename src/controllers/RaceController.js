@@ -33,10 +33,10 @@ class RaceController {
 
   static index(req, res) {
     const fs = require('fs'), path = require('path');
-    const simDir = path.join(__dirname, '..', '..', 'database', 'sim');
+    const { SIM_DIR } = require('../lib/simPaths');
     const races = Race.findAll().map(r => ({
       ...r,
-      is_sim: fs.existsSync(path.join(simDir, `${r.id}.json`)),
+      is_sim: fs.existsSync(path.join(SIM_DIR, `${r.id}.json`)),
     }));
     res.render('races/index', { t: req.t, races });
   }
@@ -411,7 +411,7 @@ class RaceController {
     }
 
     const isSim = require('fs').existsSync(
-      require('path').join(__dirname, '..', '..', 'database', 'sim', `${race.id}.json`));
+      require('path').join(require('../lib/simPaths').SIM_DIR, `${race.id}.json`));
     res.render('races/show', {
       t: req.t, race, laneSequence, tandas: tandasWithMangas,
       virtualStandings, LANE_COLORS, poleSession, isSim,
