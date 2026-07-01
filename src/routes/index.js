@@ -60,8 +60,6 @@ router.get( '/eula',           LicenseController.eula);
 // ── Wizard ────────────────────────────────────────────────────────────────────
 router.get('/races/new',         requireModule('races_basic'), RaceController.newStep1);
 router.post('/races/new/step1',  requireModule('races_basic'), RaceController.postStep1);
-router.get('/races/new/step2',   requireModule('races_basic'), RaceController.newStep2);
-router.post('/races/new/step2',  requireModule('races_basic'), RaceController.postStep2);
 router.get('/races/new/step3',   requireModule('races_basic'), RaceController.newStep3);
 router.post('/races/new/step3',  requireModule('races_basic'), RaceController.postStep3);
 router.get('/races/new/step4',   requireModule('races_basic'), RaceController.newStep4);
