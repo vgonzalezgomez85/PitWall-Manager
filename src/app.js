@@ -108,7 +108,9 @@ SerialService.on('race_started', ({ circuit } = {}) => {
   }
   // Race manga only starts when a localhost client is on the live view.
   // Training keeps working regardless (above autostart emit).
-  if (!SocketService.hasLocalLiveViewer()) {
+  // EXCEPCIÓN: en una carrera simulada el GO viene del reproductor (no de una
+  // caja DS real), así que no exigimos un navegador en la vista en vivo.
+  if (!SerialService._simReplay && !SocketService.hasLocalLiveViewer()) {
     console.log('[DS-300] GO ignored for race — no localhost client on live view');
     return;
   }

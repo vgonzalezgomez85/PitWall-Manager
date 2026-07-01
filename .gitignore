@@ -16,3 +16,8 @@ src/data/slotime.license
 # Backups locales del portátil (no se suben a git)
 bkp_portatil/
 database/_backup_pre_portatil/
+database/_backup_pre_delete/
+
+# Datos generados / de entrada (no son código)
+database/sim/
+info para proyecto infolap slot/

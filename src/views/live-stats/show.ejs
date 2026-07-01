@@ -46,6 +46,15 @@
   <!-- ── Panel del piloto (modo B) ──────────────────────────────────────── -->
   <section class="ls-section" id="lsMeSection" data-lsview="manga proj" hidden>
     <h2 class="ls-section__title">🏁 <span id="lsMeName">—</span></h2>
+    <!-- Conmutador de alcance de la consistencia (global: tarjeta + comparativa) -->
+    <div class="ls-consmode-bar">
+      <span class="ls-consmode-bar__lbl">📊 <%= lang === 'es' ? 'Consistencia' : 'Consistency' %></span>
+      <div class="ls-consmode" id="lsConsModes" role="group" aria-label="<%= lang === 'es' ? 'Alcance de la consistencia' : 'Consistency scope' %>">
+        <button type="button" class="ls-cmode is-active" data-consscope="clean"><%= lang === 'es' ? 'Sin salidas' : 'Without exits' %></button>
+        <button type="button" class="ls-cmode" data-consscope="all"><%= lang === 'es' ? 'Con salidas' : 'With exits' %></button>
+      </div>
+      <span class="ls-consmode-bar__hint" id="lsConsHint"></span>
+    </div>
     <div class="ls-grid ls-grid--4">
       <div class="ls-card">
         <div class="ls-card__label">Posición</div>
@@ -71,6 +80,15 @@
       <div class="ls-card">
         <div class="ls-card__label">Salidas / pit-stops</div>
         <div class="ls-card__big" id="lsMeExits">—</div>
+      </div>
+      <div class="ls-card">
+        <div class="ls-card__label">📊 Consistencia</div>
+        <div class="ls-card__big ls-cons__pct" id="lsMeConsistency">—</div>
+        <div class="ls-cons__level" id="lsMeConsLevel" hidden>
+          <span class="ls-cons__dot"></span><span class="ls-cons__txt">—</span>
+          <span class="ls-cons__de" id="lsMeConsDe"></span>
+        </div>
+        <div class="ls-card__hint"><%= lang === 'es' ? 'variación vuelta a vuelta' : 'lap-to-lap variation' %></div>
       </div>
       <div class="ls-card ls-card--wide" id="lsMeLostCard">
         <div class="ls-card__label">⏱ Tiempo perdido en salidas</div>
@@ -263,6 +281,41 @@
   .ls-btn:hover { border-color:#58a6ff }
 
   .ls-back { display:inline-block; margin-top:1rem; color:#58a6ff; text-decoration:none }
+
+  /* ── Consistencia coloreada por nivel ─────────────────────────────────── */
+  .ls-cons__pct.is-exc  { color:#3fb950 }
+  .ls-cons__pct.is-good { color:#56d364 }
+  .ls-cons__pct.is-warn { color:#e6a817 }
+  .ls-cons__pct.is-bad  { color:#f85149 }
+  .ls-cons__pct.is-null { color:#6e7681 }
+  .ls-cons__level { display:flex; align-items:center; gap:.35rem; margin-top:.3rem;
+    font-family:Saira, system-ui, sans-serif; font-size:.8rem; font-weight:600; flex-wrap:wrap }
+  .ls-cons__dot { width:9px; height:9px; border-radius:50%; flex:0 0 auto; background:#6e7681 }
+  .ls-cons__level.is-exc  .ls-cons__dot { background:#3fb950 }
+  .ls-cons__level.is-good .ls-cons__dot { background:#56d364 }
+  .ls-cons__level.is-warn .ls-cons__dot { background:#e6a817 }
+  .ls-cons__level.is-bad  .ls-cons__dot { background:#f85149 }
+  .ls-cons__level.is-exc  .ls-cons__txt { color:#3fb950 }
+  .ls-cons__level.is-good .ls-cons__txt { color:#56d364 }
+  .ls-cons__level.is-warn .ls-cons__txt { color:#e6a817 }
+  .ls-cons__level.is-bad  .ls-cons__txt { color:#f85149 }
+  .ls-cons__de { color:#8b949e; font-weight:600 }
+  .ls-cons__de::before { content:'· ' }
+  /* Conmutador de alcance de consistencia (sin/con salidas y pits) */
+  .ls-consmode-bar { display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; margin:0 0 .9rem }
+  .ls-consmode-bar__lbl { color:#8b949e; font-size:.75rem; text-transform:uppercase; letter-spacing:.05em; font-weight:600 }
+  .ls-consmode { display:inline-flex; gap:6px }
+  .ls-consmode-bar__hint { color:#6e7681; font-size:.78rem }
+  @media (max-width:640px){ .ls-consmode-bar__hint { flex-basis:100%; margin-top:-.2rem } }
+  /* Consistencia en la tabla comparativa: punto + % (+DE opcional) */
+  .ls-cmp2 .ls-conscell { display:inline-flex; align-items:center; gap:.3rem; white-space:nowrap }
+  .ls-cmp2 .ls-conscell__dot { width:8px; height:8px; border-radius:50%; flex:0 0 auto; background:#6e7681 }
+  .ls-cmp2 .ls-conscell.is-exc  .ls-conscell__dot { background:#3fb950 }
+  .ls-cmp2 .ls-conscell.is-good .ls-conscell__dot { background:#56d364 }
+  .ls-cmp2 .ls-conscell.is-warn .ls-conscell__dot { background:#e6a817 }
+  .ls-cmp2 .ls-conscell.is-bad  .ls-conscell__dot { background:#f85149 }
+  .ls-cmp2 .ls-conscell__de { font-size:.72rem; font-weight:600; color:#6e7681 }
+  @media (max-width:640px){ .ls-cmp2 .ls-conscell__de { display:none } }
 </style>
 
 <script src="/socket.io/socket.io.js"></script>
@@ -288,6 +341,55 @@
     const m = Math.floor(s / 60);
     return String(m).padStart(2,'0') + ':' + String(s % 60).padStart(2,'0');
   };
+
+  // Consistencia: nivel → clase de color y etiqueta semántica (ES/EN).
+  const LS_LANG = '<%= lang %>';
+  function consLevelClass(level) {
+    switch (level) {
+      case 'excelente': return 'is-exc';
+      case 'buena':     return 'is-good';
+      case 'irregular': return 'is-warn';
+      case 'erratica':  return 'is-bad';
+      default:          return 'is-null';
+    }
+  }
+  function consLabel(level) {
+    const es = LS_LANG === 'es';
+    switch (level) {
+      case 'excelente': return es ? 'Excelente' : 'Excellent';
+      case 'buena':     return es ? 'Buena'     : 'Good';
+      case 'irregular': return es ? 'Irregular' : 'Irregular';
+      case 'erratica':  return es ? 'Errática'  : 'Erratic';
+      default:          return '—';
+    }
+  }
+  // ±DE en segundos con 2 decimales (coma decimal como el resto de la vista).
+  function consDe(stdMs) {
+    if (stdMs == null) return '';
+    return '±' + (stdMs / 1000).toFixed(2).replace('.', ',') + ' s';
+  }
+
+  // Alcance de consistencia: 'clean' = solo vueltas limpias (por defecto),
+  // 'all' = incluye salidas y pit-stops. Un único conmutador global que afecta
+  // tanto a la tarjeta de "Mi panel" como a la fila de la comparativa.
+  let consScope = 'clean';
+  try { consScope = localStorage.getItem('ls-cons-scope') === 'all' ? 'all' : 'clean'; } catch (e) {}
+
+  // Devuelve {pct, stdMs, level} de una entidad según el alcance elegido y la
+  // vista (manga → consistency*/consistencyAll*; proyectada → raceConsistency*/
+  // raceConsistencyAll*). Maneja null en ambas variantes.
+  function consOf(e, isProj) {
+    if (!e) return { pct: null, stdMs: null, level: null };
+    const all = consScope === 'all';
+    if (isProj) {
+      return all
+        ? { pct: e.raceConsistencyAll, stdMs: e.raceConsistencyAllStdMs, level: e.raceConsistencyAllLevel }
+        : { pct: e.raceConsistency,    stdMs: e.raceConsistencyStdMs,    level: e.raceConsistencyLevel };
+    }
+    return all
+      ? { pct: e.consistencyAll, stdMs: e.consistencyAllStdMs, level: e.consistencyAllLevel }
+      : { pct: e.consistency,    stdMs: e.consistencyStdMs,    level: e.consistencyLevel };
+  }
 
   // Initialise UI from localStorage
   $('lsEntity').value = myKey;
@@ -320,6 +422,27 @@
       }
     }
     return e.position;
+  }
+
+  // Pinta la tarjeta de consistencia de "Mi panel": % grande coloreado + badge
+  // de nivel + ±DE en segundos. pct/std/level pueden ser null → estado neutro.
+  function renderMeConsistency(pct, stdMs, level) {
+    const pctEl = $('lsMeConsistency');
+    const lvlEl = $('lsMeConsLevel');
+    pctEl.className = 'ls-card__big ls-cons__pct ' + consLevelClass(level);
+    if (pct == null || level == null) {
+      pctEl.textContent = '—';
+      lvlEl.hidden = true;
+      return;
+    }
+    pctEl.textContent = pct + '%';
+    lvlEl.hidden = false;
+    lvlEl.className = 'ls-cons__level ' + consLevelClass(level);
+    lvlEl.querySelector('.ls-cons__txt').textContent = consLabel(level);
+    const de = $('lsMeConsDe');
+    const deTxt = consDe(stdMs);
+    de.textContent = deTxt;
+    de.hidden = !deTxt;
   }
 
   function render(data) {
@@ -369,6 +492,7 @@
         $('lsMeDelta').textContent = rDelta != null ? '+' + fmtSec(rDelta) : '—';
         $('lsMeDeltaHint').textContent = (includeOutliers ? 'media (con salidas)' : 'media limpia') + ' − mejor (carrera)';
         $('lsMeExits').textContent = `${me.raceExits || 0} salidas · ${me.racePits || 0} pit`;
+        { const c = consOf(me, true); renderMeConsistency(c.pct, c.stdMs, c.level); }
         $('lsMeLostCard').hidden = true;
         $('lsMeSectorsCard').hidden = true;
       } else {
@@ -380,6 +504,7 @@
         $('lsMeDelta').textContent = me[useDeltaKey] != null ? '+' + fmtSec(me[useDeltaKey]) : '—';
         $('lsMeDeltaHint').textContent = includeOutliers ? 'avg (con salidas) − best' : 'avg limpio − best';
         $('lsMeExits').textContent = `${me.exitCount} salidas · ${me.pitStopCount} pit`;
+        { const c = consOf(me, false); renderMeConsistency(c.pct, c.stdMs, c.level); }
         $('lsMeLostCard').hidden = false;
         $('lsMeSectorsCard').hidden = false;
         $('lsMeLost').textContent  = fmtSec(me.lostMs);
@@ -517,9 +642,17 @@
     const bestOf = e => isProj ? e.raceBestMs : e.bestMs;
     const avgOf  = e => isProj ? (includeOutliers ? e.racePaceAllMs : e.racePaceCleanMs) : e[avgKey];
     html += row(isProj ? 'Vueltas carrera' : 'Vueltas', e => lapsOf(e));
-    html += row('Mejor',     e => fmtMs(bestOf(e)));
-    html += row('Media',     e => fmtMs(avgOf(e)));
-    html += row('Última',    e => fmtMs(e.lastLapMs));
+    html += row('Mejor',        e => fmtMs(bestOf(e)));
+    html += row('Media',        e => fmtMs(avgOf(e)));
+    html += row('Consistencia', e => {
+      const { pct, stdMs, level } = consOf(e, isProj);
+      if (pct == null) return '—';
+      const de = consDe(stdMs);
+      return `<span class="ls-conscell ${consLevelClass(level)}">` +
+        `<span class="ls-conscell__dot"></span>${pct}%` +
+        (de ? `<span class="ls-conscell__de">${de}</span>` : '') + '</span>';
+    });
+    html += row('Última',       e => fmtMs(e.lastLapMs));
     html += row('Δ vueltas', (e, i) => {
       if (i === 0) return '—';
       const d = lapsOf(me) - lapsOf(e);
@@ -652,6 +785,28 @@
       cmpChart.update();
     }
   }
+
+  // Conmutador de alcance de la consistencia (sin/con salidas y pits). Global:
+  // re-renderiza "Mi panel" y la fila de la comparativa con el set elegido.
+  function updateConsHint() {
+    const es = LS_LANG === 'es';
+    const el = $('lsConsHint');
+    if (el) el.textContent = consScope === 'all'
+      ? (es ? 'incluye salidas y paradas' : 'includes exits & pit-stops')
+      : (es ? 'solo vueltas limpias' : 'clean laps only');
+  }
+  document.querySelectorAll('#lsConsModes .ls-cmode').forEach(btn => {
+    btn.classList.toggle('is-active', btn.dataset.consscope === consScope);
+    btn.addEventListener('click', () => {
+      consScope = btn.dataset.consscope;
+      try { localStorage.setItem('ls-cons-scope', consScope); } catch (e) {}
+      document.querySelectorAll('#lsConsModes .ls-cmode')
+        .forEach(b => b.classList.toggle('is-active', b === btn));
+      updateConsHint();
+      if (latestData) render(latestData);
+    });
+  });
+  updateConsHint();
 
   // Conmutador de modo de la gráfica de la comparativa.
   document.querySelectorAll('#lsCmpModes .ls-cmode').forEach(btn => {

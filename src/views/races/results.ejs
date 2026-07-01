@@ -12,8 +12,25 @@
 .race-best-banner__value strong { font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; }
 .race-best-banner__meta { margin-left: .75rem; font-size: .9rem; opacity: .85; }
 
+/* ── Barra de scroll horizontal espejo, sobre la cabecera de la parrilla ── */
+.grid-topscroll {
+  overflow-x: auto; overflow-y: hidden;
+  border: 1px solid #21262d; border-bottom: none;
+  border-radius: 12px 12px 0 0; background: #0d1117;
+}
+.grid-topscroll__inner { height: 1px; }
+/* Barra fina y visible sobre el tema oscuro (WebKit + Firefox). */
+.grid-topscroll { scrollbar-width: thin; scrollbar-color: #30363d #0d1117; }
+.grid-topscroll::-webkit-scrollbar { height: 12px; }
+.grid-topscroll::-webkit-scrollbar-track { background: #0d1117; border-radius: 0 0 0 0; }
+.grid-topscroll::-webkit-scrollbar-thumb { background: #30363d; border-radius: 6px; border: 2px solid #0d1117; }
+.grid-topscroll::-webkit-scrollbar-thumb:hover { background: #484f58; }
+/* Si no hay desbordamiento, se colapsa (JS lo oculta). */
+.grid-topscroll.is-hidden { display: none; }
+
 /* ── Comparison matrix table ── */
 .matrix-wrapper { overflow-x: auto; border-radius: 12px; border: 1px solid #21262d; background:#000000; }
+.grid-topscroll + .matrix-wrapper { border-radius: 0 0 12px 12px; }
 .matrix-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: .85rem; }
 .matrix-table th, .matrix-table td { padding: .55rem .7rem; text-align: center; }
 .matrix-table thead th {
@@ -24,6 +41,16 @@
 .matrix-table .matrix-name { text-align: left; min-width: 180px; }
 .matrix-table .matrix-pos { width: 3rem; }
 .matrix-lane__label { font-size: .65rem; color: #8b949e; margin-top: 4px; font-weight: 500; }
+
+/* ── Columnas por ocurrencia (carreras de pasadas / repetir-carril) ── */
+/* Marcador de ocurrencia bajo el badge de pista (· 1ª, · 2ª…). */
+.matrix-occ__label { font-size: .62rem; color: #8b949e; margin-top: 4px; font-weight: 600; letter-spacing: .02em; }
+.matrix-occ__ord { color: #c9d1d9; font-weight: 700; }
+/* Separador sutil al inicio de cada nuevo grupo de carril, para que las
+   ocurrencias del mismo carril se lean como un bloque. Se aplica a la cabecera
+   y a todas las celdas de la primera ocurrencia de cada carril. */
+.matrix-occ--group-start { box-shadow: inset 2px 0 0 #30363d; }
+thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
 .lane-pill {
   display: inline-flex; align-items: center; justify-content: center;
   width: 1.8rem; height: 1.8rem; border-radius: 6px; color: #fff;
@@ -38,7 +65,13 @@
 .matrix-entity.top-3 .matrix-total { color: #d97706; }
 .matrix-stat { background:#000000; }
 .matrix-stat td { padding: .35rem .7rem; color: #c9d1d9; }
-.matrix-stat__label { text-align: left !important; color: #8b949e !important; font-size: .75rem; font-weight: 500; padding-left: 1rem !important; }
+/* Alterna el fondo de las sub-filas para separarlas visualmente de un vistazo. */
+.matrix-stat:nth-of-type(even of .matrix-stat) td { background: rgba(255,255,255,.018); }
+.matrix-stat__label {
+  text-align: left !important; color: #c9d1d9 !important;
+  font-size: .72rem; font-weight: 600; padding-left: 1rem !important;
+  text-transform: uppercase; letter-spacing: .04em;
+}
 .matrix-stat__total { color: #8b949e !important; font-size: .8rem; }
 .matrix-stat--best td { color: #7ee787; font-weight: 600; }
 .matrix-stat--avg td { color: #c9d1d9; }
@@ -72,7 +105,39 @@
   position: relative;
   border-radius: 4px;
 }
-.race-best-star { color: #fbbf24; margin-left: 2px; }
+/* "Mejor de la carrera": etiqueta corta en vez de estrella. */
+.race-best-tag {
+  display: inline-block; margin-left: 5px; padding: 1px 5px;
+  border-radius: 4px; background: rgba(251,191,36,.22);
+  color: #fbbf24; font-size: .6rem; font-weight: 800;
+  letter-spacing: .04em; text-transform: uppercase; vertical-align: middle;
+}
+
+/* ── Consistencia (reutiliza el sistema de niveles de live-stats) ── */
+/* Sub-fila por carril */
+.matrix-stat--cons td { color: #c9d1d9; font-size: .8rem; font-variant-numeric: tabular-nums; }
+.res-cons { font-weight: 700; }
+.res-cons--exc  { color: var(--vt-green, #3fb950); }
+.res-cons--good { color: #56d364; }
+.res-cons--warn { color: var(--vt-amber, #e6a817); }
+.res-cons--bad  { color: var(--vt-red, #f85149); }
+.res-cons--null { color: var(--vt-mute, #6e7681); font-weight: 500; }
+/* Chips de consistencia general en la cabecera de fila */
+.res-cons-head { display: inline-flex; align-items: center; gap: 6px; margin-left: 10px; vertical-align: middle; }
+.res-cons-head__lbl { color: #8b949e; font-size: .62rem; text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
+.res-cons-chip {
+  display: inline-flex; align-items: baseline; gap: 3px;
+  padding: 1px 7px; border-radius: 10px; font-size: .74rem; font-weight: 700;
+  font-variant-numeric: tabular-nums; background: rgba(255,255,255,.05);
+}
+.res-cons-chip__scope { font-size: .6rem; font-weight: 600; color: #8b949e; letter-spacing: .02em; }
+.res-cons-chip__de { font-size: .62rem; font-weight: 600; color: #6e7681; }
+.res-cons-chip--sec { opacity: .85; }
+.res-cons-chip.res-cons--exc  { color: var(--vt-green, #3fb950); }
+.res-cons-chip.res-cons--good { color: #56d364; }
+.res-cons-chip.res-cons--warn { color: var(--vt-amber, #e6a817); }
+.res-cons-chip.res-cons--bad  { color: var(--vt-red, #f85149); }
+.res-cons-chip.res-cons--null { color: var(--vt-mute, #6e7681); }
 /* Redondel azul = vuelta rápida general del carril (mejor entre todos en esa pista) */
 .lane-fastest-dot {
   display: inline-block; width: .62em; height: .62em; border-radius: 50%;
@@ -90,7 +155,7 @@
   .vt-page { padding: 0 !important; min-height: 0 !important; }
   .vt-wrap { max-width: none !important; margin: 0 !important; padding: 0 !important; }
 
-  .navbar, .footer, .vt-head__actions, .results-tabs, .vt-back-link { display: none !important; }
+  .navbar, .footer, .vt-head__actions, .results-tabs, .vt-back-link, .grid-topscroll { display: none !important; }
   /* Las gráficas (canvas sobre fondo negro) no son imprimibles: siempre se
      imprime la comparativa, esté o no activa esa pestaña. */
   .results-panel { display: none !important; }
@@ -117,6 +182,11 @@
     border-bottom: 2px solid #999; position: static;
   }
   .matrix-lane__label { color: #555; }
+  .matrix-occ__label { color: #555; }
+  .matrix-occ__ord { color: #000 !important; }
+  .matrix-occ--group-start, thead .matrix-occ--group-start {
+    box-shadow: none; border-left: 2px solid #999 !important;
+  }
   .matrix-entity { background: #f6f6f6 !important; border-top: 2px solid #999; }
   .matrix-entity td { font-weight: 700; }
   .matrix-entity .matrix-total, .matrix-entity .matrix-lane-laps { color: #000 !important; }
@@ -141,7 +211,15 @@
     background: none !important; color: #000 !important;
     outline: 2px solid #b45309; outline-offset: -2px;
   }
-  .race-best-star { color: #b45309; }
+  .race-best-tag { background: none !important; color: #b45309 !important; border: 1px solid #b45309; }
+  /* Consistencia en papel: mismo texto, colores oscuros legibles. */
+  .matrix-stat--cons td { color: #000 !important; }
+  .res-cons--exc, .res-cons--good, .res-cons-chip.res-cons--exc, .res-cons-chip.res-cons--good { color: #166534 !important; }
+  .res-cons--warn, .res-cons-chip.res-cons--warn { color: #b45309 !important; }
+  .res-cons--bad, .res-cons-chip.res-cons--bad { color: #b91c1c !important; }
+  .res-cons--null, .res-cons-chip.res-cons--null { color: #888 !important; }
+  .res-cons-chip { background: none !important; border: 1px solid #ccc; }
+  .res-cons-head__lbl { color: #555 !important; }
   .matrix-lane-cell--start {
     background: #e8f0fe !important; box-shadow: none;
     border-left: 3px solid #1a56db !important;
@@ -226,22 +304,22 @@
     <!-- Tab nav -->
     <div class="results-tabs">
       <button class="results-tab active" data-tab="matrix">
-        🏁 <%= lang === 'es' ? 'Comparativa' : 'Comparison' %>
+        <%= lang === 'es' ? 'Comparativa' : 'Comparison' %>
       </button>
       <button class="results-tab" data-tab="progression">
-        📊 <%= lang === 'es' ? 'Progresión' : 'Progression' %>
+        <%= lang === 'es' ? 'Progresión' : 'Progression' %>
       </button>
       <button class="results-tab" data-tab="positions">
-        🏁 <%= lang === 'es' ? 'Posiciones' : 'Positions' %>
+        <%= lang === 'es' ? 'Posiciones' : 'Positions' %>
       </button>
       <button class="results-tab" data-tab="gap">
-        📉 <%= lang === 'es' ? 'Gap al líder' : 'Gap to leader' %>
+        <%= lang === 'es' ? 'Gap al líder' : 'Gap to leader' %>
       </button>
       <button class="results-tab" data-tab="gapgrid">
-        🔢 <%= lang === 'es' ? 'Gap (rejilla)' : 'Gap (grid)' %>
+        <%= lang === 'es' ? 'Gap (rejilla)' : 'Gap (grid)' %>
       </button>
       <button class="results-tab" data-tab="advanced">
-        📊 <%= lang === 'es' ? 'Estadísticas avanzadas' : 'Advanced stats' %>
+        <%= lang === 'es' ? 'Estadísticas avanzadas' : 'Advanced stats' %>
       </button>
     </div>
 
@@ -267,15 +345,60 @@
           }
         }));
 
+        // ── Modo OCURRENCIA (pasadas / repetir-carril) ──
+        // Si el backend marca perOccurrence, las columnas son occColumns (una por
+        // (carril, ocurrencia)) en vez de los carriles. VR por columna = mejor
+        // best_ms de esa columna entre todos los participantes (redondel azul).
+        const perOcc = (typeof perOccurrence !== 'undefined' && perOccurrence && Array.isArray(occColumns));
+        const occFastest = {};
+        if (perOcc) {
+          byTotalM.forEach(r => occColumns.forEach(col => {
+            const c = (r.occByKey || {})[col.key];
+            if (c && c.best_ms != null && (occFastest[col.key] == null || c.best_ms < occFastest[col.key])) {
+              occFastest[col.key] = c.best_ms;
+            }
+          }));
+        }
+
         function fmtSec(ms) {
           if (ms == null) return '—';
           return (ms / 1000).toFixed(3).replace('.', ',');
+        }
+
+        // Consistencia: nivel → clase de color y etiqueta (mismo sistema que live-stats).
+        function consClass(level) {
+          switch (level) {
+            case 'excelente': return 'res-cons--exc';
+            case 'buena':     return 'res-cons--good';
+            case 'irregular': return 'res-cons--warn';
+            case 'erratica':  return 'res-cons--bad';
+            default:          return 'res-cons--null';
+          }
+        }
+        function consLabel(level) {
+          const es = lang === 'es';
+          switch (level) {
+            case 'excelente': return es ? 'Excelente' : 'Excellent';
+            case 'buena':     return es ? 'Buena'     : 'Good';
+            case 'irregular': return es ? 'Irregular' : 'Irregular';
+            case 'erratica':  return es ? 'Errática'  : 'Erratic';
+            default:          return '—';
+          }
+        }
+        // % con 1 decimal y coma decimal; null → '—'.
+        function fmtPct(p) {
+          if (p == null) return '—';
+          return Number(p).toFixed(1).replace('.', ',') + '%';
+        }
+        // ±DE en segundos (2 decimales), o cadena vacía si null.
+        function fmtConsDe(ms) {
+          if (ms == null) return '';
+          return '±' + (ms / 1000).toFixed(2).replace('.', ',') + ' s';
         }
       %>
 
       <% if (raceBestLapMs != null) { %>
         <div class="race-best-banner">
-          <span class="race-best-banner__icon">⚡</span>
           <div>
             <div class="race-best-banner__label"><%= lang === 'es' ? 'Vuelta rápida de la carrera' : 'Race fastest lap' %></div>
             <div class="race-best-banner__value">
@@ -286,19 +409,34 @@
         </div>
       <% } %>
 
-      <div class="matrix-wrapper">
+      <div class="grid-topscroll" id="matrixTopScroll" aria-hidden="true"><div class="grid-topscroll__inner"></div></div>
+      <div class="matrix-wrapper" id="matrixWrapper">
         <table class="matrix-table">
           <thead>
             <tr>
               <th class="matrix-pos">#</th>
               <th class="matrix-name"><%= lang === 'es' ? 'Equipo / Piloto' : 'Team / Driver' %></th>
               <th class="matrix-laps"><%= lang === 'es' ? 'Vueltas' : 'Laps' %></th>
-              <% orderedLanes.forEach(lane => { %>
-                <th class="matrix-lane">
-                  <span class="lane-pill" style="background:<%= LANE_COLORS[lane-1] || '#8b949e' %>"><%= lane %></span>
-                  <div class="matrix-lane__label"><%= lang === 'es' ? 'Pista' : 'Lane' %> <%= lane %></div>
-                </th>
-              <% }) %>
+              <% if (perOcc) { %>
+                <% occColumns.forEach(col => {
+                     // Separador de grupo al empezar un carril nuevo (occ === 1).
+                     const groupStart = col.occ === 1;
+                %>
+                  <th class="matrix-lane matrix-occ <%= groupStart ? 'matrix-occ--group-start' : '' %>">
+                    <span class="lane-pill" style="background:<%= LANE_COLORS[col.lane-1] || '#8b949e' %>"><%= col.lane %></span>
+                    <div class="matrix-occ__label">
+                      <% if (col.occCount > 1) { %><span class="matrix-occ__ord"><%= col.occ %>/<%= col.occCount %></span><% } %>
+                    </div>
+                  </th>
+                <% }) %>
+              <% } else { %>
+                <% orderedLanes.forEach(lane => { %>
+                  <th class="matrix-lane">
+                    <span class="lane-pill" style="background:<%= LANE_COLORS[lane-1] || '#8b949e' %>"><%= lane %></span>
+                    <div class="matrix-lane__label"><%= lang === 'es' ? 'Pista' : 'Lane' %> <%= lane %></div>
+                  </th>
+                <% }) %>
+              <% } %>
             </tr>
           </thead>
           <tbody>
@@ -309,7 +447,7 @@
             %>
               <!-- Entity header row -->
               <tr class="matrix-entity <%= i < 3 ? 'top-' + (i+1) : '' %>">
-                <td class="matrix-pos" rowspan="5">
+                <td class="matrix-pos" rowspan="6">
                   <span class="pos-badge pos-<%= i+1 %>"><%= i+1 %></span>
                 </td>
                 <td class="matrix-name">
@@ -318,52 +456,120 @@
                   <% } %>
                   <strong><%= r.entity_name %></strong>
                   <% if (startLane) { %>
-                    <span class="start-lane-tag" title="<%= lang === 'es' ? 'Carril de inicio' : 'Starting lane' %>">🚦 P<%= startLane %></span>
+                    <span class="start-lane-tag" title="<%= lang === 'es' ? 'Carril de inicio' : 'Starting lane' %>"><%= lang === 'es' ? 'Sale' : 'Start' %> P<%= startLane %></span>
                   <% } %>
                 </td>
                 <td class="matrix-laps matrix-total">
                   <%= r.total_laps %><% if (r.coma_total > 0) { %><span style="font-size:.6em; color:#8b949e; margin-left:4px; font-weight:normal;" title="<%= lang === 'es' ? 'Coma: fracción de vuelta en curso al caer la bandera, media por manga. Desempata a igualdad de vueltas.' : 'Coma: unfinished lap in progress at the flag, averaged per heat. Breaks ties on equal laps.' %>">+<%= (r.coma_total / (r.mangas_raced || 1)).toFixed(2).replace('.', ',') %></span><% } %>
                 </td>
-                <% orderedLanes.forEach(lane => {
-                     const pl = laneMap.get(lane);
-                     const isStart = lane === startLane;
-                %>
-                  <td class="matrix-lane-cell matrix-lane-laps <%= isStart ? 'matrix-lane-cell--start' : '' %>">
-                    <%= pl ? pl.laps : '—' %>
-                  </td>
-                <% }) %>
+                <% if (perOcc) { %>
+                  <% occColumns.forEach(col => {
+                       const c = (r.occByKey || {})[col.key];
+                       const groupStart = col.occ === 1;
+                  %>
+                    <td class="matrix-lane-cell matrix-lane-laps <%= groupStart ? 'matrix-occ--group-start' : '' %>">
+                      <%= c ? c.laps : '—' %>
+                    </td>
+                  <% }) %>
+                <% } else { %>
+                  <% orderedLanes.forEach(lane => {
+                       const pl = laneMap.get(lane);
+                       const isStart = lane === startLane;
+                  %>
+                    <td class="matrix-lane-cell matrix-lane-laps <%= isStart ? 'matrix-lane-cell--start' : '' %>">
+                      <%= pl ? pl.laps : '—' %>
+                    </td>
+                  <% }) %>
+                <% } %>
               </tr>
 
               <!-- Fastest lap row -->
               <tr class="matrix-stat matrix-stat--best">
-                <td class="matrix-stat__label">⚡ <%= lang === 'es' ? 'Rápida' : 'Fast' %></td>
+                <td class="matrix-stat__label"><%= lang === 'es' ? 'Rápida' : 'Fast' %></td>
                 <td class="matrix-stat__total"><%= fmtSec(r.best_lap_ms) %></td>
-                <% orderedLanes.forEach(lane => {
-                     const pl = laneMap.get(lane);
-                     const isRaceBest = pl && pl.best_ms != null && pl.best_ms === raceBestLapMs;
-                     const isLaneFastest = pl && pl.best_ms != null && pl.best_ms === laneFastest[lane];
-                     const isStart = lane === startLane;
-                %>
-                  <td class="matrix-lane-cell <%= isRaceBest ? 'race-best' : '' %> <%= isLaneFastest ? 'lane-fastest' : '' %> <%= isStart ? 'matrix-lane-cell--start' : '' %>">
-                    <% if (pl && pl.best_ms != null) { %>
-                      <% if (isLaneFastest) { %><span class="lane-fastest-dot" title="<%= lang === 'es' ? 'Vuelta rápida del carril' : 'Lane fastest lap' %>"></span><% } %><%= fmtSec(pl.best_ms) %><% if (isRaceBest) { %> <span class="race-best-star">★</span><% } %>
-                    <% } else { %>—<% } %>
-                  </td>
-                <% }) %>
+                <% if (perOcc) { %>
+                  <% occColumns.forEach(col => {
+                       const c = (r.occByKey || {})[col.key];
+                       const isRaceBest = c && c.best_ms != null && c.best_ms === raceBestLapMs;
+                       const isColFastest = c && c.best_ms != null && c.best_ms === occFastest[col.key];
+                       const groupStart = col.occ === 1;
+                  %>
+                    <td class="matrix-lane-cell <%= isRaceBest ? 'race-best' : '' %> <%= groupStart ? 'matrix-occ--group-start' : '' %>">
+                      <% if (c && c.best_ms != null) { %>
+                        <% if (isColFastest) { %><span class="lane-fastest-dot" title="<%= lang === 'es' ? 'Vuelta rápida del carril' : 'Lane fastest lap' %>"></span><% } %><%= fmtSec(c.best_ms) %><% if (isRaceBest) { %><span class="race-best-tag" title="<%= lang === 'es' ? 'Vuelta rápida de la carrera' : 'Race fastest lap' %>"><%= lang === 'es' ? 'Mejor' : 'Best' %></span><% } %>
+                      <% } else { %>—<% } %>
+                    </td>
+                  <% }) %>
+                <% } else { %>
+                  <% orderedLanes.forEach(lane => {
+                       const pl = laneMap.get(lane);
+                       const isRaceBest = pl && pl.best_ms != null && pl.best_ms === raceBestLapMs;
+                       const isLaneFastest = pl && pl.best_ms != null && pl.best_ms === laneFastest[lane];
+                       const isStart = lane === startLane;
+                  %>
+                    <td class="matrix-lane-cell <%= isRaceBest ? 'race-best' : '' %> <%= isLaneFastest ? 'lane-fastest' : '' %> <%= isStart ? 'matrix-lane-cell--start' : '' %>">
+                      <% if (pl && pl.best_ms != null) { %>
+                        <% if (isLaneFastest) { %><span class="lane-fastest-dot" title="<%= lang === 'es' ? 'Vuelta rápida del carril' : 'Lane fastest lap' %>"></span><% } %><%= fmtSec(pl.best_ms) %><% if (isRaceBest) { %><span class="race-best-tag" title="<%= lang === 'es' ? 'Vuelta rápida de la carrera' : 'Race fastest lap' %>"><%= lang === 'es' ? 'Mejor' : 'Best' %></span><% } %>
+                      <% } else { %>—<% } %>
+                    </td>
+                  <% }) %>
+                <% } %>
               </tr>
 
               <!-- Average row -->
               <tr class="matrix-stat matrix-stat--avg">
                 <td class="matrix-stat__label"><%= lang === 'es' ? 'Media' : 'Avg' %></td>
                 <td class="matrix-stat__total"><%= fmtSec(Math.round(r.avg_lap_ms)) %></td>
-                <% orderedLanes.forEach(lane => {
-                     const pl = laneMap.get(lane);
-                     const isStart = lane === startLane;
-                %>
-                  <td class="matrix-lane-cell <%= isStart ? 'matrix-lane-cell--start' : '' %>">
-                    <%= pl && pl.avg_ms != null ? fmtSec(Math.round(pl.avg_ms)) : '—' %>
-                  </td>
-                <% }) %>
+                <% if (perOcc) { %>
+                  <% occColumns.forEach(col => {
+                       const c = (r.occByKey || {})[col.key];
+                       const groupStart = col.occ === 1;
+                  %>
+                    <td class="matrix-lane-cell <%= groupStart ? 'matrix-occ--group-start' : '' %>">
+                      <%= c && c.avg_ms != null ? fmtSec(Math.round(c.avg_ms)) : '—' %>
+                    </td>
+                  <% }) %>
+                <% } else { %>
+                  <% orderedLanes.forEach(lane => {
+                       const pl = laneMap.get(lane);
+                       const isStart = lane === startLane;
+                  %>
+                    <td class="matrix-lane-cell <%= isStart ? 'matrix-lane-cell--start' : '' %>">
+                      <%= pl && pl.avg_ms != null ? fmtSec(Math.round(pl.avg_ms)) : '—' %>
+                    </td>
+                  <% }) %>
+                <% } %>
+              </tr>
+
+              <!-- Consistency row (per lane) -->
+              <tr class="matrix-stat matrix-stat--cons">
+                <td class="matrix-stat__label"><%= lang === 'es' ? 'Const. sin' : 'Const. clean' %></td>
+                <td class="matrix-stat__total">
+                  <% if (r.raceConsistency != null) { %><span class="res-cons <%= consClass(r.raceConsistencyLevel) %>"><%= fmtPct(r.raceConsistency) %></span><% } else { %>—<% } %>
+                </td>
+                <% if (perOcc) { %>
+                  <% occColumns.forEach(col => {
+                       const c = (r.occByKey || {})[col.key];
+                       const groupStart = col.occ === 1;
+                  %>
+                    <td class="matrix-lane-cell <%= groupStart ? 'matrix-occ--group-start' : '' %>">
+                      <% if (c && c.consistency != null) { %>
+                        <span class="res-cons <%= consClass(c.consistencyLevel) %>" title="<%= consLabel(c.consistencyLevel) %><%= c.consistencyStdMs != null ? ' · ' + fmtConsDe(c.consistencyStdMs) : '' %>"><%= fmtPct(c.consistency) %></span>
+                      <% } else { %>—<% } %>
+                    </td>
+                  <% }) %>
+                <% } else { %>
+                  <% orderedLanes.forEach(lane => {
+                       const pl = laneMap.get(lane);
+                       const isStart = lane === startLane;
+                  %>
+                    <td class="matrix-lane-cell <%= isStart ? 'matrix-lane-cell--start' : '' %>">
+                      <% if (pl && pl.consistency != null) { %>
+                        <span class="res-cons <%= consClass(pl.consistencyLevel) %>" title="<%= consLabel(pl.consistencyLevel) %><%= pl.consistencyStdMs != null ? ' · ' + fmtConsDe(pl.consistencyStdMs) : '' %>"><%= fmtPct(pl.consistency) %></span>
+                      <% } else { %>—<% } %>
+                    </td>
+                  <% }) %>
+                <% } %>
               </tr>
 
               <!-- Slowest + exits row -->
@@ -373,17 +579,31 @@
                   <span class="exit-total">(<%= (r.perLane||[]).reduce((s,pl)=>s+(pl.exit_count||0),0) %>)</span>
                 </td>
                 <td class="matrix-stat__total">—</td>
-                <% orderedLanes.forEach(lane => {
-                     const pl = laneMap.get(lane);
-                     const isStart = lane === startLane;
-                %>
-                  <td class="matrix-lane-cell <%= isStart ? 'matrix-lane-cell--start' : '' %>">
-                    <% if (pl && pl.worst_ms != null) { %>
-                      <span class="exit-count <%= pl.exit_count > 0 ? 'has-exits' : '' %>">(<%= pl.exit_count || 0 %>)</span>
-                      <%= fmtSec(pl.worst_ms) %>
-                    <% } else { %>—<% } %>
-                  </td>
-                <% }) %>
+                <% if (perOcc) { %>
+                  <% occColumns.forEach(col => {
+                       const c = (r.occByKey || {})[col.key];
+                       const groupStart = col.occ === 1;
+                  %>
+                    <td class="matrix-lane-cell <%= groupStart ? 'matrix-occ--group-start' : '' %>">
+                      <% if (c && c.worst_ms != null) { %>
+                        <span class="exit-count <%= c.exit_count > 0 ? 'has-exits' : '' %>">(<%= c.exit_count || 0 %>)</span>
+                        <%= fmtSec(c.worst_ms) %>
+                      <% } else { %>—<% } %>
+                    </td>
+                  <% }) %>
+                <% } else { %>
+                  <% orderedLanes.forEach(lane => {
+                       const pl = laneMap.get(lane);
+                       const isStart = lane === startLane;
+                  %>
+                    <td class="matrix-lane-cell <%= isStart ? 'matrix-lane-cell--start' : '' %>">
+                      <% if (pl && pl.worst_ms != null) { %>
+                        <span class="exit-count <%= pl.exit_count > 0 ? 'has-exits' : '' %>">(<%= pl.exit_count || 0 %>)</span>
+                        <%= fmtSec(pl.worst_ms) %>
+                      <% } else { %>—<% } %>
+                    </td>
+                  <% }) %>
+                <% } %>
               </tr>
 
               <!-- Pit-stops row -->
@@ -392,24 +612,41 @@
               %>
               <tr class="matrix-stat matrix-stat--pit">
                 <td class="matrix-stat__label">
-                  🔧 <%= lang === 'es' ? 'Pit-stops' : 'Pit-stops' %>
+                  <%= lang === 'es' ? 'Pit-stops' : 'Pit-stops' %>
                   <span class="exit-total">(<%= totalPitStops %>)</span>
                 </td>
                 <td class="matrix-stat__total">—</td>
-                <% orderedLanes.forEach(lane => {
-                     const pl = laneMap.get(lane);
-                     const lapsList = (pl && pl.pit_stop_laps)
-                       ? pl.pit_stop_laps.split(',').filter(Boolean).map(n => 'V' + n).join(', ')
-                       : '';
-                     const isStart = lane === startLane;
-                %>
-                  <td class="matrix-lane-cell <%= isStart ? 'matrix-lane-cell--start' : '' %>">
-                    <% if (pl && pl.pit_stop_count > 0) { %>
-                      <span class="exit-count has-exits">(<%= pl.pit_stop_count %>)</span>
-                      <span class="pit-laps"><%= lapsList %></span>
-                    <% } else { %>—<% } %>
-                  </td>
-                <% }) %>
+                <% if (perOcc) { %>
+                  <% occColumns.forEach(col => {
+                       const c = (r.occByKey || {})[col.key];
+                       const lapsList = (c && c.pit_stop_laps)
+                         ? c.pit_stop_laps.split(',').filter(Boolean).map(n => 'V' + n).join(', ')
+                         : '';
+                       const groupStart = col.occ === 1;
+                  %>
+                    <td class="matrix-lane-cell <%= groupStart ? 'matrix-occ--group-start' : '' %>">
+                      <% if (c && c.pit_stop_count > 0) { %>
+                        <span class="exit-count has-exits">(<%= c.pit_stop_count %>)</span>
+                        <span class="pit-laps"><%= lapsList %></span>
+                      <% } else { %>—<% } %>
+                    </td>
+                  <% }) %>
+                <% } else { %>
+                  <% orderedLanes.forEach(lane => {
+                       const pl = laneMap.get(lane);
+                       const lapsList = (pl && pl.pit_stop_laps)
+                         ? pl.pit_stop_laps.split(',').filter(Boolean).map(n => 'V' + n).join(', ')
+                         : '';
+                       const isStart = lane === startLane;
+                  %>
+                    <td class="matrix-lane-cell <%= isStart ? 'matrix-lane-cell--start' : '' %>">
+                      <% if (pl && pl.pit_stop_count > 0) { %>
+                        <span class="exit-count has-exits">(<%= pl.pit_stop_count %>)</span>
+                        <span class="pit-laps"><%= lapsList %></span>
+                      <% } else { %>—<% } %>
+                    </td>
+                  <% }) %>
+                <% } %>
               </tr>
             <% }) %>
           </tbody>
@@ -445,12 +682,12 @@
         <div class="prog-control">
           <label><%= lang === 'es' ? 'Mostrar' : 'Show' %></label>
           <div class="prog-checks">
-            <label class="prog-check"><input type="checkbox" id="progShowExits" checked> 🔴 <%= lang === 'es' ? 'Piños' : 'Crashes' %></label>
-            <label class="prog-check"><input type="checkbox" id="progShowPits" checked> 🔧 <%= lang === 'es' ? 'Pit stops' : 'Pit stops' %></label>
+            <label class="prog-check"><input type="checkbox" id="progShowExits" checked> <%= lang === 'es' ? 'Piños' : 'Crashes' %></label>
+            <label class="prog-check"><input type="checkbox" id="progShowPits" checked> <%= lang === 'es' ? 'Pit stops' : 'Pit stops' %></label>
           </div>
         </div>
         <div class="prog-subtabs">
-          <button class="prog-subtab active" data-prog="abs">⏱ <%= lang === 'es' ? 'Tiempo' : 'Time' %></button>
+          <button class="prog-subtab active" data-prog="abs"><%= lang === 'es' ? 'Tiempo' : 'Time' %></button>
           <button class="prog-subtab" data-prog="delta">Δ <%= lang === 'es' ? 'Delta vs media' : 'Delta vs avg' %></button>
         </div>
       </div>
@@ -673,12 +910,12 @@
               <div class="adv-card__big">${e.exitCount} · ${e.pitStopCount}</div>
             </div>
             <div class="adv-card">
-              <div class="adv-card__label">⏱ Tiempo perdido</div>
+              <div class="adv-card__label">Tiempo perdido</div>
               <div class="adv-card__big">${fmtSec(e.lostMs)}</div>
               <div class="adv-card__hint">≈ ${e.lostLapsEquiv} vueltas</div>
             </div>
             <div class="adv-card adv-card--wide">
-              <div class="adv-card__label">📈 Evolución por carril</div>
+              <div class="adv-card__label">Evolución por carril</div>
               <div class="adv-manga-chart"><canvas id="advMangaChart"></canvas></div>
               <div class="adv-mangas">
                 ${(e.perLane || []).map(p => `
@@ -823,6 +1060,7 @@
 </script>
 <script id="positionsData" type="application/json"><%- JSON.stringify(positionData || {}) %></script>
 <script id="progressionData" type="application/json"><%- JSON.stringify(progressionByEntity || {}) %></script>
+<script>const PER_OCCURRENCE = <%= perOccurrence ? 'true' : 'false' %>;</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
   (function() {
@@ -942,33 +1180,68 @@
             && (l.isPitStop ? showPits : (l.isExit ? showExits : true))
           );
           if (filtered.length === 0) return;
-          filtered.forEach(l => allMs.push(l.ms));
-          const avg = filtered.reduce((s, l) => s + l.ms, 0) / filtered.length;
-          const points = filtered.map((l, idx) => ({
-            x: idx + 1,
-            y: mode === 'abs' ? l.ms / 1000 : (l.ms - avg) / 1000,
-            _meta: l, _entityName: entity.name,
-          }));
-          points.forEach(p => ys.push(p.y));
-          const pointColors = filtered.map(l =>
-            l.isPitStop ? '#ff9800' :
-            l.isExit    ? '#e63946' : color);
-          // Vueltas normales sin punto (radio 0) → línea limpia aunque haya
-          // 100+ vueltas/manga; solo se ven los marcadores de salida y pit.
-          // pointHitRadius mantiene el tooltip al pasar por cualquier vuelta.
-          const pointRadius = filtered.map(l => (l.isPitStop || l.isExit) ? 5 : 0);
-          datasets.push({
-            label: entity.name + ' · P' + lane,
-            data: points,
-            borderColor: color,
-            backgroundColor: color + '22',
-            borderDash: LANE_DASH[laneIdx % LANE_DASH.length],
-            pointBackgroundColor: pointColors,
-            pointBorderColor:     pointColors,
-            pointRadius,
-            pointHoverRadius: filtered.map(l => (l.isPitStop || l.isExit) ? 7 : 4),
-            pointHitRadius: 6,
-            tension: 0.2, borderWidth: 2,
+
+          // En carreras de PASADAS / REPETIR-CARRIL una misma entidad corre el
+          // mismo carril en varias mangas. Cada manga distinta = una OCURRENCIA
+          // (repetición) de ese carril. Dibujamos UNA LÍNEA POR OCURRENCIA para
+          // poder comparar la progresión de cada repetición; el eje X pasa a ser
+          // el índice de vuelta DENTRO de la ocurrencia (1..n) para que las
+          // repeticiones se solapen y se lean una sobre otra.
+          let occurrences;
+          if (PER_OCCURRENCE) {
+            const byManga = new Map();
+            filtered.forEach(l => {
+              if (!byManga.has(l.manga)) byManga.set(l.manga, []);
+              byManga.get(l.manga).push(l);
+            });
+            const mangasOrdered = [...byManga.keys()].sort((a, b) => a - b);
+            const K = mangasOrdered.length;
+            occurrences = mangasOrdered.map((m, i) => ({
+              laps: byManga.get(m),
+              // Etiqueta "<entidad> · P<L> · k/K"
+              label: entity.name + ' · P' + lane + ' · ' + (i + 1) + '/' + K,
+              occIdx: i,
+            }));
+          } else {
+            // Modo normal: una sola línea por carril (comportamiento previo).
+            occurrences = [{ laps: filtered, label: entity.name + ' · P' + lane, occIdx: 0 }];
+          }
+
+          occurrences.forEach(occ => {
+            const laps = occ.laps;
+            laps.forEach(l => allMs.push(l.ms));
+            const avg = laps.reduce((s, l) => s + l.ms, 0) / laps.length;
+            const points = laps.map((l, idx) => ({
+              x: idx + 1,
+              y: mode === 'abs' ? l.ms / 1000 : (l.ms - avg) / 1000,
+              _meta: l, _entityName: entity.name,
+            }));
+            points.forEach(p => ys.push(p.y));
+            const pointColors = laps.map(l =>
+              l.isPitStop ? '#ff9800' :
+              l.isExit    ? '#e63946' : color);
+            // Vueltas normales sin punto (radio 0) → línea limpia aunque haya
+            // 100+ vueltas/manga; solo se ven los marcadores de salida y pit.
+            // pointHitRadius mantiene el tooltip al pasar por cualquier vuelta.
+            const pointRadius = laps.map(l => (l.isPitStop || l.isExit) ? 5 : 0);
+            // Distinción visual: en modo normal el patrón de guiones representa
+            // el carril (laneIdx); en per-ocurrencia todas comparten carril, así
+            // que el patrón (y un ligero grosor decreciente) distingue la
+            // repetición manteniendo el color de la entidad.
+            const dashIdx = PER_OCCURRENCE ? occ.occIdx : laneIdx;
+            datasets.push({
+              label: occ.label,
+              data: points,
+              borderColor: color,
+              backgroundColor: color + '22',
+              borderDash: LANE_DASH[dashIdx % LANE_DASH.length],
+              pointBackgroundColor: pointColors,
+              pointBorderColor:     pointColors,
+              pointRadius,
+              pointHoverRadius: laps.map(l => (l.isPitStop || l.isExit) ? 7 : 4),
+              pointHitRadius: 6,
+              tension: 0.2, borderWidth: 2,
+            });
           });
         });
       });
@@ -1002,8 +1275,8 @@
                   let s = ctx.dataset.label + ': ' + sign + v.toFixed(3) + 's';
                   if (m?.driver && m.driver !== '—') s += ' · ' + m.driver;
                   if (m?.manga) s += ' · M' + m.manga;
-                  if (m?.isPitStop) s += ' · 🔧 pit-stop';
-                  else if (m?.isExit) s += ' · ⚠️ salida';
+                  if (m?.isPitStop) s += ' · pit-stop';
+                  else if (m?.isExit) s += ' · <%= lang === "es" ? "salida" : "exit" %>';
                   return s;
                 }
               }
@@ -1012,7 +1285,7 @@
           scales: {
             x: {
               type: 'linear',
-              title: { display: true, text: 'Vuelta (orden cronológico)', color: '#8b949e' },
+              title: { display: true, text: PER_OCCURRENCE ? 'Vuelta dentro de la repetición' : 'Vuelta (orden cronológico)', color: '#8b949e' },
               ticks: { color: '#8b949e', stepSize: 1 },
               grid:  { color: '#21262d' },
             },
@@ -1340,7 +1613,7 @@
     <% if (!_publicView && tandas.some(t => t.mangas && t.mangas.length > 0)) { %>
       <div class="print-hide" style="margin-top:2.5rem">
         <h2 class="section-title">
-          🔧 <%= lang === 'es' ? 'Corrección de vueltas' : 'Lap Corrections' %>
+          <%= lang === 'es' ? 'Corrección de vueltas' : 'Lap Corrections' %>
         </h2>
         <p class="form-hint" style="margin-bottom:1rem">
           <%= lang === 'es'
@@ -1384,6 +1657,38 @@
       document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
     });
   });
+
+  // ── Barra de scroll horizontal espejo (arriba) sincronizada con la parrilla ──
+  (function () {
+    const top   = document.getElementById('matrixTopScroll');
+    const wrap  = document.getElementById('matrixWrapper');
+    if (!top || !wrap) return;
+    const inner = top.querySelector('.grid-topscroll__inner');
+    const table = wrap.querySelector('.matrix-table');
+
+    // Iguala el ancho del inner al contenido real y oculta la barra si no desborda.
+    function sync() {
+      const w = table ? table.scrollWidth : wrap.scrollWidth;
+      inner.style.width = w + 'px';
+      top.classList.toggle('is-hidden', w <= wrap.clientWidth + 1);
+    }
+
+    // Sincronización bidireccional del scrollLeft con guard anti-bucle.
+    let lock = false;
+    top.addEventListener('scroll', () => {
+      if (lock) { lock = false; return; }
+      lock = true; wrap.scrollLeft = top.scrollLeft;
+    });
+    wrap.addEventListener('scroll', () => {
+      if (lock) { lock = false; return; }
+      lock = true; top.scrollLeft = wrap.scrollLeft;
+    });
+
+    sync();
+    window.addEventListener('resize', sync);
+    // Recalcula tras cargar fuentes/imágenes que puedan cambiar el ancho.
+    window.addEventListener('load', sync);
+  })();
 </script>
 
 <%- include('../partials/footer') %>

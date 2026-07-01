@@ -32,7 +32,12 @@ function defaultSequence(n) {
 class RaceController {
 
   static index(req, res) {
-    const races = Race.findAll();
+    const fs = require('fs'), path = require('path');
+    const simDir = path.join(__dirname, '..', '..', 'database', 'sim');
+    const races = Race.findAll().map(r => ({
+      ...r,
+      is_sim: fs.existsSync(path.join(simDir, `${r.id}.json`)),
+    }));
     res.render('races/index', { t: req.t, races });
   }
 
@@ -153,6 +158,8 @@ class RaceController {
       lanes_count: totalLanes,
       circuits,
       manga_duration_minutes: duration,
+      passes:      Math.max(1, parseInt(req.body.passes, 10)      || 1),
+      lane_repeat: Math.max(1, parseInt(req.body.lane_repeat, 10) || 1),
       has_pole: req.body.has_pole === '1' ? 1 : 0,
       circuit_id: circuitId,
       category_id: categoryId,
@@ -324,6 +331,8 @@ class RaceController {
       driver_max_total_ms:      wizard.driver_max_total_ms      || 0,
       driver_change_lockout_ms: wizard.driver_change_lockout_ms || 120000,
       driver_max_runs:          wizard.driver_max_runs          || 0,
+      passes:                   wizard.passes                   || 1,
+      lane_repeat:              wizard.lane_repeat              || 1,
     });
 
     // If pole enabled, create session + entries from wizard participants
@@ -401,9 +410,11 @@ class RaceController {
       }
     }
 
+    const isSim = require('fs').existsSync(
+      require('path').join(__dirname, '..', '..', 'database', 'sim', `${race.id}.json`));
     res.render('races/show', {
       t: req.t, race, laneSequence, tandas: tandasWithMangas,
-      virtualStandings, LANE_COLORS, poleSession,
+      virtualStandings, LANE_COLORS, poleSession, isSim,
     });
   }
 
@@ -458,7 +469,7 @@ class RaceController {
       // medias/proyección de la carrera.
       db.prepare('DELETE FROM laps WHERE manga_id IN (SELECT id FROM mangas WHERE tanda_id = ?)').run(t.id);
       db.prepare('DELETE FROM mangas WHERE tanda_id = ?').run(t.id);
-      Manga.persistSchedule(t.id, race.id, Manga.buildSchedule(laneSequence, entities));
+      Manga.persistSchedule(t.id, race.id, Manga.buildSchedule(laneSequence, entities, race.passes, race.lane_repeat));
     }
   }
 

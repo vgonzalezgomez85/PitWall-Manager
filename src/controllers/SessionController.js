@@ -9,6 +9,7 @@ const SocketService  = require('../services/SocketService');
 const SerialService  = require('../services/SerialService');
 const TimingService  = require('../services/TimingService');
 const ExcelJS        = require('exceljs');
+const { robustConsistency, MIN_CONSISTENCY_LAPS } = require('../lib/consistency');
 
 const LANE_COLORS = [
   '#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4',
@@ -629,8 +630,12 @@ class SessionController {
         t.name,
         t.color AS color,
         COUNT(CASE WHEN l.is_ghost=0 AND l.is_exit=0 AND l.lap_number>0 THEN 1 END) AS total_laps,
-        MIN(CASE WHEN l.is_ghost=0 AND l.is_exit=0 AND l.lap_number>0 THEN l.lap_time_ms END) AS best_lap_ms,
-        AVG(CASE WHEN l.is_ghost=0 AND l.is_exit=0 AND l.lap_number>0 THEN l.lap_time_ms END) AS avg_lap_ms,
+        MIN(CASE WHEN l.is_ghost=0 AND l.is_exit=0 AND l.is_warmup=0 AND l.lap_number>1
+                  AND l.lap_time_ms >= (SELECT COALESCE(min_lap_ms, 0) FROM races WHERE id = t.race_id)
+                 THEN l.lap_time_ms END) AS best_lap_ms,
+        AVG(CASE WHEN l.is_ghost=0 AND l.is_warmup=0
+                  AND l.lap_time_ms >= (SELECT COALESCE(min_lap_ms, 0) FROM races WHERE id = t.race_id)
+                 THEN l.lap_time_ms END) AS avg_lap_ms,
         MAX(tc.categoria)  AS categoria,
         MAX(tc.coche)      AS coche,
         MAX(tc.car_photo)  AS car_photo,
@@ -758,6 +763,174 @@ class SessionController {
       ...row,
       perLane: Lap.perLaneByEntity(race.id, row.entity_id, row.entity_type)
     }));
+
+    // ── Consistencia (misma métrica que live-stats) ───────────────────────────
+    // Dos niveles, ambos con robustConsistency de ../lib/consistency:
+    //   A) POR CELDA (entidad × carril): la parrilla agrupa por carril
+    //      (GROUP BY l.lane en perLaneByEntity; en "repetir carril" una celda
+    //      puede abarcar >1 manga del mismo carril), así que la consistencia de
+    //      la celda se calcula sobre las vueltas elegibles de esa entidad en ese
+    //      carril. Variante SIN salidas/pits (ritmo puro): is_exit=0 + filtro
+    //      incidentes.
+    //   B) DE CARRERA (por entidad): dos variantes como en live-stats —
+    //      SIN (is_exit=0 + filtro incidentes) y CON (todas, incluye is_exit,
+    //      sin filtro). Se agrega por ENTIDAD (team_id / driver_id), lo que en
+    //      resistencia equivale al NOMBRE (una entidad = un nombre; en equipos
+    //      duplicados por tanda comparten team_id).
+    // Filtro de elegibilidad idéntico al de live-stats: !is_ghost && !is_warmup
+    // && lap_number>1 && lap_time_ms >= min_lap_ms.
+    {
+      const dbc = require('../config/database');
+      const minLap = race.min_lap_ms || 0;
+      const eligibleRows = dbc.prepare(`
+        SELECT
+          CASE WHEN l.team_id IS NOT NULL THEN 'team_'||l.team_id ELSE 'driver_'||l.driver_id END AS key,
+          l.lane AS lane,
+          l.manga_id AS manga_id,
+          l.lap_time_ms AS t,
+          l.is_exit AS is_exit
+        FROM laps l
+        JOIN mangas m ON m.id = l.manga_id
+        JOIN tandas tt ON tt.id = m.tanda_id
+        WHERE tt.race_id = ?
+          AND l.is_ghost = 0 AND l.is_warmup = 0
+          AND l.lap_number > 1 AND l.lap_time_ms >= ${minLap}
+      `).all(race.id);
+
+      // Acumuladores: por (key,lane) SIN; por (key,lane,manga) SIN (para las
+      // celdas por-ocurrencia); por key SIN y CON.
+      const cellClean     = new Map();   // `${key}|${lane}` -> [t]  (SIN salidas)
+      const cellMangaClean = new Map();  // `${key}|${lane}|${manga_id}` -> [t]  (SIN salidas)
+      const raceClean = new Map();   // key -> [t]  (SIN salidas)
+      const raceAll   = new Map();   // key -> [t]  (CON salidas/pits)
+      for (const r of eligibleRows) {
+        let all = raceAll.get(r.key);
+        if (!all) { all = []; raceAll.set(r.key, all); }
+        all.push(r.t);
+        if (!r.is_exit) {
+          let rc = raceClean.get(r.key);
+          if (!rc) { rc = []; raceClean.set(r.key, rc); }
+          rc.push(r.t);
+          const ck = `${r.key}|${r.lane}`;
+          let cc = cellClean.get(ck);
+          if (!cc) { cc = []; cellClean.set(ck, cc); }
+          cc.push(r.t);
+          const cmk = `${r.key}|${r.lane}|${r.manga_id}`;
+          let cmc = cellMangaClean.get(cmk);
+          if (!cmc) { cmc = []; cellMangaClean.set(cmk, cmc); }
+          cmc.push(r.t);
+        }
+      }
+      // Expuesto al bloque per-ocurrencia (más abajo) para no re-consultar.
+      results._cellMangaClean = cellMangaClean;
+
+      results.forEach(r => {
+        const key = r.entity_type === 'team' ? `team_${r.entity_id}` : `driver_${r.entity_id}`;
+        // A) por celda/carril (SIN)
+        (r.perLane || []).forEach(pl => {
+          const c = robustConsistency(cellClean.get(`${key}|${pl.lane}`) || [], MIN_CONSISTENCY_LAPS);
+          pl.consistency      = c ? c.pct   : null;
+          pl.consistencyLevel = c ? c.level : null;
+          pl.consistencyStdMs = c ? c.stdMs : null;
+        });
+        // B) de carrera (SIN)
+        const cs = robustConsistency(raceClean.get(key) || [], MIN_CONSISTENCY_LAPS);
+        r.raceConsistency      = cs ? cs.pct   : null;
+        r.raceConsistencyLevel = cs ? cs.level : null;
+        r.raceConsistencyStdMs = cs ? cs.stdMs : null;
+        // B) de carrera (CON salidas/pits, sin filtro de incidentes)
+        const ca = robustConsistency(raceAll.get(key) || [], MIN_CONSISTENCY_LAPS, { filterIncidents: false });
+        r.raceConsistencyAll      = ca ? ca.pct   : null;
+        r.raceConsistencyAllLevel = ca ? ca.level : null;
+        r.raceConsistencyAllStdMs = ca ? ca.stdMs : null;
+      });
+    }
+
+    // ── Parrilla por OCURRENCIA (solo pasadas / repetir-carril) ────────────────
+    // Cuando race.passes>1 || race.lane_repeat>1, una entidad corre el MISMO
+    // carril en varias mangas y hay que separarlas para comparar ("PISTA 1,
+    // PISTA 1"). Definición de ocurrencia: para (entidad, carril), la k-ésima
+    // manga (ordenada por number) en que corrió ese carril = ocurrencia k.
+    // Construimos: occColumns (columnas ordenadas siguiendo el lane_sequence,
+    // con las ocurrencias de cada carril ADYACENTES) y, por fila, un índice de
+    // celdas por (lane, occ). Cuando passes==1 && lane_repeat==1 NO se toca nada.
+    const perOccurrence = (race.passes > 1) || (race.lane_repeat > 1);
+    let occColumns = null;
+    if (perOccurrence) {
+      const cellMangaClean = results._cellMangaClean || new Map();
+      // Nº de ocurrencias por carril, derivado de los datos (max entre entidades).
+      const occCountByLane = new Map();
+      results.forEach(r => {
+        const key = r.entity_type === 'team' ? `team_${r.entity_id}` : `driver_${r.entity_id}`;
+        const rows = Lap.perLaneMangaByEntity(race.id, r.entity_id, r.entity_type);
+        // Agrupar por carril, ya vienen ORDER BY lane, manga.number → occ = índice+1.
+        const byLane = new Map();
+        rows.forEach(row => {
+          if (!byLane.has(row.lane)) byLane.set(row.lane, []);
+          byLane.get(row.lane).push(row);
+        });
+        r.occByKey = {};              // `${lane}-${occ}` -> celda
+        r.occCellCount = 0;
+        byLane.forEach((laneRows, lane) => {
+          const K = laneRows.length;
+          const prev = occCountByLane.get(lane) || 0;
+          if (K > prev) occCountByLane.set(lane, K);
+          laneRows.forEach((row, i) => {
+            const occ = i + 1;
+            const c = robustConsistency(
+              cellMangaClean.get(`${key}|${lane}|${row.manga_id}`) || [], MIN_CONSISTENCY_LAPS);
+            const cell = {
+              lane,
+              occ,
+              occCount: K,
+              mangaNumber: row.manga_number,
+              manga_id: row.manga_id,
+              best_ms: row.best_ms,
+              avg_ms: row.avg_ms != null ? Math.round(row.avg_ms) : null,
+              worst_ms: row.worst_ms,
+              laps: row.laps,
+              exit_count: row.exit_count,
+              pit_stop_count: row.pit_stop_count,
+              pit_stop_laps: row.pit_stop_laps,
+              consistency:      c ? c.pct   : null,
+              consistencyLevel: c ? c.level : null,
+              consistencyStdMs: c ? c.stdMs : null,
+            };
+            r.occByKey[`${lane}-${occ}`] = cell;
+            r.occCellCount++;
+          });
+        });
+      });
+
+      // Orden de carriles siguiendo el lane_sequence (sin 0 = descanso, sin
+      // duplicados). Fallback: orden numérico de los carriles con datos.
+      const seqLanes = [];
+      const seen = new Set();
+      (laneSequence || []).forEach(l => {
+        if (l && l !== 0 && !seen.has(l) && occCountByLane.has(l)) { seen.add(l); seqLanes.push(l); }
+      });
+      // Carriles con datos que no aparecen en la secuencia → al final, numérico.
+      [...occCountByLane.keys()].sort((a, b) => a - b).forEach(l => {
+        if (!seen.has(l)) { seen.add(l); seqLanes.push(l); }
+      });
+
+      // Columnas: por cada carril, sus K ocurrencias ADYACENTES.
+      const ordinal = ['1ª','2ª','3ª','4ª','5ª','6ª','7ª','8ª'];
+      occColumns = [];
+      seqLanes.forEach(lane => {
+        const K = occCountByLane.get(lane) || 1;
+        for (let occ = 1; occ <= K; occ++) {
+          occColumns.push({
+            lane,
+            occ,
+            occCount: K,
+            key: `${lane}-${occ}`,
+            label: K > 1 ? `PISTA ${lane} · ${ordinal[occ - 1] || occ + 'ª'}` : `PISTA ${lane}`,
+          });
+        }
+      });
+    }
+    delete results._cellMangaClean;
 
     // Starting lane per entity: first non-rest assignment in tanda+manga order.
     // Teams/drivers that start resting will pick up the lane of the manga where
@@ -1042,6 +1215,7 @@ class SessionController {
       raceBestLapMs, raceBestEntity, raceBestLane, startLaneByEntity,
       progressionByEntity, positionData, gapData,
       advancedStats,
+      perOccurrence, occColumns,
       publicView: !!req._publicResults,
     });
   }
@@ -1489,6 +1663,8 @@ class SessionController {
       JOIN mangas m ON m.id = l.manga_id
       JOIN tandas t ON t.id = m.tanda_id
       WHERE l.race_id = ? AND l.is_ghost = 0 AND l.lap_number > 0
+        AND l.is_warmup = 0
+        AND l.lap_time_ms >= (SELECT COALESCE(min_lap_ms, 0) FROM races WHERE id = l.race_id)
       ORDER BY t.number ASC, m.number ASC, l.lane ASC, l.lap_number ASC
     `).all(race.id);
     const progByEntity = {};
@@ -1756,8 +1932,9 @@ class SessionController {
 
     // ── Position timeline sheet ─────────────────────────────────────────────
     try {
+      const timelineMinLap = (race.min_lap_ms || 0);
       const allLapsOrdered = db.prepare(`
-        SELECT l.team_id, l.driver_id, l.lap_time_ms
+        SELECT l.team_id, l.driver_id, l.lap_time_ms, l.is_exit, l.is_warmup, l.lap_number
         FROM laps l
         JOIN mangas m ON m.id = l.manga_id
         JOIN tandas t ON t.id = m.tanda_id
@@ -1776,7 +1953,11 @@ class SessionController {
         const s = eState[k];
         if (!s) return;
         s.totalLaps += 1;
-        if (s.bestMs == null || lap.lap_time_ms < s.bestMs) s.bestMs = lap.lap_time_ms;
+        // bestMs solo con vueltas elegibles: ni salida, ni warmup, ni 1ª vuelta,
+        // ni sub-mínimo (cruces fantasma). totalLaps sí cuenta todas.
+        const eligibleBest = !lap.is_exit && !lap.is_warmup && lap.lap_number > 1
+          && (timelineMinLap <= 0 || lap.lap_time_ms >= timelineMinLap);
+        if (eligibleBest && (s.bestMs == null || lap.lap_time_ms < s.bestMs)) s.bestMs = lap.lap_time_ms;
         const sorted = eKeys.map(key => ({ key, ...eState[key] }))
           .sort((a,b) => b.totalLaps - a.totalLaps || (a.bestMs ?? Infinity) - (b.bestMs ?? Infinity));
         sorted.forEach((row, pi) => {

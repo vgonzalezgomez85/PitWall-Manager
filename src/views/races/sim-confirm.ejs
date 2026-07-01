@@ -1,0 +1,62 @@
+<%- include('../partials/header', { pageTitle: 'Carrera simulada — confirmar' }) %>
+<div class="container container--narrow">
+  <a href="/races/sim/new" class="vt-back-link" style="margin-top:1rem">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Volver
+  </a>
+  <h1 class="page-title">🎬 Confirmar carrera simulada</h1>
+
+  <div class="alert" style="background:rgba(88,166,255,.1);border:1px solid #30363d;border-radius:10px;padding:.9rem 1.1rem;margin-bottom:1.2rem">
+    <b>Detectado en las tramas (<%= source %>):</b><br>
+    <%= a.mangas %> manga<%= a.mangas === 1 ? '' : 's' %> ·
+    <%= a.durationMin != null ? a.durationMin + ' min/manga' : 'duración no detectada' %> ·
+    <%= a.lanes %> carriles ·
+    circuitos <%= a.circuits.length ? a.circuits.map(c => c.lanes).join(' + ') : '—' %> ·
+    <%= a.crossings.toLocaleString('es-ES') %> cruces
+  </div>
+
+  <form action="/races/sim/create" method="POST" enctype="multipart/form-data" class="form-card">
+    <input type="hidden" name="token" value="<%= token %>">
+    <input type="hidden" name="source" value="<%= source %>">
+
+    <div class="form-group">
+      <label class="form-label" for="name">Nombre de la carrera</label>
+      <input class="form-input" id="name" name="name" value="<%= raceName %>" placeholder="Carrera simulada" required>
+    </div>
+
+    <div class="circuits-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+      <div class="form-group">
+        <label class="form-label" for="lanes">Carriles</label>
+        <input class="form-input" id="lanes" name="lanes" type="number" min="1" max="64" value="<%= a.lanes || '' %>" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="rests">Descansos por manga</label>
+        <input class="form-input" id="rests" name="rests" type="number" min="0" max="64" value="0">
+        <p class="form-hint">Equipos que descansan cada manga (si hay más equipos que carriles).</p>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="manga_minutes">Minutos por manga</label>
+        <input class="form-input" id="manga_minutes" name="manga_minutes" type="number" min="1" max="600" value="<%= a.durationMin || 5 %>" required>
+        <p class="form-hint">Detectado de las tramas; ajústalo si quieres.</p>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="min_lap_ms">Vuelta mínima (ms)</label>
+        <input class="form-input" id="min_lap_ms" name="min_lap_ms" type="number" min="0" max="60000" value="8500">
+        <p class="form-hint">Por debajo = vuelta fantasma.</p>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="lane_order">Orden de carril de los equipos</label>
+      <p class="form-hint">Un equipo por línea, en orden de carril (carril 1 = primera línea). O sube un CSV abajo.</p>
+      <textarea class="form-input" id="lane_order" name="lane_order" rows="8" style="font-family:ui-monospace,Menlo,monospace" placeholder="EQUIPO CARRIL 1&#10;EQUIPO CARRIL 2&#10;EQUIPO CARRIL 3&#10;…"></textarea>
+      <label class="form-label" for="lane_csv" style="margin-top:.6rem">…o subir CSV de orden de carril</label>
+      <input class="form-input" id="lane_csv" name="lane_csv" type="file" accept=".csv">
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="vt-btn vt-btn--primary">Crear carrera simulada</button>
+    </div>
+  </form>
+</div>
+<%- include('../partials/footer') %>
