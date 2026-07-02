@@ -361,6 +361,20 @@ const c = typeof counts !== 'undefined' ? counts : { drivers: 0, teams: 0, cars:
           <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
         </a>
 
+        <a class="vh-card" href="/link" style="--a:#38bdf8;--a-bg:rgba(56,189,248,.12)">
+          <div class="vh-ico">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9 12a3 3 0 0 1 3-3h3a3 3 0 0 1 0 6h-1.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M15 12a3 3 0 0 1-3 3H9a3 3 0 0 1 0-6h1.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="vh-body">
+            <div class="vh-t"><%= lang === 'es' ? 'Sincronizar carrera' : 'Sync race' %></div>
+            <div class="vh-d"><%= lang === 'es' ? 'Descarga una carrera del maestro (DS) en este esclavo (BART) por red.' : 'Download a race from the master (DS) onto this slave (BART) over the network.' %></div>
+          </div>
+          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </a>
+
       </div>
     </section>
     <% } %>
