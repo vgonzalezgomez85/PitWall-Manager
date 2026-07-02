@@ -573,11 +573,16 @@ class SessionController {
     const totalTandas        = Tanda.findByRace(race.id).length;
     const totalMangasInTanda = Manga.findByTanda(manga.tanda_id).length;
 
+    // Proyección ÚNICA (media-based, desde BD) para el arranque del panel —
+    // misma función que Le Mans y live-stats. En vivo, el socket 'standings'
+    // trae getStandings().projection (que ES esta misma función).
+    const projection = TimingService.buildRaceProjection(race.id);
+
     res.render(view, {
       t: req.t, race, manga, tanda, lanes, laps, isActive, standings,
       allParticipants, prevLapsByLane, raceBestLaps,
       circuit, trackOutline, lastLapByLane, circuitsLayout,
-      effectiveMangaDurationMs, totalTandas, totalMangasInTanda,
+      effectiveMangaDurationMs, totalTandas, totalMangasInTanda, projection,
     });
   }
 
@@ -629,13 +634,12 @@ class SessionController {
         t.id,
         t.name,
         t.color AS color,
-        COUNT(CASE WHEN l.is_ghost=0 AND l.is_exit=0 AND l.lap_number>0 THEN 1 END) AS total_laps,
+        COUNT(CASE WHEN l.is_ghost=0 AND l.lap_number>0 THEN 1 END) AS total_laps,
         MIN(CASE WHEN l.is_ghost=0 AND l.is_exit=0 AND l.is_warmup=0 AND l.lap_number>1
                   AND l.lap_time_ms >= (SELECT COALESCE(min_lap_ms, 0) FROM races WHERE id = t.race_id)
                  THEN l.lap_time_ms END) AS best_lap_ms,
-        AVG(CASE WHEN l.is_ghost=0 AND l.is_warmup=0
-                  AND l.lap_time_ms >= (SELECT COALESCE(min_lap_ms, 0) FROM races WHERE id = t.race_id)
-                 THEN l.lap_time_ms END) AS avg_lap_ms,
+        -- Media SIMPLE de tiempos de vuelta, sin fantasmas ni warmup (= TicTac).
+        AVG(CASE WHEN l.is_ghost=0 AND l.is_warmup=0 THEN l.lap_time_ms END) AS avg_lap_ms,
         MAX(tc.categoria)  AS categoria,
         MAX(tc.coche)      AS coche,
         MAX(tc.car_photo)  AS car_photo,
@@ -653,7 +657,7 @@ class SessionController {
       SELECT l.team_id AS id, COUNT(*) AS prev_laps
       FROM laps l
       JOIN mangas m ON m.id = l.manga_id
-      WHERE l.race_id = ? AND l.is_ghost=0 AND l.is_exit=0 AND l.lap_number>0
+      WHERE l.race_id = ? AND l.is_ghost=0 AND l.lap_number>0
         AND m.status = 'finished'
       GROUP BY l.team_id
     `).all(race.id);
@@ -683,25 +687,19 @@ class SessionController {
       `).all(activeMangaId).forEach(r => { laneToTeam[r.lane] = r.team_id; });
     }
 
-    // ── Datos de proyección (como la vista estimada) ─────────────────────────
-    // Mangas pendientes por equipo (las que aún le quedan por correr).
-    const remainRows = db.prepare(`
-      SELECT ml.team_id AS id, COUNT(*) AS remaining
-      FROM manga_lanes ml
-      JOIN mangas m ON m.id = ml.manga_id
-      WHERE m.race_id = ? AND m.status='pending' AND ml.is_rest=0 AND ml.team_id IS NOT NULL
-      GROUP BY ml.team_id
-    `).all(race.id);
-    const remainMap = {};
-    remainRows.forEach(r => { remainMap[r.id] = r.remaining; });
+    // ── Proyección ÚNICA (media-based, desde BD) ─────────────────────────────
+    // La MISMA que consume el panel/directo y live-stats. Indexada por entidad.
+    const projList = TimingService.buildRaceProjection(race.id);
+    const projById = new Map(projList.map(p => [p.entityId, p]));
 
-    // Duración efectiva de manga (real del DS, no el placeholder de 99 min).
+    // Duración efectiva de manga (real del DS, no el placeholder), solo para el
+    // countdown de cabecera de la vista.
     const durManga = db.prepare(
       "SELECT * FROM mangas WHERE race_id=? AND (status='active' OR actual_duration_ms>0) ORDER BY CASE WHEN status='active' THEN 0 ELSE 1 END, id DESC LIMIT 1"
     ).get(race.id) || { id: -1, actual_duration_ms: 0 };
     const effectiveMangaDurationMs = SessionController._getEffectiveMangaDurationMs(race, durManga);
 
-    // Tiempo restante de la manga activa (solo para los equipos en pista).
+    // Tiempo restante de la manga activa (solo para el reloj de cabecera).
     const liveStand = (TimingService.activeMangaId === activeMangaId) ? TimingService.getStandings() : null;
     const currentRemainingMs = (liveStand && liveStand.remainingMs > 0) ? liveStand.remainingMs : 0;
     const onTrackTeams = Object.values(laneToTeam);   // ahora son team_id
@@ -719,26 +717,39 @@ class SessionController {
                      : TimingService.isPaused ? 'paused'
                      : 'finished';
 
-    const leaderLaps = teamRows[0]?.total_laps ?? 0;
-    const standings = teamRows.map((t, i) => ({
-      position:        i + 1,
-      id:              t.id,
-      name:            t.name,
-      color:           t.color,
-      totalLaps:       t.total_laps,
-      prevLaps:        prevLapMap[t.id] ?? 0,
-      bestLapMs:       t.best_lap_ms,
-      avgLapMs:        t.avg_lap_ms ? Math.round(t.avg_lap_ms) : null,
-      remainingMangas: remainMap[t.id] ?? 0,
-      onTrack:         onTrackTeams.includes(t.id),
-      currentLane:     teamToLane[t.id] ?? null,
-      gap:             leaderLaps - t.total_laps,
-      currentDriver:   driverMap[t.id] ?? null,
-      categoria:       t.categoria  ?? null,
-      coche:           t.coche      ?? null,
-      car_photo:       t.car_photo  ?? null,
-      country:         t.country    ?? null,
-    }));
+    // Metadatos de catálogo por equipo (foto, coche, categoría…) indexados.
+    const metaById = new Map(teamRows.map(t => [t.id, t]));
+    const maxLaps  = Math.max(0, ...teamRows.map(t => t.total_laps));
+
+    // El ORDEN y los números de proyección vienen de la función ÚNICA. Cada fila
+    // solo enriquece con metadatos de catálogo/carril; la vista NO recalcula.
+    const standings = projList.map((p, i) => {
+      const t = metaById.get(p.entityId) || {};
+      return {
+        position:        i + 1,
+        id:              p.entityId,
+        name:            p.name,
+        color:           t.color ?? null,
+        totalLaps:       p.totalLaps,
+        prevLaps:        prevLapMap[p.entityId] ?? 0,
+        bestLapMs:       p.bestLapMs,
+        avgLapMs:        p.avgLapMs,
+        // Proyección ÚNICA (media-based) ya calculada en el servidor.
+        projectedRaw:    p.projectedRaw,
+        projected:       p.projectedTotal != null ? Math.round(p.projectedTotal) : null,
+        gapV:            p.gapV,
+        avgToCatch:      p.avgToCatch,
+        futureRemMs:     p.futureRemMs,   // tiempo de mangas futuras (sin la activa)
+        onTrack:         p.onTrack || onTrackTeams.includes(p.entityId),
+        currentLane:     teamToLane[p.entityId] ?? null,
+        gap:             maxLaps - p.totalLaps,
+        currentDriver:   driverMap[p.entityId] ?? null,
+        categoria:       t.categoria  ?? null,
+        coche:           t.coche      ?? null,
+        car_photo:       t.car_photo  ?? null,
+        country:         t.country    ?? null,
+      };
+    });
 
     const isActive = TimingService.activeMangaId != null;
 
@@ -1210,12 +1221,42 @@ class SessionController {
       return { key: e.key, entityName: e.name, color: e.color, ...s, perLane };
     });
 
+    // ── Clasificación de la pole (si la carrera la tuvo) ──────────────────────
+    // Se muestra como pestaña extra en resultados: orden por vuelta única, gap
+    // al poleman y el mejor marcado. Reutiliza PoleSession.getEntriesSorted.
+    let pole = null;
+    if (race.has_pole) {
+      const PoleSession = require('../models/PoleSession');
+      const ps = PoleSession.findByRace(race.id);
+      if (ps) {
+        const entries = PoleSession.getEntriesSorted(ps.id);
+        const timed   = entries.filter(e => e.lap_time_ms != null);
+        if (timed.length) {
+          const bestMs = timed[0].lap_time_ms;
+          let pos = 0;
+          pole = {
+            lane:       ps.lane,
+            status:     ps.status,
+            bestMs,
+            poleHolder: timed[0].entity_name,
+            rows: entries.map(e => ({
+              pos:       e.lap_time_ms != null ? ++pos : null,
+              name:      e.entity_name,
+              lapTimeMs: e.lap_time_ms,
+              gapMs:     e.lap_time_ms != null ? e.lap_time_ms - bestMs : null,
+            })),
+          };
+        }
+      }
+    }
+
     return SessionController._sendResults(req, res, {
       t: req.t, race, results, laneSequence, tandas, LANE_COLORS,
       raceBestLapMs, raceBestEntity, raceBestLane, startLaneByEntity,
       progressionByEntity, positionData, gapData,
       advancedStats,
       perOccurrence, occColumns,
+      pole,
       publicView: !!req._publicResults,
     });
   }

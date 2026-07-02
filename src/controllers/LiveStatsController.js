@@ -296,7 +296,8 @@ class LiveStatsController {
       SELECT
         CASE WHEN l.team_id IS NOT NULL THEN 'team_' || l.team_id ELSE 'driver_' || l.driver_id END AS key,
         SUM(CASE WHEN l.is_ghost = 0 THEN 1 ELSE 0 END) AS total_laps,
-        AVG(CASE WHEN l.is_ghost = 0 THEN l.lap_time_ms END) AS pace_all_ms,
+        -- Media SIMPLE sin warmup (= TicTac) para la predicción.
+        AVG(CASE WHEN l.is_ghost = 0 AND l.is_warmup = 0 THEN l.lap_time_ms END) AS pace_all_ms,
         AVG(CASE WHEN l.is_ghost = 0 AND l.is_exit = 0 THEN l.lap_time_ms END) AS pace_clean_ms,
         MIN(CASE WHEN l.is_ghost = 0 AND l.is_exit = 0 AND l.is_warmup = 0 AND l.lap_number > 1 AND l.lap_time_ms >= ${race.min_lap_ms || 0} THEN l.lap_time_ms END) AS best_ms,
         SUM(CASE WHEN l.is_ghost = 0 AND l.is_exit = 1 AND l.is_pit_stop = 0 THEN 1 ELSE 0 END) AS exits,
@@ -415,18 +416,15 @@ class LiveStatsController {
       });
     });
 
-    // Clasificación PROYECTADA de TODA la carrera: la MISMA proyección que el
-    // directo (getStandings().projection / _buildProjection), para que el
-    // espectador vea la clasificación estimada al final, no solo la manga.
-    // Disponible mientras corre una manga de esta carrera.
+    // Clasificación PROYECTADA de TODA la carrera: la MISMA proyección ÚNICA que
+    // el directo, Le Mans y el panel (TimingService.buildRaceProjection, desde
+    // BD). Funciona haya o no sesión viva, así el espectador ve siempre la
+    // clasificación estimada al final, no solo la manga.
     let projection = null;
     try {
       const TimingService = require('../services/TimingService');
-      if (TimingService.activeRaceId === race.id) {
-        const st = TimingService.getStandings();
-        projection = st ? st.projection : null;
-      }
-    } catch (e) { /* sin proyección si no hay sesión viva */ }
+      projection = TimingService.buildRaceProjection(race.id);
+    } catch (e) { /* sin proyección si falla la consulta */ }
 
     // La comparativa en vivo (tú vs 1-2 rivales) se calcula en CLIENTE a partir
     // de `entities` (cada una trae lane, position, totalLaps, best/avg, última).
