@@ -21,9 +21,15 @@ const totalFlagged = laneGroups.reduce((acc, g) => acc + g.laps.filter(l => l.is
 const laneStats = laneGroups.map(g => {
   const valid     = g.laps.filter(l => !l.is_ghost);
   const flags     = g.laps.filter(l =>  l.is_ghost).length;
-  const validNoEx = g.laps.filter(l => !l.is_ghost && !l.is_exit && l.lap_time_ms > 500);
-  const avgMs     = validNoEx.length ? Math.round(validNoEx.reduce((s,l) => s + l.lap_time_ms, 0) / validNoEx.length) : null;
-  const bestMs    = valid.length ? Math.min(...valid.map(l => l.lap_time_ms)) : null;
+  // Media de carril de ESA manga = media SIMPLE de tiempos, SIN fantasmas ni la
+  // vuelta de salida (warmup). Incluye salidas de pista (= media de carril de
+  // TicTac, misma fórmula que el directo/Le Mans/resultados).
+  const forAvg    = g.laps.filter(l => !l.is_ghost && !l.is_warmup);
+  const avgMs     = forAvg.length ? Math.round(forAvg.reduce((s,l) => s + l.lap_time_ms, 0) / forAvg.length) : null;
+  // Mejor vuelta = mínimo de vueltas de carrera: sin fantasma, sin la de salida
+  // (warmup) y sin salidas de pista, y nunca la vuelta 1 (cruce de salida).
+  const forBest   = g.laps.filter(l => !l.is_ghost && !l.is_warmup && !l.is_exit && l.lap_number > 1);
+  const bestMs    = forBest.length ? Math.min(...forBest.map(l => l.lap_time_ms)) : null;
   return {
     info: g.info,
     laps: g.laps,

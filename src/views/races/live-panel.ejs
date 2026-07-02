@@ -206,6 +206,7 @@
       lanes:            Object.values(laneInit2),
       allParticipants:  allParticipants || [],
       prevLapsByLane:   prevLapsByLane || {},
+      projection:       (typeof projection !== 'undefined' ? projection : []),
     }) %>;
     const LANG = "<%= lang %>";
   </script>
@@ -337,121 +338,55 @@
       }
     }
 
-    // Proyección "convergente" (idéntica a la del sidebar de /live):
-    //   projectedTotal = vueltas_ya_hechas
-    //                   + (tiempo restante de SU manga actual / media)   [si corre ahora]
-    //                   + (mangas futuras pendientes × duración / media)
-    // Anclada en las vueltas reales: quien ya terminó sus mangas proyecta su
-    // total real (no extrapola 6 mangas enteras). avgLapMs = media SUCIA.
+    // ── Proyección ÚNICA del servidor ─────────────────────────────────────────
+    // NO se recalcula en cliente: se consume TAL CUAL la proyección media-based
+    // que envía el servidor (TimingService.buildRaceProjection): la MISMA que
+    // Le Mans, live-stats y las tarjetas del directo. `data.projection` viene en
+    // cada 'standings'; si no lo trae (manga inactiva), usamos PANEL_DATA.projection.
     function buildRows(data) {
-      const MANGA_DURATION_MS = PANEL_DATA.mangaDurationMs || 0;
-      const mangaRemainingMs  = (data && data.remainingMs > 0) ? data.remainingMs : 0;
-      // OJO: identificamos por ID de entidad (no por nombre). Hay carreras con
-      // equipos/pilotos de NOMBRE repetido; deduplicar por nombre los colapsaba
-      // en una sola fila (p.ej. 36 equipos → 23 nombres → 23 filas).
-      const allPMap = new Map();
-      (PANEL_DATA.allParticipants || []).forEach(p => { if (p.entity_id != null) allPMap.set(p.entity_id, p); });
+      const proj = (data && data.projection && data.projection.length)
+        ? data.projection
+        : (PANEL_DATA.projection || []);
 
-      // Carril → ID de entidad (de la asignación de la manga).
+      // Carril actual por entidad (solo para resaltar quién rueda ahora).
       const laneToEntity = {};
       (PANEL_DATA.lanes || []).forEach(l => { if (l.entityId != null) laneToEntity[l.lane] = l.entityId; });
-
-      // Activo en esta manga (media combinada raceAvgLapMs), indexado por ID.
-      const activeById = new Map();
+      const liveLaneById = new Map();
       if (data?.standings) {
         data.standings.forEach(r => {
           const id = laneToEntity[r.lane];
-          if (id == null) return;
-          const prevLaps = (PANEL_DATA.prevLapsByLane || {})[r.lane] || 0;
-          const total    = prevLaps + (r.lapCount || 0);
-          activeById.set(id, {
-            _id: id, name: r.name, lane: r.lane, total,
-            avgLapMs:  r.raceAvgLapMs ?? r.avgLapMs ?? null,
-            bestLapMs: r.bestLapMs ?? null,
-            hasData: true,
-            onTrack: true,   // corre en esta manga → nombre en verde (estilo Tic Tac)
-          });
+          if (id != null) liveLaneById.set(id, r.lane);
         });
       }
 
-      // Combinar: TODOS los participantes de la carrera (por ID) + activos sin histórico
-      const seen = new Set();
-      const rows = [];
-      (PANEL_DATA.allParticipants || []).forEach(p => {
-        const id = p.entity_id;
-        if (id == null || seen.has(id)) return;
-        seen.add(id);
-        if (activeById.has(id)) {
-          rows.push(activeById.get(id));
-        } else {
-          rows.push({
-            _id: id, name: p.entity_name,
-            total: p.total_laps || 0,
-            avgLapMs:  p.avg_lap_ms != null ? Math.round(p.avg_lap_ms) : null,
-            bestLapMs: p.best_lap_ms ?? null,
-            hasData: (p.total_laps || 0) > 0 || p.avg_lap_ms != null,
-          });
-        }
-      });
-      activeById.forEach((r, id) => { if (!seen.has(id)) { rows.push(r); seen.add(id); } });
-
-      // Proyección anclada en lo ya hecho + lo que aún le queda por correr.
-      rows.forEach(r => {
-        const p = allPMap.get(r._id);
-        const futureMangas = p?.remaining_mangas || 0;          // mangas futuras 'pending' (NO la activa)
-        const currentLeftMs = r.onTrack ? mangaRemainingMs : 0; // lo que queda de su manga actual
-        r._remRacingMs = currentLeftMs + futureMangas * MANGA_DURATION_MS; // tiempo de carrera que aún le queda
-        if (r.avgLapMs && r.avgLapMs > 0) {
-          // Si aún le queda carrera, extrapola las vueltas futuras. Si ya terminó,
-          // ancla en la coma media por manga (la MISMA que desempata en resultados)
-          // para mostrar la fracción de vuelta y no un entero seco (468,0 → 468,5).
-          const comaPM = (p && p.mangas_raced > 0) ? (p.coma_total || 0) / p.mangas_raced : 0;
-          const extra  = r._remRacingMs > 0 ? r._remRacingMs / r.avgLapMs : comaPM;
-          r.projectedTotalRaw = (r.total || 0) + extra;
-          r.projectedTotal    = Math.round(r.projectedTotalRaw);
-        } else {
-          r.projectedTotalRaw = null;
-          r.projectedTotal    = null;
-        }
-      });
-
-      rows.sort((a, b) => {
-        if (a.projectedTotalRaw == null && b.projectedTotalRaw == null) return (a.name || '').localeCompare(b.name || '');
-        if (a.projectedTotalRaw == null) return 1;
-        if (b.projectedTotalRaw == null) return -1;
-        return b.projectedTotalRaw - a.projectedTotalRaw
-            || (a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity);
-      });
+      // El servidor ya devuelve el ARRAY ORDENADO. Solo lo mapeamos a la forma
+      // que la tabla espera (sin tocar orden ni números).
+      const rows = proj.map(p => ({
+        _id:               p.entityId,
+        name:              p.name,
+        lane:              liveLaneById.has(p.entityId) ? liveLaneById.get(p.entityId) : null,
+        total:             p.total ?? p.totalLaps ?? 0,
+        avgLapMs:          p.avgLapMs ?? null,
+        bestLapMs:         p.bestLapMs ?? null,
+        onTrack:           !!p.onTrack || liveLaneById.has(p.entityId),
+        hasData:           (p.total ?? p.totalLaps ?? 0) > 0 || p.avgLapMs != null,
+        projectedTotalRaw: p.projectedRaw ?? p.projectedTotal ?? null,
+        projectedTotal:    p.projectedTotal != null ? Math.round(p.projectedTotal) : null,
+        _gapV:             p.gapV ?? null,
+        _gapVT:            p.gapVLeader ?? null,
+        _avgToCatch:       p.avgToCatch ?? null,
+      }));
 
       const BIG = 1e9;
       const scoreOf = r => (r.projectedTotalRaw ?? 0) * BIG - (r.avgLapMs ?? BIG);
 
-      // Dos gaps en vueltas proyectadas (el líder no muestra ninguno):
-      //   _gapV  = respecto al de delante (posición i-1)
-      //   _gapVT = respecto al primer clasificado (líder = rows[0])
-      const leaderRaw = rows.length ? rows[0].projectedTotalRaw : null;
+      // Tendencia (↕): se sigue midiendo contra el rival de delante / detrás.
       rows.forEach((r, i) => {
-        const rRaw = r.projectedTotalRaw;
+        const rRaw  = r.projectedTotalRaw;
         const above = rows[i-1];
-        const aboveRaw = above ? above.projectedTotalRaw : null;
-        r._gapV  = (i === 0 || aboveRaw  == null || rRaw == null) ? null : (aboveRaw  - rRaw);
-        r._gapVT = (i === 0 || leaderRaw == null || rRaw == null) ? null : (leaderRaw - rRaw);
-
-        // Media (ms/vuelta) que necesita en lo que le queda de carrera para
-        // alcanzar la proyección del de delante. null = líder / sin tiempo /
-        // inalcanzable (haría falta rodar por debajo de su mejor vuelta).
-        if (i === 0 || aboveRaw == null || !(r._remRacingMs > 0)) {
-          r._avgToCatch = null;
-        } else {
-          const lapsNeeded = aboveRaw - (r.total || 0);
-          const req = lapsNeeded > 0 ? r._remRacingMs / lapsNeeded : null;
-          r._avgToCatch = (req != null && req > 0 && (!r.bestLapMs || req >= r.bestLapMs)) ? req : null;
-        }
-
-        // Tendencia (↕): se sigue midiendo contra el rival de delante / detrás.
+        const below = rows[i+1];
         r._gapAbove = (i === 0 || rRaw == null || (above && above.projectedTotalRaw == null))
           ? null : scoreOf(above) - scoreOf(r);
-        const below = rows[i+1];
         r._gapBelow = (below && rRaw != null && below.projectedTotalRaw != null)
           ? scoreOf(r) - scoreOf(below) : null;
 

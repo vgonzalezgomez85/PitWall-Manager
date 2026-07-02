@@ -446,27 +446,40 @@
     window.addEventListener('resize', applyCarousel);
 
     function render() {
-      const rows = Object.values(state).sort((a, b) =>
-        b.totalLaps - a.totalLaps || (a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity)
-      );
-      const leaderLaps = rows[0]?.totalLaps ?? 0;
+      const rows = Object.values(state);
+
+      // Proyección ÚNICA (media-based) — MISMA fórmula que TimingService
+      // .buildRaceProjection y que el panel/directo:
+      //   proyección = vueltas_totales + (tiempo_restante ÷ media)
+      // El servidor ya la calculó (r.projectedRaw / r.projected). En vivo solo
+      // recomputamos con las vueltas nuevas y el reloj de la manga actual, usando
+      // exactamente la misma fórmula (NO rate/distance).
+      const CUR_REM = _remMs;   // restante de la manga activa, ya tickeado en cliente
+      rows.forEach(r => {
+        const remMs = (r.onTrack ? CUR_REM : 0) + (r.futureRemMs || 0);
+        r._remMs = remMs;
+        r.projectedRaw = (r.avgLapMs && r.avgLapMs > 0)
+          ? r.totalLaps + remMs / r.avgLapMs
+          : null;
+        r.projected = r.projectedRaw != null ? Math.round(r.projectedRaw) : null;
+      });
+
+      // Orden por vueltas PROYECTADAS (desc); desempates: vueltas reales y luego
+      // mejor vuelta (mismos criterios que la función única del servidor).
+      rows.sort((a, b) => {
+        if (a.projectedRaw == null && b.projectedRaw == null) return (a.name || '').localeCompare(b.name || '');
+        if (a.projectedRaw == null) return 1;
+        if (b.projectedRaw == null) return -1;
+        return (b.projectedRaw - a.projectedRaw)
+            || (b.totalLaps - a.totalLaps)
+            || ((a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity));
+      });
+      const maxLaps   = Math.max(0, ...rows.map(r => r.totalLaps));
       const fastestMs  = Math.min(...rows.map(r => r.bestLapMs ?? Infinity));
 
       rows.forEach((r, i) => {
         r.position = i + 1;
-        r.gap = leaderLaps - r.totalLaps;
-      });
-
-      // Proyección (como la vista estimada): vueltas al final según la media y
-      // el tiempo de carrera que aún le queda (mangas pendientes + lo que reste
-      // de la manga en curso si está en pista).
-      const MANGA_DUR = LM_DATA.mangaDurationMs || 0;
-      const CUR_REM   = LM_DATA.currentRemainingMs || 0;
-      rows.forEach(r => {
-        const remMs = (r.remainingMangas || 0) * MANGA_DUR + (r.onTrack ? CUR_REM : 0);
-        r._remMs = remMs;
-        r.projectedRaw = (r.avgLapMs > 0) ? r.totalLaps + remMs / r.avgLapMs : null;
-        r.projected = r.projectedRaw != null ? Math.round(r.projectedRaw) : null;
+        r.gap = maxLaps - r.totalLaps;   // vueltas tras el líder de distancia
       });
       rows.forEach((r, i) => {
         const above = rows[i - 1];
@@ -504,7 +517,7 @@
             ${driverHtml}
           </td>
           <td>${catHtml}</td>
-          <td class="td-proj">${r.projected != null ? r.projected : '—'}</td>
+          <td class="td-proj">${r.projectedRaw != null ? r.projectedRaw.toFixed(1).replace('.', ',') + 'v' : '—'}</td>
           <td class="td-laps" id="laps-${r.id}">${r.totalLaps}</td>
           <td class="td-gap">${gapLabel(r.gap)}</td>
           <td class="td-avg">${r.avgLapMs != null ? formatMs(r.avgLapMs) : '—'}</td>
@@ -514,6 +527,12 @@
       }).join('');
       applyCarousel();
     }
+
+    // Countdown de la manga activa (compartido por render() para la proyección
+    // media-based en vivo y por el reloj de cabecera). Declarado ANTES de
+    // render() para no caer en la zona muerta temporal.
+    let _remMs   = LM_DATA.currentRemainingMs || 0;
+    let _running = LM_DATA.raceStatus === 'running';
 
     render();
 
@@ -539,8 +558,6 @@
     }
     setState(LM_DATA.raceStatus);
 
-    let _remMs   = LM_DATA.currentRemainingMs || 0;
-    let _running = LM_DATA.raceStatus === 'running';
     function fmtTimer(ms) {
       ms = Math.max(0, Math.round(ms));
       const t = Math.floor(ms / 1000), m = Math.floor(t / 60), s = t % 60;

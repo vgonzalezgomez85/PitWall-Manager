@@ -112,9 +112,9 @@ class Lap {
         t.color,
         COUNT(l.id)                              AS total_laps,
         MIN(CASE WHEN l.is_exit = 0 AND l.is_warmup = 0 AND l.lap_number > 1 THEN l.lap_time_ms END) AS best_lap_ms,
-        -- Media "sucia" (incluye salidas) pero SIN warmup: representa el
-        -- ritmo real de carrera con sus mistakes incluidos. Es la métrica
-        -- correcta para la proyección "vueltas al final de la carrera".
+        -- Media SIMPLE de tiempos de vuelta, SIN warmup (= media de TicTac,
+        -- verificado al ms contra las tramas del DS-300 en RESISBARNA y Modena).
+        -- Incluye salidas/pits (ritmo real). Es la que alimenta la proyección.
         AVG(CASE WHEN l.is_warmup = 0 THEN l.lap_time_ms END) AS avg_lap_ms,
         SUM(l.lap_time_ms)                       AS total_time_ms,
         COUNT(DISTINCT l.manga_id)               AS mangas_raced,

@@ -140,10 +140,26 @@ class TimingServiceClass {
     // que inflaría la proyección ~10×. Solo si el DS dio un valor real.
     if (durationMs && durationMs > 0) {
       try {
-        require('../config/database')
-          .prepare('UPDATE mangas SET actual_duration_ms = ? WHERE id = ?')
-          .run(durationMs, manga.id);
-      } catch (err) { console.error('[TimingService] persist actual_duration_ms error:', err.message); }
+        const dbc = require('../config/database');
+        dbc.prepare('UPDATE mangas SET actual_duration_ms = ? WHERE id = ?')
+           .run(durationMs, manga.id);
+        // La duración de manga la marca el DS-300 en el GO. Al arrancar la
+        // PRIMERA manga de la carrera (ninguna otra tiene aún duración real),
+        // ese tiempo es el de referencia del evento: lo guardamos como
+        // manga_duration_minutes de la carrera para que cualquier cálculo que
+        // use ese campo (fallback de arranque, proyección sin manga viva, etc.)
+        // parta del tiempo REAL del DS y no del valor por defecto.
+        const priorRun = dbc.prepare(
+          'SELECT COUNT(*) AS c FROM mangas WHERE race_id = ? AND id <> ? AND actual_duration_ms IS NOT NULL'
+        ).get(race.id, manga.id).c;
+        if (priorRun === 0) {
+          const mins = Math.round(durationMs / 60000);
+          if (mins > 0) {
+            dbc.prepare('UPDATE races SET manga_duration_minutes = ? WHERE id = ?')
+               .run(mins, race.id);
+          }
+        }
+      } catch (err) { console.error('[TimingService] persist duration error:', err.message); }
     }
 
     const activeLanes = Object.keys(laneMap).map(Number);
@@ -990,12 +1006,12 @@ class TimingServiceClass {
       r.totalTimeMs = priorTime + (ld?.lapsMsSum || 0);
     });
 
-    // ── Proyección de carrera (para web y app móvil) ──────────────────────
+    // ── Proyección de carrera (ÚNICA, para web y app móvil) ───────────────
     // Clasificación estimada por entidad sobre TODA la carrera: vueltas
-    // proyectadas al final, posición general, gap al de delante y "P/Subir"
-    // (media que necesita en lo que queda para alcanzar al de delante). Se
-    // calcula aquí en el servidor para que la app móvil solo tenga que leerlo.
-    const projection = this._buildProjection(race, laneMap, startTime);
+    // proyectadas, posición, gap al de delante y "P/Subir". Es EXACTAMENTE la
+    // función única buildRaceProjection (misma que Le Mans y live-stats), por
+    // lo que todos los consumidores comparten cálculo y orden.
+    const projection = this.buildRaceProjection(race.id);
 
     return {
       mangaId:      manga.id,
@@ -1009,77 +1025,202 @@ class TimingServiceClass {
     };
   }
 
-  // Proyección de carrera por ENTIDAD (mismo modelo que el panel web). Devuelve
-  // un array ordenado por vueltas proyectadas con: projectedTotal, posición,
-  // gap en vueltas al de delante, y avgToCatch ("P/Subir": media ms/vuelta que
-  // necesita en lo que le queda para alcanzar la proyección del de delante;
-  // null = líder / sin tiempo / inalcanzable < mejor vuelta). Pensado para que
-  // la app móvil lo lea tal cual sin recalcular.
-  _buildProjection(race, laneMap, startTime) {
-    const db = require('../config/database');
+  // ════════════════════════════════════════════════════════════════════════
+  //  PROYECCIÓN ÚNICA DE CARRERA — la ÚNICA fuente de verdad de la proyección
+  //  para TODAS las vistas (Le Mans, panel/directo, live-stats, Lap, resultados).
+  //
+  //  Fórmula (FIJA):
+  //    proyección = vueltas_totales + (tiempo_restante_ms ÷ media_ms)
+  //      · media_ms          = AVG(lap_time_ms) sin warmup/ghost (= TicTac).
+  //      · vueltas_totales    = COUNT vueltas válidas (is_ghost=0, lap_number>0;
+  //                             incluye cruce de salida y salidas de pit).
+  //      · tiempo_restante_ms = mangas_pendientes × duración_manga
+  //                             + (si en pista ahora → restante de la manga actual).
+  //  Orden: proyección DESC; desempates total DESC, coma_total DESC, best ASC.
+  //  Entidad sin vueltas/sin media → proyección null → al final.
+  //
+  //  100% BASADO EN BD — NO usa this.session. Deriva el elapsed/remaining de la
+  //  manga activa desde mangas.started_at + duración vs Date.now(), por lo que
+  //  funciona en Le Mans sin sesión viva y para DS-300 / BART / simulación por
+  //  igual. La "manga activa" es la que tiene started_at pero no está 'finished'.
+  //
+  //  Devuelve array ordenado de:
+  //    { entityId, entityType, name, totalLaps, avgLapMs, bestLapMs, comaTotal,
+  //      mangasRaced, remainingMs, onTrack,
+  //      projectedRaw, projectedTotal, gapV, gapVLeader, avgToCatch, position }
+  // ════════════════════════════════════════════════════════════════════════
+  buildRaceProjection(raceId) {
+    const db  = require('../config/database');
     const Lap = require('../models/Lap');
-    const durMs = this.session.durationMs || 0;
-    const remCurMs = Math.max(0, durMs - (Date.now() - startTime));
 
-    // Mangas pendientes (a CORRER) por entidad.
-    const idCol = race.format === 'team' ? 'ml.team_id' : 'ml.driver_id';
-    const remRows = db.prepare(`
-      SELECT ${idCol} AS eid,
-             SUM(CASE WHEN m.status = 'pending' THEN 1 ELSE 0 END) AS pending
+    const race = db.prepare('SELECT id, format, manga_duration_minutes FROM races WHERE id = ?').get(raceId);
+    if (!race) return [];
+    const isTeam = race.format === 'team';
+    const idCol  = isTeam ? 'ml.team_id' : 'ml.driver_id';
+
+    const durDefaultMs = (race.manga_duration_minutes || 0) * 60000;
+
+    // ── Manga ACTIVA (en curso): started_at fijado y aún no 'finished'.
+    // Su duración real (actual_duration_ms) y su transcurrido/restante se
+    // derivan del reloj, NO de la sesión en memoria.
+    const activeManga = db.prepare(`
+      SELECT id, started_at, actual_duration_ms
+      FROM mangas
+      WHERE race_id = ? AND status != 'finished' AND started_at IS NOT NULL
+      ORDER BY id DESC LIMIT 1
+    `).get(raceId);
+
+    let activeMangaId = null, activeRemMs = 0;
+    if (activeManga) {
+      activeMangaId = activeManga.id;
+      const durMs = activeManga.actual_duration_ms > 0 ? activeManga.actual_duration_ms : durDefaultMs;
+      const startedMs = activeManga.started_at
+        ? (Date.parse(activeManga.started_at + 'Z') || Date.parse(activeManga.started_at))
+        : null;
+      const elapsed = startedMs != null ? (Date.now() - startedMs) : 0;
+      activeRemMs = Math.max(0, durMs - elapsed);
+    }
+
+    // ── Mangas PENDIENTES (aún por correr) por entidad. Excluye la activa: su
+    // tiempo restante ya lo aporta activeRemMs para los que están en pista.
+    const pendRows = db.prepare(`
+      SELECT ${idCol} AS eid, COUNT(*) AS pending
       FROM manga_lanes ml JOIN mangas m ON m.id = ml.manga_id
       WHERE m.race_id = ? AND ml.is_rest = 0 AND ${idCol} IS NOT NULL
+        AND m.status = 'pending' AND m.started_at IS NULL
       GROUP BY eid
-    `).all(race.id);
-    const remById = {};
-    remRows.forEach(r => { remById[r.eid] = r.pending || 0; });
+    `).all(raceId);
+    const pendingById = {};
+    pendRows.forEach(r => { pendingById[r.eid] = r.pending || 0; });
 
-    // Entidades que corren la manga actual (onTrack → le queda la manga actual).
-    const activeKeys = new Set();
-    Object.values(laneMap).forEach(l => {
-      if (l.isRest) return;
-      const k = l.teamId ? 't' + l.teamId : (l.driverId ? 'd' + l.driverId : null);
-      if (k) activeKeys.add(k);
+    // ── Entidades EN PISTA ahora (asignadas a la manga activa, no descanso).
+    const onTrackSet = new Set();
+    if (activeMangaId) {
+      db.prepare(`
+        SELECT ${idCol} AS eid FROM manga_lanes ml
+        WHERE ml.manga_id = ? AND ml.is_rest = 0 AND ${idCol} IS NOT NULL
+      `).all(activeMangaId).forEach(r => onTrackSet.add(r.eid));
+    }
+
+    // ── Duración de manga para las PENDIENTES futuras: la real de cada manga
+    // futura si estuviera guardada; como aún no han corrido, usamos el default
+    // de la carrera (mismo criterio que el resto de vistas).
+    const futureMangaDurMs = durDefaultMs;
+
+    // ── Agregado por entidad (media simple, total, coma, best) desde BD.
+    const agg = Lap.aggregateByRace(raceId).filter(p => p.entity_id != null);
+
+    // Incluir TAMBIÉN las entidades asignadas a la carrera que aún no tienen
+    // vueltas (tandas/mangas por empezar): deben salir en la clasificación con
+    // proyección null (al final), igual que en el panel y en Le Mans.
+    const nameJoin = isTeam ? 'teams e ON e.id = ml.team_id' : 'drivers e ON e.id = ml.driver_id';
+    const assigned = db.prepare(`
+      SELECT ${idCol} AS eid, e.name AS name
+      FROM manga_lanes ml JOIN mangas m ON m.id = ml.manga_id
+      JOIN ${nameJoin}
+      WHERE m.race_id = ? AND ml.is_rest = 0 AND ${idCol} IS NOT NULL
+      GROUP BY eid
+    `).all(raceId);
+    const haveAgg = new Set(agg.map(p => p.entity_id));
+    assigned.forEach(a => {
+      if (haveAgg.has(a.eid)) return;
+      agg.push({
+        entity_id: a.eid, entity_name: a.name,
+        entity_type: isTeam ? 'team' : 'driver',
+        total_laps: 0, avg_lap_ms: null, best_lap_ms: null,
+        coma_total: 0, mangas_raced: 0,
+      });
     });
 
-    const agg = Lap.aggregateByRace(race.id).filter(p => p.entity_id != null);
     const proj = agg.map(p => {
-      const k = (p.entity_type === 'team' ? 't' : 'd') + p.entity_id;
-      const onTrack = activeKeys.has(k);
-      const avg = p.avg_lap_ms;
-      const remMs = (onTrack ? remCurMs : 0) + (remById[p.entity_id] || 0) * durMs;
-      const comaPM = p.mangas_raced > 0 ? (p.coma_total || 0) / p.mangas_raced : 0;
-      const projRaw = (avg > 0) ? p.total_laps + (remMs > 0 ? remMs / avg : comaPM) : null;
+      const onTrack = onTrackSet.has(p.entity_id);
+      const futureRemMs = (pendingById[p.entity_id] || 0) * futureMangaDurMs;
+      const remMs = (onTrack ? activeRemMs : 0) + futureRemMs;
+      const avg   = p.avg_lap_ms;
+      // Proyección MEDIA-BASED: total + tiempo_restante / media.
+      const projRaw = (avg != null && avg > 0)
+        ? p.total_laps + remMs / avg
+        : null;
       return {
-        entityId: p.entity_id, entityType: p.entity_type, name: p.entity_name,
-        total: p.total_laps, bestLapMs: p.best_lap_ms,
-        avgLapMs: avg != null ? Math.round(avg) : null, projRaw, remMs,
+        entityId:    p.entity_id,
+        entityType:  p.entity_type,
+        name:        p.entity_name,
+        totalLaps:   p.total_laps,
+        avgLapMs:    avg != null ? Math.round(avg) : null,
+        bestLapMs:   p.best_lap_ms,
+        comaTotal:   p.coma_total || 0,
+        mangasRaced: p.mangas_raced || 0,
+        remainingMs: remMs,
+        futureRemMs,
+        onTrack,
+        projectedRaw: projRaw,
       };
     });
 
-    proj.sort((a, b) =>
-      (b.projRaw ?? -1) - (a.projRaw ?? -1) ||
-      (a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity));
+    // Orden: proyección DESC; desempates total DESC, coma DESC, best ASC.
+    // Entidades sin proyección (null) al final.
+    proj.sort((a, b) => {
+      if (a.projectedRaw == null && b.projectedRaw == null) return (a.name || '').localeCompare(b.name || '');
+      if (a.projectedRaw == null) return 1;
+      if (b.projectedRaw == null) return -1;
+      return (b.projectedRaw - a.projectedRaw)
+          || (b.totalLaps - a.totalLaps)
+          || (b.comaTotal - a.comaTotal)
+          || ((a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity));
+    });
 
+    const leaderRaw = proj.length ? proj[0].projectedRaw : null;
     return proj.map((r, i) => {
-      const ahead = proj[i - 1];
-      const aheadRaw = ahead ? ahead.projRaw : null;
-      const gapV = (i === 0 || aheadRaw == null || r.projRaw == null) ? null : (aheadRaw - r.projRaw);
+      const ahead    = proj[i - 1];
+      const aheadRaw = ahead ? ahead.projectedRaw : null;
+      const gapV     = (i === 0 || aheadRaw == null || r.projectedRaw == null) ? null : (aheadRaw - r.projectedRaw);
+      const gapVLead = (i === 0 || leaderRaw == null || r.projectedRaw == null) ? null : (leaderRaw - r.projectedRaw);
+      // "P/Subir": media ms/vuelta que necesita en lo que le queda para alcanzar
+      // la proyección del de delante. null = líder / sin tiempo / inalcanzable.
       let avgToCatch = null;
-      if (!(i === 0 || aheadRaw == null || !(r.remMs > 0))) {
-        const lapsNeeded = aheadRaw - r.total;
-        const req = lapsNeeded > 0 ? r.remMs / lapsNeeded : null;
+      if (!(i === 0 || aheadRaw == null || !(r.remainingMs > 0))) {
+        const lapsNeeded = aheadRaw - r.totalLaps;
+        const req = lapsNeeded > 0 ? r.remainingMs / lapsNeeded : null;
         if (req != null && req > 0 && (!r.bestLapMs || req >= r.bestLapMs)) avgToCatch = Math.round(req);
       }
       return {
-        position: i + 1,
-        entityId: r.entityId, entityType: r.entityType, name: r.name,
-        total: r.total,
-        projectedTotal: r.projRaw != null ? +r.projRaw.toFixed(1) : null,
-        gapV: gapV != null ? +gapV.toFixed(2) : null,
+        position:       i + 1,
+        entityId:       r.entityId,
+        entityType:     r.entityType,
+        name:           r.name,
+        totalLaps:      r.totalLaps,
+        total:          r.totalLaps,   // alias legacy (live.js, Lap, live-stats)
+        avgLapMs:       r.avgLapMs,
+        bestLapMs:      r.bestLapMs,
+        comaTotal:      +r.comaTotal.toFixed ? +r.comaTotal.toFixed(3) : r.comaTotal,
+        mangasRaced:    r.mangasRaced,
+        remainingMs:    r.remainingMs,
+        futureRemMs:    r.futureRemMs,
+        onTrack:        r.onTrack,
+        projectedRaw:   r.projectedRaw,
+        projectedTotal: r.projectedRaw != null ? +r.projectedRaw.toFixed(1) : null,
+        gapV:           gapV     != null ? +gapV.toFixed(2)     : null,
+        gapVLeader:     gapVLead != null ? +gapVLead.toFixed(2) : null,
         avgToCatch,
-        avgLapMs: r.avgLapMs,
       };
     });
+  }
+
+  // Compat: la proyección que consume getStandations().projection (app móvil,
+  // live-stats). Ahora es un fino adaptador sobre la función única para que
+  // TODOS los consumidores compartan exactamente el mismo cálculo y orden.
+  _buildProjection(race /* , laneMap, startTime */) {
+    return this.buildRaceProjection(race.id).map(r => ({
+      position:       r.position,
+      entityId:       r.entityId,
+      entityType:     r.entityType,
+      name:           r.name,
+      total:          r.totalLaps,
+      projectedTotal: r.projectedTotal,
+      gapV:           r.gapV,
+      avgToCatch:     r.avgToCatch,
+      avgLapMs:       r.avgLapMs,
+    }));
   }
 
   // Derivados del estado por circuito: la manga "corre" si algún circuito corre;

@@ -197,19 +197,24 @@ const LapController = {
           live.lane = sr.lane;
           if (sr.lastLapMs != null) timing.lastLapMs = sr.lastLapMs;
         }
-        // Proyección por entidad (posición estimada al final + vueltas proyectadas).
-        // Casamos por nombre (los ids pueden estar duplicados por tanda).
-        const pr = (st.projection || []).find(p => p.entityType === 'team' && p.name === team.name);
-        if (pr) {
-          projection = {
-            position:       pr.position,
-            projectedTotal: pr.projectedTotal,
-            gapV:           pr.gapV,
-            avgToCatch:     pr.avgToCatch,
-          };
-        }
       }
     }
+
+    // Proyección ÚNICA (media-based, desde BD): la MISMA que directo, Le Mans,
+    // panel y live-stats. Fuera del guard de sesión viva → funciona también tras
+    // reinicio. Casamos por entityId (nombres pueden repetirse por tanda).
+    try {
+      const pr = TimingService.buildRaceProjection(race.id)
+        .find(p => p.entityType === 'team' && p.entityId === team.id);
+      if (pr) {
+        projection = {
+          position:       pr.position,
+          projectedTotal: pr.projectedTotal,
+          gapV:           pr.gapV,
+          avgToCatch:     pr.avgToCatch,
+        };
+      }
+    } catch (e) { /* sin proyección si falla la consulta */ }
 
     const teamsTotal = db.prepare('SELECT COUNT(DISTINCT name) AS c FROM teams WHERE race_id = ?').get(race.id).c;
 
