@@ -83,11 +83,44 @@ function isPublicPath(p) {
       || /^\/api\/lap\/\d+\/team\/\d+$/.test(p);
 }
 
+// ── Race Link (maestro↔esclavo) ─────────────────────────────────────────────
+// Endpoints que una instancia REMOTA de PitWall (el otro extremo del enlace)
+// debe poder alcanzar aunque su IP no esté en la allowlist. Se dividen en:
+//   - Solo lectura, SIN token (provisión de la carrera): la lista de carreras
+//     y el export.json. Son inocuos (mismos datos que /results) y ya existían.
+//   - Control CON token (/link/state, /link/event): un maestro remoto empuja el
+//     estado deseado. La exención de IP es incondicional aquí, pero la ACEPTACIÓN
+//     la gatea linkControlAuthorized() (role=slave + x-link-token correcto). Si
+//     no autoriza, el controlador responde 401/403.
+// NO se eximen /link (página), /link/master/races, /link/provision, /link/import:
+// esos los usa el operador LOCAL del esclavo y siguen tras la restricción normal.
+function isLinkReadPath(p) {
+  return p === '/link/races' || /^\/link\/races\/\d+\/export\.json$/.test(p);
+}
+function isLinkControlPath(p) {
+  return p === '/link/state' || p === '/link/event';
+}
+
+// ¿La petición de control del enlace está autorizada? Solo si esta instancia es
+// ESCLAVO y la cabecera x-link-token coincide con el secreto compartido. El
+// token vacío/no configurado nunca autoriza (evita aceptar por defecto).
+function linkControlAuthorized(req) {
+  if (Settings.get('link_role', 'off') !== 'slave') return false;
+  const expected = String(Settings.get('link_token', '') || '');
+  if (!expected) return false;
+  const got = String(req.headers['x-link-token'] || '');
+  return got === expected;
+}
+
 // ── Express middleware ──────────────────────────────────────────────────────
 function restrictAccess(req, res, next) {
   if (!isRestrictEnabled()) return next();
   if (req.path.startsWith('/api/mobile/')) return next();   // app móvil (REST)
   if (isPublicPath(req.path)) return next();                // vistas públicas
+  // Enlace maestro↔esclavo: exención de IP (el otro extremo está en otra IP).
+  // Las de solo-lectura pasan libres; las de control las gatea el token DENTRO
+  // del controlador (aquí solo levantamos el bloqueo por IP).
+  if (isLinkReadPath(req.path) || isLinkControlPath(req.path)) return next();
   if (ipAllowed(reqIp(req))) return next();
   return res.status(403).render('error', {
     t: req.t, code: 403,
@@ -126,4 +159,5 @@ module.exports = {
   normIp, isLocal, ipToInt, ipMatches, isRestrictEnabled, getAllowlist,
   ipAllowed, restrictAccess, isSocketAllowed,
   isLocalRequest, annotateAccess,
+  isLinkReadPath, isLinkControlPath, linkControlAuthorized,
 };

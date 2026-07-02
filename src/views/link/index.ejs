@@ -24,6 +24,60 @@
         : 'The slave (BART) downloads the race from the master (DS) so both share the same schedule.' %>
     </p>
 
+    <!-- ── Configuración del enlace (rol / URL / token) ──────────── -->
+    <% var _cfg = (typeof linkCfg !== 'undefined' && linkCfg) ? linkCfg : { role:'off', slaveUrl:'', token:'' };
+       var _st  = (typeof linkState !== 'undefined' && linkState) ? linkState : { activeMangaId:null, isRunning:false, isPaused:false }; %>
+    <div class="vt-panel" style="margin-bottom:18px">
+      <div class="vt-sec-lbl"><%= lang === 'es' ? 'Enlace maestro / esclavo' : 'Master / slave link' %></div>
+
+      <p style="color:var(--vt-mute);margin:2px 0 14px;line-height:1.5;max-width:62ch">
+        <%= lang === 'es'
+          ? 'El MAESTRO (DS) reenvía el estado de carrera al ESCLAVO (BART), que replica GO/pausa/stop sin operador. Con el rol en "off", PitWall funciona como siempre.'
+          : 'The MASTER (DS) forwards the race state to the SLAVE (BART), which replays GO/pause/stop with no operator. With role "off", PitWall behaves as usual.' %>
+      </p>
+
+      <form id="linkCfgForm" onsubmit="return false">
+        <div class="vt-field" style="margin-bottom:12px">
+          <label for="linkRole"><%= lang === 'es' ? 'Rol de esta instancia' : 'This instance role' %></label>
+          <select id="linkRole" class="vt-inp" style="max-width:260px">
+            <option value="off"    <%= _cfg.role === 'off'    ? 'selected' : '' %>><%= lang === 'es' ? 'Off (desactivado)' : 'Off (disabled)' %></option>
+            <option value="master" <%= _cfg.role === 'master' ? 'selected' : '' %>>Master (DS)</option>
+            <option value="slave"  <%= _cfg.role === 'slave'  ? 'selected' : '' %>>Slave (BART)</option>
+          </select>
+        </div>
+
+        <div class="vt-field" id="linkSlaveUrlField" style="margin-bottom:12px;<%= _cfg.role === 'master' ? '' : 'display:none' %>">
+          <label for="linkSlaveUrl"><%= lang === 'es' ? 'URL del esclavo (solo maestro)' : 'Slave URL (master only)' %></label>
+          <input type="text" id="linkSlaveUrl" class="vt-inp is-mono" style="max-width:320px"
+                 placeholder="192.168.10.108:3000" autocomplete="off" spellcheck="false"
+                 value="<%= _cfg.slaveUrl %>">
+        </div>
+
+        <div class="vt-field" style="margin-bottom:14px">
+          <label for="linkToken"><%= lang === 'es' ? 'Token compartido' : 'Shared token' %></label>
+          <input type="text" id="linkToken" class="vt-inp is-mono" style="max-width:320px"
+                 placeholder="secreto" autocomplete="off" spellcheck="false"
+                 value="<%= _cfg.token %>">
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px">
+          <button type="button" id="btnSaveCfg" class="vt-btn vt-btn--primary">
+            <%= lang === 'es' ? 'Guardar enlace' : 'Save link' %>
+          </button>
+          <span id="cfgMsg" class="link-msg" style="display:none"></span>
+        </div>
+      </form>
+
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--vt-line, rgba(255,255,255,.08));color:var(--vt-mute);font-size:13px">
+        <strong style="color:var(--vt-text)"><%= lang === 'es' ? 'Estado local del cronómetro:' : 'Local timing state:' %></strong>
+        <span id="linkLiveState" class="is-mono">
+          <%= _st.activeMangaId != null
+              ? ('manga ' + _st.activeMangaId + ' · ' + (_st.isRunning ? 'running' : _st.isPaused ? 'paused' : 'idle'))
+              : (lang === 'es' ? 'sin manga activa' : 'no active heat') %>
+        </span>
+      </div>
+    </div>
+
     <!-- ── Buscar carreras en el maestro ─────────────────────────── -->
     <div class="vt-panel">
       <div class="vt-sec-lbl"><%= lang === 'es' ? 'Dirección del maestro' : 'Master address' %></div>
@@ -259,6 +313,46 @@
 
   btnSearch.addEventListener('click', search);
   hostInp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); search(); } });
+
+  // ── Config del enlace (rol / URL / token) ─────────────────────────
+  var roleSel      = document.getElementById('linkRole');
+  var slaveUrlFld  = document.getElementById('linkSlaveUrlField');
+  var slaveUrlInp  = document.getElementById('linkSlaveUrl');
+  var tokenInp     = document.getElementById('linkToken');
+  var btnSaveCfg   = document.getElementById('btnSaveCfg');
+  var cfgMsg       = document.getElementById('cfgMsg');
+
+  function syncRoleUI() {
+    slaveUrlFld.style.display = (roleSel.value === 'master') ? '' : 'none';
+  }
+  if (roleSel) roleSel.addEventListener('change', syncRoleUI);
+
+  if (btnSaveCfg) btnSaveCfg.addEventListener('click', function () {
+    btnSaveCfg.disabled = true;
+    setMsg(cfgMsg, LANG === 'es' ? 'Guardando…' : 'Saving…', 'mute');
+    fetch('/link/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({
+        role: roleSel.value,
+        slaveUrl: (slaveUrlInp.value || '').trim(),
+        token: (tokenInp.value || '').trim(),
+      }),
+    })
+      .then(function (res) { return res.json().then(function (b) { return { status: res.status, body: b }; }); })
+      .then(function (r) {
+        btnSaveCfg.disabled = false;
+        if (r.status === 200 && r.body.ok) {
+          setMsg(cfgMsg, LANG === 'es' ? '✓ Enlace guardado.' : '✓ Link saved.', 'ok');
+        } else {
+          setMsg(cfgMsg, (r.body && r.body.error) ? r.body.error : (LANG === 'es' ? 'No se pudo guardar.' : 'Could not save.'), 'bad');
+        }
+      })
+      .catch(function () {
+        btnSaveCfg.disabled = false;
+        setMsg(cfgMsg, LANG === 'es' ? 'No se pudo guardar.' : 'Could not save.', 'bad');
+      });
+  });
 
   // ── Importar desde fichero ─────────────────────────────────────
   var btnImport  = document.getElementById('btnImport');

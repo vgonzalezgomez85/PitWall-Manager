@@ -111,6 +111,11 @@ router.get( '/link/races/:id/export.json', LinkController.exportRace);
 router.get( '/link/master/races',          LinkController.remoteRaces);   // proxy: lista del maestro remoto
 router.post('/link/provision',             LinkController.provision);     // descarga del maestro + crea
 router.post('/link/import',                LinkController.importPayload);  // crea desde payload/fichero
+router.post('/link/config',                LinkController.saveConfig);    // rol/URL/token (operador local)
+// Control maestro→esclavo (estado deseado). Exento de IP en accessControl;
+// autorizado por token (role=slave + x-link-token) dentro del controlador.
+router.post('/link/state',                 LinkController.state);
+router.post('/link/event',                 LinkController.event);
 
 // ── QR shifts control ─────────────────────────────────────────────────────
 router.get('/control/shifts',     ControlController.live);
