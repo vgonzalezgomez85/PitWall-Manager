@@ -248,13 +248,23 @@ class Lap {
     ).get(mangaId, toLane);
     const nextNum = (maxRow?.maxN ?? 0) + 1;
 
+    // La vuelta reasignada (cruce que el carril destino se saltó) cuenta para el
+    // total, pero con tiempo = MEDIA ACTUAL del carril destino, NO el tiempo
+    // corto del fantasma. Así no falsea nada: añadir un valor igual a la media
+    // no la mueve, y la media nunca es la vuelta más rápida (no toca la mejor).
+    const avgRow = db.prepare(`
+      SELECT AVG(lap_time_ms) AS avg FROM laps
+      WHERE manga_id = ? AND lane = ? AND is_ghost = 0 AND is_warmup = 0 AND lap_number > 0
+    `).get(mangaId, toLane);
+    const assignMs = (avgRow && avgRow.avg) ? Math.round(avgRow.avg) : original.lap_time_ms;
+
     db.prepare(`
       INSERT INTO laps (race_id, manga_id, team_id, driver_id, lane, lap_number, lap_time_ms, elapsed_ms, is_exit, is_ghost, source_lap_id)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
     `).run(
       raceId, mangaId,
       laneAssign?.team_id ?? null, laneAssign?.driver_id ?? null,
-      toLane, nextNum, original.lap_time_ms, original.elapsed_ms, original.is_exit ?? 0,
+      toLane, nextNum, assignMs, original.elapsed_ms, original.is_exit ?? 0,
       lapId
     );
   }
