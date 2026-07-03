@@ -2,6 +2,25 @@ const Race = require('../models/Race');
 const RaceTransfer = require('../services/RaceTransfer');
 const Settings = require('../models/Settings');
 const { getJson } = require('../utils/linkHttp');
+const db = require('../config/database');
+const LinkComparator = require('../services/LinkComparator');
+
+// Flujo de cruces de una manga identificada por (race_key, tanda#, manga#),
+// por carril. Común al endpoint /link/laps y al comparador local.
+function lapsForManga(raceKey, tandaNumber, mangaNumber) {
+  return db.prepare(`
+    SELECT l.lane, l.lap_number AS lapNumber, l.lap_time_ms AS lapMs,
+           l.elapsed_ms AS elapsedMs, l.is_ghost AS isGhost, l.is_warmup AS isWarmup,
+           t.name AS team
+    FROM laps l
+    JOIN mangas m ON m.id = l.manga_id
+    JOIN tandas td ON td.id = m.tanda_id
+    JOIN races  r ON r.id = td.race_id
+    LEFT JOIN teams t ON t.id = l.team_id
+    WHERE r.race_key = ? AND td.number = ? AND m.number = ?
+    ORDER BY l.lane ASC, l.elapsed_ms ASC
+  `).all(raceKey, tandaNumber, mangaNumber);
+}
 
 // ── LinkController ──────────────────────────────────────────────────────────
 // Endpoints del enlace MAESTRO↔ESCLAVO (Fase 1: provisión de la carrera).
@@ -171,6 +190,84 @@ class LinkController {
       res.json(data);
     } catch (e) {
       res.status(400).json({ error: e.message });
+    }
+  }
+
+  // ── Comparador DS ↔ BART ─────────────────────────────────────────────────
+  // GET /link/laps?raceKey&tanda&manga — flujo de cruces de ESTA instancia para
+  // una manga (read-only). Lo consume el comparador de la OTRA instancia.
+  static laps(req, res) {
+    try {
+      const { raceKey, tanda, manga } = req.query;
+      if (!raceKey || tanda == null || manga == null) return res.status(400).json({ error: 'Faltan raceKey/tanda/manga' });
+      const laps = lapsForManga(String(raceKey), parseInt(tanda, 10), parseInt(manga, 10));
+      res.json({ raceKey, tanda: parseInt(tanda, 10), manga: parseInt(manga, 10), count: laps.length, laps });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  }
+
+  // GET /link/compare — pantalla del comparador (operador local).
+  static comparePage(req, res) {
+    const linkCfg = { role: Settings.get('link_role', 'off'), peerUrl: Settings.get('link_slave_url', '') };
+    res.render('link/compare', { linkCfg });
+  }
+
+  // GET /link/compare/mangas?raceKey — mangas locales de una carrera (selector).
+  static compareMangas(req, res) {
+    try {
+      const rows = db.prepare(`
+        SELECT td.number AS tanda, m.number AS manga, m.status,
+               (SELECT COUNT(*) FROM laps l WHERE l.manga_id = m.id) AS laps
+        FROM mangas m
+        JOIN tandas td ON td.id = m.tanda_id
+        JOIN races  r  ON r.id  = td.race_id
+        WHERE r.race_key = ?
+        ORDER BY td.number, m.number
+      `).all(String(req.query.raceKey || ''));
+      res.json({ mangas: rows });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  }
+
+  // GET /link/compare/data?raceKey&tanda&manga&peer&mode&tol&swap
+  // Coteja vueltas LOCALES (DS ref) contra las del PEER (BART). Fetch en servidor.
+  static async compareData(req, res) {
+    try {
+      const { raceKey, tanda, manga, mode, tol, swap } = req.query;
+      const peer = req.query.peer || Settings.get('link_slave_url', '');
+      if (!raceKey || tanda == null || manga == null) return res.status(400).json({ error: 'Faltan raceKey/tanda/manga' });
+      if (!peer) return res.status(400).json({ error: 'Falta la URL del otro sistema' });
+      const t = parseInt(tanda, 10), m = parseInt(manga, 10);
+
+      const localLaps = lapsForManga(String(raceKey), t, m);
+      const base = normalizeMasterBase(peer);
+      let peerResp;
+      try {
+        peerResp = await getJson(`${base}/link/laps?raceKey=${encodeURIComponent(raceKey)}&tanda=${t}&manga=${m}`);
+      } catch (e) {
+        return res.status(502).json({ error: 'No se pudo obtener datos del otro sistema: ' + e.message });
+      }
+      const peerLaps = (peerResp && peerResp.laps) || [];
+
+      // Referencia = DS. Por defecto local=DS, peer=BART; swap invierte.
+      const dsLaps   = swap === '1' ? peerLaps  : localLaps;
+      const bartLaps = swap === '1' ? localLaps : peerLaps;
+
+      const opts = {};
+      if (['auto', 'same', 'different'].includes(mode)) opts.mode = mode;
+      if (tol) opts.residualToleranceMs = parseInt(tol, 10);
+
+      const result = LinkComparator.compare(dsLaps, bartLaps, opts);
+      res.json({
+        raceKey, tanda: t, manga: m,
+        dsSource: swap === '1' ? 'peer' : 'local',
+        counts: { ds: dsLaps.length, bart: bartLaps.length },
+        aggregate: result.aggregate, perLane: result.perLane, appliedOpts: result.opts,
+      });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
     }
   }
 }

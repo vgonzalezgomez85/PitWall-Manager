@@ -16,6 +16,12 @@
       <div class="vt-head__title">
         <h1><%= lang === 'es' ? 'Sincronizar carrera desde el maestro' : 'Sync race from master' %></h1>
       </div>
+      <div class="vt-head__actions">
+        <a href="/link/compare" class="vt-btn vt-btn--ghost">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v18M16 3v18M4 8h4M4 16h4M16 8h4M16 16h4"/></svg>
+          <%= lang === 'es' ? 'Comparar DS↔BART' : 'Compare DS↔BART' %>
+        </a>
+      </div>
     </div>
 
     <p class="vt-sub" style="margin:-6px 0 20px;color:var(--vt-mute);max-width:60ch;line-height:1.5">

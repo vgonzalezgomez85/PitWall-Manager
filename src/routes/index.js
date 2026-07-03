@@ -116,6 +116,12 @@ router.post('/link/config',                LinkController.saveConfig);    // rol
 // autorizado por token (role=slave + x-link-token) dentro del controlador.
 router.post('/link/state',                 LinkController.state);
 router.post('/link/event',                 LinkController.event);
+// Comparador DS↔BART: /link/laps lo pide el otro sistema (read-only, exento de IP);
+// /link/compare* los usa el operador local.
+router.get( '/link/laps',                  LinkController.laps);
+router.get( '/link/compare',               LinkController.comparePage);
+router.get( '/link/compare/mangas',        LinkController.compareMangas);
+router.get( '/link/compare/data',          LinkController.compareData);
 
 // ── QR shifts control ─────────────────────────────────────────────────────
 router.get('/control/shifts',     ControlController.live);
