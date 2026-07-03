@@ -56,6 +56,15 @@ if (SettingsModel.get('infolap_enabled', '0') === '1') {
 const TimingService  = require('./services/TimingService');
 const TrainingService = require('./services/TrainingService');
 
+// ── Race Link (maestro↔esclavo) ────────────────────────────────────────────────
+// Solo el MAESTRO necesita init: empuja el estado deseado por LAN. El esclavo
+// reacciona a POST /link/state, no arranca nada. Detrás del flag link_role:
+// con 'off' (default) NADA de esto se activa. Best-effort.
+if (SettingsModel.get('link_role', 'off') === 'master') {
+  try { require('./services/RaceLinkService').startMaster(); }
+  catch (e) { console.error('[RaceLink] no se pudo arrancar el maestro:', e.message); }
+}
+
 let _pendingGoDurationMs = null;
 
 // ── De-dup del semáforo entre varios DS ──────────────────────────────────────

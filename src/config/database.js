@@ -345,6 +345,15 @@ const migrations = [
   // PIN de 4 dígitos por equipo para el cliente web "Lap" (timing del equipo
   // desde el móvil). Se genera bajo demanda; ver Team.ensureLapPins.
   `ALTER TABLE teams ADD COLUMN lap_pin TEXT`,
+
+  // race_key: identificador ESTABLE de la carrera (uuid) que sobrevive al
+  // export/import entre instancias distintas (feature maestro/esclavo). El
+  // `races.id` autoincrement NO sirve entre BDs; el par (race_key, tanda.number,
+  // manga.number) sí identifica una manga de forma estable. Nullable + backfill
+  // (SQLite no permite ADD COLUMN UNIQUE en un solo paso → índice único parcial).
+  `ALTER TABLE races ADD COLUMN race_key TEXT`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_races_race_key
+     ON races(race_key) WHERE race_key IS NOT NULL`,
 ];
 for (const sql of migrations) {
   try {
@@ -370,5 +379,13 @@ try {
     setQR.run(`DRV:${p.id}`, p.id);
   }
 } catch { /* column not yet created on very first run — migration handles it */ }
+
+// Backfill race_key (uuid estable) para carreras que aún no lo tienen.
+try {
+  const { randomUUID } = require('crypto');
+  const racesWithoutKey = db.prepare('SELECT id FROM races WHERE race_key IS NULL').all();
+  const setKey = db.prepare('UPDATE races SET race_key = ? WHERE id = ?');
+  for (const r of racesWithoutKey) setKey.run(randomUUID(), r.id);
+} catch { /* columna aún no creada en primera ejecución — la migración la crea */ }
 
 module.exports = db;

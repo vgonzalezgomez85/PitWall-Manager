@@ -20,6 +20,7 @@ const LicenseController           = require('../controllers/LicenseController');
 const DiagnosticsController       = require('../controllers/DiagnosticsController');
 const LiveStatsController         = require('../controllers/LiveStatsController');
 const DatabaseController          = require('../controllers/DatabaseController');
+const LinkController               = require('../controllers/LinkController');
 const { requireModule }           = require('../middleware/licenseGuard');
 
 router.get('/', (req, res) => {
@@ -101,6 +102,26 @@ router.post('/races/:id/mangas/:mangaId/pause',        SessionController.pause);
 router.post('/races/:id/mangas/:mangaId/resume',       SessionController.resume);
 router.post('/races/:id/tandas/:tandaId/next-tanda',   SessionController.activateNextTanda);
 router.post('/races/:id/mangas/:mangaId/repeat',       SessionController.repeat);
+
+// ── Race Link (maestro↔esclavo): provisión de carrera ─────────────────────
+// MAESTRO expone la lista y el payload; ESCLAVO descarga+crea. Todo aditivo.
+router.get( '/link',                       LinkController.page);           // pantalla operador del esclavo
+router.get( '/link/races',                 LinkController.listRaces);
+router.get( '/link/races/:id/export.json', LinkController.exportRace);
+router.get( '/link/master/races',          LinkController.remoteRaces);   // proxy: lista del maestro remoto
+router.post('/link/provision',             LinkController.provision);     // descarga del maestro + crea
+router.post('/link/import',                LinkController.importPayload);  // crea desde payload/fichero
+router.post('/link/config',                LinkController.saveConfig);    // rol/URL/token (operador local)
+// Control maestro→esclavo (estado deseado). Exento de IP en accessControl;
+// autorizado por token (role=slave + x-link-token) dentro del controlador.
+router.post('/link/state',                 LinkController.state);
+router.post('/link/event',                 LinkController.event);
+// Comparador DS↔BART: /link/laps lo pide el otro sistema (read-only, exento de IP);
+// /link/compare* los usa el operador local.
+router.get( '/link/laps',                  LinkController.laps);
+router.get( '/link/compare',               LinkController.comparePage);
+router.get( '/link/compare/mangas',        LinkController.compareMangas);
+router.get( '/link/compare/data',          LinkController.compareData);
 
 // ── QR shifts control ─────────────────────────────────────────────────────
 router.get('/control/shifts',     ControlController.live);
