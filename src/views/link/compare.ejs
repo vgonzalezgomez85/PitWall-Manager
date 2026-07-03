@@ -1,0 +1,614 @@
+<%- include('../partials/header', { pageTitle: lang === 'es' ? 'Comparador DS↔BART' : 'DS↔BART compare' }) %>
+
+<% var _cfg = (typeof linkCfg !== 'undefined' && linkCfg) ? linkCfg : { role:'off', peerUrl:'' }; %>
+
+<div class="vt-page vt-page--cmp">
+  <div class="vt-wrap">
+
+    <a href="/link" class="vt-back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      <%= lang === 'es' ? 'Enlace maestro / esclavo' : 'Master / slave link' %>
+    </a>
+
+    <div class="vt-head">
+      <div class="vt-head__title">
+        <h1><%= lang === 'es' ? 'Comparador DS ↔ BART' : 'DS ↔ BART compare' %></h1>
+      </div>
+    </div>
+
+    <p class="vt-sub" style="margin:-6px 0 10px;color:var(--vt-mute);max-width:78ch;line-height:1.55">
+      <%= lang === 'es'
+        ? 'Compara la detección de vueltas de dos sistemas (DS-300 vs BART) sobre la MISMA manga, para validar el sistema nuevo.'
+        : 'Compares lap detection from two systems (DS-300 vs BART) over the SAME heat, to validate the new system.' %>
+    </p>
+
+    <div class="cmp-note" style="margin-bottom:20px">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M12 9v4M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>
+      <span><%= lang === 'es'
+        ? 'Aviso: si un lado va en modo simulación con datos aleatorios, las diferencias no son reales.'
+        : 'Warning: if one side runs in simulation mode with random data, the differences are not real.' %></span>
+    </div>
+
+    <!-- ── Controles ───────────────────────────────────────────────── -->
+    <div class="vt-panel" style="margin-bottom:20px">
+      <div class="vt-sec-lbl"><%= lang === 'es' ? 'Qué comparar' : 'What to compare' %></div>
+
+      <div class="cmp-controls">
+        <div class="vt-field">
+          <label for="cmpPeer"><%= lang === 'es' ? 'URL del otro sistema' : 'Other system URL' %></label>
+          <input type="text" id="cmpPeer" class="vt-inp is-mono" placeholder="192.168.1.51:3000"
+                 autocomplete="off" spellcheck="false" value="<%= _cfg.peerUrl %>">
+        </div>
+
+        <div class="vt-field">
+          <label for="cmpRace"><%= lang === 'es' ? 'Carrera' : 'Race' %></label>
+          <select id="cmpRace" class="vt-inp">
+            <option value=""><%= lang === 'es' ? 'Cargando…' : 'Loading…' %></option>
+          </select>
+        </div>
+
+        <div class="vt-field">
+          <label for="cmpManga"><%= lang === 'es' ? 'Manga' : 'Heat' %></label>
+          <select id="cmpManga" class="vt-inp" disabled>
+            <option value=""><%= lang === 'es' ? 'Elige una carrera' : 'Pick a race' %></option>
+          </select>
+        </div>
+
+        <div class="vt-field">
+          <label for="cmpMode"><%= lang === 'es' ? 'Modo' : 'Mode' %></label>
+          <select id="cmpMode" class="vt-inp">
+            <option value="auto"><%= lang === 'es' ? 'Auto' : 'Auto' %></option>
+            <option value="same"><%= lang === 'es' ? 'Mismo punto (sensores juntos)' : 'Same point (sensors together)' %></option>
+            <option value="different"><%= lang === 'es' ? 'Distintos puntos (sensores separados)' : 'Different points (sensors apart)' %></option>
+          </select>
+        </div>
+
+        <div class="vt-field">
+          <label for="cmpTol"><%= lang === 'es' ? 'Tolerancia (ms)' : 'Tolerance (ms)' %></label>
+          <input type="number" id="cmpTol" class="vt-inp is-mono" value="400" min="0" step="10" style="max-width:140px">
+        </div>
+
+        <div class="vt-field cmp-field--check">
+          <label class="cmp-check">
+            <input type="checkbox" id="cmpSwap">
+            <span><%= lang === 'es' ? 'Invertir DS / BART' : 'Swap DS / BART' %></span>
+          </label>
+        </div>
+      </div>
+
+      <p class="cmp-help">
+        <%= lang === 'es'
+          ? 'En «mismo punto» se comparan los instantes de cruce (hasta ~1 s de hueco físico). En «distintos puntos» se comparan los tiempos de vuelta y se excluye la vuelta de salida.'
+          : 'In “same point” crossing instants are compared (up to ~1 s of physical gap). In “different points” lap times are compared and the out lap is excluded.' %>
+      </p>
+
+      <div style="display:flex;align-items:center;gap:14px;margin-top:16px;flex-wrap:wrap">
+        <button type="button" id="cmpRun" class="vt-btn vt-btn--primary">
+          <%= lang === 'es' ? 'Comparar' : 'Compare' %>
+        </button>
+        <button type="button" id="cmpCsv" class="vt-btn vt-btn--ghost" style="display:none">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          <%= lang === 'es' ? 'Exportar CSV' : 'Export CSV' %>
+        </button>
+        <span id="cmpMsg" class="link-msg" style="display:none"></span>
+      </div>
+    </div>
+
+    <!-- ── Resultado ───────────────────────────────────────────────── -->
+    <div id="cmpResult" style="display:none">
+
+      <!-- Agregado / veredicto -->
+      <div class="vt-panel cmp-verdict" style="margin-bottom:18px">
+        <div class="cmp-verdict__head">
+          <div class="vt-sec-lbl" style="margin:0"><%= lang === 'es' ? 'Veredicto de BART' : 'BART verdict' %></div>
+          <span id="cmpVerdictBadge" class="vt-badge"><span class="vt-badge__d"></span><span></span></span>
+        </div>
+        <div class="cmp-meta is-mono" id="cmpMetaLine"></div>
+        <div class="cmp-stats" id="cmpAggStats"></div>
+      </div>
+
+      <!-- Tabla por carril -->
+      <div class="vt-table-card">
+        <table class="vt-table cmp-table">
+          <thead>
+            <tr>
+              <th><%= lang === 'es' ? 'Carril' : 'Lane' %></th>
+              <th><%= lang === 'es' ? 'Equipo' : 'Team' %></th>
+              <th class="is-num">DS</th>
+              <th class="is-num">BART</th>
+              <th class="is-num"><%= lang === 'es' ? 'Offset' : 'Offset' %></th>
+              <th class="is-num" title="<%= lang === 'es' ? 'BART se comió' : 'BART missed' %>">✗</th>
+              <th class="is-num" title="<%= lang === 'es' ? 'Fantasmas' : 'Phantoms' %>">👻</th>
+              <th class="is-num" title="<%= lang === 'es' ? 'Residual medio' : 'Mean residual' %>">|res| μ</th>
+              <th class="is-num" title="<%= lang === 'es' ? 'Residual máx' : 'Max residual' %>">|res| máx</th>
+              <th><%= lang === 'es' ? 'Modo' : 'Mode' %></th>
+            </tr>
+          </thead>
+          <tbody id="cmpLaneBody"></tbody>
+        </table>
+      </div>
+
+    </div>
+
+    <div id="cmpEmpty" class="vt-empty" style="display:none">
+      <div class="vt-empty__t"><%= lang === 'es' ? 'Sin datos' : 'No data' %></div>
+      <p style="color:var(--vt-mute)"><%= lang === 'es' ? 'Elige carrera y manga, y pulsa Comparar.' : 'Pick a race and heat, then press Compare.' %></p>
+    </div>
+
+  </div>
+</div>
+
+<style>
+  .link-msg { font-size: 13.5px; font-weight: 600; padding: 6px 0; }
+  .link-msg.is-ok   { color: #8ee6ab; }
+  .link-msg.is-warn { color: #f3d579; }
+  .link-msg.is-bad  { color: #ff8e95; }
+  .link-msg.is-mute { color: var(--vt-mute); font-weight: 500; }
+
+  .cmp-note {
+    display: flex; align-items: flex-start; gap: 9px;
+    color: #f3d579; background: rgba(250,204,21,.08);
+    border: 1px solid rgba(250,204,21,.22); border-radius: 11px;
+    padding: 11px 14px; font-size: 13.5px; line-height: 1.45; max-width: 82ch;
+  }
+  .cmp-note svg { margin-top: 2px; color: var(--vt-amber); }
+
+  .cmp-controls {
+    display: grid; gap: 14px 16px;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    align-items: end;
+  }
+  .cmp-field--check { display: flex; align-items: center; min-height: 46px; }
+  .cmp-check { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; color: var(--vt-text); font-size: 14px; margin: 0; }
+  .cmp-check input { width: 17px; height: 17px; accent-color: var(--vt-red); }
+  .cmp-help { color: var(--vt-mute); font-size: 12.8px; line-height: 1.5; margin: 14px 0 0; max-width: 80ch; }
+
+  .cmp-verdict__head { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 12px; flex-wrap: wrap; }
+  .cmp-meta { color: var(--vt-mute); font-size: 12.5px; margin-bottom: 16px; }
+  .cmp-stats { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+  .cmp-stat {
+    background: var(--vt-surface); border: 1px solid var(--vt-border);
+    border-radius: 11px; padding: 12px 14px;
+  }
+  .cmp-stat__k { color: var(--vt-mute); font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+  .cmp-stat__v { font-family: 'IBM Plex Mono', monospace; font-size: 22px; font-weight: 600; margin-top: 5px; color: var(--vt-text); }
+  .cmp-stat__v small { font-size: 12px; color: var(--vt-mute); font-weight: 500; margin-left: 3px; }
+  .cmp-stat.is-ok   .cmp-stat__v { color: #8ee6ab; }
+  .cmp-stat.is-warn .cmp-stat__v { color: #f3d579; }
+  .cmp-stat.is-bad  .cmp-stat__v { color: #ff8e95; }
+
+  .cmp-table tbody tr.cmp-lane-row { cursor: pointer; }
+  .cmp-table tbody tr.cmp-lane-row.is-open { background: rgba(255,255,255,.03); }
+  .cmp-lane-row td.is-num { font-family: 'IBM Plex Mono', monospace; font-size: 13.5px; }
+  .cmp-lane-row .cmp-chev { display: inline-block; width: 0; height: 0; margin-right: 8px; border-left: 5px solid var(--vt-mute); border-top: 4px solid transparent; border-bottom: 4px solid transparent; transition: transform .12s; vertical-align: middle; }
+  .cmp-lane-row.is-open .cmp-chev { transform: rotate(90deg); }
+  .cmp-mini-badge { display: inline-block; padding: 1px 7px; border-radius: 6px; font-size: 11px; font-weight: 600; font-family: 'IBM Plex Mono', monospace; }
+  .cmp-mini-badge.is-same { color: #8ee6ab; background: rgba(34,197,94,.12); }
+  .cmp-mini-badge.is-diff { color: #c9a6f5; background: rgba(168,85,247,.12); }
+  .cmp-num-warn { color: #f3d579; }
+  .cmp-num-bad  { color: #ff8e95; }
+
+  .cmp-detail-cell { padding: 0 !important; background: var(--vt-panel-2); }
+  .cmp-detail { padding: 16px 18px; }
+  .cmp-detail__sub { font-family: 'Saira Condensed', sans-serif; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--vt-mute); font-size: 12.5px; margin: 0 0 8px; }
+  .cmp-sub-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .cmp-sub-table th { text-align: right; padding: 5px 10px; color: var(--vt-mute-2); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--vt-border); }
+  .cmp-sub-table th:first-child { text-align: left; }
+  .cmp-sub-table td { text-align: right; padding: 5px 10px; font-family: 'IBM Plex Mono', monospace; border-bottom: 1px solid var(--vt-border); color: var(--vt-text); }
+  .cmp-sub-table td:first-child { text-align: left; color: var(--vt-mute); }
+  .cmp-sub-table tr:last-child td { border-bottom: none; }
+  .cmp-flag-ok { color: #8ee6ab; }
+  .cmp-flag-jitter { color: #f3d579; }
+  .cmp-ghost { color: #c9a6f5; }
+  .cmp-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+  .cmp-list li { font-family: 'IBM Plex Mono', monospace; font-size: 12px; padding: 3px 9px; border-radius: 7px; background: var(--vt-surface); border: 1px solid var(--vt-border); color: var(--vt-mute); }
+  .cmp-list.is-miss li { color: #ff8e95; border-color: rgba(239,70,81,.25); }
+  .cmp-list.is-phantom li { color: #c9a6f5; border-color: rgba(168,85,247,.25); }
+  .cmp-detail__block { margin-top: 16px; }
+  .cmp-detail__block:first-child { margin-top: 0; }
+</style>
+
+<script>
+(function () {
+  var LANG   = <%- JSON.stringify(lang) %>;
+  var DEFAULT_PEER = <%- JSON.stringify(_cfg.peerUrl || '') %>;
+  var es = LANG === 'es';
+
+  var T = es ? {
+    loading: 'Cargando…', comparing: 'Comparando…',
+    noRaces: 'No hay carreras con clave de sincronización.',
+    pickRace: 'Elige una carrera', pickManga: 'Elige una manga',
+    needPeer: 'Escribe la URL del otro sistema.',
+    needManga: 'Elige carrera y manga.',
+    netErr: 'No se pudo conectar. Revisa la red y la dirección.',
+    peerErr: 'No se pudo obtener datos del otro sistema (502).',
+    done: function (n) { return '✓ ' + n + (n === 1 ? ' carril comparado.' : ' carriles comparados.'); },
+    dsRef: 'DS (referencia)', bart: 'BART',
+    crossDs: 'Cruces DS', crossBart: 'Cruces BART', matched: 'Emparejados',
+    misses: 'BART se comió', phantoms: 'Fantasmas', missRate: '% perdidas',
+    resMean: '|resid| medio', resMax: '|resid| máx', jitter: 'Marcadas por jitter',
+    lane: 'Carril', vGood: 'BART fiable', vWarn: 'Revisar BART', vBad: 'BART poco fiable',
+    matchedLaps: 'Vueltas emparejadas', missList: 'BART perdió (✗)', phantomList: 'Fantasmas (👻)',
+    none: 'ninguna', outLap: 'salida excluida',
+    hDsE: 'DS instante', hDsL: 'DS vuelta', hBartE: 'BART instante', hBartL: 'BART vuelta', hRes: 'Residual', hDlap: 'Δvuelta',
+    csvNoData: 'Nada que exportar.',
+  } : {
+    loading: 'Loading…', comparing: 'Comparing…',
+    noRaces: 'No races with a sync key.',
+    pickRace: 'Pick a race', pickManga: 'Pick a heat',
+    needPeer: 'Enter the other system URL.',
+    needManga: 'Pick a race and heat.',
+    netErr: 'Could not connect. Check the network and address.',
+    peerErr: 'Could not fetch data from the other system (502).',
+    done: function (n) { return '✓ ' + n + (n === 1 ? ' lane compared.' : ' lanes compared.'); },
+    dsRef: 'DS (reference)', bart: 'BART',
+    crossDs: 'DS crossings', crossBart: 'BART crossings', matched: 'Matched',
+    misses: 'BART missed', phantoms: 'Phantoms', missRate: 'Miss %',
+    resMean: 'Mean |resid|', resMax: 'Max |resid|', jitter: 'Jitter flagged',
+    lane: 'Lane', vGood: 'BART reliable', vWarn: 'Review BART', vBad: 'BART unreliable',
+    matchedLaps: 'Matched laps', missList: 'BART missed (✗)', phantomList: 'Phantoms (👻)',
+    none: 'none', outLap: 'out lap excluded',
+    hDsE: 'DS instant', hDsL: 'DS lap', hBartE: 'BART instant', hBartL: 'BART lap', hRes: 'Residual', hDlap: 'Δlap',
+    csvNoData: 'Nothing to export.',
+  };
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+    });
+  }
+  function pad(n, l) { n = String(n); while (n.length < l) n = '0' + n; return n; }
+  // Reloj mm:ss,mmm (o h:mm:ss,mmm) para instantes.
+  function fmtClock(ms) {
+    if (ms == null || isNaN(ms)) return '—';
+    var t = Math.round(ms), neg = t < 0; if (neg) t = -t;
+    var h = Math.floor(t / 3600000); t -= h * 3600000;
+    var m = Math.floor(t / 60000);   t -= m * 60000;
+    var s = Math.floor(t / 1000);    var mm = t - s * 1000;
+    return (neg ? '-' : '') + (h > 0 ? h + ':' + pad(m, 2) : m) + ':' + pad(s, 2) + ',' + pad(mm, 3);
+  }
+  // Tiempo de vuelta en segundos con 3 decimales, coma decimal.
+  function fmtLap(ms) {
+    if (ms == null || isNaN(ms)) return '—';
+    return (ms / 1000).toFixed(3).replace('.', ',');
+  }
+  // Residual/offset en ms enteros, con signo.
+  function fmtMs(ms, signed) {
+    if (ms == null || isNaN(ms)) return '—';
+    var v = Math.round(ms);
+    return (signed && v > 0 ? '+' : '') + v;
+  }
+
+  var elPeer  = document.getElementById('cmpPeer');
+  var elRace  = document.getElementById('cmpRace');
+  var elManga = document.getElementById('cmpManga');
+  var elMode  = document.getElementById('cmpMode');
+  var elTol   = document.getElementById('cmpTol');
+  var elSwap  = document.getElementById('cmpSwap');
+  var elRun   = document.getElementById('cmpRun');
+  var elCsv   = document.getElementById('cmpCsv');
+  var elMsg   = document.getElementById('cmpMsg');
+  var elResult= document.getElementById('cmpResult');
+  var elEmpty = document.getElementById('cmpEmpty');
+  var elLaneBody = document.getElementById('cmpLaneBody');
+
+  var lastData = null;   // último JSON de /link/compare/data (para CSV)
+
+  function setMsg(text, tone) {
+    elMsg.className = 'link-msg' + (tone ? ' is-' + tone : '');
+    elMsg.textContent = text || '';
+    elMsg.style.display = text ? '' : 'none';
+  }
+
+  // ── Cargar carreras (solo con raceKey) ─────────────────────────────
+  function loadRaces() {
+    fetch('/link/races')
+      .then(function (r) { return r.json(); })
+      .then(function (b) {
+        var races = (b.races || []).filter(function (r) { return r.raceKey; });
+        elRace.innerHTML = '';
+        var opt0 = document.createElement('option');
+        opt0.value = ''; opt0.textContent = races.length ? T.pickRace : T.noRaces;
+        elRace.appendChild(opt0);
+        races.forEach(function (r) {
+          var o = document.createElement('option');
+          o.value = r.raceKey; o.textContent = r.name;
+          o.setAttribute('data-name', r.name || '');
+          elRace.appendChild(o);
+        });
+      })
+      .catch(function () {
+        elRace.innerHTML = '<option value="">' + esc(T.netErr) + '</option>';
+      });
+  }
+
+  // ── Cargar mangas de la carrera elegida ────────────────────────────
+  function loadMangas() {
+    var rk = elRace.value;
+    elManga.innerHTML = '';
+    if (!rk) {
+      elManga.disabled = true;
+      var o = document.createElement('option'); o.value = ''; o.textContent = T.pickRace;
+      elManga.appendChild(o); return;
+    }
+    elManga.disabled = true;
+    var loadingO = document.createElement('option'); loadingO.value = ''; loadingO.textContent = T.loading;
+    elManga.appendChild(loadingO);
+
+    fetch('/link/compare/mangas?raceKey=' + encodeURIComponent(rk))
+      .then(function (r) { return r.json(); })
+      .then(function (b) {
+        var mangas = b.mangas || [];
+        elManga.innerHTML = '';
+        var o0 = document.createElement('option'); o0.value = ''; o0.textContent = T.pickManga;
+        elManga.appendChild(o0);
+        mangas.forEach(function (m) {
+          var o = document.createElement('option');
+          o.value = m.tanda + ':' + m.manga;
+          o.textContent = (es ? 'Tanda ' : 'Round ') + m.tanda + ' · ' + (es ? 'Manga ' : 'Heat ') + m.manga +
+                          ' (' + (m.status || '—') + ', ' + m.laps + (es ? ' vueltas)' : ' laps)');
+          elManga.appendChild(o);
+        });
+        elManga.disabled = false;
+      })
+      .catch(function () {
+        elManga.innerHTML = '<option value="">' + esc(T.netErr) + '</option>';
+        elManga.disabled = true;
+      });
+  }
+
+  // ── Ejecutar comparación ───────────────────────────────────────────
+  function run() {
+    var rk = elRace.value;
+    var mv = elManga.value;
+    var peer = (elPeer.value || '').trim();
+    if (!peer)  { setMsg(T.needPeer, 'bad'); return; }
+    if (!rk || !mv) { setMsg(T.needManga, 'bad'); return; }
+    var parts = mv.split(':');
+    var tanda = parts[0], manga = parts[1];
+
+    var qs = '?raceKey=' + encodeURIComponent(rk) +
+             '&tanda=' + encodeURIComponent(tanda) +
+             '&manga=' + encodeURIComponent(manga) +
+             '&peer='  + encodeURIComponent(peer) +
+             '&mode='  + encodeURIComponent(elMode.value) +
+             '&tol='   + encodeURIComponent((elTol.value || '400').trim()) +
+             '&swap='  + (elSwap.checked ? '1' : '0');
+
+    elRun.disabled = true;
+    setMsg(T.comparing, 'mute');
+
+    fetch('/link/compare/data' + qs)
+      .then(function (res) { return res.json().then(function (b) { return { status: res.status, body: b }; }); })
+      .then(function (r) {
+        elRun.disabled = false;
+        if (r.status === 502) { setMsg((r.body && r.body.error) || T.peerErr, 'bad'); return; }
+        if (r.status !== 200 || !r.body || !r.body.aggregate) {
+          setMsg((r.body && r.body.error) ? r.body.error : T.netErr, 'bad'); return;
+        }
+        lastData = r.body;
+        render(r.body);
+        setMsg(T.done(r.body.aggregate.lanes || 0), 'ok');
+      })
+      .catch(function () {
+        elRun.disabled = false;
+        setMsg(T.netErr, 'bad');
+      });
+  }
+
+  // ── Render agregado + tabla ────────────────────────────────────────
+  function toneMiss(rate)  { return rate < 0.02 ? 'ok' : rate < 0.06 ? 'warn' : 'bad'; }
+  function toneRes(ms, tol){ return ms < tol * 0.5 ? 'ok' : ms <= tol ? 'warn' : 'bad'; }
+
+  function statTile(k, v, unit, tone) {
+    return '<div class="cmp-stat' + (tone ? ' is-' + tone : '') + '">' +
+      '<div class="cmp-stat__k">' + esc(k) + '</div>' +
+      '<div class="cmp-stat__v">' + esc(v) + (unit ? '<small>' + esc(unit) + '</small>' : '') + '</div>' +
+    '</div>';
+  }
+
+  function render(data) {
+    var ag = data.aggregate;
+    var tol = parseInt((elTol.value || '400'), 10) || 400;
+    var missRate = ag.missRate || 0;
+
+    // Veredicto global
+    var vTone, vTxt;
+    var worst = Math.max(missRate >= 0.06 ? 2 : missRate >= 0.02 ? 1 : 0,
+                         ag.residualMaxMs > tol ? 2 : ag.residualMeanMs > tol * 0.5 ? 1 : 0);
+    if (worst >= 2) { vTone = 'is-bad';  vTxt = T.vBad; }
+    else if (worst === 1) { vTone = 'is-warn'; vTxt = T.vWarn; }
+    else { vTone = 'is-ok'; vTxt = T.vGood; }
+
+    var badge = document.getElementById('cmpVerdictBadge');
+    badge.className = 'vt-badge ' + vTone;
+    badge.innerHTML = '<span class="vt-badge__d"></span><span>' + esc(vTxt) + '</span>';
+
+    document.getElementById('cmpMetaLine').textContent =
+      (data.dsSource ? data.dsSource + ' · ' : '') +
+      T.dsRef + ' ↔ ' + T.bart + '  ·  ' +
+      (es ? 'Tanda ' : 'Round ') + data.tanda + ' · ' + (es ? 'Manga ' : 'Heat ') + data.manga +
+      '  ·  ' + (es ? 'tol ' : 'tol ') + tol + ' ms' +
+      (elSwap.checked ? '  ·  swap' : '');
+
+    var s = '';
+    s += statTile(T.crossDs, ag.totalDsCrossings, null, null);
+    s += statTile(T.crossBart, ag.totalBartCrossings, null, null);
+    s += statTile(T.matched, ag.totalMatched, null, null);
+    s += statTile(T.misses, ag.totalMisses, null, ag.totalMisses > 0 ? toneMiss(missRate) : 'ok');
+    s += statTile(T.phantoms, ag.totalPhantoms, null, ag.totalPhantoms > 0 ? 'warn' : 'ok');
+    s += statTile(T.missRate, (missRate * 100).toFixed(1).replace('.', ','), '%', toneMiss(missRate));
+    s += statTile(T.resMean, fmtMs(ag.residualMeanMs), 'ms', toneRes(ag.residualMeanMs || 0, tol));
+    s += statTile(T.resMax, fmtMs(ag.residualMaxMs), 'ms', toneRes(ag.residualMaxMs || 0, tol));
+    s += statTile(T.jitter, ag.jitterFlagged || 0, null, (ag.jitterFlagged || 0) > 0 ? 'warn' : 'ok');
+    document.getElementById('cmpAggStats').innerHTML = s;
+
+    // Tabla por carril
+    elLaneBody.innerHTML = '';
+    (data.perLane || []).forEach(function (ln, idx) {
+      var tr = document.createElement('tr');
+      tr.className = 'cmp-lane-row';
+      tr.setAttribute('data-idx', idx);
+      var modeCls = ln.mode === 'same' ? 'is-same' : 'is-diff';
+      var modeLbl = ln.mode === 'same' ? (es ? 'mismo' : 'same') : (es ? 'distinto' : 'diff');
+      var missCls = ln.missCount > 0 ? ' cmp-num-bad' : '';
+      var phCls   = ln.phantomCount > 0 ? ' cmp-num-warn' : '';
+      var rmaxCls = ln.residualMaxMs > tol ? ' cmp-num-bad' : (ln.residualMeanMs > tol * 0.5 ? ' cmp-num-warn' : '');
+      tr.innerHTML =
+        '<td class="is-name"><span class="cmp-chev"></span>' + esc(ln.lane) + '</td>' +
+        '<td>' + esc(ln.team || '—') + '</td>' +
+        '<td class="is-num">' + esc(ln.dsCount) + '</td>' +
+        '<td class="is-num">' + esc(ln.bartCount) + '</td>' +
+        '<td class="is-num">' + fmtMs(ln.offsetMs, true) + '</td>' +
+        '<td class="is-num' + missCls + '">' + esc(ln.missCount) + '</td>' +
+        '<td class="is-num' + phCls + '">' + esc(ln.phantomCount) + '</td>' +
+        '<td class="is-num">' + fmtMs(ln.residualMeanMs) + '</td>' +
+        '<td class="is-num' + rmaxCls + '">' + fmtMs(ln.residualMaxMs) + '</td>' +
+        '<td><span class="cmp-mini-badge ' + modeCls + '">' + esc(modeLbl) + '</span>' +
+          (ln.includeOutLap === false ? ' <span style="color:var(--vt-mute-2);font-size:11px">' + esc(T.outLap) + '</span>' : '') +
+        '</td>';
+      elLaneBody.appendChild(tr);
+
+      tr.addEventListener('click', function () { toggleLane(tr, ln); });
+    });
+
+    elEmpty.style.display = 'none';
+    elResult.style.display = '';
+    elCsv.style.display = (data.perLane && data.perLane.length) ? '' : 'none';
+  }
+
+  // ── Drill-down por carril ──────────────────────────────────────────
+  function toggleLane(tr, ln) {
+    var open = tr.classList.contains('is-open');
+    // cerrar cualquier detalle abierto de esta fila
+    var next = tr.nextSibling;
+    if (open) {
+      tr.classList.remove('is-open');
+      if (next && next.classList && next.classList.contains('cmp-detail-row')) next.parentNode.removeChild(next);
+      return;
+    }
+    tr.classList.add('is-open');
+    var dr = document.createElement('tr');
+    dr.className = 'cmp-detail-row';
+    var td = document.createElement('td');
+    td.className = 'cmp-detail-cell';
+    td.colSpan = 10;
+    td.innerHTML = buildDetail(ln);
+    dr.appendChild(td);
+    tr.parentNode.insertBefore(dr, tr.nextSibling);
+  }
+
+  function buildDetail(ln) {
+    var h = '<div class="cmp-detail">';
+
+    // Emparejados
+    h += '<div class="cmp-detail__block"><div class="cmp-detail__sub">' + esc(T.matchedLaps) +
+         ' (' + (ln.matched ? ln.matched.length : 0) + ')</div>';
+    if (ln.matched && ln.matched.length) {
+      h += '<table class="cmp-sub-table"><thead><tr>' +
+           '<th>#</th><th>' + esc(T.hDsE) + '</th><th>' + esc(T.hDsL) + '</th>' +
+           '<th>' + esc(T.hBartE) + '</th><th>' + esc(T.hBartL) + '</th>' +
+           '<th>' + esc(T.hRes) + '</th><th>' + esc(T.hDlap) + '</th><th></th></tr></thead><tbody>';
+      ln.matched.forEach(function (mm, i) {
+        var flag = mm.flag === 'jitter'
+          ? '<span class="cmp-flag-jitter" title="jitter">⚠</span>'
+          : '<span class="cmp-flag-ok">✓</span>';
+        var dsG   = mm.dsGhost   ? ' <span class="cmp-ghost" title="ghost">👻</span>' : '';
+        var bartG = mm.bartGhost ? ' <span class="cmp-ghost" title="ghost">👻</span>' : '';
+        h += '<tr>' +
+          '<td>' + (i + 1) + '</td>' +
+          '<td>' + fmtClock(mm.dsElapsedMs) + dsG + '</td>' +
+          '<td>' + fmtLap(mm.dsLapMs) + '</td>' +
+          '<td>' + fmtClock(mm.bartElapsedMs) + bartG + '</td>' +
+          '<td>' + fmtLap(mm.bartLapMs) + '</td>' +
+          '<td>' + fmtMs(mm.residualMs, true) + '</td>' +
+          '<td>' + fmtMs(mm.lapDeltaMs, true) + '</td>' +
+          '<td>' + flag + '</td>' +
+        '</tr>';
+      });
+      h += '</tbody></table>';
+    } else {
+      h += '<p style="color:var(--vt-mute-2);font-size:12.5px;margin:0">' + esc(T.none) + '</p>';
+    }
+    h += '</div>';
+
+    // Misses
+    h += '<div class="cmp-detail__block"><div class="cmp-detail__sub">' + esc(T.missList) +
+         ' (' + (ln.misses ? ln.misses.length : 0) + ')</div>';
+    if (ln.misses && ln.misses.length) {
+      h += '<ul class="cmp-list is-miss">';
+      ln.misses.forEach(function (x) {
+        h += '<li>' + fmtClock(x.elapsedMs) + ' · ' + fmtLap(x.lapMs) + 's' +
+             (x.isGhost ? ' 👻' : '') + '</li>';
+      });
+      h += '</ul>';
+    } else {
+      h += '<p style="color:var(--vt-mute-2);font-size:12.5px;margin:0">' + esc(T.none) + '</p>';
+    }
+    h += '</div>';
+
+    // Phantoms
+    h += '<div class="cmp-detail__block"><div class="cmp-detail__sub">' + esc(T.phantomList) +
+         ' (' + (ln.phantoms ? ln.phantoms.length : 0) + ')</div>';
+    if (ln.phantoms && ln.phantoms.length) {
+      h += '<ul class="cmp-list is-phantom">';
+      ln.phantoms.forEach(function (x) {
+        h += '<li>' + fmtClock(x.elapsedMs) + ' · ' + fmtLap(x.lapMs) + 's' +
+             (x.isGhost ? ' 👻' : '') + '</li>';
+      });
+      h += '</ul>';
+    } else {
+      h += '<p style="color:var(--vt-mute-2);font-size:12.5px;margin:0">' + esc(T.none) + '</p>';
+    }
+    h += '</div>';
+
+    h += '</div>';
+    return h;
+  }
+
+  // ── Exportar CSV (cliente) ─────────────────────────────────────────
+  function csvCell(v) {
+    if (v == null) return '';
+    var s = String(v);
+    return /[",;\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+  function exportCsv() {
+    if (!lastData || !lastData.perLane || !lastData.perLane.length) { setMsg(T.csvNoData, 'warn'); return; }
+    var rows = [];
+    rows.push(['lane','team','mode','type','idx','dsElapsedMs','dsLapMs','bartElapsedMs','bartLapMs','residualMs','lapDeltaMs','flag','dsGhost','bartGhost']);
+    lastData.perLane.forEach(function (ln) {
+      (ln.matched || []).forEach(function (mm, i) {
+        rows.push([ln.lane, ln.team || '', ln.mode, 'matched', i + 1,
+          mm.dsElapsedMs, mm.dsLapMs, mm.bartElapsedMs, mm.bartLapMs,
+          mm.residualMs, mm.lapDeltaMs, mm.flag, mm.dsGhost ? 1 : 0, mm.bartGhost ? 1 : 0]);
+      });
+      (ln.misses || []).forEach(function (x, i) {
+        rows.push([ln.lane, ln.team || '', ln.mode, 'miss', i + 1,
+          x.elapsedMs, x.lapMs, '', '', '', '', '', x.isGhost ? 1 : 0, '']);
+      });
+      (ln.phantoms || []).forEach(function (x, i) {
+        rows.push([ln.lane, ln.team || '', ln.mode, 'phantom', i + 1,
+          '', '', x.elapsedMs, x.lapMs, '', '', '', '', x.isGhost ? 1 : 0]);
+      });
+    });
+    var csv = rows.map(function (r) { return r.map(csvCell).join(';'); }).join('\r\n');
+    var blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    var name = 'compare_' + (lastData.raceKey || 'race').slice(0, 8) + '_t' + lastData.tanda + '_m' + lastData.manga + '.csv';
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  // ── Wire ───────────────────────────────────────────────────────────
+  if (!elPeer.value && DEFAULT_PEER) elPeer.value = DEFAULT_PEER;
+  elRace.addEventListener('change', loadMangas);
+  elRun.addEventListener('click', run);
+  elCsv.addEventListener('click', exportCsv);
+  loadRaces();
+})();
+</script>
+
+<%- include('../partials/footer') %>
