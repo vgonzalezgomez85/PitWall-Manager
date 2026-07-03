@@ -112,7 +112,7 @@
       <select id="lsCompare2" class="ls-select" title="<%= lang === 'es' ? 'Rival 2 (opcional)' : 'Rival 2 (optional)' %>">
         <option value=""><%= lang === 'es' ? '— y con… (opcional) —' : '— and with… (optional) —' %></option>
       </select>
-      <button class="ls-btn" id="lsAuto" type="button"><%= lang === 'es' ? 'Mi rival más cercano' : 'My closest rival' %></button>
+      <button class="ls-btn" id="lsAuto" type="button"><%= lang === 'es' ? 'Mis rivales cercanos (clasificación)' : 'My closest rivals (standings)' %></button>
     </div>
     <div class="ls-cmp" id="lsCmpBox" hidden>
       <div class="ls-cmp-table-wrap">
@@ -869,15 +869,31 @@
     if (!latestData || !myKey) return;
     const me = latestData.entities.find(e => e.key === myKey);
     if (!me) return;
-    // Más cercano = el de delante si lo hay, si no el de atrás → al Rival 1.
-    const ahead = latestData.entities.find(e => e.position === me.position - 1);
-    const behind = latestData.entities.find(e => e.position === me.position + 1);
-    const rival = ahead || behind;
-    if (rival) {
-      $('lsCompare1').value = rival.key;
-      localStorage.setItem('ls_cmp1_' + RACE_ID, rival.key);
-      renderComparison(latestData);
+    // Vecinos por CLASIFICACIÓN de la vista actual (manga o proyectada), NO por
+    // carril: el más cercano por arriba → Rival 1, el más cercano por abajo →
+    // Rival 2. Se ordena por racePosOf (la misma posición que se ve en pantalla).
+    const withPos = latestData.entities
+      .map(e => ({ e, p: racePosOf(latestData, e) }))
+      .filter(x => x.p != null)
+      .sort((a, b) => a.p - b.p);
+    const idx = withPos.findIndex(x => x.e.key === myKey);
+    if (idx === -1) return;
+    const ahead  = idx > 0                  ? withPos[idx - 1].e : null;
+    const behind = idx < withPos.length - 1 ? withPos[idx + 1].e : null;
+    const setSel = (id, lk, ent) => {
+      $(id).value = ent ? ent.key : '';
+      if (ent) localStorage.setItem(lk + RACE_ID, ent.key);
+      else localStorage.removeItem(lk + RACE_ID);
+    };
+    // Arriba→Rival 1, Abajo→Rival 2. Si solo hay uno (P1 o último), va a Rival 1.
+    if (ahead && behind) {
+      setSel('lsCompare1', 'ls_cmp1_', ahead);
+      setSel('lsCompare2', 'ls_cmp2_', behind);
+    } else {
+      setSel('lsCompare1', 'ls_cmp1_', ahead || behind);
+      setSel('lsCompare2', 'ls_cmp2_', null);
     }
+    renderComparison(latestData);
   });
 
   // ── Comparativa por carril ───────────────────────────────────────────────
