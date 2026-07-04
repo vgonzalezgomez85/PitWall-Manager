@@ -151,6 +151,9 @@
     }
     // Habla solo si la voz está activada (master). Pinta lo cantado.
     function say(text){ if (!S.enabled || !text) return; speak(text); showSung(text); }
+    // Aviso CRÍTICO: se dice y se muestra aunque la voz esté en "Sin voz" (mute).
+    // Para último minuto, últimos 30 s y vueltas ignoradas/asignadas.
+    function sayCritical(text){ if (!text) return; speak(text); showSung(text); }
 
     // Bucle silencioso: mantiene viva la sesión de audio (igual idea que la app).
     function startSilent(){
@@ -262,13 +265,15 @@
     }
 
     function tick(){
-      if (!S.enabled || myStatus !== 'my-turn') return;
+      if (myStatus !== 'my-turn') return;
       var remaining = (remAtSync != null) ? (remAtSync - (Date.now() - syncAt)) : null;
       if (remaining != null && mangaDurationMs > 0){
-        if (!firedHalf    && S.sayHalfManga  && remaining <= mangaDurationMs/2 && remaining > 60000){ firedHalf = true; say('Media manga'); }
-        if (!firedLastMin && S.sayLastMinute && remaining <= 60000 && remaining > 30000){ firedLastMin = true; say('Último minuto'); }
-        if (!firedLast30  && S.sayLast30s    && remaining <= 30000 && remaining > 0){ firedLast30 = true; say('Últimos treinta segundos'); }
+        if (!firedHalf    && S.enabled && S.sayHalfManga && remaining <= mangaDurationMs/2 && remaining > 60000){ firedHalf = true; say('Media manga'); }
+        // Críticos: suenan aunque la voz esté en "Sin voz".
+        if (!firedLastMin && S.sayLastMinute && remaining <= 60000 && remaining > 30000){ firedLastMin = true; sayCritical('Último minuto'); }
+        if (!firedLast30  && S.sayLast30s    && remaining <= 30000 && remaining > 0){ firedLast30 = true; sayCritical('Últimos treinta segundos'); }
       }
+      if (!S.enabled) return;   // el resto de avisos rutinarios sí respetan el mute
       var minute = Math.floor(Date.now()/1000/60);
       if (S.sayAveragesEveryMin > 0 && minute % S.sayAveragesEveryMin === 0 && lastAvgMin !== minute && myCtx.avgLapMs != null){
         lastAvgMin = minute; say('Media de carril ' + speakTime(myCtx.avgLapMs));
@@ -399,12 +404,12 @@
       // cuando está en pista (igual que el resto de avisos de voz).
       socket.on('lap:ghost', function(d){
         if (!d || !S.sayGhostEvents || myStatus !== 'my-turn' || myLane == null) return;
-        if (d.lane === myLane) say('Vuelta ignorada');
+        if (d.lane === myLane) sayCritical('Vuelta ignorada');
       });
       socket.on('lap:reassigned', function(d){
         if (!d || !S.sayGhostEvents || myStatus !== 'my-turn' || myLane == null) return;
-        if (d.fromLane === myLane) say('Vuelta ignorada');   // su cruce se ignoró (no era suyo)
-        if (d.toLane   === myLane) say('Vuelta asignada');   // recibió la vuelta por de-merge
+        if (d.fromLane === myLane) sayCritical('Vuelta ignorada');   // su cruce se ignoró (no era suyo)
+        if (d.toLane   === myLane) sayCritical('Vuelta asignada');   // recibió la vuelta por de-merge
       });
       socket.on('manga:started', function(){ resetManga(); prevMyLane = null; try { socket.emit('standings:request'); } catch(e){} scheduleRefresh(); });
       ['manga:stopped','race_finished','race:finished'].forEach(function(ev){
