@@ -545,6 +545,14 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
                  const laneMap = new Map((r.perLane||[]).map(pl => [pl.lane, pl]));
                  const startKey = `${r.entity_type}_${r.entity_id}`;
                  const startLane = (startLaneByEntity || {})[startKey];
+                 // Carril donde hizo su VR personal (mejor vuelta) y carril de su
+                 // mejor media (menor media por carril). Se muestran en la columna
+                 // de totales, entre paréntesis, junto a la VR y a la media.
+                 const bestLapLane = r.best_lap_ms != null
+                   ? ((r.perLane||[]).find(pl => pl.best_ms === r.best_lap_ms) || {}).lane
+                   : null;
+                 let bestAvgLane = null, bestAvgMs = Infinity;
+                 (r.perLane||[]).forEach(pl => { if (pl.avg_ms != null && pl.avg_ms < bestAvgMs) { bestAvgMs = pl.avg_ms; bestAvgLane = pl.lane; } });
             %>
               <!-- Entity header row -->
               <tr class="matrix-entity <%= i < 3 ? 'top-' + (i+1) : '' %>">
@@ -589,7 +597,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
               <!-- Fastest lap row -->
               <tr class="matrix-stat matrix-stat--best">
                 <td class="matrix-stat__label"><%= lang === 'es' ? 'Rápida' : 'Fast' %></td>
-                <td class="matrix-stat__total"><%= fmtSec(r.best_lap_ms) %></td>
+                <td class="matrix-stat__total"><%= fmtSec(r.best_lap_ms) %><% if (bestLapLane) { %><span class="lane-rank lane-rank--top" title="<%= lang === 'es' ? 'Carril de la vuelta rápida' : 'Fast lap lane' %>">(<%= bestLapLane %>)</span><% } %></td>
                 <% if (perOcc) { %>
                   <% occColumns.forEach(col => {
                        const c = (r.occByKey || {})[col.key];
@@ -622,7 +630,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
               <!-- Average row -->
               <tr class="matrix-stat matrix-stat--avg">
                 <td class="matrix-stat__label"><%= lang === 'es' ? 'Media' : 'Avg' %></td>
-                <td class="matrix-stat__total"><%= fmtSec(Math.round(r.avg_lap_ms)) %></td>
+                <td class="matrix-stat__total"><%= fmtSec(Math.round(r.avg_lap_ms)) %><% if (bestAvgLane) { %><span class="lane-rank" title="<%= lang === 'es' ? 'Carril de su mejor media' : 'Best average lane' %>">(<%= bestAvgLane %>)</span><% } %></td>
                 <% if (perOcc) { %>
                   <% occColumns.forEach(col => {
                        const c = (r.occByKey || {})[col.key];
