@@ -210,6 +210,26 @@ class Lap {
     db.prepare('DELETE FROM laps WHERE manga_id = ?').run(mangaId);
   }
 
+  // Editar manualmente el tiempo de una vuelta. Además de cambiar lap_time_ms,
+  // desplaza el reloj (elapsed_ms) de esta vuelta y de todas las posteriores del
+  // MISMO carril por la diferencia, para que la columna "@" siga siendo coherente
+  // (el reloj es acumulativo). No toca los flags (exit/ghost/pit): es un override
+  // manual del tiempo, no una reclasificación.
+  static updateTime(id, newMs) {
+    newMs = Math.round(newMs);
+    if (!newMs || newMs <= 0) return;
+    const lap = db.prepare('SELECT id, manga_id, lane, lap_time_ms, elapsed_ms FROM laps WHERE id = ?').get(id);
+    if (!lap) return;
+    const delta = newMs - lap.lap_time_ms;
+    const tx = db.transaction(() => {
+      // Desplaza el reloj de esta vuelta y las siguientes del carril.
+      db.prepare('UPDATE laps SET elapsed_ms = elapsed_ms + ? WHERE manga_id = ? AND lane = ? AND elapsed_ms >= ?')
+        .run(delta, lap.manga_id, lap.lane, lap.elapsed_ms);
+      db.prepare('UPDATE laps SET lap_time_ms = ? WHERE id = ?').run(newMs, id);
+    });
+    tx();
+  }
+
   static markGhost(id) {
     db.prepare('UPDATE laps SET is_ghost = 1 WHERE id = ?').run(id);
   }
