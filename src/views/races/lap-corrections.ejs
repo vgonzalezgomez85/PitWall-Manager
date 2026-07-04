@@ -693,7 +693,9 @@ document.querySelectorAll('.lc-lane').forEach(el => {
 /* Editar tiempo (lápiz + campo inline) */
 .lc-edit { display: inline-flex; align-items: center; gap: 4px; }
 .lc-edit-toggle.is-active { background: var(--vt-purple); color: #fff; box-shadow: none; }
-.lc-edit-fields { display: inline-flex; align-items: center; gap: 4px; }
+/* Solo visible cuando NO está oculto: si no, el display explícito anularía el
+   atributo [hidden] y el campo saldría siempre (pisando la Δ ant.). */
+.lc-edit-fields:not([hidden]) { display: inline-flex; align-items: center; gap: 4px; }
 .lc-edit-input {
   background: var(--vt-surface); color: var(--vt-text);
   border: 1px solid var(--vt-purple); border-radius: 7px;
