@@ -929,22 +929,6 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
       </div>
 
       <div class="adv-panels" id="advPanels"></div>
-
-      <div class="adv-section" id="advCompareSection" hidden>
-        <h3 style="color:#e6edf3; margin:1.5rem 0 .8rem"><%= lang === 'es' ? 'Comparativa head-to-head' : 'Head-to-head' %></h3>
-        <table class="adv-compare-table" id="advCompareTable">
-          <thead>
-            <tr>
-              <th></th>
-              <th id="advCompA"></th>
-              <th></th>
-              <th id="advCompB"></th>
-              <th><%= lang === 'es' ? 'Diferencia' : 'Difference' %></th>
-            </tr>
-          </thead>
-          <tbody id="advCompareBody"></tbody>
-        </table>
-      </div>
     </div>
 
     <style>
@@ -967,6 +951,14 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
       .adv-compare-table th { color:#8b949e; font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; background:#000000 }
       .adv-diff--better { color:#3fb950; font-weight:700 }
       .adv-diff--worse  { color:#f85149; font-weight:700 }
+      /* Tarjetas en modo comparación: valor A (dorado) vs valor B (azul) + Δ */
+      .adv-card__cmp { display:flex; align-items:baseline; gap:.45rem; margin-top:.2rem; font-family:'Share Tech Mono', monospace; font-weight:700; font-size:1.2rem; flex-wrap:wrap }
+      .adv-cmp-a { color:#f6c90e }
+      .adv-cmp-b { color:#58a6ff }
+      .adv-cmp-sep { color:#6e7681; font-size:.7rem; font-weight:400 }
+      .adv-card__diff { font-family:'Share Tech Mono', monospace; font-size:.82rem; margin-top:.25rem; color:#8b949e }
+      .adv-card__diff.adv-diff--better { color:#3fb950 }
+      .adv-card__diff.adv-diff--worse  { color:#f85149 }
     </style>
 
     <script id="advancedStatsData" type="application/json"><%- JSON.stringify(advancedStats || []) %></script>
@@ -978,7 +970,6 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
         const selCompare = document.getElementById('advCompare');
         const cbOutliers = document.getElementById('advIncludeOutliers');
         const panels     = document.getElementById('advPanels');
-        const cmpSection = document.getElementById('advCompareSection');
         let includeOutliers = false;
 
         // Populate selects
@@ -996,42 +987,41 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
           return e[key];
         }
 
-        function renderEntity(e) {
-          const avg   = getStat(e, 'avg');
-          const delta = getStat(e, 'delta');
-          panels.innerHTML = `
+        // Tarjeta de una sola métrica en modo COMPARACIÓN: valor de A (dorado) vs
+        // valor de B (azul) y la Δ coloreada desde la óptica de A (verde = A mejor).
+        // cmp: 'higher' (más es mejor), 'lower'/'lowerMs' (menos es mejor).
+        function cmpCard(label, aDisp, bDisp, cmp, aNum, bNum) {
+          const an = aNum != null ? aNum : (typeof aDisp === 'number' ? aDisp : null);
+          const bn = bNum != null ? bNum : (typeof bDisp === 'number' ? bDisp : null);
+          let cls = '', badge = '—';
+          if (an != null && bn != null) {
+            const d = an - bn;
+            let diff;
+            if (cmp === 'lowerMs') { diff = (d > 0 ? '+' : '') + (d/1000).toFixed(2).replace('.',',') + 's'; cls = d < 0 ? 'adv-diff--better' : (d > 0 ? 'adv-diff--worse' : ''); }
+            else { diff = (d > 0 ? '+' : '') + d; if (cmp === 'higher') cls = d > 0 ? 'adv-diff--better' : (d < 0 ? 'adv-diff--worse' : ''); else cls = d < 0 ? 'adv-diff--better' : (d > 0 ? 'adv-diff--worse' : ''); }
+            badge = 'Δ ' + diff;
+          }
+          return `
             <div class="adv-card">
-              <div class="adv-card__label">Total vueltas</div>
-              <div class="adv-card__big">${e.totalLaps}</div>
-              <div class="adv-card__hint">${e.cleanLaps} limpias</div>
-            </div>
-            <div class="adv-card">
-              <div class="adv-card__label">Mejor vuelta</div>
-              <div class="adv-card__big">${fmtMs(e.bestMs)}</div>
-            </div>
-            <div class="adv-card">
-              <div class="adv-card__label">Media ${includeOutliers ? '(con salidas)' : 'limpia'}</div>
-              <div class="adv-card__big">${fmtMs(avg)}</div>
-            </div>
-            <div class="adv-card">
-              <div class="adv-card__label">Δ consistencia</div>
-              <div class="adv-card__big">${delta != null ? '+' + fmtSec(delta) : '—'}</div>
-              <div class="adv-card__hint">avg − best</div>
-            </div>
-            <div class="adv-card">
-              <div class="adv-card__label">Salidas · pit-stops</div>
-              <div class="adv-card__big">${e.exitCount} · ${e.pitStopCount}</div>
-            </div>
-            <div class="adv-card">
-              <div class="adv-card__label">Tiempo perdido</div>
-              <div class="adv-card__big">${fmtSec(e.lostMs)}</div>
-              <div class="adv-card__hint">≈ ${e.lostLapsEquiv} vueltas</div>
-            </div>
+              <div class="adv-card__label">${label}</div>
+              <div class="adv-card__cmp">
+                <span class="adv-cmp-a">${aDisp}</span>
+                <span class="adv-cmp-sep">vs</span>
+                <span class="adv-cmp-b">${bDisp}</span>
+              </div>
+              <div class="adv-card__diff ${cls}">${badge}</div>
+            </div>`;
+        }
+
+        // Tarjeta ancha con el gráfico de evolución por carril + mini-tarjetas
+        // (entidad A; el gráfico ya superpone A y B).
+        function wideCard(a) {
+          return `
             <div class="adv-card adv-card--wide">
               <div class="adv-card__label">Evolución por carril</div>
               <div class="adv-manga-chart"><canvas id="advMangaChart"></canvas></div>
               <div class="adv-mangas">
-                ${(e.perLane || []).map(p => `
+                ${(a.perLane || []).map(p => `
                   <div class="adv-manga">
                     <div class="adv-manga__lbl">Pista ${p.lane}</div>
                     <div class="adv-manga__val">${fmtMs(includeOutliers ? p.avgAll : p.avgClean)}</div>
@@ -1039,38 +1029,58 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
                   </div>
                 `).join('')}
               </div>
-            </div>
-          `;
+            </div>`;
         }
 
-        function renderCompare(a, b) {
-          if (!b) { cmpSection.hidden = true; return; }
-          cmpSection.hidden = false;
-          document.getElementById('advCompA').textContent = a.entityName;
-          document.getElementById('advCompB').textContent = b.entityName;
-          const rows = [
-            ['Total vueltas',         a.totalLaps,             b.totalLaps,             'higher'],
-            ['Mejor vuelta',          fmtMs(a.bestMs),         fmtMs(b.bestMs),         'lowerMs', a.bestMs, b.bestMs],
-            ['Media',                 fmtMs(getStat(a,'avg')), fmtMs(getStat(b,'avg')), 'lowerMs', getStat(a,'avg'), getStat(b,'avg')],
-            ['Δ consistencia',        fmtSec(getStat(a,'delta')), fmtSec(getStat(b,'delta')), 'lowerMs', getStat(a,'delta'), getStat(b,'delta')],
-            ['Salidas',               a.exitCount,             b.exitCount,             'lower'],
-            ['Pit-stops',             a.pitStopCount,          b.pitStopCount,          'lower'],
-            ['Tiempo perdido',        fmtSec(a.lostMs),        fmtSec(b.lostMs),        'lowerMs', a.lostMs, b.lostMs],
-          ];
-          document.getElementById('advCompareBody').innerHTML = rows.map(r => {
-            const [label, va, vb, cmp, na, nb] = r;
-            const aN = na != null ? na : (typeof va === 'number' ? va : null);
-            const bN = nb != null ? nb : (typeof vb === 'number' ? vb : null);
-            let cls = '';
-            let diff = '';
-            if (aN != null && bN != null) {
-              const d = aN - bN;
-              if (cmp === 'higher')  { cls = d > 0 ? 'adv-diff--better' : (d < 0 ? 'adv-diff--worse' : ''); diff = (d > 0 ? '+' : '') + d; }
-              if (cmp === 'lower')   { cls = d < 0 ? 'adv-diff--better' : (d > 0 ? 'adv-diff--worse' : ''); diff = (d > 0 ? '+' : '') + d; }
-              if (cmp === 'lowerMs') { cls = d < 0 ? 'adv-diff--better' : (d > 0 ? 'adv-diff--worse' : ''); diff = (d > 0 ? '+' : '') + (d/1000).toFixed(2).replace('.',',') + 's'; }
-            }
-            return `<tr><td>${label}</td><td>${va}</td><td>vs</td><td>${vb}</td><td class="${cls}">${diff || '—'}</td></tr>`;
-          }).join('');
+        function renderEntity(a, b) {
+          const avg   = getStat(a, 'avg');
+          const delta = getStat(a, 'delta');
+          // Sin comparación: tarjetas de una sola entidad (número grande).
+          if (!b) {
+            panels.innerHTML = `
+              <div class="adv-card">
+                <div class="adv-card__label">Total vueltas</div>
+                <div class="adv-card__big">${a.totalLaps}</div>
+                <div class="adv-card__hint">${a.cleanLaps} limpias</div>
+              </div>
+              <div class="adv-card">
+                <div class="adv-card__label">Mejor vuelta</div>
+                <div class="adv-card__big">${fmtMs(a.bestMs)}</div>
+              </div>
+              <div class="adv-card">
+                <div class="adv-card__label">Media ${includeOutliers ? '(con salidas)' : 'limpia'}</div>
+                <div class="adv-card__big">${fmtMs(avg)}</div>
+              </div>
+              <div class="adv-card">
+                <div class="adv-card__label">Δ consistencia</div>
+                <div class="adv-card__big">${delta != null ? '+' + fmtSec(delta) : '—'}</div>
+                <div class="adv-card__hint">avg − best</div>
+              </div>
+              <div class="adv-card">
+                <div class="adv-card__label">Salidas · pit-stops</div>
+                <div class="adv-card__big">${a.exitCount} · ${a.pitStopCount}</div>
+              </div>
+              <div class="adv-card">
+                <div class="adv-card__label">Tiempo perdido</div>
+                <div class="adv-card__big">${fmtSec(a.lostMs)}</div>
+                <div class="adv-card__hint">≈ ${a.lostLapsEquiv} vueltas</div>
+              </div>
+              ${wideCard(a)}
+            `;
+            return;
+          }
+          // Con comparación: cada tarjeta enfrenta A (dorado) vs B (azul).
+          const avgB   = getStat(b, 'avg');
+          const deltaB = getStat(b, 'delta');
+          panels.innerHTML =
+            cmpCard('Total vueltas', a.totalLaps, b.totalLaps, 'higher', a.totalLaps, b.totalLaps) +
+            cmpCard('Mejor vuelta', fmtMs(a.bestMs), fmtMs(b.bestMs), 'lowerMs', a.bestMs, b.bestMs) +
+            cmpCard('Media ' + (includeOutliers ? '(con salidas)' : 'limpia'), fmtMs(avg), fmtMs(avgB), 'lowerMs', avg, avgB) +
+            cmpCard('Δ consistencia', delta != null ? '+' + fmtSec(delta) : '—', deltaB != null ? '+' + fmtSec(deltaB) : '—', 'lowerMs', delta, deltaB) +
+            cmpCard('Salidas', a.exitCount, b.exitCount, 'lower', a.exitCount, b.exitCount) +
+            cmpCard('Pit-stops', a.pitStopCount, b.pitStopCount, 'lower', a.pitStopCount, b.pitStopCount) +
+            cmpCard('Tiempo perdido', fmtSec(a.lostMs), fmtSec(b.lostMs), 'lowerMs', a.lostMs, b.lostMs) +
+            wideCard(a);
         }
 
         // Gráfico de evolución de la media POR CARRIL (entidad + comparada).
@@ -1119,8 +1129,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
         function update() {
           const a = data.find(e => e.key === selEntity.value);
           const b = data.find(e => e.key === selCompare.value);
-          if (a) renderEntity(a);
-          renderCompare(a, b);
+          if (a) renderEntity(a, b);
           if (a) drawMangaChart(a, b);
         }
 
