@@ -453,6 +453,10 @@ document.querySelectorAll('.lc-lane').forEach(el => {
     const opening = fields.hidden;
     fields.hidden = !opening;
     btn.classList.toggle('is-active', opening);
+    // Mientras se edita, colapsa las demás acciones de la fila para que el campo
+    // no desborde el ancho y no pise la columna Δ ant.
+    const actions = btn.closest('.lc-lap__actions');
+    if (actions) actions.classList.toggle('is-editing', opening);
     if (opening) { const inp = fields.querySelector('.lc-edit-input'); if (inp) { inp.focus(); inp.select(); } }
   });
   // Escape cierra el campo de edición sin guardar.
@@ -462,6 +466,7 @@ document.querySelectorAll('.lc-lane').forEach(el => {
     if (!inp) return;
     const fields = inp.closest('.lc-edit-fields'); if (fields) fields.hidden = true;
     const tog = inp.closest('.lc-edit')?.querySelector('.lc-edit-toggle'); if (tog) tog.classList.remove('is-active');
+    const actions = inp.closest('.lc-lap__actions'); if (actions) actions.classList.remove('is-editing');
   });
 })();
 </script>
@@ -692,6 +697,9 @@ document.querySelectorAll('.lc-lane').forEach(el => {
 
 /* Editar tiempo (lápiz + campo inline) */
 .lc-edit { display: inline-flex; align-items: center; gap: 4px; }
+/* Mientras se edita una fila, oculta el resto de acciones (mover/fp/borrar) para
+   que el campo quepa en la columna sin desbordar ni pisar la Δ ant. */
+.lc-lap__actions.is-editing > form:not(.lc-edit) { display: none; }
 .lc-edit-toggle.is-active { background: var(--vt-purple); color: #fff; box-shadow: none; }
 /* Solo visible cuando NO está oculto: si no, el display explícito anularía el
    atributo [hidden] y el campo saldría siempre (pisando la Δ ant.). */
