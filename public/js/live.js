@@ -1551,8 +1551,11 @@ function announce(text) {
       announceWarning(LANG === 'es' ? `Vuelta ignorada pista ${lane}` : `Lap ignored lane ${lane}`);
     });
 
-    // Ghost lap auto-reassigned to its real lane.
-    socket.on('lap:reassigned', ({ toLane }) => {
+    // Reasignación (de-merge): el cruce se IGNORA en el carril origen Y se ASIGNA
+    // al destino → se anuncian los dos (la "pareja"). Un "Vuelta ignorada" suelto
+    // (evento lap:ghost) es un cruce espurio que no se pudo asignar a nadie.
+    socket.on('lap:reassigned', ({ fromLane, toLane }) => {
+      if (fromLane != null) announceWarning(LANG === 'es' ? `Vuelta ignorada pista ${fromLane}` : `Lap ignored lane ${fromLane}`);
       announceWarning(LANG === 'es' ? `Vuelta asignada pista ${toLane}` : `Lap assigned to lane ${toLane}`);
     });
 
