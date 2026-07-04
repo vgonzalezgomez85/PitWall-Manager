@@ -104,6 +104,7 @@ class TimingServiceClass {
         // espuria. Cuenta para el total de vueltas, pero queda fuera de la
         // media (y por tanto de la proyección).
         firstRealLapDone: false,
+        resumeWarmup:  false,  // 1ª vuelta tras un resume: fuera de VR y de la media
         exitCount:     0,
         pitStopCount:  0,
         raceBestLapMs:    null,
@@ -677,6 +678,12 @@ class TimingServiceClass {
         }
       }
     }
+    // La 1ª vuelta tras el resume arranca desde parado + semáforo → su tiempo es
+    // un artefacto: se marca warmup para NO contar como vuelta rápida (VR) ni en
+    // la media (sí cuenta para el total). Aplica a cualquier fuente (DS/BART/sim).
+    for (const ld of Object.values(this.session.laneMap)) {
+      if (this.session.laneToCircuit[ld.lane] === ci) ld.resumeWarmup = true;
+    }
     // Inversión de control: reanudar el Master BART (no hay OP_RESUME → START).
     SerialService.sendResume(ci);
     this._scheduleCircuitAutoFinish(ci);
@@ -988,8 +995,12 @@ class TimingServiceClass {
     // Primera vuelta real de la manga: NO compite por mejor vuelta. Se marca
     // como warmup y se persiste con is_warmup=1 para que tampoco salga del DB
     // como best en mangas futuras.
-    const isWarmup = !ld.firstRealLapDone;
+    // warmup = vuelta de salida (1ª de la manga) O 1ª vuelta tras un resume: en
+    // ambos casos el tiempo es un artefacto (arranque desde parado) → fuera de VR
+    // y de la media. Se persiste is_warmup=1; sigue contando para el total.
+    const isWarmup = !ld.firstRealLapDone || ld.resumeWarmup;
     ld.firstRealLapDone = true;
+    ld.resumeWarmup = false;
     if (!isWarmup) {
       if (!ld.bestLapMs || lapTimeMs < ld.bestLapMs) ld.bestLapMs = lapTimeMs;
       if (!ld.raceBestLapMs || lapTimeMs < ld.raceBestLapMs) {
