@@ -234,6 +234,20 @@ class CircuitConnection {
   get path()   { return this._port?.path ?? null; }
   get rawLog() { return [...this._rawLog]; }
 
+  // Snapshot del contador de vueltas del DS-300 (B12) por carril GLOBAL
+  // (localLane + laneOffset). Es el nº de cruces que la caja ha contado en la
+  // manga en curso (se resetea en el GO / 0xA1). La reconciliación de cierre de
+  // manga lo compara con las vueltas persistidas para no perder el cruce que
+  // llega "en la bandera" (el frame de fin de manga se procesa µs antes que el
+  // último cruce y éste se descartaría por circuito ya 'finished').
+  getLapCounters() {
+    const out = {};
+    for (const [localLane, counter] of this._lastLapByLane) {
+      if (counter != null) out[localLane + this._laneOffset] = counter;
+    }
+    return out;
+  }
+
   _onData(chunk) {
     const now = _PERF_OFFSET + performance.now(); // float ms, ~0.01ms precision
 
@@ -843,6 +857,21 @@ class SerialServiceClass extends EventEmitter {
   get isBart()         { return this._connections.some(c => c && c.isBart); }
   get connectedPort()  { return this._connections[0]?.path ?? null; }
   get connectedPorts() { return this._connections.map(c => c.path).filter(Boolean); }
+
+  // Contador de vueltas del DS-300 (byte 12) por carril GLOBAL, agregando todos
+  // los circuitos DS. Solo lo pueblan las CircuitConnection reales (el BART se
+  // excluye por isBart). Lo usa la reconciliación de cierre de manga en
+  // TimingService para recuperar el cruce "en la bandera". La decisión de si la
+  // fuente es DS real (vs simulación) se toma en el llamante.
+  getDsLapCounters() {
+    const out = {};
+    for (const c of this._connections) {
+      if (c && !c.isBart && typeof c.getLapCounters === 'function') {
+        Object.assign(out, c.getLapCounters());
+      }
+    }
+    return out;
+  }
 
   // True if any connected DS-300 circuit is currently in 'running' state. Used
   // so free training can skip standby when entering while the DS is mid-manga.
