@@ -60,6 +60,9 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
 .matrix-entity .matrix-name { padding-top: .7rem; padding-bottom: .25rem; }
 .matrix-entity .matrix-total { font-size: 1.15rem; font-weight: 800; color: #58a6ff; }
 .matrix-entity .matrix-lane-laps { font-size: 1rem; font-weight: 700; color: #c9d1d9; }
+/* Posición por vueltas dentro del carril, entre paréntesis junto al nº de vueltas */
+.lane-rank { font-size: .62em; font-weight: 600; color: #8b949e; margin-left: 3px; font-variant-numeric: tabular-nums; }
+.lane-rank--top { color: #fbbf24; }
 .matrix-entity.top-1 .matrix-total { color: #fbbf24; }
 .matrix-entity.top-2 .matrix-total { color: #d1d5db; }
 .matrix-entity.top-3 .matrix-total { color: #d97706; }
@@ -190,6 +193,8 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
   .matrix-entity { background: #f6f6f6 !important; border-top: 2px solid #999; }
   .matrix-entity td { font-weight: 700; }
   .matrix-entity .matrix-total, .matrix-entity .matrix-lane-laps { color: #000 !important; }
+  .lane-rank { color: #666 !important; }
+  .lane-rank--top { color: #b45309 !important; }
   .matrix-entity.top-1 .matrix-total { color: #b45309 !important; }
   .matrix-stat { background: #fff !important; }
   .matrix-stat td { color: #000 !important; }
@@ -423,6 +428,39 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
           }));
         }
 
+        // ── Ranking por VUELTAS dentro de cada carril (columna) ──
+        // En cada pista, el que MÁS vueltas hizo es (1). A igualdad de vueltas se
+        // desempata por la MEDIA del carril (menor media = mejor posición). Solo
+        // comparten posición si empatan en vueltas Y media (prácticamente nunca).
+        // Se pinta entre paréntesis junto al nº de vueltas de cada piloto.
+        const keyOf = r => `${r.entity_type}_${r.entity_id}`;
+        function rankByLaps(entries) {
+          const m = {};
+          // "o mejor que e": más vueltas, o mismas vueltas con mejor (menor) media.
+          const better = (o, e) => o.laps > e.laps
+            || (o.laps === e.laps && o.avg != null && (e.avg == null || o.avg < e.avg));
+          entries.forEach(e => { m[e.key] = 1 + entries.filter(o => better(o, e)).length; });
+          return m;
+        }
+        const laneLapRank = {};
+        orderedLanes.forEach(lane => {
+          const entries = byTotalM
+            .map(r => { const pl = (r.perLane || []).find(p => p.lane === lane);
+                        return pl && pl.laps != null ? { key: keyOf(r), laps: pl.laps, avg: pl.avg_ms } : null; })
+            .filter(Boolean);
+          laneLapRank[lane] = rankByLaps(entries);
+        });
+        const occLapRank = {};
+        if (perOcc) {
+          occColumns.forEach(col => {
+            const entries = byTotalM
+              .map(r => { const c = (r.occByKey || {})[col.key];
+                          return c && c.laps != null ? { key: keyOf(r), laps: c.laps, avg: c.avg_ms } : null; })
+              .filter(Boolean);
+            occLapRank[col.key] = rankByLaps(entries);
+          });
+        }
+
         function fmtSec(ms) {
           if (ms == null) return '—';
           return (ms / 1000).toFixed(3).replace('.', ',');
@@ -531,7 +569,8 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
                        const groupStart = col.occ === 1;
                   %>
                     <td class="matrix-lane-cell matrix-lane-laps <%= groupStart ? 'matrix-occ--group-start' : '' %>">
-                      <%= c ? c.laps : '—' %>
+                      <% const oRank = (c && c.laps != null && occLapRank[col.key]) ? occLapRank[col.key][startKey] : null; %>
+                      <%= c ? c.laps : '—' %><% if (oRank) { %><span class="lane-rank <%= oRank === 1 ? 'lane-rank--top' : '' %>">(<%= oRank %>)</span><% } %>
                     </td>
                   <% }) %>
                 <% } else { %>
@@ -540,7 +579,8 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
                        const isStart = lane === startLane;
                   %>
                     <td class="matrix-lane-cell matrix-lane-laps <%= isStart ? 'matrix-lane-cell--start' : '' %>">
-                      <%= pl ? pl.laps : '—' %>
+                      <% const lRank = (pl && pl.laps != null && laneLapRank[lane]) ? laneLapRank[lane][startKey] : null; %>
+                      <%= pl ? pl.laps : '—' %><% if (lRank) { %><span class="lane-rank <%= lRank === 1 ? 'lane-rank--top' : '' %>">(<%= lRank %>)</span><% } %>
                     </td>
                   <% }) %>
                 <% } %>
