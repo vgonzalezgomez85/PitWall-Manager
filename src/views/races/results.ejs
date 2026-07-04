@@ -631,7 +631,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
 
               <!-- Average row -->
               <tr class="matrix-stat matrix-stat--avg">
-                <td class="matrix-stat__label"><%= lang === 'es' ? 'Media' : 'Avg' %></td>
+                <td class="matrix-stat__label"><%= lang === 'es' ? 'Media gen / Mejor med' : 'Avg / Best avg' %></td>
                 <td class="matrix-stat__total"><%= fmtSec(Math.round(r.avg_lap_ms)) %><% if (bestAvgLane) { %><span class="stat-best-lane" title="<%= lang === 'es' ? 'Mejor media de carril' : 'Best lane average' %>"> / <%= fmtSec(Math.round(bestAvgMs)) %><span class="lane-rank">(<%= bestAvgLane %>)</span></span><% } %></td>
                 <% if (perOcc) { %>
                   <% occColumns.forEach(col => {
