@@ -63,6 +63,8 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
 /* Posición por vueltas dentro del carril, entre paréntesis junto al nº de vueltas */
 .lane-rank { font-size: .62em; font-weight: 600; color: #8b949e; margin-left: 3px; font-variant-numeric: tabular-nums; }
 .lane-rank--top { color: #fbbf24; }
+/* Mejor media de carril junto a la media general (columna de totales) */
+.stat-best-lane { color: #7d8590; font-variant-numeric: tabular-nums; }
 .matrix-entity.top-1 .matrix-total { color: #fbbf24; }
 .matrix-entity.top-2 .matrix-total { color: #d1d5db; }
 .matrix-entity.top-3 .matrix-total { color: #d97706; }
@@ -630,7 +632,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
               <!-- Average row -->
               <tr class="matrix-stat matrix-stat--avg">
                 <td class="matrix-stat__label"><%= lang === 'es' ? 'Media' : 'Avg' %></td>
-                <td class="matrix-stat__total"><%= fmtSec(Math.round(r.avg_lap_ms)) %><% if (bestAvgLane) { %><span class="lane-rank" title="<%= lang === 'es' ? 'Carril de su mejor media' : 'Best average lane' %>">(<%= bestAvgLane %>)</span><% } %></td>
+                <td class="matrix-stat__total"><%= fmtSec(Math.round(r.avg_lap_ms)) %><% if (bestAvgLane) { %><span class="stat-best-lane" title="<%= lang === 'es' ? 'Mejor media de carril' : 'Best lane average' %>"> / <%= fmtSec(Math.round(bestAvgMs)) %><span class="lane-rank">(<%= bestAvgLane %>)</span></span><% } %></td>
                 <% if (perOcc) { %>
                   <% occColumns.forEach(col => {
                        const c = (r.occByKey || {})[col.key];
