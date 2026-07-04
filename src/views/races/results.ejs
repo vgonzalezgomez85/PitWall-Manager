@@ -598,7 +598,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
 
               <!-- Fastest lap row -->
               <tr class="matrix-stat matrix-stat--best">
-                <td class="matrix-stat__label"><%= lang === 'es' ? 'Rápida' : 'Fast' %></td>
+                <td class="matrix-stat__label"><%= lang === 'es' ? 'Vuelta rápida' : 'Fast lap' %></td>
                 <td class="matrix-stat__total"><%= fmtSec(r.best_lap_ms) %><% if (bestLapLane) { %><span class="lane-rank lane-rank--top" title="<%= lang === 'es' ? 'Carril de la vuelta rápida' : 'Fast lap lane' %>">(<%= bestLapLane %>)</span><% } %></td>
                 <% if (perOcc) { %>
                   <% occColumns.forEach(col => {
