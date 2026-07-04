@@ -1544,13 +1544,16 @@ function announce(text) {
 
     // Ghost lap discarded by Pt: TTS announcement so the race director hears it
     // y pueda revisar/corregir desde la pantalla de correcciones.
+    // Avisos críticos: se anuncian aunque la voz esté en "off" (igual que
+    // "Queda 1 minuto" / "Quedan 30 segundos"), por eso usan announceWarning y no
+    // announce (que respeta el mute).
     socket.on('lap:ghost', ({ lane }) => {
-      announce(LANG === 'es' ? `Vuelta ignorada pista ${lane}` : `Lap ignored lane ${lane}`);
+      announceWarning(LANG === 'es' ? `Vuelta ignorada pista ${lane}` : `Lap ignored lane ${lane}`);
     });
 
     // Ghost lap auto-reassigned to its real lane.
     socket.on('lap:reassigned', ({ toLane }) => {
-      announce(LANG === 'es' ? `Vuelta asignada pista ${toLane}` : `Lap assigned to lane ${toLane}`);
+      announceWarning(LANG === 'es' ? `Vuelta asignada pista ${toLane}` : `Lap assigned to lane ${toLane}`);
     });
 
     // Retroactive crash: lap 1 turned out to be an exit once we saw lap 2.
