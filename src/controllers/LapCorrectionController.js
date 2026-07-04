@@ -112,6 +112,19 @@ class LapCorrectionController {
     Lap.deleteLap(parseInt(req.params.lapId));
     res.redirect(`/races/${race.id}/mangas/${manga.id}/corrections`);
   }
+
+  // POST /races/:id/mangas/:mangaId/corrections/edit/:lapId
+  static editTime(req, res) {
+    const race  = Race.findById(req.params.id);
+    const manga = Manga.findById(req.params.mangaId);
+    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+
+    const lapTimeS = parseFloat(req.body.lap_time_s);
+    if (!isNaN(lapTimeS) && lapTimeS > 0) {
+      Lap.updateTime(parseInt(req.params.lapId), Math.round(lapTimeS * 1000));
+    }
+    res.redirect(`/races/${race.id}/mangas/${manga.id}/corrections`);
+  }
 }
 
 module.exports = LapCorrectionController;

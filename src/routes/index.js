@@ -88,6 +88,7 @@ router.post('/races/:id/mangas/:mangaId/corrections/restore/:lapId', LapCorrecti
 router.post('/races/:id/mangas/:mangaId/corrections/transfer/:lapId',LapCorrectionController.transfer);
 router.post('/races/:id/mangas/:mangaId/corrections/add',            LapCorrectionController.addManual);
 router.post('/races/:id/mangas/:mangaId/corrections/delete/:lapId',  LapCorrectionController.deleteLap);
+router.post('/races/:id/mangas/:mangaId/corrections/edit/:lapId',    LapCorrectionController.editTime);
 
 // ── Manga session ─────────────────────────────────────────────────────────────
 router.get( '/races/:id/mangas/:mangaId/live',         SessionController.live);

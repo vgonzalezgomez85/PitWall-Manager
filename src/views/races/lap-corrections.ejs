@@ -250,6 +250,21 @@ if (firstFlagged >= 0) initActive = firstFlagged;
                             </button>
                           </form>
                         <% } %>
+                        <% if (!lap.is_ghost) { %>
+                          <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/corrections/edit/<%= lap.id %>" method="POST" class="lc-edit">
+                            <button class="lc-iconbtn lc-edit-toggle" type="button" title="<%= lang === 'es' ? 'Editar tiempo' : 'Edit time' %>">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+                            </button>
+                            <span class="lc-edit-fields" hidden>
+                              <input type="number" name="lap_time_s" class="lc-edit-input" step="0.001" min="0.1" max="999"
+                                     value="<%= (lap.lap_time_ms/1000).toFixed(3) %>"
+                                     title="<%= lang === 'es' ? 'Nuevo tiempo (s)' : 'New time (s)' %>">
+                              <button class="lc-iconbtn lc-edit-save" type="submit" title="<%= lang === 'es' ? 'Guardar tiempo' : 'Save time' %>">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                              </button>
+                            </span>
+                          </form>
+                        <% } %>
                         <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/corrections/delete/<%= lap.id %>" method="POST"
                               onsubmit="return confirm('<%= lang === 'es' ? '¿Eliminar vuelta permanentemente?' : 'Delete lap permanently?' %>')">
                           <button class="lc-iconbtn lc-iconbtn--del" type="submit" title="<%= lang === 'es' ? 'Eliminar' : 'Delete' %>">
@@ -407,7 +422,11 @@ document.querySelectorAll('.lc-lane').forEach(el => {
   // ya está en vuelo aunque el DOM se intercambie. Al terminar, refrescamos.
   document.addEventListener('submit', async (e) => {
     const form = e.target;
-    if (!form || !form.classList || !form.classList.contains('lc-insert')) return;
+    if (!form || !form.classList) return;
+    // Mismo camino robusto para "Añadir vuelta" (.lc-insert) y "Editar tiempo"
+    // (.lc-edit): fetch por delegación + refresco, por si el auto-refresh
+    // desconecta el form del DOM en manga activa.
+    if (!form.classList.contains('lc-insert') && !form.classList.contains('lc-edit')) return;
     e.preventDefault();
     try {
       const res = await fetch(form.action, {
@@ -416,11 +435,33 @@ document.querySelectorAll('.lc-lane').forEach(el => {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'fetch' },
         body: new URLSearchParams(new FormData(form)),
       });
-      if (!res.ok) console.warn('[corrections] add HTTP', res.status);
+      if (!res.ok) console.warn('[corrections] POST HTTP', res.status);
     } catch (err) {
-      console.warn('[corrections] add error', err.message || err);
+      console.warn('[corrections] POST error', err.message || err);
     }
+    // Quita el foco del input para que refreshNow no quede diferido (isUserBusy).
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
     refreshNow();
+  });
+
+  // Lápiz "Editar tiempo": muestra/oculta el campo de edición inline.
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest && e.target.closest('.lc-edit-toggle');
+    if (!btn) return;
+    const fields = btn.parentElement.querySelector('.lc-edit-fields');
+    if (!fields) return;
+    const opening = fields.hidden;
+    fields.hidden = !opening;
+    btn.classList.toggle('is-active', opening);
+    if (opening) { const inp = fields.querySelector('.lc-edit-input'); if (inp) { inp.focus(); inp.select(); } }
+  });
+  // Escape cierra el campo de edición sin guardar.
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const inp = e.target.closest && e.target.closest('.lc-edit-input');
+    if (!inp) return;
+    const fields = inp.closest('.lc-edit-fields'); if (fields) fields.hidden = true;
+    const tog = inp.closest('.lc-edit')?.querySelector('.lc-edit-toggle'); if (tog) tog.classList.remove('is-active');
   });
 })();
 </script>
@@ -648,6 +689,20 @@ document.querySelectorAll('.lc-lane').forEach(el => {
   padding: 5px 8px; font-family: 'IBM Plex Mono', monospace; font-size: 12px;
   height: 32px; min-width: 50px;
 }
+
+/* Editar tiempo (lápiz + campo inline) */
+.lc-edit { display: inline-flex; align-items: center; gap: 4px; }
+.lc-edit-toggle.is-active { background: var(--vt-purple); color: #fff; box-shadow: none; }
+.lc-edit-fields { display: inline-flex; align-items: center; gap: 4px; }
+.lc-edit-input {
+  background: var(--vt-surface); color: var(--vt-text);
+  border: 1px solid var(--vt-purple); border-radius: 7px;
+  padding: 5px 8px; font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+  height: 32px; width: 82px; text-align: right;
+}
+.lc-edit-input::-webkit-outer-spin-button,
+.lc-edit-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.lc-edit-save:hover { background: var(--vt-purple); color: #fff; box-shadow: none; }
 
 /* Estados marcados */
 .lc-lap.is-flag {
