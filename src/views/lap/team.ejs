@@ -40,6 +40,7 @@
       <label class="vrow"><span>Media manga</span><input type="checkbox" data-k="sayHalfManga"></label>
       <label class="vrow"><span>Último minuto</span><input type="checkbox" data-k="sayLastMinute"></label>
       <label class="vrow"><span>Últimos 30 s</span><input type="checkbox" data-k="sayLast30s"></label>
+      <label class="vrow"><span>Vueltas ignoradas / asignadas</span><input type="checkbox" data-k="sayGhostEvents"></label>
       <div class="vgrp">Avanzado · cada N min (0 = off)</div>
       <label class="vrow"><span>Media de carril</span><input type="number" min="0" max="60" step="1" data-k="sayAveragesEveryMin"></label>
       <label class="vrow"><span>Gaps con rivales</span><input type="number" min="0" max="60" step="1" data-k="sayGapsEveryMin"></label>
@@ -118,7 +119,7 @@
     var DEF = {
       enabled: false,            // en web hay que tocar para desbloquear audio
       sayLaps: true, sayPositionChange: true, sayHalfManga: true,
-      sayLastMinute: true, sayLast30s: true,
+      sayLastMinute: true, sayLast30s: true, sayGhostEvents: true,
       sayAveragesEveryMin: 0, sayGapsEveryMin: 0, sayCatchUpEveryMin: 0
     };
     var S = (function(){
@@ -394,6 +395,17 @@
       socket.on('connect', function(){ try { socket.emit('standings:request'); } catch(e){} });
       socket.on('standings', function(st){ onStandings(st); scheduleRefresh(); });
       socket.on('lap', onLap);
+      // Fantasma / de-merge: se anuncia solo al equipo del carril afectado y solo
+      // cuando está en pista (igual que el resto de avisos de voz).
+      socket.on('lap:ghost', function(d){
+        if (!d || !S.sayGhostEvents || myStatus !== 'my-turn' || myLane == null) return;
+        if (d.lane === myLane) say('Vuelta ignorada');
+      });
+      socket.on('lap:reassigned', function(d){
+        if (!d || !S.sayGhostEvents || myStatus !== 'my-turn' || myLane == null) return;
+        if (d.fromLane === myLane) say('Vuelta ignorada');   // su cruce se ignoró (no era suyo)
+        if (d.toLane   === myLane) say('Vuelta asignada');   // recibió la vuelta por de-merge
+      });
       socket.on('manga:started', function(){ resetManga(); prevMyLane = null; try { socket.emit('standings:request'); } catch(e){} scheduleRefresh(); });
       ['manga:stopped','race_finished','race:finished'].forEach(function(ev){
         socket.on(ev, function(){ if (myStatus === 'my-turn' && !firedFinish){ firedFinish = true; say('Fin de la manga'); } myStatus = 'rest'; prevMyLane = null; scheduleRefresh(); });
