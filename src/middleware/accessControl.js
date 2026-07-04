@@ -72,6 +72,8 @@ function reqIp(req) {
 // resultados de carreras finalizadas (landing + por carrera, sin corrección).
 function isPublicPath(p) {
   return p === '/' || p === '/race-stats' || /^\/races\/\d+\/live-stats(\.json)?$/.test(p)
+      // Clasificación Le Mans (seguimiento en vivo de la carrera): solo lectura.
+      || /^\/races\/\d+\/lemans$/.test(p)
       || p === '/results' || /^\/results\/\d+$/.test(p)
       // Cliente web "Lap" (timing del equipo desde el móvil). El acceso a los
       // datos de timing lo gatea el PIN por equipo; estas rutas deben ser
