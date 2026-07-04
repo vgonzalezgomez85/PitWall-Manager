@@ -1162,7 +1162,7 @@ class SessionController {
       FROM laps l
       JOIN mangas m ON m.id = l.manga_id
       JOIN tandas t ON t.id = m.tanda_id
-      WHERE t.race_id = ? AND l.is_ghost = 0 AND l.is_warmup = 0
+      WHERE t.race_id = ? AND l.is_ghost = 0
       ORDER BY t.number ASC, m.number ASC, l.elapsed_ms ASC
     `).all(race.id);
 
@@ -1186,7 +1186,10 @@ class SessionController {
     });
 
     function stats(laps) {
-      const racing = laps;
+      // `laps` incluye las warmup (para el TOTAL, como el DS y la matriz); las
+      // métricas de ritmo (mejor/media/salidas/tiempo perdido) van sobre `racing`
+      // = sin warmup, que no son representativas.
+      const racing = laps.filter(l => !l.is_warmup);
       const clean  = racing.filter(l => !l.is_exit);
       const exits  = racing.filter(l => !!l.is_exit);
       const sum  = a => a.reduce((s,l) => s + l.lap_time_ms, 0);
@@ -1199,7 +1202,7 @@ class SessionController {
       let lostMs = 0;
       for (const l of exits) { const o = l.lap_time_ms - ref; if (o > 0) lostMs += o; }
       return {
-        totalLaps:    racing.length,
+        totalLaps:    laps.length,
         cleanLaps:    clean.length,
         exitCount:    exits.filter(l => !l.is_pit_stop).length,
         pitStopCount: exits.filter(l => l.is_pit_stop).length,
