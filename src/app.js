@@ -29,6 +29,15 @@ const dataDir = process.env.SLOTIME_DATA || require('path').join(__dirname, '..'
 LicenseService.load(dataDir);
 
 const app    = express();
+// Confía SOLO en el proxy de loopback (127.0.0.1): un túnel público
+// (cloudflared/ngrok) corre en la misma máquina y reenvía a localhost, así que
+// sin esto TODA petición del túnel llegaría como 127.0.0.1 y el control de
+// acceso la trataría como local/admin → expondría el control a internet. Con
+// 'loopback', Express lee el X-Forwarded-For que pone el túnel y req.ip pasa a
+// ser la IP real del cliente remoto, de modo que restrictAccess vuelve a
+// bloquear todo salvo las vistas públicas. Los clientes de la LAN conectan
+// directos (peer != loopback) y NO pueden falsear XFF, así que no cambian.
+app.set('trust proxy', 'loopback');
 const server = http.createServer(app);
 
 // Socket.io must be initialised before routes import services that need it
