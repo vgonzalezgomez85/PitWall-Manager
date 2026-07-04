@@ -374,6 +374,7 @@ class TimingServiceClass {
     let isTandaEnd   = false;
     let nextTandaId  = null;
     let nextTandaNumber = null;
+    let reconcileData = null;   // snapshot para la reconciliación del cruce "en la bandera"
 
     if (updateDb) {
       // "Coma": fracción de la vuelta en curso al caer la bandera, estimada
@@ -396,6 +397,33 @@ class TimingServiceClass {
         try {
           comaStmt.run(+coma.toFixed(3), this.session.manga.id, ld.lane);
         } catch (err) { console.error('[TimingService] persist coma error:', err.message); }
+      }
+
+      // ── Snapshot para la reconciliación del cruce "en la bandera" ──────────
+      // El frame de FIN de manga (0xA4) se procesa µs ANTES que el frame del
+      // último cruce; ese cruce llega con el circuito ya 'finished' y se
+      // descarta (reason 'circuit_not_running') → se pierde 1 vuelta que el DS
+      // SÍ contó (byte12). Guardamos aquí lo necesario para, ~1.5 s después,
+      // comparar byte12 con lo persistido y reponer la(s) vuelta(s) que falten.
+      // Solo aplica al DS-300 REAL (no simulación ni BART).
+      const simNow = SerialService.getLinkStatus().simulating;
+      if (!simNow && !SerialService.isBart) {
+        reconcileData = {
+          mangaId: this.session.manga.id,
+          raceId:  this.session.race.id,
+          lanes: Object.values(this.session.laneMap).map(ld => {
+            const ci = this.session.laneToCircuit[ld.lane];
+            const c  = ci != null ? this.session.circuits[ci] : null;
+            return {
+              lane:             ld.lane,
+              teamId:           ld.teamId,
+              driverId:         ld.driverId,
+              refAvgMs:         ld.cleanAvgMs > 0 ? ld.cleanAvgMs : ld.lapAvgMs,
+              lastCrossing:     ld.lastCrossing,
+              circuitStartTime: c ? c.startTime : null,
+            };
+          }),
+        };
       }
 
       Manga.updateStatus(this.session.manga.id, 'finished');
@@ -483,7 +511,103 @@ class TimingServiceClass {
       }
     }
 
+    // Reconciliación diferida del cruce "en la bandera": esperamos ~1.5 s a que
+    // el frame del último cruce actualice byte12 en SerialService y entonces
+    // reponemos en BD la(s) vuelta(s) que la caja contó pero que se descartaron
+    // por llegar con el circuito ya 'finished'. Se hace tras cerrar/persistir la
+    // manga y con la sesión ya vaciada (trabaja 100% sobre BD).
+    if (reconcileData) {
+      setTimeout(() => {
+        try { this._reconcileFinalLaps(reconcileData); }
+        catch (err) { console.error('[TimingService] reconcile error:', err.message); }
+      }, 1500);
+    }
+
     this.session = null;
+  }
+
+  // ── Reconciliación del cruce "en la bandera" (DS-300 real) ──────────────────
+  // Compara el contador de vueltas del DS (byte12) por carril con las vueltas
+  // realmente persistidas de la manga y repone las que falten (típicamente 1: el
+  // cruce que completó justo al caer la bandera). Cuadra EXACTO con el DS, sin
+  // heurística de tiempo.
+  _reconcileFinalLaps(data) {
+    // Si ya arrancó otra manga, su GO (0xA1) habrá limpiado byte12 → abortar
+    // para no reponer con contadores de la manga nueva.
+    if (this.session) {
+      console.log('[TimingService] Reconciliación abortada — ya hay otra manga activa');
+      return;
+    }
+    // Solo DS-300 real (la simulación/BART no lo usan).
+    if (SerialService.getLinkStatus().simulating || SerialService.isBart) return;
+
+    const counters = SerialService.getDsLapCounters();   // { globalLane: byte12 }
+    if (!counters || Object.keys(counters).length === 0) return;
+
+    const db = require('../config/database');
+    const countStmt = db.prepare(
+      `SELECT COUNT(*) AS n, MAX(lap_number) AS maxNum
+         FROM laps
+        WHERE manga_id = ? AND lane = ? AND is_ghost = 0 AND lap_number > 0`
+    );
+
+    let inserted = 0;
+    for (const ld of data.lanes) {
+      const dsCount = counters[ld.lane];
+      if (dsCount == null) continue;                 // el DS no reportó este carril
+      const row = countStmt.get(data.mangaId, ld.lane);
+      const registered = row?.n || 0;
+      let missing = dsCount - registered;
+      if (missing <= 0) continue;                    // ya cuadra (o BD por delante)
+      // Salvaguarda contra un byte12 anómalo: al cierre cada carril puede
+      // completar como mucho ~1 vuelta extra (la de la bandera). Un desfase
+      // grande sería un problema de sincronía previo, no un cruce en meta:
+      // capamos para no inyectar vueltas fantasma en masa.
+      if (missing > 3) {
+        console.warn(`[TimingService] Reconciliación carril ${ld.lane}: desfase grande DS=${dsCount} BD=${registered} → capado a 3`);
+        missing = 3;
+      }
+      const refAvg = ld.refAvgMs > 0 ? Math.round(ld.refAvgMs) : null;
+      if (!refAvg) continue;                         // sin media no estimamos el tiempo
+      let lapNum  = row?.maxNum || 0;
+      // elapsed del último cruce conocido (relativo al GO del circuito) + media.
+      let elapsed = (ld.circuitStartTime != null && ld.lastCrossing != null)
+        ? Math.max(0, ld.lastCrossing - ld.circuitStartTime)
+        : 0;
+      for (let k = 0; k < missing; k++) {
+        lapNum  += 1;
+        elapsed += refAvg;
+        try {
+          Lap.create({
+            race_id: data.raceId, manga_id: data.mangaId,
+            team_id: ld.teamId, driver_id: ld.driverId,
+            lane: ld.lane, lap_number: lapNum,
+            lap_time_ms: refAvg, elapsed_ms: elapsed,
+            is_exit: 0, is_ghost: 0, is_warmup: 0,
+          });
+          inserted++;
+        } catch (err) { console.error('[TimingService] reconcile insert error:', err.message); }
+      }
+      console.log(`[TimingService] Reconciliación bandera: carril ${ld.lane} DS=${dsCount} BD=${registered} → +${missing} vuelta(s) @ ${refAvg}ms`);
+    }
+
+    if (inserted > 0) {
+      DebugLogger.log('manga', { event: 'reconcile', mangaId: data.mangaId, insertedLaps: inserted });
+      // Reflejar en resultados/estadísticas ya persistidos: reemitimos el
+      // snapshot de stats (mismo canal que el cierre de tanda) — 100% desde BD,
+      // sin depender de la sesión (ya vaciada).
+      try {
+        const MobileController = require('../controllers/MobileController');
+        const snapshot = MobileController.buildStatsSnapshot(data.raceId);
+        if (snapshot) SocketService.emit('race:stats-snapshot', snapshot);
+      } catch (err) { console.error('[TimingService] reconcile snapshot failed:', err.message); }
+      // Señal ligera para vistas abiertas (resultados/live-stats) por si quieren
+      // refrescar; no colisiona con el handler frágil de 'standings'.
+      SocketService.emit('manga:reconciled', {
+        raceId: data.raceId, mangaId: data.mangaId, insertedLaps: inserted,
+      });
+      console.log(`[TimingService] Reconciliación completada: +${inserted} vuelta(s) repuesta(s) en manga ${data.mangaId}`);
+    }
   }
 
   // ── Tick (cronómetro global de la manga) ────────────────────────────────────
