@@ -5,7 +5,6 @@ const Team           = require('../models/Team');
 const Driver         = require('../models/Driver');
 const DriverProfile  = require('../models/DriverProfile');
 const TeamCatalog    = require('../models/TeamCatalog');
-const LicenseService = require('../services/LicenseService');
 
 const LANE_COLORS = [
   '#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4',
@@ -54,23 +53,6 @@ class TandaController {
   static create(req, res) {
     const race = Race.findById(req.params.id);
     if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
-
-    // Basic tier: max 1 tanda per race
-    const maxTandas = LicenseService.maxTandasPerRace;
-    if (maxTandas !== Infinity) {
-      const existing = Tanda.findByRace(race.id);
-      if (existing.length >= maxTandas) {
-        const lang = req.session?.lang || 'es';
-        req.session.flash = {
-          type: 'error',
-          text: (lang === 'es'
-            ? 'La licencia Basic está limitada a 1 tanda por carrera.'
-            : 'Basic license is limited to 1 tanda per race.')
-            + ' <a href="/license">Ver licencia</a>',
-        };
-        return res.redirect(`/races/${race.id}`);
-      }
-    }
 
     const laneSequence = Race.getLaneSequence(race);
     const errors = [];
@@ -136,19 +118,8 @@ class TandaController {
       });
     }
 
-    // Generate and persist the manga schedule (Basic tier: max 1 manga)
-    let schedule = Manga.buildSchedule(laneSequence, entities, race.passes, race.lane_repeat);
-    const maxMangas = LicenseService.maxMangasPerRace;
-    if (maxMangas !== Infinity && schedule.length > maxMangas) {
-      // Recorta a un múltiplo de la "unidad" (pasada completa = seqLen × R) para
-      // no dejar pasadas/repeticiones a medias con P>1 o R>1. Si el tope no
-      // llega ni a una unidad, recorta en crudo (licencia muy limitada).
-      const R = Math.max(1, race.lane_repeat || 1);
-      const P = Math.max(1, race.passes || 1);
-      const unit = schedule.length / P;           // mangas por pasada (= seqLen × R)
-      const keep = Math.floor(maxMangas / unit) * unit || maxMangas;
-      schedule = schedule.slice(0, keep);
-    }
+    // Generate and persist the manga schedule
+    const schedule = Manga.buildSchedule(laneSequence, entities, race.passes, race.lane_repeat);
     Manga.persistSchedule(tandaId, race.id, schedule);
 
     // Mark race as active if it was pending

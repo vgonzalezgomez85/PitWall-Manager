@@ -138,10 +138,6 @@ class RaceController {
     // El formato se DERIVA del tipo (ya no es una elección del usuario):
     //   Sprint (club) → individual · Resistencia (championship) → equipos.
     const format = type === 'championship' ? 'team' : 'individual';
-    const LicenseService = require('../services/LicenseService');
-    if (format === 'team' && !LicenseService.has('team_races')) {
-      errors.push('team_requires_license');
-    }
 
     if (errors.length) {
       const savedCircuits = Circuit.findAll();

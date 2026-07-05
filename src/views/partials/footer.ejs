@@ -3,12 +3,6 @@
 
     <!-- Status indicators -->
     <div class="footer-status">
-      <% if (typeof tier !== 'undefined') { %>
-        <a href="/license" class="footer-pill footer-pill--tier tier--<%= tier %>" title="<%= lang === 'es' ? 'Licencia' : 'License' %>">
-          <%= tier.toUpperCase() %>
-        </a>
-      <% } %>
-
       <% if (typeof serialStatus !== 'undefined') { %>
         <a href="/settings" class="footer-pill footer-pill--serial" title="<%= lang === 'es' ? 'Estado de puertos serie' : 'Serial port status' %>">
           <% if (serialStatus.simulating) { %>
