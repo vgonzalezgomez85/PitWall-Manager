@@ -174,16 +174,10 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
               <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v5h-5"/></svg>
               <%= lang === 'es' ? 'Buscar puertos' : 'Refresh ports' %>
             </button>
-            <% if (multiCircuit) { %>
-              <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="addCircuit">
-                <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-                <%= lang === 'es' ? 'Añadir circuito' : 'Add circuit' %>
-              </button>
-            <% } else { %>
-              <a href="/license" class="vt-upgrade-hint">
-                🔒 <%= lang === 'es' ? 'Multi-circuito requiere Pro' : 'Multi-circuit requires Pro' %>
-              </a>
-            <% } %>
+            <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="addCircuit">
+              <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+              <%= lang === 'es' ? 'Añadir circuito' : 'Add circuit' %>
+            </button>
           </div>
         </div>
 
@@ -441,7 +435,6 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
 
 <script>
 const LANG = "<%= lang %>";
-const MULTI_CIRCUIT = <%= multiCircuit ? 'true' : 'false' %>;
 
 /* ── radio source ── */
 const sim = document.getElementById('optSim');
@@ -554,13 +547,6 @@ function wireCircuitRef(row){
     try { config = JSON.parse(sel.options[sel.selectedIndex]?.dataset?.config || '[]'); } catch {}
     if (!sel.value || !config.length){
       inp.readOnly = false; if (sub) sub.value = '';
-      updateLaneBadges(); renumberCircuitRows(); return;
-    }
-    if (config.length > 1 && !MULTI_CIRCUIT){
-      alert(LANG === 'es'
-        ? 'Este escenario tiene varios circuitos. El multi-circuito requiere licencia Pro.'
-        : 'This scenario has multiple circuits. Multi-circuit requires a Pro license.');
-      sel.value = ''; inp.readOnly = false; if (sub) sub.value = '';
       updateLaneBadges(); renumberCircuitRows(); return;
     }
     // Esta fila = circuito 1 del escenario.

@@ -388,9 +388,8 @@ class SessionController {
     `).get(race.id, tanda.number, tanda.number, manga.number);
     const raceOver = !hasMangaAfter && (manga.status === 'finished' || manga.status === 'cancelled');
 
-    const LicenseService = require('../services/LicenseService');
-    const hasBestLaps  = LicenseService.has('best_laps');
-    const hasQrCheckin = LicenseService.has('qr_checkin');
+    const hasBestLaps  = true;
+    const hasQrCheckin = true;
 
     const isSimulating = SerialService.isSimulating;
     const isBart       = SerialService.isBart;
