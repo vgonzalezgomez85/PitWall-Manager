@@ -30,16 +30,14 @@ pitwall/
 │   ├── controllers/    # Lógica de cada sección
 │   ├── models/         # Acceso a base de datos (SQLite)
 │   ├── services/       # SerialService, TimingService, SocketService...
-│   ├── middleware/      # i18n, licenseGuard
+│   ├── middleware/      # i18n, control de acceso (accessControl)
 │   ├── views/          # Plantillas EJS
 │   ├── locales/        # Traducciones ES / EN (JSON)
 │   └── config/
 │       └── database.js # Inicialización del schema SQLite
 ├── public/             # CSS, JS estático, imágenes
-├── database/           # Base de datos SQLite + fichero de licencia (generado en runtime)
-├── legal/              # EULA en español e inglés
+├── database/           # Base de datos SQLite
 └── tools/
-    ├── generate-license.js     # Generador de licencias (uso interno)
     └── make-windows-bundle.sh  # Crea bundle offline para Windows
 ```
 
@@ -73,7 +71,7 @@ Acceder en el navegador: `http://localhost:3000`
 | Variable | Descripción | Valor por defecto |
 |----------|-------------|-------------------|
 | `PORT` | Puerto HTTP del servidor | `3000` |
-| `SLOTIME_DATA` | Ruta a la carpeta de datos (BD + licencia) | `./database` |
+| `SLOTIME_DATA` | Ruta a la carpeta de datos (BD) | `./database` |
 | `SESSION_SECRET` | Secreto para las sesiones Express | `slotime-dev-secret` |
 
 > En producción cambiar siempre `SESSION_SECRET` por un valor aleatorio largo.
@@ -91,47 +89,18 @@ El schema se inicializa en `src/config/database.js`. No requiere migraciones man
 
 ---
 
-## Licencias
+## Licencia
 
-### Tiers disponibles
+PitWall es **software libre** publicado bajo la **GNU Affero General Public License v3 (AGPLv3)** o, a tu elección, cualquier versión posterior.
 
-| Tier | Módulos incluidos |
-|------|-------------------|
-| **Basic** (sin licencia) | Simulación, DS-300 single, entrenamiento, carreras (1 tanda / 1 manga) |
-| **Club** | Todo Basic + carreras ilimitadas, exportar Excel, app móvil, pole position |
-| **Pro** | Todo Club + multi-circuito DS-300, vista TV/proyector |
+Copyright © 2026 Víctor González Gómez.
 
-### Generar una licencia
+Puedes **usar, estudiar, modificar y redistribuir** el software libremente. La obligación relevante de la AGPL: cualquier versión que **distribuyas o que ofrezcas a través de una red** (p. ej. sirviéndola por web) debe publicarse también bajo la AGPLv3 y poner su **código fuente completo a disposición** de los usuarios.
 
-```bash
-node tools/generate-license.js \
-  --tier club \
-  --licensee "Nombre del cliente" \
-  --hardware "aa:bb:cc:dd:ee:ff" \
-  --expires 2027-12-31
-```
+- Texto completo: [`LICENSE`](./LICENSE) · [gnu.org/licenses/agpl-3.0](https://www.gnu.org/licenses/agpl-3.0.html)
+- Dentro de la app: enlaces **«Licencia (AGPLv3)»** y **«Código fuente»** en el pie de página, y la página `/eula`.
 
-| Parámetro | Descripción |
-|-----------|-------------|
-| `--tier` | `basic` / `club` / `pro` |
-| `--licensee` | Nombre del titular |
-| `--hardware` | MAC address del equipo, o `*` para cualquier equipo |
-| `--expires` | Fecha de caducidad en formato `YYYY-MM-DD` |
-| `--out` | (Opcional) Ruta del fichero de salida |
-
-El resultado es un JSON firmado con HMAC-SHA256. El cliente lo pega en `/license` dentro de la aplicación.
-
-El `SIGN_SECRET` usado para firmar está en `src/services/LicenseService.js`. **Nunca debe publicarse ni incluirse en repositorios públicos.**
-
-### Cómo funciona la verificación
-
-Al arrancar, la aplicación:
-1. Lee `database/slotime.license`
-2. Verifica la firma HMAC
-3. Comprueba que el Hardware ID coincide con la MAC del equipo
-4. Comprueba que la fecha de caducidad no ha pasado
-
-Si cualquier comprobación falla, el tier cae a `basic` automáticamente.
+El software se ofrece SIN NINGUNA GARANTÍA. El nombre «PitWall» y el logotipo no forman parte de la licencia del código.
 
 ---
 
@@ -139,10 +108,10 @@ Si cualquier comprobación falla, el tier cae a `basic` automáticamente.
 
 El DS-300 es el cronómetro de carreras que se conecta por USB/RS-232.
 
-### Single circuit (Basic / Club)
+### Single circuit
 Configurar en `/settings`: seleccionar modo DS-300, elegir puerto serie, baud rate (4800 por defecto) y número de carriles.
 
-### Multi-circuit (Pro)
+### Multi-circuit
 Cada DS-300 controla un circuito independiente. Los carriles se numeran globalmente: el circuito 1 ocupa los carriles 1–N, el circuito 2 continúa desde N+1, etc.
 
 Se pueden añadir hasta tantos circuitos como puertos USB haya disponibles.
@@ -233,7 +202,7 @@ taskkill /PID <PID> /F         # Windows
 Editar o eliminar la entrada `serial_mode` en la base de datos, o acceder a `/settings` y guardar con modo simulación.
 
 ### Backup y restauración
-- **Backup:** copiar `database/slotime.db` y `database/slotime.license`
+- **Backup:** copiar `database/slotime.db`
 - **Restauración:** reemplazar ambos ficheros y reiniciar la aplicación
 
 ---
