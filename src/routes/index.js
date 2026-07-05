@@ -21,7 +21,6 @@ const DiagnosticsController       = require('../controllers/DiagnosticsControlle
 const LiveStatsController         = require('../controllers/LiveStatsController');
 const DatabaseController          = require('../controllers/DatabaseController');
 const LinkController               = require('../controllers/LinkController');
-const { requireModule }           = require('../middleware/licenseGuard');
 
 router.get('/', (req, res) => {
   const Race          = require('../models/Race');
@@ -53,28 +52,26 @@ router.get('/', (req, res) => {
   res.render('home', { t: req.t, counts, activeRaceCount, serial, serverIps, serverPort });
 });
 
-// ── License ───────────────────────────────────────────────────────────────────
-router.get( '/license',        LicenseController.index);
-router.post('/license/upload', LicenseController.upload);
+// ── EULA ──────────────────────────────────────────────────────────────────────
 router.get( '/eula',           LicenseController.eula);
 
 // ── Wizard ────────────────────────────────────────────────────────────────────
-router.get('/races/new',         requireModule('races_basic'), RaceController.newStep1);
-router.post('/races/new/step1',  requireModule('races_basic'), RaceController.postStep1);
-router.get('/races/new/step3',   requireModule('races_basic'), RaceController.newStep3);
-router.post('/races/new/step3',  requireModule('races_basic'), RaceController.postStep3);
-router.get('/races/new/step4',   requireModule('races_basic'), RaceController.newStep4);
-router.post('/races/new/step4',  requireModule('races_basic'), RaceController.postStep4);
-router.get('/races/new/confirm', requireModule('races_basic'), RaceController.newConfirm);
+router.get('/races/new',         RaceController.newStep1);
+router.post('/races/new/step1',  RaceController.postStep1);
+router.get('/races/new/step3',   RaceController.newStep3);
+router.post('/races/new/step3',  RaceController.postStep3);
+router.get('/races/new/step4',   RaceController.newStep4);
+router.post('/races/new/step4',  RaceController.postStep4);
+router.get('/races/new/confirm', RaceController.newConfirm);
 
 // ── Carrera simulada (desde fichero de tramas DS-300) ───────────────────────
-router.get( '/races/sim/new',     requireModule('races_basic'), SimController.newForm);
-router.post('/races/sim/analyze', requireModule('races_basic'), SimController.upload.single('frames'),   SimController.analyze);
-router.post('/races/sim/create',  requireModule('races_basic'), SimController.upload.single('lane_csv'), SimController.create);
+router.get( '/races/sim/new',     SimController.newForm);
+router.post('/races/sim/analyze', SimController.upload.single('frames'),   SimController.analyze);
+router.post('/races/sim/create',  SimController.upload.single('lane_csv'), SimController.create);
 // Panel de simulación (fase 2) + controles
-router.get( '/races/:id/sim',            requireModule('races_basic'), SimController.panel);
+router.get( '/races/:id/sim',            SimController.panel);
 router.get( '/races/:id/sim/status',     SimController.simStatus);
-router.post('/races/:id/sim/start',      requireModule('races_basic'), SimController.simStart);
+router.post('/races/:id/sim/start',      SimController.simStart);
 router.post('/races/:id/sim/speed',      SimController.simSpeed);
 router.post('/races/:id/sim/pause',      SimController.simPause);
 router.post('/races/:id/sim/resume',     SimController.simResume);
@@ -92,12 +89,12 @@ router.post('/races/:id/mangas/:mangaId/corrections/edit/:lapId',    LapCorrecti
 
 // ── Manga session ─────────────────────────────────────────────────────────────
 router.get( '/races/:id/mangas/:mangaId/live',         SessionController.live);
-router.get( '/races/:id/mangas/:mangaId/tv',           requireModule('tv'), SessionController.tv);
+router.get( '/races/:id/mangas/:mangaId/tv',           SessionController.tv);
 router.get( '/races/:id/mangas/:mangaId/panel/:type',  SessionController.panel);
 router.post('/races/:id/circuit-orientation',          SessionController.saveCircuitOrientation);
 router.post('/races/:id/mangas/:mangaId/start',        SessionController.start);
-router.post('/races/:id/mangas/:mangaId/checkin',      requireModule('qr_checkin'), SessionController.driverCheckin);
-router.post('/races/:id/mangas/:mangaId/correct-time', requireModule('qr_checkin'), SessionController.correctShiftTime);
+router.post('/races/:id/mangas/:mangaId/checkin',      SessionController.driverCheckin);
+router.post('/races/:id/mangas/:mangaId/correct-time', SessionController.correctShiftTime);
 router.post('/races/:id/mangas/:mangaId/stop',         SessionController.stop);
 router.post('/races/:id/mangas/:mangaId/pause',        SessionController.pause);
 router.post('/races/:id/mangas/:mangaId/resume',       SessionController.resume);
@@ -129,29 +126,29 @@ router.get('/control/shifts',     ControlController.live);
 router.get('/races/:id/shifts',   ControlController.raceHistory);
 
 // ── Le Mans classification board ──────────────────────────────────────────────
-router.get( '/races/:id/lemans',       requireModule('lemans'), SessionController.lemans);
+router.get( '/races/:id/lemans',       SessionController.lemans);
 
 // ── Results ───────────────────────────────────────────────────────────────────
 router.get( '/races/:id/results',      SessionController.results);
-router.get( '/races/:id/results/export.html', requireModule('export'), SessionController.exportResults);
-router.get( '/races/:id/results/xlsx', requireModule('export'), SessionController.excel);
-router.get( '/races/:id/results/points.xlsx', requireModule('export'), SessionController.pointsExcel);
-router.get( '/races/:id/results/points.csv',  requireModule('export'), SessionController.pointsCsv);
-router.get( '/races/:id/results/control.csv', requireModule('export'), SessionController.controlCsv);
+router.get( '/races/:id/results/export.html', SessionController.exportResults);
+router.get( '/races/:id/results/xlsx', SessionController.excel);
+router.get( '/races/:id/results/points.xlsx', SessionController.pointsExcel);
+router.get( '/races/:id/results/points.csv',  SessionController.pointsCsv);
+router.get( '/races/:id/results/control.csv', SessionController.controlCsv);
 router.post('/races/:id/complete',     RaceController.complete);
 
 // ── Pole position ─────────────────────────────────────────────────────────────
-router.get( '/races/:id/pole/setup',             requireModule('pole'), PoleController.setup);
-router.post('/races/:id/pole/start',             requireModule('pole'), PoleController.startPole);
-router.get( '/races/:id/pole/timing',            requireModule('pole'), PoleController.timing);
-router.post('/races/:id/pole/participant/start', requireModule('pole'), PoleController.startParticipant);
-router.post('/races/:id/pole/participant/stop',  requireModule('pole'), PoleController.stopParticipant);
-router.post('/races/:id/pole/next',              requireModule('pole'), PoleController.advanceParticipant);
-router.post('/races/:id/pole/omit-first',        requireModule('pole'), PoleController.setOmitFirstCrossing);
-router.get( '/races/:id/pole/results',           requireModule('pole'), PoleController.results);
-router.post('/races/:id/pole/times',             requireModule('pole'), PoleController.saveTimes);
-router.get( '/races/:id/pole/lanes',             requireModule('pole'), PoleController.laneSelection);
-router.post('/races/:id/pole/lanes',             requireModule('pole'), PoleController.assignLanes);
+router.get( '/races/:id/pole/setup',             PoleController.setup);
+router.post('/races/:id/pole/start',             PoleController.startPole);
+router.get( '/races/:id/pole/timing',            PoleController.timing);
+router.post('/races/:id/pole/participant/start', PoleController.startParticipant);
+router.post('/races/:id/pole/participant/stop',  PoleController.stopParticipant);
+router.post('/races/:id/pole/next',              PoleController.advanceParticipant);
+router.post('/races/:id/pole/omit-first',        PoleController.setOmitFirstCrossing);
+router.get( '/races/:id/pole/results',           PoleController.results);
+router.post('/races/:id/pole/times',             PoleController.saveTimes);
+router.get( '/races/:id/pole/lanes',             PoleController.laneSelection);
+router.post('/races/:id/pole/lanes',             PoleController.assignLanes);
 
 // ── Tandas ────────────────────────────────────────────────────────────────────
 router.get(   '/races/:id/tandas/new',            TandaController.newForm);
@@ -165,22 +162,22 @@ router.post(  '/races/:id/mangas/:mangaId/edit',  TandaController.updateManga);
 // ── Races CRUD ────────────────────────────────────────────────────────────────
 router.get(   '/races',          RaceController.index);
 router.post(  '/races',          RaceController.create);
-router.get(   '/races/:id/edit', requireModule('races_basic'), RaceController.editForm);
-router.post(  '/races/:id/edit', requireModule('races_basic'), RaceController.update);
+router.get(   '/races/:id/edit', RaceController.editForm);
+router.post(  '/races/:id/edit', RaceController.update);
 router.get(   '/races/:id',      RaceController.show);
 router.delete('/races/:id',      RaceController.delete);
 
 // ── Driver profiles ───────────────────────────────────────────────────────────
-router.get(   '/drivers',           requireModule('driver_profiles'), DriverProfileController.index);
-router.get(   '/drivers/new',       requireModule('driver_profiles'), DriverProfileController.newForm);
-router.post(  '/drivers',           requireModule('driver_profiles'), DriverProfileController.create);
-router.post(  '/drivers/import/preview', requireModule('driver_profiles'), DriverProfileController.importPreview);
-router.post(  '/drivers/import',    requireModule('driver_profiles'), DriverProfileController.importConfirm);
-router.get(   '/drivers/qr-all',    requireModule('driver_profiles'), DriverProfileController.qrAll);
-router.get(   '/drivers/:id/qr',    requireModule('driver_profiles'), DriverProfileController.qrPage);
-router.get(   '/drivers/:id/edit',  requireModule('driver_profiles'), DriverProfileController.editForm);
-router.post(  '/drivers/:id',       requireModule('driver_profiles'), DriverProfileController.update);
-router.delete('/drivers/:id',       requireModule('driver_profiles'), DriverProfileController.delete);
+router.get(   '/drivers',           DriverProfileController.index);
+router.get(   '/drivers/new',       DriverProfileController.newForm);
+router.post(  '/drivers',           DriverProfileController.create);
+router.post(  '/drivers/import/preview', DriverProfileController.importPreview);
+router.post(  '/drivers/import',    DriverProfileController.importConfirm);
+router.get(   '/drivers/qr-all',    DriverProfileController.qrAll);
+router.get(   '/drivers/:id/qr',    DriverProfileController.qrPage);
+router.get(   '/drivers/:id/edit',  DriverProfileController.editForm);
+router.post(  '/drivers/:id',       DriverProfileController.update);
+router.delete('/drivers/:id',       DriverProfileController.delete);
 
 // ── Circuits ──────────────────────────────────────────────────────────────────
 router.get(   '/circuits',            CircuitController.index);
@@ -209,16 +206,16 @@ router.get(   '/cars/:id/edit',   CarController.edit);
 router.post(  '/cars/:id',        CarController.update);
 router.post(  '/cars/:id/delete', CarController.delete);
 
-router.get(   '/teams',            requireModule('teams_catalog'), TeamCatalogController.index);
-router.get(   '/teams/new',        requireModule('teams_catalog'), TeamCatalogController.newForm);
-router.post(  '/teams/import/preview', requireModule('teams_catalog'), TeamCatalogController.importPreview);
-router.post(  '/teams/import',     requireModule('teams_catalog'), TeamCatalogController.importConfirm);
-router.post(  '/teams',            requireModule('teams_catalog'), TeamCatalogController.create);
-router.get(   '/teams/:id/edit',   requireModule('teams_catalog'), TeamCatalogController.editForm);
-router.post(  '/teams/:id',        requireModule('teams_catalog'), TeamCatalogController.update);
-router.post(  '/teams/:id/delete', requireModule('teams_catalog'), TeamCatalogController.delete);
+router.get(   '/teams',            TeamCatalogController.index);
+router.get(   '/teams/new',        TeamCatalogController.newForm);
+router.post(  '/teams/import/preview', TeamCatalogController.importPreview);
+router.post(  '/teams/import',     TeamCatalogController.importConfirm);
+router.post(  '/teams',            TeamCatalogController.create);
+router.get(   '/teams/:id/edit',   TeamCatalogController.editForm);
+router.post(  '/teams/:id',        TeamCatalogController.update);
+router.post(  '/teams/:id/delete', TeamCatalogController.delete);
 
-router.post('/api/teams-catalog/quick', requireModule('teams_catalog'), TeamCatalogController.quickCreate);
+router.post('/api/teams-catalog/quick', TeamCatalogController.quickCreate);
 
 // ── Training ──────────────────────────────────────────────────────────────────
 router.get( '/training',                      TrainingController.index);
