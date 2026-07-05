@@ -70,6 +70,39 @@
       </div>
     </div>
 
+    <div id="stratWrap">
+      <div class="section-title">Estrategia de neumáticos</div>
+      <div class="footnote" id="stratStatus" style="margin:0 0 8px;text-align:left">—</div>
+
+      <div class="grid">
+        <div class="stat"><div class="k">Juegos usados</div><div class="v" id="stratSetsUsed">—</div></div>
+        <div class="stat"><div class="k">Juegos restantes</div><div class="v" id="stratSetsLeft">—</div></div>
+        <div class="stat"><div class="k">Vueltas en la goma</div><div class="v" id="stratStintLap">—</div></div>
+        <div class="stat"><div class="k">Degradación</div><div class="v sm" id="stratDeg">—</div></div>
+      </div>
+      <div id="stratConf" style="color:var(--muted);font-size:.72rem;margin-top:6px;text-align:center">—</div>
+
+      <div id="stratReco" style="margin-top:10px;padding:12px 14px;border-radius:12px;background:var(--card);border:1px solid var(--border);font-weight:700;text-align:center">—</div>
+      <div id="stratPosAdvice" style="margin-top:8px;padding:10px 14px;border-radius:12px;background:var(--card);border:1px solid var(--border);color:var(--accent);font-size:.9rem;text-align:center" hidden></div>
+
+      <div id="stratWhatIf" class="proj" style="margin-top:8px" hidden>
+        <div class="p"><div class="k">Si cambias ahora</div><div class="v" id="whatIfChange">—</div></div>
+        <div class="p"><div class="k">Si aguantas</div><div class="v" id="whatIfStay">—</div></div>
+      </div>
+
+      <button id="tireChangeBtn" type="button" class="audiobtn" style="width:100%;margin-top:10px">🛞 Cambié gomas</button>
+
+      <details style="margin-top:12px;color:var(--muted)">
+        <summary style="cursor:pointer;font-size:.8rem;text-transform:uppercase;letter-spacing:.4px">Configuración de estrategia</summary>
+        <div style="margin-top:6px">
+          <label class="vrow"><span>Nº de juegos disponibles</span><input type="number" min="1" max="20" step="1" id="cfgSetsTotal"></label>
+          <label class="vrow"><span>Coste de parada (s)</span><input type="number" min="0" max="120" step="1" id="cfgPitCostS"></label>
+          <label class="vrow"><span>Cambios mínimos obligatorios</span><input type="number" min="0" max="20" step="1" id="cfgMinChanges"></label>
+          <label class="vrow"><span>Cambios ya realizados</span><input type="number" min="0" max="20" step="1" id="cfgChangesMade"></label>
+        </div>
+      </details>
+    </div>
+
     <div class="footnote" id="foot">—</div>
   </div>
 
@@ -217,6 +250,225 @@
     function resetManga(){ firedHalf = firedLastMin = firedLast30 = firedFinish = false; bestLap = null; }
     function findMe(rows){ for (var i=0;i<rows.length;i++) if (rows[i].name === TEAM_NAME) return rows[i]; return null; }
 
+    // ══════════════════════════════════════════════════════════════════════
+    // ── Estrategia de neumáticos (100% cliente, con lo que llega por socket) ──
+    // Modelo: la goma se degrada ~lineal, T ≈ T0 + d·k (k = nº vuelta del stint).
+    // MEJORA 1 (normalización por carril): el equipo rota de carril cada manga
+    // y unos carriles ruedan más rápido que otros; un stint puede cruzar varias
+    // mangas, así que la pendiente d sobre tiempos brutos mezclaría carril con
+    // desgaste. Por eso mantenemos una mediana de tiempo por carril (race-wide,
+    // de TODAS las entidades) y ajustamos d sobre el delta normalizado
+    // (tiempo - mediana del carril de esa vuelta).
+    // ══════════════════════════════════════════════════════════════════════
+    var STRAT_KEY = 'lapStrat/' + RACE_ID + '/' + TEAM_ID;
+    var STRAT_DEF = { setsTotal: 4, pitCostMs: 15000, minChanges: 0, changesMade: 0 };
+    var STRAT = (function(){
+      try {
+        var raw = localStorage.getItem(STRAT_KEY);
+        if (raw){ var p = JSON.parse(raw); var o = {}; for (var k in STRAT_DEF) o[k] = (k in p) ? p[k] : STRAT_DEF[k]; return o; }
+      } catch(e){}
+      return JSON.parse(JSON.stringify(STRAT_DEF));
+    })();
+    function saveStrat(){ try { localStorage.setItem(STRAT_KEY, JSON.stringify(STRAT)); } catch(e){} }
+
+    var MIN_CONFIDENCE_LAPS = 8;
+    // Umbral de degradación: una pendiente por debajo de esto (ms/vuelta) es
+    // ruido, no desgaste. Sin él, un stint plano deja una pendiente ínfima > 0 y
+    // el motor la trataría como degradación (√(2P/d) da un óptimo absurdo).
+    var DEG_MIN_MS = 5;
+    var laneTimes = {};      // carril -> array de tiempos de vuelta (race-wide, cap ~200 muestras)
+    var stint = [];          // { ms, lane } de MIS vueltas limpias en el juego de gomas actual.
+                              // NO se resetea al cambiar de manga (la goma sigue puesta); solo
+                              // se resetea al pulsar "Cambié gomas".
+    var lastSnap = null;     // último snapshot (para timing/live/projection en computeStrategy)
+
+    function trackLaneTime(lane, ms){
+      if (lane == null || ms == null || ms < 500 || ms > 25000) return;
+      var arr = laneTimes[lane]; if (!arr){ arr = []; laneTimes[lane] = arr; }
+      arr.push(ms);
+      if (arr.length > 200) arr.shift();
+    }
+    function median(arr){
+      if (!arr || !arr.length) return null;
+      var s = arr.slice().sort(function(a,b){ return a-b; });
+      var mid = Math.floor(s.length/2);
+      return (s.length % 2) ? s[mid] : (s[mid-1]+s[mid])/2;
+    }
+    function laneMedian(lane){
+      var arr = laneTimes[lane];
+      if (!arr || arr.length < 3) return null;
+      return median(arr);
+    }
+    function linreg(pts){
+      var n = pts.length, sx=0, sy=0, sxy=0, sxx=0;
+      for (var i=0;i<n;i++){ sx+=pts[i].x; sy+=pts[i].y; sxy+=pts[i].x*pts[i].y; sxx+=pts[i].x*pts[i].x; }
+      var denom = n*sxx - sx*sx;
+      if (denom === 0) return { slope: 0, intercept: sy/n };
+      var slope = (n*sxy - sx*sy) / denom;
+      return { slope: slope, intercept: (sy - slope*sx) / n };
+    }
+
+    // Ajusta d (degradación por vuelta) y t0 (intercepto, en tiempo ABSOLUTO
+    // referenciado al carril actual) sobre las vueltas del stint. Salta la
+    // out-lap (1ª del stint) y rechaza outliers (>125% de la mediana del stint).
+    function fitDegradation(){
+      var n = stint.length;
+      if (n < 2){
+        var avg0 = n ? stint[0].ms : null;
+        return { d: 0, t0: null, n: 0, confidence: 'low', currentAvgMs: avg0, stintLap: n };
+      }
+      var body = stint.slice(1); // salta la out-lap
+      var rawVals = body.map(function(s){ return s.ms; });
+      var med = median(rawVals);
+      var clean = [];
+      for (var i = 0; i < body.length; i++){
+        var s = body[i];
+        if (med != null && med > 0 && s.ms > med * 1.25) continue; // outlier
+        clean.push({ k: i + 2, ms: s.ms, lane: s.lane }); // k=1 es la out-lap
+      }
+      var currentAvgMs;
+      if (clean.length) currentAvgMs = clean.reduce(function(a,p){ return a+p.ms; }, 0) / clean.length;
+      else currentAvgMs = rawVals.length ? (rawVals.reduce(function(a,b){ return a+b; },0)/rawVals.length) : stint[0].ms;
+
+      if (!clean.length) return { d: 0, t0: null, n: 0, confidence: 'low', currentAvgMs: currentAvgMs, stintLap: n };
+
+      // Referencia de carril para expresar t0 en tiempo absoluto (asume que las
+      // próximas vueltas se corren en el carril actual, myLane).
+      var refLane = laneMedian(myLane);
+      if (refLane == null) refLane = currentAvgMs;
+
+      var pts = clean.map(function(p){
+        var lm = laneMedian(p.lane);
+        var y = (lm != null) ? (p.ms - lm + refLane) : p.ms;
+        return { x: p.k, y: y };
+      });
+      var f = linreg(pts);
+      var confidence = (clean.length >= MIN_CONFIDENCE_LAPS) ? 'ok' : 'low';
+      return { d: f.slope, t0: f.intercept, n: clean.length, confidence: confidence, currentAvgMs: currentAvgMs, stintLap: n };
+    }
+
+    function fmtDeg(d){
+      if (d == null) return '—';
+      if (d <= DEG_MIN_MS) return 'sin desgaste';
+      return '+' + (d/1000).toFixed(2) + ' s/vuelta';
+    }
+
+    // Recomendación + capa de posición + what-if. Ver notas de MEJORA 2 (fallback
+    // sin sobre-recomendar cuando d<=0, que es lo normal en slot: validado con la
+    // 24h Modena — cambiar sin desgaste medible solo resta el tiempo de parada).
+    function computeStrategy(snap){
+      var cfg = STRAT;
+      var fit = fitDegradation();
+      var changesMade = cfg.changesMade || 0;
+      var changesRemaining = Math.max(0, (cfg.setsTotal - 1) - changesMade);
+      var stintsRemaining = changesRemaining + 1;
+
+      var t = (snap && snap.timing) || {};
+      var live = (snap && snap.live) || {};
+      var proj = (snap && snap.projection) || null;
+
+      var remMs = (live.remainingMs != null) ? live.remainingMs
+                : ((proj && proj.projectedTotal != null && t.avgLapMs) ? (proj.projectedTotal - (t.totalLaps || 0)) * t.avgLapMs : null);
+      var currentAvgMs = fit.currentAvgMs || t.avgLapMs || null;
+      var remainingLaps = (remMs != null && currentAvgMs) ? (remMs / currentAvgMs) : null;
+
+      var result = {
+        changesMade: changesMade, changesRemaining: changesRemaining,
+        stintLap: fit.stintLap, d: fit.d, confidence: fit.confidence, n: fit.n,
+        remainingLaps: remainingLaps, recommendation: '', positionAdvice: null, whatIf: null
+      };
+
+      if (changesRemaining <= 0){
+        result.recommendation = 'Aguanta hasta el final (sin juegos de repuesto)';
+        return result;
+      }
+      if (fit.confidence !== 'ok'){
+        result.recommendation = 'Datos insuficientes (' + fit.n + '/' + MIN_CONFIDENCE_LAPS + ' vueltas limpias)';
+        return result;
+      }
+
+      if (fit.d > DEG_MIN_MS){
+        var lStar = Math.sqrt(2 * cfg.pitCostMs / fit.d);
+        var perStint = (remainingLaps != null) ? (remainingLaps / stintsRemaining) : lStar;
+        var optimalStintLen = Math.max(lStar, perStint);
+        var changeIn = Math.round(optimalStintLen - fit.stintLap);
+        result.recommendation = (changeIn <= 0)
+          ? 'Ventana abierta: cambia ahora (degradación)'
+          : ('Cambia en ' + changeIn + ' vuelta' + (changeIn === 1 ? '' : 's') + ' (degradación)');
+
+        if (remainingLaps != null && remainingLaps > 0 && fit.t0 != null){
+          var R = remainingLaps;
+          var avgNoStop = fit.t0 + fit.d * (fit.stintLap + R/2);
+          var avgStop = fit.t0 + fit.d * (R/2);
+          var totalNow = t.totalLaps || 0;
+          var projNoStop = (avgNoStop > 0) ? totalNow + remMs/avgNoStop : null;
+          var projStop = (avgStop > 0) ? totalNow + (remMs - cfg.pitCostMs)/avgStop : null;
+
+          if (projNoStop != null && projStop != null){
+            result.whatIf = { changeNowLaps: +projStop.toFixed(1), stayOutLaps: +projNoStop.toFixed(1) };
+
+            var aheadName = myCtx.aheadName, aheadProj = myCtx.aheadProjTotal;
+            var behindName = myCtx.behindName, behindProj = myCtx.behindProjTotal;
+            var advice = null;
+            if (aheadProj != null && projStop > aheadProj && projNoStop <= aheadProj){
+              advice = 'Cambia → adelantas a ' + aheadName;
+            }
+            if (!advice && behindProj != null){
+              if (projStop < behindProj && projNoStop >= behindProj) advice = 'Aguanta → si paras te adelanta ' + behindName;
+              else if (projNoStop < behindProj && projStop >= behindProj) advice = 'Cambia → defiendes de ' + behindName;
+            }
+            result.positionAdvice = advice || 'Sin cambio de posición previsto';
+          }
+        }
+      } else {
+        var missingMandatory = Math.max(0, (cfg.minChanges || 0) - changesMade);
+        if (missingMandatory > 0 && remainingLaps != null){
+          var perStint2 = remainingLaps / (missingMandatory + 1);
+          var changeIn2 = Math.round(perStint2 - fit.stintLap);
+          result.recommendation = (changeIn2 <= 0)
+            ? 'Ventana abierta: cambia ahora (cambio obligatorio pendiente)'
+            : ('Cambia en ' + changeIn2 + ' vueltas (cambio obligatorio pendiente)');
+        } else {
+          result.recommendation = 'Aguanta hasta el final (sin desgaste, cambiar solo resta)';
+        }
+        if (currentAvgMs && remainingLaps != null){
+          var lapsLostFromPit = cfg.pitCostMs / currentAvgMs;
+          var stayOutLaps = (proj && proj.projectedTotal != null) ? proj.projectedTotal : (t.totalLaps || 0) + remainingLaps;
+          result.whatIf = { changeNowLaps: +(stayOutLaps - lapsLostFromPit).toFixed(1), stayOutLaps: +stayOutLaps.toFixed(1) };
+        }
+      }
+      return result;
+    }
+
+    function renderStrategy(){
+      var wrap = document.getElementById('stratWrap');
+      if (!wrap) return;
+      var r = computeStrategy(lastSnap);
+      var live = (lastSnap && lastSnap.live) || {};
+
+      set('stratStatus', !live.running ? 'Sin manga en curso' : (myStatus === 'my-turn' ? 'En pista' : 'En descanso'));
+      set('stratSetsUsed', r.changesMade + 1);
+      set('stratSetsLeft', r.changesRemaining);
+      set('stratStintLap', r.stintLap || 0);
+      set('stratDeg', fmtDeg(r.d));
+      set('stratConf', 'Confianza: ' + r.n + '/' + MIN_CONFIDENCE_LAPS + ' vueltas limpias (' + (r.confidence === 'ok' ? 'ok' : 'baja') + ')');
+      set('stratReco', r.recommendation);
+
+      var posEl = document.getElementById('stratPosAdvice');
+      if (posEl){
+        if (r.positionAdvice){ posEl.hidden = false; posEl.textContent = r.positionAdvice; }
+        else posEl.hidden = true;
+      }
+      var wiEl = document.getElementById('stratWhatIf');
+      if (wiEl){
+        if (r.whatIf){
+          wiEl.hidden = false;
+          set('whatIfChange', r.whatIf.changeNowLaps != null ? r.whatIf.changeNowLaps : '—');
+          set('whatIfStay', r.whatIf.stayOutLaps != null ? r.whatIf.stayOutLaps : '—');
+        } else wiEl.hidden = true;
+      }
+    }
+
     function onStandings(st){
       if (!st || !st.standings) return;
       if (st.elapsedMs > 0 && st.remainingMs >= 0) mangaDurationMs = st.elapsedMs + st.remainingMs;
@@ -227,7 +479,7 @@
       prevMangaId = st.mangaId;
 
       var me = findMe(st.standings);
-      if (!me){ myStatus = 'rest'; myLane = null; prevMyLane = null; return; }
+      if (!me){ myStatus = 'rest'; myLane = null; prevMyLane = null; renderStrategy(); return; }
       myStatus = 'my-turn';
 
       // Entrada a tu turno / cambio de manga → "Tu turno, carril N".
@@ -243,20 +495,37 @@
       var ahead = idx > 0 ? sorted[idx-1] : null;
       var behind = (idx >= 0 && idx < sorted.length-1) ? sorted[idx+1] : null;
       var pr = st.projection ? (function(){ for (var j=0;j<st.projection.length;j++){ var p=st.projection[j]; if (String(p.entityId)===String(TEAM_ID) || p.name===me.name) return p; } return null; })() : null;
+      function findProjByName(name){
+        if (!st.projection || name == null) return null;
+        for (var j=0;j<st.projection.length;j++){ if (st.projection[j].name === name) return st.projection[j]; }
+        return null;
+      }
+      var aheadProj = ahead ? findProjByName(ahead.name) : null;
+      var behindProj = behind ? findProjByName(behind.name) : null;
       myCtx = {
         avgLapMs: me.avgLapMs,
         gapAheadLaps: ahead ? ahead.lapCount - me.lapCount : null, aheadName: ahead ? ahead.name : null,
         gapBehindLaps: behind ? me.lapCount - behind.lapCount : null, behindName: behind ? behind.name : null,
-        avgToCatchMs: pr ? pr.avgToCatch : null
+        avgToCatchMs: pr ? pr.avgToCatch : null,
+        aheadProjTotal: aheadProj ? aheadProj.projectedTotal : null,
+        behindProjTotal: behindProj ? behindProj.projectedTotal : null
       };
+      renderStrategy();
     }
 
     function onLap(d){
       if (!d) return;
+      // Mediana por carril: race-wide, de TODAS las entidades (para normalizar
+      // la pendiente de degradación por carril; ver MEJORA 1).
+      if (d.lapTimeMs != null && d.lapTimeMs >= 500 && d.lapTimeMs <= 25000) trackLaneTime(d.lane, d.lapTimeMs);
       var mine = (d.name === TEAM_NAME) || (myLane != null && d.lane === myLane);
       if (!mine){ scheduleRefresh(); return; }
       refresh();
       if (d.isExit || d.isFirstCrossing) return;
+      if (d.lapTimeMs != null && d.lapTimeMs >= 500 && d.lapTimeMs <= 25000){
+        stint.push({ ms: d.lapTimeMs, lane: d.lane });
+        renderStrategy();
+      }
       if (!S.sayLaps) return;
       var ms = d.lapTimeMs, t = speakTime(ms);
       var isFastest = (d.lapNumber > 1) && (bestLap == null || ms < bestLap);
@@ -295,6 +564,7 @@
     var lastLapShown = null;
     function render(snap){
       if (!snap || !snap.ok) return;
+      lastSnap = snap;
       var t = snap.timing, live = snap.live || {}, proj = snap.projection;
       // Posición grande = la PROYECTADA (la misma que las tarjetas del directo);
       // si no hay manga viva, cae a la posición por vueltas totales.
@@ -346,6 +616,7 @@
         set('statusText', snap.race.status === 'finished' ? 'Carrera finalizada' : 'Esperando próxima manga');
       }
       set('foot', 'Actualizado ' + new Date(snap.updatedAt).toLocaleTimeString('es-ES'));
+      renderStrategy();
     }
 
     try { render(JSON.parse(document.getElementById('snap').textContent || '{}')); } catch(e){}
@@ -393,6 +664,44 @@
       });
     }
     paintToggle(); updateWakeNote();
+
+    // ── UI: panel de estrategia de neumáticos ────────────────────────────
+    (function(){
+      var elSets = document.getElementById('cfgSetsTotal');
+      var elPit  = document.getElementById('cfgPitCostS');
+      var elMin  = document.getElementById('cfgMinChanges');
+      var elMade = document.getElementById('cfgChangesMade');
+      if (elSets) elSets.value = STRAT.setsTotal;
+      if (elPit)  elPit.value  = Math.round(STRAT.pitCostMs / 1000);
+      if (elMin)  elMin.value  = STRAT.minChanges;
+      if (elMade) elMade.value = STRAT.changesMade;
+
+      function bindNum(el, apply){
+        if (!el) return;
+        el.addEventListener('change', function(){
+          var n = parseInt(el.value, 10);
+          if (!isFinite(n) || n < 0) n = 0;
+          apply(n); el.value = n;
+          saveStrat(); renderStrategy();
+        });
+      }
+      bindNum(elSets, function(n){ STRAT.setsTotal = Math.max(1, n); });
+      bindNum(elPit,  function(n){ STRAT.pitCostMs = n * 1000; });
+      bindNum(elMin,  function(n){ STRAT.minChanges = n; });
+      bindNum(elMade, function(n){ STRAT.changesMade = n; });
+
+      var tireBtn = document.getElementById('tireChangeBtn');
+      if (tireBtn) tireBtn.addEventListener('click', function(){
+        if (!window.confirm('¿Confirmas que has cambiado los neumáticos?')) return;
+        STRAT.changesMade = (STRAT.changesMade || 0) + 1;
+        if (elMade) elMade.value = STRAT.changesMade;
+        saveStrat();
+        stint = [];
+        renderStrategy();
+      });
+
+      renderStrategy();
+    })();
 
     // ── Socket: alimenta el motor de voz y el refresco visual ────────────
     try {
