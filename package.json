@@ -3,6 +3,12 @@
   "productName": "PitWall",
   "version": "1.0.0",
   "description": "PitWall — Slot car race management and timing system",
+  "author": "Víctor González Gómez <vgonzalezgomez@outlook.es>",
+  "license": "AGPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vgonzalezgomez85/PitWall-Manager"
+  },
   "main": "electron/main.js",
   "scripts": {
     "start": "node src/app.js",
@@ -38,7 +44,7 @@
   "build": {
     "appId": "com.pitwall.app",
     "productName": "PitWall",
-    "copyright": "Copyright © 2026 PitWall",
+    "copyright": "Copyright © 2026 Víctor González Gómez — GNU AGPLv3",
     "directories": {
       "output": "dist-app"
     },
