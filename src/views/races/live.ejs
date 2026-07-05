@@ -138,7 +138,7 @@
         onclick="window.open('/races/<%= race.id %>/mangas/<%= manga.id %>/panel/track','_blank','width=900,height=600')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3L3 5v16l6-2 6 2 6-2V3l-6 2-6-2zM9 3v16M15 5v16"/></svg>
       </button>
-      <% if (race.format === 'team' && totalMangas > 1 && license.tier === 'pro') { %>
+      <% if (race.format === 'team' && totalMangas > 1) { %>
         <a href="/races/<%= race.id %>/lemans" target="_blank" class="lbtn lbtn--back lbtn--icon" title="<%= lang === 'es' ? 'Clasificación Le Mans' : 'Le Mans standings' %>">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h12l-2 4 2 4H5"/></svg>
         </a>

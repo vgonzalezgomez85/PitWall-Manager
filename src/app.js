@@ -24,10 +24,6 @@ const routes  = require('./routes');
 
 require('./config/database'); // init schema
 
-const LicenseService = require('./services/LicenseService');
-const dataDir = process.env.SLOTIME_DATA || require('path').join(__dirname, '..', 'database');
-LicenseService.load(dataDir);
-
 const app    = express();
 // Confía SOLO en el proxy de loopback (127.0.0.1): un túnel público
 // (cloudflared/ngrok) corre en la misma máquina y reenvía a localhost, así que
@@ -229,10 +225,8 @@ app.use(session({
 }));
 app.use(i18n);
 
-// Expose license info, serial status and flash messages to all views
+// Expose serial status and flash messages to all views
 app.use((req, res, next) => {
-  res.locals.license = LicenseService.info;
-  res.locals.tier    = LicenseService.tier;
   res.locals.flash   = req.session.flash || null;
   // Serial port status (computed at render time, lightweight)
   const SerialService = require('./services/SerialService');

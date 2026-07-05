@@ -1,6 +1,5 @@
 const Settings       = require('../models/Settings');
 const SerialService  = require('../services/SerialService');
-const LicenseService = require('../services/LicenseService');
 const DebugLogger    = require('../services/DebugLogger');
 const Circuit        = require('../models/Circuit');
 
@@ -31,8 +30,7 @@ class SettingsController {
     try { circuits = JSON.parse(cfg.circuits_serial || '[]'); } catch {}
     if (circuits.length === 0) circuits = [{ port: '', baud: 57600, lanes: 8, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none' }];
 
-    const multiCircuit = LicenseService.has('multi_circuit');
-    if (!multiCircuit && circuits.length > 1) circuits = circuits.slice(0, 1);
+    const multiCircuit = true;
 
     const net = require('../utils/network');
     const bindIface = cfg.server_bind_iface || '';
@@ -111,11 +109,6 @@ class SettingsController {
         };
       })
       .filter(c => c.port);
-
-    // Pro-only: multi-circuit. Non-Pro may only use one circuit.
-    if (!LicenseService.has('multi_circuit') && circuits.length > 1) {
-      circuits = circuits.slice(0, 1);
-    }
 
     // Training circuit is derived from the first DS-300 that references a saved
     // circuit. Falls back to '' (none) if no DS-300 has one assigned.
