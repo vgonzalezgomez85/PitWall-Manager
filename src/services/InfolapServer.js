@@ -1,3 +1,20 @@
+/*
+ * PitWall — gestión y cronometraje de carreras de slot
+ * Copyright (C) 2026 Víctor González Gómez <vgonzalezgomez@outlook.es>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
 // Servidor compatible con el protocolo Infolap (Tic Tac Slot legacy), para
 // que la app Android Infolap pueda conectarse a PitWall y recibir vueltas
 // en tiempo real como si fuera el "Gestor de Carreras" v5.8.8 de TTS.
