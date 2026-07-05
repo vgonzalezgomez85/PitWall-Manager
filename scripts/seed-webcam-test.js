@@ -1,3 +1,20 @@
+/*
+ * PitWall — gestión y cronometraje de carreras de slot
+ * Copyright (C) 2026 Víctor González Gómez <vgonzalezgomez@outlook.es>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
 // Seed de prueba para el lector de pilotos por webcam.
 // Crea una carrera championship/team (status=active) con una manga pending
 // (modo pre-arme) + 4 equipos en 4 carriles, cada uno con 2 pilotos que tienen
