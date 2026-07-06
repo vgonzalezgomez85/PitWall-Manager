@@ -1578,18 +1578,19 @@ class SessionController {
     ];
     addRaceHeader(s4, 3 + numLaneCols);
 
-    // Banner row
+    // Banner row: TODO el texto en una sola celda combinada (A..última) para que
+    // la etiqueta no se recorte en la columna A (que es estrecha).
     if (raceBestLapMs != null) {
-      s4.addRow([`⚡ ${isEs ? 'Vuelta rápida de la carrera' : 'Race fastest lap'}`,
-                 `${fmtSec(raceBestLapMs)}s — ${raceBestEntity} (${isEs ? 'Pista' : 'Lane'} ${raceBestLane})`]);
+      const bannerText = `⚡ ${isEs ? 'Vuelta rápida de la carrera' : 'Race fastest lap'}:  `
+        + `${fmtSec(raceBestLapMs)}s — ${raceBestEntity} (${isEs ? 'Pista' : 'Lane'} ${raceBestLane})`;
+      s4.addRow([bannerText]);
       const r = s4.lastRow;
       r.height = 26;
-      r.eachCell(c => {
-        c.fill = fillSolid(COL.gold);
-        c.font = { bold: true, size: 12, color: { argb: 'FF1A1A1A' } };
-        c.alignment = { vertical: 'middle' };
-      });
-      s4.mergeCells(r.number, 2, r.number, 3 + numLaneCols);
+      s4.mergeCells(r.number, 1, r.number, 3 + numLaneCols);
+      const c = r.getCell(1);
+      c.fill = fillSolid(COL.gold);
+      c.font = { bold: true, size: 12, color: { argb: 'FF1A1A1A' } };
+      c.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
       s4.addRow([]);
     }
 
