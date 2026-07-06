@@ -1383,6 +1383,8 @@ class SessionController {
       muted:     'FF6E7681',
       exit:      'FFF85149',
       border:    'FFD0D7DE',
+      accent:    'FF1F6FEB',   // azul de marca para la banda de subtítulo
+      footerBg:  'FFF6F8FA',
     };
     const thinBorder = {
       top:    { style: 'thin', color: { argb: COL.border } },
@@ -1403,8 +1405,21 @@ class SessionController {
     };
 
     const wb = new ExcelJS.Workbook();
-    wb.creator = 'SloTime';
-    wb.created = new Date();
+    wb.creator       = 'PitWall';
+    wb.company       = 'PitWall';
+    wb.title         = race.name;
+    wb.lastModifiedBy = 'PitWall';
+    wb.created       = new Date();
+
+    // Logo de la app para incrustarlo en la cabecera de cada hoja (opcional: si
+    // no se puede leer, se sigue sin logo).
+    const _fs   = require('fs');
+    const _path = require('path');
+    let logoId = null;
+    try {
+      const logoBuf = _fs.readFileSync(_path.join(__dirname, '../../build/icon.png'));
+      logoId = wb.addImage({ buffer: logoBuf, extension: 'png' });
+    } catch (e) { /* sin logo */ }
 
     // Date shown in header: prefer finished_at, fall back to started_at, then created_at
     const raceDateRaw = race.finished_at || race.started_at || race.created_at;
@@ -1416,23 +1431,40 @@ class SessionController {
     const dateLabel  = isEs ? 'Fecha'   : 'Date';
 
     // Adds 2 header rows (title + date) to a sheet across `cols` columns
+    // Subtítulo: tipo · formato · fecha (lo que haya).
+    const _fmtType = race.type ? String(race.type).charAt(0).toUpperCase() + String(race.type).slice(1) : null;
+    const _fmtFormat = race.format === 'team' ? (isEs ? 'Equipos' : 'Teams')
+                     : race.format === 'individual' ? (isEs ? 'Individual' : 'Individual') : null;
+    const subParts = [_fmtType, _fmtFormat, raceDateStr].filter(Boolean);
+    const subLine  = subParts.join('   ·   ');
+
     function addRaceHeader(ws, cols) {
-      const r1 = ws.addRow([`🏁 ${race.name}`]);
-      r1.height = 24;
+      // ── Banda de título (oscura) con el logo de PitWall a la derecha ──────
+      const r1 = ws.addRow([race.name]);
+      r1.height = 40;
       ws.mergeCells(r1.number, 1, r1.number, cols);
       const c1 = r1.getCell(1);
-      c1.font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
+      c1.font = { name: 'Calibri', bold: true, size: 16, color: { argb: 'FFFFFFFF' } };
       c1.fill = fillSolid(COL.header);
       c1.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
-
-      if (raceDateStr) {
-        const r2 = ws.addRow([`${dateLabel}: ${raceDateStr}`]);
-        r2.height = 18;
-        ws.mergeCells(r2.number, 1, r2.number, cols);
-        const c2 = r2.getCell(1);
-        c2.font = { italic: true, size: 10, color: { argb: COL.muted } };
-        c2.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+      if (logoId != null) {
+        // Logo flotante anclado a la derecha de la banda del título.
+        ws.addImage(logoId, {
+          tl: { col: Math.max(0, cols - 1) + 0.15, row: (r1.number - 1) + 0.08 },
+          ext: { width: 34, height: 34 },
+          editAs: 'oneCell',
+        });
       }
+
+      // ── Banda de subtítulo (acento azul) ─────────────────────────────────
+      const r2 = ws.addRow([subLine || race.name]);
+      r2.height = 20;
+      ws.mergeCells(r2.number, 1, r2.number, cols);
+      const c2 = r2.getCell(1);
+      c2.font = { name: 'Calibri', size: 10, color: { argb: 'FFFFFFFF' } };
+      c2.fill = fillSolid(COL.accent);
+      c2.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+
       ws.addRow([]);
     }
 
@@ -1875,6 +1907,26 @@ class SessionController {
     }
 
 
+
+    // ── Pie de página de copyright en TODAS las hojas ────────────────────────
+    // Fila visible al final + footer de impresión (se ve al imprimir/PDF).
+    const _year = (wb.created instanceof Date ? wb.created : new Date()).getFullYear();
+    const copyrightText = `© ${_year} PitWall · Software libre (GNU AGPLv3) · pitwall.es`;
+    wb.eachSheet((ws) => {
+      const cols = Math.max(1, ws.columnCount || 1);
+      ws.addRow([]);
+      const fr = ws.addRow([copyrightText]);
+      fr.height = 16;
+      ws.mergeCells(fr.number, 1, fr.number, cols);
+      const fc = fr.getCell(1);
+      fc.font = { name: 'Calibri', italic: true, size: 9, color: { argb: COL.muted } };
+      fc.fill = fillSolid(COL.footerBg);
+      fc.alignment = { horizontal: 'center', vertical: 'middle' };
+      // Footer de impresión (aparece al imprimir o exportar a PDF).
+      ws.headerFooter = ws.headerFooter || {};
+      ws.headerFooter.oddFooter  = `&C&"Calibri"&8${copyrightText}`;
+      ws.headerFooter.evenFooter = `&C&"Calibri"&8${copyrightText}`;
+    });
 
     const buf = await wb.xlsx.writeBuffer();
     const filename = `${race.name.replace(/[^a-zA-Z0-9_-]/g, '_')}_resultados.xlsx`;
