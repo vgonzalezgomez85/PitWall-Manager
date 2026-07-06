@@ -1,0 +1,86 @@
+<%- include('../partials/header', { pageTitle: 'Importar tanda' }) %>
+<div class="container container--narrow">
+  <a href="/races" class="vt-back-link" style="margin-top:1rem">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Carreras
+  </a>
+  <h1 class="page-title">📥 Importar tanda de PitWall Control</h1>
+  <p class="form-hint" style="margin:-.4rem 0 1rem">
+    Crea la carrera y sus tandas automáticamente a partir de un fichero exportado
+    por PitWall Control. Cada manga se convierte en una tanda con los equipos en su
+    carril de salida; PitWall genera la rotación.
+  </p>
+
+  <div id="result"></div>
+
+  <form id="importForm" class="form-card">
+    <div class="form-group">
+      <label class="form-label" for="file">Fichero de tanda (.json)</label>
+      <input class="form-input" id="file" name="file" type="file" accept=".json,application/json" required>
+      <p class="form-hint">El fichero <code>pitwall.tanda/v1</code> que exporta PitWall Control.</p>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="vt-btn vt-btn--primary">Crear carrera →</button>
+    </div>
+  </form>
+
+  <div class="form-card" style="margin-top:1.25rem">
+    <h2 class="form-label" style="margin-bottom:.35rem">📶 Envío por la red (WiFi/LAN)</h2>
+    <p class="form-hint" style="margin:0 0 .6rem">
+      PitWall Control puede enviar la tanda directamente por la red local, sin fichero.
+      Para emparejar desde otro dispositivo, introduce este PIN en Control:
+    </p>
+    <div style="font-size:2rem;font-weight:700;letter-spacing:.35rem;text-align:center;padding:.5rem 0">
+      <%= pin %>
+    </div>
+    <p class="form-hint" style="text-align:center;margin:.2rem 0 0">
+      Este equipo (localhost) no necesita PIN. El PIN solo lo piden los envíos desde la red.
+    </p>
+  </div>
+</div>
+
+<script>
+(function () {
+  var form = document.getElementById('importForm');
+  var fileInput = document.getElementById('file');
+  var result = document.getElementById('result');
+
+  function show(kind, html) {
+    result.innerHTML = '<div class="alert alert--' + kind + '">' + html + '</div>';
+  }
+
+  form.addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    result.innerHTML = '';
+    var f = fileInput.files && fileInput.files[0];
+    if (!f) { show('error', '<p>Selecciona un fichero .json.</p>'); return; }
+
+    var reader = new FileReader();
+    reader.onload = function () {
+      var payload;
+      try { payload = JSON.parse(reader.result); }
+      catch (e) { show('error', '<p>El fichero no es un JSON válido.</p>'); return; }
+
+      fetch('/import/tanda', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (res.ok && res.j.ok) {
+          show('success',
+            '<p><b>Carrera creada:</b> ' + (res.j.name || '') +
+            ' — ' + res.j.tandas + ' tanda(s), ' + res.j.teams + ' equipo(s).</p>' +
+            '<p><a class="vt-btn vt-btn--primary" href="' + res.j.url + '">Abrir la carrera →</a></p>');
+        } else {
+          show('error', '<p>' + (res.j.error || 'No se pudo importar.') + '</p>');
+        }
+      })
+      .catch(function () { show('error', '<p>Error de red al enviar el fichero.</p>'); });
+    };
+    reader.readAsText(f);
+  });
+})();
+</script>
+<%- include('../partials/footer') %>
