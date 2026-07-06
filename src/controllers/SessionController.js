@@ -1448,10 +1448,12 @@ class SessionController {
       c1.fill = fillSolid(COL.header);
       c1.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
       if (logoId != null) {
-        // Logo flotante anclado a la derecha de la banda del título.
+        // Logo anclado a la ESQUINA de la última columna de la banda del título.
+        // Anclaje ENTERO (sin fracciones): con anchos de columna personalizados,
+        // un anclaje fraccional ExcelJS lo recalcula mal y acaba tapando contenido.
         ws.addImage(logoId, {
-          tl: { col: Math.max(0, cols - 1) + 0.15, row: (r1.number - 1) + 0.08 },
-          ext: { width: 34, height: 34 },
+          tl: { col: Math.max(0, cols - 1), row: r1.number - 1 },
+          ext: { width: 30, height: 30 },
           editAs: 'oneCell',
         });
       }
