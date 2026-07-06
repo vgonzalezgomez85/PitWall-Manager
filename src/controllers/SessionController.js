@@ -1563,6 +1563,10 @@ class SessionController {
     const s4 = wb.addWorksheet(isEs ? 'Comparativa' : 'Comparison', {
       properties: { outlineProperties: { summaryBelow: false, summaryRight: false } }
     });
+    // Que "Comparativa" sea la PRIMERA pestaña (y la que se abre) aunque se cree
+    // la 4ª. El resto conserva su orden (orderNo por defecto es el de creación).
+    s4.orderNo = 0;
+    wb.views = [{ activeTab: 0, firstSheet: 0 }];
     const numLaneCols = laneSeq.length;
     s4.columns = [
       { width: 5 },   // #
