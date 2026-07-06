@@ -86,24 +86,34 @@ function validate(payload) {
   const tandas = payload.tandas.map((t, ti) => {
     const equipos = Array.isArray(t.equipos) ? t.equipos : [];
     if (equipos.length === 0) throw new TandaImportError(`La tanda ${ti + 1} no tiene equipos.`);
-    if (equipos.length > carriles) {
-      throw new TandaImportError(`La tanda ${ti + 1} tiene ${equipos.length} equipos y solo ${carriles} carriles.`);
-    }
     const seen = new Set();
+    let racers = 0;
     const eqs = equipos.map((e, ei) => {
       const enombre = String(e.nombre || '').trim();
       if (!enombre) throw new TandaImportError(`Equipo sin nombre en la tanda ${ti + 1} (posición ${ei + 1}).`);
-      const carril = asInt(e.carril_salida);
-      if (!(carril >= 1 && carril <= carriles)) {
-        throw new TandaImportError(`Carril de salida inválido (${e.carril_salida}) para "${enombre}" en la tanda ${ti + 1}.`);
+      // carril_salida 0 = DESCANSO (más equipos que carriles); 1..carriles = carril de carrera.
+      const carril = asInt(e.carril_salida) || 0;
+      const isRest = carril === 0;
+      if (!isRest) {
+        if (!(carril >= 1 && carril <= carriles)) {
+          throw new TandaImportError(`Carril de salida inválido (${e.carril_salida}) para "${enombre}" en la tanda ${ti + 1}.`);
+        }
+        if (seen.has(carril)) {
+          throw new TandaImportError(`Carril ${carril} repetido en la tanda ${ti + 1} (dos equipos en el mismo carril).`);
+        }
+        seen.add(carril);
+        racers++;
       }
-      if (seen.has(carril)) {
-        throw new TandaImportError(`Carril ${carril} repetido en la tanda ${ti + 1} (dos equipos en el mismo carril).`);
-      }
-      seen.add(carril);
+      const descanso = asInt(e.descanso) || 0;
       const pilotos = Array.isArray(e.pilotos) ? e.pilotos.map(p => String(p || '').trim()).filter(Boolean) : [];
-      return { nombre: enombre, copa: e.copa != null ? String(e.copa) : null, carril, pilotos };
+      return { nombre: enombre, copa: e.copa != null ? String(e.copa) : null, carril, isRest, descanso, pilotos };
     });
+    if (racers === 0) {
+      throw new TandaImportError(`La tanda ${ti + 1} no tiene ningún equipo en carril (todos en descanso).`);
+    }
+    if (racers > carriles) {
+      throw new TandaImportError(`La tanda ${ti + 1} tiene ${racers} equipos en carril y solo ${carriles} carriles.`);
+    }
     return { numero: asInt(t.numero) || ti + 1, equipos: eqs };
   });
 
@@ -128,37 +138,50 @@ function createFromPayload(payload) {
     });
 
     let teamCount = 0;
+    // Crea el team (+ pilotos) o el driver de un equipo y devuelve su entidad.
+    const crear = (tandaId, eq, colorSeed) => {
+      const color = LANE_COLORS[((colorSeed % LANE_COLORS.length) + LANE_COLORS.length) % LANE_COLORS.length];
+      if (v.isTeam) {
+        const teamId = Team.create({ race_id: raceId, tanda_id: tandaId, name: eq.nombre, lane: 0, color });
+        eq.pilotos.forEach((p, i) => Driver.create({
+          race_id: raceId, tanda_id: tandaId, team_id: teamId, name: p, lane: null, car_number: i + 1,
+        }));
+        teamCount++;
+        return { id: teamId, type: 'team', name: eq.nombre };
+      }
+      // INDIVIDUAL: cada equipo es un piloto suelto (usa su nombre).
+      const driverId = Driver.create({
+        race_id: raceId, tanda_id: tandaId, team_id: null, name: eq.nombre,
+        lane: eq.carril || null, car_number: eq.carril || null,
+      });
+      teamCount++;
+      return { id: driverId, type: 'driver', name: eq.nombre };
+    };
+
     for (const tanda of v.tandas) {
       const tandaId = Tanda.create(raceId);
 
-      // Orden de rotación = la secuencia por defecto restringida a los carriles
-      // realmente usados en esta tanda, en ese orden. Así la entidad i arranca
-      // (manga 1, s=0) en rotationLanes[i] = su carril_salida, y la rotación
-      // cicla por esos carriles con el patrón habitual de PitWall.
-      const usados = new Set(tanda.equipos.map(e => e.carril));
-      const rotationLanes = laneSeqRace.filter(l => usados.has(l));
-      const byLane = new Map(tanda.equipos.map(e => [e.carril, e]));
+      const racers  = tanda.equipos.filter(e => !e.isRest);
+      const resters = tanda.equipos.filter(e =>  e.isRest).sort((a, b) => a.descanso - b.descanso);
 
-      const entities = rotationLanes.map((lane) => {
-        const eq = byLane.get(lane);
-        const color = LANE_COLORS[(lane - 1) % LANE_COLORS.length];
-        if (v.isTeam) {
-          const teamId = Team.create({ race_id: raceId, tanda_id: tandaId, name: eq.nombre, lane: 0, color });
-          eq.pilotos.forEach((p, i) => Driver.create({
-            race_id: raceId, tanda_id: tandaId, team_id: teamId, name: p, lane: null, car_number: i + 1,
-          }));
-          teamCount++;
-          return { id: teamId, type: 'team', name: eq.nombre };
-        }
-        // INDIVIDUAL: cada equipo es un piloto suelto (usa su nombre).
-        const driverId = Driver.create({
-          race_id: raceId, tanda_id: tandaId, team_id: null, name: eq.nombre, lane, car_number: lane,
-        });
-        teamCount++;
-        return { id: driverId, type: 'driver', name: eq.nombre };
+      // Orden de rotación = la secuencia por defecto restringida a los carriles
+      // usados, MÁS una plaza de descanso (0) por cada equipo que descansa. Así
+      // la entidad i arranca (manga 1, s=0) en extended[i]: los que corren en su
+      // carril_salida y los que descansan en una plaza 0 (is_rest). El motor de
+      // resistencia rota carriles y descansos entre todos.
+      const usados = new Set(racers.map(e => e.carril));
+      const rotationLanes = laneSeqRace.filter(l => usados.has(l));
+      const extended = [...rotationLanes, ...Array(resters.length).fill(0)];
+      const byLane = new Map(racers.map(e => [e.carril, e]));
+
+      let restCursor = 0;
+      const entities = extended.map((lane) => {
+        if (lane !== 0) return crear(tandaId, byLane.get(lane), lane - 1);
+        const eq = resters[restCursor];
+        return crear(tandaId, eq, v.carriles + restCursor++);
       });
 
-      const schedule = Manga.buildSchedule(rotationLanes, entities);
+      const schedule = Manga.buildSchedule(extended, entities);
       Manga.persistSchedule(tandaId, raceId, schedule);
     }
 
