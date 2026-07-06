@@ -121,6 +121,14 @@ function isLinkControlPath(p) {
   return p === '/link/state' || p === '/link/event';
 }
 
+// Importación de tandas desde PitWall Control (LAN). El POST debe ser alcanzable
+// aunque la IP de Control no esté en la allowlist; la ACEPTACIÓN la gatea el PIN
+// dentro de ImportController (importAuthorized). La página (GET) NO se exime: la
+// abre el operador local y se queda tras la restricción por IP normal.
+function isImportPath(p, method) {
+  return p === '/import/tanda' && String(method || '').toUpperCase() === 'POST';
+}
+
 // ¿La petición de control del enlace está autorizada? Solo si esta instancia es
 // ESCLAVO y la cabecera x-link-token coincide con el secreto compartido. El
 // token vacío/no configurado nunca autoriza (evita aceptar por defecto).
@@ -141,6 +149,9 @@ function restrictAccess(req, res, next) {
   // Las de solo-lectura pasan libres; las de control las gatea el token DENTRO
   // del controlador (aquí solo levantamos el bloqueo por IP).
   if (isLinkReadPath(req.path) || isLinkControlPath(req.path)) return next();
+  // Import de tandas por LAN: exención de IP para el POST; el PIN lo valida
+  // ImportController. La página (GET) sigue tras la restricción por IP.
+  if (isImportPath(req.path, req.method)) return next();
   if (ipAllowed(reqIp(req))) return next();
   return res.status(403).render('error', {
     t: req.t, code: 403,
@@ -180,4 +191,5 @@ module.exports = {
   ipAllowed, restrictAccess, isSocketAllowed,
   isLocalRequest, annotateAccess,
   isLinkReadPath, isLinkControlPath, linkControlAuthorized,
+  isImportPath,
 };

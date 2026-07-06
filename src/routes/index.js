@@ -38,6 +38,7 @@ const DiagnosticsController       = require('../controllers/DiagnosticsControlle
 const LiveStatsController         = require('../controllers/LiveStatsController');
 const DatabaseController          = require('../controllers/DatabaseController');
 const LinkController               = require('../controllers/LinkController');
+const ImportController             = require('../controllers/ImportController');
 
 router.get('/', (req, res) => {
   const Race          = require('../models/Race');
@@ -80,6 +81,10 @@ router.post('/races/new/step3',  RaceController.postStep3);
 router.get('/races/new/step4',   RaceController.newStep4);
 router.post('/races/new/step4',  RaceController.postStep4);
 router.get('/races/new/confirm', RaceController.newConfirm);
+
+// ── Importar tanda desde PitWall Control (fichero JSON o LAN) ───────────────
+router.get( '/import/tanda', ImportController.page);    // pantalla de subida (operador local)
+router.post('/import/tanda', ImportController.create);  // crea la carrera (fichero o LAN + PIN)
 
 // ── Carrera simulada (desde fichero de tramas DS-300) ───────────────────────
 router.get( '/races/sim/new',     SimController.newForm);
