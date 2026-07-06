@@ -1364,6 +1364,7 @@ class SessionController {
       return (m > 0 ? m + ':' : '') + String(s % 60).padStart(m > 0 ? 2 : 1, '0') + '.' + String(h).padStart(2,'0');
     };
     const fmtSec = (ms) => ms == null ? '' : (ms / 1000).toFixed(3).replace('.', ',');
+    const fmtPct = (p) => p == null ? '' : p.toFixed(1).replace('.', ',') + '%';
 
     // ── Style palette ────────────────────────────────────────────────────────
     const COL = {
@@ -1546,6 +1547,51 @@ class SessionController {
     }
     const byTotalM = [...entityData].sort((a,b) => b.total_laps - a.total_laps || (a.best_lap_ms||Infinity)-(b.best_lap_ms||Infinity));
 
+    // ── Consistencia (misma métrica que en la web, results ~809-874) ──────────
+    // perLaneByEntity no trae consistencia: se calcula aquí sobre las vueltas
+    // elegibles de la carrera (SIN salidas/pits, filtro de incidentes por
+    // defecto), tanto por celda (entidad×carril) como de carrera (por entidad).
+    {
+      const dbc = require('../config/database');
+      const minLap = race.min_lap_ms || 0;
+      const eligibleRows = dbc.prepare(`
+        SELECT
+          CASE WHEN l.team_id IS NOT NULL THEN 'team_'||l.team_id ELSE 'driver_'||l.driver_id END AS key,
+          l.lane AS lane,
+          l.lap_time_ms AS t,
+          l.is_exit AS is_exit
+        FROM laps l
+        JOIN mangas m ON m.id = l.manga_id
+        JOIN tandas tt ON tt.id = m.tanda_id
+        WHERE tt.race_id = ?
+          AND l.is_ghost = 0 AND l.is_warmup = 0
+          AND l.lap_number > 1 AND l.lap_time_ms >= ${minLap}
+      `).all(race.id);
+
+      const cellClean = new Map();   // `${key}|${lane}` -> [t]  (SIN salidas)
+      const raceClean  = new Map();  // key -> [t]  (SIN salidas)
+      for (const row of eligibleRows) {
+        if (row.is_exit) continue;
+        let rc = raceClean.get(row.key);
+        if (!rc) { rc = []; raceClean.set(row.key, rc); }
+        rc.push(row.t);
+        const ck = `${row.key}|${row.lane}`;
+        let cc = cellClean.get(ck);
+        if (!cc) { cc = []; cellClean.set(ck, cc); }
+        cc.push(row.t);
+      }
+
+      entityData.forEach(r => {
+        const key = r.entity_type === 'team' ? `team_${r.entity_id}` : `driver_${r.entity_id}`;
+        (r.perLane || []).forEach(pl => {
+          const c = robustConsistency(cellClean.get(`${key}|${pl.lane}`) || [], MIN_CONSISTENCY_LAPS);
+          pl.consistency = c ? c.pct : null;
+        });
+        const cs = robustConsistency(raceClean.get(key) || [], MIN_CONSISTENCY_LAPS);
+        r.raceConsistency = cs ? cs.pct : null;
+      });
+    }
+
     // Starting lane per entity — first non-rest assignment in tanda+manga order
     const db = require('../config/database');
     const startRows = db.prepare(`
@@ -1608,6 +1654,25 @@ class SessionController {
       right:  { style: 'thin',   color: { argb: COL.border } },
     };
 
+    // ── Rank por VUELTAS dentro de cada carril (misma lógica que results.ejs
+    // rankByLaps): más vueltas = mejor; empate se rompe por menor media.
+    const keyOf = r => `${r.entity_type}_${r.entity_id}`;
+    function rankByLaps(entries) {
+      const m = {};
+      const better = (o, e) => o.laps > e.laps
+        || (o.laps === e.laps && o.avg != null && (e.avg == null || o.avg < e.avg));
+      entries.forEach(e => { m[e.key] = 1 + entries.filter(o => better(o, e)).length; });
+      return m;
+    }
+    const laneLapRank = {};
+    laneSeq.forEach(lane => {
+      const entries = byTotalM
+        .map(r => { const pl = (r.perLane || []).find(p => p.lane === lane);
+                    return pl && pl.laps != null ? { key: keyOf(r), laps: pl.laps, avg: pl.avg_ms } : null; })
+        .filter(Boolean);
+      laneLapRank[lane] = rankByLaps(entries);
+    });
+
     byTotalM.forEach((r, i) => {
       const laneMap = new Map(r.perLane.map(pl => [pl.lane, pl]));
       const totalExits = r.perLane.reduce((s,pl)=>s+(pl.exit_count||0),0);
@@ -1618,7 +1683,12 @@ class SessionController {
 
       // Entity header row (light gray on lane cells)
       const nameDisplay = startLane ? `${r.entity_name}   🚦 P${startLane}` : r.entity_name;
-      const rowA = s4.addRow([pos, nameDisplay, r.total_laps, ...laneSeq.map(l => laneMap.get(l)?.laps ?? '')]);
+      const rowA = s4.addRow([pos, nameDisplay, r.total_laps, ...laneSeq.map(l => {
+        const pl = laneMap.get(l);
+        if (!pl || pl.laps == null) return '';
+        const rank = laneLapRank[l] ? laneLapRank[l][keyOf(r)] : null;
+        return rank ? `${pl.laps} (${rank})` : `${pl.laps}`;
+      })]);
       rowA.height = 20;
       rowA.eachCell({ includeEmpty: true }, c => {
         c.border = thinBorder;
@@ -1648,7 +1718,10 @@ class SessionController {
       const fastestVals = laneSeq.map(l => {
         const pl = laneMap.get(l); return (pl && pl.best_ms != null) ? fmtSec(pl.best_ms) : '';
       });
-      const rowB = s4.addRow(['', `⚡ ${isEs ? 'Vuelta rápida' : 'Fastest'}`, fmtSec(r.best_lap_ms), ...fastestVals]);
+      const bestLapPl = r.best_lap_ms != null ? r.perLane.find(pl => pl.best_ms === r.best_lap_ms) : null;
+      const bestLapLane = bestLapPl ? bestLapPl.lane : null;
+      const bestLapTotalStr = bestLapLane != null ? `${fmtSec(r.best_lap_ms)} (${bestLapLane})` : fmtSec(r.best_lap_ms);
+      const rowB = s4.addRow(['', `⚡ ${isEs ? 'Vuelta rápida' : 'Fastest'}`, bestLapTotalStr, ...fastestVals]);
       rowB.outlineLevel = 1;
       rowB.eachCell({ includeEmpty: true }, c => {
         c.border = thinBorder;
@@ -1677,7 +1750,12 @@ class SessionController {
       const avgVals = laneSeq.map(l => {
         const pl = laneMap.get(l); return (pl && pl.avg_ms != null) ? fmtSec(Math.round(pl.avg_ms)) : '';
       });
-      const rowC = s4.addRow(['', isEs ? 'Vuelta media' : 'Average', fmtSec(Math.round(r.avg_lap_ms)), ...avgVals]);
+      let bestAvgLane = null, bestAvgMs = null;
+      r.perLane.forEach(pl => { if (pl.avg_ms != null && (bestAvgMs == null || pl.avg_ms < bestAvgMs)) { bestAvgMs = pl.avg_ms; bestAvgLane = pl.lane; } });
+      const avgTotalStr = bestAvgLane != null
+        ? `${fmtSec(Math.round(r.avg_lap_ms))} / ${fmtSec(Math.round(bestAvgMs))} (${bestAvgLane})`
+        : fmtSec(Math.round(r.avg_lap_ms));
+      const rowC = s4.addRow(['', isEs ? 'Media gen / Mejor med' : 'Avg / Best avg', avgTotalStr, ...avgVals]);
       rowC.outlineLevel = 1;
       rowC.eachCell({ includeEmpty: true }, c => {
         c.border = thinBorder;
@@ -1689,6 +1767,26 @@ class SessionController {
       if (startLane) {
         const idx = laneSeq.indexOf(startLane);
         if (idx >= 0) rowC.getCell(4 + idx).border = startLaneBorder;
+      }
+
+      // Consistency row (SIN salidas/pits, ritmo puro)
+      const consVals = laneSeq.map(l => {
+        const pl = laneMap.get(l);
+        return (pl && pl.consistency != null) ? fmtPct(pl.consistency) : '';
+      });
+      const rowCons = s4.addRow(['', isEs ? 'Const. sin' : 'Const. clean', fmtPct(r.raceConsistency), ...consVals]);
+      rowCons.outlineLevel = 1;
+      rowCons.eachCell({ includeEmpty: true }, c => {
+        c.border = thinBorder;
+        c.alignment = { horizontal: 'center' };
+        c.font = { size: 10 };
+        c.fill = fillSolid('FFEFF6FF');
+      });
+      rowCons.getCell(2).alignment = { horizontal: 'left' };
+      rowCons.getCell(2).font = { color: { argb: COL.muted }, italic: true, size: 10 };
+      if (startLane) {
+        const idx = laneSeq.indexOf(startLane);
+        if (idx >= 0) rowCons.getCell(4 + idx).border = startLaneBorder;
       }
 
       // Exits row
