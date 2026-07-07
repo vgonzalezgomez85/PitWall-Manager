@@ -19,6 +19,13 @@
       <input class="form-input" id="file" name="file" type="file" accept=".json,application/json" required>
       <p class="form-hint">El fichero <code>pitwall.tanda/v1</code> que exporta PitWall Control.</p>
     </div>
+    <div class="form-group">
+      <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+        <input type="checkbox" id="hasPole">
+        <span>Esta carrera tiene <b>pole</b></span>
+      </label>
+      <p class="form-hint">Se crea la sesión de pole con todos los equipos como participantes.</p>
+    </div>
     <div class="form-actions">
       <button type="submit" class="vt-btn vt-btn--primary">Crear carrera →</button>
     </div>
@@ -60,6 +67,9 @@
       var payload;
       try { payload = JSON.parse(reader.result); }
       catch (e) { show('error', '<p>El fichero no es un JSON válido.</p>'); return; }
+
+      // El checkbox manda: marcado activa la pole; si no, se respeta el fichero.
+      if (document.getElementById('hasPole').checked) payload.pole = true;
 
       fetch('/import/tanda', {
         method: 'POST',
