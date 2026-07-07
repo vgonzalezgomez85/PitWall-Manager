@@ -509,28 +509,41 @@ class RaceController {
     const hasLaps = Race.hasRecordedLaps(race.id);
     const patch   = { name };
 
-    if (race.circuit_id) {
-      // Circuit race: switching the circuit reshuffles lanes, so only allow it
-      // before any lap is recorded. The derived lane config + min lap come from
-      // the chosen circuit (and category override, if picked).
-      if (!hasLaps) {
-        const circuitId  = parseInt(req.body.circuit_id, 10) || null;
-        const categoryId = parseInt(req.body.category_id, 10) || null;
-        const circuit    = circuitId ? Circuit.findById(circuitId) : null;
-        if (circuit) {
-          const circuits = Circuit.getConfig(circuit);
-          patch.circuit_id      = circuitId;
-          patch.circuits_config = circuits;
-          patch.lanes_count     = circuits.reduce((a, b) => a + b, 0);
-          patch.lane_sequence   = Circuit.getLaneSequence(circuit);
-          patch.min_lap_ms      = Circuit.getMinLapMsForCategory(circuitId, categoryId);
-        }
-        // Invalid/missing circuit → keep the current one untouched.
+    // Escenario (circuito guardado): se puede ASIGNAR, CAMBIAR o QUITAR en
+    // cualquier carrera mientras no tenga vueltas registradas (reajusta
+    // carriles y secuencia). La config derivada + vuelta mínima vienen del
+    // escenario elegido (y de la categoría, si se elige).
+    let circuitAssigned = false;
+    if (!hasLaps && req.body.circuit_id !== undefined) {
+      const circuitId  = parseInt(req.body.circuit_id, 10) || null;
+      const categoryId = parseInt(req.body.category_id, 10) || null;
+      const circuit    = circuitId ? Circuit.findById(circuitId) : null;
+      if (circuit) {
+        const circuits = Circuit.getConfig(circuit);
+        patch.circuit_id      = circuitId;
+        patch.circuits_config = circuits;
+        patch.lanes_count     = circuits.reduce((a, b) => a + b, 0);
+        patch.lane_sequence   = Circuit.getLaneSequence(circuit);
+        patch.min_lap_ms      = Circuit.getMinLapMsForCategory(circuitId, categoryId);
+        circuitAssigned = true;
+      } else if (!circuitId && race.circuit_id) {
+        // «Sin escenario»: pasa a manual conservando la configuración actual
+        // (se materializa la secuencia del escenario en la carrera).
+        patch.circuit_id    = null;
+        patch.lane_sequence = JSON.stringify(Race.getLaneSequence(race));
       }
-    } else {
-      // Manual race: minimum lap threshold…
-      const minLapS = parseFloat(req.body.min_lap_s);
-      patch.min_lap_ms = (!isNaN(minLapS) && minLapS > 0) ? Math.round(minLapS * 1000) : 0;
+      // Escenario inválido → se mantiene el actual sin tocar.
+    }
+
+    // Configuración manual (solo si la carrera queda SIN escenario: la vuelta
+    // mínima y la secuencia las dicta el escenario cuando lo hay).
+    const manualAfter = !circuitAssigned && (patch.circuit_id === null || !race.circuit_id);
+    if (manualAfter) {
+      // Vuelta mínima…
+      if (req.body.min_lap_s !== undefined) {
+        const minLapS = parseFloat(req.body.min_lap_s);
+        patch.min_lap_ms = (!isNaN(minLapS) && minLapS > 0) ? Math.round(minLapS * 1000) : 0;
+      }
 
       // …y reordenar la SECUENCIA de carriles (circuito manual, sin catálogo).
       // Solo se permite REORDENAR: el nuevo orden debe contener exactamente los
