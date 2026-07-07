@@ -1,0 +1,59 @@
+<%- include('partials/header', { pageTitle: 'Historial de versiones' }) %>
+<div class="container container--narrow">
+
+  <a href="/" class="vt-back-link" style="margin-top:1rem">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Inicio
+  </a>
+
+  <div class="page-header">
+    <h1 class="page-title">📋 Historial de versiones</h1>
+    <p class="page-subtitle">Versión actual: <b>v<%= appVersion %></b> · v1.0.X correcciones · v1.X.0 funcionalidades · vX.0.0 cambios mayores</p>
+  </div>
+
+  <% if (!versiones.length) { %>
+    <div class="cl-card"><p class="cl-notas">Aún no hay entradas en el historial.</p></div>
+  <% } %>
+
+  <% versiones.forEach((v, i) => { %>
+    <div class="cl-card">
+      <div class="cl-head">
+        <span class="cl-version <%= i === 0 ? 'cl-version--current' : '' %>">v<%= v.version %></span>
+        <% if (v.fecha) { %><span class="cl-fecha"><%= v.fecha %></span><% } %>
+        <% if (i === 0) { %><span class="cl-actual">actual</span><% } %>
+      </div>
+      <% v.notas.forEach(n => { %><p class="cl-notas"><%- n %></p><% }) %>
+      <% v.secciones.forEach(s => { %>
+        <div class="cl-sec">
+          <span class="cl-badge cl-badge--<%= /añadido/i.test(s.titulo) ? 'add' : (/corregido/i.test(s.titulo) ? 'fix' : 'imp') %>"><%= s.titulo %></span>
+          <ul>
+            <% s.items.forEach(it => { %><li><%- it %></li><% }) %>
+          </ul>
+        </div>
+      <% }) %>
+    </div>
+  <% }) %>
+
+</div>
+
+<style>
+.page-subtitle { color:#8b949e; font-size:.9rem; margin-top:.25rem; }
+.cl-card { background:#0d1117; border:1px solid #21262d; border-radius:12px; padding:1.25rem 1.5rem; margin-bottom:1rem; }
+.cl-head { display:flex; align-items:center; gap:.6rem; margin-bottom:.5rem; }
+.cl-version { font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:1.05rem; color:#e6edf3; }
+.cl-version--current { color:#58a6ff; }
+.cl-fecha { color:#8b949e; font-size:.85rem; }
+.cl-actual { background:#1f6feb33; color:#58a6ff; border:1px solid #1f6feb66; border-radius:20px; font-size:.7rem; padding:.1rem .55rem; text-transform:uppercase; letter-spacing:.05em; }
+.cl-notas { color:#8b949e; font-size:.9rem; margin:.35rem 0; line-height:1.6; }
+.cl-sec { margin:.7rem 0 0; }
+.cl-badge { display:inline-block; border-radius:6px; font-size:.72rem; font-weight:600; padding:.15rem .5rem; text-transform:uppercase; letter-spacing:.04em; }
+.cl-badge--add { background:#23863633; color:#3fb950; border:1px solid #23863666; }
+.cl-badge--imp { background:#1f6feb33; color:#58a6ff; border:1px solid #1f6feb66; }
+.cl-badge--fix { background:#9e6a0333; color:#d29922; border:1px solid #9e6a0366; }
+.cl-sec ul { margin:.45rem 0 0; padding-left:1.4rem; color:#c9d1d9; font-size:.9rem; line-height:1.65; }
+.cl-sec li { margin:.25rem 0; }
+.cl-sec b { color:#e6edf3; }
+.cl-sec code, .cl-notas code { background:#161b22; border:1px solid #21262d; border-radius:4px; padding:.05rem .3rem; font-size:.82em; color:#79c0ff; }
+</style>
+
+<%- include('partials/footer') %>

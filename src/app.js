@@ -51,6 +51,11 @@ const app    = express();
 // bloquear todo salvo las vistas públicas. Los clientes de la LAN conectan
 // directos (peer != loopback) y NO pueden falsear XFF, así que no cambian.
 app.set('trust proxy', 'loopback');
+
+// Versión de la app (package.json = fuente única). Visible en el pie de todas
+// las páginas, enlazando al historial /changelog.
+app.locals.appVersion = require('../package.json').version;
+
 const server = http.createServer(app);
 
 // Socket.io must be initialised before routes import services that need it
