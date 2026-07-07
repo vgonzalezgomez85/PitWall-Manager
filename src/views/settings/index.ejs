@@ -465,10 +465,13 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
                 <input type="text" name="tunnel_hostname" class="vt-inp" style="font-family:monospace"
                        placeholder="directo.miclub.com" value="<%= cfg.tunnel_hostname || '' %>" autocomplete="off">
               </div>
-              <div class="vt-debug__d" style="margin-top:.5rem">
-                <%= lang === 'es'
-                  ? 'En el dashboard de Cloudflare crea un túnel apuntando a http://localhost:3000 con el subdominio de tu club, y pega aquí el token del conector.'
-                  : 'In the Cloudflare dashboard create a tunnel pointing at http://localhost:3000 with your club\'s subdomain, and paste the connector token here.' %>
+              <div class="vt-debug__d" style="margin-top:.6rem;line-height:1.75">
+                <b><%= lang === 'es' ? 'Cómo configurarlo (una sola vez):' : 'How to set it up (one time):' %></b><br>
+                1. <%= lang === 'es' ? 'Entra en el' : 'Open the' %> <a href="https://one.dash.cloudflare.com/" target="_blank" rel="noopener" style="color:#58a6ff">Cloudflare Zero Trust dashboard</a> <%= lang === 'es' ? '(cuenta gratuita) con tu dominio ya añadido a Cloudflare.' : '(free account) with your domain already added to Cloudflare.' %><br>
+                2. <b>Networks → Tunnels → Create a tunnel</b> (Cloudflared) · <%= lang === 'es' ? 'dale un nombre (p.ej. el del club).' : 'give it a name (e.g. your club).' %><br>
+                3. <%= lang === 'es' ? 'Copia el' : 'Copy the' %> <b>token</b> <%= lang === 'es' ? 'del conector (la cadena larga que empieza por «eyJ…») y pégalo arriba.' : 'from the connector (the long string starting with “eyJ…”) and paste it above.' %><br>
+                4. <%= lang === 'es' ? 'En' : 'Under' %> <b>Public Hostnames</b>, <%= lang === 'es' ? 'añade el subdominio (p.ej. directo.miclub.com) apuntando a' : 'add the subdomain (e.g. live.myclub.com) pointing at' %> <code>http://localhost:3000</code>.<br>
+                📖 <a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/get-started/create-remote-tunnel/" target="_blank" rel="noopener" style="color:#58a6ff"><%= lang === 'es' ? 'Guía oficial de Cloudflare (crear un túnel remoto)' : 'Official Cloudflare guide (create a remote tunnel)' %></a>
               </div>
             </div>
 
@@ -480,6 +483,7 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
             <div style="display:flex;align-items:center;gap:.6rem;margin-top:.8rem;flex-wrap:wrap">
               <button type="button" class="vt-btn vt-btn--ghost" id="tunnelStartBtn" onclick="tunnelAction('start')">▶ <%= lang === 'es' ? 'Arrancar túnel' : 'Start tunnel' %></button>
               <button type="button" class="vt-btn vt-btn--ghost" id="tunnelStopBtn" onclick="tunnelAction('stop')">■ <%= lang === 'es' ? 'Parar' : 'Stop' %></button>
+              <button type="button" class="vt-btn vt-btn--primary" id="tunnelInstallBtn" style="display:none" onclick="tunnelInstall()">⬇ <%= lang === 'es' ? 'Instalar cloudflared' : 'Install cloudflared' %></button>
               <span class="vt-debug__d" id="tunnelState" style="margin:0"></span>
             </div>
             <div id="tunnelUrl" style="margin-top:.4rem;font-family:monospace;font-size:.92rem"></div>
@@ -766,17 +770,24 @@ function tunnelRender(s) {
   const state = document.getElementById('tunnelState');
   const url   = document.getElementById('tunnelUrl');
   const hint  = document.getElementById('tunnelHint');
+  const inst  = document.getElementById('tunnelInstallBtn');
   dot.style.background = s.running ? '#3fb950' : (s.lastError ? '#f85149' : '#6b7280');
-  state.textContent = s.running
-    ? (LANG === 'es' ? 'Túnel en marcha' : 'Tunnel running')
-    : (LANG === 'es' ? 'Túnel parado' : 'Tunnel stopped');
+  state.textContent = s.installing
+    ? (LANG === 'es' ? 'Descargando cloudflared…' : 'Downloading cloudflared…')
+    : s.running
+      ? (LANG === 'es' ? 'Túnel en marcha' : 'Tunnel running')
+      : (LANG === 'es' ? 'Túnel parado' : 'Tunnel stopped');
   url.innerHTML = s.publicUrl
     ? `🌍 <a href="${s.publicUrl}" target="_blank" rel="noopener" style="color:#58a6ff">${s.publicUrl}</a>`
-    : (s.running && s.mode === 'quick' ? (LANG === 'es' ? 'Esperando URL…' : 'Waiting for URL…') : '');
+    : (s.running && s.mode === 'quick' ? (LANG === 'es' ? 'Esperando URL… (tarda unos segundos)' : 'Waiting for URL… (takes a few seconds)') : '');
+  inst.style.display = (!s.binaryFound && !s.installing) ? '' : 'none';
+  document.getElementById('tunnelStartBtn').style.display = s.binaryFound ? '' : 'none';
   let h = '';
-  if (!s.binaryFound) h = LANG === 'es'
-    ? '⚠️ cloudflared no está instalado. macOS: brew install cloudflared · Windows/Linux: developers.cloudflare.com/cloudflared'
-    : '⚠️ cloudflared is not installed. macOS: brew install cloudflared · Windows/Linux: developers.cloudflare.com/cloudflared';
+  if (s.installing) h = LANG === 'es' ? '⏳ Descargando el binario oficial de Cloudflare (~20 MB)…' : '⏳ Downloading the official Cloudflare binary (~20 MB)…';
+  else if (s.installError) h = '⚠️ ' + s.installError;
+  else if (!s.binaryFound) h = LANG === 'es'
+    ? 'cloudflared no está instalado. Pulsa «Instalar cloudflared» (se descarga de Cloudflare a la carpeta de datos de PitWall, sin permisos de administrador) o instálalo tú: brew install cloudflared.'
+    : 'cloudflared is not installed. Click “Install cloudflared” (downloaded from Cloudflare into PitWall\'s data folder, no admin rights) or install it yourself: brew install cloudflared.';
   else if (s.lastError) h = '⚠️ ' + s.lastError;
   hint.textContent = h;
 }
@@ -786,6 +797,19 @@ async function tunnelAction(op) {
     tunnelRender(await r.json());
     if (op === 'start') setTimeout(tunnelRefresh, 2500); // la URL quick tarda un par de segundos
   } catch {}
+}
+async function tunnelInstall() {
+  const btn = document.getElementById('tunnelInstallBtn');
+  btn.disabled = true;
+  document.getElementById('tunnelState').textContent = LANG === 'es' ? 'Descargando cloudflared…' : 'Downloading cloudflared…';
+  document.getElementById('tunnelHint').textContent = LANG === 'es' ? '⏳ Descargando el binario oficial de Cloudflare (~20 MB)…' : '⏳ Downloading the official Cloudflare binary (~20 MB)…';
+  try {
+    const r = await fetch('/tunnel/install', { method: 'POST' });
+    tunnelRender(await r.json());
+  } catch {
+    document.getElementById('tunnelHint').textContent = LANG === 'es' ? '⚠️ Error de red durante la descarga.' : '⚠️ Network error during download.';
+  }
+  btn.disabled = false;
 }
 async function tunnelRefresh() {
   try { const r = await fetch('/tunnel/status'); tunnelRender(await r.json()); } catch {}
