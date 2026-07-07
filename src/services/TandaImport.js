@@ -83,6 +83,11 @@ function validate(payload) {
     throw new TandaImportError('El payload no contiene tandas.');
   }
 
+  // ¿La carrera tiene pole? Con pole, el ORDEN DE CARRIL se decide DESPUÉS de
+  // correr la pole (flujo nativo: PoleController.assignLanes crea la tanda),
+  // así que el carril_salida del payload se ignora y no se valida.
+  const pole = payload.pole === true || payload.pole === 1 || payload.pole === '1';
+
   const tandas = payload.tandas.map((t, ti) => {
     const equipos = Array.isArray(t.equipos) ? t.equipos : [];
     if (equipos.length === 0) throw new TandaImportError(`La tanda ${ti + 1} no tiene equipos.`);
@@ -94,7 +99,7 @@ function validate(payload) {
       // carril_salida 0 = DESCANSO (más equipos que carriles); 1..carriles = carril de carrera.
       const carril = asInt(e.carril_salida) || 0;
       const isRest = carril === 0;
-      if (!isRest) {
+      if (!isRest && !pole) {
         if (!(carril >= 1 && carril <= carriles)) {
           throw new TandaImportError(`Carril de salida inválido (${e.carril_salida}) para "${enombre}" en la tanda ${ti + 1}.`);
         }
@@ -108,18 +113,16 @@ function validate(payload) {
       const pilotos = Array.isArray(e.pilotos) ? e.pilotos.map(p => String(p || '').trim()).filter(Boolean) : [];
       return { nombre: enombre, copa: e.copa != null ? String(e.copa) : null, carril, isRest, descanso, pilotos };
     });
-    if (racers === 0) {
-      throw new TandaImportError(`La tanda ${ti + 1} no tiene ningún equipo en carril (todos en descanso).`);
-    }
-    if (racers > carriles) {
-      throw new TandaImportError(`La tanda ${ti + 1} tiene ${racers} equipos en carril y solo ${carriles} carriles.`);
+    if (!pole) {
+      if (racers === 0) {
+        throw new TandaImportError(`La tanda ${ti + 1} no tiene ningún equipo en carril (todos en descanso).`);
+      }
+      if (racers > carriles) {
+        throw new TandaImportError(`La tanda ${ti + 1} tiene ${racers} equipos en carril y solo ${carriles} carriles.`);
+      }
     }
     return { numero: asInt(t.numero) || ti + 1, equipos: eqs };
   });
-
-  // ¿La carrera tiene pole? (opcional en el contrato; también lo puede marcar
-  // el operador en la pantalla de import o el switch de Control al enviar).
-  const pole = payload.pole === true || payload.pole === 1 || payload.pole === '1';
 
   return { nombre, sede: prueba.sede ? String(prueba.sede) : null, carriles, isTeam, pole, tandas };
 }
@@ -162,6 +165,30 @@ function createFromPayload(payload) {
       return { id: driverId, type: 'driver', name: eq.nombre };
     };
 
+    // CON POLE: el orden de carril se decide DESPUÉS de correr la pole, así que
+    // NO se crean tandas/equipos aquí. Solo la sesión de pole con los equipos
+    // como participantes (dedupe por nombre entre tandas); tras la pole, el
+    // flujo nativo (PoleController.assignLanes) crea la tanda con la parrilla.
+    if (v.pole) {
+      const PoleSession = require('../models/PoleSession');
+      const sessionId = PoleSession.create(raceId);
+      const entityType = v.isTeam ? 'team' : 'driver';
+      const vistos = new Set();
+      for (const tanda of v.tandas) {
+        for (const eq of tanda.equipos) {
+          if (vistos.has(eq.nombre)) continue;
+          vistos.add(eq.nombre);
+          PoleSession.addEntry({
+            poleSessionId: sessionId,
+            entityType,
+            entityName: eq.nombre,
+            membersJson: eq.pilotos.length ? JSON.stringify(eq.pilotos) : null,
+          });
+        }
+      }
+      return { raceId, tandas: 0, teams: vistos.size, pole: true };
+    }
+
     for (const tanda of v.tandas) {
       const tandaId = Tanda.create(raceId);
 
@@ -189,28 +216,7 @@ function createFromPayload(payload) {
       Manga.persistSchedule(tandaId, raceId, schedule);
     }
 
-    // Pole: sesión + una entrada por equipo (dedupe por nombre entre tandas),
-    // igual que hace el asistente de nueva carrera con los participantes.
-    if (v.pole) {
-      const PoleSession = require('../models/PoleSession');
-      const sessionId = PoleSession.create(raceId);
-      const entityType = v.isTeam ? 'team' : 'driver';
-      const vistos = new Set();
-      for (const tanda of v.tandas) {
-        for (const eq of tanda.equipos) {
-          if (vistos.has(eq.nombre)) continue;
-          vistos.add(eq.nombre);
-          PoleSession.addEntry({
-            poleSessionId: sessionId,
-            entityType,
-            entityName: eq.nombre,
-            membersJson: eq.pilotos.length ? JSON.stringify(eq.pilotos) : null,
-          });
-        }
-      }
-    }
-
-    return { raceId, tandas: v.tandas.length, teams: teamCount, pole: v.pole };
+    return { raceId, tandas: v.tandas.length, teams: teamCount, pole: false };
   });
 
   const out = run();
