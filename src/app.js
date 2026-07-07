@@ -300,6 +300,11 @@ if (require.main === module) {
     }
     console.log('');
     announceBonjour(PORT);
+    // Túnel público del club (Cloudflare): arranca solo si el club lo dejó en
+    // auto en Ajustes. Cada instalación usa SU túnel (quick o token propio).
+    try { require('./services/TunnelService').autostart(); } catch (e) {
+      console.warn('[tunnel] autostart no disponible:', e.message);
+    }
   });
 }
 
