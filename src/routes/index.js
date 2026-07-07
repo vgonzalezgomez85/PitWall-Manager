@@ -285,6 +285,7 @@ const TunnelController = require('../controllers/TunnelController');
 router.get( '/tunnel/status', TunnelController.status);
 router.post('/tunnel/start',  TunnelController.start);
 router.post('/tunnel/stop',   TunnelController.stop);
+router.post('/tunnel/install', TunnelController.install);  // descarga cloudflared (opcional)
 
 // ── Gestión de base de datos ───────────────────────────────────────────────────
 router.get( '/database',        DatabaseController.index);
