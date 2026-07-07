@@ -793,7 +793,18 @@ function tunnelRender(s) {
 }
 async function tunnelAction(op) {
   try {
-    const r = await fetch('/tunnel/' + op, { method: 'POST' });
+    const opts = { method: 'POST' };
+    if (op === 'start') {
+      // Arrancar aplica lo que hay EN PANTALLA (no hace falta "Guardar y aplicar").
+      opts.headers = { 'Content-Type': 'application/json' };
+      opts.body = JSON.stringify({
+        tunnel_mode:      document.getElementById('tunnelMode').value,
+        tunnel_token:     document.querySelector('input[name="tunnel_token"]')?.value || '',
+        tunnel_hostname:  document.querySelector('input[name="tunnel_hostname"]')?.value || '',
+        tunnel_autostart: document.querySelector('input[name="tunnel_autostart"]')?.checked ? '1' : '0',
+      });
+    }
+    const r = await fetch('/tunnel/' + op, opts);
     tunnelRender(await r.json());
     if (op === 'start') setTimeout(tunnelRefresh, 2500); // la URL quick tarda un par de segundos
   } catch {}
