@@ -73,6 +73,9 @@ router.get('/', (req, res) => {
 // ── EULA ──────────────────────────────────────────────────────────────────────
 router.get( '/eula',           LicenseController.eula);
 
+// ── Historial de versiones ────────────────────────────────────────────────────
+router.get( '/changelog',      require('../controllers/ChangelogController').page);
+
 // ── Wizard ────────────────────────────────────────────────────────────────────
 router.get('/races/new',         RaceController.newStep1);
 router.post('/races/new/step1',  RaceController.postStep1);
