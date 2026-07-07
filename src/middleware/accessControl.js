@@ -88,7 +88,8 @@ function reqIp(req) {
 // muestra solo los accesos públicos), las estadísticas en vivo y los
 // resultados de carreras finalizadas (landing + por carrera, sin corrección).
 function isPublicPath(p) {
-  return p === '/' || p === '/race-stats' || /^\/races\/\d+\/live-stats(\.json)?$/.test(p)
+  return p === '/' || p === '/race-stats' || p === '/changelog'
+      || /^\/races\/\d+\/live-stats(\.json)?$/.test(p)
       // Clasificación Le Mans (seguimiento en vivo de la carrera): solo lectura.
       || /^\/races\/\d+\/lemans$/.test(p)
       || p === '/results' || /^\/results\/\d+$/.test(p)

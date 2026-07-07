@@ -31,6 +31,8 @@
     <div class="footer-info">
       <span>PitWall &copy; <%= new Date().getFullYear() %> Víctor González Gómez</span>
       <span class="footer-sep">·</span>
+      <a href="/changelog" class="footer-link" title="<%= typeof lang !== 'undefined' && lang === 'en' ? 'Version history' : 'Historial de versiones' %>">v<%= appVersion %></a>
+      <span class="footer-sep">·</span>
       <a href="/eula" class="footer-link"><%= typeof lang !== 'undefined' && lang === 'en' ? 'License' : 'Licencia' %> (AGPLv3)</a>
       <span class="footer-sep">·</span>
       <a href="https://github.com/vgonzalezgomez85/PitWall-Manager" class="footer-link" target="_blank" rel="noopener"><%= typeof lang !== 'undefined' && lang === 'en' ? 'Source code' : 'Código fuente' %></a>
