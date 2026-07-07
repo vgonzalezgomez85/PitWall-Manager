@@ -20,10 +20,25 @@
 // puede tocarlas — nunca desde el propio túnel.
 
 const TunnelService = require('../services/TunnelService');
+const Settings = require('../models/Settings');
 
 const TunnelController = {
   status(req, res) { res.json(TunnelService.status()); },
-  start(req, res)  { res.json(TunnelService.start()); },
+  // Arrancar guarda ANTES la config que el usuario tiene en pantalla (modo,
+  // token, dominio, autoarranque): así el botón funciona sin pasar por
+  // "Guardar y aplicar" (era confuso: elegías modo y decía "desactivado").
+  start(req, res) {
+    const b = req.body || {};
+    if (b.tunnel_mode !== undefined) {
+      Settings.setMany({
+        tunnel_mode:      ['off', 'quick', 'token'].includes(b.tunnel_mode) ? b.tunnel_mode : 'off',
+        tunnel_token:     String(b.tunnel_token || '').trim(),
+        tunnel_hostname:  String(b.tunnel_hostname || '').trim().replace(/^https?:\/\//, '').replace(/\/+$/, ''),
+        tunnel_autostart: (b.tunnel_autostart === '1' || b.tunnel_autostart === true) ? '1' : '0',
+      });
+    }
+    res.json(TunnelService.start());
+  },
   stop(req, res)   { res.json(TunnelService.stop()); },
   // Descarga el binario oficial de cloudflared (opcional, a petición del club).
   async install(req, res) { res.json(await TunnelService.install()); },
