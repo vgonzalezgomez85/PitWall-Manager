@@ -189,7 +189,7 @@ class TunnelService {
     this.log = [];
 
     if (cfg.mode === 'off') {
-      this.lastError = 'El túnel está desactivado en Ajustes.';
+      this.lastError = 'Elige un modo (Rápido o Cloudflare propio) antes de arrancar.';
       return this.status();
     }
     if (cfg.mode === 'token' && !cfg.token) {
