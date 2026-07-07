@@ -26,8 +26,10 @@
 // El acceso sigue gateado por accessControl: por el túnel solo se alcanzan las
 // vistas públicas (isPublicPath); el control responde 403 (trust proxy).
 
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const fs = require('fs');
+const path = require('path');
+const os = require('os');
 const Settings = require('../models/Settings');
 
 const QUICK_URL_RE = /https:\/\/[a-z0-9-]+\.trycloudflare\.com/i;
@@ -43,6 +45,24 @@ const COMMON_PATHS = [
   'C:\\Program Files\\cloudflared\\cloudflared.exe',
 ];
 
+// Binario gestionado por PitWall: si el club pulsa "Instalar cloudflared", se
+// descarga el release oficial a la carpeta de datos y se usa desde ahí.
+function managedDir() {
+  const base = process.env.SLOTIME_DATA || path.join(__dirname, '../../database');
+  return path.join(base, 'bin');
+}
+function managedPath() {
+  return path.join(managedDir(), process.platform === 'win32' ? 'cloudflared.exe' : 'cloudflared');
+}
+
+// Asset oficial según SO/arquitectura (releases de cloudflare/cloudflared).
+function releaseAsset() {
+  const arm = process.arch === 'arm64';
+  if (process.platform === 'darwin') return arm ? 'cloudflared-darwin-arm64.tgz' : 'cloudflared-darwin-amd64.tgz';
+  if (process.platform === 'win32')  return arm ? 'cloudflared-windows-arm64.exe' : 'cloudflared-windows-amd64.exe';
+  return arm ? 'cloudflared-linux-arm64' : 'cloudflared-linux-amd64';
+}
+
 class TunnelService {
   constructor() {
     this.child = null;
@@ -50,6 +70,8 @@ class TunnelService {
     this.lastError = null;
     this.log = [];
     this.startedAt = null;
+    this.installing = false;
+    this.installError = null;
   }
 
   _cfg() {
@@ -62,10 +84,12 @@ class TunnelService {
     };
   }
 
-  // Localiza el binario cloudflared: override de Ajustes → rutas típicas → PATH.
+  // Localiza el binario cloudflared: override de Ajustes → binario gestionado
+  // (instalado por PitWall) → rutas típicas → PATH.
   resolveBinary() {
     const { binary } = this._cfg();
     if (binary) return fs.existsSync(binary) ? binary : null;
+    try { if (fs.existsSync(managedPath())) return managedPath(); } catch {}
     for (const p of COMMON_PATHS) {
       try { if (fs.existsSync(p)) return p; } catch {}
     }
@@ -75,6 +99,7 @@ class TunnelService {
   binaryFound() {
     const { binary } = this._cfg();
     if (binary) return fs.existsSync(binary);
+    try { if (fs.existsSync(managedPath())) return true; } catch {}
     if (COMMON_PATHS.some(p => { try { return fs.existsSync(p); } catch { return false; } })) return true;
     // Último recurso: buscar en el PATH.
     try {
@@ -82,6 +107,49 @@ class TunnelService {
       require('child_process').execSync(`${which} cloudflared`, { stdio: 'ignore' });
       return true;
     } catch { return false; }
+  }
+
+  // Descarga el release oficial de cloudflared para este SO/arquitectura a la
+  // carpeta de datos de PitWall (no toca el sistema; sin permisos de admin).
+  async install() {
+    if (this.installing) return this.status();
+    if (this.binaryFound()) { this.installError = null; return this.status(); }
+    this.installing = true;
+    this.installError = null;
+    try {
+      if (typeof fetch !== 'function') throw new Error('Se necesita Node 18+ para descargar.');
+      const asset = releaseAsset();
+      const url = `https://github.com/cloudflare/cloudflared/releases/latest/download/${asset}`;
+      console.log(`[tunnel] descargando ${url}`);
+      const r = await fetch(url, { redirect: 'follow' });
+      if (!r.ok) throw new Error(`Descarga fallida (HTTP ${r.status}).`);
+      const buf = Buffer.from(await r.arrayBuffer());
+
+      fs.mkdirSync(managedDir(), { recursive: true });
+      const dest = managedPath();
+      if (asset.endsWith('.tgz')) {
+        // macOS: el release es un .tgz con el binario dentro → extraer con tar.
+        const tmp = path.join(os.tmpdir(), asset);
+        fs.writeFileSync(tmp, buf);
+        const tar = spawnSync('tar', ['-xzf', tmp, '-C', managedDir()], { timeout: 60000 });
+        try { fs.unlinkSync(tmp); } catch {}
+        if (tar.status !== 0) throw new Error('No se pudo extraer el paquete descargado.');
+      } else {
+        fs.writeFileSync(dest, buf);
+      }
+      if (process.platform !== 'win32') fs.chmodSync(dest, 0o755);
+
+      // Comprobación: el binario responde a --version.
+      const v = spawnSync(dest, ['--version'], { timeout: 20000 });
+      if (v.status !== 0) throw new Error('El binario descargado no se puede ejecutar.');
+      console.log(`[tunnel] cloudflared instalado en ${dest} (${String(v.stdout).trim()})`);
+    } catch (e) {
+      this.installError = `No se pudo instalar cloudflared: ${e.message}`;
+      console.warn('[tunnel]', this.installError);
+    } finally {
+      this.installing = false;
+    }
+    return this.status();
   }
 
   _pushLog(line) {
@@ -107,6 +175,8 @@ class TunnelService {
       startedAt: this.startedAt,
       lastError: this.lastError,
       binaryFound: this.binaryFound(),
+      installing: this.installing,
+      installError: this.installError,
       log: this.log.slice(-8),
     };
   }

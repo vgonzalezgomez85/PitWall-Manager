@@ -25,6 +25,8 @@ const TunnelController = {
   status(req, res) { res.json(TunnelService.status()); },
   start(req, res)  { res.json(TunnelService.start()); },
   stop(req, res)   { res.json(TunnelService.stop()); },
+  // Descarga el binario oficial de cloudflared (opcional, a petición del club).
+  async install(req, res) { res.json(await TunnelService.install()); },
 };
 
 module.exports = TunnelController;
