@@ -425,6 +425,68 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
           </div>
         </div>
 
+        <!-- ── Seguimiento público por internet (túnel del propio club) ── -->
+        <div class="vt-debug">
+          <div style="flex:1">
+            <div class="vt-debug__t">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.9 5.7 3.9 9S14.5 18.4 12 21c-2.5-2.6-3.9-5.7-3.9-9S9.5 5.6 12 3z"/></svg>
+              <%= lang === 'es' ? 'Seguimiento público por internet' : 'Public internet access' %>
+              <span id="tunnelDot" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#6b7280;margin-left:.4rem"></span>
+            </div>
+            <div class="vt-debug__d">
+              <%= lang === 'es'
+                ? 'Publica las vistas públicas (directo, resultados, Lap) en internet mediante un túnel de Cloudflare PROPIO de tu club. El control de la app queda bloqueado desde fuera. Requiere tener instalado cloudflared.'
+                : 'Publishes the public views (live, results, Lap) on the internet via your club\'s OWN Cloudflare tunnel. App control stays blocked from outside. Requires cloudflared installed.' %>
+            </div>
+
+            <div class="vt-field" style="max-width:440px;margin-top:.6rem">
+              <label><%= lang === 'es' ? 'Modo' : 'Mode' %></label>
+              <select name="tunnel_mode" id="tunnelMode" class="vt-inp" onchange="tunnelModeUi()">
+                <option value="off"   <%= (cfg.tunnel_mode || 'off') === 'off'   ? 'selected' : '' %>><%= lang === 'es' ? 'Desactivado' : 'Disabled' %></option>
+                <option value="quick" <%= cfg.tunnel_mode === 'quick' ? 'selected' : '' %>><%= lang === 'es' ? 'Rápido — URL temporal (sin cuenta ni dominio)' : 'Quick — temporary URL (no account/domain)' %></option>
+                <option value="token" <%= cfg.tunnel_mode === 'token' ? 'selected' : '' %>><%= lang === 'es' ? 'Cloudflare propio — token del club (dominio propio)' : 'Own Cloudflare — club token (own domain)' %></option>
+              </select>
+            </div>
+
+            <div id="tunnelQuickHelp" class="vt-debug__d" style="display:none;margin-top:.5rem">
+              <%= lang === 'es'
+                ? 'Genera una URL aleatoria *.trycloudflare.com al arrancar (cambia en cada arranque). Ideal para probar o para un evento puntual.'
+                : 'Generates a random *.trycloudflare.com URL on start (changes every start). Great for testing or one-off events.' %>
+            </div>
+
+            <div id="tunnelTokenFields" style="display:none">
+              <div class="vt-field" style="max-width:640px;margin-top:.6rem">
+                <label><%= lang === 'es' ? 'Token del túnel (Cloudflare → Zero Trust → Networks → Tunnels)' : 'Tunnel token (Cloudflare → Zero Trust → Networks → Tunnels)' %></label>
+                <input type="password" name="tunnel_token" class="vt-inp" style="font-family:monospace"
+                       placeholder="eyJhIjoi…" value="<%= cfg.tunnel_token || '' %>" autocomplete="off">
+              </div>
+              <div class="vt-field" style="max-width:440px;margin-top:.6rem">
+                <label><%= lang === 'es' ? 'Dominio público (informativo, p.ej. directo.miclub.com)' : 'Public hostname (informational, e.g. live.myclub.com)' %></label>
+                <input type="text" name="tunnel_hostname" class="vt-inp" style="font-family:monospace"
+                       placeholder="directo.miclub.com" value="<%= cfg.tunnel_hostname || '' %>" autocomplete="off">
+              </div>
+              <div class="vt-debug__d" style="margin-top:.5rem">
+                <%= lang === 'es'
+                  ? 'En el dashboard de Cloudflare crea un túnel apuntando a http://localhost:3000 con el subdominio de tu club, y pega aquí el token del conector.'
+                  : 'In the Cloudflare dashboard create a tunnel pointing at http://localhost:3000 with your club\'s subdomain, and paste the connector token here.' %>
+              </div>
+            </div>
+
+            <label style="display:flex;align-items:center;gap:.5rem;margin-top:.7rem;cursor:pointer">
+              <input type="checkbox" name="tunnel_autostart" value="1" <%= cfg.tunnel_autostart === '1' ? 'checked' : '' %>>
+              <span class="vt-debug__d" style="margin:0"><%= lang === 'es' ? 'Arrancar el túnel automáticamente con PitWall' : 'Start the tunnel automatically with PitWall' %></span>
+            </label>
+
+            <div style="display:flex;align-items:center;gap:.6rem;margin-top:.8rem;flex-wrap:wrap">
+              <button type="button" class="vt-btn vt-btn--ghost" id="tunnelStartBtn" onclick="tunnelAction('start')">▶ <%= lang === 'es' ? 'Arrancar túnel' : 'Start tunnel' %></button>
+              <button type="button" class="vt-btn vt-btn--ghost" id="tunnelStopBtn" onclick="tunnelAction('stop')">■ <%= lang === 'es' ? 'Parar' : 'Stop' %></button>
+              <span class="vt-debug__d" id="tunnelState" style="margin:0"></span>
+            </div>
+            <div id="tunnelUrl" style="margin-top:.4rem;font-family:monospace;font-size:.92rem"></div>
+            <div class="vt-debug__d" id="tunnelHint" style="margin-top:.35rem"></div>
+          </div>
+        </div>
+
       <div class="vt-form-foot">
         <a href="/" class="vt-btn vt-btn--ghost vt-btn--lg"><%= lang === 'es' ? 'Cancelar' : 'Cancel' %></a>
         <button type="submit" class="vt-btn vt-btn--primary vt-btn--lg"><%= lang === 'es' ? 'Guardar y aplicar' : 'Save & apply' %></button>
@@ -692,6 +754,45 @@ document.getElementById('refreshPorts')?.addEventListener('click', async (e) => 
     setTimeout(() => { btn.innerHTML = originalHTML; btn.disabled = false; }, 2000);
   }
 });
+
+/* ── túnel público (Cloudflare del club) ── */
+function tunnelModeUi() {
+  const mode = document.getElementById('tunnelMode').value;
+  document.getElementById('tunnelTokenFields').style.display = mode === 'token' ? '' : 'none';
+  document.getElementById('tunnelQuickHelp').style.display   = mode === 'quick' ? '' : 'none';
+}
+function tunnelRender(s) {
+  const dot   = document.getElementById('tunnelDot');
+  const state = document.getElementById('tunnelState');
+  const url   = document.getElementById('tunnelUrl');
+  const hint  = document.getElementById('tunnelHint');
+  dot.style.background = s.running ? '#3fb950' : (s.lastError ? '#f85149' : '#6b7280');
+  state.textContent = s.running
+    ? (LANG === 'es' ? 'Túnel en marcha' : 'Tunnel running')
+    : (LANG === 'es' ? 'Túnel parado' : 'Tunnel stopped');
+  url.innerHTML = s.publicUrl
+    ? `🌍 <a href="${s.publicUrl}" target="_blank" rel="noopener" style="color:#58a6ff">${s.publicUrl}</a>`
+    : (s.running && s.mode === 'quick' ? (LANG === 'es' ? 'Esperando URL…' : 'Waiting for URL…') : '');
+  let h = '';
+  if (!s.binaryFound) h = LANG === 'es'
+    ? '⚠️ cloudflared no está instalado. macOS: brew install cloudflared · Windows/Linux: developers.cloudflare.com/cloudflared'
+    : '⚠️ cloudflared is not installed. macOS: brew install cloudflared · Windows/Linux: developers.cloudflare.com/cloudflared';
+  else if (s.lastError) h = '⚠️ ' + s.lastError;
+  hint.textContent = h;
+}
+async function tunnelAction(op) {
+  try {
+    const r = await fetch('/tunnel/' + op, { method: 'POST' });
+    tunnelRender(await r.json());
+    if (op === 'start') setTimeout(tunnelRefresh, 2500); // la URL quick tarda un par de segundos
+  } catch {}
+}
+async function tunnelRefresh() {
+  try { const r = await fetch('/tunnel/status'); tunnelRender(await r.json()); } catch {}
+}
+tunnelModeUi();
+tunnelRefresh();
+setInterval(tunnelRefresh, 5000);
 </script>
 
 <%- include('../partials/footer') %>
