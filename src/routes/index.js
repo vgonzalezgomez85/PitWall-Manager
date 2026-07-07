@@ -128,6 +128,7 @@ router.post('/races/:id/mangas/:mangaId/repeat',       SessionController.repeat)
 router.get( '/link',                       LinkController.page);           // pantalla operador del esclavo
 router.get( '/link/races',                 LinkController.listRaces);
 router.get( '/link/races/:id/export.json', LinkController.exportRace);
+router.get( '/link/races/:id/results.json', LinkController.resultsRace); // resultados por tanda → Control
 router.get( '/link/master/races',          LinkController.remoteRaces);   // proxy: lista del maestro remoto
 router.post('/link/provision',             LinkController.provision);     // descarga del maestro + crea
 router.post('/link/import',                LinkController.importPayload);  // crea desde payload/fichero
