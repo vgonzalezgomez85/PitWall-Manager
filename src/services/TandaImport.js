@@ -117,7 +117,11 @@ function validate(payload) {
     return { numero: asInt(t.numero) || ti + 1, equipos: eqs };
   });
 
-  return { nombre, sede: prueba.sede ? String(prueba.sede) : null, carriles, isTeam, tandas };
+  // ¿La carrera tiene pole? (opcional en el contrato; también lo puede marcar
+  // el operador en la pantalla de import o el switch de Control al enviar).
+  const pole = payload.pole === true || payload.pole === 1 || payload.pole === '1';
+
+  return { nombre, sede: prueba.sede ? String(prueba.sede) : null, carriles, isTeam, pole, tandas };
 }
 
 // Crea la carrera completa a partir del payload. Devuelve { raceId, url, ... }.
@@ -134,7 +138,7 @@ function createFromPayload(payload) {
     const raceId = Race.create({
       name: v.nombre, type, format, lanes_count: v.carriles,
       lane_sequence: laneSeqRace, manga_duration_minutes: mangaMin,
-      circuits: [v.carriles], has_pole: 0, min_lap_ms: minLapMs,
+      circuits: [v.carriles], has_pole: v.pole ? 1 : 0, min_lap_ms: minLapMs,
     });
 
     let teamCount = 0;
@@ -185,7 +189,28 @@ function createFromPayload(payload) {
       Manga.persistSchedule(tandaId, raceId, schedule);
     }
 
-    return { raceId, tandas: v.tandas.length, teams: teamCount };
+    // Pole: sesión + una entrada por equipo (dedupe por nombre entre tandas),
+    // igual que hace el asistente de nueva carrera con los participantes.
+    if (v.pole) {
+      const PoleSession = require('../models/PoleSession');
+      const sessionId = PoleSession.create(raceId);
+      const entityType = v.isTeam ? 'team' : 'driver';
+      const vistos = new Set();
+      for (const tanda of v.tandas) {
+        for (const eq of tanda.equipos) {
+          if (vistos.has(eq.nombre)) continue;
+          vistos.add(eq.nombre);
+          PoleSession.addEntry({
+            poleSessionId: sessionId,
+            entityType,
+            entityName: eq.nombre,
+            membersJson: eq.pilotos.length ? JSON.stringify(eq.pilotos) : null,
+          });
+        }
+      }
+    }
+
+    return { raceId, tandas: v.tandas.length, teams: teamCount, pole: v.pole };
   });
 
   const out = run();
