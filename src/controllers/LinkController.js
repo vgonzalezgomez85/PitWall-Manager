@@ -165,6 +165,58 @@ class LinkController {
     }
   }
 
+  // GET /link/races/:id/results.json — resultados por TANDA para PitWall Control
+  // (contrato pitwall.resultados/v1). Cada tanda de Manager = una manga de
+  // Control; la posición es DENTRO de la tanda (Control aplica posición→puntos
+  // con su tabla). Matching por NOMBRE de equipo (mismo criterio que controlCsv).
+  // Vueltas/coma/mejor vuelta van solo como referencia para la vista previa.
+  static resultsRace(req, res) {
+    try {
+      const race = Race.findById(parseInt(req.params.id, 10));
+      if (!race) return res.status(404).json({ error: 'Carrera no encontrada' });
+
+      const Lap = require('../models/Lap');
+      // Ya ordenado con el criterio oficial (vueltas DESC, coma media DESC,
+      // tiempo ASC) — al trocearlo por tanda, el orden relativo se conserva.
+      const aggregate = Lap.aggregateByRace(race.id).filter(r => r.entity_id != null);
+
+      // entidad → nº de tanda (teams y drivers sueltos llevan tanda_id).
+      const tandaOf = new Map(db.prepare(`
+        SELECT t.id AS entity_id, 'team' AS entity_type, td.number AS tanda_number
+        FROM teams t JOIN tandas td ON td.id = t.tanda_id WHERE t.race_id = ?
+        UNION ALL
+        SELECT d.id, 'driver', td.number
+        FROM drivers d JOIN tandas td ON td.id = d.tanda_id
+        WHERE d.race_id = ? AND d.team_id IS NULL
+      `).all(race.id, race.id).map(r => [`${r.entity_type}:${r.entity_id}`, r.tanda_number]));
+
+      const buckets = new Map(); // nº tanda → equipos ordenados
+      for (const r of aggregate) {
+        const tanda = tandaOf.get(`${r.entity_type}:${r.entity_id}`) ?? 0;
+        if (!buckets.has(tanda)) buckets.set(tanda, []);
+        const eqs = buckets.get(tanda);
+        eqs.push({
+          nombre: r.entity_name,
+          posicion: eqs.length + 1,
+          vueltas: r.total_laps,
+          coma: r.coma_total != null ? Number(Number(r.coma_total).toFixed(3)) : null,
+          mejor_vuelta_ms: r.best_lap_ms ?? null,
+        });
+      }
+
+      res.json({
+        schema: 'pitwall.resultados/v1',
+        raceKey: race.race_key || null,
+        race: { id: race.id, name: race.name, status: race.status },
+        tandas: [...buckets.entries()]
+          .sort((a, b) => a[0] - b[0])
+          .map(([numero, equipos]) => ({ numero, equipos })),
+      });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  }
+
   // POST /link/import — crea la carrera desde un payload en el body (plan B / fichero).
   //   body: el payload directamente, o { payload }.
   static importPayload(req, res) {
