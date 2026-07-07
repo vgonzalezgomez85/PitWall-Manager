@@ -280,6 +280,12 @@ router.get( '/settings',           SettingsController.index);
 router.post('/settings',           SettingsController.save);
 router.get( '/api/settings/ports', SettingsController.listPorts);
 
+// ── Túnel público (Cloudflare del propio club) — control LAN-only ────────────
+const TunnelController = require('../controllers/TunnelController');
+router.get( '/tunnel/status', TunnelController.status);
+router.post('/tunnel/start',  TunnelController.start);
+router.post('/tunnel/stop',   TunnelController.stop);
+
 // ── Gestión de base de datos ───────────────────────────────────────────────────
 router.get( '/database',        DatabaseController.index);
 router.get( '/database/backup', DatabaseController.backup);

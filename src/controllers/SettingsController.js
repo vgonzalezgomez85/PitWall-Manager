@@ -169,6 +169,12 @@ class SettingsController {
       // Interfaz de red a la que se ata el server (vacío = todas). Solo aplica
       // al reiniciar (no se puede re-atar un server en marcha).
       server_bind_iface:       String(req.body.server_bind_iface || '').trim(),
+      // Túnel público (Cloudflare del propio club). El proceso se arranca/para
+      // con los botones de la sección (TunnelController), no al guardar.
+      tunnel_mode:      ['off', 'quick', 'token'].includes(req.body.tunnel_mode) ? req.body.tunnel_mode : 'off',
+      tunnel_token:     String(req.body.tunnel_token || '').trim(),
+      tunnel_hostname:  String(req.body.tunnel_hostname || '').trim().replace(/^https?:\/\//, '').replace(/\/+$/, ''),
+      tunnel_autostart: (req.body.tunnel_autostart === '1' || req.body.tunnel_autostart === 'on') ? '1' : '0',
     });
     DebugLogger.setEnabled(debugOn);
 
