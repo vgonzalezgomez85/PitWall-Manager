@@ -115,6 +115,7 @@ function isPublicPath(p) {
 // esos los usa el operador LOCAL del esclavo y siguen tras la restricción normal.
 function isLinkReadPath(p) {
   return p === '/link/races' || /^\/link\/races\/\d+\/export\.json$/.test(p)
+      || /^\/link\/races\/\d+\/results\.json$/.test(p)  // resultados por tanda → PitWall Control
       || p === '/link/laps';   // el comparador del otro sistema pide las vueltas (read-only)
 }
 function isLinkControlPath(p) {
