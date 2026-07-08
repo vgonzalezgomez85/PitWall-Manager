@@ -286,3 +286,49 @@ test('con 3 cajas, cada circuito cuenta desde SU propio GO', () => {
   assert.equal(act[1], undefined, 'el carril del circuito finalizado ya no tiene contador vivo');
   casiIgual(act[2].drivingMs, 10 * MIN, 500);
 });
+
+test('cada caja sella la hora de entrada de SUS pilotos en su propio GO', async () => {
+  // Encontrado en el ensayo sobre los 3 DS emulados: activatePreArmedShifts
+  // sellaba a TODOS los pre-armados el startTime de la manga, así que en la
+  // cronología del informe el piloto de la caja 3 aparecía entrando cuando
+  // arrancó la caja 1. El tiempo era correcto; la hora de entrada, no.
+  const perfiles = ['P1', 'P2', 'P3'].map(n => ({ nombre: n, id: crearPerfil(n) }));
+  perfiles.forEach((p, i) => crearEquipoCatalogo(`E${i + 1}`, [p]));
+  const equipos = perfiles.map((p, i) => ({ nombre: `E${i + 1}`, pilotos: [p] }));
+  const { raceId, mangaId, teams } = crearCarreraConManga(equipos, { circuitsConfig: [1, 1, 1] });
+  const race  = db.prepare('SELECT * FROM races  WHERE id = ?').get(raceId);
+  const manga = db.prepare('SELECT * FROM mangas WHERE id = ?').get(mangaId);
+
+  teams.forEach((t, i) => DriverShift.openShift({ mangaId, raceId, lane: t.lane,
+    teamId: t.id, driverId: t.drivers[0].id, driverName: perfiles[i].nombre, preArmed: true }));
+
+  darGo({ manga, race, mangaId });     // GO de la caja 1
+  const trasGo1 = turnos(mangaId);
+  assert.ok(trasGo1.find(s => s.lane === 1).started_at_ms != null, 'la caja 1 sella a su piloto');
+  assert.equal(trasGo1.find(s => s.lane === 2).started_at_ms, null, 'la caja 2 aún no ha arrancado');
+  assert.equal(trasGo1.find(s => s.lane === 3).pre_armed, 1, 'la caja 3 sigue pre-armada');
+  // Y su contador no avanza aunque la manga lleve rato corriendo.
+  avanzar(0, 10 * MIN);
+  assert.equal(TimingService.getActiveShifts()[2].drivingMs, 0);
+
+  // El GO de la caja 2 llega más tarde. Sin esta espera ambos GO caen en el
+  // MISMO milisegundo y la comprobación de "posterior" no distinguiría nada.
+  await new Promise(r => setTimeout(r, 12));
+  TimingService.startCircuit(1);      // GO de la caja 2
+  const goCaja2 = TimingService.session.circuits[1].startTime;
+
+  const trasGo2 = turnos(mangaId);
+  const s1 = trasGo2.find(s => s.lane === 1), s2 = trasGo2.find(s => s.lane === 2);
+  assert.ok(s2.started_at_ms != null, 'la caja 2 sella a su piloto al recibir SU GO');
+  assert.equal(s2.pre_armed, 0);
+  assert.equal(s2.started_at_ms, goCaja2, 'y lo sella con el GO de SU caja');
+  assert.ok(s2.started_at_ms > s1.started_at_ms,
+    'la hora de entrada de la caja 2 es POSTERIOR a la de la caja 1');
+  assert.equal(trasGo2.find(s => s.lane === 3).started_at_ms, null, 'la caja 3 sigue esperando su GO');
+
+  // Un circuito que nunca arranca: su piloto no rodó, y así debe constar.
+  TimingService.stopManga(true);
+  const s3 = turnos(mangaId).find(s => s.lane === 3);
+  assert.equal(s3.started_at_ms, null, 'sin GO no hay hora de entrada');
+  assert.equal(s3.driving_ms, 0, 'ni tiempo');
+});

@@ -194,11 +194,16 @@ class TimingServiceClass {
     this._isChampionship = (race.type === 'championship');
     this._activeShiftsByLane = {};
     if (this._isChampionship) {
-      // Activa los shifts pre-armados que el staff haya escaneado durante
-      // el standby: les setea started_at_ms = startTime y pre_armed=0.
-      DriverShift.activatePreArmedShifts(manga.id, startTime);
-      // Carga el mapa en memoria de los shifts abiertos (los recién activados
-      // y cualquier otro que pueda haber quedado pendiente de un crash).
+      // Activa los pre-armes del circuito que ACABA de recibir su GO: les setea
+      // started_at_ms = startTime y pre_armed = 0. Los de las demás cajas se
+      // activan con su propio GO (startCircuit). Con 3 cajas el GO es escalonado:
+      // sellarles a todos este startTime les pondría una hora de entrada falsa
+      // en la cronología del informe (el tiempo sí era correcto: se deriva del
+      // reloj de SU circuito, que hasta su GO está en pending y no avanza).
+      DriverShift.activatePreArmedShifts(manga.id, startTime, this._circuitLanes(startCircuitIndex));
+      // Carga el mapa en memoria de los shifts abiertos: los recién activados,
+      // los pre-armados de los circuitos que aún esperan su GO (cuentan 0 hasta
+      // entonces) y cualquiera que quedase colgando de una caída.
       DriverShift.findAllOpenByManga(manga.id).forEach(s => {
         this._openShiftEntry(s.lane, s.id, s.driving_ms || 0);
       });
@@ -323,6 +328,14 @@ class TimingServiceClass {
     c.startTime = Date.now();
     c.endTime   = null;   // por si el circuito se relanza tras un stop forzado
     if (durationMs) c.durationMs = durationMs;
+
+    // Los pilotos de ESTA caja entran ahora, no cuando arrancó la primera: su
+    // hora de entrada es su propio GO. El contador ya era correcto (deriva del
+    // reloj del circuito, en pending congelado a 0); esto arregla la cronología.
+    if (this._isChampionship && this.session.manga) {
+      DriverShift.activatePreArmedShifts(this.session.manga.id, c.startTime, this._circuitLanes(ci));
+    }
+
     this._scheduleCircuitAutoFinish(ci);
     console.log(`[TimingService] Circuito ${ci + 1} arrancado @ ${c.startTime}`);
     SocketService.emitStandings(this.getStandings());
