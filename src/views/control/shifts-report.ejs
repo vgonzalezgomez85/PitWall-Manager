@@ -1,0 +1,188 @@
+<%- include('../partials/header', { lang, pageTitle: (lang === 'es' ? 'Informe de turnos' : 'Shift report') + ' — ' + race.name }) %>
+
+<%
+// Informe FINAL: la carrera ya rodó, así que el mínimo se juzga de verdad
+// (reglas.final === true, lo pone _reportData). fmtHms viene de app.locals.
+const es = lang === 'es';
+const exportando = typeof hideNavbar !== 'undefined' && hideNavbar;
+function stamp(ms) {
+  if (!ms) return '—';
+  return new Date(ms).toLocaleTimeString();
+}
+function etiqueta(c) {
+  if (c.overMax)  return { cls: 'is-bad',  txt: es ? 'PASADO DE TIEMPO' : 'OVER TIME' };
+  if (c.overRuns) return { cls: 'is-bad',  txt: es ? 'PASADO DE TURNOS' : 'OVER STINTS' };
+  if (c.underMin) return { cls: 'is-bad',  txt: es ? 'BAJO MÍNIMO'      : 'UNDER MIN' };
+  if (c.nearMax)  return { cls: 'is-warn', txt: es ? 'Al 90% del máx.'  : 'At 90% of max' };
+  if (c.nearRuns) return { cls: 'is-warn', txt: es ? 'Último turno'     : 'Last stint' };
+  return { cls: 'is-ok', txt: 'OK' };
+}
+%>
+
+<style>
+/* El informe se imprime o se adjunta a una reclamación: sin cromo, sin cortes
+   de tabla a mitad de fila, y las infracciones legibles también en blanco y negro. */
+@media print {
+  .vt-navbar, .vt-footer, .vt-back-link, .vt-head__actions, .sr-noprint { display: none !important; }
+  .vt-page { background: #fff !important; }
+  body, .vt-wrap { color: #000 !important; }
+  .vt-table-card { break-inside: avoid; box-shadow: none !important; }
+  .vt-table tr { break-inside: avoid; }
+  .vt-badge.is-bad  { border: 1.5px solid #000 !important; font-weight: 700; }
+  .vt-badge.is-warn { border: 1px dashed #000 !important; }
+  a[href]:after { content: ""; }   /* no imprimir las URLs */
+}
+.sr-kpis { display:flex; gap:12px; flex-wrap:wrap; margin:14px 0 4px; }
+.sr-kpi { flex:1 1 150px; background:var(--vt-card, #161b22); border:1px solid var(--vt-border, #30363d);
+          border-radius:10px; padding:10px 14px; }
+.sr-kpi__n { font-size:24px; font-weight:700; line-height:1.1; }
+.sr-kpi__l { font-size:12px; color:var(--vt-mute, #8b949e); margin-top:2px; }
+.sr-kpi.is-bad .sr-kpi__n { color:#f85149; }
+.sr-manual { font-size:11px; color:var(--vt-mute, #8b949e); }
+</style>
+
+<div class="vt-page vt-page--shifts-report">
+  <div class="vt-wrap">
+
+    <% if (!exportando) { %>
+      <a href="/races/<%= race.id %>/shifts" class="vt-back-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        <%= es ? 'Volver al histórico' : 'Back to history' %>
+      </a>
+    <% } %>
+
+    <div class="vt-head">
+      <div class="vt-head__title">
+        <h1><%= es ? 'Informe de turnos de piloto' : 'Driver shift report' %></h1>
+        <span class="vt-cnt"><%= race.name %></span>
+      </div>
+      <% if (!exportando) { %>
+        <div class="vt-head__actions sr-noprint">
+          <a href="/races/<%= race.id %>/shifts/report.html" class="vt-btn vt-btn--ghost vt-btn--sm">HTML</a>
+          <a href="/races/<%= race.id %>/shifts/report.xlsx?lang=<%= lang %>" class="vt-btn vt-btn--ghost vt-btn--sm">Excel</a>
+          <button onclick="window.print()" class="vt-btn vt-btn--sm"><%= es ? 'Imprimir' : 'Print' %></button>
+        </div>
+      <% } %>
+    </div>
+
+    <!-- Reglas aplicadas: sin esto el informe no es defendible -->
+    <div class="sr-kpis">
+      <div class="sr-kpi">
+        <div class="sr-kpi__n"><%= reglas.minMs ? fmtHms(reglas.minMs) : '—' %></div>
+        <div class="sr-kpi__l"><%= es ? 'Tiempo mínimo por piloto' : 'Minimum time per driver' %></div>
+      </div>
+      <div class="sr-kpi">
+        <div class="sr-kpi__n"><%= reglas.maxMs ? fmtHms(reglas.maxMs) : '—' %></div>
+        <div class="sr-kpi__l"><%= es ? 'Tiempo máximo por piloto' : 'Maximum time per driver' %></div>
+      </div>
+      <div class="sr-kpi">
+        <div class="sr-kpi__n"><%= reglas.maxRuns || '—' %></div>
+        <div class="sr-kpi__l"><%= es ? 'Turnos máximos' : 'Maximum stints' %></div>
+      </div>
+      <div class="sr-kpi <%= infracciones.length ? 'is-bad' : '' %>">
+        <div class="sr-kpi__n"><%= infracciones.length %></div>
+        <div class="sr-kpi__l"><%= es ? 'Infracciones' : 'Violations' %></div>
+      </div>
+    </div>
+
+    <% if (manuales > 0) { %>
+      <p class="sr-manual" style="margin:10px 0 0">
+        <%= es
+          ? `Atención: ${manuales} turno(s) con tiempo introducido manualmente por el staff. Van marcados en la tabla.`
+          : `Note: ${manuales} shift(s) with time entered manually by staff. Flagged in the table.` %>
+      </p>
+    <% } %>
+
+    <!-- ── Tiempo total por piloto ─────────────────────────────────────── -->
+    <div class="sc-section" style="margin-top:18px">
+      <div class="vt-sec-lbl"><%= es ? 'Tiempo total por piloto' : 'Total time per driver' %></div>
+      <% if (summary.length === 0) { %>
+        <p style="color:var(--vt-mute)"><%= es ? 'No hay pilotos inscritos con perfil de catálogo.' : 'No enrolled drivers with a catalog profile.' %></p>
+      <% } else { %>
+        <div class="vt-table-card">
+          <table class="vt-table">
+            <thead>
+              <tr>
+                <th><%= es ? 'Piloto' : 'Driver' %></th>
+                <th><%= es ? 'Categoría' : 'Category' %></th>
+                <th class="is-num"><%= es ? 'Tiempo total' : 'Total time' %></th>
+                <th class="is-num"><%= es ? 'Turnos' : 'Stints' %></th>
+                <th><%= es ? 'Estado' : 'Status' %></th>
+              </tr>
+            </thead>
+            <tbody>
+              <% summary.forEach(r => { const b = etiqueta(r.compliance); %>
+                <tr>
+                  <td class="is-name">
+                    <span class="vt-cat-dot vt-cat--<%= r.profile_category %>" style="margin-right:6px"></span><%= r.profile_name %>
+                    <% if (r.manual_count > 0) { %>
+                      <span class="sr-manual" title="<%= es ? 'Incluye tiempo introducido a mano' : 'Includes manually entered time' %>">
+                        · <%= es ? 'manual' : 'manual' %> ×<%= r.manual_count %>
+                      </span>
+                    <% } %>
+                  </td>
+                  <td class="is-mute"><%= r.profile_category %></td>
+                  <td class="is-num is-mono is-name"><%= fmtHms(r.total_ms) %></td>
+                  <td class="is-num is-mono"><%= r.runs_count %><% if (reglas.maxRuns > 0) { %><span class="is-mute">/<%= reglas.maxRuns %></span><% } %></td>
+                  <td><span class="vt-badge <%= b.cls %>"><span class="vt-badge__d"></span><%= b.txt %></span></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </div>
+
+    <!-- ── Cronología: de dónde sale cada total ────────────────────────── -->
+    <div class="sc-section" style="margin-top:22px">
+      <div class="vt-sec-lbl"><%= es ? 'Cronología de turnos por manga' : 'Shift timeline per heat' %></div>
+      <% const conTurnos = mangas.filter(m => m.shifts && m.shifts.length); %>
+      <% if (!conTurnos.length) { %>
+        <p style="color:var(--vt-mute)"><%= es ? 'No se registró ningún turno.' : 'No shifts were recorded.' %></p>
+      <% } else { %>
+        <% conTurnos.forEach(m => { %>
+          <div class="vt-table-card" style="margin-top:10px">
+            <div class="vt-sec-lbl" style="padding:8px 12px 0">
+              <%= es ? 'Tanda' : 'Heat' %> <%= m.tanda_number || '—' %> · <%= es ? 'Manga' : 'Race' %> <%= m.number %>
+            </div>
+            <table class="vt-table">
+              <thead>
+                <tr>
+                  <th class="is-num"><%= es ? 'Carril' : 'Lane' %></th>
+                  <th><%= es ? 'Piloto' : 'Driver' %></th>
+                  <th><%= es ? 'Entró' : 'In' %></th>
+                  <th><%= es ? 'Salió' : 'Out' %></th>
+                  <th class="is-num"><%= es ? 'Tiempo' : 'Time' %></th>
+                  <th><%= es ? 'Origen' : 'Source' %></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% m.shifts.forEach(s => { %>
+                  <tr>
+                    <td class="is-num is-mono"><%= s.lane %></td>
+                    <td class="is-name"><%= s.driver_name %></td>
+                    <td class="is-mono is-mute"><%= stamp(s.started_at_ms) %></td>
+                    <td class="is-mono is-mute"><%= stamp(s.ended_at_ms) %></td>
+                    <td class="is-num is-mono"><%= fmtHms(s.driving_ms) %></td>
+                    <td>
+                      <% if (s.manual) { %>
+                        <span class="vt-badge is-warn"><span class="vt-badge__d"></span><%= es ? 'Manual' : 'Manual' %></span>
+                      <% } else if (s.started_at_ms == null) { %>
+                        <span class="vt-badge is-info"><span class="vt-badge__d"></span><%= es ? 'No rodó' : 'Never ran' %></span>
+                      <% } else { %>
+                        <span class="is-mute">QR</span>
+                      <% } %>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% }) %>
+      <% } %>
+    </div>
+
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

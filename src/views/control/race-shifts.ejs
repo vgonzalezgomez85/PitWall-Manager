@@ -1,19 +1,23 @@
 <%- include('../partials/header', { lang, pageTitle: (lang === 'es' ? 'Histórico de turnos' : 'Shifts history') + ' — ' + race.name }) %>
 
 <%
+// fmtHms / shiftCompliance / shiftBadge vienen de app.locals: fuente única de
+// formato y de regla. Antes cada vista llevaba su copia y habían divergido.
+// El m:ss de antes pintaba 4 h como "240:00", que en una 24h no vale.
 function fmtTime(ms) {
   if (ms == null || isNaN(ms)) return '—';
-  const s = Math.floor(ms / 1000);
-  const m = Math.floor(s / 60);
-  return m + ':' + String(s % 60).padStart(2, '0');
+  return fmtHms(ms);
 }
 function fmtMsStamp(ms) {
   if (!ms) return '—';
   const d = new Date(ms);
   return d.toLocaleTimeString();
 }
-const minMs = race.driver_min_total_ms || 0;
-const maxMs = race.driver_max_total_ms || 0;
+const minMs   = race.driver_min_total_ms || 0;
+const maxMs   = race.driver_max_total_ms || 0;
+const maxRuns = race.driver_max_runs || 0;
+// Histórico: la carrera ya rodó, así que el mínimo SÍ se juzga.
+const reglas  = { minMs, maxMs, maxRuns, final: true };
 %>
 
 <div class="vt-page vt-page--shifts-history">
@@ -30,6 +34,11 @@ const maxMs = race.driver_max_total_ms || 0;
         <span class="vt-cnt"><%= race.name %></span>
       </div>
       <div class="vt-head__actions">
+        <% if (!notChampionship) { %>
+          <a href="/races/<%= race.id %>/shifts/report" class="vt-btn vt-btn--sm">
+            <%= lang === 'es' ? 'Informe final' : 'Final report' %>
+          </a>
+        <% } %>
         <a href="/control/shifts" class="vt-btn vt-btn--ghost vt-btn--sm">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
           <%= lang === 'es' ? 'Control en vivo' : 'Live control' %>
@@ -69,9 +78,10 @@ const maxMs = race.driver_max_total_ms || 0;
               </thead>
               <tbody>
                 <% summary.forEach(r => {
-                  const overMax = maxMs > 0 && r.total_ms >= maxMs;
-                  const nearMax = maxMs > 0 && r.total_ms >= maxMs * 0.9 && !overMax;
-                  const underMin = minMs > 0 && r.total_ms < minMs;
+                  // `runs_count` = turnos RODADOS. `shifts_count` incluía los
+                  // pre-armes que nunca arrancaron: inflaba el recuento.
+                  const runs = r.runs_count || 0;
+                  const c = shiftCompliance({ totalMs: r.total_ms, runs }, reglas);
                 %>
                   <tr>
                     <td class="is-name"><span class="vt-cat-dot vt-cat--<%= r.profile_category %>" style="margin-right:6px"></span><%= r.profile_name %></td>
@@ -79,14 +89,18 @@ const maxMs = race.driver_max_total_ms || 0;
                     <td class="is-num is-mono is-name"><%= fmtTime(r.total_ms) %></td>
                     <% if (minMs > 0) { %><td class="is-num is-mono is-mute"><%= fmtTime(minMs) %></td><% } %>
                     <% if (maxMs > 0) { %><td class="is-num is-mono is-mute"><%= fmtTime(maxMs) %></td><% } %>
-                    <td class="is-num is-mono"><%= r.shifts_count %></td>
+                    <td class="is-num is-mono"><%= runs %><% if (maxRuns > 0) { %><span class="is-mute">/<%= maxRuns %></span><% } %></td>
                     <td>
-                      <% if (overMax) { %>
+                      <% if (c.overMax) { %>
                         <span class="vt-badge is-bad"><span class="vt-badge__d"></span><%= lang === 'es' ? 'PASADO' : 'OVER' %></span>
-                      <% } else if (nearMax) { %>
+                      <% } else if (c.overRuns) { %>
+                        <span class="vt-badge is-bad"><span class="vt-badge__d"></span><%= lang === 'es' ? 'TURNOS' : 'STINTS' %></span>
+                      <% } else if (c.underMin) { %>
+                        <span class="vt-badge is-bad"><span class="vt-badge__d"></span><%= lang === 'es' ? 'Bajo mín.' : 'Under min' %></span>
+                      <% } else if (c.nearMax) { %>
                         <span class="vt-badge is-warn"><span class="vt-badge__d"></span>90%+</span>
-                      <% } else if (underMin) { %>
-                        <span class="vt-badge is-info"><span class="vt-badge__d"></span><%= lang === 'es' ? 'Bajo mín.' : 'Under min' %></span>
+                      <% } else if (c.nearRuns) { %>
+                        <span class="vt-badge is-warn"><span class="vt-badge__d"></span><%= lang === 'es' ? 'Último turno' : 'Last stint' %></span>
                       <% } else { %>
                         <span class="vt-badge is-ok"><span class="vt-badge__d"></span>OK</span>
                       <% } %>

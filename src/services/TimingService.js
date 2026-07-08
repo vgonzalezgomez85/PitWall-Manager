@@ -200,7 +200,7 @@ class TimingServiceClass {
       // Carga el mapa en memoria de los shifts abiertos (los recién activados
       // y cualquier otro que pueda haber quedado pendiente de un crash).
       DriverShift.findAllOpenByManga(manga.id).forEach(s => {
-        this._activeShiftsByLane[s.lane] = { shiftId: s.id, drivingMs: s.driving_ms || 0 };
+        this._openShiftEntry(s.lane, s.id, s.driving_ms || 0);
       });
     }
     this._driverShiftTickN = 0; // contador para persistir cada 5 ticks
@@ -239,6 +239,7 @@ class TimingServiceClass {
         index: ci,
         status: ci === startCi ? 'running' : 'pending',
         startTime: ci === startCi ? startTime : null,
+        endTime: null,           // lo fija finishCircuit(); congela el reloj del circuito
         durationMs,
         autoStopTimer: null,
         laneCount: n,
@@ -247,7 +248,7 @@ class TimingServiceClass {
     });
     // Salvaguarda: si el circuito de arranque no aparece en la config, créalo.
     if (!circuits[startCi]) {
-      circuits[startCi] = { index: startCi, status: 'running', startTime, durationMs, autoStopTimer: null, laneCount: 0 };
+      circuits[startCi] = { index: startCi, status: 'running', startTime, endTime: null, durationMs, autoStopTimer: null, laneCount: 0 };
     }
     return { circuits, laneToCircuit };
   }
@@ -280,18 +281,33 @@ class TimingServiceClass {
       .map(ld => ld.lane);
   }
 
+  // Tiempo EFECTIVO transcurrido de un circuito desde su GO, ya descontadas sus
+  // pausas. La resta sale gratis porque `resumeCircuit` desplaza `startTime` por
+  // la duración de cada pausa: `startTime` no es el instante del GO, es el ancla
+  // móvil del tiempo efectivo. Devuelve null si el circuito no existe.
+  //
+  // Es la base del contador de turnos: driving_ms se deriva de aquí en vez de
+  // acumular ticks, así que no arrastra la deriva del setInterval (medidos ~1032
+  // ppm en este banco → ~89 s por piloto en 24 h, y siempre a la baja).
+  _circuitElapsedMs(ci) {
+    const c = this.session && this.session.circuits[ci];
+    if (!c) return null;
+    if (c.status === 'pending')  return 0;   // GO escalonado: su caja aún no ha arrancado
+    if (c.status === 'finished') return Math.max(0, (c.endTime   || Date.now()) - c.startTime);
+    if (c.status === 'paused')   return Math.max(0, (c.pauseStart || Date.now()) - c.startTime);
+    return Math.max(0, Date.now() - c.startTime);   // running
+  }
+
   // Reloj de cada circuito para la UI: tiempo restante propio según su estado.
   _circuitClocks() {
     if (!this.session) return [];
-    const now = Date.now();
     return Object.values(this.session.circuits)
       .sort((a, b) => a.index - b.index)
       .map(c => {
         let remainingMs;
         if (c.status === 'pending')       remainingMs = c.durationMs;
         else if (c.status === 'finished') remainingMs = 0;
-        else if (c.status === 'paused')   remainingMs = Math.max(0, c.durationMs - ((c.pauseStart || now) - c.startTime));
-        else                               remainingMs = Math.max(0, c.durationMs - (now - c.startTime));
+        else                              remainingMs = Math.max(0, c.durationMs - this._circuitElapsedMs(c.index));
         return { index: c.index, status: c.status, remainingMs };
       });
   }
@@ -305,6 +321,7 @@ class TimingServiceClass {
     if (c.status === 'running') return;   // su GO ya estaba dado → ignorar
     c.status    = 'running';
     c.startTime = Date.now();
+    c.endTime   = null;   // por si el circuito se relanza tras un stop forzado
     if (durationMs) c.durationMs = durationMs;
     this._scheduleCircuitAutoFinish(ci);
     console.log(`[TimingService] Circuito ${ci + 1} arrancado @ ${c.startTime}`);
@@ -344,9 +361,16 @@ class TimingServiceClass {
     if (!this.session) return;
     const c = this.session.circuits[ci];
     if (!c || c.status !== 'running') return;
-    c.status = 'finished';
+    c.endTime = Date.now();   // ANTES del cambio de estado: _circuitElapsedMs ya lo lee
+    c.status  = 'finished';
     if (c.autoStopTimer) { clearTimeout(c.autoStopTimer); c.autoStopTimer = null; }
     console.log(`[TimingService] Circuito ${ci + 1} finalizado`);
+
+    // Los turnos de ESTE circuito se cierran en SU instante de fin. Con tres
+    // cajas, esperar a stopManga() les colgaría el ended_at_ms de la última en
+    // terminar. El tiempo ya no crece (elapsed queda congelado en endTime), pero
+    // la cronología del informe sí quedaría falseada.
+    if (this._isChampionship) this._closeDriverShiftsForCircuit(ci);
 
     const list = Object.values(this.session.circuits);
     const anyRunning  = list.some(x => x.status === 'running');
@@ -379,11 +403,21 @@ class TimingServiceClass {
     }
     this._pendingSetup = null;
 
-    // Cierra todos los shifts abiertos de la manga (persiste driving_ms
-    // final + ended_at_ms). Solo aplica a campeonato.
+    // Cierra los shifts abiertos que queden. Cada uno con el tiempo calculado y
+    // el instante de fin de SU circuito: los de un circuito que ya terminó se
+    // cerraron en finishCircuit(), aquí caen los de un stop manual o los de
+    // circuitos que nunca llegaron a finalizar. closeAllOpenForManga queda de
+    // red de seguridad para huérfanos que no estén en el mapa (p.ej. tras una
+    // caída). Solo aplica a campeonato.
     if (this._isChampionship) {
-      this._persistAllDriverShifts();
-      DriverShift.closeAllOpenForManga(this.session.manga.id, Date.now());
+      const nowTs = Date.now();
+      for (const lane of Object.keys(this._activeShiftsByLane)) {
+        const e = this._activeShiftsByLane[lane];
+        const c = this.session.circuits[e.ci];
+        try { DriverShift.closeShift(e.shiftId, (c && c.endTime) || nowTs, this._drivingMsOf(e)); }
+        catch (err) { console.error('[TimingService] closeShift', err.message); }
+      }
+      DriverShift.closeAllOpenForManga(this.session.manga.id, nowTs);
       this._activeShiftsByLane = {};
     }
 
@@ -767,10 +801,12 @@ class TimingServiceClass {
     // Delete all laps recorded in this session and reset manga to pending
     Lap.deleteByManga(mangaId);
     Manga.updateStatus(mangaId, 'pending');
-    // Borrar shifts de la manga cancelada (vuelve a 'pending' → el staff
-    // tendrá que re-escanear los pilotos). Solo aplica a campeonato.
+    // STOP FORZADO: se descarta el tiempo acumulado EN ESTA MANGA (el total de
+    // las mangas anteriores no se toca, porque los turnos son por manga) pero se
+    // CONSERVA qué piloto está en cada carril, de nuevo pre-armado: no hay que
+    // re-escanear los QR, volverán a contar con el próximo GO. Solo campeonato.
     if (this._isChampionship) {
-      DriverShift.deleteByManga(mangaId);
+      DriverShift.resetForRestart(mangaId);
       this._activeShiftsByLane = {};
     }
 
@@ -1440,16 +1476,58 @@ class TimingServiceClass {
 
   // ── Driver shifts (solo carreras de campeonato) ─────────────────────
 
-  // Incremento por tick (1s) de cada shift activo. Persiste cada 5s.
-  // Emite snapshot por socket para que la vista de control refresque
-  // cronómetros sin estimación en cliente.
-  _tickDriverShifts() {
+  // El tiempo de un piloto NO se acumula sumando ticks: se DERIVA del reloj
+  // efectivo de su circuito. Cada entrada guarda dónde empezó a contar
+  // (`openElapsedMs`, en elapsed del circuito, no en wall-clock) y lo que ya
+  // traía de antes (`baseMs`, > 0 solo al recuperar un turno abierto en BD):
+  //
+  //     drivingMs = baseMs + (circuitElapsed(ci) − openElapsedMs)
+  //
+  // Las pausas se descuentan solas (startTime del circuito ya las absorbe), el
+  // GO escalonado sale gratis (un circuito pending tiene elapsed 0) y un
+  // circuito finalizado deja de crecer (elapsed congelado en endTime). Al ser
+  // elapsed relativo también es inmune a simSetClock(), que re-ancla startTime.
+  _laneCircuit(lane) {
+    return this.session && this.session.laneToCircuit ? this.session.laneToCircuit[lane] : null;
+  }
+
+  // Registra un turno abierto en el mapa en memoria, anclado al elapsed actual
+  // de su circuito. `baseMs` es el tiempo que el turno ya tenía acumulado.
+  _openShiftEntry(lane, shiftId, baseMs = 0) {
+    const ci = this._laneCircuit(lane);
+    this._activeShiftsByLane[lane] = {
+      shiftId,
+      baseMs,
+      ci,
+      openElapsedMs: this._circuitElapsedMs(ci) ?? 0,
+      drivingMs: baseMs,   // caché derivada: la recalcula _drivingMsOf en cada tick
+    };
+    return this._activeShiftsByLane[lane];
+  }
+
+  // Tiempo del turno abierto en este instante. Fail-CLOSED: un carril sin
+  // circuito conocido no suma (antes sumaba, aunque el circuito estuviera
+  // pausado o finalizado), coherente con el descarte de cruces de _onCrossing.
+  _drivingMsOf(entry) {
+    if (!entry) return 0;
+    const elapsed = this._circuitElapsedMs(entry.ci);
+    if (elapsed == null) return entry.baseMs;
+    return Math.max(entry.baseMs, entry.baseMs + (elapsed - entry.openElapsedMs));
+  }
+
+  // Refresca la caché `drivingMs` de cada turno abierto y devuelve el snapshot.
+  _refreshDriverShifts() {
     for (const lane in this._activeShiftsByLane) {
-      // No sumar tiempo a un piloto cuyo circuito esté pausado.
-      const ci = this.session && this.session.laneToCircuit ? this.session.laneToCircuit[lane] : null;
-      if (ci != null && this.session.circuits[ci] && this.session.circuits[ci].status !== 'running') continue;
-      this._activeShiftsByLane[lane].drivingMs += 1000;
+      const e = this._activeShiftsByLane[lane];
+      e.drivingMs = this._drivingMsOf(e);
     }
+    return this._activeShiftsByLane;
+  }
+
+  // Recalcula y emite el snapshot por socket para que la vista de control
+  // refresque cronómetros sin estimar en cliente. Persiste cada 5 ticks.
+  _tickDriverShifts() {
+    this._refreshDriverShifts();
     this._driverShiftTickN++;
     if (this._driverShiftTickN >= 5) {
       this._persistAllDriverShifts();
@@ -1458,49 +1536,72 @@ class TimingServiceClass {
     SocketService.emit('shifts:tick', {
       mangaId: this.session?.manga?.id,
       raceId:  this.session?.race?.id,
-      active:  this._activeShiftsByLane,
+      active:  this._activeShiftsByLane,   // { lane: { shiftId, drivingMs, … } }
     });
   }
 
-  // UPDATE de driving_ms en BD para cada shift abierto.
+  // UPDATE de driving_ms en BD para cada shift abierto, en una sola transacción.
+  // Se llama en el tick, pero también en pausa/reanudación/fin de circuito/swap:
+  // así una caída pierde segundos, no la manga entera.
   _persistAllDriverShifts() {
-    for (const lane in this._activeShiftsByLane) {
-      const s = this._activeShiftsByLane[lane];
-      try { DriverShift.updateDrivingMs(s.shiftId, s.drivingMs); }
-      catch (e) { console.error('[TimingService] persist driver shift error', e.message); }
+    const lanes = Object.keys(this._activeShiftsByLane);
+    if (!lanes.length) return;
+    const db = require('../config/database');
+    try {
+      db.transaction(() => {
+        for (const lane of lanes) {
+          const e = this._activeShiftsByLane[lane];
+          e.drivingMs = this._drivingMsOf(e);
+          DriverShift.updateDrivingMs(e.shiftId, e.drivingMs);
+        }
+      })();
+    } catch (e) {
+      console.error('[TimingService] persist driver shift error', e.message);
     }
   }
 
-  // Cambia el piloto de un carril en runtime. Si había un shift abierto, lo
-  // cierra con su driving_ms acumulado y luego registra el nuevo. Si la
-  // manga está en pausa, el nuevo shift se crea pero el contador no avanza
-  // hasta el resume. Llamado por SessionController.driverCheckin cuando la
-  // manga ya está corriendo (no para pre-arme).
+  // Cierra los turnos abiertos de los carriles de un circuito, con el valor
+  // calculado y el instante de fin de ESE circuito.
+  _closeDriverShiftsForCircuit(ci) {
+    const c = this.session && this.session.circuits[ci];
+    const endedAt = (c && c.endTime) || Date.now();
+    for (const lane of Object.keys(this._activeShiftsByLane)) {
+      const e = this._activeShiftsByLane[lane];
+      if (e.ci !== ci) continue;
+      try { DriverShift.closeShift(e.shiftId, endedAt, this._drivingMsOf(e)); }
+      catch (err) { console.error('[TimingService] closeShift', err.message); }
+      delete this._activeShiftsByLane[lane];
+    }
+  }
+
+  // Cambia el piloto de un carril en runtime: cierra el turno abierto con su
+  // tiempo calculado (fracción de segundo incluida) y abre el del relevo. Si el
+  // circuito está en pausa, el turno nuevo se crea pero no avanza hasta el
+  // resume. Lo llama SessionController.driverCheckin con la manga ya corriendo
+  // (el pre-arme va por otro camino).
   swapDriverOnLane({ lane, raceId, mangaId, teamId, driverId, driverName }) {
     if (!this.session || this.session.manga.id !== mangaId) return null;
     if (!this._isChampionship) return null;
 
-    const now = Date.now();
-    // Cerrar shift previo si existe
+    const now  = Date.now();
     const prev = this._activeShiftsByLane[lane];
     if (prev) {
-      try { DriverShift.closeShift(prev.shiftId, now, prev.drivingMs); }
+      try { DriverShift.closeShift(prev.shiftId, now, this._drivingMsOf(prev)); }
       catch (e) { console.error('[TimingService] closeShift', e.message); }
     }
 
-    // Abrir nuevo
     const newId = DriverShift.openShift({
       mangaId, raceId, lane, teamId, driverId, driverName,
       startedAtMs: now, preArmed: false,
     });
-    this._activeShiftsByLane[lane] = { shiftId: newId, drivingMs: 0 };
+    this._openShiftEntry(lane, newId, 0);
     return newId;
   }
 
-  // Devuelve el snapshot de shifts activos (lane → { shiftId, drivingMs }).
-  // El driving_ms es el valor in-memory ya tickeado, no el de BD.
+  // Snapshot de shifts activos (lane → { shiftId, drivingMs, … }), con el
+  // driving_ms recalculado al instante, no el de BD.
   getActiveShifts() {
-    return { ...this._activeShiftsByLane };
+    return { ...this._refreshDriverShifts() };
   }
 }
 
