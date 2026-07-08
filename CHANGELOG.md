@@ -13,6 +13,16 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.5.0] — 2026-07-08
+
+### Añadido
+- **Panel de pre-arme** en la pantalla de control de pilotos, visible mientras la manga aún no ha arrancado: una casilla por carril, agrupadas por circuito, **verde** si el equipo ya ha pasado su QR y **ámbar a rayas** si falta. Arriba, el contador «21/24 fichados». A la derecha de cada circuito aparece el nombre de los equipos que faltan. Cuando fichan todos, el panel se pone verde y avisa de que están listos para el GO. Se ve entero aunque la lista de carriles esté paginada, que es donde antes se perdía de vista el equipo que faltaba. Los equipos en descanso no cuentan.
+
+### Mejorado
+- **Tarjetas de carril más compactas**, para que quepan más de una vez en pantalla.
+- La altura de las tarjetas **se ajusta sola** al equipo con más pilotos de la manga: antes tenía una altura fija y a un equipo de seis pilotos se le cortaba el último de la lista.
+- Los **nombres largos de piloto** se encogen en lugar de cortarse con puntos suspensivos; los muy largos se parten en dos líneas.
+
 ## [1.4.1] — 2026-07-08
 
 ### Añadido
