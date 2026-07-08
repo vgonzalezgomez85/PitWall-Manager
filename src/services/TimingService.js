@@ -791,6 +791,41 @@ class TimingServiceClass {
 
   // ── Cancel manga (manual stop) — resets to pending, deletes laps ──────────
 
+  /**
+   * STOP forzado de una manga por su id, tenga o no sesión viva.
+   *
+   * Si el servidor se reinicia con una manga corriendo, la manga se queda
+   * `active` en BD pero la sesión (que vive en memoria) se pierde. El STOP tiene
+   * que dejarla igual que un stop forzado normal: vueltas fuera, manga a
+   * `pending`, tiempo de ESA manga descartado y los pilotos conservados en su
+   * carril, pre-armados. Antes esta rama borraba las vueltas y se olvidaba de los
+   * turnos: el piloto se quedaba con el tiempo de una manga anulada y con el
+   * turno abierto, sin poder volver a fichar.
+   *
+   * `force` incluye también las mangas ya terminadas (lo usa el reset de
+   * diagnóstico); sin él solo se toca una manga `active`.
+   *
+   * @returns {'session'|'stale'|'noop'} qué camino se tomó.
+   */
+  cancelMangaById(mangaId, race = null, { force = false } = {}) {
+    if (this.activeMangaId === mangaId) { this.cancelManga(); return 'session'; }
+
+    const manga = Manga.findById(mangaId);
+    if (!manga) return 'noop';
+    if (manga.status === 'pending') return 'noop';          // nada que cancelar
+    if (manga.status !== 'active' && !force) return 'noop';  // terminada: solo con force
+
+    // Manga huérfana: la sesión murió con el proceso.
+    Lap.deleteByManga(mangaId);
+    Manga.updateStatus(mangaId, 'pending');
+
+    const r = race || (manga.race_id ? require('../models/Race').findById(manga.race_id) : null);
+    if (r && r.type === 'championship') DriverShift.resetForRestart(mangaId);
+
+    console.log(`[TimingService] Manga ${mangaId} sin sesión (${manga.status}) → cancelada y devuelta a pending`);
+    return 'stale';
+  }
+
   cancelManga() {
     if (!this.session) return;
 

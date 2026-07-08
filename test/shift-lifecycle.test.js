@@ -43,14 +43,15 @@ const Manga         = require('../src/models/Manga');
 const TimingService = require('../src/services/TimingService');
 const { crearPerfil, crearEquipoCatalogo, crearCarreraConManga } = require('./helpers/seed');
 
-after(() => { try { TimingService.stopManga(false); } catch {} limpiarBdTemporal(); });
+// `simularReinicio()` apaga además los temporizadores: sin eso, un test que deja
+// una manga a medias mantiene vivo el proceso de node --test.
+after(() => { try { TimingService.stopManga(false); } catch {} simularReinicio(); limpiarBdTemporal(); });
 
 const MIN = 60000;
 
 beforeEach(() => {
   try { TimingService.stopManga(false); } catch {}
-  TimingService.session = null;
-  TimingService._activeShiftsByLane = {};
+  simularReinicio();
   for (const t of ['driver_shifts', 'manga_lanes', 'drivers', 'teams', 'mangas', 'tandas', 'races',
                    'teams_catalog_members', 'teams_catalog', 'driver_profiles']) {
     db.prepare(`DELETE FROM ${t}`).run();
@@ -96,6 +97,23 @@ function avanzarEnPausa(ci, ms) {
   const c = TimingService.session.circuits[ci];
   c.startTime  -= ms;
   c.pauseStart -= ms;
+}
+
+/**
+ * Simula un reinicio del servidor: la manga sigue 'active' en BD pero la sesión
+ * —que vive en memoria— desaparece. En un reinicio real el proceso muere y se
+ * lleva los temporizadores; aquí hay que apagarlos a mano o el test no termina.
+ */
+function simularReinicio() {
+  clearInterval(TimingService._tickInt);   TimingService._tickInt = null;
+  clearTimeout(TimingService._autoStopTimer); TimingService._autoStopTimer = null;
+  if (TimingService.session) {
+    Object.values(TimingService.session.circuits).forEach(c => {
+      if (c.autoStopTimer) { clearTimeout(c.autoStopTimer); c.autoStopTimer = null; }
+    });
+  }
+  TimingService.session = null;
+  TimingService._activeShiftsByLane = {};
 }
 
 const turnos    = (mangaId) => db.prepare('SELECT * FROM driver_shifts WHERE manga_id = ? ORDER BY id').all(mangaId);
@@ -331,4 +349,74 @@ test('cada caja sella la hora de entrada de SUS pilotos en su propio GO', async 
   const s3 = turnos(mangaId).find(s => s.lane === 3);
   assert.equal(s3.started_at_ms, null, 'sin GO no hay hora de entrada');
   assert.equal(s3.driving_ms, 0, 'ni tiempo');
+});
+
+
+// ── Stop forzado sobre una manga huérfana (servidor reiniciado) ────────────
+
+test('el stop forzado de una manga colgada tras un reinicio también descarta su tiempo', () => {
+  // Si el servidor se reinicia con la manga corriendo, queda 'active' en BD pero
+  // sin sesión en memoria. Esa rama del STOP borraba las vueltas y se olvidaba de
+  // los turnos: el piloto se quedaba con el tiempo de una manga anulada, y con el
+  // turno abierto, sin poder volver a fichar.
+  const esc = escenario();
+  const [tA, tB] = esc.teams;
+  DriverShift.openShift({ mangaId: esc.mangaId, raceId: esc.raceId, lane: tA.lane,
+    teamId: tA.id, driverId: tA.drivers[0].id, driverName: 'Ana', preArmed: true });
+  DriverShift.openShift({ mangaId: esc.mangaId, raceId: esc.raceId, lane: tB.lane,
+    teamId: tB.id, driverId: tB.drivers[0].id, driverName: 'Caro', preArmed: true });
+  darGo(esc);
+  avanzar(0, 15 * MIN);
+  TimingService._persistAllDriverShifts();
+
+  // El reinicio: la manga sigue 'active' en BD, la sesión murió con el proceso.
+  Manga.updateStatus(esc.mangaId, 'active');
+  simularReinicio();
+  assert.equal(TimingService.activeMangaId, null, 'no hay sesión, como tras un reinicio');
+  assert.ok(turnos(esc.mangaId).some(s => s.driving_ms > 0), 'los turnos conservan su tiempo persistido');
+
+  const via = TimingService.cancelMangaById(esc.mangaId, esc.race);
+  assert.equal(via, 'stale', 'se cancela por la rama de manga huérfana');
+
+  assert.equal(db.prepare('SELECT status FROM mangas WHERE id = ?').get(esc.mangaId).status, 'pending');
+  const tras = turnos(esc.mangaId);
+  assert.equal(tras.length, 2, 'un turno por carril');
+  assert.ok(tras.every(s => s.driving_ms === 0), 'se descarta el tiempo de ESTA manga');
+  assert.ok(tras.every(s => s.pre_armed === 1 && s.started_at_ms == null && s.ended_at_ms == null),
+    'quedan pre-armados esperando el nuevo GO: no hay que reescanear los QR');
+  assert.deepEqual(tras.map(s => s.driver_name).sort(), ['Ana', 'Caro']);
+});
+
+test('cancelMangaById usa la sesión cuando la hay, y no hace nada con una manga pendiente', () => {
+  const esc = escenario();
+  const [tA] = esc.teams;
+  DriverShift.openShift({ mangaId: esc.mangaId, raceId: esc.raceId, lane: tA.lane,
+    teamId: tA.id, driverId: tA.drivers[0].id, driverName: 'Ana', preArmed: true });
+
+  assert.equal(TimingService.cancelMangaById(esc.mangaId, esc.race), 'noop', 'manga pendiente: nada que cancelar');
+
+  darGo(esc);
+  assert.equal(TimingService.cancelMangaById(esc.mangaId, esc.race), 'session', 'con sesión viva va por cancelManga()');
+  assert.equal(db.prepare('SELECT status FROM mangas WHERE id = ?').get(esc.mangaId).status, 'pending');
+  assert.equal(TimingService.cancelMangaById(999999), 'noop', 'manga inexistente');
+});
+
+test('una manga TERMINADA solo se resetea con force (el reset de diagnóstico)', () => {
+  const esc = escenario();
+  const [tA] = esc.teams;
+  DriverShift.openShift({ mangaId: esc.mangaId, raceId: esc.raceId, lane: tA.lane,
+    teamId: tA.id, driverId: tA.drivers[0].id, driverName: 'Ana', preArmed: true });
+  darGo(esc);
+  avanzar(0, 10 * MIN);
+  TimingService.stopManga(true);
+  simularReinicio();
+
+  Manga.updateStatus(esc.mangaId, 'finished');
+  assert.equal(TimingService.cancelMangaById(esc.mangaId, esc.race), 'noop',
+    'el STOP de la pantalla no resucita una manga terminada');
+  assert.equal(db.prepare('SELECT status FROM mangas WHERE id = ?').get(esc.mangaId).status, 'finished');
+
+  assert.equal(TimingService.cancelMangaById(esc.mangaId, esc.race, { force: true }), 'stale');
+  assert.equal(db.prepare('SELECT status FROM mangas WHERE id = ?').get(esc.mangaId).status, 'pending');
+  assert.ok(turnos(esc.mangaId).every(s => s.driving_ms === 0 && s.pre_armed === 1));
 });
