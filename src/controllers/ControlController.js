@@ -29,6 +29,8 @@ const Manga         = require('../models/Manga');
 const DriverShift   = require('../models/DriverShift');
 const TimingService = require('../services/TimingService');
 const db            = require('../config/database');
+const { evaluate }  = require('../utils/shiftCompliance');
+const { fmtHmsFijo } = require('../utils/duration');
 
 class ControlController {
 
@@ -115,26 +117,7 @@ class ControlController {
     // Resumen por piloto a nivel CARRERA. Incluimos a TODOS los pilotos de la
     // carrera (no solo a quien ya tiene turnos), para que en standby/pre-arme la
     // lista salga completa con 0:00 y se vaya actualizando al correr.
-    const shiftSummary = DriverShift.raceSummary(race.id);
-    const byProfileId = {};
-    shiftSummary.forEach(r => { byProfileId[r.profile_id] = r; });
-    const allPilots = db.prepare(`
-      SELECT DISTINCT dp.id AS profile_id, dp.name AS profile_name, dp.category AS profile_category
-      FROM drivers d
-      JOIN teams_catalog_members tcm ON tcm.name = d.name
-      JOIN driver_profiles dp        ON dp.id = tcm.driver_id
-      WHERE d.race_id = ?
-    `).all(race.id);
-    const summary = allPilots.map(p => {
-      const r = byProfileId[p.profile_id];
-      return {
-        profile_id:       p.profile_id,
-        profile_name:     p.profile_name,
-        profile_category: p.profile_category,
-        total_ms:         r ? r.total_ms : 0,
-        runs_count:       r ? r.runs_count : 0,
-      };
-    }).sort((a, b) => (b.total_ms - a.total_ms) || a.profile_name.localeCompare(b.profile_name));
+    const summary = DriverShift.raceSummaryAllPilots(race.id);
 
     // Roster de un equipo: todos sus pilotos con su tiempo total y nº de turnos
     // en la carrera. Reusa `summary` (por nombre); los que aún no han corrido
@@ -198,8 +181,9 @@ class ControlController {
       return res.render('control/race-shifts', { t: req.t, race, notChampionship: true, mangas: [], summary: [] });
     }
 
-    // Resumen por piloto a nivel CARRERA
-    const summary = DriverShift.raceSummary(race.id);
+    // Resumen por piloto a nivel CARRERA, con TODOS los inscritos: quien nunca
+    // fichó sale a 0:00 y bajo mínimo, en vez de desaparecer del histórico.
+    const summary = DriverShift.raceSummaryAllPilots(race.id);
 
     // Para cada manga de la carrera, sus shifts (cronología)
     const mangas = db.prepare(`
@@ -215,6 +199,162 @@ class ControlController {
     });
 
     res.render('control/race-shifts', { t: req.t, race, notChampionship: false, mangas, summary });
+  }
+
+  // ── Informe final de turnos ───────────────────────────────────────────────
+  // El documento con el que se resuelve una reclamación: quién condujo cuánto,
+  // en cuántos turnos, y qué reglas incumplió. Con la carrera terminada el
+  // MÍNIMO ya se juzga (final: true), a diferencia de la vista en directo.
+
+  /** Datos comunes al informe en sus tres formatos. */
+  static _reportData(raceId) {
+    const race = Race.findById(raceId);
+    if (!race || race.type !== 'championship') return null;
+
+    const reglas = {
+      minMs:   race.driver_min_total_ms || 0,
+      maxMs:   race.driver_max_total_ms || 0,
+      maxRuns: race.driver_max_runs || 0,
+      final:   true,
+    };
+    const summary = DriverShift.raceSummaryAllPilots(race.id).map(r => ({
+      ...r,
+      compliance: evaluate({ totalMs: r.total_ms, runs: r.runs_count }, reglas),
+    }));
+
+    const infracciones = summary.filter(r => r.compliance.status === 'bad');
+    const manuales     = summary.reduce((n, r) => n + (r.manual_count || 0), 0);
+
+    // Cronología por manga, para justificar cada total.
+    const mangas = db.prepare(`
+      SELECT m.id, m.number, m.status, m.tanda_id, t.number AS tanda_number
+      FROM mangas m
+      LEFT JOIN tandas t ON t.id = m.tanda_id
+      WHERE m.race_id = ?
+      ORDER BY m.id ASC
+    `).all(race.id);
+    mangas.forEach(m => { m.shifts = DriverShift.historyByManga(m.id); });
+
+    return { race, reglas, summary, mangas, infracciones, manuales };
+  }
+
+  // GET /races/:id/shifts/report
+  static shiftsReport(req, res) {
+    const data = ControlController._reportData(req.params.id);
+    if (!data) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+    return ControlController._sendReport(req, res, data);
+  }
+
+  // GET /races/:id/shifts/report.html — descarga AUTOCONTENIDA (CSS embebido,
+  // sin JS ni assets del servidor), para adjuntar a una reclamación.
+  static shiftsReportHtml(req, res) {
+    req._exportMode = true;
+    return ControlController.shiftsReport(req, res);
+  }
+
+  static _sendReport(req, res, data) {
+    const locals = { t: req.t, ...data };
+    if (!req._exportMode) return res.render('control/shifts-report', locals);
+
+    res.render('control/shifts-report', { ...locals, hideNavbar: true }, (err, html) => {
+      if (err) { console.error('[shifts-report] render error:', err.message); return res.status(500).send('Export error'); }
+      const SessionController = require('./SessionController');
+      const out = SessionController._inlineForExport(html);
+      const slug = String(data.race.name || 'carrera').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="turnos-${slug}.html"`);
+      res.send(out);
+    });
+  }
+
+  // GET /races/:id/shifts/report.xlsx
+  static async shiftsReportExcel(req, res) {
+    const data = ControlController._reportData(req.params.id);
+    if (!data) return res.status(404).send('Not found');
+    const { race, reglas, summary } = data;
+
+    const ExcelJS = require('exceljs');
+    const isEs = (req.query.lang || 'es') === 'es';
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'PitWall';
+    const ws = wb.addWorksheet(isEs ? 'Turnos' : 'Shifts');
+
+    const COL = { header: 'FF161B22', headerFg: 'FFFFFFFF', border: 'FFD0D7DE',
+                  bad: 'FFFDECEC', warn: 'FFFFFBE6', band: 'FFF6F8FA' };
+    const thinBorder = {
+      top:    { style: 'thin', color: { argb: COL.border } },
+      left:   { style: 'thin', color: { argb: COL.border } },
+      bottom: { style: 'thin', color: { argb: COL.border } },
+      right:  { style: 'thin', color: { argb: COL.border } },
+    };
+
+    ws.mergeCells('A1:G1');
+    const titulo = ws.getCell('A1');
+    titulo.value = `${race.name} — ${isEs ? 'Informe de turnos de piloto' : 'Driver shift report'}`;
+    titulo.font = { bold: true, size: 14 };
+    ws.getRow(1).height = 22;
+
+    ws.mergeCells('A2:G2');
+    const sub = ws.getCell('A2');
+    const lim = [];
+    if (reglas.minMs)   lim.push(`${isEs ? 'mín' : 'min'} ${fmtHmsFijo(reglas.minMs)}`);
+    if (reglas.maxMs)   lim.push(`${isEs ? 'máx' : 'max'} ${fmtHmsFijo(reglas.maxMs)}`);
+    if (reglas.maxRuns) lim.push(`${isEs ? 'máx turnos' : 'max stints'} ${reglas.maxRuns}`);
+    sub.value = lim.length ? (isEs ? 'Límites: ' : 'Limits: ') + lim.join(' · ')
+                           : (isEs ? 'Sin límites configurados' : 'No limits configured');
+    sub.font = { italic: true, color: { argb: 'FF6E7681' } };
+
+    const cabecera = isEs
+      ? ['Piloto', 'Categoría', 'Tiempo total', 'Turnos', 'Máx turnos', 'Correcciones manuales', 'Estado']
+      : ['Driver', 'Category', 'Total time', 'Stints', 'Max stints', 'Manual fixes', 'Status'];
+    const filaCab = ws.addRow([]);            // fila 3 vacía de separación
+    filaCab.height = 6;
+    const head = ws.addRow(cabecera);
+    head.eachCell(c => {
+      c.font = { bold: true, color: { argb: COL.headerFg } };
+      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COL.header } };
+      c.border = thinBorder;
+      c.alignment = { horizontal: 'center' };
+    });
+
+    const etiqueta = (c) => {
+      if (c.overMax)  return isEs ? 'PASADO DE TIEMPO' : 'OVER TIME';
+      if (c.overRuns) return isEs ? 'PASADO DE TURNOS' : 'OVER STINTS';
+      if (c.underMin) return isEs ? 'BAJO MÍNIMO'      : 'UNDER MIN';
+      if (c.nearMax)  return isEs ? 'Al 90% del máximo' : 'At 90% of max';
+      if (c.nearRuns) return isEs ? 'Último turno'      : 'Last stint';
+      return 'OK';
+    };
+
+    summary.forEach(r => {
+      const c = r.compliance;
+      const row = ws.addRow([
+        r.profile_name,
+        r.profile_category || '',
+        fmtHmsFijo(r.total_ms),
+        r.runs_count,
+        reglas.maxRuns || '',
+        r.manual_count || 0,
+        etiqueta(c),
+      ]);
+      const fondo = c.status === 'bad' ? COL.bad : c.status === 'warn' ? COL.warn : null;
+      row.eachCell(cell => {
+        cell.border = thinBorder;
+        if (fondo) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fondo } };
+      });
+      row.getCell(3).alignment = { horizontal: 'right' };
+      row.getCell(4).alignment = { horizontal: 'center' };
+      if (c.status === 'bad') row.getCell(7).font = { bold: true };
+    });
+
+    ws.columns = [{ width: 28 }, { width: 12 }, { width: 14 }, { width: 9 },
+                  { width: 12 }, { width: 20 }, { width: 22 }];
+
+    const slug = String(race.name || 'carrera').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="turnos-${slug}.xlsx"`);
+    await wb.xlsx.write(res);
+    res.end();
   }
 }
 

@@ -2310,7 +2310,11 @@ class SessionController {
         driverName: assignment.driver_name,
         preArmed:   true,
       });
-    } else if (mode === 'swap_running') {
+    } else if (mode === 'swap_running' || mode === 'swap_paused') {
+      // Cambio en caliente. Con la manga pausada es el MISMO camino: el reloj
+      // del circuito está congelado, así que el turno saliente se cierra con su
+      // valor exacto y el entrante queda anclado al elapsed de la pausa — no
+      // avanza hasta el resume. Es TimingService quien mantiene su mapa.
       shiftId = TimingService.swapDriverOnLane({
         lane:       assignment.lane,
         raceId:     race.id,
@@ -2319,25 +2323,11 @@ class SessionController {
         driverId:   assignment.driver_id,
         driverName: assignment.driver_name,
       });
-    } else if (mode === 'swap_paused') {
-      // Manga pausada: cierra el shift abierto (driving_ms se quedó al
-      // valor actual en BD desde el último persist en pauseManga) y abre
-      // uno nuevo. El nuevo no avanza hasta el resume.
-      const prev = DriverShift.findOpenByLane(manga.id, assignment.lane);
-      if (prev) DriverShift.closeShift(prev.id, Date.now(), prev.driving_ms || 0);
-      shiftId = DriverShift.openShift({
-        mangaId:    manga.id,
-        raceId:     race.id,
-        lane:       assignment.lane,
-        teamId:     assignment.team_id,
-        driverId:   assignment.driver_id,
-        driverName: assignment.driver_name,
-        startedAtMs: Date.now(),
-        preArmed:   false,
-      });
-      // Actualizar el mapa en memoria del TimingService para que al
-      // reanudar incremente el shift correcto.
-      TimingService._activeShiftsByLane && (TimingService._activeShiftsByLane[assignment.lane] = { shiftId, drivingMs: 0 });
+      if (!shiftId) {
+        // La manga en curso ya no es la que el cliente creía (o no es de
+        // campeonato): no hay turno que abrir. Mejor fallar que fingir.
+        return res.status(409).json({ ok: false, error: 'La manga activa ha cambiado; recarga la pantalla.' });
+      }
     }
 
     SocketService.emit('driver_checkin', {

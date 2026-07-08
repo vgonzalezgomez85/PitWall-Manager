@@ -71,38 +71,95 @@ class DriverShift {
     `).all(mangaId);
   }
 
+  // Encadenado turno → perfil del catálogo, ANCLADO POR EQUIPO.
+  //
+  // Unir solo por nombre (`tcm.name = d.name`) estaba mal: si un piloto figura
+  // en dos equipos del catálogo, el turno se multiplicaba por dos (total y
+  // turnos ×N); dos homónimos se atribuían el tiempo el uno al otro; y si se
+  // borraba la ficha del piloto (driver_id → NULL) el INNER JOIN perdía el
+  // turno entero. Anclando por el equipo del turno solo puede casar una fila.
+  //
+  // Se usa `ds.driver_name` (NOT NULL, congelado al abrir el turno) en vez de
+  // `drivers.name`, así el tiempo ya rodado sobrevive al borrado del piloto.
+  static get _JOIN_PERFIL() {
+    return `
+      FROM driver_shifts ds
+      JOIN teams                 t   ON t.id  = ds.team_id
+      JOIN teams_catalog         tc  ON tc.name = t.name
+      JOIN teams_catalog_members tcm ON tcm.team_id = tc.id AND tcm.name = ds.driver_name
+      JOIN driver_profiles       dp  ON dp.id = tcm.driver_id
+    `;
+  }
+
   // Total de driving_ms acumulado por un piloto en todas las mangas de
   // una carrera. Útil para validar contra driver_min/max_total_ms.
   static totalDrivingMsByDriverInRace(raceId, driverProfileId) {
     const row = db.prepare(`
-      SELECT COALESCE(SUM(driving_ms), 0) AS total
-      FROM driver_shifts ds
-      JOIN drivers d ON d.id = ds.driver_id
-      JOIN teams_catalog_members tcm ON tcm.name = d.name
-      WHERE ds.race_id = ? AND tcm.driver_id = ?
+      SELECT COALESCE(SUM(ds.driving_ms), 0) AS total
+      ${DriverShift._JOIN_PERFIL}
+      WHERE ds.race_id = ? AND dp.id = ?
     `).get(raceId, driverProfileId);
     return row ? row.total : 0;
   }
 
-  // Resumen por piloto del catálogo (driver_profile) en una carrera:
-  // total_ms + lista de shifts.
+  // Resumen por piloto del catálogo (driver_profile) en una carrera.
+  // `runs_count` = turnos realmente rodados (started_at_ms no nulo); es la
+  // métrica que se compara contra driver_max_runs. `shifts_count` incluye los
+  // pre-armes que nunca arrancaron.
   static raceSummary(raceId) {
     return db.prepare(`
       SELECT
-        tcm.driver_id            AS profile_id,
+        dp.id                    AS profile_id,
         dp.name                  AS profile_name,
         dp.category              AS profile_category,
         SUM(ds.driving_ms)       AS total_ms,
         COUNT(*)                 AS shifts_count,
-        SUM(CASE WHEN ds.started_at_ms IS NOT NULL THEN 1 ELSE 0 END) AS runs_count
-      FROM driver_shifts ds
-      JOIN drivers d                 ON d.id = ds.driver_id
-      JOIN teams_catalog_members tcm ON tcm.name = d.name
-      JOIN driver_profiles dp        ON dp.id = tcm.driver_id
+        SUM(CASE WHEN ds.started_at_ms IS NOT NULL THEN 1 ELSE 0 END) AS runs_count,
+        SUM(ds.manual)           AS manual_count
+      ${DriverShift._JOIN_PERFIL}
       WHERE ds.race_id = ?
-      GROUP BY tcm.driver_id
+      GROUP BY dp.id
       ORDER BY total_ms DESC
     `).all(raceId);
+  }
+
+  // Todos los pilotos INSCRITOS en la carrera, con su perfil del catálogo.
+  // El encadenado va anclado por equipo, igual que _JOIN_PERFIL: unir solo por
+  // nombre cruzaría homónimos de otros equipos y colaría perfiles fantasma.
+  static racePilots(raceId) {
+    return db.prepare(`
+      SELECT DISTINCT dp.id AS profile_id, dp.name AS profile_name, dp.category AS profile_category
+      FROM drivers d
+      JOIN teams                 t   ON t.id  = d.team_id
+      JOIN teams_catalog         tc  ON tc.name = t.name
+      JOIN teams_catalog_members tcm ON tcm.team_id = tc.id AND tcm.name = d.name
+      JOIN driver_profiles       dp  ON dp.id = tcm.driver_id
+      WHERE d.race_id = ?
+    `).all(raceId);
+  }
+
+  // Resumen por piloto RELLENADO A CEROS con todos los inscritos.
+  //
+  // Imprescindible para el informe: `raceSummary` solo devuelve a quien tiene
+  // turnos, así que el piloto que NUNCA fichó —la infracción más grave del
+  // mínimo— sencillamente no aparecía y la infracción pasaba inadvertida.
+  static raceSummaryAllPilots(raceId) {
+    const conTurnos = {};
+    DriverShift.raceSummary(raceId).forEach(r => { conTurnos[r.profile_id] = r; });
+    return DriverShift.racePilots(raceId)
+      .map(p => {
+        const r = conTurnos[p.profile_id];
+        return {
+          profile_id:       p.profile_id,
+          profile_name:     p.profile_name,
+          profile_category: p.profile_category,
+          total_ms:     r ? (r.total_ms     || 0) : 0,
+          runs_count:   r ? (r.runs_count   || 0) : 0,
+          shifts_count: r ? (r.shifts_count || 0) : 0,
+          manual_count: r ? (r.manual_count || 0) : 0,
+        };
+      })
+      .sort((a, b) => (b.total_ms - a.total_ms) || a.profile_name.localeCompare(b.profile_name));
   }
 
   // ── Escritura ────────────────────────────────────────────────────────
@@ -154,12 +211,39 @@ class DriverShift {
 
   // Convierte los shifts pre-armados de una manga en activos:
   // started_at_ms = startTimeMs, pre_armed = 0.
+  //
+  // `ended_at_ms IS NULL` es imprescindible: si el staff pre-arma a Ana y luego
+  // la sustituye por Bea antes del GO, el pre-arme de Ana queda CERRADO. Sin
+  // este filtro el GO también lo activaría y Ana se llevaría un turno de 0 s
+  // contra driver_max_runs.
   static activatePreArmedShifts(mangaId, startTimeMs) {
     db.prepare(`
       UPDATE driver_shifts
       SET started_at_ms = ?, pre_armed = 0
-      WHERE manga_id = ? AND pre_armed = 1 AND started_at_ms IS NULL
+      WHERE manga_id = ? AND pre_armed = 1 AND started_at_ms IS NULL AND ended_at_ms IS NULL
     `).run(startTimeMs, mangaId);
+  }
+
+  // STOP FORZADO: se descarta el tiempo acumulado EN ESTA MANGA (el total de
+  // mangas anteriores no se toca, porque los turnos son por manga) pero se
+  // CONSERVA el registro de qué piloto está en cada carril, para no obligar a
+  // reescanear los QR. De cada carril se deja el último piloto fichado, puesto
+  // a cero y de nuevo pre-armado: volverá a contar con el próximo GO.
+  static resetForRestart(mangaId) {
+    db.transaction(() => {
+      // Fuera los turnos intermedios (relevos de la tirada abortada) y las
+      // correcciones manuales de esta manga: su tiempo también se descarta.
+      db.prepare(`
+        DELETE FROM driver_shifts
+        WHERE manga_id = ?
+          AND id NOT IN (SELECT MAX(id) FROM driver_shifts WHERE manga_id = ? GROUP BY lane)
+      `).run(mangaId, mangaId);
+      db.prepare(`
+        UPDATE driver_shifts
+        SET driving_ms = 0, started_at_ms = NULL, ended_at_ms = NULL, pre_armed = 1, manual = 0
+        WHERE manga_id = ?
+      `).run(mangaId);
+    })();
   }
 
   // Cierra todos los shifts abiertos de una manga (al terminar/cancelar).

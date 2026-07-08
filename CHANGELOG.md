@@ -13,6 +13,29 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.4.0] — 2026-07-08
+
+### Añadido
+- **Informe final de turnos:** botón «Informe final» en el histórico de turnos de la carrera. Un informe completo con el tiempo total y el número de turnos de cada piloto, las reglas aplicadas, las infracciones marcadas y la cronología turno a turno de cada manga. Se puede imprimir, descargar como HTML autónomo (para adjuntar a una reclamación) y exportar a Excel. Los turnos con el tiempo corregido a mano por el staff aparecen señalados.
+- **Pruebas automáticas del control de turnos** (50 pruebas) que recorren el ciclo completo: pre-arme antes del GO, cambio de piloto en caliente, pausa y reanudación, stop forzado y fin de manga, incluido el arranque escalonado de tres cajas DS.
+
+### Mejorado
+- **Stop forzado:** antes borraba todos los turnos de la manga y obligaba a volver a escanear todos los QR. Ahora solo descarta el tiempo acumulado **en esa manga** (lo registrado en mangas anteriores no se toca), conserva qué piloto está en cada carril y los contadores vuelven a arrancar solos con el siguiente GO.
+- **Pausa y reanudación:** la pausa congela el contador de todos los pilotos y al reanudar no se les cobra el tiempo parado.
+
+### Corregido
+- **Tiempo de cada piloto exacto:** el cronómetro sumaba un segundo por cada tic de reloj en vez de medir el tiempo real y, como los tics llegan tarde, siempre contaba de menos — unos **89 segundos perdidos por piloto en 24 horas** medidos en banco. Ahora el tiempo se calcula por marcas de tiempo y tampoco se pierde la fracción de segundo al abrir y cerrar cada turno.
+- Un piloto que estuviera en **dos equipos del catálogo** veía su tiempo y sus turnos multiplicados (×2 con dos equipos), lo que con un tiempo máximo por piloto provocaba infracciones falsas.
+- Dos pilotos con el **mismo nombre** en equipos distintos se cruzaban el tiempo entre ellos.
+- Un turno cuyo piloto se hubiera **borrado del catálogo** desaparecía del total del equipo.
+- Si el staff pre-armaba a un piloto y lo **sustituía antes del GO**, el sustituido se llevaba igualmente un turno de 0 segundos que contaba contra el máximo de turnos permitidos.
+- El histórico de turnos **no mostraba a los pilotos que nunca ficharon**, que es justo la infracción más grave (no llegar al tiempo mínimo): sencillamente no aparecían.
+- El **límite de número de turnos** se calculaba pero no se aplicaba: un piloto que se pasaba de turnos salía como «OK».
+- El aviso de **«último turno»** nunca saltaba si el máximo de turnos era 1.
+- Los **tiempos largos** se mostraban mal: 4 horas se pintaban como «240:00» en vez de «4:00:00».
+- Con **varias cajas DS**, un circuito que terminaba antes que los demás seguía sumando tiempo a sus pilotos.
+- Un **carril sin caja asignada** sumaba tiempo aunque no estuviera corriendo.
+
 ## [1.3.1] — 2026-07-07
 
 ### Corregido
