@@ -150,6 +150,11 @@ router.get( '/link/compare/data',          LinkController.compareData);
 // ── QR shifts control ─────────────────────────────────────────────────────
 router.get('/control/shifts',     ControlController.live);
 router.get('/races/:id/shifts',   ControlController.raceHistory);
+// Informe final de turnos: pantalla, HTML autónomo (reclamaciones) y Excel.
+// Las dos exportaciones van ANTES de nada que pueda tragarse la extensión.
+router.get('/races/:id/shifts/report',      ControlController.shiftsReport);
+router.get('/races/:id/shifts/report.html', ControlController.shiftsReportHtml);
+router.get('/races/:id/shifts/report.xlsx', ControlController.shiftsReportExcel);
 
 // ── Le Mans classification board ──────────────────────────────────────────────
 router.get( '/races/:id/lemans',       SessionController.lemans);

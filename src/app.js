@@ -56,6 +56,13 @@ app.set('trust proxy', 'loopback');
 // las páginas, enlazando al historial /changelog.
 app.locals.appVersion = require('../package.json').version;
 
+// Helpers de turnos de piloto disponibles en TODAS las vistas (las plantillas
+// EJS no pueden hacer require). Fuente única: la regla y el formato dejan de
+// estar copiados en cada plantilla, que es como habían divergido entre sí.
+app.locals.fmtHms          = require('./utils/duration').fmtHms;
+app.locals.shiftCompliance = require('./utils/shiftCompliance').evaluate;
+app.locals.shiftBadge      = require('./utils/shiftCompliance').badgeClass;
+
 const server = http.createServer(app);
 
 // Socket.io must be initialised before routes import services that need it

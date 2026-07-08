@@ -1,12 +1,11 @@
 <%- include('../partials/header', { lang, pageTitle: lang === 'es' ? 'Control de pilotos' : 'Driver shifts' }) %>
 
 <%
+// fmtHms / shiftCompliance vienen de app.locals (fuente única). El m:ss de antes
+// pintaba 4 h de acumulado como "240:00".
 function fmtTime(ms) {
   if (ms == null || isNaN(ms)) return '—';
-  const s = Math.floor(ms / 1000);
-  const m = Math.floor(s / 60);
-  const ss = (s % 60).toString().padStart(2, '0');
-  return m + ':' + ss;
+  return fmtHms(ms);
 }
 
 // Pre-calcular shifts cerrados por carril (histórico de la manga) — útil
@@ -41,12 +40,12 @@ function renderRoster(roster, driverName) {
   const title = lang === 'es' ? 'Pilotos del equipo: tiempo y turnos' : 'Team drivers: time and stints';
   let html = '<div class="sc-lane__roster" title="' + title + '">';
   roster.forEach(p => {
-    const overT  = maxMs > 0 && p.total_ms >= maxMs;
-    const nearT  = maxMs > 0 && p.total_ms >= maxMs * 0.9 && !overT;
-    const overR  = maxRuns > 0 && p.runs >= maxRuns;
-    const nearR  = maxRuns > 0 && p.runs === maxRuns - 1 && !overR;
-    const underT = minMs > 0 && p.total_ms < minMs;
-    const rcls   = (overT || overR) ? 'is-over' : (nearT || nearR) ? 'is-near' : underT ? 'is-under' : 'is-ok';
+    // En directo el mínimo NO es infracción (nadie lo cumple en el minuto 1):
+    // solo se marca "le falta". Por eso final: false.
+    const c = shiftCompliance({ totalMs: p.total_ms, runs: p.runs }, { minMs, maxMs, maxRuns, final: false });
+    const rcls   = c.status === 'bad'  ? 'is-over'
+                 : c.status === 'warn' ? 'is-near'
+                 : c.status === 'info' ? 'is-under' : 'is-ok';
     const isNow  = driverName && p.name === driverName;
     html += '<div class="sc-lane__rost ' + rcls + (isNow ? ' is-now' : '') + '">'
           + '<span class="sc-lane__rost-name">' + esc(p.name) + '</span>'
@@ -228,20 +227,13 @@ const teamNameByLane = {};
         <% } else { %>
           <div class="sc-summary" id="scPilotsPages">
             <% summary.forEach(r => {
-              const t = r.total_ms;
-              const overMax = maxMs > 0 && t >= maxMs;
-              const nearMax = maxMs > 0 && t >= maxMs * 0.9 && !overMax;
-              const underMin = minMs > 0 && t < minMs;
-              let badge = 'is-ok';
-              if (overMax) badge = 'is-bad';
-              else if (nearMax) badge = 'is-warn';
-              else if (underMin) badge = 'is-info';
+              const t    = r.total_ms;
+              const runs = r.runs_count || 0;
+              const c = shiftCompliance({ totalMs: t, runs }, { minMs, maxMs, maxRuns, final: false });
+              const badge   = shiftBadge(c.status);
+              const runsCls = c.overRuns ? 'is-over' : (c.nearRuns ? 'is-near' : '');
               const pct = maxMs > 0 ? Math.min(100, Math.round(t / maxMs * 100)) : 0;
               const minPct = maxMs > 0 && minMs > 0 ? Math.min(100, Math.round(minMs / maxMs * 100)) : 0;
-              const runs = r.runs_count || 0;
-              const overRuns = maxRuns > 0 && runs >= maxRuns;
-              const nearRuns = maxRuns > 0 && runs === maxRuns - 1 && !overRuns;
-              const runsCls = overRuns ? 'is-over' : (nearRuns ? 'is-near' : '');
             %>
               <div class="sc-pilot-row" data-profile-name="<%= r.profile_name %>">
                 <div class="sc-pilot-row__name">
@@ -258,19 +250,23 @@ const teamNameByLane = {};
                 <% } %>
                 <div class="sc-pilot-row__runs <%= runsCls %>" title="<%= lang === 'es' ? 'Veces que ha corrido (turnos)' : 'Times driven (stints)' %><%= maxRuns > 0 ? (lang === 'es' ? ' · máx ' : ' · max ') + maxRuns : '' %>">
                   <span class="sc-pilot-row__runs-n"><%= runs %><% if (maxRuns > 0) { %><span class="sc-pilot-row__runs-max">/<%= maxRuns %></span><% } %></span>
-                  <span class="sc-pilot-row__runs-l"><%= overRuns ? (lang === 'es' ? 'pasado' : 'over') : (lang === 'es' ? 'turnos' : 'stints') %></span>
+                  <span class="sc-pilot-row__runs-l"><%= c.overRuns ? (lang === 'es' ? 'pasado' : 'over') : (lang === 'es' ? 'turnos' : 'stints') %></span>
                 </div>
                 <div class="sc-pilot-row__total" data-total-ms="<%= t %>">
                   <%= fmtTime(t) %>
                   <% if (maxMs > 0) { %><span style="color:var(--vt-mute)"> / <%= fmtTime(maxMs) %></span><% } %>
                 </div>
                 <div class="sc-pilot-row__status">
-                  <% if (overMax) { %>
-                    <span class="vt-badge is-bad"><span class="vt-badge__d"></span><%= lang === 'es' ? 'PASADO' : 'OVER' %></span>
-                  <% } else if (nearMax) { %>
-                    <span class="vt-badge is-warn"><span class="vt-badge__d"></span><%= lang === 'es' ? '90%+' : '90%+' %></span>
-                  <% } else if (underMin) { %>
-                    <span class="vt-badge is-info"><span class="vt-badge__d"></span><%= lang === 'es' ? 'Bajo mín.' : 'Under min' %></span>
+                  <% if (c.overMax) { %>
+                    <span class="vt-badge <%= badge %>"><span class="vt-badge__d"></span><%= lang === 'es' ? 'PASADO' : 'OVER' %></span>
+                  <% } else if (c.overRuns) { %>
+                    <span class="vt-badge <%= badge %>"><span class="vt-badge__d"></span><%= lang === 'es' ? 'TURNOS' : 'STINTS' %></span>
+                  <% } else if (c.nearMax) { %>
+                    <span class="vt-badge <%= badge %>"><span class="vt-badge__d"></span>90%+</span>
+                  <% } else if (c.nearRuns) { %>
+                    <span class="vt-badge <%= badge %>"><span class="vt-badge__d"></span><%= lang === 'es' ? 'Último turno' : 'Last stint' %></span>
+                  <% } else if (c.status === 'info') { %>
+                    <span class="vt-badge <%= badge %>"><span class="vt-badge__d"></span><%= lang === 'es' ? 'Bajo mín.' : 'Under min' %></span>
                   <% } else { %>
                     <span class="vt-badge is-ok"><span class="vt-badge__d"></span>OK</span>
                   <% } %>
@@ -335,11 +331,16 @@ const MANGA_DURATION_MS = <%= mangaDurationMs || 0 %>;
 const TEAM_PILOTS = <%- JSON.stringify(pilotsByLane) %>;
 const TEAM_NAMES  = <%- JSON.stringify(teamNameByLane) %>;
 
+// Gemelo en cliente de src/utils/duration.js#fmtHms (el navegador no puede
+// hacer require). Con m:ss, un acumulado de 4 h se pintaba "240:00".
 function fmtTime(ms) {
   if (ms == null || isNaN(ms)) return '—';
-  const s = Math.floor(ms / 1000);
-  const m = Math.floor(s / 60);
-  return m + ':' + String(s % 60).padStart(2, '0');
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const dd = n => String(n).padStart(2, '0');
+  return h > 0 ? h + ':' + dd(m) + ':' + dd(s) : m + ':' + dd(s);
 }
 
 // ── Input siempre enfocado ────────────────────────────────────────
