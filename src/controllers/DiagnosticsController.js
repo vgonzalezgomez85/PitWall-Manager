@@ -104,12 +104,10 @@ class DiagnosticsController {
       if (req.session) req.session.flash = { type: 'error', text: `Manga ${mangaId} no encontrada.` };
       return res.redirect('/diagnostico');
     }
-    if (TimingService.activeMangaId === mangaId) {
-      TimingService.cancelManga();
-    } else {
-      Lap.deleteByManga(mangaId);
-      Manga.updateStatus(mangaId, 'pending');
-    }
+    // Mismo camino tenga o no sesión viva: si la manga se quedó colgada tras un
+    // reinicio, sus turnos también se descartan y sus pilotos quedan pre-armados.
+    // `force` porque desde diagnóstico también se resetean mangas ya terminadas.
+    TimingService.cancelMangaById(mangaId, null, { force: true });
     if (req.session) req.session.flash = { type: 'success', text: `Manga ${mangaId} reseteada a pending.` };
     res.redirect('/diagnostico');
   }

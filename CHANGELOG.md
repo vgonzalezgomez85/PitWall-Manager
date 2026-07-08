@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.5.2] — 2026-07-08
+
+### Corregido
+- **Parar una manga que se quedó colgada tras reiniciar el programa:** si PitWall se cierra o se reinicia mientras una manga está corriendo, la manga sigue marcada como activa aunque el cronometraje ya no esté en marcha. Al pararla, se borraban las vueltas y la manga volvía a pendiente, pero los turnos de los pilotos se quedaban con el tiempo acumulado y sin cerrar: el piloto arrastraba tiempo de una manga anulada y no podía volver a fichar su QR. Ahora parar una manga da el mismo resultado tanto si el cronometraje sigue vivo como si se perdió al reiniciar: se descarta el tiempo de esa manga (el de las mangas anteriores no se toca), se conserva qué piloto está en cada carril y todos quedan listos para el siguiente GO sin tener que reescanear. Lo mismo se aplica al reseteo de mangas desde la pantalla de diagnóstico.
+
 ## [1.5.1] — 2026-07-08
 
 ### Añadido
