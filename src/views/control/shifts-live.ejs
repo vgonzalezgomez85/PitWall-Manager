@@ -101,6 +101,41 @@ const teamNameByLane = {};
         <% if (current) { %>
           <span class="vt-cnt"><%= current.race.name %> · M<%= current.manga.number %></span>
         <% } %>
+
+        <!-- Reglas de la carrera. Van en la cabecera, no en el panel de pre-arme:
+             ese desaparece con el GO y es en carrera cuando el staff necesita
+             responder al piloto que pregunta cuánto puede rodar. 0 = sin límite. -->
+        <% if (current) { %>
+          <% const lockMs = current.race.driver_change_lockout_ms || 0; %>
+          <% if (minMs > 0 || maxMs > 0 || maxRuns > 0 || lockMs > 0) { %>
+            <div class="sc-rules" aria-label="<%= lang === 'es' ? 'Reglas de turnos de esta carrera' : 'Shift rules for this race' %>">
+              <% if (minMs > 0) { %>
+                <span class="sc-rule is-min">
+                  <span class="sc-rule__l"><%= lang === 'es' ? 'Mínimo / piloto' : 'Minimum / driver' %></span>
+                  <span class="sc-rule__v"><%= fmtHms(minMs) %></span>
+                </span>
+              <% } %>
+              <% if (maxMs > 0) { %>
+                <span class="sc-rule is-max">
+                  <span class="sc-rule__l"><%= lang === 'es' ? 'Máximo / piloto' : 'Maximum / driver' %></span>
+                  <span class="sc-rule__v"><%= fmtHms(maxMs) %></span>
+                </span>
+              <% } %>
+              <% if (maxRuns > 0) { %>
+                <span class="sc-rule">
+                  <span class="sc-rule__l"><%= lang === 'es' ? 'Turnos máx.' : 'Max stints' %></span>
+                  <span class="sc-rule__v"><%= maxRuns %></span>
+                </span>
+              <% } %>
+              <% if (lockMs > 0) { %>
+                <span class="sc-rule" title="<%= lang === 'es' ? 'No se admiten cambios de piloto en los minutos finales de la manga' : 'No driver changes in the final minutes of the heat' %>">
+                  <span class="sc-rule__l"><%= lang === 'es' ? 'Sin cambios al final' : 'No changes at the end' %></span>
+                  <span class="sc-rule__v"><%= fmtHms(lockMs) %></span>
+                </span>
+              <% } %>
+            </div>
+          <% } %>
+        <% } %>
       </div>
       <div class="vt-head__actions">
         <% if (current) { %>
@@ -337,8 +372,10 @@ const teamNameByLane = {};
               const minPct = maxMs > 0 && minMs > 0 ? Math.min(100, Math.round(minMs / maxMs * 100)) : 0;
             %>
               <div class="sc-pilot-row" data-profile-name="<%= r.profile_name %>">
-                <div class="sc-pilot-row__name">
-                  <span class="vt-cat-dot vt-cat--<%= r.profile_category %>"></span>
+                <%# Sin el punto de categoría: en esta pantalla se confunde con
+                    los colores de estado (ámbar «a punto», rojo «pasado»). La
+                    categoría sigue en el histórico y en el informe. %>
+                <div class="sc-pilot-row__name" title="<%= r.profile_category || '' %>">
                   <%= r.profile_name %>
                 </div>
                 <% if (maxMs > 0 || minMs > 0) { %>
@@ -948,6 +985,33 @@ socket.on('manga:started', () => location.reload());
 .vt-page--shifts .sc-scan-msg { color: var(--vt-text); }
 .vt-page--shifts .sc-remaining { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--vt-mute); }
 .vt-page--shifts .sc-remaining.sc-locked { color: var(--vt-amber); }
+
+/* ── Reglas de turnos en la cabecera ─────────────────────────────────────
+   Los puntos usan los mismos colores que la leyenda de carriles: morado el
+   mínimo (BAJO MÍN.), rojo el máximo (PASADO). */
+.vt-page--shifts .sc-rules {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;
+}
+.vt-page--shifts .sc-rule {
+  display: inline-flex; align-items: baseline; gap: 8px;
+  background: var(--vt-surface); border: 1px solid var(--vt-border);
+  border-radius: 8px; padding: 5px 11px;
+}
+.vt-page--shifts .sc-rule__l {
+  font-family: 'Saira Condensed', sans-serif; text-transform: uppercase;
+  letter-spacing: .1em; font-size: 10px; font-weight: 700; color: var(--vt-mute);
+}
+.vt-page--shifts .sc-rule__v {
+  font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 700;
+  color: var(--vt-text); font-variant-numeric: tabular-nums;
+}
+.vt-page--shifts .sc-rule.is-min .sc-rule__l::before,
+.vt-page--shifts .sc-rule.is-max .sc-rule__l::before {
+  content: ''; display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  margin-right: 6px; vertical-align: middle;
+}
+.vt-page--shifts .sc-rule.is-min .sc-rule__l::before { background: #c792ea; }
+.vt-page--shifts .sc-rule.is-max .sc-rule__l::before { background: var(--vt-red); }
 
 /* ── Pre-arme: una casilla por carril, agrupadas por caja ────────────────
    Se lee de un golpe y desde lejos, que es lo que hace falta en el box con

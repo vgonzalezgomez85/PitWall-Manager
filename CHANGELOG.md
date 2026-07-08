@@ -13,6 +13,14 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.5.1] — 2026-07-08
+
+### Añadido
+- **Reglas de turnos a la vista** en la pantalla de control de pilotos: en la cabecera, junto al nombre de la carrera, ahora se muestran el tiempo mínimo y el máximo que puede rodar cada piloto, el número máximo de turnos y los minutos finales en los que ya no se admiten cambios de piloto. Estaban configuradas en la carrera pero no aparecían en ninguna parte de la pantalla. Los puntos de color son los mismos de la leyenda de carriles (morado el mínimo, rojo el máximo). Los límites que estén sin poner no se muestran.
+
+### Mejorado
+- **Lista de pilotos por tiempo más legible:** se quita el punto de categoría (oro, plata, bronce) que iba delante de cada nombre en la pantalla de control de pilotos. Despistaba, porque en esa pantalla los colores significan estado del turno (ámbar «a punto», rojo «pasado»). La categoría sigue estando en el histórico de turnos y en el informe final. De paso, los nombres largos ganan sitio y dejan de cortarse.
+
 ## [1.5.0] — 2026-07-08
 
 ### Añadido
