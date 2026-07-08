@@ -13,6 +13,16 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.4.1] — 2026-07-08
+
+### Añadido
+- **Ensayo automático de extremo a extremo del control de turnos** sobre tres cajas DS emuladas (24 carriles) con tramas reales: salida escalonada, cambio de piloto en caliente, pausa de una sola caja, stop forzado, nueva salida y fin escalonado. Comprueba además que el informe final no se deja a ningún piloto.
+
+### Corregido
+- **Hora de entrada con varias cajas DS:** cada caja arranca cuando le llega su propia señal de salida (el GO es escalonado), pero la hora de entrada de los pilotos se anotaba con la salida de la **primera** caja. En la cronología del informe, los pilotos de la segunda y la tercera caja aparecían entrando varios segundos antes de que su caja hubiera arrancado. Ahora cada caja anota a sus pilotos con su propia salida. El tiempo acumulado ya era correcto; lo que fallaba era la hora que se mostraba.
+- **Pilotos de una caja que nunca sale:** un piloto cuya caja no llega a recibir su señal de salida ya no consta como que rodó — queda sin hora de entrada y con 0 de tiempo.
+- Medido sobre el ensayo, la desviación del cronómetro de cada piloto queda en **0,5 segundos en 24 horas** (antes eran unos 89 segundos, siempre a la baja).
+
 ## [1.4.0] — 2026-07-08
 
 ### Añadido
