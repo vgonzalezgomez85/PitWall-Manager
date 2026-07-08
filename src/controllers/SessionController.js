@@ -161,13 +161,10 @@ class SessionController {
     const manga = Manga.findById(req.params.mangaId);
     if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
 
-    if (TimingService.activeMangaId === manga.id) {
-      TimingService.cancelManga();
-    } else if (manga.status === 'active') {
-      // Manga stuck as active after server restart — clean up manually
-      Lap.deleteByManga(manga.id);
-      Manga.updateStatus(manga.id, 'pending');
-    }
+    // Con sesión viva o con la manga colgada tras un reinicio del servidor, el
+    // resultado debe ser el MISMO stop forzado: vueltas fuera, manga a pending,
+    // tiempo de esta manga descartado y pilotos conservados, ya pre-armados.
+    TimingService.cancelMangaById(manga.id, race);
 
     res.redirect(`/races/${race.id}/mangas/${manga.id}/live`);
   }
