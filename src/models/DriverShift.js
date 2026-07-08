@@ -216,12 +216,24 @@ class DriverShift {
   // la sustituye por Bea antes del GO, el pre-arme de Ana queda CERRADO. Sin
   // este filtro el GO también lo activaría y Ana se llevaría un turno de 0 s
   // contra driver_max_runs.
-  static activatePreArmedShifts(mangaId, startTimeMs) {
-    db.prepare(`
+  //
+  // `lanes` acota la activación a los carriles de UN circuito. Con varias cajas
+  // el GO es escalonado, así que sellarles a todos el startTime de la manga
+  // marcaría al piloto de la caja 3 como entrado cuando arrancó la caja 1. Cada
+  // circuito activa los suyos con SU propio GO (TimingService.startCircuit).
+  static activatePreArmedShifts(mangaId, startTimeMs, lanes = null) {
+    let sql = `
       UPDATE driver_shifts
       SET started_at_ms = ?, pre_armed = 0
       WHERE manga_id = ? AND pre_armed = 1 AND started_at_ms IS NULL AND ended_at_ms IS NULL
-    `).run(startTimeMs, mangaId);
+    `;
+    const args = [startTimeMs, mangaId];
+    if (Array.isArray(lanes)) {
+      if (lanes.length === 0) return;
+      sql += ` AND lane IN (${lanes.map(() => '?').join(',')})`;
+      args.push(...lanes);
+    }
+    db.prepare(sql).run(...args);
   }
 
   // STOP FORZADO: se descarta el tiempo acumulado EN ESTA MANGA (el total de
