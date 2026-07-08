@@ -47,13 +47,35 @@ function renderRoster(roster, driverName) {
                  : c.status === 'warn' ? 'is-near'
                  : c.status === 'info' ? 'is-under' : 'is-ok';
     const isNow  = driverName && p.name === driverName;
-    html += '<div class="sc-lane__rost ' + rcls + (isNow ? ' is-now' : '') + '">'
+    html += '<div class="sc-lane__rost ' + rcls + (isNow ? ' is-now' : '') + '" title="' + esc(p.name) + '">'
           + '<span class="sc-lane__rost-name">' + esc(p.name) + '</span>'
           + '<span class="sc-lane__rost-runs">' + p.runs + (maxRuns > 0 ? '/' + maxRuns : '') + (lang === 'es' ? 'T' : 'x') + '</span>'
           + '<span class="sc-lane__rost-time">' + fmtTime(p.total_ms) + '</span>'
           + '</div>';
   });
   return html + '</div>';
+}
+
+// ── Autoajuste de la tarjeta de carril ────────────────────────────────────
+// La altura era fija (un número mágico) y a un equipo de 5 pilotos se le
+// cortaba el último. Se deriva del roster más largo de ESTA manga: así cabe
+// siempre, sin dejar hueco muerto cuando los equipos son de 3.
+const _rosters = Object.values(rosterByLane || {}).map(r => (r || []).length);
+const maxRoster = _rosters.length ? Math.max(..._rosters) : 0;
+// Estimación de partida (el script del final la corrige midiendo el contenido):
+// 112 = padding 16 + cabecera 18 + nombre 20 + stats 34 + separadores 17 + holgura 7.
+// 13.5 = alto de cada fila del roster (.sc-lane__rost).
+const laneCardH = Math.ceil(112 + maxRoster * 13.5);
+
+// El nombre del piloto en grande: encoge cuando es largo en vez de cortarse.
+// Los nombres del catálogo llegan hasta "KALA JOAN CALAHORRO" (19) o
+// "ANDER GOENAGA IRIONDO" (21).
+function driverSize(name) {
+  const n = (name || '').length;
+  if (n <= 13) return '';               // 17px, el tamaño base
+  if (n <= 17) return ' is-long';       // 15px
+  if (n <= 22) return ' is-xlong';      // 13px
+  return ' is-xxlong';                  // 11.5px + parte por palabras
 }
 
 // Mapas para la corrección manual de tiempo (modal): pilotos y nombre por carril.
@@ -150,6 +172,58 @@ const teamNameByLane = {};
              aria-label="<%= lang === 'es' ? 'Lector QR' : 'QR scanner' %>"
              class="sc-scan-input">
 
+      <!-- ── Pre-arme: quién falta por fichar ─────────────────────────────
+           Solo con la manga aún sin arrancar, que es cuando el staff ficha.
+           Una casilla por carril, agrupadas por caja: la cuadrícula de abajo
+           va paginada y rota sola, así que el carril que falta puede estar en
+           otra página. Aquí se ven los 24 de golpe. -->
+      <% if (current.liveStatus === 'standby' && prearme && prearme.total > 0) { %>
+        <section class="sc-prearm <%= prearme.complete ? 'is-complete' : '' %>" id="scPrearm"
+                 aria-label="<%= lang === 'es' ? 'Estado del fichaje de pilotos' : 'Driver check-in status' %>">
+          <div class="sc-prearm__head">
+            <span class="sc-prearm__t"><%= lang === 'es' ? 'Pre-arme' : 'Check-in' %></span>
+            <span class="sc-prearm__n">
+              <%= prearme.scanned %>/<%= prearme.total %> <%= lang === 'es' ? 'fichados' : 'checked in' %>
+            </span>
+          </div>
+
+          <% prearme.boxes.forEach(box => { %>
+            <div class="sc-prearm__row">
+              <span class="sc-prearm__box"><%= lang === 'es' ? 'Circuito' : 'Circuit' %> <%= box.number %></span>
+              <span class="sc-prearm__cells">
+                <% box.cells.forEach(c => { %>
+                  <span class="sc-prearm__cell <%= !c.active ? 'is-off' : (c.scanned ? 'is-ok' : 'is-missing') %>"
+                        <% if (c.active) { %>title="<%= (lang === 'es' ? 'Carril ' : 'Lane ') + c.lane %> · <%= c.teamName %> — <%= c.scanned ? (lang === 'es' ? 'fichado' : 'checked in') : (lang === 'es' ? 'sin fichar' : 'not checked in') %>"<% } %>><%= c.lane %></span>
+                <% }) %>
+              </span>
+              <% const faltanCircuito = box.cells.filter(c => c.active && !c.scanned); %>
+              <% if (faltanCircuito.length) { %>
+                <span class="sc-prearm__miss">
+                  <% faltanCircuito.forEach(c => { %><span class="sc-prearm__chip"><b>L<%= c.lane %></b><%= c.teamName %></span><% }) %>
+                </span>
+              <% } else { %>
+                <span class="sc-prearm__miss is-ok">✓ <%= lang === 'es' ? 'completo' : 'complete' %></span>
+              <% } %>
+            </div>
+          <% }) %>
+
+          <div class="sc-prearm__foot">
+            <% if (prearme.complete) { %>
+              <span class="sc-prearm__done">
+                <%= lang === 'es'
+                  ? 'Los ' + prearme.total + ' equipos han fichado — listos para el GO'
+                  : 'All ' + prearme.total + ' teams checked in — ready for GO' %>
+              </span>
+            <% } else { %>
+              <span class="sc-prearm__legend">
+                <span><i class="sc-prearm__dot is-ok"></i><%= lang === 'es' ? 'fichado' : 'checked in' %></span>
+                <span><i class="sc-prearm__dot is-missing"></i><%= lang === 'es' ? 'pendiente' : 'pending' %></span>
+              </span>
+            <% } %>
+          </div>
+        </section>
+      <% } %>
+
       <!-- ── Cards por carril (paginado si no caben) ─────────────────── -->
       <div class="sc-lane-head">
         <span class="vt-sec-lbl"><%= lang === 'es' ? 'Carriles' : 'Lanes' %></span>
@@ -162,7 +236,7 @@ const teamNameByLane = {};
         <span class="sc-pages-ind" id="scLaneInd"></span>
       </div>
       <div class="sc-lane-area" id="scLaneArea">
-      <div class="sc-lane-grid" id="scLaneGrid">
+      <div class="sc-lane-grid" id="scLaneGrid" style="--sc-lane-h: <%= laneCardH %>px">
         <% lanes.forEach(l => {
           const s = openByLane[l.lane];
           const live = liveActive[l.lane] || {};
@@ -174,10 +248,10 @@ const teamNameByLane = {};
           <div class="sc-lane" data-lane="<%= l.lane %>">
             <div class="sc-lane__head">
               <div class="sc-lane__num" style="background:<%= LC[l.lane - 1] || '#8b949e' %>;color:#fff;border-color:transparent">L<%= l.lane %></div>
-              <div class="sc-lane__team"><%= l.team_name || l.driver_name || '—' %></div>
+              <div class="sc-lane__team" title="<%= l.team_name || l.driver_name || '' %>"><%= l.team_name || l.driver_name || '—' %></div>
               <button type="button" class="sc-lane__fix" data-lane="<%= l.lane %>" title="<%= lang === 'es' ? 'Corregir tiempo (olvidó fichar)' : 'Correct time (forgot to scan)' %>">✎</button>
             </div>
-            <div class="sc-lane__driver" data-driver-name>
+            <div class="sc-lane__driver<%= driverSize(driverName) %>" data-driver-name title="<%= driverName || '' %>">
               <% if (driverName) { %>
                 <%= driverName %>
               <% } else { %>
@@ -212,6 +286,33 @@ const teamNameByLane = {};
           </div>
         <% }) %>
       </div>
+
+      <!-- Autoajuste del alto de tarjeta. La vista ya calcula una estimación
+           (--sc-lane-h), pero depende de la fuente, del idioma y del tamaño del
+           roster: a un equipo de 6 pilotos se le cortaba el último. Aquí se mide
+           el contenido REAL de la tarjeta más alta y se aplica a todas, antes de
+           que el paginador mida nada. Se ejecuta en un bloque aparte para que un
+           fallo suyo no arrastre al resto de la pantalla. -->
+      <script>
+      (function () {
+        var grid = document.getElementById('scLaneGrid');
+        if (!grid) return;
+        function ajustar() {
+          var cards = grid.querySelectorAll('.sc-lane');
+          if (!cards.length) return;
+          var i, alto = 0;
+          for (i = 0; i < cards.length; i++) cards[i].style.height = 'auto';
+          for (i = 0; i < cards.length; i++) alto = Math.max(alto, cards[i].getBoundingClientRect().height);
+          for (i = 0; i < cards.length; i++) cards[i].style.height = '';
+          if (alto > 0) grid.style.setProperty('--sc-lane-h', Math.ceil(alto) + 'px');
+        }
+        ajustar();
+        // Las tipografías del quiosco llegan por webfont: al cargar, el texto
+        // crece y el alto medido antes se queda corto.
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(ajustar);
+        addEventListener('resize', ajustar);
+      })();
+      </script>
       </div><!-- /.sc-lane-area -->
 
         </div><!-- /.sc-kiosk__main -->
@@ -848,46 +949,152 @@ socket.on('manga:started', () => location.reload());
 .vt-page--shifts .sc-remaining { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--vt-mute); }
 .vt-page--shifts .sc-remaining.sc-locked { color: var(--vt-amber); }
 
+/* ── Pre-arme: una casilla por carril, agrupadas por caja ────────────────
+   Se lee de un golpe y desde lejos, que es lo que hace falta en el box con
+   gente alrededor. Vive fuera de la cuadrícula paginada a propósito. */
+.vt-page--shifts .sc-prearm {
+  margin-top: 10px; padding: 16px 18px;
+  background: var(--vt-panel); border: 1px solid var(--vt-border); border-radius: 14px;
+}
+.vt-page--shifts .sc-prearm.is-complete { border-color: color-mix(in srgb, var(--vt-green) 40%, transparent); }
+.vt-page--shifts .sc-prearm__head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.vt-page--shifts .sc-prearm__t {
+  font-family: 'Saira Condensed', sans-serif; text-transform: uppercase;
+  letter-spacing: .16em; font-size: 12.5px; font-weight: 700; color: var(--vt-mute);
+}
+.vt-page--shifts .sc-prearm__n {
+  margin-left: auto; font-family: 'IBM Plex Mono', monospace;
+  font-size: 15px; font-weight: 700; color: var(--vt-amber); font-variant-numeric: tabular-nums;
+}
+.vt-page--shifts .sc-prearm.is-complete .sc-prearm__n { color: var(--vt-green); }
+
+/* align-items:flex-start para que los chips puedan envolver a varias líneas sin
+   estirar la fila de casillas. */
+.vt-page--shifts .sc-prearm__row { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 9px; }
+.vt-page--shifts .sc-prearm__box {
+  font-family: 'Saira Condensed', sans-serif; text-transform: uppercase;
+  letter-spacing: .12em; font-size: 11px; font-weight: 700; color: var(--vt-mute);
+  width: 76px; flex: none; padding-top: 9px;
+}
+.vt-page--shifts .sc-prearm__cells { display: flex; gap: 6px; flex-wrap: wrap; flex: none; }
+.vt-page--shifts .sc-prearm__cell {
+  width: 34px; height: 30px; border-radius: 7px; display: grid; place-items: center;
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: color-mix(in srgb, var(--vt-green) 22%, var(--vt-surface));
+  border: 1px solid color-mix(in srgb, var(--vt-green) 45%, transparent);
+  color: #bff0d0;
+}
+.vt-page--shifts .sc-prearm__cell.is-missing {
+  background: color-mix(in srgb, var(--vt-amber) 16%, var(--vt-surface));
+  border: 1px dashed var(--vt-amber); color: var(--vt-amber);
+}
+/* Carril sin equipo esta manga (descanso o hueco): ni cuenta ni distrae. */
+.vt-page--shifts .sc-prearm__cell.is-off {
+  background: var(--vt-surface); border: 1px solid var(--vt-border); color: var(--vt-mute-2);
+}
+/* Los equipos que faltan, SIEMPRE por su nombre: es lo que el staff va a gritar
+   por el box. Como chips, para que 8 nombres envuelvan sin volverse un párrafo. */
+.vt-page--shifts .sc-prearm__miss {
+  flex: 1 1 240px; min-width: 0; padding-top: 3px;
+  display: flex; flex-wrap: wrap; gap: 5px; align-content: flex-start;
+  font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--vt-amber);
+}
+.vt-page--shifts .sc-prearm__chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: color-mix(in srgb, var(--vt-amber) 10%, var(--vt-surface));
+  border: 1px solid color-mix(in srgb, var(--vt-amber) 30%, transparent);
+  border-radius: 14px; padding: 2px 9px 2px 3px;
+  font-family: 'Saira Condensed', sans-serif; text-transform: uppercase;
+  letter-spacing: .04em; font-size: 12.5px; font-weight: 700; color: var(--vt-text);
+  max-width: 210px;
+}
+.vt-page--shifts .sc-prearm__chip b {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; font-weight: 700;
+  background: var(--vt-amber); color: #000; border-radius: 10px; padding: 1px 6px;
+  letter-spacing: 0; flex: none;
+}
+.vt-page--shifts .sc-prearm__miss.is-ok {
+  color: var(--vt-green); align-items: center;
+  font-family: 'Saira Condensed', sans-serif; text-transform: uppercase;
+  letter-spacing: .12em; font-weight: 700; font-size: 12px; padding-top: 9px;
+}
+.vt-page--shifts .sc-prearm__foot {
+  margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--vt-border);
+  font-size: 11.5px; color: var(--vt-mute);
+}
+.vt-page--shifts .sc-prearm__legend { display: flex; gap: 16px; }
+.vt-page--shifts .sc-prearm__legend span { display: inline-flex; align-items: center; gap: 7px; }
+.vt-page--shifts .sc-prearm__dot { width: 12px; height: 12px; border-radius: 4px; flex: none; }
+.vt-page--shifts .sc-prearm__dot.is-ok {
+  background: color-mix(in srgb, var(--vt-green) 40%, var(--vt-surface));
+  border: 1px solid color-mix(in srgb, var(--vt-green) 55%, transparent);
+}
+.vt-page--shifts .sc-prearm__dot.is-missing {
+  background: color-mix(in srgb, var(--vt-amber) 20%, var(--vt-surface));
+  border: 1px dashed var(--vt-amber);
+}
+.vt-page--shifts .sc-prearm__done {
+  font-family: 'Saira Condensed', sans-serif; text-transform: uppercase;
+  letter-spacing: .12em; font-size: 13px; font-weight: 700; color: var(--vt-green);
+}
+
 .vt-page--shifts .sc-scan-input {
   position: fixed; left: -9999px; top: -9999px; width: 1px; height: 1px;
   opacity: 0;
 }
 
+/* Tarjetas compactas: con 24 carriles importa más cuántas caben de una vez
+   que lo grande que sea cada una. */
 .vt-page--shifts .sc-lane-grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 14px; margin-top: 18px;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+  gap: 10px; margin-top: 14px;
 }
 .vt-page--shifts .sc-lane {
   background: linear-gradient(180deg, var(--vt-panel), var(--vt-panel-2));
-  border: 1px solid var(--vt-border); border-radius: 14px;
-  padding: 14px 16px;
-  display: flex; flex-direction: column; gap: 10px;
+  border: 1px solid var(--vt-border); border-radius: 12px;
+  padding: 8px 11px;
+  display: flex; flex-direction: column; gap: 5px;
 }
-.vt-page--shifts .sc-lane__head { display: flex; align-items: center; gap: 10px; }
+.vt-page--shifts .sc-lane__head { display: flex; align-items: center; gap: 8px; }
 .vt-page--shifts .sc-lane__num {
   font-family: 'IBM Plex Mono', monospace; font-weight: 700;
   background: var(--vt-surface-2); color: var(--vt-mute);
-  padding: 2px 8px; border-radius: 6px; font-size: 12px;
+  padding: 1px 6px; border-radius: 5px; font-size: 11px;
 }
 .vt-page--shifts .sc-lane__team {
   font-family: 'Saira Condensed', sans-serif; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .04em; font-size: 15px; color: #fff;
+  text-transform: uppercase; letter-spacing: .04em; font-size: 13.5px; color: #fff;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+/* El nombre del piloto encoge por tramos en vez de cortarse con «…».
+   Las clases las decide driverSize() según la longitud del nombre. */
 .vt-page--shifts .sc-lane__driver {
-  font-size: 22px; font-weight: 700; color: #fff; min-height: 28px;
+  font-size: 17px; font-weight: 700; color: #fff; min-height: 20px; line-height: 1.15;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.vt-page--shifts .sc-lane__empty { color: var(--vt-mute-2); font-weight: 500; font-style: italic; font-size: 16px; }
+.vt-page--shifts .sc-lane__driver.is-long   { font-size: 15px; }
+.vt-page--shifts .sc-lane__driver.is-xlong  { font-size: 13px; letter-spacing: -.01em; }
+/* Los muy largos ("ANDER GOENAGA IRIONDO") se parten por palabras: dos líneas
+   caben en el mismo alto que una de 17px. */
+.vt-page--shifts .sc-lane__driver.is-xxlong {
+  font-size: 11.5px; line-height: 1.05; white-space: normal;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+}
+.vt-page--shifts .sc-lane__empty { color: var(--vt-mute-2); font-weight: 500; font-style: italic; font-size: 14px; }
 .vt-page--shifts .sc-lane__stats {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
-  padding-top: 8px; border-top: 1px solid var(--vt-border);
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+  padding-top: 5px; border-top: 1px solid var(--vt-border);
 }
 .vt-page--shifts .sc-lane__lbl {
-  display: block; font-size: 10.5px; letter-spacing: .12em;
+  display: block; font-size: 8.5px; letter-spacing: .09em; line-height: 1.3;
   text-transform: uppercase; color: var(--vt-mute);
-  margin-bottom: 2px;
+  margin-bottom: 0;
 }
 .vt-page--shifts .sc-lane__val {
-  font-family: 'IBM Plex Mono', monospace; font-size: 18px; font-weight: 700; color: var(--vt-text);
+  font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 700; color: var(--vt-text);
+  font-variant-numeric: tabular-nums; line-height: 1.2;
 }
 .vt-page--shifts .sc-lane__history {
   font-size: 11.5px; color: var(--vt-mute); padding-top: 6px;
@@ -1108,8 +1315,10 @@ socket.on('manga:started', () => location.reload());
 .vt-page--shifts .sc-legend__dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: 0 0 auto; }
 .vt-page--shifts .sc-lane-area { flex: 1 1 auto; min-height: 0; overflow: hidden; margin-top: 6px; }
 .vt-page--shifts .sc-lane-area .sc-lane-grid { margin-top: 0; }
-/* Tarjetas de carril con alto fijo → paginación limpia (filas uniformes) */
-.vt-page--shifts .sc-lane { height: 262px; overflow: hidden; }
+/* Alto uniforme → paginación limpia. El valor lo calcula la vista a partir del
+   roster MÁS LARGO de la manga (--sc-lane-h), así nunca se corta el último
+   piloto ni sobra hueco cuando los equipos son de tres. */
+.vt-page--shifts .sc-lane { height: var(--sc-lane-h, 196px); overflow: hidden; }
 
 /* Tarjeta de equipo en DESCANSO */
 .vt-page--shifts .sc-lane--rest { border-style: dashed; }
@@ -1123,16 +1332,23 @@ socket.on('manga:started', () => location.reload());
 
 /* Roster del equipo dentro de la card: cada piloto con turnos + tiempo total */
 .vt-page--shifts .sc-lane__roster {
-  margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--vt-border);
-  display: flex; flex-direction: column; gap: 1px;
+  margin-top: 3px; padding-top: 4px; border-top: 1px solid var(--vt-border);
+  display: flex; flex-direction: column; gap: 0;
 }
+/* 13.5px de fila: un equipo de 6 pilotos entra sin robarle una fila entera de
+   tarjetas a la paginación. El alto real lo mide el script del final. */
 .vt-page--shifts .sc-lane__rost {
-  display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center;
-  font-size: 12.5px; color: var(--vt-mute); padding: 1px 0;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 5px; align-items: center;
+  font-size: 11px; color: var(--vt-mute); padding: 0; height: 13.5px; line-height: 13.5px;
 }
-.vt-page--shifts .sc-lane__rost-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.vt-page--shifts .sc-lane__rost-runs { font-family: 'IBM Plex Mono', monospace; font-size: 11px; opacity: .85; }
-.vt-page--shifts .sc-lane__rost-time { font-family: 'IBM Plex Mono', monospace; color: var(--vt-text); min-width: 44px; text-align: right; }
+/* El nombre se queda con todo el sitio sobrante; si aun así no cabe, el título
+   del div lo enseña entero al pasar el ratón. */
+.vt-page--shifts .sc-lane__rost-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vt-page--shifts .sc-lane__rost-runs { font-family: 'IBM Plex Mono', monospace; font-size: 10px; opacity: .8; }
+.vt-page--shifts .sc-lane__rost-time {
+  font-family: 'IBM Plex Mono', monospace; color: var(--vt-text);
+  min-width: 40px; text-align: right; font-variant-numeric: tabular-nums;
+}
 /* El piloto que conduce ahora, resaltado */
 .vt-page--shifts .sc-lane__rost.is-now .sc-lane__rost-name { color: var(--vt-text); font-weight: 600; }
 .vt-page--shifts .sc-lane__rost.is-now .sc-lane__rost-name::before { content: '▶ '; color: var(--vt-blue); }

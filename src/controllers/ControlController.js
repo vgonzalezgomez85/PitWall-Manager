@@ -51,7 +51,8 @@ class ControlController {
       SELECT m.id AS manga_id, m.number AS manga_number, m.status AS manga_status,
              m.tanda_id, r.id AS race_id, r.name AS race_name, r.type, r.format,
              r.manga_duration_minutes, r.driver_min_total_ms, r.driver_max_total_ms,
-             r.driver_change_lockout_ms, r.driver_max_runs
+             r.driver_change_lockout_ms, r.driver_max_runs,
+             r.circuits_config, r.lanes_count
       FROM mangas m
       JOIN races r ON r.id = m.race_id
       WHERE r.type = 'championship'
@@ -73,6 +74,10 @@ class ControlController {
         driver_max_total_ms: row.driver_max_total_ms,
         driver_change_lockout_ms: row.driver_change_lockout_ms,
         driver_max_runs: row.driver_max_runs,
+        // El panel de pre-arme agrupa los carriles por caja: sin esto caería
+        // todo en una sola caja de N carriles.
+        circuits_config: row.circuits_config,
+        lanes_count: row.lanes_count,
       },
       liveStatus: row.manga_status === 'active' ? 'unknown' : 'standby',
     };
@@ -159,6 +164,12 @@ class ControlController {
       ? durRow.actual_duration_ms
       : (race.manga_duration_minutes || 0) * 60000;
 
+    // Panel de pre-arme: una casilla por carril, agrupadas por caja. Con 24
+    // carriles la cuadrícula de tarjetas va paginada y rota sola, así que el
+    // equipo que falta por fichar puede estar en otra página. Esto enseña los
+    // 24 de golpe. Los carriles en descanso no cuentan: no fichan.
+    const prearme = ControlController._prearmeBoxes(race, lanes, openByLane);
+
     res.render('control/shifts-live', {
       t: req.t,
       current: { manga, race, liveStatus },
@@ -170,6 +181,7 @@ class ControlController {
       rosterByLane,
       restingTeams,
       mangaDurationMs,
+      prearme,
     });
   }
 
@@ -199,6 +211,47 @@ class ControlController {
     });
 
     res.render('control/race-shifts', { t: req.t, race, notChampionship: false, mangas, summary });
+  }
+
+  /**
+   * Reparte los carriles de la manga entre las cajas (`circuits_config`) y marca
+   * cuáles han fichado ya su QR. Puro: no toca BD ni sesión.
+   *
+   * @param {{circuits_config:string, lanes_count:number}} race
+   * @param {Array<{lane:number, team_name?:string, driver_name?:string}>} lanes
+   *        SOLO los carriles que corren (los de descanso ya vienen filtrados).
+   * @param {Object} openByLane  lane → turno abierto (fichado)
+   * @returns {{boxes:Array, total:number, scanned:number, missing:Array, complete:boolean}}
+   */
+  static _prearmeBoxes(race, lanes, openByLane) {
+    let cfg = [];
+    try { cfg = JSON.parse(race.circuits_config || '[]'); } catch {}
+    if (!Array.isArray(cfg) || !cfg.length) cfg = [race.lanes_count || lanes.length];
+
+    const porCarril = {};
+    lanes.forEach(l => { porCarril[l.lane] = l; });
+
+    const boxes = [];
+    const missing = [];
+    let total = 0, scanned = 0, off = 0;
+
+    cfg.forEach((n, ci) => {
+      const cells = [];
+      for (let lane = off + 1; lane <= off + n; lane++) {
+        const l = porCarril[lane];
+        if (!l) { cells.push({ lane, active: false }); continue; }   // descanso o carril libre
+        const ok = !!openByLane[lane];
+        const teamName = l.team_name || l.driver_name || '—';
+        cells.push({ lane, active: true, scanned: ok, teamName });
+        total++;
+        if (ok) scanned++;
+        else missing.push({ lane, teamName });
+      }
+      boxes.push({ index: ci, number: ci + 1, cells });
+      off += n;
+    });
+
+    return { boxes, total, scanned, missing, complete: total > 0 && missing.length === 0 };
   }
 
   // ── Informe final de turnos ───────────────────────────────────────────────
