@@ -17,8 +17,51 @@
  */
 const db = require('../config/database');
 
+// ── Contador de mutaciones ───────────────────────────────────────────────────
+//
+// El motor cachea agregados caros sobre `laps` (media y tiempo total de las
+// mangas ANTERIORES: en una 24h son ~153.000 filas y cuestan 74 ms). Ese agregado
+// no cambia mientras corre una manga, porque solo se insertan vueltas de la manga
+// en curso. Pero una corrección sobre otra manga sí lo cambiaría, y confiar en
+// que alguien recuerde invalidar la caché en cada punto de escritura es la forma
+// más segura de que se pudra.
+//
+// Aquí se cuenta cada mutación, atribuida a su manga cuando se conoce.
+// `mutationsOutside(mangaId)` dice cuántas han tocado CUALQUIER otra manga: si
+// ese número no cambia, la caché de "mangas anteriores" sigue siendo válida.
+// Una mutación de manga desconocida cuenta como "fuera" → invalida. Es el lado
+// seguro por el que equivocarse.
+let _mutTotal = 0;
+const _mutByManga = new Map();
+
+function _bump(mangaId) {
+  _mutTotal++;
+  if (mangaId != null) _mutByManga.set(mangaId, (_mutByManga.get(mangaId) || 0) + 1);
+}
+
+/** manga_id de una vuelta, por su id. Lookup por clave primaria: coste despreciable. */
+function _mangaOf(lapId) {
+  const row = db.prepare('SELECT manga_id FROM laps WHERE id = ?').get(lapId);
+  return row ? row.manga_id : null;
+}
+
 class Lap {
+  /** Nº de mutaciones que han tocado alguna manga distinta de `mangaId`. */
+  static mutationsOutside(mangaId) {
+    return _mutTotal - (mangaId != null ? (_mutByManga.get(mangaId) || 0) : 0);
+  }
+
+  /** Total de mutaciones sobre `laps` en este proceso. */
+  static get mutationCount() { return _mutTotal; }
+
+  /**
+   * Para los pocos sitios que escriben en `laps` con SQL crudo, saltándose el
+   * modelo (reconstrucción de tanda). Invalida cualquier caché derivada.
+   */
+  static markExternalMutation() { _bump(null); }
+
   static create({ race_id, manga_id, team_id, driver_id, lane, lap_number, lap_time_ms, elapsed_ms, is_exit = 0, is_ghost = 0, is_pit_stop = 0, is_warmup = 0, ghost_from_lane = null }) {
+    _bump(manga_id);
     const { lastInsertRowid } = db.prepare(`
       INSERT INTO laps (race_id, manga_id, team_id, driver_id, lane, lap_number, lap_time_ms, elapsed_ms, is_exit, is_ghost, is_pit_stop, is_warmup, ghost_from_lane)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -113,6 +156,145 @@ class Lap {
       LEFT JOIN drivers d ON d.id = l.driver_id
       GROUP BY b.lane
     `).all(raceId, raceId, raceId);
+  }
+
+  // ── Agregado por entidad, partido en "mangas anteriores" + "manga en curso" ──
+  //
+  // `aggregateByRace` escanea las vueltas de TODA la carrera. En una 24 h son
+  // 160.000 filas y cuesta ~101 ms, y la proyección lo llamaba en cada cruce.
+  // Ese bloqueo síncrono no es solo lentitud: supera FRAME_GAP_MS (75 ms), así
+  // que puede partir una trama del DS en dos y perder un cruce de verdad.
+  //
+  // La parte de las mangas ya cerradas (153.000 de esas 160.000 filas) NO cambia
+  // mientras corre una manga. Se calcula una vez y se cachea; la manga en curso
+  // (~7.000 filas) se agrega aparte y se funden en memoria.
+  //
+  // Devuelve EXACTAMENTE la misma forma y el mismo orden que `aggregateByRace`.
+  // Hay un test que lo comprueba entidad a entidad sobre las 22 mangas reales de
+  // la 24h de Modena.
+
+  /**
+   * Sumas crudas por entidad para un subconjunto de vueltas. Sin nombres ni orden.
+   *
+   * `INDEXED BY idx_laps_manga` en la rama de una sola manga no es un capricho:
+   * el planificador elegía `idx_laps_race_flags` y escaneaba las 160.000 filas de
+   * la carrera para filtrar 7.000 (26,9 ms). Por el índice de manga: 0,7 ms.
+   */
+  static _aggRaw(raceId, { excludeManga = null, onlyManga = null } = {}) {
+    const columnas = `
+        COALESCE(l.team_id, l.driver_id) AS entity_id,
+        CASE WHEN l.team_id IS NOT NULL THEN 'team' ELSE 'driver' END AS entity_type,
+        COUNT(l.id) AS total_laps,
+        MIN(CASE WHEN l.is_exit = 0 AND l.is_warmup = 0 AND l.lap_number > 1 THEN l.lap_time_ms END) AS best_lap_ms,
+        SUM(CASE WHEN l.is_warmup = 0 THEN l.lap_time_ms ELSE 0 END) AS avg_sum,
+        SUM(CASE WHEN l.is_warmup = 0 AND l.lap_time_ms IS NOT NULL THEN 1 ELSE 0 END) AS avg_cnt,
+        SUM(l.lap_time_ms) AS total_time_ms,
+        COUNT(DISTINCT l.manga_id) AS mangas_raced,
+        SUM(l.is_exit) AS exit_count`;
+
+    if (onlyManga != null) {
+      return db.prepare(`
+        SELECT ${columnas}
+        FROM laps l INDEXED BY idx_laps_manga
+        WHERE l.manga_id = ? AND l.race_id = ? AND l.is_ghost = 0
+        GROUP BY entity_id, entity_type
+      `).all(onlyManga, raceId);
+    }
+
+    const filtro = excludeManga != null ? 'AND l.manga_id != ?' : '';
+    const args = excludeManga != null ? [raceId, excludeManga] : [raceId];
+    return db.prepare(`
+      SELECT ${columnas}
+      FROM laps l
+      WHERE l.race_id = ? AND l.is_ghost = 0 AND l.manga_id IS NOT NULL ${filtro}
+      GROUP BY entity_id, entity_type
+    `).all(...args);
+  }
+
+  /** Nombre y color por entidad. Tablas pequeñas: coste despreciable. */
+  static _entityMeta(raceId) {
+    const meta = {};
+    db.prepare('SELECT id, name, color FROM teams WHERE race_id = ?').all(raceId)
+      .forEach(t => { meta['team:' + t.id] = { entity_name: t.name, color: t.color }; });
+    db.prepare('SELECT id, name FROM drivers WHERE race_id = ?').all(raceId)
+      .forEach(d => { meta['driver:' + d.id] = { entity_name: d.name, color: null }; });
+    return meta;
+  }
+
+  /** Coma acumulada por entidad. Sale de manga_lanes, no de laps: no depende de las vueltas. */
+  static _comaByEntity(raceId) {
+    const out = {};
+    db.prepare(`
+      SELECT ml.team_id, ml.driver_id, SUM(ml.coma) AS coma
+      FROM manga_lanes ml
+      JOIN mangas mg ON mg.id = ml.manga_id
+      WHERE mg.race_id = ? AND ml.is_rest = 0
+      GROUP BY ml.team_id, ml.driver_id
+    `).all(raceId).forEach(r => {
+      const k = r.team_id != null ? 'team:' + r.team_id : 'driver:' + r.driver_id;
+      out[k] = r.coma || 0;
+    });
+    return out;
+  }
+
+  /** Funde varias sumas crudas de la misma entidad en una sola fila con la forma pública. */
+  static _mergeAgg(raceId, partes) {
+    const acc = {};
+    for (const filas of partes) {
+      for (const r of filas) {
+        if (r.entity_id == null) continue;
+        const k = r.entity_type + ':' + r.entity_id;
+        const a = acc[k] || (acc[k] = {
+          entity_id: r.entity_id, entity_type: r.entity_type,
+          total_laps: 0, best_lap_ms: null, avg_sum: 0, avg_cnt: 0,
+          total_time_ms: 0, mangas_raced: 0, exit_count: 0,
+        });
+        a.total_laps    += r.total_laps || 0;
+        a.avg_sum       += r.avg_sum || 0;
+        a.avg_cnt       += r.avg_cnt || 0;
+        a.total_time_ms += r.total_time_ms || 0;
+        a.mangas_raced  += r.mangas_raced || 0;   // los subconjuntos son disjuntos por manga
+        a.exit_count    += r.exit_count || 0;
+        if (r.best_lap_ms != null && (a.best_lap_ms == null || r.best_lap_ms < a.best_lap_ms)) {
+          a.best_lap_ms = r.best_lap_ms;
+        }
+      }
+    }
+
+    const meta = Lap._entityMeta(raceId);
+    const coma = Lap._comaByEntity(raceId);
+    const rows = Object.entries(acc).map(([k, a]) => ({
+      entity_id:    a.entity_id,
+      entity_name:  meta[k]?.entity_name ?? null,
+      entity_type:  a.entity_type,
+      color:        a.entity_type === 'team' ? (meta[k]?.color ?? null) : null,
+      total_laps:   a.total_laps,
+      best_lap_ms:  a.best_lap_ms,
+      avg_lap_ms:   a.avg_cnt > 0 ? a.avg_sum / a.avg_cnt : null,
+      total_time_ms: a.total_time_ms,
+      mangas_raced: a.mangas_raced,
+      exit_count:   a.exit_count,
+      coma_total:   coma[k] || 0,
+    }));
+
+    // Mismo desempate que la consulta original: vueltas DESC, coma MEDIA por
+    // manga DESC, tiempo total ASC.
+    const comaAvg = (r) => (r.mangas_raced ? r.coma_total / r.mangas_raced : 0);
+    rows.sort((x, y) =>
+      (y.total_laps - x.total_laps) ||
+      (comaAvg(y) - comaAvg(x)) ||
+      (x.total_time_ms - y.total_time_ms));
+    return rows;
+  }
+
+  /**
+   * Igual que `aggregateByRace`, pero reutilizando el agregado de las mangas
+   * anteriores que le pasen ya calculado (y cacheado por el motor).
+   * `priorRaw` = `Lap._aggRaw(raceId, { excludeManga: currentMangaId })`.
+   */
+  static aggregateByRaceSplit(raceId, currentMangaId, priorRaw) {
+    const actual = Lap._aggRaw(raceId, { onlyManga: currentMangaId });
+    return Lap._mergeAgg(raceId, [priorRaw, actual]);
   }
 
   // Aggregate results per entity (team or driver) across all mangas of a race
@@ -219,11 +401,13 @@ class Lap {
   // ── Ghost lap corrections ────────────────────────────────────────────────
 
   static deleteLap(id) {
+    _bump(_mangaOf(id));
     db.prepare('DELETE FROM laps WHERE source_lap_id = ?').run(id); // remove transferred copies
     db.prepare('DELETE FROM laps WHERE id = ?').run(id);
   }
 
   static deleteByManga(mangaId) {
+    _bump(mangaId);
     db.prepare('DELETE FROM laps WHERE manga_id = ?').run(mangaId);
   }
 
@@ -233,6 +417,7 @@ class Lap {
   // (el reloj es acumulativo). No toca los flags (exit/ghost/pit): es un override
   // manual del tiempo, no una reclasificación.
   static updateTime(id, newMs) {
+    _bump(_mangaOf(id));
     newMs = Math.round(newMs);
     if (!newMs || newMs <= 0) return;
     const lap = db.prepare('SELECT id, manga_id, lane, lap_time_ms, elapsed_ms FROM laps WHERE id = ?').get(id);
@@ -248,6 +433,7 @@ class Lap {
   }
 
   static markGhost(id) {
+    _bump(_mangaOf(id));
     db.prepare('UPDATE laps SET is_ghost = 1 WHERE id = ?').run(id);
   }
 
@@ -255,6 +441,7 @@ class Lap {
   // Sets realLap.source_lap_id = ghostLapId so findByMangaAll shows the
   // bidirectional "→ / ↔ de" relationship without creating a duplicate lap.
   static linkGhostToRealLap(ghostLapId, mangaId, realLane) {
+    _bump(mangaId);
     const realLap = db.prepare(
       'SELECT id FROM laps WHERE manga_id = ? AND lane = ? AND is_ghost = 0 ORDER BY elapsed_ms DESC LIMIT 1'
     ).get(mangaId, realLane);
@@ -264,6 +451,7 @@ class Lap {
   }
 
   static restore(id) {
+    _bump(_mangaOf(id));
     // Delete transferred copy if it exists, then restore original
     db.prepare('DELETE FROM laps WHERE source_lap_id = ?').run(id);
     db.prepare('UPDATE laps SET is_ghost = 0 WHERE id = ?').run(id);
@@ -271,6 +459,7 @@ class Lap {
 
   // Mark original as ghost and create a transferred copy on the destination lane
   static transfer(lapId, toLane, mangaId, raceId) {
+    _bump(mangaId);
     const original = db.prepare('SELECT * FROM laps WHERE id = ?').get(lapId);
     if (!original) return;
 
@@ -308,6 +497,7 @@ class Lap {
 
   // Add a manual lap to a lane (appended after last recorded lap)
   static addManual({ mangaId, raceId, lane, lapTimeMs }) {
+    _bump(mangaId);
     const laneAssign = db.prepare(
       'SELECT team_id, driver_id FROM manga_lanes WHERE manga_id = ? AND lane = ?'
     ).get(mangaId, lane);
