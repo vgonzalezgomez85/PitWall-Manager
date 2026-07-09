@@ -76,6 +76,17 @@ DebugLogger.setEnabled(SettingsModel.get('debug_mode', '0') === '1');
 const SerialService = require('./services/SerialService');
 SerialService.init(); // start with saved settings (or simulation if not configured)
 
+// ── Recuperación de una manga que se quedó a medias ────────────────────────
+// Si el proceso murió con una manga corriendo, la manga sigue 'active' en BD.
+// SessionRecovery NO la resucita a ciegas: espera a que la caja lo confirme con
+// un latido o un cruce. Sin señal, no toca nada — una manga que lleva días
+// muerta también figura 'active'. Ver src/services/SessionRecovery.js.
+const SessionRecovery = require('./services/SessionRecovery');
+setTimeout(() => {
+  try { SessionRecovery.arm(); }
+  catch (err) { console.error('[SessionRecovery] no se pudo armar:', err.message); }
+}, 2000);   // deja que los puertos serie terminen de abrir
+
 // ── Infolap server (opt-in en Settings) ────────────────────────────────────────
 // Emula el protocolo Tic Tac Slot Infolap para que la app Android legacy se
 // pueda conectar a PitWall y recibir vueltas en vivo. Es OPT-IN porque
@@ -259,10 +270,10 @@ app.use((req, res, next) => {
   res.locals.flash   = req.session.flash || null;
   // Serial port status (computed at render time, lightweight)
   const SerialService = require('./services/SerialService');
-  res.locals.serialStatus = {
-    simulating: SerialService.isSimulating,
-    ports:      SerialService.connectedPorts || [],
-  };
+  // getLinkStatus() trae `circuits`/`down` (estado POR caja). Antes se armaba a
+  // mano con `connectedPorts`, que lista puertos abiertos: una caja con el enlace
+  // caído seguía contando y el pie la pintaba en verde.
+  res.locals.serialStatus = SerialService.getLinkStatus();
   delete req.session.flash;
   next();
 });

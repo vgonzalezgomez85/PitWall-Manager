@@ -50,7 +50,10 @@ const NUS_TX      = '6e400003b5a3f393e0a9e50e24dcca9e'; // master → phone (not
 const _u = (s) => String(s || '').replace(/-/g, '').toLowerCase();
 
 class BartConnection {
-  constructor(circuitIndex, laneOffset, onCrossing, onGo, onStop, onPause, onResume, onGoSignal, onFinish, onResumeSignal, onSemaphoreStep) {
+  // `onHeartbeat` no lo usa BART (no tiene latido de minuto), pero ocupa su hueco
+  // posicional: SerialService.connectMultiple arma UN solo array de callbacks para
+  // DS-300 y BART, así que las posiciones deben coincidir o `onLinkChange` se pierde.
+  constructor(circuitIndex, laneOffset, onCrossing, onGo, onStop, onPause, onResume, onGoSignal, onFinish, onResumeSignal, onSemaphoreStep, onHeartbeat, onLinkChange) {
     this._circuitIndex    = circuitIndex;
     this._laneOffset      = laneOffset;
     this._onCrossing      = onCrossing;
@@ -62,6 +65,7 @@ class BartConnection {
     this._onFinish        = onFinish        || (() => {});
     this._onResumeSignal  = onResumeSignal  || (() => {});
     this._onSemaphoreStep = onSemaphoreStep || (() => {});
+    this._onLinkChange    = onLinkChange    || (() => {});
 
     this.isBart      = true;         // marca de fuente (SerialService.isBart, UI)
     this._sock       = null;         // socket TCP (transporte tcp)
@@ -310,15 +314,17 @@ class BartConnection {
     this._rxChar = null;
   }
 
+  // Igual que CircuitConnection: avisa al servicio en vez de emitir un payload
+  // parcial que pisaría el estado de las demás cajas.
   _setConnected(connected) {
     if (this._connected === connected) return;
     this._connected = connected;
     console.log(`[BART C${this._circuitIndex + 1}] Link → ${connected ? 'connected' : 'DISCONNECTED'}`);
-    try {
-      const SocketService = require('../SocketService');
-      SocketService.emit('serial:status', { circuit: this._circuitIndex + 1, connected });
-    } catch {}
+    this._onLinkChange(this._circuitIndex, connected);
   }
+
+  get connected()       { return this._connected; }
+  get lastHeartbeatTs() { return null; }   // BART no tiene latido de minuto
 
   // ── Stream entrante ───────────────────────────────────────────────────────
   _onData(chunk) {

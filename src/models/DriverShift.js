@@ -205,8 +205,18 @@ class DriverShift {
   }
 
   // Actualiza driving_ms de un shift abierto (persistencia periódica del tick).
-  static updateDrivingMs(id, drivingMs) {
-    db.prepare('UPDATE driver_shifts SET driving_ms = ? WHERE id = ?').run(drivingMs, id);
+  /**
+   * `elapsedAtMs` es el transcurrido del circuito en el instante de escribir.
+   * Al rehidratar tras una caída se usa como ancla: sin él no se sabría desde qué
+   * punto seguir contando, y el piloto perdería (o ganaría) el tiempo caído.
+   */
+  static updateDrivingMs(id, drivingMs, elapsedAtMs = null) {
+    if (elapsedAtMs == null) {
+      db.prepare('UPDATE driver_shifts SET driving_ms = ? WHERE id = ?').run(drivingMs, id);
+    } else {
+      db.prepare('UPDATE driver_shifts SET driving_ms = ?, elapsed_at_ms = ? WHERE id = ?')
+        .run(drivingMs, Math.round(elapsedAtMs), id);
+    }
   }
 
   // Convierte los shifts pre-armados de una manga en activos:

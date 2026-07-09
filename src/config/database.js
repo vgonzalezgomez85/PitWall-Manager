@@ -371,6 +371,40 @@ const migrations = [
   `ALTER TABLE races ADD COLUMN race_key TEXT`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_races_race_key
      ON races(race_key) WHERE race_key IS NOT NULL`,
+
+  // ── Rehidratación de sesión tras una caída ────────────────────────────────
+  //
+  // El estado de cada circuito (si corre, si está en pausa, su ancla de tiempo ya
+  // desplazada por las pausas, cuánto le queda) vivía SOLO en memoria. Si el
+  // proceso moría con una manga corriendo, la manga quedaba 'active' en BD pero
+  // sin cronometraje, y no había forma de recuperarla: solo de cancelarla.
+  //
+  // De `laps` se reconstruye todo lo demás (vueltas, medias, mejor vuelta, último
+  // cruce). Esta tabla guarda lo único que faltaba. Se escribe en cada transición
+  // (GO, pausa, reanudar, fin) y cada pocos segundos con el tick.
+  `CREATE TABLE IF NOT EXISTS manga_circuits (
+     manga_id        INTEGER NOT NULL,
+     circuit_index   INTEGER NOT NULL,
+     status          TEXT    NOT NULL,
+     start_time_ms   INTEGER,
+     end_time_ms     INTEGER,
+     pause_start_ms  INTEGER,
+     duration_ms     INTEGER NOT NULL,
+     elapsed_ms      INTEGER NOT NULL DEFAULT 0,
+     updated_at_ms   INTEGER NOT NULL,
+     PRIMARY KEY (manga_id, circuit_index)
+   )`,
+
+  // Vueltas que PitWall no vio (estuvo caído, o llegaron con el circuito ya
+  // cerrado) y se reponen con la media del carril. El equipo no pierde la vuelta
+  // —que es lo que decide la carrera— pero queda constancia de que su tiempo es
+  // una estimación. La reconciliación del cruce "en la bandera" también las marca.
+  `ALTER TABLE laps ADD COLUMN is_estimated INTEGER NOT NULL DEFAULT 0`,
+
+  // Transcurrido del circuito en el instante en que se persistió `driving_ms`.
+  // Sin esto, al rehidratar un turno abierto no se sabría desde qué punto seguir
+  // contando, y se le regalaría (o se le robaría) al piloto el tiempo de la caída.
+  `ALTER TABLE driver_shifts ADD COLUMN elapsed_at_ms INTEGER`,
 ];
 for (const sql of migrations) {
   try {
