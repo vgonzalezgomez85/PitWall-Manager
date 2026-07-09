@@ -229,11 +229,36 @@ class CircuitConnection {
   _pingAlive() {
     if (!this._connected) this._setConnected(true);
     if (this._watchdogTimer) clearTimeout(this._watchdogTimer);
-    // Watchdog is kept for future use (could emit a separate "stale heartbeat"
-    // warning), but it must NOT flip `_connected` to false: the link state
-    // tracks the OS-level port, not whether the DS chose to send a frame in
-    // the last N seconds. Idle mangas can legitimately be silent.
-    this._watchdogTimer = setTimeout(() => {}, HEARTBEAT_TIMEOUT_MS);
+    this._watchdogTimer = setTimeout(() => this._onHeartbeatTimeout(), HEARTBEAT_TIMEOUT_MS);
+  }
+
+  /**
+   * Han pasado HEARTBEAT_TIMEOUT_MS sin una sola trama del DS-300.
+   *
+   * SOLO significa avería si la manga está corriendo: entonces la caja emite un
+   * latido cada 60 s aunque no cruce ningún coche, así que el silencio es un
+   * enlace muerto. Con la manga parada el silencio es legítimo — de ahí que el
+   * watchdog no pueda tocar `_connected` a secas.
+   *
+   * Sin esto, una caja colgada con el puerto abierto (el SO nunca emite 'close',
+   * así que la reconexión automática no salta) dejaba 8 carriles sin contar
+   * vueltas durante horas, con el enlace pintado en verde.
+   */
+  _onHeartbeatTimeout() {
+    const corriendo = this._raceState === 'running' || this._raceState === 'resumed';
+    if (!corriendo) return;
+
+    console.error(`[DS-300 C${this._circuitIndex + 1}] Sin latido en ${HEARTBEAT_TIMEOUT_MS}ms con la manga corriendo → enlace caído`);
+    DebugLogger.log('ds_heartbeat_lost', { circuit: this._circuitIndex + 1, timeoutMs: HEARTBEAT_TIMEOUT_MS });
+    this._setConnected(false);
+
+    // El puerto puede seguir "abierto" para el SO. Cerrarlo dispara el handler
+    // 'close', que ya programa la reconexión con backoff. No usamos close(),
+    // que marca _explicitClose y desactivaría precisamente ese reintento.
+    if (this._port && this._port.isOpen) {
+      try { this._port.close(() => {}); }
+      catch (err) { console.error(`[DS-300 C${this._circuitIndex + 1}] No se pudo cerrar el puerto:`, err.message); }
+    }
   }
 
   _setConnected(connected) {
@@ -289,9 +314,7 @@ class CircuitConnection {
 
       if (gap) {
         // Gap detected mid-chunk: flush whatever was buffered before this chunk
-        if (this._frameBuf.length > 0) {
-          this._processFrame(this._frameBuf, this._frameStartTs);
-        }
+        this._flushFrameBuf();
         this._frameBuf     = [byte];
         this._frameStartTs = now;
       } else {
@@ -305,12 +328,31 @@ class CircuitConnection {
     // Flush the frame after FRAME_GAP_MS of silence — don't wait for the next frame
     this._flushTimer = setTimeout(() => {
       this._flushTimer = null;
-      if (this._frameBuf.length > 0) {
-        this._processFrame(this._frameBuf, this._frameStartTs);
-        this._frameBuf     = [];
-        this._frameStartTs = null;
-      }
+      this._flushFrameBuf();
     }, FRAME_GAP_MS + 5);
+  }
+
+  /**
+   * Procesa lo que haya en el buffer y lo VACÍA, pase lo que pase.
+   *
+   * El `finally` no es decorativo: si `_processFrame` lanza, el buffer se quedaba
+   * con los bytes malos y el parser los reprocesaba en bucle. Como el proceso
+   * sobrevive (hay un `uncaughtException` global), esa caja —8 carriles— dejaba
+   * de registrar cruces el resto de la manga sin que nadie se enterara.
+   */
+  _flushFrameBuf() {
+    if (this._frameBuf.length === 0) return;
+    const frame = this._frameBuf;
+    const ts    = this._frameStartTs;
+    try {
+      this._processFrame(frame, ts);
+    } catch (err) {
+      console.error(`[DS-300 C${this._circuitIndex + 1}] Frame descartado por error de parseo:`, err.message);
+      DebugLogger.log('ds_frame_error', { circuit: this._circuitIndex + 1, bytes: frame.length, error: err.message });
+    } finally {
+      this._frameBuf     = [];
+      this._frameStartTs = null;
+    }
   }
 
   _setRaceState(newState) {
@@ -465,6 +507,17 @@ class CircuitConnection {
     }
 
     // ── Lane crossing ──────────────────────────────────────────────────────────
+    // Un frame de cruce necesita al menos hasta el byte 17 (el tiempo de vuelta).
+    // Si un tirón de cable o un pico de latencia USB lo parte a 11-12 bytes,
+    // `ds300Byte(frame[12])` reventaba con `undefined.toString()`. Descartarlo es
+    // lo correcto: un cruce sin tiempo de vuelta no es un cruce, y la
+    // reconciliación de fin de manga lo repone si de verdad ocurrió.
+    if (frame.length < 18) {
+      console.warn(`[DS-300 C${this._circuitIndex + 1}] Frame de cruce truncado (${frame.length} bytes) — descartado`);
+      DebugLogger.log('ds_frame_truncado', { circuit: this._circuitIndex + 1, bytes: frame.length });
+      return;
+    }
+
     // Read lap time directly from DS-300 frame bytes 14-17.
     // null → first crossing (bytes contain non-decimal nibbles, no previous reference).
     const lapTimeMs = readLapTimeMs(frame);
@@ -946,3 +999,6 @@ class SerialServiceClass extends EventEmitter {
 }
 
 module.exports = new SerialServiceClass();
+// Expuesto solo para los tests. El parser de tramas es lógica pura y determinista,
+// y es donde un frame truncado puede envenenar el buffer de un circuito entero.
+module.exports.CircuitConnection = CircuitConnection;

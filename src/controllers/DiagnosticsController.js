@@ -85,15 +85,25 @@ class DiagnosticsController {
     // El "pendiente" se regenera en cada GO porque app.js auto-busca una manga
     // pendiente en carreras ACTIVAS. Si no cerramos esas carreras, reaparece y
     // sigue robando el GO (al entreno, p.ej.). Las completamos aquí.
+    //
+    // PERO NUNCA la carrera que se está corriendo AHORA. En una 24h siempre hay
+    // mangas de tandas futuras en 'pending': sin esta guarda, un operario que
+    // pulsara este botón viendo el cronometraje encallado marcaba como
+    // 'completed' la propia carrera de 24 h. A partir de ahí el auto-buscador de
+    // app.js ya no la encuentra y, al acabar la manga en curso, el GO del DS no
+    // arma la siguiente: la carrera se para sin decir nada.
     const Race = require('../models/Race');
+    const enCurso = TimingService.activeRaceId;
     const ids = db.prepare(
       `SELECT DISTINCT r.id FROM races r
        JOIN mangas m ON m.race_id = r.id
        WHERE r.status = 'active' AND m.status = 'pending'`
-    ).all().map(r => r.id);
+    ).all().map(r => r.id).filter(id => id !== enCurso);
+
     ids.forEach(id => { try { Race.updateStatus(id, 'completed'); } catch {} });
     const extra = ids.length ? ` · ${ids.length} carrera(s) activa(s) cerrada(s) (ya no desvían el GO)` : '';
-    if (req.session) req.session.flash = { type: 'success', text: 'Pending setup eliminado' + extra + '.' };
+    const protegida = enCurso ? ` · la carrera ${enCurso} está EN CURSO y no se ha tocado` : '';
+    if (req.session) req.session.flash = { type: 'success', text: 'Pending setup eliminado' + extra + protegida + '.' };
     res.redirect('/diagnostico');
   }
 
