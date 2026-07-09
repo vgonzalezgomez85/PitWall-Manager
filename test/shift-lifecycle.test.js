@@ -40,6 +40,7 @@ const assert = require('node:assert/strict');
 const db = require('../src/config/database');
 const DriverShift   = require('../src/models/DriverShift');
 const Manga         = require('../src/models/Manga');
+const Lap           = require('../src/models/Lap');
 const TimingService = require('../src/services/TimingService');
 const { crearPerfil, crearEquipoCatalogo, crearCarreraConManga } = require('./helpers/seed');
 
@@ -419,4 +420,60 @@ test('una manga TERMINADA solo se resetea con force (el reset de diagnóstico)',
   assert.equal(TimingService.cancelMangaById(esc.mangaId, esc.race, { force: true }), 'stale');
   assert.equal(db.prepare('SELECT status FROM mangas WHERE id = ?').get(esc.mangaId).status, 'pending');
   assert.ok(turnos(esc.mangaId).every(s => s.driving_ms === 0 && s.pre_armed === 1));
+});
+
+// ── D3 (auditoría 2026-07-09): el cierre de manga no puede dejar sesión zombi ──
+
+test('si la BD falla al cerrar la manga, la sesión NO queda viva', () => {
+  // Escenario: disco lleno / SQLITE_BUSY hacia la hora 20 de la 24h. Antes, la
+  // excepción subía al handler global y `session` se quedaba puesta: la manga
+  // acababa 'finished' en BD pero con el tick parado y el handler de cruces
+  // desenganchado. Y como `activeMangaId` seguía puesto, el siguiente GO entraba
+  // por la rama de "arrancar circuito" arrastrando el zombi a la manga siguiente.
+  const esc = escenario();
+  darGo(esc);
+  assert.equal(TimingService.activeMangaId, esc.mangaId);
+
+  const original = Manga.updateStatus;
+  Manga.updateStatus = () => { throw new Error('SQLITE_BUSY: database is locked'); };
+  try {
+    assert.doesNotThrow(() => TimingService.stopManga(true),
+      'un fallo de BD no puede propagar fuera del cierre de manga');
+  } finally {
+    Manga.updateStatus = original;
+  }
+
+  assert.equal(TimingService.session, null, 'la sesión queda cerrada pase lo que pase');
+  assert.equal(TimingService.activeMangaId, null, 'y el siguiente GO arrancará una manga nueva');
+  assert.deepEqual(TimingService.getActiveShifts(), {}, 'sin contadores vivos');
+});
+
+test('si la BD falla al cancelar la manga, la sesión tampoco queda viva', () => {
+  const esc = escenario();
+  darGo(esc);
+
+  const original = Lap.deleteByManga;
+  Lap.deleteByManga = () => { throw new Error('SQLITE_IOERR'); };
+  try {
+    assert.doesNotThrow(() => TimingService.cancelManga());
+  } finally {
+    Lap.deleteByManga = original;
+  }
+  assert.equal(TimingService.session, null);
+  assert.equal(TimingService.activeMangaId, null);
+});
+
+test('el cierre normal SIGUE armando la manga siguiente para el próximo GO', () => {
+  // Red de seguridad del arreglo de D3: el `finally` no puede borrar el
+  // `_pendingSetup` que el cierre acaba de preparar con la manga siguiente, o se
+  // rompería el encadenado de mangas de toda la carrera.
+  const esc = escenario();
+  // Una segunda manga en la misma tanda, para que haya "siguiente".
+  db.prepare('INSERT INTO mangas (tanda_id, race_id, number) VALUES (?, ?, 2)').run(esc.tandaId, esc.raceId);
+  darGo(esc);
+  TimingService.stopManga(true);
+
+  assert.equal(TimingService.session, null);
+  assert.ok(TimingService._pendingSetup, 'la manga siguiente queda armada esperando el GO');
+  assert.equal(TimingService._pendingSetup.manga.number, 2);
 });
