@@ -471,6 +471,7 @@ class RaceController {
       // así que sin esto quedarían huérfanas (manga_id NULL) y contaminarían
       // medias/proyección de la carrera.
       db.prepare('DELETE FROM laps WHERE manga_id IN (SELECT id FROM mangas WHERE tanda_id = ?)').run(t.id);
+      require('../models/Lap').markExternalMutation();
       db.prepare('DELETE FROM mangas WHERE tanda_id = ?').run(t.id);
       Manga.persistSchedule(t.id, race.id, Manga.buildSchedule(laneSequence, entities, race.passes, race.lane_repeat));
     }
