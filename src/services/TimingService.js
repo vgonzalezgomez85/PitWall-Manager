@@ -441,6 +441,15 @@ class TimingServiceClass {
     let nextTandaNumber = null;
     let reconcileData = null;   // snapshot para la reconciliación del cruce "en la bandera"
 
+    // Todo lo que sigue toca la BD. Si algo lanza (disco lleno hacia la hora 20,
+    // SQLITE_BUSY, IOERR), la excepción subía al handler global y `this.session`
+    // se quedaba sin vaciar: la manga acababa 'finished' en BD pero con sesión
+    // viva, el tick parado y el handler de cruces ya desenganchado. Peor: como
+    // `activeMangaId` seguía puesto, el siguiente GO del DS entraba por la rama
+    // de "arrancar circuito" y arrastraba el zombi a la manga siguiente.
+    // El `finally` garantiza que la sesión se cierra pase lo que pase.
+    try {
+
     if (updateDb) {
       // "Coma": fracción de la vuelta en curso al caer la bandera, estimada
       // como (fin del circuito − último cruce) / media limpia del carril y
@@ -576,6 +585,20 @@ class TimingServiceClass {
       }
     }
 
+    } catch (err) {
+      // La manga ya está cerrada en lo que importa (hardware parado, timers
+      // fuera, handler desenganchado). Que falle la BD no puede dejar el motor
+      // en un estado del que no se pueda arrancar la manga siguiente.
+      console.error('[TimingService] Error cerrando la manga:', err.message);
+      DebugLogger.log('manga', { event: 'stop_error', error: err.message });
+    } finally {
+      // OJO: aquí NO se toca `_pendingSetup`. El bloque de arriba lo arma con la
+      // manga SIGUIENTE para que el próximo GO del DS la encadene solo; borrarlo
+      // rompería la cadena de mangas de toda la carrera.
+      this.session = null;
+      this._activeShiftsByLane = {};
+    }
+
     // Reconciliación diferida del cruce "en la bandera": esperamos ~1.5 s a que
     // el frame del último cruce actualice byte12 en SerialService y entonces
     // reponemos en BD la(s) vuelta(s) que la caja contó pero que se descartaron
@@ -587,8 +610,6 @@ class TimingServiceClass {
         catch (err) { console.error('[TimingService] reconcile error:', err.message); }
       }, 1500);
     }
-
-    this.session = null;
   }
 
   // ── Reconciliación del cruce "en la bandera" (DS-300 real) ──────────────────
@@ -846,6 +867,10 @@ class TimingServiceClass {
     const mangaId = this.session.manga.id;
     const raceId  = this.session.race.id;
 
+    // Igual que en stopManga: si la BD falla a mitad, la sesión no puede quedar
+    // viva con el motor ya desmontado. Ver el comentario de allí.
+    try {
+
     // Delete all laps recorded in this session and reset manga to pending
     Lap.deleteByManga(mangaId);
     Manga.updateStatus(mangaId, 'pending');
@@ -866,7 +891,14 @@ class TimingServiceClass {
     DebugLogger.endMangaLog();
     SocketService.emit('manga:cancelled', { mangaId, raceId });
     console.log(`[TimingService] Manga ${this.session.manga.number} cancelled — reset to pending`);
-    this.session = null;
+
+    } catch (err) {
+      console.error('[TimingService] Error cancelando la manga:', err.message);
+      DebugLogger.log('manga', { event: 'cancel_error', mangaId, error: err.message });
+    } finally {
+      this.session = null;
+      this._activeShiftsByLane = {};
+    }
   }
 
   // ── Lap crossing ──────────────────────────────────────────────────────────

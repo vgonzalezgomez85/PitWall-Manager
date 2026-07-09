@@ -13,6 +13,15 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.6.0] — 2026-07-09
+
+### Corregido
+- **Un cable suelto ya no deja ciega una caja DS.** Si una trama de cruce llegaba partida (un tirón del cable USB, un pico de latencia), el programa fallaba al interpretarla y se quedaba atascado releyendo la misma trama rota: esa caja —sus ocho carriles— dejaba de registrar vueltas el resto de la manga, y nadie se enteraba porque el programa seguía aparentemente vivo. Ahora la trama rota se descarta y el cronometraje continúa.
+- **Aviso cuando una caja DS se queda muda.** El DS-300 envía una señal de vida cada minuto mientras la manga corre. Si dejaba de enviarla pero el puerto seguía abierto (caja colgada, fallo del USB), PitWall mostraba el enlace en verde y esos ocho carriles no contaban vueltas durante horas. Ahora, si pasan más de 75 segundos sin señal con la manga en marcha, se marca el enlace como caído y se intenta reconectar. Con la manga parada el silencio es normal y no se avisa.
+- **Un fallo del disco al cerrar una manga ya no contamina la siguiente.** Si al terminar una manga fallaba la grabación (disco lleno, base de datos ocupada), el cronometraje quedaba en un estado a medias: la manga constaba como terminada pero el motor seguía creyéndola activa, y el siguiente GO del DS no arrancaba la manga nueva. Ahora el cierre se completa siempre, aunque la grabación falle.
+- **Retirados los atajos de prueba que podían borrar la carrera.** Existían unas direcciones internas de prueba que simulaban las señales del DS. Una de ellas cancelaba la manga activa y borraba todas sus vueltas —horas de carrera— sin pedir confirmación, y bastaba con abrir cierta página en el ordenador de cronometraje para dispararla sin querer. Ya no están disponibles salvo que se active expresamente el modo banco de pruebas.
+- **El botón «Eliminar pending setup» ya no cierra la carrera en curso.** En una carrera larga siempre hay mangas futuras pendientes; ese botón de la pantalla de diagnóstico las daba por terminadas junto con la propia carrera, que a partir de ese momento dejaba de encadenar mangas y se paraba sin avisar. Ahora nunca toca la carrera que se está corriendo.
+
 ## [1.5.2] — 2026-07-08
 
 ### Corregido
