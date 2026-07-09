@@ -13,6 +13,12 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.6.1] — 2026-07-09
+
+### Corregido
+- **El marcador ya no se atasca en las últimas horas de una carrera larga.** Cada vez que un coche cruzaba la meta, PitWall recalculaba la clasificación y la proyección leyendo **todas** las vueltas de la carrera. En una prueba de 24 horas eso son más de 160.000 vueltas, y el cálculo llegaba a tardar 174 milésimas por cruce: con 24 carriles cruza un coche cada 0,8 segundos, así que el programa pasaba más del 20% del tiempo bloqueado justo en la hora en la que se decide la carrera. Ese bloqueo retrasaba el cronómetro y —lo más grave— podía partir en dos una trama del DS-300 y perder una vuelta.
+- **Ahora las mangas ya terminadas se calculan una sola vez y se reutilizan**, y solo se recalcula la manga en curso: el coste baja de 174 a 2 milésimas por cruce y deja de crecer con las horas de carrera. Comprobado sobre las 160.569 vueltas reales de la carrera de 24 horas de Modena, la clasificación resultante es idéntica, equipo a equipo, en las 22 mangas.
+
 ## [1.6.0] — 2026-07-09
 
 ### Corregido

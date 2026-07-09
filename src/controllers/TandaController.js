@@ -217,6 +217,7 @@ class TandaController {
       // Las vueltas se borran explícitamente: la FK es ON DELETE SET NULL y
       // quedarían huérfanas (manga_id NULL) contaminando medias/proyección.
       db.prepare('DELETE FROM laps WHERE manga_id IN (SELECT id FROM mangas WHERE tanda_id = ?)').run(manga.tanda_id);
+      require('../models/Lap').markExternalMutation();
       db.prepare('DELETE FROM mangas WHERE tanda_id = ?').run(manga.tanda_id);
       Manga.persistSchedule(manga.tanda_id, race.id, schedule);
 
@@ -283,6 +284,7 @@ class TandaController {
           });
         }
         db.prepare('DELETE FROM laps WHERE manga_id IN (SELECT id FROM mangas WHERE tanda_id = ?)').run(tanda.id);
+        require('../models/Lap').markExternalMutation();
         db.prepare('DELETE FROM mangas WHERE tanda_id = ?').run(tanda.id);
         db.prepare('DELETE FROM drivers WHERE tanda_id = ?').run(tanda.id);
         const entities = [];
@@ -314,6 +316,7 @@ class TandaController {
           });
         }
         db.prepare('DELETE FROM laps WHERE manga_id IN (SELECT id FROM mangas WHERE tanda_id = ?)').run(tanda.id);
+        require('../models/Lap').markExternalMutation();
         db.prepare('DELETE FROM mangas WHERE tanda_id = ?').run(tanda.id);
         db.prepare('DELETE FROM drivers WHERE tanda_id = ?').run(tanda.id);
         db.prepare('DELETE FROM teams   WHERE tanda_id = ?').run(tanda.id);

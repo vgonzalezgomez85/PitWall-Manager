@@ -51,7 +51,13 @@ class TimingServiceClass {
     this._lapHandler     = null;
     this._pendingSetup   = null; // manga queued for DS hardware GO
     this._tandaBoundary  = false; // true when last manga of a tanda just ended — blocks auto-GO
+    this._priorCache     = null; // agregados de mangas anteriores (ver _priorAggregates)
+    this._projCache      = null; // proyección de carrera con TTL (ver _cachedProjection)
   }
+
+  // Cada cuánto se recalcula la proyección en el camino caliente. Es una
+  // estimación a horas vista; 1 s de frescura sobra y ahorra 100 ms por cruce.
+  static get PROJECTION_TTL_MS() { return 1000; }
 
   // Allow controllers (e.g. SessionController.repeat) to clear the boundary
   // when the user explicitly reactivates the last manga of a finished tanda.
@@ -193,6 +199,7 @@ class TimingServiceClass {
     // tick mientras la manga esté running. Se persiste a BD cada 5s.
     this._isChampionship = (race.type === 'championship');
     this._activeShiftsByLane = {};
+    this.invalidateStandingsCaches();   // manga nueva: las mangas 'anteriores' cambian
     if (this._isChampionship) {
       // Activa los pre-armes del circuito que ACABA de recibir su GO: les setea
       // started_at_ms = startTime y pre_armed = 0. Los de las demás cajas se
@@ -376,6 +383,7 @@ class TimingServiceClass {
     if (!c || c.status !== 'running') return;
     c.endTime = Date.now();   // ANTES del cambio de estado: _circuitElapsedMs ya lo lee
     c.status  = 'finished';
+    this.invalidateStandingsCaches();   // el circuito ya no aporta tiempo restante
     if (c.autoStopTimer) { clearTimeout(c.autoStopTimer); c.autoStopTimer = null; }
     console.log(`[TimingService] Circuito ${ci + 1} finalizado`);
 
@@ -592,6 +600,7 @@ class TimingServiceClass {
       console.error('[TimingService] Error cerrando la manga:', err.message);
       DebugLogger.log('manga', { event: 'stop_error', error: err.message });
     } finally {
+      this.invalidateStandingsCaches();
       // OJO: aquí NO se toca `_pendingSetup`. El bloque de arriba lo arma con la
       // manga SIGUIENTE para que el próximo GO del DS la encadene solo; borrarlo
       // rompería la cadena de mangas de toda la carrera.
@@ -618,6 +627,7 @@ class TimingServiceClass {
   // cruce que completó justo al caer la bandera). Cuadra EXACTO con el DS, sin
   // heurística de tiempo.
   _reconcileFinalLaps(data) {
+    this.invalidateStandingsCaches();   // repone vueltas de una manga ya cerrada
     // Si ya arrancó otra manga, su GO (0xA1) habrá limpiado byte12 → abortar
     // para no reponer con contadores de la manga nueva.
     if (this.session) {
@@ -896,6 +906,7 @@ class TimingServiceClass {
       console.error('[TimingService] Error cancelando la manga:', err.message);
       DebugLogger.log('manga', { event: 'cancel_error', mangaId, error: err.message });
     } finally {
+      this.invalidateStandingsCaches();
       this.session = null;
       this._activeShiftsByLane = {};
     }
@@ -1268,16 +1279,9 @@ class TimingServiceClass {
     // la media por pista de TicTac). Las mangas anteriores se agrupan por
     // entidad, NO por carril, porque los carriles rotan cada manga.
     const db = require('../config/database');
-    const priorStats = db.prepare(`
-      SELECT CASE WHEN team_id IS NOT NULL THEN 't' || team_id ELSE 'd' || driver_id END AS ekey,
-             COUNT(*) AS cnt, AVG(lap_time_ms) AS avg_ms
-      FROM laps
-      WHERE race_id = ? AND manga_id != ?
-        AND is_ghost = 0 AND is_warmup = 0 AND lap_number > 0
-      GROUP BY ekey
-    `).all(race.id, manga.id);
-    const priorByEntity = {};
-    priorStats.forEach(p => { priorByEntity[p.ekey] = { count: p.cnt, avg: p.avg_ms }; });
+    // Agregados de las mangas ANTERIORES. Cacheados: no cambian mientras corre
+    // esta manga, y en una 24 h son 153.000 filas (74 ms en cada cruce).
+    const { priorByEntity, priorTimeByEntity } = this._priorAggregates(race.id, manga.id);
     rows.forEach(r => {
       const ld = laneMap[r.lane];
       const ekey = ld?.teamId ? 't' + ld.teamId : (ld?.driverId ? 'd' + ld.driverId : null);
@@ -1296,15 +1300,6 @@ class TimingServiceClass {
     // desempate "por coma": a igualdad de vueltas, va delante quien las hizo en
     // menos tiempo. = tiempo en mangas anteriores (por entidad, sobrevive a la
     // rotación de carriles) + suma de la manga actual.
-    const priorTimeRows = db.prepare(`
-      SELECT CASE WHEN team_id IS NOT NULL THEN 't'||team_id ELSE 'd'||driver_id END AS ekey,
-             SUM(lap_time_ms) AS sum_ms
-      FROM laps
-      WHERE race_id = ? AND manga_id != ? AND is_ghost = 0
-      GROUP BY ekey
-    `).all(race.id, manga.id);
-    const priorTimeByEntity = {};
-    priorTimeRows.forEach(p => { priorTimeByEntity[p.ekey] = p.sum_ms || 0; });
     rows.forEach(r => {
       const ld = laneMap[r.lane];
       const ekey = ld?.teamId ? 't' + ld.teamId : (ld?.driverId ? 'd' + ld.driverId : null);
@@ -1317,7 +1312,12 @@ class TimingServiceClass {
     // proyectadas, posición, gap al de delante y "P/Subir". Es EXACTAMENTE la
     // función única buildRaceProjection (misma que Le Mans y live-stats), por
     // lo que todos los consumidores comparten cálculo y orden.
-    const projection = this.buildRaceProjection(race.id);
+    //
+    // Cacheada con TTL corto: cuesta 100 ms sobre las 160.000 vueltas de una 24 h
+    // y llega ~1 cruce cada 0,8 s con 24 carriles. Es una ESTIMACIÓN a horas
+    // vista; que se refresque cada segundo en vez de en cada cruce no cambia
+    // nada de lo que ve el usuario, y libera el bucle para el serie y el tick.
+    const projection = this._cachedProjection(race.id);
 
     return {
       mangaId:      manga.id,
@@ -1329,6 +1329,80 @@ class TimingServiceClass {
       raceBestLaps,
       circuits:     this._circuitClocks(),
     };
+  }
+
+  // ── Cachés del camino caliente ────────────────────────────────────────────
+  //
+  // `getStandings()` se ejecuta en CADA cruce. Medido sobre las 160.000 vueltas
+  // reales de la 24h de Modena, con 153.000 de mangas anteriores:
+  //     media y tiempo por entidad ..... 74 ms
+  //     proyección de carrera .......... 100 ms
+  // Con 24 carriles llega ~1 cruce cada 0,8 s: el proceso pasaba >20 % del tiempo
+  // bloqueado en SELECTs síncronos, y el bloqueo retrasa el tick de 1 s y el
+  // procesado de tramas serie. Y empeora con cada hora de carrera.
+
+  /**
+   * Media y tiempo total por entidad de las mangas ANTERIORES a `mangaId`.
+   *
+   * No cambian mientras corre la manga: solo se insertan vueltas de la manga en
+   * curso. La caché se invalida sola si alguien toca las vueltas de otra manga
+   * (una corrección, una reconstrucción de tanda), gracias al contador de
+   * mutaciones del modelo Lap — no depende de que nadie se acuerde de invalidar.
+   */
+  _priorAggregates(raceId, mangaId) {
+    const Lap = require('../models/Lap');
+    const mut = Lap.mutationsOutside(mangaId);
+    const c = this._priorCache;
+    if (c && c.raceId === raceId && c.mangaId === mangaId && c.mut === mut) return c;
+
+    const db = require('../config/database');
+    const priorByEntity = {};
+    db.prepare(`
+      SELECT CASE WHEN team_id IS NOT NULL THEN 't' || team_id ELSE 'd' || driver_id END AS ekey,
+             COUNT(*) AS cnt, AVG(lap_time_ms) AS avg_ms
+      FROM laps
+      WHERE race_id = ? AND manga_id != ?
+        AND is_ghost = 0 AND is_warmup = 0 AND lap_number > 0
+      GROUP BY ekey
+    `).all(raceId, mangaId).forEach(p => { priorByEntity[p.ekey] = { count: p.cnt, avg: p.avg_ms }; });
+
+    const priorTimeByEntity = {};
+    db.prepare(`
+      SELECT CASE WHEN team_id IS NOT NULL THEN 't'||team_id ELSE 'd'||driver_id END AS ekey,
+             SUM(lap_time_ms) AS sum_ms
+      FROM laps
+      WHERE race_id = ? AND manga_id != ? AND is_ghost = 0
+      GROUP BY ekey
+    `).all(raceId, mangaId).forEach(p => { priorTimeByEntity[p.ekey] = p.sum_ms || 0; });
+
+    // Sumas crudas por entidad de las mangas anteriores, para la proyección: es
+    // el escaneo caro (153.000 filas de 160.000 en una 24 h) que hacía que
+    // buildRaceProjection costara 100 ms en cada cruce.
+    const priorAggRaw = Lap._aggRaw(raceId, { excludeManga: mangaId });
+
+    this._priorCache = { raceId, mangaId, mut, priorByEntity, priorTimeByEntity, priorAggRaw };
+    return this._priorCache;
+  }
+
+  /**
+   * Proyección de carrera con TTL corto. Es una ESTIMACIÓN a horas vista: que se
+   * refresque cada `PROJECTION_TTL_MS` en vez de en cada cruce no cambia nada de
+   * lo que ve el usuario. Las transiciones de manga la invalidan de inmediato,
+   * para que nadie vea una proyección de la manga anterior.
+   */
+  _cachedProjection(raceId) {
+    const c = this._projCache;
+    const now = Date.now();
+    if (c && c.raceId === raceId && (now - c.ts) < TimingServiceClass.PROJECTION_TTL_MS) return c.value;
+    const value = this.buildRaceProjection(raceId);
+    this._projCache = { raceId, ts: now, value };
+    return value;
+  }
+
+  /** Tira las cachés del camino caliente. Las transiciones de manga la llaman. */
+  invalidateStandingsCaches() {
+    this._priorCache = null;
+    this._projCache  = null;
   }
 
   // ════════════════════════════════════════════════════════════════════════
@@ -1414,7 +1488,13 @@ class TimingServiceClass {
     const futureMangaDurMs = durDefaultMs;
 
     // ── Agregado por entidad (media simple, total, coma, best) desde BD.
-    const agg = Lap.aggregateByRace(raceId).filter(p => p.entity_id != null);
+    // Con una manga en curso, las mangas ya cerradas se reutilizan de la caché y
+    // solo se agrega la manga viva: 100 ms → ~4 ms. Da EXACTAMENTE el mismo
+    // resultado (comprobado entidad a entidad sobre las 22 mangas de Modena).
+    const agg = (activeMangaId
+      ? Lap.aggregateByRaceSplit(raceId, activeMangaId, this._priorAggregates(raceId, activeMangaId).priorAggRaw)
+      : Lap.aggregateByRace(raceId)
+    ).filter(p => p.entity_id != null);
 
     // Incluir TAMBIÉN las entidades asignadas a la carrera que aún no tienen
     // vueltas (tandas/mangas por empezar): deben salir en la clasificación con
