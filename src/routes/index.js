@@ -317,41 +317,55 @@ router.get('/api/mobile/races/:id/results',  MobileController.racesResults);
 router.get('/api/mobile/races/:id',          MobileController.racesShow);
 router.get('/api/mobile/races/:id/pole',     MobileController.racesPole);
 
-// ── Test: simulate DS-300 events ─────────────────────────────────────────────
-router.get('/api/test/go', (req, res) => {
-  const SerialService = require('../services/SerialService');
-  SerialService.emit('race_go', { durationMs: 6 * 60000 });
-  setTimeout(() => SerialService.emit('race_started'), 6500);
-  res.json({ ok: true, msg: 'GO emitted, race_started in 6.5s' });
-});
-router.get('/api/test/stop', (req, res) => {
-  const SerialService = require('../services/SerialService');
-  SerialService.emit('race_stopped');
-  res.json({ ok: true, msg: 'race_stopped emitted' });
-});
-router.get('/api/test/finish', (req, res) => {
-  const SerialService = require('../services/SerialService');
-  SerialService.emit('race_finished');
-  res.json({ ok: true, msg: 'race_finished emitted' });
-});
-router.get('/api/test/pause', (req, res) => {
-  const SerialService = require('../services/SerialService');
-  SerialService.emit('race_paused');
-  res.json({ ok: true, msg: 'race_paused emitted' });
-});
-router.get('/api/test/resume', (req, res) => {
-  const SerialService = require('../services/SerialService');
-  SerialService.emit('race_resumed');
-  res.json({ ok: true, msg: 'race_resumed emitted' });
-});
+// ── Endpoints de banco de pruebas (DESACTIVADOS por defecto) ─────────────────
+//
+// `/api/test/stop` acaba llamando a TimingService.cancelManga(), que BORRA todas
+// las vueltas de la manga activa — pueden ser horas de carrera. Al ser un GET sin
+// autenticación, bastaba con que el navegador del PC de control abriera una
+// página cualquiera con <img src="http://localhost:3000/api/test/stop"> para
+// tirar la carrera: un `img` dispara el GET solo. Y cualquier tablet de la
+// allowlist podía llamarlos a mano.
+//
+// Se activan solo con PITWALL_TEST_ENDPOINTS=1, que es como se lanza el banco.
+// Nunca en la máquina de cronometraje de una carrera real.
+if (process.env.PITWALL_TEST_ENDPOINTS === '1') {
+  console.warn('[routes] ⚠ Endpoints de prueba ACTIVOS (/api/test/*, /api/rawlog) — no usar en carrera');
 
-// ── Debug: raw serial log ─────────────────────────────────────────────────────
-router.get('/api/rawlog', (req, res) => {
-  const SerialService = require('../services/SerialService');
-  const log = SerialService.getRawLog();
-  const hex = log.map(e => e.byte.toString(16).padStart(2, '0'));
-  res.json({ count: hex.length, bytes: hex, raw: log });
-});
+  router.get('/api/test/go', (req, res) => {
+    const SerialService = require('../services/SerialService');
+    SerialService.emit('race_go', { durationMs: 6 * 60000 });
+    setTimeout(() => SerialService.emit('race_started'), 6500);
+    res.json({ ok: true, msg: 'GO emitted, race_started in 6.5s' });
+  });
+  router.get('/api/test/stop', (req, res) => {
+    const SerialService = require('../services/SerialService');
+    SerialService.emit('race_stopped');
+    res.json({ ok: true, msg: 'race_stopped emitted' });
+  });
+  router.get('/api/test/finish', (req, res) => {
+    const SerialService = require('../services/SerialService');
+    SerialService.emit('race_finished');
+    res.json({ ok: true, msg: 'race_finished emitted' });
+  });
+  router.get('/api/test/pause', (req, res) => {
+    const SerialService = require('../services/SerialService');
+    SerialService.emit('race_paused');
+    res.json({ ok: true, msg: 'race_paused emitted' });
+  });
+  router.get('/api/test/resume', (req, res) => {
+    const SerialService = require('../services/SerialService');
+    SerialService.emit('race_resumed');
+    res.json({ ok: true, msg: 'race_resumed emitted' });
+  });
+
+  // Volcado del puerto serie en crudo. No destruye nada, pero expone tráfico.
+  router.get('/api/rawlog', (req, res) => {
+    const SerialService = require('../services/SerialService');
+    const log = SerialService.getRawLog();
+    const hex = log.map(e => e.byte.toString(16).padStart(2, '0'));
+    res.json({ count: hex.length, bytes: hex, raw: log });
+  });
+}
 
 // ── PitWall Lap — cliente web del equipo (resistencia) ──────────────────────
 // Rutas PÚBLICAS (accesibles desde el móvil de cualquier equipo): el acceso real

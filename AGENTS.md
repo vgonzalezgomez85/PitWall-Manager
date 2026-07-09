@@ -156,7 +156,9 @@ Siguiente manga pendiente se activa automáticamente
 
 - **Models**: métodos estáticos sobre `better-sqlite3`, síncronos. Sin ORM. Nombres: `findById`, `findAll`, `create`, `update`, `updateStatus`.
 - **Controllers**: funciones exportadas `module.exports = { action }`. Leen `req.params/body/session`, llaman a models/services, renderizan EJS o redirigen.
-- **No hay tests automatizados**. Verificar con el emulador DS-300 (`/Users/victor/ds300-emulator/emulator.js`) y las rutas de test (`/api/test/go`, `/api/test/stop`, etc.).
+- **Tests**: `npm test` (`node --test`, sin dependencias nuevas). Cubren turnos de piloto, informe, pre-arme, el parser de tramas DS-300 y los endpoints peligrosos. El motor de vueltas, la rotación de carriles y las estadísticas **siguen sin cobertura**.
+- **Banco de pruebas**: emulador DS-300 (`/Users/victor/ds300-emulator/emulator.js`) y `node scripts/rehearsal-shifts.js` (ensayo E2E sobre 3 cajas, 24 carriles).
+  Las rutas `/api/test/*` y `/api/rawlog` simulan las señales del DS, pero **solo se montan con `PITWALL_TEST_ENDPOINTS=1`**: `/api/test/stop` borra todas las vueltas de la manga activa, así que no puede existir en la máquina de una carrera.
 - **i18n**: usar `req.t('key')` en controllers/vistas. Añadir ambas claves (es + en) en `src/locales/*.json` siempre que se añada texto visible.
 - **Sin comentarios redundantes** en el código. Solo WHY si no es obvio.
 
