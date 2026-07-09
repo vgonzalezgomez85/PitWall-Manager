@@ -329,5 +329,28 @@ test('la proyección con manga activa coincide con la de la vía directa', () =>
   const sinCache = TimingService.buildRaceProjection(raceId);
   Lap.aggregateByRaceSplit = split;
 
-  assert.deepEqual(conCache, sinCache, 'la caché no puede cambiar ni una posición');
+  // `remainingMs` y `projectedRaw` se derivan de Date.now(), así que las dos
+  // llamadas difieren en el milisegundo que las separa. Comparar la proyección
+  // entera con deepEqual hacía este test dependiente del reloj: pasaba solo si
+  // ambas caían en el mismo ms. Se compara lo que el test dice comprobar —que la
+  // caché no cambia ni una posición— y la proyección con tolerancia.
+  const estable = (p) => ({
+    entityId: p.entityId, name: p.name, position: p.position,
+    totalLaps: p.totalLaps, avgLapMs: p.avgLapMs, bestLapMs: p.bestLapMs,
+    comaTotal: p.comaTotal, mangasRaced: p.mangasRaced,
+  });
+  assert.deepEqual(conCache.map(estable), sinCache.map(estable),
+    'la caché no puede cambiar ni una posición');
+
+  conCache.forEach((p, i) => {
+    const q = sinCache[i];
+    if (p.projectedRaw == null || q.projectedRaw == null) {
+      assert.equal(p.projectedRaw, q.projectedRaw);
+      return;
+    }
+    assert.ok(Math.abs(p.projectedRaw - q.projectedRaw) < 0.01,
+      `${p.name}: proyección ${p.projectedRaw} vs ${q.projectedRaw}`);
+    assert.ok(Math.abs(p.remainingMs - q.remainingMs) <= 50,
+      `${p.name}: restante ${p.remainingMs} vs ${q.remainingMs}`);
+  });
 });
