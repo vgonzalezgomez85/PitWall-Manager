@@ -54,6 +54,37 @@ function ds300Byte(b) {
   return ((b >> 4) <= 9 && (b & 0xF) <= 9) ? parseInt(b.toString(16), 10) : null;
 }
 
+/**
+ * El contador de vueltas del DS (byte12) es BCD de un byte: cuenta MÓDULO 100.
+ * Devuelve el contador ABSOLUTO que sigue a `prevAbs` y acaba en `byte12`.
+ *
+ * El byte12 solo dice en qué acaba el contador, no cuánto ha subido. Con
+ * `prevAbs = 90` y `byte12 = 20`, los absolutos compatibles son 120, 220, 320…
+ * — es decir, 29, 129 o 229 vueltas perdidas. Hay que elegir uno.
+ *
+ * `esperadas` es cuántas vueltas cabían en el tiempo transcurrido según la media
+ * del carril. Es la única información que desempata:
+ *
+ *   - Sin ella (`null`) se toma el MENOR candidato, o sea "se perdieron menos de
+ *     100 vueltas". Es lo mejor que se puede suponer a ciegas.
+ *   - Con ella se elige el candidato más cercano a lo que dice el reloj. Así una
+ *     desconexión de 25 minutos a 10 s/vuelta repone ~150 vueltas y no 50; y un
+ *     byte12 corrupto que "retrocede" (12 → 11) no inventa 98 vueltas, porque el
+ *     reloj dice que solo cabía una.
+ *
+ * El contador nunca retrocede: el resultado no puede quedar por debajo de `prevAbs`.
+ */
+function absLapCount(byte12, prevAbs, esperadas = null) {
+  if (prevAbs == null) return byte12;
+  if (esperadas == null || !Number.isFinite(esperadas)) {
+    const d = ((byte12 - (prevAbs % 100)) + 100) % 100;
+    return prevAbs + d;
+  }
+  const objetivo = prevAbs + Math.max(0, esperadas);
+  const abs = Math.round((objetivo - byte12) / 100) * 100 + byte12;
+  return Math.max(prevAbs, abs);
+}
+
 function readLapTimeMs(frame) {
   if (frame.length < 18) return null;
   const mins  = ds300Byte(frame[14]);
@@ -73,7 +104,7 @@ const LANE_MAP = [
 
 // ── Per-circuit connection ────────────────────────────────────────────────────
 class CircuitConnection {
-  constructor(circuitIndex, laneOffset, onCrossing, onGo, onStop, onPause, onResume, onGoSignal, onFinish, onResumeSignal, onSemaphoreStep) {
+  constructor(circuitIndex, laneOffset, onCrossing, onGo, onStop, onPause, onResume, onGoSignal, onFinish, onResumeSignal, onSemaphoreStep, onHeartbeat, onLinkChange) {
     this._circuitIndex     = circuitIndex;
     this._laneOffset       = laneOffset;
     this._onCrossing       = onCrossing;
@@ -85,6 +116,8 @@ class CircuitConnection {
     this._onFinish         = onFinish;
     this._onResumeSignal   = onResumeSignal || (() => {});
     this._onSemaphoreStep  = onSemaphoreStep || (() => {});
+    this._onHeartbeat      = onHeartbeat || (() => {});
+    this._onLinkChange     = onLinkChange || (() => {});
     this._port          = null;
     this._rawLog        = [];
     this._frameBuf      = [];
@@ -92,6 +125,7 @@ class CircuitConnection {
     this._lastByteTs    = null;
     this._flushTimer    = null;
     this._raceState     = null;
+    this._mangaActive   = false;  // lo dice TimingService, no las tramas (ver setExternalRaceState)
     this._watchdogTimer = null;
     this._connected     = true;   // optimistic until we have reason to think otherwise
     this._lastHeartbeatTs = null;
@@ -101,6 +135,11 @@ class CircuitConnection {
     // crossings filled with the lane's average lap time so the totals stay
     // consistent and the averages aren't skewed by null values.
     this._lastLapByLane = new Map();
+    // Contador ABSOLUTO por carril (el byte12 crudo cuenta módulo 100) y el
+    // instante del último cruce visto, que es lo que permite estimar cuántas
+    // vueltas cabían en el hueco y desempatar el módulo.
+    this._lastLapAbsByLane = new Map();
+    this._lastCrossTsByLane = new Map();
     // Running stats of REAL lap times per lane (sum + count), used to estimate
     // phantom lap times. Phantom laps never feed back into these stats.
     this._lapStatsByLane = new Map();
@@ -228,8 +267,70 @@ class CircuitConnection {
   // Mark the link as alive and (re)arm the heartbeat watchdog.
   _pingAlive() {
     if (!this._connected) this._setConnected(true);
+    this._armWatchdog();
+  }
+
+  _armWatchdog() {
     if (this._watchdogTimer) clearTimeout(this._watchdogTimer);
     this._watchdogTimer = setTimeout(() => this._onHeartbeatTimeout(), HEARTBEAT_TIMEOUT_MS);
+  }
+
+  _disarmWatchdog() {
+    if (this._watchdogTimer) clearTimeout(this._watchdogTimer);
+    this._watchdogTimer = null;
+  }
+
+  /**
+   * Alinea el estado que mira el watchdog con lo que PitWall sabe de la manga.
+   *
+   * `_raceState` solo lo fijan las tramas del DS. Si PitWall se reinicia a mitad
+   * de manga (o rehidrata la sesión), no vuelve a llegar ningún GO: `_raceState`
+   * se queda en `null`, `_onHeartbeatTimeout` sale por su guarda y una caja que
+   * se calla NO se detecta nunca. Medido en el banco: además de perder el aviso,
+   * el puerto muerto nunca se cierra y `serialport` crece ~25 MB/s hasta tumbar
+   * el proceso por falta de memoria.
+   *
+   * OJO: NO toca `_raceState`. Ése es el estado que las TRAMAS ven, y
+   * `_setRaceState` hace cortocircuito si el estado no cambia. Si aquí lo
+   * pusiéramos a 'running', el GO de las demás cajas (que llega escalonado)
+   * encontraría el estado ya puesto y no dispararía `onGo()`: solo arrancaría la
+   * primera caja que mandara el GO. Por eso va en un campo aparte.
+   */
+  setExternalRaceState(running) {
+    this._mangaActive = !!running;
+    if (running) this._armWatchdog();
+    else         this._disarmWatchdog();
+  }
+
+  /**
+   * Contadores de vuelta por carril, para trasplantarlos a la conexión nueva.
+   *
+   * Al reabrir el puerto por `connectMultiple` (guardar ajustes, reconexión desde
+   * diagnóstico) se construye un `CircuitConnection` nuevo. Si empieza con los
+   * mapas vacíos no hay `prevAbs` contra el que comparar, así que el salto del
+   * contador del DS durante el corte pasa desapercibido y las vueltas del hueco
+   * NO se reponen: se pierden en silencio. Medido en el banco: la caja
+   * desconectada acabó con ~22 vueltas por carril frente a ~31 de las demás.
+   */
+  exportLaneState() {
+    return {
+      lastLap:   new Map(this._lastLapByLane),
+      lastAbs:   new Map(this._lastLapAbsByLane),
+      lastTs:    new Map(this._lastCrossTsByLane),
+      lapStats:  new Map(this._lapStatsByLane),
+      raceState: this._raceState,
+    };
+  }
+
+  importLaneState(s) {
+    if (!s) return;
+    this._lastLapByLane     = new Map(s.lastLap);
+    this._lastLapAbsByLane  = new Map(s.lastAbs);
+    this._lastCrossTsByLane = new Map(s.lastTs);
+    this._lapStatsByLane    = new Map(s.lapStats);
+    // La trama de GO (0x3e/0xa1) vuelve a poner `_raceState` a null antes de
+    // arrancar la manga siguiente, así que heredarlo no bloquea ningún GO futuro.
+    this._raceState = s.raceState ?? null;
   }
 
   /**
@@ -245,7 +346,13 @@ class CircuitConnection {
    * vueltas durante horas, con el enlace pintado en verde.
    */
   _onHeartbeatTimeout() {
-    const corriendo = this._raceState === 'running' || this._raceState === 'resumed';
+    // El estado de las tramas manda. `_mangaActive` solo cubre el caso en que aún
+    // no hemos visto ninguna (reinicio/rehidratación a mitad de manga): ahí no va
+    // a llegar un GO que ponga `_raceState`, y sin esto la caja muda no se detecta.
+    // Con la manga en pausa (`_raceState === 'paused'`) el silencio es normal.
+    const corriendo = this._raceState === 'running'
+                   || this._raceState === 'resumed'
+                   || (this._mangaActive && this._raceState === null);
     if (!corriendo) return;
 
     console.error(`[DS-300 C${this._circuitIndex + 1}] Sin latido en ${HEARTBEAT_TIMEOUT_MS}ms con la manga corriendo → enlace caído`);
@@ -261,18 +368,20 @@ class CircuitConnection {
     }
   }
 
+  // La conexión NO emite por socket: avisa al servicio, que es el único que
+  // conoce el estado de TODAS las cajas y emite un `serial:status` completo.
+  // Emitir aquí un payload parcial ({circuit, connected}) hacía que el último
+  // evento recibido pisara al anterior, así que una caja caída quedaba oculta
+  // en cuanto otra reportaba algo.
   _setConnected(connected) {
     if (this._connected === connected) return;
     this._connected = connected;
     console.log(`[DS-300 C${this._circuitIndex + 1}] Link → ${connected ? 'connected' : 'DISCONNECTED'}`);
-    const SocketService = require('./SocketService');
-    SocketService.emit('serial:status', {
-      circuit:    this._circuitIndex + 1,
-      connected,
-      lastHeartbeatTs: this._lastHeartbeatTs,
-    });
+    this._onLinkChange(this._circuitIndex, connected);
   }
 
+  get connected()        { return this._connected; }
+  get lastHeartbeatTs()  { return this._lastHeartbeatTs; }
   get path()   { return this._port?.path ?? null; }
   get rawLog() { return [...this._rawLog]; }
 
@@ -409,6 +518,9 @@ class CircuitConnection {
       const minute = frame[14];
       this._lastHeartbeatTs = ts;
       console.log(`[DS-300 C${this._circuitIndex + 1}] ♥ heartbeat (min ${minute})`);
+      // El latido SOLO llega con la carrera corriendo: es la prueba de que la
+      // caja sigue viva y de en qué minuto va. La rehidratación se apoya en él.
+      this._onHeartbeat(minute, ts);
       const SocketService = require('./SocketService');
       SocketService.emit('serial:heartbeat', { circuit: this._circuitIndex + 1, minute, ts });
       return;
@@ -424,6 +536,8 @@ class CircuitConnection {
       const mins = ds300Byte(frame[10]) ?? 0;
       // New manga → reset per-lane lap counters and stats for gap detection.
       this._lastLapByLane.clear();
+      this._lastLapAbsByLane.clear();
+      this._lastCrossTsByLane.clear();
       this._lapStatsByLane.clear();
       // Reset cached race state so the next transition to 'running' actually
       // fires the callback. Some DS-300 units don't emit 0xA4/0xA7 between
@@ -535,17 +649,34 @@ class CircuitConnection {
       // average real lap time so totals stay consistent and averages aren't
       // distorted by null values.
       if (lapCounter !== null) {
-        const prev = this._lastLapByLane.get(localLane);
-        if (prev != null && lapCounter > prev + 1) {
-          const missed = lapCounter - prev - 1;
-          const stats  = this._lapStatsByLane.get(localLane);
-          const avgMs  = (stats && stats.count > 0) ? (stats.sum / stats.count) : null;
-          console.warn(`[DS-300 C${this._circuitIndex + 1}] Lane ${localLane} → global ${globalLane} — gap detected (prev B12=${prev}, now B12=${lapCounter}, ${missed} laps missing, avg=${avgMs ? avgMs.toFixed(1) + 'ms' : 'n/a'})`);
+        // Se compara el contador ABSOLUTO, no el byte12 crudo. Comparando el
+        // crudo (`lapCounter > prev + 1`), en cuanto el contador daba la vuelta
+        // —tirón del cable, desconexión larga— no se detectaba nada: prev=90,
+        // ahora=20 → `20 > 91` es falso → las 29 vueltas se perdían en silencio.
+        //
+        // Y el byte12 por sí solo no basta para saber CUÁNTAS se perdieron: 20
+        // tras 90 puede ser 120, 220 o 320. Lo desempata el reloj — cuántas
+        // vueltas cabían en el hueco, a la media de ese carril.
+        const prevAbs = this._lastLapAbsByLane.get(localLane);
+        const lastTs  = this._lastCrossTsByLane.get(localLane);
+        const stats   = this._lapStatsByLane.get(localLane);
+        const avgMs   = (stats && stats.count > 0) ? (stats.sum / stats.count) : null;
+
+        const esperadas = (avgMs > 0 && lastTs != null && ts > lastTs)
+          ? (ts - lastTs) / avgMs
+          : null;
+
+        const abs = absLapCount(lapCounter, prevAbs, esperadas);
+        if (prevAbs != null && abs > prevAbs + 1) {
+          const missed = abs - prevAbs - 1;
+          console.warn(`[DS-300 C${this._circuitIndex + 1}] Lane ${localLane} → global ${globalLane} — gap detected (prev=${prevAbs}, now=${abs}, B12=${lapCounter}, ${missed} laps missing, ${esperadas != null ? `~${esperadas.toFixed(1)} caben en el hueco` : 'sin media'}, avg=${avgMs ? avgMs.toFixed(1) + 'ms' : 'n/a'})`);
           for (let k = 0; k < missed; k++) {
             this._onCrossing({ lane: globalLane, timestamp: ts, lapTimeMs: avgMs, missed: true });
           }
         }
         this._lastLapByLane.set(localLane, lapCounter);
+        this._lastLapAbsByLane.set(localLane, abs);
+        this._lastCrossTsByLane.set(localLane, ts);
       }
 
       if (lapTimeMs === null) {
@@ -622,6 +753,10 @@ class SerialServiceClass extends EventEmitter {
   // ── Connect multiple DS-300s ──────────────────────────────────────────────
 
   async connectMultiple(circuitConfigs) {
+    // Los contadores de vuelta por carril viven en la conexión. Si reconectamos a
+    // mitad de manga (cable repuesto, ajustes guardados), la conexión nueva tiene
+    // que heredarlos o el hueco del corte no se detecta y esas vueltas se pierden.
+    const previas = this._connections;
     await this.closeAll();
     this.stopSimulation();
 
@@ -646,6 +781,8 @@ class SerialServiceClass extends EventEmitter {
         ()   => this.emit('race_finished',      { circuit: i }),
         ()   => this.emit('race_resume_signal', { circuit: i }),
         ()   => this.emit('semaphore_step',     { circuit: i }),
+        (minute, ts) => this.emit('heartbeat',  { circuit: i, minute, ts }),
+        ()   => this._broadcastLinkStatus(),
       ];
 
       let conn, lanes;
@@ -674,11 +811,20 @@ class SerialServiceClass extends EventEmitter {
         conn  = new CircuitConnection(...callbacks);
         await conn.connect(cfg.port, cfg.baud, { dataBits: cfg.dataBits, parity: cfg.parity, stopBits: cfg.stopBits, flowControl: cfg.flowControl });
       }
+      // Trasplante: misma posición = misma caja física = mismos carriles.
+      const anterior = previas[i];
+      if (anterior && typeof anterior.exportLaneState === 'function' && typeof conn.importLaneState === 'function') {
+        conn.importLaneState(anterior.exportLaneState());
+      }
+
       connections.push(conn);
       laneOffset += lanes;
     }
 
     this._connections = connections;
+    // Si reconectamos con la manga en marcha, las conexiones nuevas nacen sin saberlo:
+    // hay que rearmarles el watchdog o una caja que siga muda no se detectaría.
+    if (this._raceRunning) this.setRaceRunning(true);
     this._broadcastLinkStatus();
   }
 
@@ -716,6 +862,8 @@ class SerialServiceClass extends EventEmitter {
         ()   => this.emit('race_finished',      { circuit: i }),
         ()   => this.emit('race_resume_signal', { circuit: i }),
         ()   => this.emit('semaphore_step',     { circuit: i }),
+        ()   => {},                          // heartbeat: los circuitos virtuales no lo emiten
+        ()   => this._broadcastLinkStatus(),
       ];
       connections.push(new CircuitConnection(...callbacks));
       laneOffset += (circuits[i].lanes || 8);
@@ -737,6 +885,18 @@ class SerialServiceClass extends EventEmitter {
   async stopSimMode() {
     this._simReplay = false;
     await this.closeAll();
+  }
+
+  /**
+   * TimingService avisa aquí de si hay manga en marcha. Es lo que arma el
+   * watchdog de latido tras un reinicio/rehidratación, cuando ya no va a llegar
+   * ninguna trama de GO que lo haga por su cuenta.
+   */
+  setRaceRunning(running) {
+    this._raceRunning = !!running;   // se reaplica a las conexiones nuevas tras reconectar
+    for (const c of this._connections) {
+      if (typeof c.setExternalRaceState === 'function') c.setExternalRaceState(running);
+    }
   }
 
   _broadcastLinkStatus() {
@@ -961,11 +1121,31 @@ class SerialServiceClass extends EventEmitter {
     // _simReplay = reproducción de carrera simulada: la fuente es el reproductor
     // (no hay puerto serie), pero SÍ hay señal, así que cuenta como conectado y
     // no debe salir el aviso "Sin señal del DS-300".
-    const connected = this._simRunning || this._simReplay || this.connectedPorts.length > 0;
+    const simulating = this._simRunning || this._simReplay;
+
+    // Estado POR CAJA. `connected` (global) significa "hay alguna fuente viva",
+    // así que con 3 cajas y una muerta sigue siendo true: quien quiera avisar de
+    // un corte tiene que mirar `circuits`/`down`, nunca `connected`.
+    // En simulación no hay puerto y las conexiones son virtuales: cuentan como
+    // vivas para que no salte el aviso.
+    const circuits = this._connections.map((c, i) => ({
+      circuit:         i + 1,
+      isBart:          !!c.isBart,
+      path:            c.path ?? null,
+      connected:       simulating ? true : !!c.connected,
+      lastHeartbeatTs: c.lastHeartbeatTs ?? null,
+    }));
+
+    // OJO: `connected` NO puede salir de `connectedPorts`. Ése lista los puertos
+    // ABIERTOS (`_port.path`), y al caerse el enlace el puerto sigue abierto para
+    // el SO hasta que el reintento lo cierra: con las 3 cajas mudas seguía dando
+    // "conectado". La verdad es el enlace, no el descriptor.
     return {
-      connected,
-      simulating: this._simRunning || this._simReplay,
+      connected:  simulating || circuits.some(c => c.connected),
+      simulating,
       ports:      this.connectedPorts,
+      circuits,
+      down:       circuits.filter(c => !c.connected).map(c => c.circuit),
     };
   }
 

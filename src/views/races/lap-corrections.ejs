@@ -17,6 +17,13 @@ function fmtS(ms) {
 // Cuenta total de vueltas "marcadas" (ghost) en toda la manga
 const totalFlagged = laneGroups.reduce((acc, g) => acc + g.laps.filter(l => l.is_ghost).length, 0);
 
+// Vueltas REPUESTAS: la caja DS las contó pero PitWall no las vio (cable fuera,
+// proceso caído, cruce en la bandera). Se rellenaron con la media del carril, así
+// que su tiempo es una estimación. Hay que poder localizarlas para corregirlas o
+// borrarlas a mano: si un coche se paró en pista durante el corte, se habrán
+// repuesto más vueltas de las que dio.
+const totalEstimated = laneGroups.reduce((acc, g) => acc + g.laps.filter(l => l.is_estimated && !l.is_ghost).length, 0);
+
 // Stats por carril para la sidebar
 const laneStats = laneGroups.map(g => {
   const valid     = g.laps.filter(l => !l.is_ghost);
@@ -30,11 +37,14 @@ const laneStats = laneGroups.map(g => {
   // (warmup) y sin salidas de pista, y nunca la vuelta 1 (cruce de salida).
   const forBest   = g.laps.filter(l => !l.is_ghost && !l.is_warmup && !l.is_exit && l.lap_number > 1);
   const bestMs    = forBest.length ? Math.min(...forBest.map(l => l.lap_time_ms)) : null;
+  // Vueltas repuestas en este carril: las que hay que revisar a mano.
+  const estCount  = g.laps.filter(l => l.is_estimated && !l.is_ghost).length;
   return {
     info: g.info,
     laps: g.laps,
     validCount: valid.length,
     flagCount:  flags,
+    estCount,
     avgMs, bestMs,
     entityName: g.info.team_name || g.info.driver_name || ('Lane ' + g.info.lane),
   };
@@ -69,6 +79,16 @@ if (firstFlagged >= 0) initActive = firstFlagged;
         <span class="lc-meta-pill">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M10.3 3.8 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.8a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
           <b><%= totalFlagged %></b> <%= lang === 'es' ? 'vueltas fantasma' : 'ghost laps' %>
+        </span>
+      <% } %>
+
+      <% if (totalEstimated > 0) { %>
+        <span class="lc-meta-pill" style="color:#c792ea;border-color:rgba(199,146,234,.35)"
+              title="<%= lang === 'es'
+                ? 'La caja DS las contó pero PitWall no las vio (cable, reinicio o cruce en la bandera). Su tiempo es la media del carril: revísalas y corrígelas o bórralas si no ocurrieron.'
+                : 'The DS box counted them but PitWall never saw them. Their time is the lane average.' %>">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" style="width:14px;height:14px"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+          <b><%= totalEstimated %></b> <%= lang === 'es' ? 'vueltas repuestas (estimadas)' : 'estimated laps' %>
         </span>
       <% } %>
 
@@ -150,6 +170,11 @@ if (firstFlagged >= 0) initActive = firstFlagged;
                   <div class="lc-detail__sub">
                     <%= lang === 'es' ? 'Carril' : 'Lane' %> <%= s.info.lane %>
                     · <%= s.laps.length %> <%= lang === 'es' ? 'vueltas registradas' : 'laps recorded' %>
+                    <% if (s.estCount > 0) { %>
+                      · <span class="lc-est-count">
+                          <%= s.estCount %> <%= lang === 'es' ? 'repuestas' : 'estimated' %>
+                        </span>
+                    <% } %>
                   </div>
                 </div>
                 <div class="lc-kpis">
@@ -193,8 +218,13 @@ if (firstFlagged >= 0) initActive = firstFlagged;
                        const isFastest = lap.id === fastestId;
                        const flagClass = lap.is_ghost ? 'is-flag' : '';
                        const fastClass = isFastest ? 'is-fastest' : '';
+                       // Vuelta que PitWall no vio (cable fuera, proceso caído, cruce
+                       // en la bandera): la caja SÍ la contó y se repuso con la media
+                       // del carril. Su tiempo es una estimación, no un cruce real,
+                       // así que hay que poder encontrarla para corregirla a mano.
+                       const estClass = (lap.is_estimated && !lap.is_ghost) ? 'is-estimated' : '';
                   %>
-                    <div class="lc-lap <%= flagClass %> <%= fastClass %>">
+                    <div class="lc-lap <%= flagClass %> <%= fastClass %> <%= estClass %>">
                       <div class="lc-lap__n">
                         <%= lap.lap_number %>
                         <% if (isFastest) { %><span class="lc-lap__fl">FL</span><% } %>
@@ -211,6 +241,14 @@ if (firstFlagged >= 0) initActive = firstFlagged;
                             <% } else { %>
                               <%= lang === 'es' ? 'Fantasma' : 'Ghost' %>
                             <% } %>
+                          </span>
+                        <% } else if (lap.is_estimated) { %>
+                          <span class="lc-flagtag is-est"
+                                title="<%= lang === 'es'
+                                  ? 'La caja DS contó esta vuelta pero PitWall no la vio (cable, reinicio o cruce en la bandera). Su tiempo es la media del carril: corrígelo si sabes el real.'
+                                  : 'The DS box counted this lap but PitWall never saw it. Its time is the lane average.' %>">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+                            <%= lang === 'es' ? 'Estimada' : 'Estimated' %>
                           </span>
                         <% } else if (lap.transferred_from_lane) { %>
                           <span class="lc-flagtag is-info">
@@ -732,6 +770,20 @@ document.querySelectorAll('.lc-lane').forEach(el => {
 .lc-flagtag.is-info { color: var(--vt-blue); }
 .lc-flagtag.is-pit  { color: var(--vt-amber); }
 .lc-flagtag.is-exit { color: var(--vt-red); }
+
+/* Vuelta repuesta: la caja la contó, PitWall no la vio. Su tiempo es la media
+   del carril. Se marca en morado —ni fantasma (naranja) ni salida (rojo)— para
+   que se pueda encontrar y corregir o borrar a mano. */
+.lc-flagtag.is-est { color: #c792ea; }
+.lc-lap.is-estimated {
+  border-left: 3px solid #c792ea;
+  background: color-mix(in srgb, #c792ea 7%, transparent);
+}
+.lc-lap.is-estimated .lc-lap__time { color: #c792ea; }
+.lc-est-count {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: #c792ea;
+}
 
 /* Insertar vuelta */
 .lc-insert {
