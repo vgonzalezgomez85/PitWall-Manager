@@ -52,6 +52,12 @@ class Manga {
     const now = new Date().toISOString();
     if (status === 'active')   db.prepare('UPDATE mangas SET status=?, started_at=?  WHERE id=?').run(status, now, id);
     else if (status === 'finished') db.prepare('UPDATE mangas SET status=?, finished_at=? WHERE id=?').run(status, now, id);
+    // Volver a 'pending' (stop forzado, repetir manga) borra las marcas de tiempo:
+    // una manga pendiente que conservaba su `started_at` la veía como ACTIVA la
+    // proyección (`status != 'finished' AND started_at IS NOT NULL`) y a la vez la
+    // excluía del conjunto de pendientes. La clasificación estimada quedaba mal en
+    // toda la ventana entre el STOP y el nuevo GO.
+    else if (status === 'pending') db.prepare('UPDATE mangas SET status=?, started_at=NULL, finished_at=NULL WHERE id=?').run(status, id);
     else db.prepare('UPDATE mangas SET status=? WHERE id=?').run(status, id);
   }
 
