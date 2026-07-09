@@ -59,6 +59,30 @@ class TimingServiceClass {
   // estimación a horas vista; 1 s de frescura sobra y ahorra 100 ms por cruce.
   static get PROJECTION_TTL_MS() { return 1000; }
 
+  /**
+   * El contador de vueltas del DS-300 (byte12) es BCD de un byte: cuenta
+   * MÓDULO 100. `registered` son las vueltas ya persistidas de ese carril.
+   *
+   * Devuelve el contador ABSOLUTO del DS: el múltiplo de 100 más cercano a
+   * `registered` que sea congruente con `dsCount`. Con ±50 de margen, porque un
+   * carril no puede desfasarse medio centenar de vueltas al caer la bandera.
+   *
+   *   dsCount=30, registered=129  → 130  (el DS lleva una más: la de bandera)
+   *   dsCount=0,  registered=199  → 200
+   *   dsCount=99, registered=100  →  99  (la BD va por delante: no se repone)
+   */
+  static absoluteDsCount(dsCount, registered) {
+    const CICLO = 100;
+    let abs = Math.floor(registered / CICLO) * CICLO + (dsCount % CICLO);
+    while (abs < registered - CICLO / 2) abs += CICLO;
+    while (abs > registered + CICLO / 2) abs -= CICLO;
+    // Un contador absoluto negativo no significa nada. Pasa solo con muy pocas
+    // vueltas registradas y un byte12 disparatado (reg=0, ds=99): ahí volvemos al
+    // valor crudo y deja que la salvaguarda de "desfase grande" lo cape.
+    if (abs < 0) abs += CICLO;
+    return abs;
+  }
+
   // Allow controllers (e.g. SessionController.repeat) to clear the boundary
   // when the user explicitly reactivates the last manga of a finished tanda.
   clearTandaBoundary() {
@@ -470,7 +494,13 @@ class TimingServiceClass {
       for (const ld of Object.values(this.session.laneMap)) {
         const ci = this.session.laneToCircuit[ld.lane];
         const c  = ci != null ? this.session.circuits[ci] : null;
-        const endTs = c ? Math.min(nowTs, c.startTime + (c.durationMs || this.session.durationMs)) : nowTs;
+        // Fin REAL de SU circuito. Con varias cajas una puede terminar antes que
+        // las otras: usar el fin nominal (arranque + duración) o `nowTs` —que es
+        // cuando terminó la ÚLTIMA— le regalaba a esos carriles el tiempo que su
+        // caja ya llevaba parada, y su coma se saturaba a 0.99. En un empate a
+        // vueltas eso decide posiciones.
+        const finNominal = c ? c.startTime + (c.durationMs || this.session.durationMs) : nowTs;
+        const endTs = c ? Math.min(nowTs, c.endTime || finNominal) : nowTs;
         const refAvg = ld.cleanAvgMs > 0 ? ld.cleanAvgMs : ld.lapAvgMs;
         let coma = 0;
         if (ld.lapCount > 0 && refAvg > 0 && ld.lastCrossing) {
@@ -653,7 +683,12 @@ class TimingServiceClass {
       if (dsCount == null) continue;                 // el DS no reportó este carril
       const row = countStmt.get(data.mangaId, ld.lane);
       const registered = row?.n || 0;
-      let missing = dsCount - registered;
+      // byte12 es BCD de un byte: cuenta vueltas MÓDULO 100. Comparar el crudo
+      // con las vueltas persistidas daba negativo en cuanto un carril pasaba de
+      // 100 vueltas (130 → byte12=30 → 30-129 = -99 → `continue`), así que la
+      // recuperación de la vuelta de bandera quedaba desactivada justo para los
+      // coches que más vueltas dan. Reconstruimos el contador absoluto.
+      let missing = TimingServiceClass.absoluteDsCount(dsCount, registered) - registered;
       if (missing <= 0) continue;                    // ya cuadra (o BD por delante)
       // Salvaguarda contra un byte12 anómalo: al cierre cada carril puede
       // completar como mucho ~1 vuelta extra (la de la bandera). Un desfase
@@ -1545,13 +1580,19 @@ class TimingServiceClass {
 
     // Orden: proyección DESC; desempates total DESC, coma DESC, best ASC.
     // Entidades sin proyección (null) al final.
+    // Desempate por coma: la MEDIA por manga, no la suma. Es la misma regla que
+    // usa el agregado de resultados (Lap.aggregateByRace). Divergían: dos
+    // entidades empatadas a vueltas podían salir en orden OPUESTO según se mirara
+    // el panel/Le Mans o la pantalla de resultados. Solo coincidían cuando todos
+    // habían corrido el mismo número de mangas — es decir, nunca con descansos.
+    const comaMedia = (r) => (r.mangasRaced ? r.comaTotal / r.mangasRaced : 0);
     proj.sort((a, b) => {
       if (a.projectedRaw == null && b.projectedRaw == null) return (a.name || '').localeCompare(b.name || '');
       if (a.projectedRaw == null) return 1;
       if (b.projectedRaw == null) return -1;
       return (b.projectedRaw - a.projectedRaw)
           || (b.totalLaps - a.totalLaps)
-          || (b.comaTotal - a.comaTotal)
+          || (comaMedia(b) - comaMedia(a))
           || ((a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity));
     });
 
