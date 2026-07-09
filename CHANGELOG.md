@@ -13,6 +13,14 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.6.2] — 2026-07-09
+
+### Corregido
+- **La vuelta de la bandera se recuperaba mal en los coches más rápidos.** Cuando cae la bandera, la última vuelta que la caja DS-300 sí contó puede llegar demasiado tarde y perderse; PitWall la repone comparando su propio recuento con el contador de la caja. Pero ese contador solo cuenta hasta 99 y vuelve a empezar, así que en cuanto un coche pasaba de 100 vueltas en una manga la comparación salía negativa y la recuperación se desactivaba en silencio — justo para los coches que más vueltas dan. Ahora se reconstruye el número real de vueltas.
+- **La «coma» de la caja que termina antes.** La coma es la fracción de vuelta que un coche llevaba recorrida cuando cayó la bandera, y desempata a igualdad de vueltas. Con varias cajas DS, la que termina antes que las demás veía la coma de sus carriles disparada al máximo, porque se calculaba con el momento en que terminó la **última** caja. Ahora se usa el fin real de cada caja.
+- **Desempate coherente entre pantallas.** La clasificación proyectada (panel y Le Mans) desempataba por la suma de comas y la pantalla de resultados por la coma media de cada manga. Dos equipos empatados a vueltas podían aparecer en orden opuesto según la pantalla que se mirara. Ahora las dos usan la misma regla: la coma media por manga. En las carreras ya guardadas el orden no cambia.
+- **Una manga parada ya no cuenta como si estuviera corriendo.** Al detener una manga y devolverla a pendiente, se conservaba su hora de inicio, así que la clasificación estimada la seguía tratando como una manga en marcha y a la vez la excluía de las que quedan por correr. Los cálculos quedaban mal en toda la ventana entre el stop y la nueva salida.
+
 ## [1.6.1] — 2026-07-09
 
 ### Corregido
