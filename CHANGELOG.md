@@ -13,6 +13,14 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.6.3] — 2026-07-10
+
+### Mejorado
+- **El panel de vueltas rápidas ahora se adapta a ventanas pequeñas.** El panel a pantalla completa era una tabla fija de tres columnas que estiraba el tamaño de letra para llenar el alto; al encoger la ventana quedaba estrecho e incómodo de leer. Ahora usa las mismas píldoras de colores que el marcador de «VUELTAS RÁPIDAS» del directo, que se recolocan solas en varias filas según el ancho disponible. Así se puede dejar el panel en una ventana pequeña junto al directo sin que se desborde ni se descuadre.
+
+### Corregido
+- **La misma vuelta ya no muestra un tiempo distinto en el panel y en el directo.** El panel de vueltas rápidas redondeaba a milésimas mientras que el resto de PitWall trunca a centésimas, así que una misma vuelta podía verse como `8.09` en el panel y `8.08` en el directo. Ahora el panel usa exactamente el mismo formato que el directo y los tiempos coinciden.
+
 ## [1.6.2] — 2026-07-09
 
 ### Corregido
