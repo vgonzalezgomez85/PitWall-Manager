@@ -13,6 +13,12 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.7.0] — 2026-07-10
+
+### Añadido
+- **Reparto de la carrera en varias tandas desde la elección de carriles.** Tras la pole, en la pantalla de elección de carriles ya puedes indicar en cuántas tandas quieres dividir la carrera. Con una sola tanda todo sigue igual que siempre: los pilotos eligen carril por orden de pole. Con más de una, el campo de clasificados se reparte en varias tandas —que pueden ser de distinto tamaño— y puedes mover a cada piloto de una a otra con las flechas ◀ ▶; el reparto de partida sigue el orden de pole. En cada tanda los carriles se asignan por orden de pole con la plantilla del circuito.
+- **Todas las tandas se crean de una sola vez.** Al confirmar el reparto se generan de golpe todas las tandas con sus pilotos ya colocados; antes solo se creaba la primera y las demás había que añadirlas a mano.
+
 ## [1.6.2] — 2026-07-09
 
 ### Corregido
