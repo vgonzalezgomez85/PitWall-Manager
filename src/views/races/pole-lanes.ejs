@@ -47,6 +47,29 @@ const poleHolderName = entries[0]?.entity_name || '';
         : 'Pick in classification order. The pole sitter picks first.' %>
     </p>
 
+    <!-- ── Nº de tandas ───────────────────────────────────────────────── -->
+    <div class="pole-tandas-ctrl">
+      <label for="numTandas"><%= lang === 'es' ? 'Nº de tandas' : 'Number of heat groups' %></label>
+      <input type="number" id="numTandas" min="1" max="<%= entries.length %>" value="1" inputmode="numeric">
+      <span class="pole-tandas-hint">
+        <%= lang === 'es'
+          ? 'Con 1 tanda, se eligen carriles por orden de pole. Con más, reparte los clasificados en tandas (de tamaño libre) y en cada una los carriles van por orden de pole.'
+          : 'With 1 group, lanes are picked in pole order. With more, split the field into groups (any size); each group gets lanes in pole order.' %>
+      </span>
+    </div>
+
+    <!-- ── Reparto en tandas (solo con Nº de tandas > 1) ──────────────── -->
+    <div class="pole-tandas-panel" id="tandasPanel" hidden>
+      <p class="pole-lanes-hint">
+        <%= lang === 'es'
+          ? 'Mueve cada clasificado a su tanda con ◀ ▶. El reparto inicial sigue el orden de pole; las tandas pueden ser de distinto tamaño.'
+          : 'Move each entrant to its group with ◀ ▶. The initial split follows pole order; groups may differ in size.' %>
+      </p>
+      <div class="pole-tandas-cols" id="tandasCols"></div>
+    </div>
+
+    <!-- ── Bloque clásico (1 tanda): banner + tablero de carriles ─────── -->
+    <div id="classicPick">
     <!-- ── Indicador del que toca elegir ──────────────────────────────── -->
     <div class="pole-pick-banner" id="pickBanner">
       <span class="pole-pick-banner__lbl"><%= lang === 'es' ? 'Eligiendo ahora' : 'Picking now' %></span>
@@ -114,14 +137,15 @@ const poleHolderName = entries[0]?.entity_name || '';
           : `There are ${entries.length - activeLanes.length} rest slot(s) (💤): each team picks a lane or rest on their turn. Resting teams skip heat 1 and rotate in from heat 2.` %>
       </p>
     <% } %>
+    </div><!-- /#classicPick -->
 
-    <!-- ── Form de submit (oculto hasta que todos elijan) ─────────────── -->
+    <!-- ── Form de submit ─────────────────────────────────────────────── -->
     <form id="laneForm" action="/races/<%= race.id %>/pole/lanes" method="POST" class="pole-lanes-form">
       <div id="hiddenInputs"></div>
       <div id="formActions" class="pole-lanes-actions" style="display:none">
         <a href="/races/<%= race.id %>/pole/results" class="pole-btn-edit">← <%= lang === 'es' ? 'Volver' : 'Back' %></a>
-        <button type="submit" class="pole-btn-confirm">
-          🏁 <%= lang === 'es' ? 'Crear Primera Tanda' : 'Create First Heat Group' %>
+        <button type="submit" class="pole-btn-confirm" id="confirmBtn">
+          🏁 <span id="confirmLbl"><%= lang === 'es' ? 'Crear Primera Tanda' : 'Create First Heat Group' %></span>
         </button>
       </div>
     </form>
@@ -246,6 +270,128 @@ document.getElementById('laneGrid').addEventListener('click', e => {
 
 highlightCurrentPicker();
 updatePrompt();
+
+// ── Multi-tanda ─────────────────────────────────────────────────────────────
+// Con Nº de tandas > 1 se oculta el tablero por-persona (los carriles van por
+// orden de pole en cada tanda) y se reparte el campo en columnas. `tandaByName`
+// guarda la tanda (1..N) de cada clasificado; el reparto inicial es contiguo por
+// orden de pole y lo más parejo posible, pero se puede desequilibrar con ◀ ▶.
+const numTandasInput = document.getElementById('numTandas');
+const classicPick    = document.getElementById('classicPick');
+const tandasPanel     = document.getElementById('tandasPanel');
+const tandasCols      = document.getElementById('tandasCols');
+const formActions     = document.getElementById('formActions');
+const confirmLbl      = document.getElementById('confirmLbl');
+const hiddenInputs    = document.getElementById('hiddenInputs');
+const LBL_CREATE_1    = <%- JSON.stringify(lang === 'es' ? 'Crear Primera Tanda' : 'Create First Heat Group') %>;
+const LBL_CREATE_N    = <%- JSON.stringify(lang === 'es' ? 'Crear las tandas' : 'Create the groups') %>;
+
+let tandaByName = {};   // nombre → nº de tanda (1..N)
+
+function splitContiguous(n) {
+  // Reparto contiguo por orden de pole, lo más parejo posible.
+  const total = ENTRIES.length;
+  const base = Math.floor(total / n), extra = total % n;
+  const map = {}; let idx = 0;
+  for (let t = 1; t <= n; t++) {
+    const size = base + (t <= extra ? 1 : 0);
+    for (let k = 0; k < size; k++) map[ENTRIES[idx++].name] = t;
+  }
+  return map;
+}
+
+function renderTandas(n) {
+  tandasCols.innerHTML = '';
+  const cols = [];
+  for (let t = 1; t <= n; t++) {
+    const col = document.createElement('div');
+    col.className = 'pole-tanda-col';
+    col.innerHTML = `<div class="pole-tanda-col__hd">${LANG === 'es' ? 'Tanda' : 'Group'} ${t}
+      <span class="pole-tanda-col__count" id="tcount-${t}"></span></div>`;
+    tandasCols.appendChild(col);
+    cols[t] = col;
+  }
+  // Chips en orden de pole dentro de cada tanda.
+  ENTRIES.forEach((e, i) => {
+    const t = tandaByName[e.name] || 1;
+    const chip = document.createElement('div');
+    chip.className = 'pole-tanda-chip';
+    chip.innerHTML =
+      `<button type="button" class="pole-tanda-move" data-name="${encodeURIComponent(e.name)}" data-dir="-1"${t <= 1 ? ' disabled' : ''}>◀</button>` +
+      `<span class="pole-tanda-chip__pos">P${i + 1}</span>` +
+      `<span class="pole-tanda-chip__name">${e.name}</span>` +
+      `<button type="button" class="pole-tanda-move" data-name="${encodeURIComponent(e.name)}" data-dir="1"${t >= n ? ' disabled' : ''}>▶</button>`;
+    cols[t].appendChild(chip);
+  });
+  for (let t = 1; t <= n; t++) {
+    const c = cols[t].querySelectorAll('.pole-tanda-chip').length;
+    document.getElementById('tcount-' + t).textContent = c;
+  }
+}
+
+tandasCols.addEventListener('click', e => {
+  const btn = e.target.closest('.pole-tanda-move');
+  if (!btn) return;
+  const name = decodeURIComponent(btn.dataset.name);
+  const dir  = parseInt(btn.dataset.dir, 10);
+  const n    = parseInt(numTandasInput.value, 10) || 1;
+  const cur  = tandaByName[name] || 1;
+  const next = Math.min(n, Math.max(1, cur + dir));
+  if (next === cur) return;
+  tandaByName[name] = next;
+  renderTandas(n);
+});
+
+function buildMultiForm(n) {
+  hiddenInputs.innerHTML = '';
+  const addHidden = (name, value) => {
+    const inp = document.createElement('input');
+    inp.type = 'hidden'; inp.name = name; inp.value = value;
+    hiddenInputs.appendChild(inp);
+  };
+  addHidden('num_tandas', String(n));
+  ENTRIES.forEach(e => addHidden('tanda_of[' + e.name + ']', String(tandaByName[e.name] || 1)));
+}
+
+function onNumTandasChange() {
+  let n = parseInt(numTandasInput.value, 10) || 1;
+  n = Math.min(ENTRIES.length, Math.max(1, n));
+  numTandasInput.value = n;
+
+  if (n <= 1) {
+    // Modo clásico: tablero por persona; el submit lo destapa buildForm().
+    classicPick.hidden = false;
+    tandasPanel.hidden = true;
+    confirmLbl.textContent = LBL_CREATE_1;
+    hiddenInputs.innerHTML = '';
+    // El botón vuelve a depender de que todos hayan elegido carril.
+    formActions.style.display = (currentPicker >= TOTAL_PICKERS) ? '' : 'none';
+    if (currentPicker >= TOTAL_PICKERS) buildForm();
+    return;
+  }
+
+  // Modo multi: se reparte por pole y los carriles van por orden de pole.
+  classicPick.hidden = true;
+  tandasPanel.hidden = false;
+  confirmLbl.textContent = LBL_CREATE_N;
+  tandaByName = splitContiguous(n);
+  renderTandas(n);
+  formActions.style.display = '';
+}
+
+numTandasInput.addEventListener('input', onNumTandasChange);
+
+// Deep-link: ?tandas=N pre-selecciona el nº de tandas (útil para volver a un
+// reparto ya pensado sin re-teclear).
+const _qTandas = parseInt(new URLSearchParams(location.search).get('tandas'), 10);
+if (_qTandas > 1) { numTandasInput.value = Math.min(ENTRIES.length, _qTandas); onNumTandasChange(); }
+
+// El submit del modo multi arma sus inputs justo antes de enviar (el clásico ya
+// los tiene puestos por buildForm()).
+document.getElementById('laneForm').addEventListener('submit', () => {
+  const n = parseInt(numTandasInput.value, 10) || 1;
+  if (n > 1) buildMultiForm(n);
+});
 </script>
 
 <%- include('../partials/footer') %>

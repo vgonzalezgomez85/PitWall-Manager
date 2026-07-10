@@ -281,29 +281,13 @@ class PoleController {
     });
   }
 
-  // POST /races/:id/pole/lanes  — create tanda from lane assignments
-  static assignLanes(req, res) {
-    const race = Race.findById(req.params.id);
-    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
-
-    const session = PoleSession.findByRace(race.id);
-    if (!session) return res.redirect(`/races/${race.id}`);
-
-    // order[] = entity names in laneSequence position order (index 0 → laneSeq[0], etc.)
-    const order      = Array.isArray(req.body.order) ? req.body.order : [req.body.order].filter(Boolean);
-    const laneSeq    = Race.getLaneSequence(race);
-    const allEntries = PoleSession.getEntriesSorted(session.id);
-    const byName     = Object.fromEntries(allEntries.map(e => [e.entity_name, e]));
-
-    const activeLanes   = laneSeq.filter(l => l > 0);
-    const pickedNames   = order.slice(0, activeLanes.length).filter(Boolean);
-    const remaining     = allEntries.filter(e => !pickedNames.includes(e.entity_name));
-    const orderedEntries = [
-      ...pickedNames.map(n => byName[n] || { entity_name: n, entity_type: race.format === 'team' ? 'team' : 'driver', members_json: null }),
-      ...remaining
-    ];
-
-    const tandaId = Tanda.create(race.id);
+  // Crea UNA tanda a partir de una lista de entradas ya ordenadas (posición 0 →
+  // laneSeq[0], y así). Persiste sus mangas con la rotación de carriles del
+  // circuito. Devuelve el id de la tanda. Compartido por el flujo clásico (una
+  // tanda) y el multi-tanda: la plantilla de carriles (laneSeq) es la misma en
+  // todas, aplicada al orden de pole de cada grupo.
+  static _createTandaFromEntries(race, laneSeq, orderedEntries) {
+    const tandaId  = Tanda.create(race.id);
     const entities = [];
 
     if (race.format === 'individual') {
@@ -331,9 +315,65 @@ class PoleController {
 
     const schedule = Manga.buildSchedule(laneSeq, entities);
     Manga.persistSchedule(tandaId, race.id, schedule);
+    return tandaId;
+  }
+
+  // POST /races/:id/pole/lanes  — create tanda(s) from lane assignments
+  static assignLanes(req, res) {
+    const race = Race.findById(req.params.id);
+    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
+
+    const session = PoleSession.findByRace(race.id);
+    if (!session) return res.redirect(`/races/${race.id}`);
+
+    const laneSeq    = Race.getLaneSequence(race);
+    const allEntries = PoleSession.getEntriesSorted(session.id);   // ya en orden de pole
+    const byName     = Object.fromEntries(allEntries.map(e => [e.entity_name, e]));
+    const mkEntry    = n => byName[n] || { entity_name: n, entity_type: race.format === 'team' ? 'team' : 'driver', members_json: null };
+
+    // ── Modo multi-tanda ─────────────────────────────────────────────────────
+    // La página envía `num_tandas` y, por cada participante, `tanda_of[<nombre>]`
+    // = índice de tanda (1..N). Los carriles NO se eligen por persona: cada tanda
+    // reparte por orden de pole con la misma plantilla (laneSeq). Las tandas
+    // pueden ser de distinto tamaño; los que sobran de los carriles descansan y
+    // rotan, igual que en una tanda suelta.
+    const numTandas = parseInt(req.body.num_tandas, 10) || 1;
+    const tandaOf   = req.body.tanda_of || null;
+
+    if (numTandas > 1 && tandaOf && typeof tandaOf === 'object') {
+      // Agrupa preservando el orden de pole dentro de cada tanda.
+      const grupos = Array.from({ length: numTandas }, () => []);
+      allEntries.forEach(e => {
+        const t = parseInt(tandaOf[e.entity_name], 10);
+        if (t >= 1 && t <= numTandas) grupos[t - 1].push(e);
+      });
+      // Cualquier participante sin asignar cae en la última tanda, para no perderlo.
+      const asignados = new Set(grupos.flat().map(e => e.entity_name));
+      allEntries.filter(e => !asignados.has(e.entity_name))
+                .forEach(e => grupos[numTandas - 1].push(e));
+
+      grupos.forEach(grupo => {
+        if (grupo.length) PoleController._createTandaFromEntries(race, laneSeq, grupo);
+      });
+
+      if (race.status === 'pending') Race.updateStatus(race.id, 'active');
+      return res.redirect(`/races/${race.id}`);
+    }
+
+    // ── Modo clásico (una tanda) ─────────────────────────────────────────────
+    // order[] = nombres en orden de posición de carril (índice 0 → laneSeq[0]).
+    const order         = Array.isArray(req.body.order) ? req.body.order : [req.body.order].filter(Boolean);
+    const activeLanes   = laneSeq.filter(l => l > 0);
+    const pickedNames   = order.slice(0, activeLanes.length).filter(Boolean);
+    const remaining     = allEntries.filter(e => !pickedNames.includes(e.entity_name));
+    const orderedEntries = [
+      ...pickedNames.map(mkEntry),
+      ...remaining
+    ];
+
+    PoleController._createTandaFromEntries(race, laneSeq, orderedEntries);
 
     if (race.status === 'pending') Race.updateStatus(race.id, 'active');
-
     res.redirect(`/races/${race.id}`);
   }
 }
