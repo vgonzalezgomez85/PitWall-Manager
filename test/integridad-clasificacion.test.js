@@ -287,3 +287,74 @@ test('la coma usa el fin REAL de SU circuito, no el de la última caja en termin
   assert.equal(coma(2), 0.3, 'y el de la otra caja, lo mismo');
   assert.notEqual(coma(1), 0.99, 'antes se saturaba: se le contaban los 5 min que su caja llevaba parada');
 });
+
+// ── Desempate por "quién cruza antes" (menos tiempo total) ─────────────────
+// Regla de Llinars 2026: a igualdad de vueltas gana quien completó esas vueltas
+// en MENOS tiempo total — cruzó la línea de su última vuelta antes → va delante.
+// El tiempo total manda sobre la coma (que queda como criterio posterior).
+
+/**
+ * Dos equipos empatados a vueltas donde el tiempo total y la coma APUNTAN A
+ * DISTINTO ganador:
+ *   Rápido: 2 vueltas de 9000 → total 18000 ms · coma 0.10  (menos tiempo, MENOS coma)
+ *   Lento : 2 vueltas de 9500 → total 19000 ms · coma 0.90  (más tiempo,  MÁS coma)
+ * Con la regla nueva gana Rápido (menos tiempo). Con la vieja (coma) ganaba Lento.
+ */
+function empateTiempoVsComa() {
+  const raceId = db.prepare(`
+    INSERT INTO races (name, type, format, status, lanes_count, lane_sequence, circuits_config,
+                       manga_duration_minutes, driver_min_total_ms, driver_max_total_ms,
+                       driver_change_lockout_ms, driver_max_runs)
+    VALUES ('empate-t', 'club', 'team', 'active', 2, '[1,2]', '[2]', 10, 0, 0, 0, 0)
+  `).run().lastInsertRowid;
+  const tandaId = db.prepare('INSERT INTO tandas (race_id, number) VALUES (?, 1)').run(raceId).lastInsertRowid;
+  const m1 = db.prepare('INSERT INTO mangas (tanda_id, race_id, number) VALUES (?, ?, 1)').run(tandaId, raceId).lastInsertRowid;
+
+  const rap = db.prepare('INSERT INTO teams (race_id, tanda_id, name, lane) VALUES (?, ?, ?, 0)').run(raceId, tandaId, 'Rapido').lastInsertRowid;
+  const len = db.prepare('INSERT INTO teams (race_id, tanda_id, name, lane) VALUES (?, ?, ?, 0)').run(raceId, tandaId, 'Lento').lastInsertRowid;
+
+  db.prepare('INSERT INTO manga_lanes (manga_id, lane, team_id, is_rest, coma) VALUES (?,1,?,0,0.10)').run(m1, rap);
+  db.prepare('INSERT INTO manga_lanes (manga_id, lane, team_id, is_rest, coma) VALUES (?,2,?,0,0.90)').run(m1, len);
+
+  let n = 0;
+  const mk = (teamId, ms) => Lap.create({
+    race_id: raceId, manga_id: m1, team_id: teamId, driver_id: null,
+    lane: 1, lap_number: ++n, lap_time_ms: ms, elapsed_ms: n * ms,
+  });
+  mk(rap, 9000); mk(rap, 9000);   // total 18000
+  mk(len, 9500); mk(len, 9500);   // total 19000
+
+  Manga.updateStatus(m1, 'finished');
+  return { raceId };
+}
+
+test('a igualdad de vueltas gana MENOS tiempo total, aunque tenga menos coma', () => {
+  const { raceId } = empateTiempoVsComa();
+  const res = Lap.aggregateByRace(raceId).filter(r => r.entity_id != null);
+
+  assert.equal(res[0].total_laps, res[1].total_laps, 'empate a vueltas');
+  assert.equal(res[0].entity_name, 'Rapido', 'gana quien cruzó antes (18000 < 19000 ms)');
+  // …pese a tener MENOS coma: con la regla vieja (coma) habría ganado Lento.
+  const comaPM = r => r.coma_total / r.mangas_raced;
+  assert.ok(comaPM(res[0]) < comaPM(res[1]), 'y gana con menos coma que el segundo');
+});
+
+test('proyección y resultados coinciden con el desempate por tiempo', () => {
+  const { raceId } = empateTiempoVsComa();
+  TimingService.invalidateStandingsCaches();
+  const proj = TimingService.buildRaceProjection(raceId);
+  const res  = Lap.aggregateByRace(raceId).filter(r => r.entity_id != null);
+
+  assert.deepEqual(proj.map(p => p.name), res.map(r => r.entity_name),
+    'directo/Le Mans y resultados no pueden salir en orden opuesto');
+  assert.equal(proj[0].name, 'Rapido', 'la proyección también pone delante al de menos tiempo');
+});
+
+test('aggregateByRace y aggregateByRaceSplit dan el MISMO orden con la regla nueva', () => {
+  const { raceId } = empateTiempoVsComa();
+  const full  = Lap.aggregateByRace(raceId);
+  const prior = Lap._aggRaw(raceId, { excludeManga: -1 });   // ninguna manga previa
+  const split = Lap.aggregateByRaceSplit(raceId, -1, prior);
+  assert.deepEqual(split.map(r => r.entity_name), full.map(r => r.entity_name),
+    'los dos caminos del agregado deben ordenar idéntico');
+});

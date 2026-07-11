@@ -397,12 +397,13 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
     <div class="results-panel active" id="tab-matrix">
       <%
         const orderedLanes = (laneSequence || []).filter(l => l > 0);
-        // Desempate a igual vueltas: primero la coma MEDIA por manga (fracción
-        // de vuelta en curso al caer la bandera, promediada entre las mangas que
-        // corrió), luego mejor vuelta. Media en vez de suma para que el número
-        // sea < 1 e intuitivo; con mangas iguales el orden es idéntico a la suma.
+        // Desempate a igual vueltas: "quién cruza antes" = MENOS tiempo total para
+        // completar esas vueltas (cruzó su última vuelta primero → va delante).
+        // Después la coma media por manga y la mejor vuelta. DEBE coincidir con el
+        // orden de Lap.aggregateByRace / la proyección del motor.
         const comaPM = r => (r.mangas_raced > 0 ? (r.coma_total || 0) / r.mangas_raced : 0);
         const byTotalM = [...results].sort((a,b) => b.total_laps - a.total_laps
+          || (a.total_time_ms||Infinity) - (b.total_time_ms||Infinity)
           || comaPM(b) - comaPM(a)
           || (a.best_lap_ms||Infinity) - (b.best_lap_ms||Infinity));
 

@@ -277,13 +277,14 @@ class Lap {
       coma_total:   coma[k] || 0,
     }));
 
-    // Mismo desempate que la consulta original: vueltas DESC, coma MEDIA por
-    // manga DESC, tiempo total ASC.
+    // Mismo desempate que aggregateByRace: vueltas DESC, tiempo total ASC
+    // ("quién cruza antes"), y coma media por manga DESC como criterio posterior.
+    // DEBE coincidir con el ORDER BY de aggregateByRace (salida byte-idéntica).
     const comaAvg = (r) => (r.mangas_raced ? r.coma_total / r.mangas_raced : 0);
     rows.sort((x, y) =>
       (y.total_laps - x.total_laps) ||
-      (comaAvg(y) - comaAvg(x)) ||
-      (x.total_time_ms - y.total_time_ms));
+      (x.total_time_ms - y.total_time_ms) ||
+      (comaAvg(y) - comaAvg(x)));
     return rows;
   }
 
@@ -333,11 +334,13 @@ class Lap {
       LEFT JOIN drivers d ON d.id = l.driver_id
       WHERE l.race_id = ? AND l.is_ghost = 0 AND l.manga_id IS NOT NULL
       GROUP BY entity_id, entity_type
-      -- Desempate: coma MEDIA por manga (no la suma), para que la escala sea < 1
-      -- e intuitiva; con mangas iguales el orden es idéntico al de la suma.
+      -- Desempate a igualdad de vueltas: "quién cruza antes" = MENOS tiempo total
+      -- para completar esas vueltas (cruzó la línea de su última vuelta primero →
+      -- va delante). La coma media por manga queda como criterio posterior, casi
+      -- vestigial: total_time_ms tiene precisión de ms y prácticamente nunca empata.
       ORDER BY total_laps DESC,
-               (coma_total * 1.0 / NULLIF(mangas_raced, 0)) DESC,
-               total_time_ms ASC
+               total_time_ms ASC,
+               (coma_total * 1.0 / NULLIF(mangas_raced, 0)) DESC
     `).all(raceId);
   }
 
