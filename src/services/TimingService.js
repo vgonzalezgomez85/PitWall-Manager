@@ -1549,7 +1549,7 @@ class TimingServiceClass {
         entity_id: a.eid, entity_name: a.name,
         entity_type: isTeam ? 'team' : 'driver',
         total_laps: 0, avg_lap_ms: null, best_lap_ms: null,
-        coma_total: 0, mangas_raced: 0,
+        coma_total: 0, mangas_raced: 0, total_time_ms: 0,
       });
     });
 
@@ -1571,6 +1571,7 @@ class TimingServiceClass {
         bestLapMs:   p.best_lap_ms,
         comaTotal:   p.coma_total || 0,
         mangasRaced: p.mangas_raced || 0,
+        totalTimeMs: p.total_time_ms ?? null,
         remainingMs: remMs,
         futureRemMs,
         onTrack,
@@ -1578,13 +1579,13 @@ class TimingServiceClass {
       };
     });
 
-    // Orden: proyección DESC; desempates total DESC, coma DESC, best ASC.
+    // Orden: proyección DESC; a igualdad, vueltas DESC y luego "quién cruza antes"
+    // = MENOS tiempo total ASC (completó esas vueltas antes → va delante). La coma
+    // media por manga y la mejor vuelta quedan como criterios posteriores.
     // Entidades sin proyección (null) al final.
-    // Desempate por coma: la MEDIA por manga, no la suma. Es la misma regla que
-    // usa el agregado de resultados (Lap.aggregateByRace). Divergían: dos
-    // entidades empatadas a vueltas podían salir en orden OPUESTO según se mirara
-    // el panel/Le Mans o la pantalla de resultados. Solo coincidían cuando todos
-    // habían corrido el mismo número de mangas — es decir, nunca con descansos.
+    // DEBE coincidir con el desempate de Lap.aggregateByRace: si no, dos entidades
+    // empatadas a vueltas saldrían en orden OPUESTO según se mire el panel/Le Mans
+    // o la pantalla de resultados (bug histórico de la coma).
     const comaMedia = (r) => (r.mangasRaced ? r.comaTotal / r.mangasRaced : 0);
     proj.sort((a, b) => {
       if (a.projectedRaw == null && b.projectedRaw == null) return (a.name || '').localeCompare(b.name || '');
@@ -1592,6 +1593,7 @@ class TimingServiceClass {
       if (b.projectedRaw == null) return -1;
       return (b.projectedRaw - a.projectedRaw)
           || (b.totalLaps - a.totalLaps)
+          || ((a.totalTimeMs ?? Infinity) - (b.totalTimeMs ?? Infinity))
           || (comaMedia(b) - comaMedia(a))
           || ((a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity));
     });

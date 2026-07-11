@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.7.0] — 2026-07-10
+
+### Cambiado
+- **Nueva regla de desempate a igualdad de vueltas: gana quien cruza antes.** Cuando dos participantes terminan con el mismo número de vueltas, ahora desempata **quién completó esas vueltas en menos tiempo**, es decir, quien cruzó la línea de su última vuelta primero. Antes desempataba la «coma» (quién iba más metido en la vuelta en curso al caer la bandera). La coma pasa a ser un criterio secundario: solo decide en el caso, prácticamente imposible, de que el tiempo total coincida al milisegundo. **Este cambio puede alterar el orden de la clasificación** respecto a versiones anteriores en los empates a vueltas. El nuevo criterio es coherente en todas las pantallas: marcador en directo, vista Le Mans, resultados y la app Lap ordenan igual.
+
 ## [1.6.2] — 2026-07-09
 
 ### Corregido
