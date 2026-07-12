@@ -306,8 +306,19 @@ class PoleController {
     sizes.forEach((size, i) => {
       const lanes = [];
       for (let l = off + 1; l <= off + size; l++) if (activeLanes.includes(l)) lanes.push(l);
-      if (lanes.length) circuits.push({ index: i + 1, lanes });
+      if (lanes.length) circuits.push({ index: i + 1, lanes, rests: 0 });
       off += size;
+    });
+
+    // Descansos por circuito según los CEROS de la secuencia: cada 0 es una plaza
+    // de descanso, del circuito del último carril real que aparece antes de él.
+    const circByLane = new Map();
+    circuits.forEach(c => c.lanes.forEach(l => circByLane.set(l, c.index)));
+    const byIndex = Object.fromEntries(circuits.map(c => [c.index, c]));
+    let lastCirc = circuits[0] ? circuits[0].index : 1;
+    laneSeq.forEach(v => {
+      if (v > 0) { if (circByLane.has(v)) lastCirc = circByLane.get(v); }
+      else if (byIndex[lastCirc]) byIndex[lastCirc].rests++;
     });
 
     res.render('races/pole-lanes', {

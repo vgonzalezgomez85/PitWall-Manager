@@ -169,12 +169,14 @@ function render() {
       <div class="pole-slot__drop">${occ ? pillHTML(occ.name, 'in-slot') : `<span class="pole-slot__empty"></span>`}</div>
     </div>`;
   };
-  // Una plaza de descanso (pertenece a un circuito, va ENCIMA de sus carriles)
-  const restSlot = (t, ci, ri) => {
+  // Una plaza de descanso (pertenece a un circuito, va ENCIMA de sus carriles).
+  // Si hay más de uno en el circuito, se numera "Descanso i/n" para distinguirlos.
+  const restSlot = (t, ci, ri, total) => {
     const occ = occupant(t, 0, ci, ri);
+    const etq = total > 1 ? `${T_REST} ${ri + 1}/${total}` : T_REST;
     return `<div class="pole-slot pole-slot--rest${occ ? ' is-filled' : ''}" data-t="${t}" data-lane="0" data-ci="${ci}" data-rest="${ri}">
       <span class="pole-slot__lane pole-slot__lane--rest">💤</span>
-      <div class="pole-slot__drop">${occ ? pillHTML(occ.name, 'in-slot') : `<span class="pole-slot__empty">${T_REST}</span>`}</div>
+      <div class="pole-slot__drop">${occ ? pillHTML(occ.name, 'in-slot') : `<span class="pole-slot__empty">${etq}</span>`}</div>
     </div>`;
   };
 
@@ -189,8 +191,9 @@ function render() {
     // "Circuito N". Los DESCANSOS de cada circuito van ARRIBA, encima del primer
     // carril, con su propio "+ descanso".
     const circuitsHTML = CIRCUITS.map(circ => {
+      const nr = restsOf(t, circ.index);
       let restsHTML = '';
-      for (let ri = 0; ri < restsOf(t, circ.index); ri++) restsHTML += restSlot(t, circ.index, ri);
+      for (let ri = 0; ri < nr; ri++) restsHTML += restSlot(t, circ.index, ri, nr);
       const lanesHTML = circ.lanes.map(lane => laneSlot(t, lane)).join('');
       return `<div class="pole-circuit-group">
         ${MULTI_CIRCUIT ? `<div class="pole-circuit-hd">${T_CIRCUIT} ${circ.index}</div>` : ''}
@@ -305,15 +308,12 @@ function onNumTandasChange() {
   numTandasInput.value = n;
   confirmLbl.textContent = (n > 1) ? LBL_CREATE_N : LBL_CREATE_1;
   place = {}; selected = null; restCount = {};
-  // Descansos iniciales: lo justo para que quepan todos si el reparto fuera parejo,
-  // repartidos entre los circuitos (uno a cada uno por turnos).
-  const initRest = Math.max(0, Math.ceil(ENTRIES.length / n) - N_LANES);
+  // Descansos iniciales: los que define la SECUENCIA de la carrera (los ceros),
+  // repartidos por circuito. Cada tanda arranca con ese mismo reparto; se pueden
+  // añadir más con "+ descanso".
   for (let t = 1; t <= n; t++) {
     restCount[t] = {};
-    for (let k = 0; k < initRest; k++) {
-      const ci = CIRCUITS[k % CIRCUITS.length].index;
-      restCount[t][ci] = (restCount[t][ci] || 0) + 1;
-    }
+    CIRCUITS.forEach(c => { if (c.rests) restCount[t][c.index] = c.rests; });
   }
   render();
 }
