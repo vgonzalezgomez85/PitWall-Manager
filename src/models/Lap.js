@@ -60,13 +60,13 @@ class Lap {
    */
   static markExternalMutation() { _bump(null); }
 
-  static create({ race_id, manga_id, team_id, driver_id, lane, lap_number, lap_time_ms, elapsed_ms, is_exit = 0, is_ghost = 0, is_pit_stop = 0, is_warmup = 0, ghost_from_lane = null }) {
+  static create({ race_id, manga_id, team_id, driver_id, lane, lap_number, lap_time_ms, elapsed_ms, is_exit = 0, is_ghost = 0, is_pit_stop = 0, is_warmup = 0, ghost_from_lane = null, is_estimated = 0 }) {
     _bump(manga_id);
     const { lastInsertRowid } = db.prepare(`
-      INSERT INTO laps (race_id, manga_id, team_id, driver_id, lane, lap_number, lap_time_ms, elapsed_ms, is_exit, is_ghost, is_pit_stop, is_warmup, ghost_from_lane)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO laps (race_id, manga_id, team_id, driver_id, lane, lap_number, lap_time_ms, elapsed_ms, is_exit, is_ghost, is_pit_stop, is_warmup, ghost_from_lane, is_estimated)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(race_id, manga_id ?? null, team_id ?? null, driver_id ?? null,
-           lane, lap_number, lap_time_ms, elapsed_ms ?? 0, is_exit, is_ghost, is_pit_stop, is_warmup, ghost_from_lane ?? null);
+           lane, lap_number, lap_time_ms, elapsed_ms ?? 0, is_exit, is_ghost, is_pit_stop, is_warmup, ghost_from_lane ?? null, is_estimated ? 1 : 0);
     return lastInsertRowid;
   }
 
@@ -431,7 +431,10 @@ class Lap {
       // Desplaza el reloj de esta vuelta y las siguientes del carril.
       db.prepare('UPDATE laps SET elapsed_ms = elapsed_ms + ? WHERE manga_id = ? AND lane = ? AND elapsed_ms >= ?')
         .run(delta, lap.manga_id, lap.lane, lap.elapsed_ms);
-      db.prepare('UPDATE laps SET lap_time_ms = ? WHERE id = ?').run(newMs, id);
+      // Al corregir el tiempo a mano deja de ser una estimación: el operador ha
+      // puesto el valor real. Si siguiera marcada, el informe seguiría contándola
+      // como repuesta y el recuento mentiría.
+      db.prepare('UPDATE laps SET lap_time_ms = ?, is_estimated = 0 WHERE id = ?').run(newMs, id);
     });
     tx();
   }

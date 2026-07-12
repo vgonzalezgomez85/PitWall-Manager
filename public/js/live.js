@@ -1468,20 +1468,43 @@ function announce(text) {
 
   // ── DS-300 link status banner ─────────────────────────────────────────────
   const banner      = document.getElementById('serialBanner');
+  const bannerText  = document.getElementById('serialBannerText');
   const bannerSince = document.getElementById('serialBannerSince');
   let serialDownSince = null;
+  // `data.connected` es el OR de todas las fuentes: con 3 cajas y una muerta sigue
+  // siendo true. El aviso se decide por `data.down` (las cajas caídas, 1-based).
   socket.on('serial:status', (data) => {
-    console.log('[live] serial:status received', data);
     if (!banner) return;
-    const connected = !!data.connected;
-    if (connected) {
+    const down = Array.isArray(data.down) ? data.down : [];
+    const total = Array.isArray(data.circuits) ? data.circuits.length : 0;
+
+    if (data.simulating || down.length === 0) {
       banner.hidden = true;
       serialDownSince = null;
-    } else {
-      serialDownSince = data.lastHeartbeatTs || Date.now();
-      banner.hidden = false;
-      updateSerialSince();
+      return;
     }
+
+    if (bannerText) {
+      if (down.length === total && total <= 1) {
+        bannerText.textContent = banner.dataset.msgAll;
+      } else {
+        const label = banner.dataset.boxLabel;
+        const cajas = down.map(n => `${label} ${n}`).join(', ');
+        bannerText.textContent = banner.dataset.msgSome.replace('{cajas}',
+          cajas.charAt(0).toUpperCase() + cajas.slice(1));
+      }
+    }
+
+    // El primer corte manda: si cae una segunda caja, el contador sigue midiendo
+    // desde el primer fallo, no se reinicia.
+    if (serialDownSince === null) {
+      const heartbeats = (data.circuits || [])
+        .filter(c => !c.connected && c.lastHeartbeatTs)
+        .map(c => c.lastHeartbeatTs);
+      serialDownSince = heartbeats.length ? Math.max(...heartbeats) : Date.now();
+    }
+    banner.hidden = false;
+    updateSerialSince();
   });
   function updateSerialSince() {
     if (!banner || banner.hidden || !bannerSince || !serialDownSince) return;

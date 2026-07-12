@@ -21,6 +21,12 @@ const Tanda         = require('../models/Tanda');
 const Team          = require('../models/Team');
 const Driver        = require('../models/Driver');
 const DriverShift   = require('../models/DriverShift');
+const MangaCircuit  = require('../models/MangaCircuit');
+
+// Tras rehidratar, se espera a que cada carril cruce al menos una vez para leer
+// el contador byte12 de la caja y reponer las vueltas dadas durante la caída.
+// Con ~10 s de vuelta, 25 s cubren de sobra un cruce por carril.
+const RECONCILE_OUTAGE_DELAY_MS = 25000;
 const SerialService = require('./SerialService');
 const SocketService = require('./SocketService');
 const DebugLogger   = require('./DebugLogger');
@@ -215,8 +221,7 @@ class TimingServiceClass {
       SerialService.startSimulation(activeLanes.length);
     }
 
-    this._lapHandler = ({ lane, timestamp, lapTimeMs }) => this._onCrossing(lane, timestamp, lapTimeMs);
-    SerialService.on('lane_crossing', this._lapHandler);
+    this._attachLapHandler();
 
     // ── Driver shifts (solo carreras de campeonato) ────────────────────
     // Mapa en memoria: lane → { shiftId, drivingMs }. Se incrementa cada
@@ -241,6 +246,7 @@ class TimingServiceClass {
     }
     this._driverShiftTickN = 0; // contador para persistir cada 5 ticks
 
+    this._persistCircuits();   // primer latido a disco: la manga ya es recuperable
     this._startTick();
 
     // Auto-fin del circuito de arranque al agotar SU tiempo. Cada circuito
@@ -256,6 +262,259 @@ class TimingServiceClass {
     // Inversión de control: en fuentes que SlotTime pilota (BART) hay que
     // ARRANCAR el hardware. No-op en DS-300 (manda la caja). Best-effort.
     SerialService.sendStart();
+  }
+
+  // ── Rehidratación tras una caída ───────────────────────────────────────────
+
+  /**
+   * Reconstruye la sesión de una manga que se quedó a medias porque el proceso
+   * murió. NO es un GO: no sella `started_at`, no activa pre-armes, no arranca el
+   * hardware y no emite `manga:started`. La manga ya estaba corriendo; lo único
+   * que se perdió fue la memoria del proceso.
+   *
+   * El ancla de cada circuito (`startTime`) es reloj de pared y ya venía
+   * desplazada por sus pausas, así que el transcurrido se recalcula solo — con la
+   * caída incluida, que es lo correcto: los coches han seguido rodando y la caja
+   * ha seguido contando.
+   *
+   * Lo llama SessionRecovery, y SOLO después de que la caja confirme por latido o
+   * por un cruce que la carrera sigue viva.
+   */
+  rehydrateManga({ manga, race, lanes, teams, drivers, circuits: filas, outageMs = 0 }) {
+    if (this.session) this.stopManga(false);
+
+    const durationMs = (race.manga_duration_minutes || 0) * 60000;
+    const { circuits, laneToCircuit } = this._buildCircuits(race, durationMs, Date.now(), 0);
+
+    // Estado real de cada circuito, tal como quedó en disco.
+    filas.forEach(f => {
+      const c = circuits[f.circuitIndex];
+      if (!c) return;
+      c.status     = f.status;
+      c.startTime  = f.startTime;
+      c.endTime    = f.endTime;
+      c.pauseStart = f.pauseStart;
+      c.durationMs = f.durationMs || durationMs;
+    });
+
+    // El reloj global de la manga: el arranque más temprano de sus circuitos.
+    const arranques = filas.map(f => f.startTime).filter(t => t != null);
+    const startTime = arranques.length ? Math.min(...arranques) : Date.now();
+
+    const laneMap = this._buildLaneMap(lanes, startTime);
+    this.session = {
+      manga, race, lanes, teams, drivers, laneMap, startTime,
+      durationMs, status: 'running', circuits, laneToCircuit,
+    };
+
+    // Vueltas, medias, mejor vuelta y último cruce se reconstruyen de `laps`.
+    const restaurados = this._restoreLaneStatsFromDb(manga.id, circuits, laneToCircuit);
+
+    // Turnos de piloto: el contador sigue donde lo dejó, y el tiempo de la caída
+    // se le apunta al piloto que estaba al volante (estaba conduciendo).
+    this._isChampionship = (race.type === 'championship');
+    this._activeShiftsByLane = {};
+    if (this._isChampionship) {
+      DriverShift.findAllOpenByManga(manga.id).forEach(s => {
+        if (s.pre_armed) return;                       // nunca llegó a rodar
+        const e = this._openShiftEntry(s.lane, s.id, s.driving_ms || 0);
+        // `elapsed_at_ms` es el transcurrido del circuito cuando se escribió
+        // `driving_ms`. Retomando desde ahí, la caída se cuenta como conducida.
+        if (s.elapsed_at_ms != null) e.openElapsedMs = s.elapsed_at_ms;
+      });
+    }
+
+    this._attachLapHandler();
+
+    this._driverShiftTickN = 0;
+    this._persistCircuits();
+    this._startTick();
+    Object.values(circuits).forEach(c => {
+      if (c.status === 'running') this._scheduleCircuitAutoFinish(c.index);
+    });
+
+    // Vueltas que la caja contó mientras estábamos caídos: se reponen con la
+    // media del carril, marcadas como estimadas. Diferido, porque el contador
+    // byte12 del DS solo se conoce tras el primer cruce de cada carril.
+    if (outageMs > 0) {
+      this._outageReconcileTimer = setTimeout(
+        () => this._reconcileAfterOutage(manga.id, race.id),
+        RECONCILE_OUTAGE_DELAY_MS,
+      );
+    }
+
+    DebugLogger.startMangaLog(manga, race);
+    SocketService.emit('manga:recovered', { mangaId: manga.id, raceId: race.id, outageMs, ...this.getStandings() });
+    console.warn(`[TimingService] Manga ${manga.number} RECUPERADA — caída de ${(outageMs / 1000).toFixed(0)}s · ${restaurados.lanes} carriles, ${restaurados.laps} vueltas`);
+
+    return { lanes: restaurados.lanes, laps: restaurados.laps, circuits: filas.length };
+  }
+
+  /** El laneMap en su estado inicial (todo a cero). Compartido con startManga. */
+  _buildLaneMap(lanes, startTime) {
+    const laneMap = {};
+    lanes.forEach(ml => {
+      if (ml.is_rest) return;
+      laneMap[ml.lane] = {
+        lane: ml.lane,
+        name: ml.team_name || ml.driver_name || `Lane ${ml.lane}`,
+        teamId: ml.team_id || null,
+        driverId: ml.driver_id || null,
+        color: ml.team_color || '#8b949e',
+        country: ml.team_country || null,
+        lapCount: 0, bestLapMs: null, lastLapMs: null, lastCrossing: startTime,
+        avgLapCount: 0, lapsMsSum: 0, lapAvgMs: 0,
+        cleanAvgCount: 0, cleanLapsSum: 0, cleanAvgMs: 0,
+        firstLapDone: false, resumeWarmup: false,
+        raceBestLapMs: null, raceBestEntity: null,
+        pendingPauseAdjustMs: 0,
+        refAvgMs: 0, circuitStartTime: null,
+      };
+    });
+    return laneMap;
+  }
+
+  /**
+   * Repuebla los contadores de cada carril desde `laps`. Todo lo que el motor
+   * llevaba en memoria (vueltas, media, media limpia, mejor vuelta, último cruce)
+   * está derivado de filas que ya están en disco.
+   */
+  _restoreLaneStatsFromDb(mangaId, circuits, laneToCircuit) {
+    const db = require('../config/database');
+    const filas = db.prepare(`
+      SELECT lane, COUNT(*) AS n,
+             MIN(CASE WHEN is_exit = 0 AND is_warmup = 0 AND lap_number > 1 THEN lap_time_ms END) AS best,
+             SUM(CASE WHEN is_warmup = 0 THEN lap_time_ms ELSE 0 END) AS sumMs,
+             SUM(CASE WHEN is_warmup = 0 THEN 1 ELSE 0 END) AS cnt,
+             SUM(CASE WHEN is_warmup = 0 AND is_exit = 0 THEN lap_time_ms ELSE 0 END) AS cleanSum,
+             SUM(CASE WHEN is_warmup = 0 AND is_exit = 0 THEN 1 ELSE 0 END) AS cleanCnt,
+             MAX(elapsed_ms) AS maxElapsed,
+             MAX(lap_number) AS maxLap
+      FROM laps INDEXED BY idx_laps_manga
+      WHERE manga_id = ? AND is_ghost = 0
+      GROUP BY lane
+    `).all(mangaId);
+
+    let totalLaps = 0;
+    for (const f of filas) {
+      const ld = this.session.laneMap[f.lane];
+      if (!ld) continue;
+      const ci = laneToCircuit[f.lane];
+      const c  = ci != null ? circuits[ci] : null;
+
+      ld.lapCount      = f.maxLap || f.n;
+      ld.bestLapMs     = f.best ?? null;
+      ld.avgLapCount   = f.cnt || 0;
+      ld.lapsMsSum     = f.sumMs || 0;
+      ld.lapAvgMs      = ld.avgLapCount ? ld.lapsMsSum / ld.avgLapCount : 0;
+      ld.cleanAvgCount = f.cleanCnt || 0;
+      ld.cleanLapsSum  = f.cleanSum || 0;
+      ld.cleanAvgMs    = ld.cleanAvgCount ? ld.cleanLapsSum / ld.cleanAvgCount : 0;
+      ld.refAvgMs      = ld.cleanAvgMs || ld.lapAvgMs;
+      ld.firstLapDone  = ld.lapCount > 0;
+      ld.circuitStartTime = c ? c.startTime : null;
+      // `elapsed_ms` es relativo al arranque de SU circuito, así que el último
+      // cruce en reloj de pared se reconstruye sumándolo al ancla del circuito.
+      ld.lastCrossing  = (c && c.startTime != null && f.maxElapsed != null)
+        ? c.startTime + f.maxElapsed
+        : this.session.startTime;
+      totalLaps += f.n;
+    }
+
+    // Mejor vuelta de la CARRERA por carril (sobrevive a la rotación).
+    try {
+      Lap.raceBestByLane(this.session.race.id).forEach(row => {
+        const ld = this.session.laneMap[row.lane];
+        if (!ld) return;
+        ld.raceBestLapMs = row.bestLapMs;
+        ld.raceBestEntity = row.entityName;
+      });
+    } catch { /* sin vueltas previas */ }
+
+    return { lanes: filas.length, laps: totalLaps };
+  }
+
+  /**
+   * Repone las vueltas que la caja contó mientras PitWall estaba caído.
+   *
+   * La caja no se entera de que nos hemos caído: sigue cronometrando y su
+   * contador byte12 sigue subiendo. Comparándolo con lo que hay en BD sabemos
+   * CUÁNTAS vueltas nos perdimos, aunque no sus tiempos. Se reponen con la media
+   * del carril y se marcan `is_estimated`: el equipo no pierde vueltas —que es lo
+   * que decide la carrera— y el informe deja constancia de la estimación.
+   *
+   * Se ejecuta un rato después de rehidratar, cuando ya ha cruzado cada carril y
+   * su byte12 es conocido.
+   */
+  _reconcileAfterOutage(mangaId, raceId) {
+    this._outageReconcileTimer = null;
+    if (!this.session || this.session.manga.id !== mangaId) return;
+    if (SerialService.getLinkStatus().simulating || SerialService.isBart) return;
+
+    const counters = SerialService.getDsLapCounters();
+    if (!counters || !Object.keys(counters).length) {
+      console.warn('[TimingService] Reconciliación de caída: la caja aún no ha reportado contadores.');
+      return;
+    }
+
+    const db = require('../config/database');
+    const countStmt = db.prepare(
+      `SELECT COUNT(*) AS n, MAX(lap_number) AS maxNum
+         FROM laps WHERE manga_id = ? AND lane = ? AND is_ghost = 0 AND lap_number > 0`,
+    );
+
+    let repuestas = 0;
+    for (const ld of Object.values(this.session.laneMap)) {
+      const dsCount = counters[ld.lane];
+      if (dsCount == null) continue;
+      const row = countStmt.get(mangaId, ld.lane);
+      const registered = row?.n || 0;
+      let missing = TimingServiceClass.absoluteDsCount(dsCount, registered) - registered;
+      if (missing <= 0) continue;
+
+      // Una caída larga puede haberse comido muchas vueltas. Es legítimo reponer
+      // más de las 3 del cruce de bandera, pero no una barbaridad: capamos a lo
+      // que da de sí la caída con la media del carril.
+      const refAvg = ld.refAvgMs > 0 ? Math.round(ld.refAvgMs) : 0;
+      if (!refAvg) continue;
+      const tope = Math.max(1, Math.ceil((MangaCircuit.outageMs(mangaId) || 0) / refAvg) + 1);
+      if (missing > tope) {
+        console.warn(`[TimingService] Reconciliación de caída, carril ${ld.lane}: faltan ${missing} vueltas pero la caída solo da para ${tope}. Capado.`);
+        missing = tope;
+      }
+
+      const ci = this.session.laneToCircuit[ld.lane];
+      const c  = ci != null ? this.session.circuits[ci] : null;
+      let lapNum  = row?.maxNum || 0;
+      let elapsed = (c && c.startTime != null && ld.lastCrossing != null)
+        ? Math.max(0, ld.lastCrossing - c.startTime)
+        : 0;
+
+      for (let k = 0; k < missing; k++) {
+        lapNum  += 1;
+        elapsed += refAvg;
+        try {
+          Lap.create({
+            race_id: raceId, manga_id: mangaId,
+            team_id: ld.teamId, driver_id: ld.driverId,
+            lane: ld.lane, lap_number: lapNum,
+            lap_time_ms: refAvg, elapsed_ms: elapsed,
+            is_exit: 0, is_ghost: 0, is_warmup: 0, is_estimated: 1,
+          });
+          repuestas++;
+        } catch (err) { console.error('[TimingService] reponer vuelta de caída:', err.message); }
+      }
+      ld.lapCount = lapNum;
+      console.warn(`[TimingService] Caída: carril ${ld.lane} → +${missing} vuelta(s) estimada(s) @ ${refAvg}ms`);
+    }
+
+    if (repuestas > 0) {
+      this.invalidateStandingsCaches();
+      DebugLogger.log('manga', { event: 'outage_reconcile', mangaId, repuestas });
+      SocketService.emit('recovery:laps', { mangaId, repuestas });
+      SocketService.emitStandings(this.getStandings());
+    }
+    console.warn(`[TimingService] Reconciliación de caída terminada: ${repuestas} vuelta(s) repuesta(s).`);
   }
 
   // ── Estado por circuito (helpers) ───────────────────────────────────────────
@@ -368,6 +627,7 @@ class TimingServiceClass {
     }
 
     this._scheduleCircuitAutoFinish(ci);
+    this._persistCircuits();
     console.log(`[TimingService] Circuito ${ci + 1} arrancado @ ${c.startTime}`);
     SocketService.emitStandings(this.getStandings());
   }
@@ -416,6 +676,7 @@ class TimingServiceClass {
     // terminar. El tiempo ya no crece (elapsed queda congelado en endTime), pero
     // la cronología del informe sí quedaría falseada.
     if (this._isChampionship) this._closeDriverShiftsForCircuit(ci);
+    this._persistCircuits();
 
     const list = Object.values(this.session.circuits);
     const anyRunning  = list.some(x => x.status === 'running');
@@ -439,13 +700,11 @@ class TimingServiceClass {
 
     clearInterval(this._tickInt);
     clearTimeout(this._autoStopTimer);
-    this._tickInt = this._autoStopTimer = null;
+    clearTimeout(this._outageReconcileTimer);
+    this._tickInt = this._autoStopTimer = this._outageReconcileTimer = null;
     this._clearAllCircuitTimers();
 
-    if (this._lapHandler) {
-      SerialService.off('lane_crossing', this._lapHandler);
-      this._lapHandler = null;
-    }
+    this._detachLapHandler();
     this._pendingSetup = null;
 
     // Cierra los shifts abiertos que queden. Cada uno con el tiempo calculado y
@@ -715,6 +974,9 @@ class TimingServiceClass {
             lane: ld.lane, lap_number: lapNum,
             lap_time_ms: refAvg, elapsed_ms: elapsed,
             is_exit: 0, is_ghost: 0, is_warmup: 0,
+            // Su tiempo es la media del carril, no un cruce real. El equipo no
+            // pierde la vuelta, pero queda constancia de que es una estimación.
+            is_estimated: 1,
           });
           inserted++;
         } catch (err) { console.error('[TimingService] reconcile insert error:', err.message); }
@@ -745,12 +1007,21 @@ class TimingServiceClass {
 
   _startTick() {
     if (this._tickInt) return;
+    this._circuitTickN = 0;
     this._tickInt = setInterval(() => {
       const elapsedMs   = Date.now() - this.session.startTime;
       const remainingMs = Math.max(0, this.session.durationMs - elapsedMs);
       SocketService.emit('tick', { elapsedMs, remainingMs, circuits: this._circuitClocks() });
       // Incremento del contador de cada piloto activo y persistencia periódica.
       if (this._isChampionship) this._tickDriverShifts();
+
+      // Latido a disco del estado de los circuitos, en TODA carrera (no solo las
+      // de campeonato): es lo que permite rehidratar la manga tras una caída.
+      // Cada 5 s, así que un reinicio pierde 5 s de ancla, no la manga entera.
+      if (++this._circuitTickN >= 5) {
+        this._circuitTickN = 0;
+        this._persistCircuits();
+      }
     }, 1000);
   }
 
@@ -772,6 +1043,7 @@ class TimingServiceClass {
     // contar). No-op en DS-300/simulación. Best-effort.
     SerialService.sendPause(ci);
     if (this._isChampionship) this._persistAllDriverShifts();
+    this._persistCircuits();
     console.log(`[TimingService] Circuito ${ci + 1} pausado`);
     DebugLogger.log('manga', { event: 'pause', circuit: ci, mangaNumber: this.session.manga.number });
 
@@ -817,6 +1089,7 @@ class TimingServiceClass {
     // Inversión de control: reanudar el Master BART (no hay OP_RESUME → START).
     SerialService.sendResume(ci);
     this._scheduleCircuitAutoFinish(ci);
+    this._persistCircuits();
     console.log(`[TimingService] Circuito ${ci + 1} reanudado tras ${pausedMs}ms`);
     DebugLogger.log('manga', { event: 'resume', circuit: ci, pausedMs, mangaNumber: this.session.manga.number });
 
@@ -901,13 +1174,11 @@ class TimingServiceClass {
 
     clearInterval(this._tickInt);
     clearTimeout(this._autoStopTimer);
-    this._tickInt = this._autoStopTimer = null;
+    clearTimeout(this._outageReconcileTimer);
+    this._tickInt = this._autoStopTimer = this._outageReconcileTimer = null;
     this._clearAllCircuitTimers();
 
-    if (this._lapHandler) {
-      SerialService.off('lane_crossing', this._lapHandler);
-      this._lapHandler = null;
-    }
+    this._detachLapHandler();
 
     const mangaId = this.session.manga.id;
     const raceId  = this.session.race.id;
@@ -949,7 +1220,38 @@ class TimingServiceClass {
 
   // ── Lap crossing ──────────────────────────────────────────────────────────
 
-  _onCrossing(lane, timestamp, deviceLapTimeMs) {
+  /**
+   * Engancha el oyente de cruces, soltando antes el que hubiera. Sin esto, una
+   * segunda `startManga`/`rehydrateManga` sin `stopManga` de por medio deja el
+   * oyente viejo colgado del emisor: cada cruce entraría DOS veces en `laps`.
+   * `_lapHandler` es un closure nuevo cada vez, así que perder la referencia
+   * anterior significa no poder soltarla nunca.
+   */
+  _attachLapHandler() {
+    const SerialService = require('./SerialService');
+    this._detachLapHandler();
+    this._lapHandler = (data) => this._onCrossing(data.lane, data.timestamp, data.lapTimeMs, data.missed);
+    SerialService.on('lane_crossing', this._lapHandler);
+    // Arma el watchdog de latido de cada caja. Imprescindible al REHIDRATAR: ya no
+    // llegará ninguna trama de GO que lo arme por su cuenta, y sin él una caja que
+    // se calla no se detecta jamás.
+    SerialService.setRaceRunning(true);
+  }
+
+  _detachLapHandler() {
+    if (!this._lapHandler) return;
+    const SerialService = require('./SerialService');
+    SerialService.off('lane_crossing', this._lapHandler);
+    SerialService.setRaceRunning(false);   // manga parada: el silencio del DS es normal
+    this._lapHandler = null;
+  }
+
+  /**
+   * `missed` = la caja contó esta vuelta pero PitWall no vio su trama (cable
+   * fuera, enlace caído). Su tiempo es la media del carril, no un cruce real:
+   * se guarda marcada para que el operador pueda revisarla o borrarla.
+   */
+  _onCrossing(lane, timestamp, deviceLapTimeMs, missed = false) {
     if (!this.session) {
       DebugLogger.log('crossing_dropped', { lane, deviceLapTimeMs, reason: 'no_session' });
       return;
@@ -1227,6 +1529,9 @@ class TimingServiceClass {
         is_exit: isExit ? 1 : 0,
         is_pit_stop: isPitStop ? 1 : 0,
         is_warmup: isWarmup ? 1 : 0,
+        // La caja la contó, nosotros no vimos su trama: su tiempo es la media
+        // del carril. Marcada para poder revisarla o borrarla en el corrector.
+        is_estimated: missed ? 1 : 0,
       });
     } catch (err) { console.error('[TimingService] DB error:', err.message); }
 
@@ -1742,6 +2047,28 @@ class TimingServiceClass {
     });
   }
 
+  /**
+   * Vuelca a BD el estado de todos los circuitos. Es el latido a disco que
+   * permite rehidratar la manga si el proceso muere: sin él, el ancla de tiempo
+   * de cada caja (ya desplazada por sus pausas) se va con el proceso.
+   *
+   * Se llama en cada transición y con el tick. Best-effort: un fallo de BD aquí
+   * no puede tumbar el cronometraje.
+   */
+  _persistCircuits() {
+    if (!this.session) return;
+    try {
+      MangaCircuit.saveAll(this.session.manga.id,
+        Object.values(this.session.circuits).map(c => ({
+          index: c.index, status: c.status, startTime: c.startTime,
+          endTime: c.endTime, pauseStart: c.pauseStart, durationMs: c.durationMs,
+          elapsedMs: this._circuitElapsedMs(c.index) ?? 0,
+        })));
+    } catch (err) {
+      console.error('[TimingService] persist circuits error:', err.message);
+    }
+  }
+
   // UPDATE de driving_ms en BD para cada shift abierto, en una sola transacción.
   // Se llama en el tick, pero también en pausa/reanudación/fin de circuito/swap:
   // así una caída pierde segundos, no la manga entera.
@@ -1754,7 +2081,8 @@ class TimingServiceClass {
         for (const lane of lanes) {
           const e = this._activeShiftsByLane[lane];
           e.drivingMs = this._drivingMsOf(e);
-          DriverShift.updateDrivingMs(e.shiftId, e.drivingMs);
+          // El transcurrido del circuito es el ancla para rehidratar este turno.
+          DriverShift.updateDrivingMs(e.shiftId, e.drivingMs, this._circuitElapsedMs(e.ci));
         }
       })();
     } catch (e) {
