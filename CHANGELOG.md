@@ -15,6 +15,12 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ## [1.7.0] — 2026-07-10
 
+### Añadido
+- **Colocar a cada piloto en su carril arrastrándolo.** Tras la pole, la elección de carriles se hace colocando a cada piloto o equipo en un carril concreto: lo arrastras desde la bolsa de arriba hasta el carril que quieras, o tocas primero al piloto y luego el carril. Puedes moverlo entre carriles o entre tandas, o devolverlo a la bolsa tocándolo. Ya no hay que seguir el orden de pole: colocas a cada uno donde decidas.
+- **Reparto de la carrera en varias tandas.** Puedes dividir la carrera indicando el «Nº de tandas», con tandas del tamaño que quieras; la misma forma de colocar sirve tanto para una sola tanda como para varias. El botón «+ descanso» añade plazas de descanso a una tanda.
+- **Carriles en orden y agrupados por circuito.** Los carriles se muestran siempre en orden numérico. Si el montaje tiene varias cajas —por ejemplo tres cajas de ocho, 24 carriles— se agrupan y rotulan por circuito: «Circuito 1» (1-8), «Circuito 2» (9-16) y «Circuito 3» (17-24), para no perderse en montajes grandes.
+- **Todas las tandas se crean de una sola vez.** Al confirmar se generan de golpe todas las tandas con cada piloto en el carril donde lo colocaste; antes solo se creaba la primera y las demás había que añadirlas a mano.
+
 ### Cambiado
 - **Nueva regla de desempate a igualdad de vueltas: gana quien más distancia recorrió.** Cuando dos participantes terminan con el mismo número de vueltas, ahora desempata **quién recorrió más distancia** — es decir, quien sumó más «coma» (la fracción de la vuelta en curso que llevaba hecha cada vez que caía la bandera de una manga). La distancia total es, por tanto, las vueltas completas más todas esas fracciones. El tiempo total pasa a ser un criterio secundario, solo para el caso —prácticamente imposible— de empatar también en distancia. **Este cambio puede alterar el orden de la clasificación** respecto a versiones anteriores en los empates a vueltas. El nuevo criterio es coherente en todas las pantallas: marcador en directo, vista Le Mans, resultados y la app Lap ordenan igual.
 

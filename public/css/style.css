@@ -1822,6 +1822,119 @@ body:has(.pole-timing-fit) { overflow: hidden; }
 }
 @media (max-width: 900px) { .pole-lanes-grid { grid-template-columns: 1fr; } }
 
+/* ── Nº de tandas + reparto multi-tanda ──────────────────────────────────── */
+.pole-tandas-ctrl {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px;
+  margin: 6px 0 16px; padding: 12px 14px;
+  background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px;
+}
+.pole-tandas-ctrl label { font-weight: 700; letter-spacing: .02em; }
+.pole-tandas-ctrl input[type=number] {
+  width: 72px; padding: 6px 8px; font-size: 1.1rem; font-weight: 700; text-align: center;
+  background: #0d1117; color: #e6edf3;
+  border: 1px solid rgba(255,255,255,.18); border-radius: 8px;
+}
+.pole-tandas-hint { flex: 1 1 260px; min-width: 0; font-size: .82rem; color: #8b949e; }
+
+.pole-tandas-panel { margin-bottom: 16px; }
+
+/* Bolsa de pilotos sin asignar (píldoras estilo vueltas rápidas) */
+.pole-pool {
+  background: rgba(255,255,255,.03); border: 1px dashed rgba(255,255,255,.14);
+  border-radius: 10px; padding: 10px 12px; margin-bottom: 14px;
+}
+.pole-pool.is-dragover { border-color: #f6c90e; background: rgba(246,201,14,.06); }
+.pole-pool__hd {
+  display: flex; align-items: center; gap: 8px;
+  font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  font-size: .72rem; color: #8b949e; margin-bottom: 8px;
+}
+.pole-pool__count {
+  min-width: 1.6em; text-align: center; padding: 1px 7px; border-radius: 999px;
+  background: rgba(246,201,14,.15); color: #f6c90e; font-size: .78rem;
+}
+.pole-pool__pills { display: flex; flex-wrap: wrap; gap: 6px; min-height: 34px; align-content: flex-start; }
+.pole-pool__empty { color: #3fb950; font-size: .85rem; font-weight: 600; }
+
+/* Píldora de piloto */
+.pole-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px 4px 6px; border-radius: 999px; cursor: grab;
+  background: #0a0a0a; border: 1px solid #21262d; user-select: none; max-width: 100%;
+}
+.pole-pill:active { cursor: grabbing; }
+.pole-pill.is-selected { border-color: #f6c90e; box-shadow: 0 0 0 2px rgba(246,201,14,.35); }
+.pole-pill.in-slot { background: transparent; border-color: transparent; padding-left: 2px; }
+.pole-pill__dot { width: 1.5em; height: 1.5em; border-radius: 50%; flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center; }
+.pole-pill__pos { font-size: .68rem; color: #8b949e; font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+.pole-pill__name {
+  font-weight: 600; font-size: .86rem; color: #e6edf3;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Columnas de tandas con huecos de carril */
+.pole-tandas-cols {
+  display: grid; gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+.pole-tanda-col {
+  background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px; padding: 8px; min-width: 0;
+}
+.pole-tanda-col__hd {
+  display: flex; align-items: center; justify-content: space-between;
+  font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
+  font-size: .78rem; color: #c9d1d9; padding: 4px 6px 8px;
+  border-bottom: 1px solid rgba(255,255,255,.08); margin-bottom: 8px;
+}
+.pole-tanda-col__count {
+  min-width: 1.6em; text-align: center; padding: 1px 6px; border-radius: 999px;
+  background: rgba(255,255,255,.08); color: #e6edf3; font-size: .8rem;
+}
+.pole-tanda-slots { display: flex; flex-direction: column; gap: 5px; }
+
+/* Bloques de circuito dentro de una tanda: en columnas. Con varias cajas, cada
+   una rotulada "Circuito N"; los carriles van en orden numérico dentro de cada una. */
+.pole-tanda-circuits { display: flex; gap: 10px; flex-wrap: wrap; }
+.pole-circuit-group { flex: 1 1 130px; min-width: 0; }
+.pole-circuit-hd {
+  font-size: .68rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: #8b949e; padding: 2px 2px 6px;
+}
+/* Con varios circuitos la tanda es más ancha (ocupa toda la fila y reparte sus
+   circuitos en columnas); con uno solo, las tandas van lado a lado. */
+.pole-tanda-col--multi { grid-column: 1 / -1; }
+
+/* Hueco de carril (o descanso) */
+.pole-slot {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 6px; border-radius: 8px; min-height: 38px;
+  background: #0d1117; border: 1px solid rgba(255,255,255,.10);
+}
+.pole-slot.is-filled { border-color: rgba(255,255,255,.18); }
+.pole-slot.is-dragover { border-color: #f6c90e; background: rgba(246,201,14,.07); }
+.pole-slot--rest { border-style: dashed; }
+.pole-slot__lane {
+  flex: 0 0 auto; width: 26px; height: 26px; border-radius: 6px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: 'Rajdhani', sans-serif; font-weight: 800; font-size: .9rem; color: #fff;
+  background: var(--lane-color, #30363d);
+}
+.pole-slot__lane--rest { background: transparent; font-size: 1rem; }
+.pole-slot__drop { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; }
+.pole-slot__empty { color: #4e555e; font-size: .8rem; font-style: italic; }
+
+.pole-addrest {
+  margin: 0 0 6px; width: 100%; padding: 4px; border-radius: 7px; cursor: pointer;
+  background: rgba(255,255,255,.04); color: #8b949e;
+  border: 1px dashed rgba(255,255,255,.16); font-size: .74rem; font-weight: 600;
+}
+.pole-addrest:hover { background: rgba(255,255,255,.10); color: #e6edf3; }
+
+.pole-btn-confirm.is-disabled { opacity: .4; cursor: not-allowed; }
+
 /* Lista de pickers */
 .pole-pickers-list { padding: 4px 12px 16px; }
 .pole-picker-row {
