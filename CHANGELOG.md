@@ -16,8 +16,10 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 ## [1.7.0] — 2026-07-10
 
 ### Añadido
-- **Reparto de la carrera en varias tandas desde la elección de carriles.** Tras la pole, en la pantalla de elección de carriles ya puedes indicar en cuántas tandas quieres dividir la carrera. Con una sola tanda todo sigue igual que siempre: los pilotos eligen carril por orden de pole. Con más de una, el campo de clasificados se reparte en varias tandas —que pueden ser de distinto tamaño— y puedes mover a cada piloto de una a otra con las flechas ◀ ▶; el reparto de partida sigue el orden de pole. En cada tanda los carriles se asignan por orden de pole con la plantilla del circuito.
-- **Todas las tandas se crean de una sola vez.** Al confirmar el reparto se generan de golpe todas las tandas con sus pilotos ya colocados; antes solo se creaba la primera y las demás había que añadirlas a mano.
+- **Colocar a cada piloto en su carril arrastrándolo.** Tras la pole, la elección de carriles se hace colocando a cada piloto o equipo en un carril concreto: lo arrastras desde la bolsa de arriba hasta el carril que quieras, o tocas primero al piloto y luego el carril. Puedes moverlo entre carriles o entre tandas, o devolverlo a la bolsa tocándolo. Ya no hay que seguir el orden de pole: colocas a cada uno donde decidas.
+- **Reparto de la carrera en varias tandas.** Puedes dividir la carrera indicando el «Nº de tandas», con tandas del tamaño que quieras; la misma forma de colocar sirve tanto para una sola tanda como para varias. El botón «+ descanso» añade plazas de descanso a una tanda.
+- **Carriles en orden y agrupados por circuito.** Los carriles se muestran siempre en orden numérico. Si el montaje tiene varias cajas —por ejemplo tres cajas de ocho, 24 carriles— se agrupan y rotulan por circuito: «Circuito 1» (1-8), «Circuito 2» (9-16) y «Circuito 3» (17-24), para no perderse en montajes grandes.
+- **Todas las tandas se crean de una sola vez.** Al confirmar se generan de golpe todas las tandas con cada piloto en el carril donde lo colocaste; antes solo se creaba la primera y las demás había que añadirlas a mano.
 
 ## [1.6.2] — 2026-07-09
 
