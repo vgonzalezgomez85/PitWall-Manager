@@ -277,12 +277,14 @@ class Lap {
       coma_total:   coma[k] || 0,
     }));
 
-    // Mismo desempate que la consulta original: vueltas DESC, coma MEDIA por
-    // manga DESC, tiempo total ASC.
-    const comaAvg = (r) => (r.mangas_raced ? r.coma_total / r.mangas_raced : 0);
+    // Desempate por DISTANCIA: vueltas DESC y, a igualdad, más coma acumulada
+    // (SUMA de comas = fracción de vuelta recorrida de más en cada manga → más
+    // distancia total). El tiempo total queda como criterio posterior para el
+    // caso, casi imposible, de empatar también en coma. DEBE coincidir con el
+    // ORDER BY de aggregateByRace (salida byte-idéntica).
     rows.sort((x, y) =>
       (y.total_laps - x.total_laps) ||
-      (comaAvg(y) - comaAvg(x)) ||
+      ((y.coma_total || 0) - (x.coma_total || 0)) ||
       (x.total_time_ms - y.total_time_ms));
     return rows;
   }
@@ -333,10 +335,12 @@ class Lap {
       LEFT JOIN drivers d ON d.id = l.driver_id
       WHERE l.race_id = ? AND l.is_ghost = 0 AND l.manga_id IS NOT NULL
       GROUP BY entity_id, entity_type
-      -- Desempate: coma MEDIA por manga (no la suma), para que la escala sea < 1
-      -- e intuitiva; con mangas iguales el orden es idéntico al de la suma.
+      -- Desempate a igualdad de vueltas por DISTANCIA: más coma acumulada (SUMA)
+      -- = más fracción de vuelta recorrida al caer cada bandera = más distancia
+      -- total. El tiempo total queda como criterio posterior (empate exacto de
+      -- coma es casi imposible).
       ORDER BY total_laps DESC,
-               (coma_total * 1.0 / NULLIF(mangas_raced, 0)) DESC,
+               coma_total DESC,
                total_time_ms ASC
     `).all(raceId);
   }
