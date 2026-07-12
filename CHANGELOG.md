@@ -20,6 +20,8 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 - **Reparto de la carrera en varias tandas.** Puedes dividir la carrera indicando el «Nº de tandas», con tandas del tamaño que quieras; la misma forma de colocar sirve tanto para una sola tanda como para varias. El botón «+ descanso» añade plazas de descanso a una tanda.
 - **Carriles en orden y agrupados por circuito.** Los carriles se muestran siempre en orden numérico. Si el montaje tiene varias cajas —por ejemplo tres cajas de ocho, 24 carriles— se agrupan y rotulan por circuito: «Circuito 1» (1-8), «Circuito 2» (9-16) y «Circuito 3» (17-24), para no perderse en montajes grandes.
 - **Todas las tandas se crean de una sola vez.** Al confirmar se generan de golpe todas las tandas con cada piloto en el carril donde lo colocaste; antes solo se creaba la primera y las demás había que añadirlas a mano.
+- **Recuperación de una manga tras un corte.** Si PitWall se reinicia (o se corta la corriente) con una manga en marcha, al volver a arrancar retoma esa manga automáticamente en vez de darla por perdida, siempre que la caja confirme que sigue rodando. Las vueltas que ocurrieron durante el corte se reponen con la media del carril y quedan **marcadas** en el corrector, para poder revisarlas o quitarlas a mano. El tiempo del corte se cuenta como conducido en el control de turnos.
+- **Aviso de qué caja DS se ha quedado sin señal.** Con varias cajas, si una pierde la conexión el aviso indica **cuál** (por ejemplo «Sin señal · caja 2»), en la vista de directo y en el pie del kiosco de turnos. Antes, con una caja caída y las demás vivas, el aviso podía no salir.
 
 ### Cambiado
 - **Nueva regla de desempate a igualdad de vueltas: gana quien más distancia recorrió.** Cuando dos participantes terminan con el mismo número de vueltas, ahora desempata **quién recorrió más distancia** — es decir, quien sumó más «coma» (la fracción de la vuelta en curso que llevaba hecha cada vez que caía la bandera de una manga). La distancia total es, por tanto, las vueltas completas más todas esas fracciones. El tiempo total pasa a ser un criterio secundario, solo para el caso —prácticamente imposible— de empatar también en distancia. **Este cambio puede alterar el orden de la clasificación** respecto a versiones anteriores en los empates a vueltas. El nuevo criterio es coherente en todas las pantallas: marcador en directo, vista Le Mans, resultados y la app Lap ordenan igual.
@@ -29,6 +31,7 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ### Corregido
 - **La misma vuelta ya no muestra un tiempo distinto en el panel y en el directo.** El panel de vueltas rápidas redondeaba a milésimas mientras que el resto de PitWall trunca a centésimas, así que una misma vuelta podía verse como `8.09` en el panel y `8.08` en el directo. Ahora el panel usa exactamente el mismo formato que el directo y los tiempos coinciden.
+- **PitWall ya no se queda sin memoria al desconectar una caja DS.** Al perder la conexión con una caja mientras corría una manga, en algunos casos el consumo de memoria crecía sin parar hasta tumbar el programa. Ahora el enlace caído se detecta y se cierra correctamente, y el consumo se mantiene estable.
 
 ## [1.6.2] — 2026-07-09
 
