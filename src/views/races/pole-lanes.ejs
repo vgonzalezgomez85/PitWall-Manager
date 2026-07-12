@@ -126,18 +126,21 @@ const N_LANES       = CIRCUITS.reduce((a, c) => a + c.lanes.length, 0);
 const esc = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const posOf = {}; ENTRIES.forEach((e, i) => posOf[e.name] = i + 1);
 
-let place    = {};    // nombre → {t, lane, restIdx?}
-let restCount = {};   // t → nº de plazas de descanso
+let place    = {};    // nombre → {t, lane} carril · {t, lane:0, ci, ri} descanso
+let restCount = {};   // t → { circuito → nº de plazas de descanso }
 let selected = null;  // piloto seleccionado por clic (para colocar en el siguiente carril)
 
 function multiN() { return Math.min(ENTRIES.length, Math.max(1, parseInt(numTandasInput.value, 10) || 1)); }
 function unassigned() { return ENTRIES.filter(e => !place[e.name]); }
-function occupant(t, lane, restIdx) {
+// Un descanso se identifica por (tanda, circuito, índice); un carril, por (tanda, carril).
+function occupant(t, lane, ci, ri) {
   return ENTRIES.find(e => {
     const p = place[e.name];
-    return p && p.t === t && p.lane === lane && (lane !== 0 || p.restIdx === restIdx);
+    if (!p || p.t !== t) return false;
+    return (lane !== 0) ? (p.lane === lane) : (p.lane === 0 && p.ci === ci && p.ri === ri);
   });
 }
+function restsOf(t, ci) { return (restCount[t] && restCount[t][ci]) || 0; }
 
 function pillHTML(name, extraClass) {
   const i = posOf[name] - 1;
@@ -166,10 +169,10 @@ function render() {
       <div class="pole-slot__drop">${occ ? pillHTML(occ.name, 'in-slot') : `<span class="pole-slot__empty"></span>`}</div>
     </div>`;
   };
-  // Una plaza de descanso
-  const restSlot = (t, k) => {
-    const occ = occupant(t, 0, k);
-    return `<div class="pole-slot pole-slot--rest${occ ? ' is-filled' : ''}" data-t="${t}" data-lane="0" data-rest="${k}">
+  // Una plaza de descanso (pertenece a un circuito, va ENCIMA de sus carriles)
+  const restSlot = (t, ci, ri) => {
+    const occ = occupant(t, 0, ci, ri);
+    return `<div class="pole-slot pole-slot--rest${occ ? ' is-filled' : ''}" data-t="${t}" data-lane="0" data-ci="${ci}" data-rest="${ri}">
       <span class="pole-slot__lane pole-slot__lane--rest">💤</span>
       <div class="pole-slot__drop">${occ ? pillHTML(occ.name, 'in-slot') : `<span class="pole-slot__empty">${T_REST}</span>`}</div>
     </div>`;
@@ -178,29 +181,28 @@ function render() {
   // Tandas
   tandasCols.innerHTML = '';
   for (let t = 1; t <= n; t++) {
-    if (restCount[t] == null) restCount[t] = 0;
+    if (restCount[t] == null) restCount[t] = {};
     const col = document.createElement('div');
     col.className = 'pole-tanda-col' + (MULTI_CIRCUIT ? ' pole-tanda-col--multi' : '');
 
-    // Un bloque de carriles por circuito, en orden numérico. Con varias cajas se
-    // rotula "Circuito N"; con una sola, sin etiqueta.
+    // Un bloque por circuito, en orden numérico. Con varias cajas se rotula
+    // "Circuito N". Los DESCANSOS de cada circuito van ARRIBA, encima del primer
+    // carril, con su propio "+ descanso".
     const circuitsHTML = CIRCUITS.map(circ => {
+      let restsHTML = '';
+      for (let ri = 0; ri < restsOf(t, circ.index); ri++) restsHTML += restSlot(t, circ.index, ri);
       const lanesHTML = circ.lanes.map(lane => laneSlot(t, lane)).join('');
       return `<div class="pole-circuit-group">
         ${MULTI_CIRCUIT ? `<div class="pole-circuit-hd">${T_CIRCUIT} ${circ.index}</div>` : ''}
-        <div class="pole-tanda-slots">${lanesHTML}</div>
+        <button type="button" class="pole-addrest" data-t="${t}" data-ci="${circ.index}">${T_ADDREST}</button>
+        <div class="pole-tanda-slots">${restsHTML}${lanesHTML}</div>
       </div>`;
     }).join('');
-
-    let restsHTML = '';
-    for (let k = 0; k < restCount[t]; k++) restsHTML += restSlot(t, k);
 
     const nPilots = ENTRIES.filter(e => place[e.name]?.t === t).length;
     col.innerHTML =
       `<div class="pole-tanda-col__hd">${T_TANDA} ${t}<span class="pole-tanda-col__count">${nPilots}</span></div>
-       <div class="pole-tanda-circuits">${circuitsHTML}</div>
-       <div class="pole-rests"><div class="pole-tanda-slots">${restsHTML}</div>
-         <button type="button" class="pole-addrest" data-t="${t}">${T_ADDREST}</button></div>`;
+       <div class="pole-tanda-circuits">${circuitsHTML}</div>`;
     tandasCols.appendChild(col);
   }
 
@@ -210,11 +212,20 @@ function render() {
   confirmBtn.classList.toggle('is-disabled', !todos);
 }
 
-// Coloca `name` en (t, lane, restIdx). Si el hueco ya tenía otro, ese vuelve a la bolsa.
-function placeAt(name, t, lane, restIdx) {
-  const prev = occupant(t, lane, restIdx);
+// Lee (t, lane, ci, ri) de un hueco del DOM.
+function slotCoords(slot) {
+  return [
+    +slot.dataset.t,
+    +slot.dataset.lane,
+    slot.dataset.ci   != null ? +slot.dataset.ci   : null,
+    slot.dataset.rest != null ? +slot.dataset.rest : null,
+  ];
+}
+// Coloca `name` en un hueco. Si ya tenía otro, ese vuelve a la bolsa.
+function placeAt(name, t, lane, ci, ri) {
+  const prev = occupant(t, lane, ci, ri);
   if (prev && prev.name !== name) delete place[prev.name];
-  place[name] = (lane === 0) ? { t, lane: 0, restIdx } : { t, lane };
+  place[name] = (lane === 0) ? { t, lane: 0, ci, ri } : { t, lane };
   if (selected === name) selected = null;
   render();
 }
@@ -223,7 +234,12 @@ function toPool(name) { delete place[name]; render(); }
 // ── Clic: seleccionar piloto / colocar / devolver ──
 tandasPanel.addEventListener('click', e => {
   const addrest = e.target.closest('.pole-addrest');
-  if (addrest) { const t = +addrest.dataset.t; restCount[t] = (restCount[t] || 0) + 1; render(); return; }
+  if (addrest) {
+    const t = +addrest.dataset.t, ci = +addrest.dataset.ci;
+    restCount[t] = restCount[t] || {};
+    restCount[t][ci] = (restCount[t][ci] || 0) + 1;
+    render(); return;
+  }
 
   const pill = e.target.closest('.pole-pill');
   const slot = e.target.closest('.pole-slot');
@@ -234,12 +250,12 @@ tandasPanel.addEventListener('click', e => {
     render();
     return;
   }
-  if (pill && pill.closest('.pole-slot')) {          // píldora en un carril → a la bolsa
+  if (pill && pill.closest('.pole-slot')) {          // píldora en un hueco → a la bolsa
     toPool(pill.dataset.name);
     return;
   }
   if (slot && selected) {                            // hueco con un piloto seleccionado → colocar
-    placeAt(selected, +slot.dataset.t, +slot.dataset.lane, slot.dataset.rest != null ? +slot.dataset.rest : null);
+    placeAt(selected, ...slotCoords(slot));
     return;
   }
 });
@@ -261,7 +277,7 @@ tandasPanel.addEventListener('drop', e => {
   if (dragName == null) return;
   const slot = e.target.closest('.pole-slot');
   const pool = e.target.closest('#poolZone');
-  if (slot) { e.preventDefault(); placeAt(dragName, +slot.dataset.t, +slot.dataset.lane, slot.dataset.rest != null ? +slot.dataset.rest : null); }
+  if (slot) { e.preventDefault(); placeAt(dragName, ...slotCoords(slot)); }
   else if (pool) { e.preventDefault(); toPool(dragName); }
   dragName = null;
 });
@@ -289,9 +305,16 @@ function onNumTandasChange() {
   numTandasInput.value = n;
   confirmLbl.textContent = (n > 1) ? LBL_CREATE_N : LBL_CREATE_1;
   place = {}; selected = null; restCount = {};
-  // Descansos iniciales: lo justo para que quepan todos si el reparto fuera parejo.
+  // Descansos iniciales: lo justo para que quepan todos si el reparto fuera parejo,
+  // repartidos entre los circuitos (uno a cada uno por turnos).
   const initRest = Math.max(0, Math.ceil(ENTRIES.length / n) - N_LANES);
-  for (let t = 1; t <= n; t++) restCount[t] = initRest;
+  for (let t = 1; t <= n; t++) {
+    restCount[t] = {};
+    for (let k = 0; k < initRest; k++) {
+      const ci = CIRCUITS[k % CIRCUITS.length].index;
+      restCount[t][ci] = (restCount[t][ci] || 0) + 1;
+    }
+  }
   render();
 }
 

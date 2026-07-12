@@ -1906,10 +1906,6 @@ body:has(.pole-timing-fit) { overflow: hidden; }
 /* Con varios circuitos la tanda es más ancha (ocupa toda la fila y reparte sus
    circuitos en columnas); con uno solo, las tandas van lado a lado. */
 .pole-tanda-col--multi { grid-column: 1 / -1; }
-.pole-rests { margin-top: 8px; }
-.pole-rests .pole-tanda-slots {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 5px;
-}
 
 /* Hueco de carril (o descanso) */
 .pole-slot {
@@ -1931,9 +1927,9 @@ body:has(.pole-timing-fit) { overflow: hidden; }
 .pole-slot__empty { color: #4e555e; font-size: .8rem; font-style: italic; }
 
 .pole-addrest {
-  margin-top: 8px; width: 100%; padding: 5px; border-radius: 7px; cursor: pointer;
+  margin: 0 0 6px; width: 100%; padding: 4px; border-radius: 7px; cursor: pointer;
   background: rgba(255,255,255,.04); color: #8b949e;
-  border: 1px dashed rgba(255,255,255,.16); font-size: .8rem; font-weight: 600;
+  border: 1px dashed rgba(255,255,255,.16); font-size: .74rem; font-weight: 600;
 }
 .pole-addrest:hover { background: rgba(255,255,255,.10); color: #e6edf3; }
 
