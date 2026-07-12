@@ -1579,22 +1579,21 @@ class TimingServiceClass {
       };
     });
 
-    // Orden: proyección DESC; a igualdad, vueltas DESC y luego "quién cruza antes"
-    // = MENOS tiempo total ASC (completó esas vueltas antes → va delante). La coma
-    // media por manga y la mejor vuelta quedan como criterios posteriores.
-    // Entidades sin proyección (null) al final.
+    // Orden: proyección DESC; a igualdad, vueltas DESC y luego por DISTANCIA
+    // = más coma acumulada (SUMA) DESC (más fracción de vuelta recorrida → más
+    // distancia). El tiempo total y la mejor vuelta quedan como criterios
+    // posteriores. Entidades sin proyección (null) al final.
     // DEBE coincidir con el desempate de Lap.aggregateByRace: si no, dos entidades
     // empatadas a vueltas saldrían en orden OPUESTO según se mire el panel/Le Mans
     // o la pantalla de resultados (bug histórico de la coma).
-    const comaMedia = (r) => (r.mangasRaced ? r.comaTotal / r.mangasRaced : 0);
     proj.sort((a, b) => {
       if (a.projectedRaw == null && b.projectedRaw == null) return (a.name || '').localeCompare(b.name || '');
       if (a.projectedRaw == null) return 1;
       if (b.projectedRaw == null) return -1;
       return (b.projectedRaw - a.projectedRaw)
           || (b.totalLaps - a.totalLaps)
+          || ((b.comaTotal || 0) - (a.comaTotal || 0))
           || ((a.totalTimeMs ?? Infinity) - (b.totalTimeMs ?? Infinity))
-          || (comaMedia(b) - comaMedia(a))
           || ((a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity));
     });
 
