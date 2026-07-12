@@ -32,6 +32,26 @@ const LANE_COLORS = [
   '#006064','#827717'
 ];
 
+// Tamaños de cada circuito (caja) de la carrera: [8,8,8] = 3 cajas de 8. Prefiere
+// la config del circuito asignado; si no, circuits_config; si no, todo en uno.
+function _circuitSizesFor(race) {
+  try {
+    if (race.circuit_id) {
+      const Circuit = require('../models/Circuit');
+      const c = Circuit.findById(race.circuit_id);
+      if (c) {
+        const sizes = Circuit.getConfig(c);
+        if (Array.isArray(sizes) && sizes.length > 0) return sizes;
+      }
+    }
+    if (race.circuits_config) {
+      const arr = JSON.parse(race.circuits_config);
+      if (Array.isArray(arr) && arr.length > 0) return arr;
+    }
+  } catch {}
+  return [race.lanes_count || 6];
+}
+
 function parseTimeMs(str) {
   str = (str || '').trim();
   if (!str) return null;
@@ -276,8 +296,22 @@ class PoleController {
     const laneSeq     = Race.getLaneSequence(race);
     const activeLanes = laneSeq.filter(l => l > 0);
 
+    // Carriles agrupados por CIRCUITO (cada caja DS/BART = un bloque de carriles
+    // consecutivos, según circuits_config). Dentro de cada circuito, en orden
+    // NUMÉRICO (no en la secuencia de cambio de carril). Con un solo circuito no
+    // se etiqueta; con varios, la vista rotula "Circuito 1", "Circuito 2", …
+    const sizes = _circuitSizesFor(race);
+    const circuits = [];
+    let off = 0;
+    sizes.forEach((size, i) => {
+      const lanes = [];
+      for (let l = off + 1; l <= off + size; l++) if (activeLanes.includes(l)) lanes.push(l);
+      if (lanes.length) circuits.push({ index: i + 1, lanes });
+      off += size;
+    });
+
     res.render('races/pole-lanes', {
-      t: req.t, race, session, entries, laneSequence: laneSeq, activeLanes, LANE_COLORS
+      t: req.t, race, session, entries, laneSequence: laneSeq, activeLanes, LANE_COLORS, circuits
     });
   }
 
@@ -332,28 +366,37 @@ class PoleController {
     const mkEntry    = n => byName[n] || { entity_name: n, entity_type: race.format === 'team' ? 'team' : 'driver', members_json: null };
 
     // ── Modo multi-tanda ─────────────────────────────────────────────────────
-    // La página envía `num_tandas` y, por cada participante, `tanda_of[<nombre>]`
-    // = índice de tanda (1..N). Los carriles NO se eligen por persona: cada tanda
-    // reparte por orden de pole con la misma plantilla (laneSeq). Las tandas
-    // pueden ser de distinto tamaño; los que sobran de los carriles descansan y
-    // rotan, igual que en una tanda suelta.
+    // La página envía `num_tandas` y, por cada participante colocado,
+    // `slot[<nombre>] = "<tanda>:<carril>"` (carril 0 = descanso). El operador
+    // coloca a cada piloto en un carril concreto de una tanda (arrastrar/clic).
+    // Cada tanda se construye con SU propia secuencia de carriles: el piloto del
+    // carril elegido arranca ahí en la manga 1 y rota desde esa posición.
     const numTandas = parseInt(req.body.num_tandas, 10) || 1;
-    const tandaOf   = req.body.tanda_of || null;
+    const slot      = req.body.slot || null;   // { nombre: "tanda:carril" }
 
-    if (numTandas > 1 && tandaOf && typeof tandaOf === 'object') {
-      // Agrupa preservando el orden de pole dentro de cada tanda.
-      const grupos = Array.from({ length: numTandas }, () => []);
+    // La pantalla nueva envía `slot` para cualquier nº de tandas (incluida UNA).
+    // Sin `slot` (peticiones antiguas con `order[]`) cae al modo clásico de abajo.
+    if (slot && typeof slot === 'object' && numTandas >= 1) {
+      const activeLanes = laneSeq.filter(l => l > 0);
+      const posOfLane   = new Map(activeLanes.map((l, i) => [l, i]));   // carril → orden en laneSeq
+      const grupos = Array.from({ length: numTandas }, () => ({ carriles: [], descansos: [] }));
+
       allEntries.forEach(e => {
-        const t = parseInt(tandaOf[e.entity_name], 10);
-        if (t >= 1 && t <= numTandas) grupos[t - 1].push(e);
+        const raw = slot[e.entity_name];
+        if (raw == null) return;
+        const [tStr, laneStr] = String(raw).split(':');
+        const t = parseInt(tStr, 10), lane = parseInt(laneStr, 10);
+        if (!(t >= 1 && t <= numTandas)) return;
+        if (lane > 0) grupos[t - 1].carriles.push({ lane, entry: e });
+        else          grupos[t - 1].descansos.push(e);
       });
-      // Cualquier participante sin asignar cae en la última tanda, para no perderlo.
-      const asignados = new Set(grupos.flat().map(e => e.entity_name));
-      allEntries.filter(e => !asignados.has(e.entity_name))
-                .forEach(e => grupos[numTandas - 1].push(e));
 
-      grupos.forEach(grupo => {
-        if (grupo.length) PoleController._createTandaFromEntries(race, laneSeq, grupo);
+      grupos.forEach(g => {
+        // Carriles en el orden de la secuencia del circuito; luego los descansos.
+        g.carriles.sort((a, b) => (posOfLane.get(a.lane) ?? 99) - (posOfLane.get(b.lane) ?? 99));
+        const customSeq = [...g.carriles.map(c => c.lane), ...g.descansos.map(() => 0)];
+        const entities  = [...g.carriles.map(c => c.entry), ...g.descansos];
+        if (entities.length) PoleController._createTandaFromEntries(race, customSeq, entities);
       });
 
       if (race.status === 'pending') Race.updateStatus(race.id, 'active');
