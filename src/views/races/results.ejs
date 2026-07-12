@@ -570,7 +570,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
                   <% } %>
                 </td>
                 <td class="matrix-laps matrix-total">
-                  <%= r.total_laps %><% if (r.coma_total > 0) { %><span style="font-size:.6em; color:#8b949e; margin-left:4px; font-weight:normal;" title="<%= lang === 'es' ? 'Coma: fracción de vuelta en curso al caer la bandera, media por manga. Desempata a igualdad de vueltas.' : 'Coma: unfinished lap in progress at the flag, averaged per heat. Breaks ties on equal laps.' %>">+<%= (r.coma_total / (r.mangas_raced || 1)).toFixed(2).replace('.', ',') %></span><% } %>
+                  <%= r.total_laps %><% if (r.coma_total > 0) { %><span style="font-size:.6em; color:#8b949e; margin-left:4px; font-weight:normal;" title="<%= lang === 'es' ? 'Coma: distancia recorrida de más (suma de las fracciones de vuelta al caer la bandera de cada manga). Vueltas + coma = distancia total, que desempata a igualdad de vueltas.' : 'Coma: extra distance covered (sum of the unfinished-lap fractions at each heat flag). Laps + coma = total distance, which breaks ties on equal laps.' %>">+<%= r.coma_total.toFixed(2).replace('.', ',') %></span><% } %>
                 </td>
                 <% if (perOcc) { %>
                   <% occColumns.forEach(col => {
