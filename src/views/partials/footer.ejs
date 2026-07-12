@@ -4,14 +4,27 @@
     <!-- Status indicators -->
     <div class="footer-status">
       <% if (typeof serialStatus !== 'undefined') { %>
-        <a href="/settings" class="footer-pill footer-pill--serial" title="<%= lang === 'es' ? 'Estado de puertos serie' : 'Serial port status' %>">
+        <%# Antes contaba `ports` (puertos ABIERTOS), que sigue listando una caja
+            cuyo enlace se ha caído. Ahora manda `circuits[].connected`, y en las
+            páginas con socket.io el script del final del footer lo refresca. %>
+        <% const cs   = serialStatus.circuits || []; %>
+        <% const down = serialStatus.down     || []; %>
+        <a href="/settings" id="footerSerialPill" class="footer-pill footer-pill--serial"
+           title="<%= lang === 'es' ? 'Estado de puertos serie' : 'Serial port status' %>"
+           data-lang="<%= typeof lang !== 'undefined' ? lang : 'es' %>">
           <% if (serialStatus.simulating) { %>
             <span class="status-dot status-dot--sim"></span><%= lang === 'es' ? 'Simulación' : 'Simulation' %>
-          <% } else if (serialStatus.ports && serialStatus.ports.length > 0) { %>
-            <span class="status-dot status-dot--ok"></span>
-            DS-300 ×<%= serialStatus.ports.length %>
+          <% } else if (cs.length > 0 && down.length > 0) { %>
+            <span class="status-dot status-dot--off"></span>
+            DS-300 ×<%= cs.length - down.length %>/<%= cs.length %>
             <span class="footer-pill__detail">
-              <%= serialStatus.ports.map(p => (p.split('/').pop())).join(' · ') %>
+              <%= (lang === 'es' ? 'sin señal: caja ' : 'no signal: box ') + down.join(', ') %>
+            </span>
+          <% } else if (cs.length > 0) { %>
+            <span class="status-dot status-dot--ok"></span>
+            DS-300 ×<%= cs.length %>
+            <span class="footer-pill__detail">
+              <%= cs.map(c => (c.path || '').split('/').pop()).filter(Boolean).join(' · ') %>
             </span>
           <% } else { %>
             <span class="status-dot status-dot--off"></span><%= lang === 'es' ? 'Sin conexión' : 'Disconnected' %>
@@ -40,5 +53,40 @@
 
   </footer>
   <script src="/js/app.js"></script>
+  <script>
+  // Refresco en vivo de la píldora de estado serie. Solo en las páginas que ya
+  // cargan socket.io (kiosco de turnos, directo, diagnóstico…); en el resto se
+  // queda con lo pintado en servidor. Importa sobre todo en el kiosco: en una
+  // 24 h el operador está ahí, no en la vista de directo, y hasta ahora una caja
+  // caída no se veía en ninguna de las dos.
+  (function () {
+    if (typeof io === 'undefined') return;
+    const pill = document.getElementById('footerSerialPill');
+    if (!pill) return;
+    const es  = pill.dataset.lang === 'es';
+    const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+
+    io().on('serial:status', (data) => {
+      const cs   = data.circuits || [];
+      const down = data.down     || [];
+      let dot, text, detail = '';
+
+      if (data.simulating) {
+        dot = 'sim'; text = es ? 'Simulación' : 'Simulation';
+      } else if (cs.length > 0 && down.length > 0) {
+        dot = 'off'; text = `DS-300 ×${cs.length - down.length}/${cs.length}`;
+        detail = (es ? 'sin señal: caja ' : 'no signal: box ') + down.join(', ');
+      } else if (cs.length > 0) {
+        dot = 'ok'; text = `DS-300 ×${cs.length}`;
+        detail = cs.map(c => (c.path || '').split('/').pop()).filter(Boolean).join(' · ');
+      } else {
+        dot = 'off'; text = es ? 'Sin conexión' : 'Disconnected';
+      }
+
+      pill.innerHTML = `<span class="status-dot status-dot--${dot}"></span>${esc(text)}` +
+        (detail ? `<span class="footer-pill__detail">${esc(detail)}</span>` : '');
+    });
+  })();
+  </script>
 </body>
 </html>

@@ -156,14 +156,19 @@
     </div>
   </header>
 
-  <!-- DS-300 link-down banner (hidden until socket fires serial:status) -->
-  <div id="serialBanner" class="serial-banner" hidden>
+  <!-- DS-300 link-down banner (hidden until socket fires serial:status).
+       El texto lo compone live.js a partir de `down`: con 3 cajas hay que ver de
+       un vistazo CUÁL se ha caído, no solo que algo va mal. -->
+  <div id="serialBanner" class="serial-banner" hidden
+       data-msg-all="<%= lang === 'es'
+         ? 'Sin señal del DS-300. Las vueltas que ocurran ahora no se registrarán.'
+         : 'No signal from DS-300. Laps occurring now will not be recorded.' %>"
+       data-msg-some="<%= lang === 'es'
+         ? 'Sin señal de {cajas}. Las vueltas que ocurran ahora en esos carriles no se registrarán.'
+         : 'No signal from {cajas}. Laps occurring now on those lanes will not be recorded.' %>"
+       data-box-label="<%= lang === 'es' ? 'caja' : 'box' %>">
     <span class="serial-banner__icon">⚠️</span>
-    <span class="serial-banner__text">
-      <%= lang === 'es'
-        ? 'Sin señal del DS-300. Las vueltas que ocurran ahora no se registrarán.'
-        : 'No signal from DS-300. Laps occurring now will not be recorded.' %>
-    </span>
+    <span id="serialBannerText" class="serial-banner__text"></span>
     <span id="serialBannerSince" class="serial-banner__since"></span>
   </div>
 
