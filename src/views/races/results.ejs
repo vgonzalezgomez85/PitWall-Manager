@@ -397,14 +397,12 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
     <div class="results-panel active" id="tab-matrix">
       <%
         const orderedLanes = (laneSequence || []).filter(l => l > 0);
-        // Desempate a igual vueltas: "quién cruza antes" = MENOS tiempo total para
-        // completar esas vueltas (cruzó su última vuelta primero → va delante).
-        // Después la coma media por manga y la mejor vuelta. DEBE coincidir con el
-        // orden de Lap.aggregateByRace / la proyección del motor.
-        const comaPM = r => (r.mangas_raced > 0 ? (r.coma_total || 0) / r.mangas_raced : 0);
+        // Desempate a igual vueltas por DISTANCIA: más coma acumulada (SUMA) = más
+        // distancia recorrida → va delante. Después el tiempo total y la mejor
+        // vuelta. DEBE coincidir con Lap.aggregateByRace / la proyección del motor.
         const byTotalM = [...results].sort((a,b) => b.total_laps - a.total_laps
+          || (b.coma_total||0) - (a.coma_total||0)
           || (a.total_time_ms||Infinity) - (b.total_time_ms||Infinity)
-          || comaPM(b) - comaPM(a)
           || (a.best_lap_ms||Infinity) - (b.best_lap_ms||Infinity));
 
         // VR general de cada carril = mejor `best_ms` de ese carril entre todos

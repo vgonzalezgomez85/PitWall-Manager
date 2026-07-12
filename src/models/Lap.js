@@ -277,14 +277,15 @@ class Lap {
       coma_total:   coma[k] || 0,
     }));
 
-    // Mismo desempate que aggregateByRace: vueltas DESC, tiempo total ASC
-    // ("quién cruza antes"), y coma media por manga DESC como criterio posterior.
-    // DEBE coincidir con el ORDER BY de aggregateByRace (salida byte-idéntica).
-    const comaAvg = (r) => (r.mangas_raced ? r.coma_total / r.mangas_raced : 0);
+    // Desempate por DISTANCIA: vueltas DESC y, a igualdad, más coma acumulada
+    // (SUMA de comas = fracción de vuelta recorrida de más en cada manga → más
+    // distancia total). El tiempo total queda como criterio posterior para el
+    // caso, casi imposible, de empatar también en coma. DEBE coincidir con el
+    // ORDER BY de aggregateByRace (salida byte-idéntica).
     rows.sort((x, y) =>
       (y.total_laps - x.total_laps) ||
-      (x.total_time_ms - y.total_time_ms) ||
-      (comaAvg(y) - comaAvg(x)));
+      ((y.coma_total || 0) - (x.coma_total || 0)) ||
+      (x.total_time_ms - y.total_time_ms));
     return rows;
   }
 
@@ -334,13 +335,13 @@ class Lap {
       LEFT JOIN drivers d ON d.id = l.driver_id
       WHERE l.race_id = ? AND l.is_ghost = 0 AND l.manga_id IS NOT NULL
       GROUP BY entity_id, entity_type
-      -- Desempate a igualdad de vueltas: "quién cruza antes" = MENOS tiempo total
-      -- para completar esas vueltas (cruzó la línea de su última vuelta primero →
-      -- va delante). La coma media por manga queda como criterio posterior, casi
-      -- vestigial: total_time_ms tiene precisión de ms y prácticamente nunca empata.
+      -- Desempate a igualdad de vueltas por DISTANCIA: más coma acumulada (SUMA)
+      -- = más fracción de vuelta recorrida al caer cada bandera = más distancia
+      -- total. El tiempo total queda como criterio posterior (empate exacto de
+      -- coma es casi imposible).
       ORDER BY total_laps DESC,
-               total_time_ms ASC,
-               (coma_total * 1.0 / NULLIF(mangas_raced, 0)) DESC
+               coma_total DESC,
+               total_time_ms ASC
     `).all(raceId);
   }
 
