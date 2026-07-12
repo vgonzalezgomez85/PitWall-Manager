@@ -43,8 +43,8 @@ const poleHolderName = entries[0]?.entity_name || '';
 
     <p class="pole-lanes-hint">
       <%= lang === 'es'
-        ? 'Elige en orden de clasificación. El primero es el poleman.'
-        : 'Pick in classification order. The pole sitter picks first.' %>
+        ? 'Arrastra cada piloto de la bolsa a un carril (o toca el piloto y luego el carril). Toca un piloto ya colocado para devolverlo a la bolsa. «+ descanso» añade plazas de descanso.'
+        : 'Drag each entrant from the pool onto a lane (or tap the entrant then the lane). Tap a placed entrant to send it back to the pool. “+ rest” adds rest slots.' %>
     </p>
 
     <!-- ── Nº de tandas ───────────────────────────────────────────────── -->
@@ -53,99 +53,32 @@ const poleHolderName = entries[0]?.entity_name || '';
       <input type="number" id="numTandas" min="1" max="<%= entries.length %>" value="1" inputmode="numeric">
       <span class="pole-tandas-hint">
         <%= lang === 'es'
-          ? 'Con 1 tanda, se eligen carriles por orden de pole. Con más, reparte los clasificados en tandas (de tamaño libre) y en cada una los carriles van por orden de pole.'
-          : 'With 1 group, lanes are picked in pole order. With more, split the field into groups (any size); each group gets lanes in pole order.' %>
+          ? 'Reparte los clasificados en las tandas que quieras (de tamaño libre); en cada una colocas a cada piloto en su carril de salida.'
+          : 'Split the field into as many groups as you want (any size); in each, place every entrant on its starting lane.' %>
       </span>
     </div>
 
-    <!-- ── Reparto en tandas (solo con Nº de tandas > 1) ──────────────── -->
-    <div class="pole-tandas-panel" id="tandasPanel" hidden>
-      <p class="pole-lanes-hint">
-        <%= lang === 'es'
-          ? 'Mueve cada clasificado a su tanda con ◀ ▶. El reparto inicial sigue el orden de pole; las tandas pueden ser de distinto tamaño.'
-          : 'Move each entrant to its group with ◀ ▶. The initial split follows pole order; groups may differ in size.' %>
-      </p>
+    <!-- ── Reparto: bolsa de pilotos + carriles por tanda ─────────────── -->
+    <div class="pole-tandas-panel" id="tandasPanel">
+      <!-- Bolsa de pilotos sin asignar (píldoras, orden de pole) -->
+      <div class="pole-pool" id="poolZone">
+        <div class="pole-pool__hd">
+          <%= lang === 'es' ? 'Sin asignar' : 'Unassigned' %>
+          <span class="pole-pool__count" id="poolCount"></span>
+        </div>
+        <div class="pole-pool__pills" id="poolPills"></div>
+      </div>
+
       <div class="pole-tandas-cols" id="tandasCols"></div>
     </div>
-
-    <!-- ── Bloque clásico (1 tanda): banner + tablero de carriles ─────── -->
-    <div id="classicPick">
-    <!-- ── Indicador del que toca elegir ──────────────────────────────── -->
-    <div class="pole-pick-banner" id="pickBanner">
-      <span class="pole-pick-banner__lbl"><%= lang === 'es' ? 'Eligiendo ahora' : 'Picking now' %></span>
-      <span class="pole-pick-banner__name" id="pickPrompt"><%= poleHolderName %></span>
-    </div>
-
-    <!-- ── Grid: orden de elección + tablero de carriles ─────────────── -->
-    <div class="pole-lanes-grid">
-
-      <!-- Orden de elección -->
-      <section class="pole-bcast-card pole-pickers-card" aria-label="<%= lang === 'es' ? 'Orden de elección' : 'Pick order' %>">
-        <div class="pole-bcast-title">
-          <span class="pole-bcast-ico">▶</span>
-          <%= lang === 'es' ? 'Orden de elección' : 'Pick order' %>
-        </div>
-        <div class="pole-pickers-list">
-          <% entries.forEach((entry, idx) => { %>
-            <div class="pole-picker-row" id="picker-<%= idx %>" data-idx="<%= idx %>">
-              <span class="pole-picker-pos"><%= idx + 1 %></span>
-              <span class="pole-picker-name"><%= entry.entity_name %></span>
-              <span class="pole-picker-time"><%= fmtSeconds3(entry.lap_time_ms) %></span>
-              <span class="pole-picker-lane" id="picked-<%= idx %>"></span>
-            </div>
-          <% }) %>
-        </div>
-      </section>
-
-      <!-- Tablero de carriles -->
-      <section class="pole-bcast-card pole-laneboard" aria-label="<%= lang === 'es' ? 'Carriles disponibles' : 'Available lanes' %>">
-        <div class="pole-bcast-title">
-          <span class="pole-bcast-ico">🚦</span>
-          <%= lang === 'es' ? 'Carriles disponibles' : 'Available lanes' %>
-        </div>
-        <div class="pole-laneboard-grid" id="laneGrid">
-          <% activeLanes.forEach(lane => { %>
-            <button type="button"
-                    class="pole-laneboard-btn"
-                    id="lane-btn-<%= lane %>"
-                    data-lane="<%= lane %>"
-                    style="--lane-color: <%= LANE_COLORS[lane - 1] %>">
-              <span class="pole-laneboard-num"><%= lane %></span>
-              <span class="pole-laneboard-owner" id="lane-owner-<%= lane %>"></span>
-            </button>
-          <% }) %>
-          <%# Descansos seleccionables: uno por cada equipo que sobra de los carriles %>
-          <% const restCount = Math.max(0, entries.length - activeLanes.length); %>
-          <% for (let r = 0; r < restCount; r++) { %>
-            <button type="button"
-                    class="pole-laneboard-btn pole-laneboard-btn--rest"
-                    id="rest-btn-<%= r %>"
-                    data-rest="<%= r %>">
-              <span class="pole-laneboard-num">💤</span>
-              <span class="pole-laneboard-owner" id="rest-owner-<%= r %>"><%= lang === 'es' ? 'Descanso' : 'Rest' %></span>
-            </button>
-          <% } %>
-        </div>
-      </section>
-
-    </div>
-
-    <% if (entries.length > activeLanes.length) { %>
-      <p class="pole-rest-note">
-        ℹ️ <%= lang === 'es'
-          ? `Hay ${entries.length - activeLanes.length} plaza(s) de descanso (💤): cada equipo, en su turno, elige carril o descanso. Quien elija descanso no corre la manga 1 y entra en rotación desde la 2.`
-          : `There are ${entries.length - activeLanes.length} rest slot(s) (💤): each team picks a lane or rest on their turn. Resting teams skip heat 1 and rotate in from heat 2.` %>
-      </p>
-    <% } %>
-    </div><!-- /#classicPick -->
 
     <!-- ── Form de submit ─────────────────────────────────────────────── -->
     <form id="laneForm" action="/races/<%= race.id %>/pole/lanes" method="POST" class="pole-lanes-form">
       <div id="hiddenInputs"></div>
-      <div id="formActions" class="pole-lanes-actions" style="display:none">
+      <div id="formActions" class="pole-lanes-actions">
         <a href="/races/<%= race.id %>/pole/results" class="pole-btn-edit">← <%= lang === 'es' ? 'Volver' : 'Back' %></a>
         <button type="submit" class="pole-btn-confirm" id="confirmBtn">
-          🏁 <span id="confirmLbl"><%= lang === 'es' ? 'Crear Primera Tanda' : 'Create First Heat Group' %></span>
+          🏁 <span id="confirmLbl"><%= lang === 'es' ? 'Crear la tanda' : 'Create the heat group' %></span>
         </button>
       </div>
     </form>
@@ -162,184 +95,175 @@ const LANG          = "<%= lang %>";
 const ACTIVE_LANES  = <%- JSON.stringify(activeLanes) %>;
 const LANE_COLORS   = <%- JSON.stringify(LANE_COLORS) %>;
 const ENTRIES       = <%- JSON.stringify(entries.map(e => ({ name: e.entity_name }))) %>;
-// Eligen TODOS: los carriles (ACTIVE_LANES) + los descansos (el resto).
-const TOTAL_PICKERS = ENTRIES.length;
 
-let currentPicker = 0;
-const laneOrder = Array(ACTIVE_LANES.length).fill(null);
-const restOrder = [];   // equipos que han elegido descanso, en orden de elección
-
-function pickerName(idx) { return ENTRIES[idx]?.name || ''; }
-
-function updatePrompt() {
-  const el = document.getElementById('pickPrompt');
-  const banner = document.getElementById('pickBanner');
-  if (currentPicker >= TOTAL_PICKERS) {
-    el.textContent = LANG === 'es' ? '✓ Todos han elegido' : '✓ All lanes assigned';
-    banner.classList.add('pole-pick-banner--done');
-    return;
-  }
-  el.textContent = pickerName(currentPicker);
-}
-
-function highlightCurrentPicker() {
-  document.querySelectorAll('.pole-picker-row').forEach((row, i) => {
-    row.classList.toggle('pole-picker-row--active', i === currentPicker);
-    row.classList.toggle('pole-picker-row--done',   i < currentPicker);
-  });
-}
-
-function pickLane(lane) {
-  if (currentPicker >= TOTAL_PICKERS) return;
-  const seqIdx = ACTIVE_LANES.indexOf(lane);
-  if (seqIdx < 0 || laneOrder[seqIdx] !== null) return;
-
-  const name = pickerName(currentPicker);
-  laneOrder[seqIdx] = name;
-
-  const btn = document.getElementById('lane-btn-' + lane);
-  if (btn) {
-    btn.classList.add('pole-laneboard-btn--taken');
-    btn.disabled = true;
-    document.getElementById('lane-owner-' + lane).textContent = name;
-  }
-
-  const picked = document.getElementById('picked-' + currentPicker);
-  if (picked) {
-    picked.innerHTML = `<span class="pole-picker-lane-chip" style="background:${LANE_COLORS[lane-1]}">${lane}</span>`;
-  }
-
-  advancePicker();
-}
-
-// Elegir DESCANSO (slot equivalente a un carril, pero sin carril → is_rest).
-function pickRest(restIdx) {
-  if (currentPicker >= TOTAL_PICKERS) return;
-  const name = pickerName(currentPicker);
-  restOrder.push(name);
-
-  const btn = document.getElementById('rest-btn-' + restIdx);
-  if (btn) {
-    btn.classList.add('pole-laneboard-btn--taken');
-    btn.disabled = true;
-    document.getElementById('rest-owner-' + restIdx).textContent = name;
-  }
-
-  const picked = document.getElementById('picked-' + currentPicker);
-  if (picked) {
-    picked.innerHTML = `<span class="pole-picker-lane--rest">💤 ${LANG === 'es' ? 'Descanso' : 'Rest'}</span>`;
-  }
-
-  advancePicker();
-}
-
-function advancePicker() {
-  currentPicker++;
-  updatePrompt();
-  highlightCurrentPicker();
-  if (currentPicker >= TOTAL_PICKERS) {
-    buildForm();
-    document.getElementById('formActions').style.display = '';
-  }
-}
-
-function buildForm() {
-  const wrap = document.getElementById('hiddenInputs');
-  wrap.innerHTML = '';
-  // Primero los equipos con carril (en orden de carril), luego los de descanso.
-  laneOrder.forEach(name => {
-    if (name) {
-      const inp = document.createElement('input');
-      inp.type = 'hidden'; inp.name = 'order[]'; inp.value = name;
-      wrap.appendChild(inp);
-    }
-  });
-  restOrder.forEach(name => {
-    const inp = document.createElement('input');
-    inp.type = 'hidden'; inp.name = 'order[]'; inp.value = name;
-    wrap.appendChild(inp);
-  });
-}
-
-document.getElementById('laneGrid').addEventListener('click', e => {
-  const btn = e.target.closest('.pole-laneboard-btn');
-  if (!btn || btn.disabled) return;
-  if (btn.dataset.rest != null) pickRest(parseInt(btn.dataset.rest, 10));
-  else                          pickLane(parseInt(btn.dataset.lane, 10));
-});
-
-highlightCurrentPicker();
-updatePrompt();
-
-// ── Multi-tanda ─────────────────────────────────────────────────────────────
-// Con Nº de tandas > 1 se oculta el tablero por-persona (los carriles van por
-// orden de pole en cada tanda) y se reparte el campo en columnas. `tandaByName`
-// guarda la tanda (1..N) de cada clasificado; el reparto inicial es contiguo por
-// orden de pole y lo más parejo posible, pero se puede desequilibrar con ◀ ▶.
+// ── Reparto: bolsa de pilotos + carriles por tanda ──────────────────────────
+// Arriba, una bolsa con los pilotos sin asignar (píldoras, orden de pole). Cada
+// tanda muestra sus CARRILES (ACTIVE_LANES) y sus DESCANSOS (ampliables). Se
+// coloca cada piloto en un carril arrastrando o con clic (piloto→carril). Un
+// piloto ya colocado vuelve a la bolsa al tocarlo. Funciona igual con 1 tanda o
+// con varias. `place[nombre] = {t, lane, restIdx}`: lane>0 carril, lane=0 descanso.
 const numTandasInput = document.getElementById('numTandas');
-const classicPick    = document.getElementById('classicPick');
 const tandasPanel     = document.getElementById('tandasPanel');
 const tandasCols      = document.getElementById('tandasCols');
+const poolPills       = document.getElementById('poolPills');
+const poolZone        = document.getElementById('poolZone');
+const poolCount       = document.getElementById('poolCount');
 const formActions     = document.getElementById('formActions');
+const confirmBtn      = document.getElementById('confirmBtn');
 const confirmLbl      = document.getElementById('confirmLbl');
 const hiddenInputs    = document.getElementById('hiddenInputs');
-const LBL_CREATE_1    = <%- JSON.stringify(lang === 'es' ? 'Crear Primera Tanda' : 'Create First Heat Group') %>;
+const LBL_CREATE_1    = <%- JSON.stringify(lang === 'es' ? 'Crear la tanda' : 'Create the heat group') %>;
 const LBL_CREATE_N    = <%- JSON.stringify(lang === 'es' ? 'Crear las tandas' : 'Create the groups') %>;
+const T_REST          = <%- JSON.stringify(lang === 'es' ? 'Descanso' : 'Rest') %>;
+const T_ADDREST       = <%- JSON.stringify(lang === 'es' ? '+ descanso' : '+ rest') %>;
+const T_TANDA         = <%- JSON.stringify(lang === 'es' ? 'Tanda' : 'Group') %>;
+const T_CIRCUIT       = <%- JSON.stringify(lang === 'es' ? 'Circuito' : 'Circuit') %>;
+// Carriles agrupados por circuito (caja), en orden NUMÉRICO. Con varios circuitos
+// se rotula cada bloque; con uno solo, no.
+const CIRCUITS      = <%- JSON.stringify(circuits) %>;
+const MULTI_CIRCUIT = CIRCUITS.length > 1;
+const N_LANES       = CIRCUITS.reduce((a, c) => a + c.lanes.length, 0);
+const esc = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const posOf = {}; ENTRIES.forEach((e, i) => posOf[e.name] = i + 1);
 
-let tandaByName = {};   // nombre → nº de tanda (1..N)
+let place    = {};    // nombre → {t, lane, restIdx?}
+let restCount = {};   // t → nº de plazas de descanso
+let selected = null;  // piloto seleccionado por clic (para colocar en el siguiente carril)
 
-function splitContiguous(n) {
-  // Reparto contiguo por orden de pole, lo más parejo posible.
-  const total = ENTRIES.length;
-  const base = Math.floor(total / n), extra = total % n;
-  const map = {}; let idx = 0;
-  for (let t = 1; t <= n; t++) {
-    const size = base + (t <= extra ? 1 : 0);
-    for (let k = 0; k < size; k++) map[ENTRIES[idx++].name] = t;
-  }
-  return map;
-}
-
-function renderTandas(n) {
-  tandasCols.innerHTML = '';
-  const cols = [];
-  for (let t = 1; t <= n; t++) {
-    const col = document.createElement('div');
-    col.className = 'pole-tanda-col';
-    col.innerHTML = `<div class="pole-tanda-col__hd">${LANG === 'es' ? 'Tanda' : 'Group'} ${t}
-      <span class="pole-tanda-col__count" id="tcount-${t}"></span></div>`;
-    tandasCols.appendChild(col);
-    cols[t] = col;
-  }
-  // Chips en orden de pole dentro de cada tanda.
-  ENTRIES.forEach((e, i) => {
-    const t = tandaByName[e.name] || 1;
-    const chip = document.createElement('div');
-    chip.className = 'pole-tanda-chip';
-    chip.innerHTML =
-      `<button type="button" class="pole-tanda-move" data-name="${encodeURIComponent(e.name)}" data-dir="-1"${t <= 1 ? ' disabled' : ''}>◀</button>` +
-      `<span class="pole-tanda-chip__pos">P${i + 1}</span>` +
-      `<span class="pole-tanda-chip__name">${e.name}</span>` +
-      `<button type="button" class="pole-tanda-move" data-name="${encodeURIComponent(e.name)}" data-dir="1"${t >= n ? ' disabled' : ''}>▶</button>`;
-    cols[t].appendChild(chip);
+function multiN() { return Math.min(ENTRIES.length, Math.max(1, parseInt(numTandasInput.value, 10) || 1)); }
+function unassigned() { return ENTRIES.filter(e => !place[e.name]); }
+function occupant(t, lane, restIdx) {
+  return ENTRIES.find(e => {
+    const p = place[e.name];
+    return p && p.t === t && p.lane === lane && (lane !== 0 || p.restIdx === restIdx);
   });
-  for (let t = 1; t <= n; t++) {
-    const c = cols[t].querySelectorAll('.pole-tanda-chip').length;
-    document.getElementById('tcount-' + t).textContent = c;
-  }
 }
 
-tandasCols.addEventListener('click', e => {
-  const btn = e.target.closest('.pole-tanda-move');
-  if (!btn) return;
-  const name = decodeURIComponent(btn.dataset.name);
-  const dir  = parseInt(btn.dataset.dir, 10);
-  const n    = parseInt(numTandasInput.value, 10) || 1;
-  const cur  = tandaByName[name] || 1;
-  const next = Math.min(n, Math.max(1, cur + dir));
-  if (next === cur) return;
-  tandaByName[name] = next;
-  renderTandas(n);
+function pillHTML(name, extraClass) {
+  const i = posOf[name] - 1;
+  const color = LANE_COLORS[i % LANE_COLORS.length];
+  return `<div class="pole-pill${extraClass ? ' ' + extraClass : ''}${selected === name ? ' is-selected' : ''}"
+       draggable="true" data-name="${esc(name)}">
+    <span class="pole-pill__dot" style="background:${color}"></span>
+    <span class="pole-pill__pos">P${posOf[name]}</span>
+    <span class="pole-pill__name">${esc(name)}</span>
+  </div>`;
+}
+
+function render() {
+  const n = multiN();
+  // Bolsa
+  const libres = unassigned();
+  poolPills.innerHTML = libres.map(e => pillHTML(e.name)).join('') ||
+    `<span class="pole-pool__empty">${LANG === 'es' ? '✓ Todos colocados' : '✓ All placed'}</span>`;
+  poolCount.textContent = libres.length;
+
+  // Un carril
+  const laneSlot = (t, lane) => {
+    const occ = occupant(t, lane, null);
+    return `<div class="pole-slot${occ ? ' is-filled' : ''}" data-t="${t}" data-lane="${lane}">
+      <span class="pole-slot__lane" style="--lane-color:${LANE_COLORS[lane-1]}">${lane}</span>
+      <div class="pole-slot__drop">${occ ? pillHTML(occ.name, 'in-slot') : `<span class="pole-slot__empty"></span>`}</div>
+    </div>`;
+  };
+  // Una plaza de descanso
+  const restSlot = (t, k) => {
+    const occ = occupant(t, 0, k);
+    return `<div class="pole-slot pole-slot--rest${occ ? ' is-filled' : ''}" data-t="${t}" data-lane="0" data-rest="${k}">
+      <span class="pole-slot__lane pole-slot__lane--rest">💤</span>
+      <div class="pole-slot__drop">${occ ? pillHTML(occ.name, 'in-slot') : `<span class="pole-slot__empty">${T_REST}</span>`}</div>
+    </div>`;
+  };
+
+  // Tandas
+  tandasCols.innerHTML = '';
+  for (let t = 1; t <= n; t++) {
+    if (restCount[t] == null) restCount[t] = 0;
+    const col = document.createElement('div');
+    col.className = 'pole-tanda-col' + (MULTI_CIRCUIT ? ' pole-tanda-col--multi' : '');
+
+    // Un bloque de carriles por circuito, en orden numérico. Con varias cajas se
+    // rotula "Circuito N"; con una sola, sin etiqueta.
+    const circuitsHTML = CIRCUITS.map(circ => {
+      const lanesHTML = circ.lanes.map(lane => laneSlot(t, lane)).join('');
+      return `<div class="pole-circuit-group">
+        ${MULTI_CIRCUIT ? `<div class="pole-circuit-hd">${T_CIRCUIT} ${circ.index}</div>` : ''}
+        <div class="pole-tanda-slots">${lanesHTML}</div>
+      </div>`;
+    }).join('');
+
+    let restsHTML = '';
+    for (let k = 0; k < restCount[t]; k++) restsHTML += restSlot(t, k);
+
+    const nPilots = ENTRIES.filter(e => place[e.name]?.t === t).length;
+    col.innerHTML =
+      `<div class="pole-tanda-col__hd">${T_TANDA} ${t}<span class="pole-tanda-col__count">${nPilots}</span></div>
+       <div class="pole-tanda-circuits">${circuitsHTML}</div>
+       <div class="pole-rests"><div class="pole-tanda-slots">${restsHTML}</div>
+         <button type="button" class="pole-addrest" data-t="${t}">${T_ADDREST}</button></div>`;
+    tandasCols.appendChild(col);
+  }
+
+  // El botón "Crear las tandas" solo se habilita con TODOS colocados.
+  const todos = libres.length === 0;
+  confirmBtn.disabled = !todos;
+  confirmBtn.classList.toggle('is-disabled', !todos);
+}
+
+// Coloca `name` en (t, lane, restIdx). Si el hueco ya tenía otro, ese vuelve a la bolsa.
+function placeAt(name, t, lane, restIdx) {
+  const prev = occupant(t, lane, restIdx);
+  if (prev && prev.name !== name) delete place[prev.name];
+  place[name] = (lane === 0) ? { t, lane: 0, restIdx } : { t, lane };
+  if (selected === name) selected = null;
+  render();
+}
+function toPool(name) { delete place[name]; render(); }
+
+// ── Clic: seleccionar piloto / colocar / devolver ──
+tandasPanel.addEventListener('click', e => {
+  const addrest = e.target.closest('.pole-addrest');
+  if (addrest) { const t = +addrest.dataset.t; restCount[t] = (restCount[t] || 0) + 1; render(); return; }
+
+  const pill = e.target.closest('.pole-pill');
+  const slot = e.target.closest('.pole-slot');
+
+  if (pill && pill.closest('#poolPills')) {          // píldora de la bolsa → seleccionar
+    const name = pill.dataset.name;
+    selected = (selected === name) ? null : name;
+    render();
+    return;
+  }
+  if (pill && pill.closest('.pole-slot')) {          // píldora en un carril → a la bolsa
+    toPool(pill.dataset.name);
+    return;
+  }
+  if (slot && selected) {                            // hueco con un piloto seleccionado → colocar
+    placeAt(selected, +slot.dataset.t, +slot.dataset.lane, slot.dataset.rest != null ? +slot.dataset.rest : null);
+    return;
+  }
+});
+
+// ── Arrastrar y soltar ──
+let dragName = null;
+tandasPanel.addEventListener('dragstart', e => {
+  const pill = e.target.closest('.pole-pill');
+  if (!pill) return;
+  dragName = pill.dataset.name;
+  e.dataTransfer.effectAllowed = 'move';
+  try { e.dataTransfer.setData('text/plain', dragName); } catch {}
+});
+tandasPanel.addEventListener('dragover', e => {
+  if (dragName == null) return;
+  if (e.target.closest('.pole-slot') || e.target.closest('#poolZone')) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }
+});
+tandasPanel.addEventListener('drop', e => {
+  if (dragName == null) return;
+  const slot = e.target.closest('.pole-slot');
+  const pool = e.target.closest('#poolZone');
+  if (slot) { e.preventDefault(); placeAt(dragName, +slot.dataset.t, +slot.dataset.lane, slot.dataset.rest != null ? +slot.dataset.rest : null); }
+  else if (pool) { e.preventDefault(); toPool(dragName); }
+  dragName = null;
 });
 
 function buildMultiForm(n) {
@@ -350,47 +274,37 @@ function buildMultiForm(n) {
     hiddenInputs.appendChild(inp);
   };
   addHidden('num_tandas', String(n));
-  ENTRIES.forEach(e => addHidden('tanda_of[' + e.name + ']', String(tandaByName[e.name] || 1)));
+  // slot[nombre] = "tanda:carril"  (carril 0 = descanso)
+  ENTRIES.forEach(e => {
+    const p = place[e.name];
+    if (p) addHidden('slot[' + e.name + ']', p.t + ':' + p.lane);
+  });
 }
 
+// Reparte el campo al cambiar el nº de tandas: todos vuelven a la bolsa y se
+// re-crean las tandas vacías. Funciona igual con N=1 (una sola tanda con sus
+// carriles) que con N>1.
 function onNumTandasChange() {
-  let n = parseInt(numTandasInput.value, 10) || 1;
-  n = Math.min(ENTRIES.length, Math.max(1, n));
+  const n = multiN();
   numTandasInput.value = n;
-
-  if (n <= 1) {
-    // Modo clásico: tablero por persona; el submit lo destapa buildForm().
-    classicPick.hidden = false;
-    tandasPanel.hidden = true;
-    confirmLbl.textContent = LBL_CREATE_1;
-    hiddenInputs.innerHTML = '';
-    // El botón vuelve a depender de que todos hayan elegido carril.
-    formActions.style.display = (currentPicker >= TOTAL_PICKERS) ? '' : 'none';
-    if (currentPicker >= TOTAL_PICKERS) buildForm();
-    return;
-  }
-
-  // Modo multi: se reparte por pole y los carriles van por orden de pole.
-  classicPick.hidden = true;
-  tandasPanel.hidden = false;
-  confirmLbl.textContent = LBL_CREATE_N;
-  tandaByName = splitContiguous(n);
-  renderTandas(n);
-  formActions.style.display = '';
+  confirmLbl.textContent = (n > 1) ? LBL_CREATE_N : LBL_CREATE_1;
+  place = {}; selected = null; restCount = {};
+  // Descansos iniciales: lo justo para que quepan todos si el reparto fuera parejo.
+  const initRest = Math.max(0, Math.ceil(ENTRIES.length / n) - N_LANES);
+  for (let t = 1; t <= n; t++) restCount[t] = initRest;
+  render();
 }
 
 numTandasInput.addEventListener('input', onNumTandasChange);
 
-// Deep-link: ?tandas=N pre-selecciona el nº de tandas (útil para volver a un
-// reparto ya pensado sin re-teclear).
+// Deep-link: ?tandas=N pre-selecciona el nº de tandas.
 const _qTandas = parseInt(new URLSearchParams(location.search).get('tandas'), 10);
-if (_qTandas > 1) { numTandasInput.value = Math.min(ENTRIES.length, _qTandas); onNumTandasChange(); }
+if (_qTandas >= 1) numTandasInput.value = Math.min(ENTRIES.length, _qTandas);
+onNumTandasChange();   // pinta la bolsa + carriles al cargar
 
-// El submit del modo multi arma sus inputs justo antes de enviar (el clásico ya
-// los tiene puestos por buildForm()).
-document.getElementById('laneForm').addEventListener('submit', () => {
-  const n = parseInt(numTandasInput.value, 10) || 1;
-  if (n > 1) buildMultiForm(n);
+document.getElementById('laneForm').addEventListener('submit', (e) => {
+  if (unassigned().length > 0) { e.preventDefault(); return; }   // exige colocarlos a todos
+  buildMultiForm(multiN());
 });
 </script>
 
