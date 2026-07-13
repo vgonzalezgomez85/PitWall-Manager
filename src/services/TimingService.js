@@ -1854,7 +1854,7 @@ class TimingServiceClass {
         entity_id: a.eid, entity_name: a.name,
         entity_type: isTeam ? 'team' : 'driver',
         total_laps: 0, avg_lap_ms: null, best_lap_ms: null,
-        coma_total: 0, mangas_raced: 0, total_time_ms: 0,
+        coma_total: 0, last_manga_coma: 0, mangas_raced: 0, total_time_ms: 0,
       });
     });
 
@@ -1875,6 +1875,7 @@ class TimingServiceClass {
         avgLapMs:    avg != null ? Math.round(avg) : null,
         bestLapMs:   p.best_lap_ms,
         comaTotal:   p.coma_total || 0,
+        lastMangaComa: p.last_manga_coma || 0,
         mangasRaced: p.mangas_raced || 0,
         totalTimeMs: p.total_time_ms ?? null,
         remainingMs: remMs,
@@ -1884,10 +1885,10 @@ class TimingServiceClass {
       };
     });
 
-    // Orden: proyección DESC; a igualdad, vueltas DESC y luego por DISTANCIA
-    // = más coma acumulada (SUMA) DESC (más fracción de vuelta recorrida → más
-    // distancia). El tiempo total y la mejor vuelta quedan como criterios
-    // posteriores. Entidades sin proyección (null) al final.
+    // Orden: proyección DESC; a igualdad, vueltas DESC y luego por la coma de la
+    // ÚLTIMA manga DESC (quién iba más adelantado en pista al final). El tiempo
+    // total y la mejor vuelta quedan como criterios posteriores. Entidades sin
+    // proyección (null) al final.
     // DEBE coincidir con el desempate de Lap.aggregateByRace: si no, dos entidades
     // empatadas a vueltas saldrían en orden OPUESTO según se mire el panel/Le Mans
     // o la pantalla de resultados (bug histórico de la coma).
@@ -1897,7 +1898,7 @@ class TimingServiceClass {
       if (b.projectedRaw == null) return -1;
       return (b.projectedRaw - a.projectedRaw)
           || (b.totalLaps - a.totalLaps)
-          || ((b.comaTotal || 0) - (a.comaTotal || 0))
+          || ((b.lastMangaComa || 0) - (a.lastMangaComa || 0))
           || ((a.totalTimeMs ?? Infinity) - (b.totalTimeMs ?? Infinity))
           || ((a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity));
     });

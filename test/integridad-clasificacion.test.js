@@ -173,12 +173,12 @@ test('arrancar, parar y volver a arrancar deja la manga bien sellada', () => {
 const Lap = require('../src/models/Lap');
 
 /**
- * Dos equipos empatados a vueltas, con distinto número de mangas corridas.
- * Es el caso en que la coma SUMA y la coma MEDIA dan órdenes OPUESTOS:
- *   Alfa: 2 mangas, coma 0.30 + 0.30 = 0.60  → media 0.30
- *   Beta: 1 manga,  coma 0.50            = 0.50  → media 0.50
- * Por DISTANCIA (suma de comas) gana Alfa (0.60 > 0.50): recorrió más.
- * (Por la media habría ganado Beta, pero el desempate oficial es la distancia.)
+ * Dos equipos empatados a vueltas donde la SUMA de comas y la coma de la ÚLTIMA
+ * manga dan ganador OPUESTO:
+ *   Alfa: 2 mangas (m1=0.30, m2=0.30) → suma 0.60 · última manga (m2) = 0.30
+ *   Beta: 1 manga  (m2=0.50)          → suma 0.50 · última manga (m2) = 0.50
+ * Por la ÚLTIMA manga gana Beta (0.50 > 0.30): iba más adelantado al final.
+ * (Por la suma habría ganado Alfa, pero el desempate oficial es la última manga.)
  */
 function empateConDescansos() {
   const raceId = db.prepare(`
@@ -216,7 +216,7 @@ function empateConDescansos() {
   return { raceId, alfa, beta };
 }
 
-test('la proyección y los resultados desempatan por distancia con la MISMA regla', () => {
+test('la proyección y los resultados desempatan por la última manga con la MISMA regla', () => {
   const { raceId } = empateConDescansos();
 
   const resultados = Lap.aggregateByRace(raceId).filter(r => r.entity_id != null);
@@ -231,16 +231,18 @@ test('la proyección y los resultados desempatan por distancia con la MISMA regl
   );
 });
 
-test('a igualdad de vueltas gana quien más DISTANCIA recorrió (suma de comas)', () => {
+test('a igualdad de vueltas gana la coma de la ÚLTIMA manga, no la suma', () => {
   const { raceId } = empateConDescansos();
   TimingService.invalidateStandingsCaches();
   const proj = TimingService.buildRaceProjection(raceId);
+  const res  = Lap.aggregateByRace(raceId).filter(r => r.entity_id != null);
 
   assert.equal(proj[0].projectedRaw, proj[1].projectedRaw, 'el escenario empata en proyección');
-  assert.equal(proj[0].name, 'Alfa',
-    'Alfa: suma de comas 0.60 (más distancia) · Beta: 0.50');
-  assert.ok(proj[0].comaTotal > proj[1].comaTotal,
-    'gana por MÁS coma total (más distancia); con la media habría ganado Beta');
+  assert.equal(proj[0].name, 'Beta',
+    'Beta: última manga 0.50 · Alfa: última manga 0.30 (aunque Alfa suma más: 0.60 vs 0.50)');
+  assert.equal(res[0].entity_name, 'Beta', 'resultados coinciden con la proyección');
+  assert.ok(res[0].coma_total < res[1].coma_total,
+    'gana pese a tener MENOS coma total: con la suma habría ganado Alfa');
 });
 
 // ── Coma: fin real del circuito, no el nominal ─────────────────────────────
@@ -289,17 +291,16 @@ test('la coma usa el fin REAL de SU circuito, no el de la última caja en termin
   assert.notEqual(coma(1), 0.99, 'antes se saturaba: se le contaban los 5 min que su caja llevaba parada');
 });
 
-// ── Desempate por DISTANCIA (vueltas + suma de comas) ──────────────────────
-// Regla de Llinars 2026: a igualdad de vueltas gana quien recorrió MÁS distancia,
-// es decir, quien acumuló más coma (más fracción de vuelta al caer cada bandera).
-// La distancia manda sobre el tiempo total.
+// ── Desempate por la coma de la ÚLTIMA manga ───────────────────────────────
+// Regla de Llinars 2026: a igualdad de vueltas gana quien iba más adelantado al
+// caer la bandera de la ÚLTIMA manga (su coma más alta). Manda sobre el tiempo total.
 
 /**
- * Dos equipos empatados a vueltas donde la DISTANCIA (coma) y el tiempo total
- * APUNTAN A DISTINTO ganador:
- *   Lento : 2 vueltas de 9500 → total 19000 ms · coma 0.90  (más tiempo, MÁS distancia)
- *   Rápido: 2 vueltas de 9000 → total 18000 ms · coma 0.10  (menos tiempo, MENOS distancia)
- * Con la regla de distancia gana Lento (más coma). Con la de tiempo ganaba Rápido.
+ * Dos equipos empatados a vueltas donde la coma y el tiempo total APUNTAN A
+ * DISTINTO ganador (una sola manga → la última manga ES esa manga):
+ *   Lento : 2 vueltas de 9500 → total 19000 ms · coma 0.90  (más tiempo, MÁS coma)
+ *   Rápido: 2 vueltas de 9000 → total 18000 ms · coma 0.10  (menos tiempo, MENOS coma)
+ * Por la coma de la última manga gana Lento (0.90 > 0.10). Con el tiempo ganaba Rápido.
  */
 function empateTiempoVsComa() {
   const raceId = db.prepare(`
@@ -329,17 +330,17 @@ function empateTiempoVsComa() {
   return { raceId };
 }
 
-test('a igualdad de vueltas gana MÁS distancia (más coma), aunque tarde más', () => {
+test('a igualdad de vueltas gana MÁS coma en la última manga, aunque tarde más', () => {
   const { raceId } = empateTiempoVsComa();
   const res = Lap.aggregateByRace(raceId).filter(r => r.entity_id != null);
 
   assert.equal(res[0].total_laps, res[1].total_laps, 'empate a vueltas');
-  assert.equal(res[0].entity_name, 'Lento', 'gana quien más distancia (coma 0.90 > 0.10)');
+  assert.equal(res[0].entity_name, 'Lento', 'gana quien más coma en la última manga (0.90 > 0.10)');
   // …pese a tener MÁS tiempo total: con la regla de tiempo habría ganado Rápido.
   assert.ok(res[0].total_time_ms > res[1].total_time_ms, 'y gana aun tardando más');
 });
 
-test('proyección y resultados coinciden con el desempate por distancia', () => {
+test('proyección y resultados coinciden con el desempate por la última manga', () => {
   const { raceId } = empateTiempoVsComa();
   TimingService.invalidateStandingsCaches();
   const proj = TimingService.buildRaceProjection(raceId);
@@ -347,7 +348,7 @@ test('proyección y resultados coinciden con el desempate por distancia', () => 
 
   assert.deepEqual(proj.map(p => p.name), res.map(r => r.entity_name),
     'directo/Le Mans y resultados no pueden salir en orden opuesto');
-  assert.equal(proj[0].name, 'Lento', 'la proyección también pone delante al de más distancia');
+  assert.equal(proj[0].name, 'Lento', 'la proyección también pone delante al de más coma en la última');
 });
 
 test('aggregateByRace y aggregateByRaceSplit dan el MISMO orden con la regla nueva', () => {
