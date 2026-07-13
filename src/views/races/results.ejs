@@ -397,11 +397,11 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
     <div class="results-panel active" id="tab-matrix">
       <%
         const orderedLanes = (laneSequence || []).filter(l => l > 0);
-        // Desempate a igual vueltas por DISTANCIA: más coma acumulada (SUMA) = más
-        // distancia recorrida → va delante. Después el tiempo total y la mejor
+        // Desempate a igual vueltas: la coma de la ÚLTIMA manga (quién iba más
+        // adelantado al final) → va delante. Después el tiempo total y la mejor
         // vuelta. DEBE coincidir con Lap.aggregateByRace / la proyección del motor.
         const byTotalM = [...results].sort((a,b) => b.total_laps - a.total_laps
-          || (b.coma_total||0) - (a.coma_total||0)
+          || (b.last_manga_coma||0) - (a.last_manga_coma||0)
           || (a.total_time_ms||Infinity) - (b.total_time_ms||Infinity)
           || (a.best_lap_ms||Infinity) - (b.best_lap_ms||Infinity));
 
@@ -570,7 +570,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
                   <% } %>
                 </td>
                 <td class="matrix-laps matrix-total">
-                  <%= r.total_laps %><% if (r.coma_total > 0) { %><span style="font-size:.6em; color:#8b949e; margin-left:4px; font-weight:normal;" title="<%= lang === 'es' ? 'Coma: distancia recorrida de más (suma de las fracciones de vuelta al caer la bandera de cada manga). Vueltas + coma = distancia total, que desempata a igualdad de vueltas.' : 'Coma: extra distance covered (sum of the unfinished-lap fractions at each heat flag). Laps + coma = total distance, which breaks ties on equal laps.' %>">+<%= r.coma_total.toFixed(2).replace('.', ',') %></span><% } %>
+                  <%= r.total_laps %><% if (r.last_manga_coma > 0) { %><span style="font-size:.6em; color:#8b949e; margin-left:4px; font-weight:normal;" title="<%= lang === 'es' ? 'Coma de la última manga: fracción de la vuelta en curso al caer la bandera de la última manga. Desempata a igualdad de vueltas (más = iba más adelantado al final).' : 'Last-heat coma: fraction of the unfinished lap at the final flag. Breaks ties on equal laps (more = further ahead at the end).' %>">+<%= r.last_manga_coma.toFixed(2).replace('.', ',') %></span><% } %>
                 </td>
                 <% if (perOcc) { %>
                   <% occColumns.forEach(col => {

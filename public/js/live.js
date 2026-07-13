@@ -1020,11 +1020,11 @@ function renderProjected(data) {
       const currentLeftMs = r.onTrack ? mangaRemainingMs : 0; // lo que queda de su manga actual
       const futureMs      = futureMangas * MANGA_DURATION_MS;  // mangas futuras completas
       const remMs         = currentLeftMs + futureMs;
-      // Al terminar (sin tiempo restante), ancla en la coma TOTAL (suma) = la
-      // distancia, que es lo que desempata en resultados. (Fallback: en la práctica
-      // se usa la proyección del servidor, ver más abajo.)
-      const comaSum = (p && p.coma_total) || 0;
-      r.projectedTotalRaw = (r.total || 0) + (remMs > 0 ? remMs / r.avgLapMs : comaSum);
+      // Al terminar (sin tiempo restante), ancla en la coma de la ÚLTIMA manga,
+      // que es lo que desempata en resultados. (Fallback: en la práctica se usa la
+      // proyección del servidor, ver más abajo.)
+      const lastComa = (p && p.last_manga_coma) || 0;
+      r.projectedTotalRaw = (r.total || 0) + (remMs > 0 ? remMs / r.avgLapMs : lastComa);
       r.projectedTotal    = Math.round(r.projectedTotalRaw);
     } else {
       r.projectedTotalRaw = null;

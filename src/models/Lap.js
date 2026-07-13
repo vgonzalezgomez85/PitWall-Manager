@@ -237,6 +237,27 @@ class Lap {
     return out;
   }
 
+  /**
+   * Coma de la ÚLTIMA manga que corrió cada entidad (la de mayor `manga_id` con
+   * `is_rest = 0`). Es lo que desempata a igualdad de vueltas: quién iba más
+   * adelantado en pista al caer la bandera de su último tramo. `manga_id` es
+   * monótono con la creación, así que "el mayor" = el último tramo (también con
+   * varias tandas). Si descansó la última manga, cuenta la última que sí corrió.
+   */
+  static _lastComaByEntity(raceId) {
+    const out = {}, best = {};
+    db.prepare(`
+      SELECT ml.team_id, ml.driver_id, ml.manga_id AS mid, ml.coma
+      FROM manga_lanes ml
+      JOIN mangas mg ON mg.id = ml.manga_id
+      WHERE mg.race_id = ? AND ml.is_rest = 0
+    `).all(raceId).forEach(r => {
+      const k = r.team_id != null ? 'team:' + r.team_id : 'driver:' + r.driver_id;
+      if (best[k] == null || r.mid > best[k]) { best[k] = r.mid; out[k] = r.coma || 0; }
+    });
+    return out;
+  }
+
   /** Funde varias sumas crudas de la misma entidad en una sola fila con la forma pública. */
   static _mergeAgg(raceId, partes) {
     const acc = {};
@@ -261,8 +282,9 @@ class Lap {
       }
     }
 
-    const meta = Lap._entityMeta(raceId);
-    const coma = Lap._comaByEntity(raceId);
+    const meta     = Lap._entityMeta(raceId);
+    const coma     = Lap._comaByEntity(raceId);
+    const lastComa = Lap._lastComaByEntity(raceId);
     const rows = Object.entries(acc).map(([k, a]) => ({
       entity_id:    a.entity_id,
       entity_name:  meta[k]?.entity_name ?? null,
@@ -274,17 +296,16 @@ class Lap {
       total_time_ms: a.total_time_ms,
       mangas_raced: a.mangas_raced,
       exit_count:   a.exit_count,
-      coma_total:   coma[k] || 0,
+      coma_total:      coma[k] || 0,       // suma (referencia)
+      last_manga_coma: lastComa[k] || 0,   // desempate oficial
     }));
 
-    // Desempate por DISTANCIA: vueltas DESC y, a igualdad, más coma acumulada
-    // (SUMA de comas = fracción de vuelta recorrida de más en cada manga → más
-    // distancia total). El tiempo total queda como criterio posterior para el
-    // caso, casi imposible, de empatar también en coma. DEBE coincidir con el
-    // ORDER BY de aggregateByRace (salida byte-idéntica).
+    // Desempate a igualdad de vueltas: la coma de la ÚLTIMA manga (quién iba más
+    // adelantado en pista al final). El tiempo total queda como criterio posterior
+    // por si empataran también en esa coma. DEBE coincidir con aggregateByRace.
     rows.sort((x, y) =>
       (y.total_laps - x.total_laps) ||
-      ((y.coma_total || 0) - (x.coma_total || 0)) ||
+      ((y.last_manga_coma || 0) - (x.last_manga_coma || 0)) ||
       (x.total_time_ms - y.total_time_ms));
     return rows;
   }
@@ -329,18 +350,26 @@ class Lap {
           WHERE mg.race_id = l.race_id AND ml.is_rest = 0
             AND ((t.id IS NOT NULL AND ml.team_id = t.id)
               OR (t.id IS NULL    AND ml.driver_id = d.id))
-        ), 0) AS coma_total
+        ), 0) AS coma_total,
+        -- Coma de la ÚLTIMA manga que corrió (mayor manga_id, is_rest=0): el
+        -- desempate oficial. Quién iba más adelantado en pista al final.
+        COALESCE((
+          SELECT ml.coma FROM manga_lanes ml
+          WHERE ml.is_rest = 0
+            AND ml.manga_id IN (SELECT id FROM mangas WHERE race_id = l.race_id)
+            AND ((t.id IS NOT NULL AND ml.team_id = t.id)
+              OR (t.id IS NULL    AND ml.driver_id = d.id))
+          ORDER BY ml.manga_id DESC LIMIT 1
+        ), 0) AS last_manga_coma
       FROM laps l
       LEFT JOIN teams   t ON t.id = l.team_id
       LEFT JOIN drivers d ON d.id = l.driver_id
       WHERE l.race_id = ? AND l.is_ghost = 0 AND l.manga_id IS NOT NULL
       GROUP BY entity_id, entity_type
-      -- Desempate a igualdad de vueltas por DISTANCIA: más coma acumulada (SUMA)
-      -- = más fracción de vuelta recorrida al caer cada bandera = más distancia
-      -- total. El tiempo total queda como criterio posterior (empate exacto de
-      -- coma es casi imposible).
+      -- Desempate a igualdad de vueltas: la coma de la ÚLTIMA manga (quién iba más
+      -- adelantado en pista al final). El tiempo total, criterio posterior.
       ORDER BY total_laps DESC,
-               coma_total DESC,
+               last_manga_coma DESC,
                total_time_ms ASC
     `).all(raceId);
   }
