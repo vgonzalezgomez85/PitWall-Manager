@@ -753,7 +753,7 @@ body.resizing-sidebar * { cursor: col-resize !important; }
 .live-lanes--vertical .lane-card__track-text { display: none !important; }
 .live-lanes--vertical .lane-card__lane-num {
   font-family: 'Inter', system-ui, sans-serif !important;
-  font-size: 1rem !important;
+  font-size: calc(1rem * var(--lv-scale, 1)) !important;
   font-weight: 800 !important;
   color: #fff !important;
   margin: 0 !important;
@@ -774,7 +774,7 @@ body.resizing-sidebar * { cursor: col-resize !important; }
   min-height: 0;
   margin-top: 1px;
   padding: 0 .15rem;
-  font-size: .7rem;
+  font-size: calc(.7rem * var(--lv-scale, 1));
   font-weight: 600;
   color: #58a6ff;
   letter-spacing: .01em;
@@ -800,7 +800,7 @@ body.resizing-sidebar * { cursor: col-resize !important; }
   min-width: 0;
   width: 100%;
   font-family: 'Inter', system-ui, sans-serif;
-  font-size: .95rem;
+  font-size: calc(.95rem * var(--lv-scale, 1));
   font-weight: 700;
   color: #fff;
   text-align: left;
@@ -824,7 +824,7 @@ body.resizing-sidebar * { cursor: col-resize !important; }
   color: #000 !important;
   margin: 0; padding: 0 .35rem;
   font-family: 'Inter', system-ui, sans-serif;
-  font-size: .95rem;
+  font-size: calc(.95rem * var(--lv-scale, 1));
   font-weight: 800;
   display: inline-flex; align-items: center; justify-content: center;
 }
@@ -859,7 +859,7 @@ body.resizing-sidebar * { cursor: col-resize !important; }
 }
 .live-lanes--vertical .lane-card__col-label {
   font-family: 'Inter', system-ui, sans-serif !important;
-  font-size: .58rem !important;   /* !important: si no, la regla general .live-body lo agranda y se monta sobre el valor */
+  font-size: calc(.58rem * var(--lv-scale, 1)) !important;   /* !important: si no, la regla general .live-body lo agranda y se monta sobre el valor */
   font-weight: 700;
   color: #8b949e;
   letter-spacing: .06em;
@@ -870,7 +870,7 @@ body.resizing-sidebar * { cursor: col-resize !important; }
 }
 .live-lanes--vertical .lane-card__col-val {
   font-family: 'Inter', system-ui, sans-serif !important;
-  font-size: clamp(.9rem, 2vh, 1.2rem) !important;
+  font-size: calc(clamp(.9rem, 2vh, 1.2rem) * var(--lv-scale, 1)) !important;
   font-weight: 800 !important;
   letter-spacing: -.02em;
   line-height: 1.1 !important;

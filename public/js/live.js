@@ -47,6 +47,12 @@ function formatDelta(bestMs, avgMs) {
   return '+' + formatMs(d);
 }
 
+// "Gap V" de la CLASIFICACIÓN ESTIMADA: vueltas proyectadas respecto al de
+// delante. Mismo formato que la tabla (renderProjected): -N.NN o "—".
+function formatProjGapV(gap) {
+  return (gap && Math.abs(gap) >= 0.01) ? `-${gap.toFixed(2)}` : '—';
+}
+
 // Color para ÚLTIMA: verde si ≤ mejor, blanco si ≤ media, ámbar si ≤ mejor*1.05, rojo si peor.
 function ultColor(lastMs, bestMs, avgMs) {
   if (lastMs == null || bestMs == null) return null;
@@ -420,8 +426,8 @@ function buildCard(lane) {
     </div>
 
     <div class="lane-card__col lane-card__col--delta" data-col="delta">
-      <div class="lane-card__col-label">Δ</div>
-      <div class="lane-card__col-val lane-card__col-val--delta" id="card-delta-${lane.lane}">${formatDelta(lane.bestLapMs, lane.avgLapMs)}</div>
+      <div class="lane-card__col-label">${LANG === 'es' ? 'Gap V' : 'Gap L'}</div>
+      <div class="lane-card__col-val lane-card__col-val--delta" id="card-delta-${lane.lane}">—</div>
     </div>
 
 `;
@@ -520,10 +526,24 @@ function updateCard(lane, lapCount, lastLapMs, bestLapMs, avgLapMs, exitCount) {
     exitsEl.textContent = exitCount ?? 0;
     exitsEl.classList.toggle('lane-card__col-val--exits-active', (exitCount ?? 0) > 0);
   }
-  if (deltaEl) deltaEl.textContent = formatDelta(bestLapMs, avgLapMs);
+  // El Δ de la tarjeta ya NO es la consistencia (media−mejor): ahora muestra el
+  // "Gap V" de la clasificación estimada. Lo rellena updateCardGaps() tras
+  // renderProjected, porque depende de la proyección de TODA la carrera.
   // Colores condicionales (V1 los muestra; en V2 se imponen los del mockup B vía CSS)
   _setLvColor(lastEl,  ultColor(lastLapMs, bestLapMs, avgLapMs));
-  _setLvColor(deltaEl, deltaColor(bestLapMs, avgLapMs));
+}
+
+// Vuelca el "Gap V" de la clasificación estimada (_globalProjGapAhead, por
+// nombre de entidad) en el Δ de cada tarjeta. Se llama tras renderProjected,
+// que es quien recalcula la proyección de toda la carrera.
+function updateCardGaps() {
+  (RACE_DATA.lanes || []).forEach(l => {
+    if (l.isRest) return;
+    const el = document.getElementById(`card-delta-${l.lane}`);
+    if (!el) return;
+    el.textContent = formatProjGapV(_globalProjGapAhead.get(l.name));
+    _setLvColor(el, null);   // el Gap V no lleva color de consistencia
+  });
 }
 
 function flashCard(lane, isExit) {
@@ -652,16 +672,25 @@ function fitLaneCards() {
 
   // Carriles activos (los que tienen tarjeta visible)
   const nLanes = Math.max(1, RACE_DATA.lanes.filter(l => !l.isRest).length);
-  // Modo vertical (>8 carriles): el grid pasa a columnas, no apliquemos autofit
-  // — el CSS por defecto ya se encarga. Limpiamos vars por si quedaron.
+  // Modo vertical (>8 carriles): el grid es una rejilla de columnas. Calculamos
+  // el nº de columnas y el alto de fila para que TODAS las tarjetas llenen la
+  // pantalla (sin franja negra ni scroll) y escalamos la fuente al tamaño real
+  // de la tarjeta. Limpiamos las vars del modo horizontal.
   if (lanesGrid.classList.contains('live-lanes--vertical')) {
     root.style.removeProperty('--ln-font-num');
     root.style.removeProperty('--ln-font-label');
     root.style.removeProperty('--ln-font-name');
     root.style.removeProperty('--ln-font-lanenum');
     root.style.removeProperty('--ln-font-track');
+    fitVerticalGrid(root, W, H);
     return;
   }
+  // Modo horizontal: deshacemos cualquier rejilla inline que dejara el vertical.
+  lanesGrid.style.removeProperty('grid-template-columns');
+  lanesGrid.style.removeProperty('grid-auto-rows');
+  lanesGrid.style.removeProperty('align-content');
+  lanesGrid.style.removeProperty('overflow-y');
+  root.style.removeProperty('--lv-scale');
 
   // Modo horizontal: una tarjeta por carril, una fila por carril.
   // Card height ≈ H / nLanes  (descontando pequeño gap), pero NUNCA por
@@ -699,6 +728,83 @@ function fitLaneCards() {
   root.style.setProperty('--ln-font-lanenum', lanenumPx.toFixed(1) + 'px');
   root.style.setProperty('--ln-font-track',   trackPx.toFixed(1)   + 'px');
 }
+
+// ── Autofit rejilla vertical (>8 carriles) ──────────────────────────────────
+// Elige el nº de columnas y el alto de fila que MAXIMIZA el tamaño de tarjeta
+// llenando #lanesGrid (todas las tarjetas visibles, sin scroll), y publica un
+// factor --lv-scale para que la fuente crezca/mengüe con la tarjeta. Se adapta
+// así a la resolución del dispositivo en cada momento.
+function fitVerticalGrid(root, W, H) {
+  const N = lanesGrid.querySelectorAll('.lane-card').length;
+  if (!N) return;
+  const gap = 8;          // .5rem
+  const pad = 8;          // .5rem de padding del contenedor
+  const availW = W - pad * 2;
+  const availH = H - pad * 2;
+  // La vista DETALLES (V3) tiene una fila extra (VLT/SAL/GAP V) → necesita
+  // tarjetas más altas y más cuadradas para que el contenido no se solape.
+  const detailed = lanesGrid.classList.contains('live-lanes--detailed');
+  const MIN_W = detailed ? 170 : 150;   // por debajo el nombre no se lee
+  const MIN_H = detailed ? 140 : 84;    // detalles: header + 3 filas de stats
+  const AR = detailed ? 1.15 : 1.6;     // relación ancho:alto deseada
+
+  let best = null;
+  for (let cols = 1; cols <= N; cols++) {
+    const rows = Math.ceil(N / cols);
+    const cardW = (availW - gap * (cols - 1)) / cols;
+    const cardH = (availH - gap * (rows - 1)) / rows;
+    if (cols > 1 && cardW < MIN_W) continue;   // demasiado estrecha
+    if (rows > 1 && cardH < MIN_H) continue;   // demasiado baja
+    // Tamaño efectivo limitado por el eje más restrictivo respecto al AR ideal.
+    const eff = Math.min(cardW / AR, cardH);
+    if (!best || eff > best.eff) best = { cols, rows, cardW, cardH, eff };
+  }
+
+  let overflow = 'hidden';
+  if (!best) {
+    // Pantalla diminuta: ninguna combinación cumple los mínimos → permitimos scroll.
+    const cols = Math.max(1, Math.floor((availW + gap) / (MIN_W + gap)));
+    const rows = Math.ceil(N / cols);
+    best = { cols, cardH: Math.max(MIN_H, (availH - gap * (rows - 1)) / rows) };
+    overflow = 'auto';
+  }
+
+  lanesGrid.style.gridTemplateColumns = `repeat(${best.cols}, minmax(0, 1fr))`;
+  lanesGrid.style.gridAutoRows = best.cardH.toFixed(1) + 'px';
+  lanesGrid.style.alignContent = 'start';   // el sobrante (redondeo) queda abajo
+  lanesGrid.style.overflowY = overflow;
+
+  // Escala de fuente: 1 a ~150px de alto de tarjeta (donde el CSS base cuadra).
+  const scale = Math.max(0.8, Math.min(2.4, best.cardH / 150));
+  root.style.setProperty('--lv-scale', scale.toFixed(3));
+}
+
+// ── Pantalla completa ────────────────────────────────────────────────────────
+// Alterna el modo pantalla completa del navegador sobre TODA la vista de directo.
+// Al entrar/salir, el contenedor #lanesGrid cambia de tamaño → el ResizeObserver
+// vuelve a llamar a fitLaneCards y las tarjetas rellenan la pantalla.
+function toggleFullscreen() {
+  const el = document.documentElement;
+  if (!document.fullscreenElement) {
+    (el.requestFullscreen || el.webkitRequestFullscreen || (() => {})).call(el);
+  } else {
+    (document.exitFullscreen || document.webkitExitFullscreen || (() => {})).call(document);
+  }
+}
+// Refleja el estado en el icono del botón (expandir ↔ contraer) y reajusta.
+document.addEventListener('fullscreenchange', () => {
+  const on = !!document.fullscreenElement;
+  const btn = document.getElementById('fsBtn');
+  if (btn) {
+    const open  = btn.querySelector('.fs-ico-open');
+    const close = btn.querySelector('.fs-ico-close');
+    if (open)  open.hidden  = on;
+    if (close) close.hidden = !on;
+    btn.title = on ? (btn.title.includes('Salir') ? btn.title : 'Salir de pantalla completa')
+                   : 'Pantalla completa';
+  }
+  if (typeof fitLaneCards === 'function') requestAnimationFrame(() => fitLaneCards());
+});
 
 // Reaplica fitLaneCards cuando el contenedor cambia (p. ej. arrastrar el
 // resizer del sidebar). El window resize no se dispara en ese caso.
@@ -940,6 +1046,8 @@ function renderStandings(data) {
   // renderProjected ANTES que sortCards: calcula la posición general (todas las
   // tandas) que las tarjetas usan para su orden y su P.x.
   renderProjected(data);
+  // Con la proyección ya calculada, vuelca el "Gap V" en el Δ de cada tarjeta.
+  updateCardGaps();
   sortCards(data.standings);
   // Re-evaluar paginación tras reordenar cards en V1
   _v1SchedulePaging();
@@ -950,6 +1058,10 @@ let prevProjGap = {};
 // La rellena renderProjected y la consumen las tarjetas (sortCards) para
 // mostrar la P.x real del conjunto de la carrera, no solo de la tanda.
 let _globalProjPos = new Map();
+// "Gap V" (vueltas proyectadas respecto al de delante) por nombre de entidad.
+// La rellena renderProjected y la consumen las tarjetas (updateCardGaps) para
+// mostrar en el Δ el MISMO valor que la clasificación estimada.
+let _globalProjGapAhead = new Map();
 
 function renderProjected(data) {
   if (!data?.standings) return;
@@ -1116,6 +1228,10 @@ function renderProjected(data) {
   rows.forEach(r => {
     prevProjGap[r.name] = { above: gapAboveNow[r.name], below: gapBelowNow[r.name] };
   });
+
+  // Exponer el "Gap V" por entidad para que las tarjetas lo muestren en su Δ.
+  _globalProjGapAhead = new Map();
+  rows.forEach(r => _globalProjGapAhead.set(r.name, projGapAhead[r.name]));
 
   if (projectedBody) projectedBody.innerHTML = rows.map((r, i) => {
     const gV  = projGapAhead[r.name];
