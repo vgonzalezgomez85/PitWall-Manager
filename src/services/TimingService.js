@@ -707,6 +707,18 @@ class TimingServiceClass {
     this._detachLapHandler();
     this._pendingSetup = null;
 
+    // Arrastre del piloto: ANTES de cerrar los turnos, apuntamos qué piloto
+    // llevaba cada equipo. Si el equipo corre la manga siguiente, ese piloto se
+    // pre-arma en su nuevo carril para que NO baje del coche al cambiar de
+    // manga (puede rodar varias seguidas); solo lo sustituye un fichaje nuevo.
+    let carrySnapshot = [];
+    if (this._isChampionship) {
+      try {
+        carrySnapshot = DriverShift.findAllOpenByManga(this.session.manga.id)
+          .filter(s => !s.pre_armed && s.team_id && s.driver_id);
+      } catch (err) { console.error('[TimingService] carry snapshot', err.message); }
+    }
+
     // Cierra los shifts abiertos que queden. Cada uno con el tiempo calculado y
     // el instante de fin de SU circuito: los de un circuito que ya terminó se
     // cerraron en finishCircuit(), aquí caen los de un stop manual o los de
@@ -852,6 +864,30 @@ class TimingServiceClass {
           if (nextByEntity[key] == null) continue;
           const cardId = cl.is_rest ? `r${curRestPos[key] || 0}` : String(cl.lane);
           nextLanes[cardId] = nextByEntity[key];
+        }
+
+        // ── Arrastre del piloto en curso a la manga siguiente ──────────────
+        // Cada equipo que sigue corriendo mantiene a su piloto: se pre-arma en
+        // su NUEVO carril (el equipo rota de carril, el piloto va con el
+        // equipo). Si el equipo descansa la siguiente, no se arrastra. Un
+        // fichaje posterior lo sustituye (driverCheckin cierra el pre-armado
+        // del carril y abre otro). No duplicamos si el carril ya tiene turno.
+        for (const s of carrySnapshot) {
+          const dest = nextByEntity[`t${s.team_id}`];
+          if (!dest || dest.rest || dest.lane == null) continue;
+          try {
+            if (!DriverShift.findOpenByLane(next.id, dest.lane)) {
+              DriverShift.openShift({
+                mangaId:    next.id,
+                raceId:     this.session.race.id,
+                lane:       dest.lane,
+                teamId:     s.team_id,
+                driverId:   s.driver_id,
+                driverName: s.driver_name,
+                preArmed:   true,
+              });
+            }
+          } catch (err) { console.error('[TimingService] carry driver', err.message); }
         }
 
         // Pre-register next manga so DS-300 GO can start it immediately

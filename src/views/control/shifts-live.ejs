@@ -88,6 +88,12 @@ const teamNameByLane = {};
 %>
 
 <div class="vt-page vt-page--shifts">
+  <!-- Botón de pantalla completa: solo en el modo panel "todas las tarjetas"
+       (flotante arriba a la derecha, ya que ahí se oculta la cabecera). -->
+  <button type="button" id="scFsBtn" class="sc-fs-btn" title="<%= lang === 'es' ? 'Pantalla completa' : 'Fullscreen' %>">
+    <svg class="sc-fs-open"  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3m8 0h3a2 2 0 0 0 2-2v-3"/></svg>
+    <svg class="sc-fs-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" hidden><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3m8 0v-3a2 2 0 0 1 2-2h3"/></svg>
+  </button>
   <div class="vt-wrap">
 
     <a href="/" class="vt-back-link">
@@ -150,6 +156,13 @@ const teamNameByLane = {};
         <% } else { %>
           <span class="vt-badge is-neutral"><span class="vt-badge__d"></span><%= lang === 'es' ? 'Sin manga activa' : 'No active manga' %></span>
         <% } %>
+        <% if (current) { %>
+          <button type="button" id="scAllCardsBtn" class="vt-btn vt-btn--ghost vt-btn--sm"
+            title="<%= lang === 'es' ? 'Ver todas las tarjetas de una vez, sin pase de hojas' : 'See all cards at once, no paging' %>">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.2"/><rect x="14" y="3" width="7" height="7" rx="1.2"/><rect x="3" y="14" width="7" height="7" rx="1.2"/><rect x="14" y="14" width="7" height="7" rx="1.2"/></svg>
+            <%= lang === 'es' ? 'Todas las tarjetas' : 'All cards' %>
+          </button>
+        <% } %>
         <a href="<%= current ? '/races/' + current.race.id + '/shifts' : '#' %>" class="vt-btn vt-btn--ghost vt-btn--sm" <%= current ? '' : 'aria-disabled="true" style="opacity:.4;pointer-events:none"' %>>
           <svg viewBox="0 0 24 24"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
           <%= lang === 'es' ? 'Histórico' : 'History' %>
@@ -208,11 +221,12 @@ const teamNameByLane = {};
              class="sc-scan-input">
 
       <!-- ── Pre-arme: quién falta por fichar ─────────────────────────────
-           Solo con la manga aún sin arrancar, que es cuando el staff ficha.
-           Una casilla por carril, agrupadas por caja: la cuadrícula de abajo
-           va paginada y rota sola, así que el carril que falta puede estar en
-           otra página. Aquí se ven los 24 de golpe. -->
-      <% if (current.liveStatus === 'standby' && prearme && prearme.total > 0) { %>
+           Se mantiene también con la manga EN MARCHA (y en pausa): sirve para
+           ver de un vistazo qué carril no ha fichado todavía. Una casilla por
+           carril, agrupadas por caja: la cuadrícula de abajo va paginada y rota
+           sola, así que el carril que falta puede estar en otra página; aquí se
+           ven los 24 de golpe. -->
+      <% if (['standby','running','paused'].includes(current.liveStatus) && prearme && prearme.total > 0) { %>
         <section class="sc-prearm <%= prearme.complete ? 'is-complete' : '' %>" id="scPrearm"
                  aria-label="<%= lang === 'es' ? 'Estado del fichaje de pilotos' : 'Driver check-in status' %>">
           <div class="sc-prearm__head">
@@ -300,7 +314,7 @@ const teamNameByLane = {};
               </div>
               <div>
                 <span class="sc-lane__lbl"><%= lang === 'es' ? 'Total piloto' : 'Driver total' %></span>
-                <span class="sc-lane__val" data-total-ms="<%= totalMs %>"><%= fmtTime(totalMs) %></span>
+                <span class="sc-lane__val" data-total-ms="<%= totalMs %>" data-total-base-ms="<%= Math.max(0, totalMs - (s ? (s.driving_ms || 0) : 0)) %>"><%= fmtTime(totalMs) %></span>
               </div>
             </div>
             <%- renderRoster((rosterByLane && rosterByLane[l.lane]) || [], driverName) %>
@@ -860,10 +874,23 @@ socket.on('shifts:tick', data => {
   document.querySelectorAll('.sc-lane').forEach(card => {
     const lane = parseInt(card.dataset.lane, 10);
     const a = active[lane];
-    const cell = card.querySelector('[data-shift-ms]');
-    if (a && cell) {
-      cell.dataset.shiftMs = a.drivingMs;
-      cell.textContent = fmtTime(a.drivingMs);
+    if (!a) return;
+    // TURNO en curso
+    const shiftCell = card.querySelector('[data-shift-ms]');
+    if (shiftCell) {
+      shiftCell.dataset.shiftMs = a.drivingMs;
+      shiftCell.textContent = fmtTime(a.drivingMs);
+    }
+    // TOTAL PILOTO = turnos previos (base) + turno en curso. Se actualiza al
+    // momento, arriba (celda) y abajo (fila del piloto activo en el roster).
+    const totalCell = card.querySelector('[data-total-ms]');
+    if (totalCell) {
+      const base = parseInt(totalCell.dataset.totalBaseMs, 10) || 0;
+      const liveTotal = base + (a.drivingMs || 0);
+      totalCell.dataset.totalMs = liveTotal;
+      totalCell.textContent = fmtTime(liveTotal);
+      const rostTime = card.querySelector('.sc-lane__rost.is-now .sc-lane__rost-time');
+      if (rostTime) rostTime.textContent = fmtTime(liveTotal);
     }
   });
 });
@@ -895,6 +922,42 @@ socket.on('driver_checkin', data => {
      principal fallara, la rotación de páginas sigue funcionando. -->
 <script>
 (function () {
+  // Modo "todas las tarjetas" (?allcards=1): el operador abre esta vista en una
+  // ventana aparte para ver los 24 carriles a la vez, sin esperar al pase de
+  // hojas. Se oculta todo lo accesorio (escáner, pre-arme, panel lateral) y la
+  // rejilla de carriles NO se pagina: se muestra entera y hace scroll.
+  const ALL_CARDS = new URLSearchParams(location.search).has('allcards');
+  if (ALL_CARDS) document.documentElement.classList.add('sc-allcards');
+
+  // Botón de la cabecera → abre esta misma vista en modo panel, en otra ventana.
+  const allBtn = document.getElementById('scAllCardsBtn');
+  if (allBtn) allBtn.addEventListener('click', () => {
+    const u = new URL(location.href);
+    u.searchParams.set('allcards', '1');
+    window.open(u.toString(), 'pitwall-allcards', 'width=1500,height=950');
+  });
+
+  // Pantalla completa del panel (mismo comportamiento que el live de carrera).
+  const fsBtn = document.getElementById('scFsBtn');
+  if (fsBtn) {
+    fsBtn.addEventListener('click', () => {
+      const el = document.documentElement;
+      if (!document.fullscreenElement) {
+        (el.requestFullscreen || el.webkitRequestFullscreen || (() => {})).call(el);
+      } else {
+        (document.exitFullscreen || document.webkitExitFullscreen || (() => {})).call(document);
+      }
+    });
+    document.addEventListener('fullscreenchange', () => {
+      const on = !!document.fullscreenElement;
+      const open = fsBtn.querySelector('.sc-fs-open'), close = fsBtn.querySelector('.sc-fs-close');
+      if (open)  open.hidden = on;
+      if (close) close.hidden = !on;
+      fsBtn.title = on ? '<%= lang === "es" ? "Salir de pantalla completa" : "Exit fullscreen" %>'
+                       : '<%= lang === "es" ? "Pantalla completa" : "Fullscreen" %>';
+    });
+  }
+
   // Muestra una "página" de elementos a la vez y rota cada intervalo. El nº
   // por página se mide según el alto visible (se adapta a la pantalla).
   function makePager(viewport, container, indicator, intervalMs) {
@@ -940,9 +1003,11 @@ socket.on('driver_checkin', data => {
   }
   fitKioskHeight();
 
-  const lanePager   = makePager(document.getElementById('scLaneArea'),    document.getElementById('scLaneGrid'),    document.getElementById('scLaneInd'),   10000);
-  const pilotsPager = makePager(document.getElementById('scPilotsPages'), document.getElementById('scPilotsPages'), document.getElementById('scPilotsInd'), 10000);
-  function remeasure() { fitKioskHeight(); if (lanePager) lanePager.measure(); if (pilotsPager) pilotsPager.measure(); }
+  // En modo panel no se pagina la rejilla de carriles (se ven todos, con scroll)
+  // ni hace falta el panel lateral de pilotos.
+  const lanePager   = ALL_CARDS ? null : makePager(document.getElementById('scLaneArea'),    document.getElementById('scLaneGrid'),    document.getElementById('scLaneInd'),   10000);
+  const pilotsPager = ALL_CARDS ? null : makePager(document.getElementById('scPilotsPages'), document.getElementById('scPilotsPages'), document.getElementById('scPilotsInd'), 10000);
+  function remeasure() { if (!ALL_CARDS) fitKioskHeight(); if (lanePager) lanePager.measure(); if (pilotsPager) pilotsPager.measure(); }
   window.scRemeasure = remeasure;
 
   // Re-medir cuando el layout ya está listo (carga, fuentes) y por si acaso
@@ -1114,6 +1179,42 @@ socket.on('manga:started', () => location.reload());
   display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
   gap: 10px; margin-top: 14px;
 }
+
+/* ── Modo panel "todas las tarjetas" (?allcards=1) ─────────────────────────
+   Ventana aparte con los 24 carriles a la vez. Se oculta todo lo accesorio y
+   la rejilla ocupa toda la ventana, con scroll si no caben. Las tarjetas
+   siguen actualizándose en vivo (mismo socket). */
+.sc-allcards .vt-back-link,
+.sc-allcards .sc-left,
+.sc-allcards .sc-prearm,
+.sc-allcards .sc-pilots-panel,
+.sc-allcards .sc-rules,
+.sc-allcards .sc-lane-head .sc-pages-ind { display: none !important; }
+.sc-allcards .vt-page--shifts { padding-top: 8px; }
+.sc-allcards .sc-kiosk { display: block !important; height: auto !important; }
+.sc-allcards .sc-kiosk__main { width: 100% !important; }
+.sc-allcards .sc-lane-area { overflow: visible !important; flex: none !important; }
+.sc-allcards .sc-lane-grid { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+/* La tarjeta usa alto automático (el JS de autoajuste fija --sc-lane-h, pero
+   con scroll no importa que alguna crezca). */
+.sc-allcards .sc-lane { height: auto !important; }
+/* Botón de pantalla completa flotante (solo en el modo panel). Con acento y
+   sombra para que destaque sobre el fondo negro de la esquina. */
+.sc-fs-btn { display: none; }
+.sc-allcards .sc-fs-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  /* z-index 200: por encima de la barra de navegación (.navbar, z-index 100),
+     que si no tapa el botón con su fondo negro. */
+  position: fixed; top: 14px; right: 16px; z-index: 200;
+  width: 46px; height: 46px; padding: 0;
+  background: var(--vt-blue, #58a6ff); color: #061018;
+  border: 1px solid rgba(255,255,255,.35); border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.55), 0 0 0 3px rgba(88,166,255,.18);
+  cursor: pointer; transition: transform .1s ease, filter .1s ease;
+}
+.sc-allcards .sc-fs-btn:hover { filter: brightness(1.12); transform: translateY(-1px); }
+.sc-allcards .sc-fs-btn:active { transform: translateY(0); }
+.sc-allcards .sc-fs-btn svg { width: 24px; height: 24px; }
 .vt-page--shifts .sc-lane {
   background: linear-gradient(180deg, var(--vt-panel), var(--vt-panel-2));
   border: 1px solid var(--vt-border); border-radius: 12px;

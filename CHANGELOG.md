@@ -13,6 +13,23 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.7.1] — 2026-07-13
+
+### Añadido
+- **Botón de pantalla completa en el directo.** La barra superior del marcador en directo tiene ahora un botón que pone la vista a pantalla completa (y otro para salir); el icono cambia según el estado. Combinado con el auto-ajuste, el marcador ocupa toda la pantalla del dispositivo sin bordes del navegador. También se puede usar la tecla del navegador (F11 en Windows/Linux, Ctrl+Cmd+F en Mac).
+- **Panel «Todas las tarjetas» en el control de pilotos.** Un botón nuevo abre en otra ventana la vista con las tarjetas de los 24 carriles a la vez, sin el pase de hojas: útil para tener toda la parrilla de un vistazo en una pantalla dedicada. Ese panel tiene también su propio botón de pantalla completa y se actualiza en vivo igual que la vista normal.
+
+### Cambiado
+- **En la vista «detalles» del directo, el Δ de cada tarjeta pasa a ser el «Gap V».** Antes ese hueco mostraba la consistencia (media − mejor vuelta). Ahora muestra el mismo **Gap V** de la clasificación estimada: las vueltas proyectadas que le separan del que va justo por delante en la general (el líder muestra «—»). Así el dato de la tarjeta coincide con el de la clasificación y se ve de un vistazo la distancia proyectada al rival de delante.
+- **El control de pilotos mantiene al piloto que corre al cambiar de manga.** Al terminar una manga ya no baja del coche al piloto que iba conduciendo: se le pre-arma automáticamente en el nuevo carril de su equipo para la manga siguiente (un piloto puede rodar varias mangas seguidas). Solo lo sustituye un fichaje nuevo. Si el equipo descansa la manga siguiente, no se arrastra.
+- **El panel de fichaje (pre-arme) sigue visible con la manga en marcha.** Antes desaparecía al dar el GO; ahora se mantiene durante la manga (y en pausa) para ver de un vistazo qué carril no ha fichado todavía.
+
+### Mejorado
+- **En el control de pilotos, el total del piloto se actualiza al momento mientras corre.** Con un piloto en pista, su «Total piloto» —tanto el de la cabecera de la tarjeta como el de su fila en la lista de pilotos— va subiendo en tiempo real junto al cronómetro del turno, sin esperar al fin del turno.
+- **El marcador en directo llena la pantalla en montajes grandes.** En carreras con más de 8 carriles (varias cajas), el marcador de directo pasa a una rejilla de tarjetas. Antes las tarjetas tenían un tamaño tope y quedaban pequeñas y centradas, con una franja negra arriba en pantallas grandes; en pantallas pequeñas, en cambio, sobraban carriles y aparecía scroll. Ahora la rejilla se ajusta sola a la resolución del dispositivo: calcula cuántas columnas y qué alto de tarjeta hacen que **todas** las tarjetas quepan y llenen la pantalla sin scroll, y el tamaño de letra crece o mengua con la tarjeta. Se recalcula al cambiar de resolución o de tamaño de ventana.
+
+---
+
 ## [1.7.0] — 2026-07-10
 
 ### Añadido
