@@ -1469,7 +1469,13 @@ class SessionController {
     }
 
     // ── Sheet 1 — Clasificación ─────────────────────────────────────────────
-    const byTotal = [...aggregate].sort((a,b) => b.total_laps - a.total_laps || (a.best_lap_ms||Infinity)-(b.best_lap_ms||Infinity));
+    // Desempate oficial (igual que /results): vueltas → coma última manga →
+    // tiempo total → mejor vuelta. Antes ordenaba solo por mejor vuelta, así que
+    // el Excel salía en distinto orden que la pantalla en los empates a vueltas.
+    const byTotal = [...aggregate].sort((a,b) => b.total_laps - a.total_laps
+      || (b.last_manga_coma||0) - (a.last_manga_coma||0)
+      || (a.total_time_ms||Infinity) - (b.total_time_ms||Infinity)
+      || (a.best_lap_ms||Infinity) - (b.best_lap_ms||Infinity));
     const s1 = wb.addWorksheet(isEs ? 'Clasificación' : 'Standings');
     s1.columns = [{ width: 5 }, { width: 30 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 10 }];
     addRaceHeader(s1, 6);
@@ -1542,7 +1548,10 @@ class SessionController {
         }
       }
     }
-    const byTotalM = [...entityData].sort((a,b) => b.total_laps - a.total_laps || (a.best_lap_ms||Infinity)-(b.best_lap_ms||Infinity));
+    const byTotalM = [...entityData].sort((a,b) => b.total_laps - a.total_laps
+      || (b.last_manga_coma||0) - (a.last_manga_coma||0)
+      || (a.total_time_ms||Infinity) - (b.total_time_ms||Infinity)
+      || (a.best_lap_ms||Infinity) - (b.best_lap_ms||Infinity));
 
     // ── Consistencia (misma métrica que en la web, results ~809-874) ──────────
     // perLaneByEntity no trae consistencia: se calcula aquí sobre las vueltas
@@ -2179,8 +2188,12 @@ class SessionController {
 
   static _buildPointsRanking(raceId) {
     const aggregate = Lap.aggregateByRace(raceId);
+    // Desempate oficial (igual que /results), CLAVE para los puntos: vueltas →
+    // coma última manga → tiempo total → mejor vuelta.
     const sorted = [...aggregate].sort((a, b) =>
       b.total_laps - a.total_laps
+      || (b.last_manga_coma || 0) - (a.last_manga_coma || 0)
+      || (a.total_time_ms || Infinity) - (b.total_time_ms || Infinity)
       || (a.best_lap_ms || Infinity) - (b.best_lap_ms || Infinity));
     return sorted.map((r, i) => ({
       ...r,
