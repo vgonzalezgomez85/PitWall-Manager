@@ -149,6 +149,21 @@ class SettingsController {
       circuits = [{ type: 'bart', transport: bartTransport, host: bartHost, port: bartPort, name: bartName, lanes: bartLanes, minlap: bartMinlap }];
     }
 
+    // Agrupador DS-300: varias cajas DS multiplexadas en un ÚNICO puerto COM.
+    // Un solo circuito con `boxes` (2..4). El parser las separa por byte[4] en
+    // bloques de 8 carriles → lanes = boxes × 8. 8N1 por defecto (como el DS).
+    const aggPort  = String(req.body.agg_port || '').trim();
+    const aggBaud  = parseInt(req.body.agg_baud || '57600', 10) || 57600;
+    let   aggBoxes = parseInt(req.body.agg_boxes || '2', 10);
+    if (!Number.isFinite(aggBoxes) || aggBoxes < 1) aggBoxes = 1;
+    if (aggBoxes > 4) aggBoxes = 4;
+    if (serial_mode === 'serial_agg') {
+      circuits = aggPort
+        ? [{ type: 'ds300_agg', port: aggPort, baud: aggBaud, boxes: aggBoxes, lanes: aggBoxes * 8,
+             dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none' }]
+        : [];
+    }
+
     Settings.setMany({
       serial_mode:          serial_mode || 'simulation',
       circuits_serial:      JSON.stringify(circuits),
@@ -158,6 +173,9 @@ class SettingsController {
       bart_name:            bartName,
       bart_lanes:           String(bartLanes),
       bart_minlap:          String(bartMinlap),
+      agg_port:             aggPort,
+      agg_baud:             String(aggBaud),
+      agg_boxes:            String(aggBoxes),
       sim_lanes:            sim_lanes   || '6',
       sim_avg_ms:           sim_avg_ms  || '12000',
       training_circuit_id:  String(trainingCircuitId),
@@ -187,7 +205,7 @@ class SettingsController {
       if (!infolapOn && InfolapServer.isRunning)  InfolapServer.stop();
     } catch (e) { console.warn('[Settings] Infolap toggle failed:', e.message); }
 
-    if ((serial_mode === 'serial' || serial_mode === 'bart') && circuits.length > 0) {
+    if ((serial_mode === 'serial' || serial_mode === 'serial_agg' || serial_mode === 'bart') && circuits.length > 0) {
       await SerialService.closeAll();
       SerialService.init(); // re-reads frame gap + reconnects (DS-300 or BART)
     } else {
@@ -208,6 +226,8 @@ class SettingsController {
         : (isEs ? `BART (TCP ${bartHost}:${bartPort})` : `BART (TCP ${bartHost}:${bartPort})`);
     } else if (serial_mode === 'serial') {
       src = isEs ? `DS-300 (${circuits.length} circuito${circuits.length === 1 ? '' : 's'})` : `DS-300 (${circuits.length} circuit${circuits.length === 1 ? '' : 's'})`;
+    } else if (serial_mode === 'serial_agg') {
+      src = isEs ? `DS-300 agrupador (${aggBoxes} caja${aggBoxes === 1 ? '' : 's'} · ${aggBoxes * 8} carriles)` : `DS-300 aggregator (${aggBoxes} box${aggBoxes === 1 ? '' : 'es'} · ${aggBoxes * 8} lanes)`;
     } else {
       src = isEs ? 'Simulación' : 'Simulation';
     }
