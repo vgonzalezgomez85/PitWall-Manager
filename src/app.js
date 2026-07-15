@@ -150,8 +150,12 @@ SerialService.on('race_started', ({ circuit } = {}) => {
 
   // Si ya hay una manga en curso, este GO pertenece a OTRO circuito: arranca
   // solo ese circuito (con su propio reloj) sin reiniciar ni tocar los demás.
+  // EXCEPCIÓN agrupador: una sola señal de GO cubre TODAS las cajas del puerto
+  // (las tramas de GO de cada caja llegan casi a la vez por el mismo cable), así
+  // que arrancamos todos los circuitos pendientes de golpe (idempotente).
   if (TimingService.activeMangaId != null) {
-    TimingService.startCircuit(ci, _pendingGoDurationMs);
+    if (SerialService.isAggregator) TimingService.startAllCircuits(_pendingGoDurationMs);
+    else                            TimingService.startCircuit(ci, _pendingGoDurationMs);
     _pendingGoDurationMs = null;
     return;
   }
@@ -208,6 +212,10 @@ SerialService.on('race_started', ({ circuit } = {}) => {
 
   if (!setup) { console.log('[DS-300] GO received but no pending manga found'); return; }
   TimingService.startManga(setup.manga, setup.race, setup.lanes, setup.teams, setup.drivers, _pendingGoDurationMs, ci);
+  // Agrupador: un único GO cubre todas las cajas → arranca TODOS los circuitos
+  // de la manga, no solo el primero (si no, los carriles de las demás cajas
+  // llegan a un circuito 'pending' y se descartan por circuit_not_running).
+  if (SerialService.isAggregator) TimingService.startAllCircuits(_pendingGoDurationMs);
   _pendingGoDurationMs = null;
   TimingService.clearPendingManga();
 });
@@ -220,12 +228,22 @@ SerialService.on('race_stopped', () => {
 SerialService.on('race_finished', ({ circuit } = {}) => {
   // Fin (normal / tiempo agotado) de UN circuito: lo cierra. La manga se
   // finaliza de verdad cuando todos los circuitos han terminado (finishCircuit).
-  if (TimingService.activeMangaId != null) TimingService.finishCircuit(circuit || 0);
+  // Agrupador: la única trama de fin cubre todas las cajas del puerto → cierra
+  // todos los circuitos (si no, el circuito de otra caja quedaría corriendo y la
+  // manga no se cerraría nunca).
+  if (TimingService.activeMangaId != null) {
+    if (SerialService.isAggregator) TimingService.finishAllCircuits();
+    else                            TimingService.finishCircuit(circuit || 0);
+  }
 });
 
 SerialService.on('race_paused', ({ circuit } = {}) => {
   // Pausa POR CIRCUITO: solo afecta a los carriles de ese DS.
-  if (TimingService.activeMangaId != null) TimingService.pauseCircuit(circuit || 0);
+  // Agrupador: la pausa del puerto para todas las cajas a la vez.
+  if (TimingService.activeMangaId != null) {
+    if (SerialService.isAggregator) TimingService.pauseManga();
+    else                            TimingService.pauseCircuit(circuit || 0);
+  }
 });
 
 // Trama 1 of the resume sequence (0xA6): show the same semaphore animation
@@ -243,7 +261,11 @@ SerialService.on('semaphore_step', () => {
 });
 
 SerialService.on('race_resumed', ({ circuit } = {}) => {
-  if (TimingService.activeMangaId != null) TimingService.resumeCircuit(circuit || 0);
+  // Agrupador: la reanudación del puerto revive todas las cajas a la vez.
+  if (TimingService.activeMangaId != null) {
+    if (SerialService.isAggregator) TimingService.resumeManga();
+    else                            TimingService.resumeCircuit(circuit || 0);
+  }
 });
 
 const PORT = process.env.PORT || 3000;

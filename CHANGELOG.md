@@ -13,6 +13,16 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.8.0] — 2026-07-15
+
+### Añadido
+- **Nueva fuente de datos «DS-300 agrupador».** En **Ajustes → Fuente de datos** hay una cuarta opción para los montajes en los que un aparato **agrupador** junta **varias cajas DS-300 (de 2 a 4) en un solo puerto COM**. Basta con indicar el **puerto**, el **baud** (57600, 8N1) y el **nº de cajas** (2, 3 o 4 → 16, 24 o 32 carriles). Antes PitWall daba por hecho «una caja por puerto»; ahora también entiende varias cajas por un único cable.
+- **Carriles numerados de forma global con el agrupador.** PitWall separa cada caja por su identificador de trama y numera los carriles de corrido: caja 1 → carriles **1–8**, caja 2 → **9–16**, caja 3 → **17–24** y caja 4 → **25–32**. No hay que configurar nada más: cada carril aparece con su número global en toda la app.
+- **Una sola señal de salida arranca todos los circuitos del agrupador.** Como el agrupador comparte un único director, un **GO** arranca, pausa, reanuda o finaliza **a la vez** todas las cajas que cubre (igual que la simulación o BART), y el **STOP** cancela la manga completa. Funciona tanto en carrera con mangas multi-circuito (p.ej. 8+8+8+8) como en **Entrenos competitivos**.
+
+### Corregido
+- **El modo de una caja por puerto no cambia.** La opción **DS-300** de siempre (una caja = un puerto) se comporta exactamente igual que antes; el agrupador es una vía nueva y separada, no la sustituye.
+
 ## [1.7.1] — 2026-07-13
 
 ### Añadido

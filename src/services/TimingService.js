@@ -642,6 +642,16 @@ class TimingServiceClass {
     });
   }
 
+  // Finaliza TODOS los circuitos que sigan corriendo. Lo usa el agrupador: una
+  // sola trama de fin (tiempo agotado) cubre todas las cajas del puerto, igual
+  // que un único GO las arranca todas. No-op para los que ya terminaron.
+  finishAllCircuits() {
+    if (!this.session) return;
+    Object.values(this.session.circuits).forEach(c => {
+      if (c.status === 'running') this.finishCircuit(c.index);
+    });
+  }
+
   // ── Reloj simulado ──────────────────────────────────────────────────────────
   // En una carrera simulada el tiempo NO avanza con el reloj de pared: avanza
   // según las tramas reproducidas (a ×N, o de golpe al "final de manga"). El
@@ -1382,19 +1392,14 @@ class TimingServiceClass {
     if (autoGhost) {
       DebugLogger.log('ghost_lap', { lane, lapTimeMs, minLapMs });
       console.log(`[TimingService] Ghost lap: lane ${lane} (${lapTimeMs}ms < Pt ${minLapMs}ms)`);
-      // Registra el fantasma para correlacionar una futura vuelta 2× (el cruce
-      // que otro carril se saltó) y neutralizarla — ver _ghostDerivedDouble.
-      if (!this._recentGhosts) this._recentGhosts = [];
-      this._recentGhosts.push({ ts: timestamp, lane });
-      if (this._recentGhosts.length > 64) this._recentGhosts.shift();
       const elapsedMs = timestamp - circuit.startTime;
       const race    = this.session.race;
       const manga   = this.session.manga;
       const teamId  = ld.teamId;
       const driverId = ld.driverId;
 
-      // Persist the ghost on the originating lane (synchronously so we can
-      // optionally transfer it to another lane below using its id).
+      // Persist the ghost on the originating lane (synchronously so podamos
+      // transferirlo luego usando su id, una vez CERTIFICADO).
       let ghostId = null;
       try {
         ghostId = Lap.create({
@@ -1406,40 +1411,18 @@ class TimingServiceClass {
         });
       } catch (err) { console.error('[TimingService] DB error (ghost lap):', err.message); }
 
-      // Heuristic auto-reassignment: pick the lane that is most "overdue"
-      // (silent for longer than its own average). If found, transfer the lap
-      // there using the same flow as a manual correction.
-      const targetLane = this._findOverdueLane(lane, timestamp);
-      if (targetLane != null && ghostId) {
-        const tld = this.session.laneMap[targetLane];
-        console.log(`[TimingService] Auto-reassign: lap from lane ${lane} → lane ${targetLane} (${tld?.name})`);
-        try {
-          Lap.transfer(ghostId, targetLane, manga.id, race.id);
-        } catch (err) { console.error('[TimingService] DB error (transfer):', err.message); }
+      // NADA de reasignar a ciegas. Un fantasma = un cruce que OTRO carril se
+      // saltó, pero "estar en deuda" NO prueba cuál carril fue (podría ir lento,
+      // haber parado, o no haber vuelto a cruzar). Se RETIENE el fantasma y se
+      // CERTIFICA cuando el carril que lo perdió cruce con una vuelta ~2× (la
+      // prueba real del cruce saltado): solo entonces se le asigna. Si nadie lo
+      // confirma dentro de la ventana, queda como fantasma para revisión manual.
+      // La certificación+asignación vive en el flujo de vuelta normal, más abajo
+      // (ver _matchGhostForDouble).
+      if (!this._recentGhosts) this._recentGhosts = [];
+      this._recentGhosts.push({ ts: timestamp, lane, ghostId, elapsedMs });
+      if (this._recentGhosts.length > 64) this._recentGhosts.shift();
 
-        // Refleja el cruce reasignado en memoria: cuenta para el total con
-        // tiempo = MEDIA ACTUAL del carril (no el tiempo corto del fantasma). Así
-        // la media no se mueve (añadir su propia media la deja igual) y la mejor
-        // vuelta no se ve afectada (la media nunca es la más rápida).
-        if (tld) {
-          const assignMs = (tld.lapAvgMs > 0) ? tld.lapAvgMs : lapTimeMs;
-          tld.lapCount++;
-          tld.lastCrossing = timestamp;
-          tld.avgLapCount++;
-          tld.lapsMsSum += assignMs;
-          tld.lapAvgMs   = tld.lapsMsSum / tld.avgLapCount;
-        }
-
-        SocketService.emit('lap:reassigned', {
-          fromLane: lane, toLane: targetLane,
-          color: tld?.color, name: tld?.name,
-          lapTimeMs, elapsedMs,
-        });
-        SocketService.emitStandings(this.getStandings());
-        return;
-      }
-
-      // No reasonable destination — keep it as a ghost for manual review.
       SocketService.emit('lap:ghost', {
         lane, color: ld.color, name: ld.name,
         lapTimeMs, ptMs: minLapMs, elapsedMs,
@@ -1449,17 +1432,45 @@ class TimingServiceClass {
 
     // ── Normal (non-ghost) lap: update in-memory state and persist ───────────
 
-    // 2× DERIVADA DE UN FANTASMA → neutralizar a media. Un cruce mal atribuido
+    // 2× DERIVADA DE UN FANTASMA → CERTIFICAR y asignar. Un cruce mal atribuido
     // deja a un carril "saltándose" una vuelta → aparece una vuelta ~2×
-    // (missed-crossing). Si coincide con un fantasma reciente en OTRO carril, NO
-    // es un pit real: le ponemos tiempo = media para no falsear media/mejor. Los
-    // pits / vueltas lentas REALES (sin fantasma cerca) se respetan tal cual.
+    // (missed-crossing). Si coincide con un fantasma reciente RETENIDO en OTRO
+    // carril, esa 2× es la PRUEBA de que este carril perdió el cruce:
+    //   1) el tiempo 2× se neutraliza a la media (no era un pit real), y
+    //   2) el fantasma retenido se le ASIGNA a este carril (la vuelta que le
+    //      faltaba), consumiéndolo para no reasignarlo dos veces.
+    // Los pits / vueltas lentas REALES (sin fantasma cerca) se respetan tal cual.
     {
       const _refAvg = ld.cleanAvgMs > 0 ? ld.cleanAvgMs : ld.lapAvgMs;
-      if (_refAvg > 0 && lapTimeMs >= _refAvg * 1.5 && lapTimeMs <= _refAvg * 2.8 &&
-          this._ghostDerivedDouble(lane, timestamp, _refAvg)) {
-        console.log(`[TimingService] 2× de fantasma (carril ${lane}): ${lapTimeMs}ms → media ${Math.round(_refAvg)}ms`);
+      const _ghost = (_refAvg > 0 && lapTimeMs >= _refAvg * 1.5 && lapTimeMs <= _refAvg * 2.8)
+        ? this._matchGhostForDouble(lane, timestamp, _refAvg)
+        : null;
+      if (_ghost) {
+        const _origMs = lapTimeMs;
         lapTimeMs = Math.round(_refAvg);
+        if (_ghost.ghostId) {
+          const _race  = this.session.race;
+          const _manga = this.session.manga;
+          try {
+            Lap.transfer(_ghost.ghostId, lane, _manga.id, _race.id);
+          } catch (err) { console.error('[TimingService] DB error (ghost transfer):', err.message); }
+          // La vuelta robada se le suma con tiempo = media del carril (no el
+          // corto del fantasma): la media no se mueve y la mejor vuelta no se
+          // toca. lastCrossing lo fija el procesado normal de esta misma vuelta.
+          const _assignMs = (ld.lapAvgMs > 0) ? ld.lapAvgMs : lapTimeMs;
+          ld.lapCount++;
+          ld.avgLapCount++;
+          ld.lapsMsSum += _assignMs;
+          ld.lapAvgMs   = ld.lapsMsSum / ld.avgLapCount;
+          console.log(`[TimingService] 2× de fantasma (carril ${lane}): ${Math.round(_origMs)}ms → media ${lapTimeMs}ms; fantasma del carril ${_ghost.lane} CERTIFICADO y asignado al carril ${lane}`);
+          SocketService.emit('lap:reassigned', {
+            fromLane: _ghost.lane, toLane: lane,
+            color: ld.color, name: ld.name,
+            lapTimeMs: Math.round(_assignMs), elapsedMs: timestamp - circuit.startTime,
+          });
+        } else {
+          console.log(`[TimingService] 2× de fantasma (carril ${lane}): ${Math.round(_origMs)}ms → media ${lapTimeMs}ms (fantasma sin id, solo neutralizado)`);
+        }
       }
     }
 
@@ -1581,47 +1592,31 @@ class TimingServiceClass {
     SocketService.emitStandings(this.getStandings());
   }
 
-  // Pick the lane (other than `skipLane`) that's "most overdue": the one whose
-  // time since its last crossing exceeds its own average lap time by the
-  // largest margin. Returns the lane number or null if nobody is overdue.
+  // Certificación del fantasma: ¿la vuelta larga (candidata a 2×) de `lane`
+  // deriva de un fantasma reciente RETENIDO en OTRO carril? Es la prueba real de
+  // que este carril se saltó un cruce (el que el fantasma "robó"). Si hay match,
+  // DEVUELVE ese fantasma (con su id, para asignárselo) y lo CONSUME de la lista
+  // para no reasignarlo dos veces. Si no, null. Poda de paso los viejos (>30s).
   //
-  // Lanes without an average yet (haven't completed any valid lap) are skipped:
-  // we can't tell whether they're late or just slow on their first attempt.
-  _findOverdueLane(skipLane, timestamp) {
-    if (!this.session) return null;
-    let best = null;
-    let bestDebt = 0;
-    for (const ld of Object.values(this.session.laneMap)) {
-      if (ld.lane === skipLane) continue;
-      if (!ld.lapAvgMs || ld.lapAvgMs <= 0) continue;
-      const elapsedSinceLast = timestamp - ld.lastCrossing;
-      const debt = elapsedSinceLast - ld.lapAvgMs;
-      // Ventana de deuda para reasignar un cruce mal atribuido:
-      //  · SUELO (>0.2× media): que no sea un carril solo un pelín tarde.
-      //  · TECHO (<1.5× media): un cruce mal leído = el carril se saltó UN cruce
-      //    (deuda ~1 vuelta). Si la deuda es MUCHO mayor, lleva en silencio
-      //    varias vueltas → es un PIT STOP o crash, NO un cruce perdido: no se le
-      //    reasigna el fantasma. (La salida ya queda fuera: sin media aún.)
-      if (debt > ld.lapAvgMs * 0.2 && debt < ld.lapAvgMs * 1.5 && debt > bestDebt) {
-        best = ld.lane;
-        bestDebt = debt;
-      }
-    }
-    return best;
-  }
-
-  // ¿La vuelta larga (candidata a 2×) deriva de un fantasma reciente? = hubo un
-  // fantasma en OTRO carril dentro de la ventana previa (~2.5× la media), señal
-  // de un cruce mal atribuido. Poda de paso los fantasmas ya viejos.
-  _ghostDerivedDouble(lane, timestamp, refAvg) {
-    if (!this._recentGhosts || !this._recentGhosts.length) return false;
+  // Sustituye a la vieja adivinación "asigna al carril más en deuda al vuelo":
+  // esa no distinguía un cruce perdido de un carril simplemente lento/parado.
+  // Aquí solo se asigna cuando el propio cruce 2× del carril lo confirma.
+  _matchGhostForDouble(lane, timestamp, refAvg) {
+    if (!this._recentGhosts || !this._recentGhosts.length) return null;
     // Poda con ventana FIJA generosa (30s) — no depende del carril, para no
     // descartar fantasmas que aún valen para otros carriles más lentos.
     this._recentGhosts = this._recentGhosts.filter(g => (timestamp - g.ts) <= 30000 && (timestamp - g.ts) >= 0);
-    // Match: un fantasma en OTRO carril dentro de la ventana de este carril
+    // El fantasma más reciente en OTRO carril dentro de la ventana de este carril
     // (~2.5× su media = como mucho el tiempo de la vuelta que se saltó).
     const windowMs = Math.max(3000, refAvg * 2.5);
-    return this._recentGhosts.some(g => g.lane !== lane && (timestamp - g.ts) <= windowMs);
+    for (let i = this._recentGhosts.length - 1; i >= 0; i--) {
+      const g = this._recentGhosts[i];
+      if (g.lane !== lane && (timestamp - g.ts) <= windowMs) {
+        this._recentGhosts.splice(i, 1);   // consumir: un fantasma = un cruce
+        return g;
+      }
+    }
+    return null;
   }
 
   // ── Standings ─────────────────────────────────────────────────────────────

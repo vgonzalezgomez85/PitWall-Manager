@@ -35,7 +35,7 @@ function lanesFromSettings() {
   //    los circuitos definidos en circuits_serial. Imprescindible para que
   //    aparezcan todos los carriles (si no, el training prepara solo sim_lanes y
   //    desaparecen carriles: el 2º DS, o los 8 del Master BART).
-  if (['serial', 'bart'].includes(Settings.get('serial_mode', ''))) {
+  if (['serial', 'serial_agg', 'bart'].includes(Settings.get('serial_mode', ''))) {
     try {
       const cfg = JSON.parse(Settings.get('circuits_serial', '[]'));
       if (Array.isArray(cfg) && cfg.length > 0) {

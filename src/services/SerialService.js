@@ -129,6 +129,11 @@ class CircuitConnection {
     this._watchdogTimer = null;
     this._connected     = true;   // optimistic until we have reason to think otherwise
     this._lastHeartbeatTs = null;
+    // Agrupador DS-300: nº de cajas físicas multiplexadas en ESTE único puerto.
+    // 1 = una caja por puerto (comportamiento de siempre; byte[4] ni se mira).
+    // >1 → el parser de-multiplexa por byte[4] (id de caja) en bloques de 8
+    // carriles. Lo fija connect() desde opts.boxes.
+    this._boxesPerPort  = 1;
     // Last DS-300 lap counter (B12) seen per local lane. Used to detect missed
     // crossings when the serial link drops temporarily: if the next frame for
     // the lane jumps from N to N+k (k>1), the gap is emitted as k-1 phantom
@@ -165,6 +170,10 @@ class CircuitConnection {
     const rtscts = flowControl === 'rtscts';
     const xon    = flowControl === 'xonxoff';
     const xoff   = flowControl === 'xonxoff';
+
+    // Agrupador: cuántas cajas DS comparten este puerto (1..4). Persiste en
+    // _lastConfig (opts), así que la reconexión automática lo conserva.
+    this._boxesPerPort = Math.max(1, Math.min(4, parseInt(opts.boxes, 10) || 1));
 
     const { SerialPort } = require('serialport');
     if (this._port) await new Promise(r => this._port.close(r));
@@ -496,8 +505,28 @@ class CircuitConnection {
         if (frame[off] !== 0xe0 || frame[off + DS_FRAME_LEN - 1] !== 0xeb) wellFormed = false;
       }
       if (wellFormed) {
+        let collapsed = 0;
         for (let i = 0; i < n; i++) {
-          this._processFrame(frame.slice(i * DS_FRAME_LEN, (i + 1) * DS_FRAME_LEN), ts);
+          const off = i * DS_FRAME_LEN;
+          // Colapsa RETRANSMISIONES: algunos DS/adaptadores entregan la MISMA
+          // trama repetida dentro de una ráfaga (bytes idénticos). Un cruce real
+          // cambia el carril (laneByte) o el contador de vuelta (byte12), así que
+          // dos sub-tramas byte-idénticas CONSECUTIVAS son la misma vuelta
+          // duplicada → se procesa una sola vez. Los cruces simultáneos de
+          // carriles DISTINTOS tienen laneByte distinto: NO se colapsan (que es
+          // justo lo que el de-merge está para recuperar).
+          if (i > 0) {
+            let same = true;
+            for (let k = 0; k < DS_FRAME_LEN; k++) {
+              if (frame[off + k] !== frame[off - DS_FRAME_LEN + k]) { same = false; break; }
+            }
+            if (same) { collapsed++; continue; }
+          }
+          this._processFrame(frame.slice(off, off + DS_FRAME_LEN), ts);
+        }
+        if (collapsed > 0) {
+          console.log(`[DS-300 C${this._circuitIndex + 1}] De-merge: ${collapsed}/${n} sub-tramas duplicadas descartadas (retransmisión)`);
+          DebugLogger.log('frame_dedup', { circuit: this._circuitIndex + 1, total: n, collapsed });
         }
         return;
       }
@@ -638,10 +667,26 @@ class CircuitConnection {
     // B12 = lap counter (BCD). DS-300 increments it monotonically per lane within a manga.
     const lapCounter = ds300Byte(frame[12]);
 
+    // Agrupador: varias cajas DS comparten el puerto y cada una numera sus
+    // carriles 1..8 en byte[10]. byte[4] identifica la caja (0x01, 0x02, …), así
+    // que su offset separa los bloques de 8. Con una sola caja boxOffset = 0 y
+    // todo queda EXACTAMENTE igual que antes (byte[4] ni se mira).
+    let boxOffset = 0;
+    if (this._boxesPerPort > 1) {
+      const boxId = frame.length > 4 ? frame[4] : 1;          // 1-based (0x01, 0x02, …)
+      const idx   = Math.min(this._boxesPerPort - 1, Math.max(0, boxId - 1));
+      boxOffset   = idx * 8;
+    }
+
     for (const [mask, localLane] of LANE_MAP) {
       if (!(laneByte & mask)) continue;
 
-      const globalLane = localLane + this._laneOffset;
+      // Clave interna del carril: incluye el offset de caja (1..cajas×8) para que
+      // los mapas por-carril NO colisionen entre cajas (la caja 2 carril 1 no
+      // debe pisar la caja 1 carril 1). El carril GLOBAL le suma además el offset
+      // del circuito (multi-puerto). Con 1 caja, laneKey === localLane.
+      const laneKey    = boxOffset + localLane;
+      const globalLane = laneKey + this._laneOffset;
 
       // Reconciliation: if B12 jumped by more than 1 since the previous frame
       // for this lane (link was down, we missed crossings), emit the missing
@@ -657,9 +702,9 @@ class CircuitConnection {
         // Y el byte12 por sí solo no basta para saber CUÁNTAS se perdieron: 20
         // tras 90 puede ser 120, 220 o 320. Lo desempata el reloj — cuántas
         // vueltas cabían en el hueco, a la media de ese carril.
-        const prevAbs = this._lastLapAbsByLane.get(localLane);
-        const lastTs  = this._lastCrossTsByLane.get(localLane);
-        const stats   = this._lapStatsByLane.get(localLane);
+        const prevAbs = this._lastLapAbsByLane.get(laneKey);
+        const lastTs  = this._lastCrossTsByLane.get(laneKey);
+        const stats   = this._lapStatsByLane.get(laneKey);
         const avgMs   = (stats && stats.count > 0) ? (stats.sum / stats.count) : null;
 
         const esperadas = (avgMs > 0 && lastTs != null && ts > lastTs)
@@ -674,9 +719,9 @@ class CircuitConnection {
             this._onCrossing({ lane: globalLane, timestamp: ts, lapTimeMs: avgMs, missed: true });
           }
         }
-        this._lastLapByLane.set(localLane, lapCounter);
-        this._lastLapAbsByLane.set(localLane, abs);
-        this._lastCrossTsByLane.set(localLane, ts);
+        this._lastLapByLane.set(laneKey, lapCounter);
+        this._lastLapAbsByLane.set(laneKey, abs);
+        this._lastCrossTsByLane.set(laneKey, ts);
       }
 
       if (lapTimeMs === null) {
@@ -690,10 +735,10 @@ class CircuitConnection {
       console.log(`[DS-300 C${this._circuitIndex + 1}] Lane ${localLane} → global ${globalLane} — ${lapTimeMs.toFixed(1)}ms`);
       // Feed real lap times into the running stats so future phantom laps can
       // estimate a realistic value. Phantoms themselves are NOT fed back.
-      const stats = this._lapStatsByLane.get(localLane) || { sum: 0, count: 0 };
+      const stats = this._lapStatsByLane.get(laneKey) || { sum: 0, count: 0 };
       stats.sum += lapTimeMs;
       stats.count += 1;
-      this._lapStatsByLane.set(localLane, stats);
+      this._lapStatsByLane.set(laneKey, stats);
       this._onCrossing({ lane: globalLane, timestamp: ts, lapTimeMs });
     }
   }
@@ -717,10 +762,11 @@ class SerialServiceClass extends EventEmitter {
     console.log(`[SerialService] FRAME_GAP_MS = ${FRAME_GAP_MS} ms`);
 
     const mode = Settings.get('serial_mode', 'simulation');
-    // 'serial' (DS-300) y 'bart' (BLE vía puente) comparten ruta: ambos
-    // conectan los circuitos de circuits_serial; el type de cada entrada
-    // decide CircuitConnection vs BartConnection.
-    if (mode === 'serial' || mode === 'bart') {
+    // 'serial' (DS-300), 'serial_agg' (agrupador: varias cajas DS en un único
+    // puerto, de-multiplexadas por byte[4]) y 'bart' (BLE vía puente) comparten
+    // ruta: todos conectan los circuitos de circuits_serial; el type/boxes de
+    // cada entrada decide CircuitConnection (una o N cajas) vs BartConnection.
+    if (mode === 'serial' || mode === 'serial_agg' || mode === 'bart') {
       const circuitsJson = Settings.get('circuits_serial', '[]');
       let circuits = [];
       try { circuits = JSON.parse(circuitsJson); } catch {}
@@ -809,7 +855,7 @@ class SerialServiceClass extends EventEmitter {
         if (!cfg.baud) throw new Error(`Circuit ${i + 1}: baud rate missing in DB config`);
         lanes = cfg.lanes || 8;
         conn  = new CircuitConnection(...callbacks);
-        await conn.connect(cfg.port, cfg.baud, { dataBits: cfg.dataBits, parity: cfg.parity, stopBits: cfg.stopBits, flowControl: cfg.flowControl });
+        await conn.connect(cfg.port, cfg.baud, { dataBits: cfg.dataBits, parity: cfg.parity, stopBits: cfg.stopBits, flowControl: cfg.flowControl, boxes: cfg.boxes });
       }
       // Trasplante: misma posición = misma caja física = mismos carriles.
       const anterior = previas[i];
@@ -1085,6 +1131,10 @@ class SerialServiceClass extends EventEmitter {
   // vista live para mostrar el botón GO/STOP, igual que en simulación. En DS-300
   // manda la caja → no aplica.
   get isBart()         { return this._connections.some(c => c && c.isBart); }
+  // True si alguna conexión es un agrupador (varias cajas DS en un puerto). En
+  // ese caso hay UNA sola señal de GO/fin/pausa para TODOS los circuitos que
+  // cubre (como en simulación/BART), así que app.js opera sobre todos a la vez.
+  get isAggregator()   { return this._connections.some(c => c && c._boxesPerPort > 1); }
   get connectedPort()  { return this._connections[0]?.path ?? null; }
   get connectedPorts() { return this._connections.map(c => c.path).filter(Boolean); }
 

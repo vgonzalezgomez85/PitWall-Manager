@@ -53,9 +53,10 @@ function circuito() {
  * byte 10. OJO con el mapa de bits: 0x80 es el carril 1 y 0x01 el carril 8
  * (LANE_MAP, SerialService.js:69).
  */
-function frameCruce({ bit = 0x80, lapCounter = 0x05, min = 0x00, seg = 0x09, cent = 0x50, dmil = 0x00 } = {}) {
+function frameCruce({ bit = 0x80, lapCounter = 0x05, min = 0x00, seg = 0x09, cent = 0x50, dmil = 0x00, box = 0 } = {}) {
   const f = new Array(21).fill(0);
   f[0]  = 0xe0;
+  f[4]  = box;          // id de caja del agrupador (0 = sin agrupar; 0x01, 0x02… = caja N)
   f[10] = bit;          // laneByte
   f[12] = lapCounter;   // contador de vueltas (BCD)
   f[14] = min;
@@ -312,4 +313,74 @@ test('una desconexión corta sigue reponiendo lo justo', () => {
   // 5 minutos fuera → ~30 vueltas. byte12 = 20 → 120.
   c._processFrame(frameCruce({ lapCounter: bcd(20), seg: 0x10 }), ts + 5 * 60000);
   assert.equal(cruces.slice(antes).filter(x => x.missed).length, 29);
+});
+
+// ── Agrupador DS-300: varias cajas por un único puerto ─────────────────────
+// Un aparato agrupa N cajas DS y las entrega por un solo COM. La caja va en el
+// byte 4 (0x01, 0x02…); cada caja numera sus carriles 1..8 en el byte 10. El
+// parser las separa en bloques de 8 → caja 1: 1–8, caja 2: 9–16, etc.
+
+/** Un circuito en modo agrupador (N cajas en el puerto). */
+function circuitoAgg(boxes) {
+  const { c, cruces } = circuito();
+  c._boxesPerPort = boxes;   // lo que connect() haría con opts.boxes
+  return { c, cruces };
+}
+
+test('agrupador: la caja 2 (byte4=0x02) cae en los carriles 9–16', () => {
+  const { c, cruces } = circuitoAgg(2);
+  c._processFrame(frameCruce({ box: 0x02, bit: 0x80 }), 5000);   // caja 2, carril local 1
+  assert.equal(cruces.length, 1);
+  assert.equal(cruces[0].lane, 9, 'caja 2 · carril 1 → global 9');
+});
+
+test('agrupador: la caja 1 (byte4=0x01) mantiene los carriles 1–8', () => {
+  const { c, cruces } = circuitoAgg(2);
+  c._processFrame(frameCruce({ box: 0x01, bit: 0x01 }), 5000);   // caja 1, carril local 8
+  assert.equal(cruces.length, 1);
+  assert.equal(cruces[0].lane, 8, 'caja 1 · carril 8 → global 8');
+});
+
+test('agrupador: dos cajas NO colisionan en el mismo carril global', () => {
+  const { c, cruces } = circuitoAgg(2);
+  c._processFrame(frameCruce({ box: 0x01, bit: 0x80 }), 5000);   // caja 1 carril 1 → 1
+  c._processFrame(frameCruce({ box: 0x02, bit: 0x80 }), 5000);   // caja 2 carril 1 → 9
+  assert.deepEqual(cruces.map(x => x.lane).sort((a, b) => a - b), [1, 9],
+    'el mismo carril local de dos cajas son dos carriles globales distintos');
+});
+
+test('agrupador de 4 cajas: byte4=0x04 → carriles 25–32', () => {
+  const { c, cruces } = circuitoAgg(4);
+  c._processFrame(frameCruce({ box: 0x04, bit: 0x80 }), 5000);   // caja 4 carril 1
+  assert.equal(cruces[0].lane, 25, 'caja 4 · carril 1 → global 25');
+});
+
+test('agrupador: el id de caja se satura al máximo configurado (no desborda)', () => {
+  // Con 2 cajas configuradas, una trama con byte4=0x04 (caja 4) se trata como la
+  // última caja válida (2) en vez de inventar carriles 25+ inexistentes.
+  const { c, cruces } = circuitoAgg(2);
+  c._processFrame(frameCruce({ box: 0x04, bit: 0x80 }), 5000);
+  assert.equal(cruces[0].lane, 9, 'byte4 fuera de rango se satura a la última caja (9–16)');
+});
+
+test('sin agrupar (por defecto), el byte 4 se IGNORA — comportamiento de siempre', () => {
+  const { c, cruces } = circuito();   // _boxesPerPort = 1
+  c._processFrame(frameCruce({ box: 0x02, bit: 0x80 }), 5000);   // byte4 presente pero irrelevante
+  assert.equal(cruces[0].lane, 1, 'con una sola caja el byte4 no mueve el carril');
+});
+
+test('agrupador: los contadores por carril de cada caja son independientes', () => {
+  // La caja 1 y la caja 2 comparten el carril local 1, pero sus contadores de
+  // vuelta (byte12) NO deben mezclarse: un salto en una no inventa vueltas en la
+  // otra.
+  const { c, cruces } = circuitoAgg(2);
+  // Caja 1, carril 1: contador 1 → 2 (normal, sin huecos)
+  c._processFrame(frameCruce({ box: 0x01, bit: 0x80, lapCounter: bcd(1) }), 1000);
+  c._processFrame(frameCruce({ box: 0x01, bit: 0x80, lapCounter: bcd(2) }), 11000);
+  // Caja 2, carril 1: primer cruce con contador 1 → no debe verse como un salto
+  // desde el contador 2 de la caja 1.
+  const antes = cruces.length;
+  c._processFrame(frameCruce({ box: 0x02, bit: 0x80, lapCounter: bcd(1) }), 12000);
+  const fantasmas = cruces.slice(antes).filter(x => x.missed).length;
+  assert.equal(fantasmas, 0, 'el contador de la caja 2 no arrastra el de la caja 1');
 });

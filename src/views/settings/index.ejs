@@ -72,6 +72,16 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
           <div class="vt-opt__d"><%= lang === 'es' ? 'Uno o varios DS-300 por USB/RS-232.' : 'One or more DS-300 via USB/RS-232.' %></div>
         </label>
 
+        <label class="vt-opt <%= cfg.serial_mode === 'serial_agg' ? 'is-sel' : '' %>" id="optAgg">
+          <input type="radio" name="serial_mode" value="serial_agg" <%= cfg.serial_mode === 'serial_agg' ? 'checked' : '' %>>
+          <div class="vt-opt__radio"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></div>
+          <div class="vt-opt__ico">
+            <svg viewBox="0 0 24 24"><path d="M9 2v5M15 2v5"/><path d="M7 7h10v3a5 5 0 0 1-10 0z"/><path d="M4 21h16"/><path d="M8 21v-3M12 21v-3M16 21v-3"/></svg>
+          </div>
+          <div class="vt-opt__t"><%= lang === 'es' ? 'DS-300 agrupador' : 'DS-300 aggregator' %></div>
+          <div class="vt-opt__d"><%= lang === 'es' ? 'Varias cajas DS por un solo puerto COM.' : 'Several DS boxes over one COM port.' %></div>
+        </label>
+
         <label class="vt-opt <%= cfg.serial_mode === 'bart' ? 'is-sel' : '' %>" id="optBart">
           <input type="radio" name="serial_mode" value="bart" <%= cfg.serial_mode === 'bart' ? 'checked' : '' %>>
           <div class="vt-opt__radio"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></div>
@@ -154,6 +164,68 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
             <input class="vt-inp is-mono" type="text" name="bart_name" placeholder="BART_MST"
                    value="<%= cfg.bart_name || 'BART_MST' %>">
           </div>
+        </div>
+      </div>
+
+      <!-- ── DS-300 agrupador (varias cajas por un puerto) ────────────────── -->
+      <div id="aggSettings" style="display:none;margin-top:26px">
+        <div class="vt-sub">
+          <div>
+            <h3><%= lang === 'es' ? 'DS-300 agrupador' : 'DS-300 aggregator' %></h3>
+            <p class="vt-sub__p">
+              <%= lang === 'es'
+                ? 'Un aparato agrupa varias cajas DS-300 y las entrega por un único puerto COM. PitWall separa las cajas por su identificador de trama (byte 4) y numera los carriles de forma global: caja 1 → 1–8, caja 2 → 9–16, y así sucesivamente.'
+                : 'A device aggregates several DS-300 boxes and delivers them over one COM port. PitWall separates boxes by their frame id (byte 4) and numbers lanes globally: box 1 → 1–8, box 2 → 9–16, and so on.' %>
+            </p>
+          </div>
+          <div class="vt-sub__actions">
+            <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="refreshPortsAgg" title="<%= lang === 'es' ? 'Buscar puertos COM' : 'Search COM ports' %>">
+              <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v5h-5"/></svg>
+              <%= lang === 'es' ? 'Buscar puertos' : 'Refresh ports' %>
+            </button>
+          </div>
+        </div>
+
+        <div class="vt-fields vt-fields--3" style="margin-top:14px">
+          <div class="vt-field circuit-row__field--port">
+            <label><%= lang === 'es' ? 'Puerto' : 'Port' %></label>
+            <div class="vt-selw">
+              <select class="port-select" name="agg_port" id="aggPortSelect">
+                <option value="">— <%= lang === 'es' ? 'seleccionar' : 'select' %> —</option>
+                <% ports.forEach(p => { %>
+                  <option value="<%= p.path %>" <%= cfg.agg_port === p.path ? 'selected' : '' %>>
+                    <%= p.path %><%= p.manufacturer ? ` — ${p.manufacturer}` : '' %>
+                  </option>
+                <% }) %>
+                <% if (cfg.agg_port && !ports.find(p => p.path === cfg.agg_port)) { %>
+                  <option value="<%= cfg.agg_port %>" selected><%= cfg.agg_port %></option>
+                <% } %>
+              </select>
+            </div>
+            <input class="vt-inp is-mono port-manual" type="text"
+              placeholder="<%= lang === 'es' ? 'o escribe el path: /dev/ttys003' : 'or type path: COM3' %>"
+              value="<%= cfg.agg_port || '' %>" style="margin-top:7px;font-size:13px">
+          </div>
+          <div class="vt-field">
+            <label>Baud rate</label>
+            <input class="vt-inp is-mono" type="number" name="agg_baud" list="baud-options"
+                   min="300" max="921600" step="1" value="<%= cfg.agg_baud || 57600 %>">
+          </div>
+          <div class="vt-field">
+            <label><%= lang === 'es' ? 'Nº de cajas en el puerto' : 'Boxes on the port' %></label>
+            <div class="vt-selw">
+              <select name="agg_boxes" id="aggBoxes">
+                <% [2, 3, 4].forEach(v => { %>
+                  <option value="<%= v %>" <%= String(cfg.agg_boxes || '2') === String(v) ? 'selected' : '' %>><%= v %> (<%= v * 8 %> <%= lang === 'es' ? 'carriles' : 'lanes' %>)</option>
+                <% }) %>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="vt-hint" style="margin-top:10px">
+          <%= lang === 'es'
+            ? 'Las cajas deben estar direccionadas en orden (1, 2, 3…) en el agrupador. 8N1, igual que un DS-300 suelto.'
+            : 'Boxes must be addressed in order (1, 2, 3…) on the aggregator. 8N1, same as a standalone DS-300.' %>
         </div>
       </div>
 
@@ -505,17 +577,21 @@ const LANG = "<%= lang %>";
 /* ── radio source ── */
 const sim = document.getElementById('optSim');
 const ds  = document.getElementById('optDs');
+const agg = document.getElementById('optAgg');
 const bart = document.getElementById('optBart');
 const simDiv = document.getElementById('simSettings');
 const serialDiv = document.getElementById('serialSettings');
+const aggDiv = document.getElementById('aggSettings');
 const bartDiv = document.getElementById('bartSettings');
 function pickSource(){
   const mode = document.querySelector('input[name="serial_mode"]:checked')?.value;
   sim.classList.toggle('is-sel', mode === 'simulation');
   ds.classList.toggle('is-sel',  mode === 'serial');
+  if (agg) agg.classList.toggle('is-sel', mode === 'serial_agg');
   if (bart) bart.classList.toggle('is-sel', mode === 'bart');
   simDiv.style.display    = mode === 'simulation' ? '' : 'none';
   serialDiv.style.display = mode === 'serial'     ? '' : 'none';
+  if (aggDiv)  aggDiv.style.display  = mode === 'serial_agg' ? '' : 'none';
   if (bartDiv) bartDiv.style.display = mode === 'bart' ? '' : 'none';
 }
 document.querySelectorAll('input[name="serial_mode"]').forEach(r => r.addEventListener('change', pickSource));
@@ -735,7 +811,7 @@ document.getElementById('circuitList').addEventListener('click', e => {
 });
 
 /* ── refresh COM ports ── */
-document.getElementById('refreshPorts')?.addEventListener('click', async (e) => {
+async function refreshPortsHandler(e) {
   const btn = e.currentTarget;
   const originalHTML = btn.innerHTML;
   btn.disabled = true;
@@ -757,7 +833,9 @@ document.getElementById('refreshPorts')?.addEventListener('click', async (e) => 
     btn.innerHTML = '✗ ' + (LANG === 'es' ? 'Error' : 'Error');
     setTimeout(() => { btn.innerHTML = originalHTML; btn.disabled = false; }, 2000);
   }
-});
+}
+document.getElementById('refreshPorts')?.addEventListener('click', refreshPortsHandler);
+document.getElementById('refreshPortsAgg')?.addEventListener('click', refreshPortsHandler);
 
 /* ── túnel público (Cloudflare del club) ── */
 function tunnelModeUi() {
