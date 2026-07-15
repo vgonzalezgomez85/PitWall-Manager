@@ -1708,11 +1708,11 @@ function announce(text) {
       announceWarning(LANG === 'es' ? `Vuelta ignorada pista ${lane}` : `Lap ignored lane ${lane}`);
     });
 
-    // Reasignación (de-merge): el cruce se IGNORA en el carril origen Y se ASIGNA
-    // al destino → se anuncian los dos (la "pareja"). Un "Vuelta ignorada" suelto
-    // (evento lap:ghost) es un cruce espurio que no se pudo asignar a nadie.
-    socket.on('lap:reassigned', ({ fromLane, toLane }) => {
-      if (fromLane != null) announceWarning(LANG === 'es' ? `Vuelta ignorada pista ${fromLane}` : `Lap ignored lane ${fromLane}`);
+    // Reasignación: cuando el carril que se saltó la vuelta cruza y se CERTIFICA,
+    // se le ASIGNA el fantasma. La "Vuelta ignorada" YA se anunció al detectar el
+    // fantasma (evento lap:ghost), así que aquí solo se anuncia la ASIGNACIÓN —
+    // repetir "ignorada" sería redundante.
+    socket.on('lap:reassigned', ({ toLane }) => {
       announceWarning(LANG === 'es' ? `Vuelta asignada pista ${toLane}` : `Lap assigned to lane ${toLane}`);
     });
 

@@ -13,6 +13,13 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.8.1] — 2026-07-15
+
+### Corregido
+- **Las cajas DS-300 que repiten la trama ya no cuentan vueltas de más.** Con varias cajas conectadas, algunos adaptadores entregaban **cada cruce repetido 2-3 veces** en el mismo instante y PitWall lo contaba como varias vueltas (×2, ×3). Ahora, al separar una ráfaga de tramas pegadas, **descarta las copias idénticas consecutivas** (mismo carril y mismo contador) y cuenta el cruce **una sola vez**. Los cruces simultáneos de carriles **distintos** se siguen respetando (que es justo lo que esa separación recupera). El montaje de **una caja por puerto** no se ve afectado.
+- **Reasignación de vueltas fantasma por certificación (ya no adivina).** Al detectar una vuelta fantasma (por debajo del Pt), antes se reasignaba «al vuelo» al carril que más tardaba —y a veces se la daba a un carril que no era—. Ahora la **retiene** y solo se la asigna al carril que **de verdad se saltó un cruce**, cuando ese carril lo **confirma al cruzar** (su vuelta sale ~el doble de su media). Si nadie lo confirma, se queda como fantasma para **revisión manual** en el corrector. El carril de origen **nunca** la cuenta.
+- **Aviso de voz de la reasignación, sin repetir «Vuelta ignorada».** Al asignar la vuelta al carril que tocaba se decía «Vuelta ignorada pista X» **otra vez** (ya se había dicho al detectar el fantasma) y luego «Vuelta asignada pista Y». Ahora solo se anuncia la **asignación**; la «ignorada» se dice **una única vez**, al detectar el fantasma. Vale para el directo y para la app **Lap** del piloto.
+
 ## [1.8.0] — 2026-07-15
 
 ### Añadido
