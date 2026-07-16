@@ -37,13 +37,18 @@
  * NO toca la BD de producción: trabaja sobre una copia hecha con el backup de
  * SQLite (no `cp`, que se dejaría el -wal). Al terminar, la borra.
  *
- * Uso:
- *   node scripts/stress-24h.js                          # carrera más larga de la BD
- *   DUR_S=60 N_APP=100 node scripts/stress-24h.js       # 60 s y 100 móviles
- *   RACE=31 N_LIVESTATS=2 node scripts/stress-24h.js    # + 2 pantallas de estadísticas
+ * Uso (igual en Windows, Mac y Linux):
+ *   node scripts/stress-24h.js                            # carrera más larga de la BD
+ *   node scripts/stress-24h.js --dur 60 --app 100         # 60 s y 100 móviles
+ *   node scripts/stress-24h.js --livestats 2              # + 2 pantallas de estadísticas
+ *   node scripts/stress-24h.js --race 31 --keep
  *
- * Variables: DUR_S (30) · N_APP (100) · N_LIVESTATS (0) · RACE (la más larga)
- *            PORT (3999) · KEEP=1 para no borrar la copia
+ * Opciones: --dur (30) · --app (100) · --livestats (0) · --race (la más larga)
+ *           --port (3999) · --keep (no borrar la copia de la BD)
+ *
+ * También valen como variables de entorno (DUR_S, N_APP, N_LIVESTATS, RACE,
+ * PORT, KEEP=1), pero en PowerShell la forma `VAR=x node ...` NO funciona: usa
+ * los argumentos de arriba y te evitas el disgusto.
  */
 
 const path = require('path');
@@ -51,11 +56,26 @@ const fs   = require('fs');
 const os   = require('os');
 const http = require('http');
 
-const RAIZ    = path.join(__dirname, '..');
-const DUR_S   = parseInt(process.env.DUR_S || '30', 10);
-const N_APP   = parseInt(process.env.N_APP || '100', 10);
-const N_LS    = parseInt(process.env.N_LIVESTATS || '0', 10);
-const PORT    = parseInt(process.env.PORT || '3999', 10);
+const RAIZ = path.join(__dirname, '..');
+
+// Argumentos antes que variables de entorno; ambos antes que el valor por defecto.
+function opcion(nombre, env, pordefecto) {
+  const i = process.argv.indexOf('--' + nombre);
+  if (i !== -1) {
+    const v = process.argv[i + 1];
+    if (v === undefined || v.startsWith('--')) return true;      // bandera suelta
+    return v;
+  }
+  return process.env[env] !== undefined ? process.env[env] : pordefecto;
+}
+const entero = (n, e, d) => parseInt(opcion(n, e, d), 10);
+
+const DUR_S = entero('dur', 'DUR_S', '30');
+const N_APP = entero('app', 'N_APP', '100');
+const N_LS  = entero('livestats', 'N_LIVESTATS', '0');
+const PORT  = entero('port', 'PORT', '3999');
+const RACE  = opcion('race', 'RACE', null);
+const KEEP  = opcion('keep', 'KEEP', null) !== null && opcion('keep', 'KEEP', null) !== false;
 const FRAME_GAP_MS = 75;
 
 // ── Copia desechable de la BD ───────────────────────────────────────────────
@@ -68,7 +88,7 @@ const dirTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pitwall-stress-'));
 const COPIA  = path.join(dirTmp, 'slotime.db');
 
 function limpiar() {
-  if (process.env.KEEP === '1') { console.log(`\n(copia conservada en ${dirTmp})`); return; }
+  if (KEEP) { console.log(`\n(copia conservada en ${dirTmp})`); return; }
   try { fs.rmSync(dirTmp, { recursive: true, force: true }); } catch {}
 }
 
@@ -97,11 +117,16 @@ function limpiar() {
   // un fichero de tramas: inyectaría cruces suyos además de los del banco y la
   // medida saldría contaminada. Aquí los cruces los ponemos nosotros, al ritmo
   // real de la carrera elegida.
-  try { SerialService.stopSimulation(); } catch {}
+  //
+  // `init()` es asíncrono (intenta abrir los puertos, falla y ENTONCES cae en
+  // simulación), así que pararla aquí no sirve de nada: aún no ha arrancado. Se
+  // para de verdad justo antes de medir — ver `pararSimulacion()`.
+  const pararSimulacion = () => { try { SerialService.stopSimulation(); } catch {} };
+  pararSimulacion();
 
   // ── Carrera: la que más vueltas tenga (la más dura) ───────────────────────
-  const race = process.env.RACE
-    ? db.prepare('SELECT * FROM races WHERE id = ?').get(parseInt(process.env.RACE, 10))
+  const race = RACE
+    ? db.prepare('SELECT * FROM races WHERE id = ?').get(parseInt(RACE, 10))
     : db.prepare(`SELECT * FROM races WHERE format = 'team'
                   ORDER BY (SELECT COUNT(*) FROM laps WHERE race_id = races.id) DESC LIMIT 1`).get();
   if (!race) { console.error('No hay ninguna carrera por equipos en la BD.'); limpiar(); process.exit(1); }
@@ -239,6 +264,11 @@ function limpiar() {
   console.log(`   ${conectados}/${N_APP} móviles conectados · ${sesiones.length} equipos en Lap web\n   midiendo ${DUR_S}s...\n`);
 
   // ── A medir ───────────────────────────────────────────────────────────────
+  // Ahora sí: `init()` ya ha terminado de caer en simulación, así que se la puede
+  // parar. A partir de aquí los únicos cruces son los del banco.
+  pararSimulacion();
+  const antesDeMedir = db.prepare('SELECT COUNT(*) c FROM laps WHERE manga_id = ?').get(manga.id).c;
+
   midiendo = true;
   const fin = Date.now() + DUR_S * 1000;
   const latLap = [], latLs = [];
@@ -280,6 +310,12 @@ function limpiar() {
   const pasados  = bloqueos.filter(x => x > FRAME_GAP_MS).length;
   const linea = (k, v) => console.log('  ' + k.padEnd(34) + v);
 
+  // Que las vueltas grabadas cuadren con los cruces que metimos. Si no cuadran,
+  // alguien más está inyectando (la simulación por fichero de SerialService) y la
+  // medida no vale: mejor decirlo que dar un veredicto falso.
+  const grabadas = db.prepare('SELECT COUNT(*) c FROM laps WHERE manga_id = ?').get(manga.id).c - antesDeMedir;
+  const descuadre = Math.abs(grabadas - cruces) > Math.max(5, cruces * 0.1);
+
   console.log('══════════════════════════════════════════════════════════');
   console.log(' BLOQUEO DEL BUCLE — lo que decide si se pierde un cruce');
   console.log('══════════════════════════════════════════════════════════');
@@ -290,9 +326,14 @@ function limpiar() {
   linea('Bloqueo MÁXIMO', `${maxBloq.toFixed(1)} ms`);
   linea(`Veces por encima de ${FRAME_GAP_MS} ms`, `${pasados} de ${bloqueos.length} muestras`);
   console.log('');
-  console.log(pasados === 0
-    ? '  ✔ APTO: nada bloqueó el proceso más que el hueco entre tramas.\n    Esta máquina no debería perder cruces por CPU.'
-    : `  ⚠ RIESGO: ${pasados} bloqueos por encima de ${FRAME_GAP_MS} ms. Cada uno puede partir\n    una trama del DS-300 y costar un cruce real. Esta máquina va justa.`);
+  if (descuadre) {
+    console.log(`  ⚠ MEDIDA NO FIABLE: se grabaron ${grabadas} vueltas para ${cruces} cruces inyectados.`);
+    console.log('    Algo más está metiendo vueltas (¿la simulación por fichero?). Repite la prueba.');
+  } else {
+    console.log(pasados === 0
+      ? '  ✔ APTO: nada bloqueó el proceso más que el hueco entre tramas.\n    Esta máquina no debería perder cruces por CPU.'
+      : `  ⚠ RIESGO: ${pasados} bloqueos por encima de ${FRAME_GAP_MS} ms. Cada uno puede partir\n    una trama del DS-300 y costar un cruce real. Esta máquina va justa.`);
+  }
 
   console.log('\n── Clientes ──');
   if (sesiones.length) {
@@ -311,7 +352,7 @@ function limpiar() {
 
   apps.forEach(s => s.close());
   limpiar();
-  process.exit(pasados === 0 ? 0 : 1);
+  process.exit(descuadre ? 2 : (pasados === 0 ? 0 : 1));
 })().catch(err => {
   console.error('\nEl banco falló:', err);
   limpiar();
