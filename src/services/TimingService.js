@@ -1729,6 +1729,13 @@ class TimingServiceClass {
    * curso. La caché se invalida sola si alguien toca las vueltas de otra manga
    * (una corrección, una reconstrucción de tanda), gracias al contador de
    * mutaciones del modelo Lap — no depende de que nadie se acuerde de invalidar.
+   *
+   * UN solo escaneo de las mangas anteriores. Antes eran tres consultas que
+   * recorrían las MISMAS 153.000 filas de una 24 h para sacar tres cosas que salen
+   * todas del mismo GROUP BY. Se paga una vez por manga, pero se paga con la
+   * carrera en marcha, así que cada milisegundo es un riesgo de partir una trama
+   * del DS. Medido sobre Modena: 96 ms → 39 ms (185 ms → 78 ms sin el ANALYZE de
+   * arranque, ver src/config/database.js).
    */
   _priorAggregates(raceId, mangaId) {
     const Lap = require('../models/Lap');
@@ -1736,30 +1743,30 @@ class TimingServiceClass {
     const c = this._priorCache.get(raceId);
     if (c && c.mangaId === mangaId && c.mut === mut) return c;
 
-    const db = require('../config/database');
-    const priorByEntity = {};
-    db.prepare(`
-      SELECT CASE WHEN team_id IS NOT NULL THEN 't' || team_id ELSE 'd' || driver_id END AS ekey,
-             COUNT(*) AS cnt, AVG(lap_time_ms) AS avg_ms
-      FROM laps
-      WHERE race_id = ? AND manga_id != ?
-        AND is_ghost = 0 AND is_warmup = 0 AND lap_number > 0
-      GROUP BY ekey
-    `).all(raceId, mangaId).forEach(p => { priorByEntity[p.ekey] = { count: p.cnt, avg: p.avg_ms }; });
-
-    const priorTimeByEntity = {};
-    db.prepare(`
-      SELECT CASE WHEN team_id IS NOT NULL THEN 't'||team_id ELSE 'd'||driver_id END AS ekey,
-             SUM(lap_time_ms) AS sum_ms
-      FROM laps
-      WHERE race_id = ? AND manga_id != ? AND is_ghost = 0
-      GROUP BY ekey
-    `).all(raceId, mangaId).forEach(p => { priorTimeByEntity[p.ekey] = p.sum_ms || 0; });
-
-    // Sumas crudas por entidad de las mangas anteriores, para la proyección: es
-    // el escaneo caro (153.000 filas de 160.000 en una 24 h) que hacía que
-    // buildRaceProjection costara 100 ms en cada cruce.
+    // Sumas crudas por entidad de las mangas anteriores: el escaneo caro
+    // (153.000 filas de 160.000 en una 24 h) que hacía que buildRaceProjection
+    // costara 100 ms en cada cruce.
     const priorAggRaw = Lap._aggRaw(raceId, { excludeManga: mangaId });
+
+    // La media y el tiempo total por entidad SALEN de ese mismo agregado.
+    //
+    // La media de las mangas anteriores llevaba un filtro `lap_number > 0` que
+    // aquí ya no está, y es a propósito: la otra mitad de esta misma media —la de
+    // la manga en curso, en `_restoreLaneStatsFromDb`— nunca lo tuvo, ni lo tiene
+    // la media canónica de la proyección (`AVG(lap_time_ms)` sin warmup, la de
+    // TicTac, verificada al ms contra las tramas del DS-300). Las dos mitades de
+    // una misma media filtraban distinto; ahora no. Sobre los datos reales no
+    // mueve ni un milisegundo: no hay ninguna vuelta no-fantasma con lap_number 0.
+    const priorByEntity = {}, priorTimeByEntity = {};
+    priorAggRaw.forEach(p => {
+      if (p.entity_id == null) return;
+      const ekey = (p.entity_type === 'team' ? 't' : 'd') + p.entity_id;
+      priorByEntity[ekey]     = {
+        count: p.avg_cnt || 0,
+        avg:   p.avg_cnt > 0 ? p.avg_sum / p.avg_cnt : 0,
+      };
+      priorTimeByEntity[ekey] = p.total_time_ms || 0;
+    });
 
     const entrada = { raceId, mangaId, mut, priorByEntity, priorTimeByEntity, priorAggRaw };
     this._cachePut(this._priorCache, raceId, entrada);

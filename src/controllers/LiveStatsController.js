@@ -437,10 +437,13 @@ class LiveStatsController {
     // el directo, Le Mans y el panel (TimingService.buildRaceProjection, desde
     // BD). Funciona haya o no sesión viva, así el espectador ve siempre la
     // clasificación estimada al final, no solo la manga.
+    // Cacheada (TTL corto, del motor): esta vista se repide en CADA cruce, y sin
+    // caché la proyección costaba 68 ms sobre las 160.000 vueltas de una 24 h en
+    // cada una de esas peticiones. Es la misma caché que usan el directo y Lap.
     let projection = null;
     try {
       const TimingService = require('../services/TimingService');
-      projection = TimingService.buildRaceProjection(race.id);
+      projection = TimingService._cachedProjection(race.id);
     } catch (e) { /* sin proyección si falla la consulta */ }
 
     // La comparativa en vivo (tú vs 1-2 rivales) se calcula en CLIENTE a partir

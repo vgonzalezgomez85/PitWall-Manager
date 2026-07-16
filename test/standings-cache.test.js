@@ -156,6 +156,67 @@ test('_priorAggregates devuelve lo mismo cacheado que recién calculado', () => 
   assert.equal(primera.priorTimeByEntity[k], 18400);
 });
 
+// La media y el tiempo de las mangas anteriores salen del MISMO agregado que la
+// proyección: un escaneo en vez de tres sobre las mismas 153.000 filas de una 24 h
+// (185 ms → 78 ms). Se paga una vez por manga, pero con la carrera en marcha.
+
+test('la media y el tiempo por entidad salen de un ÚNICO escaneo', () => {
+  const e = escenario();
+  vuelta(e, e.m1, 9000, 1);
+  vuelta(e, e.m1, 9400, 2);
+  TimingService.invalidateStandingsCaches();
+
+  let escaneos = 0;
+  const original = Lap._aggRaw;
+  Lap._aggRaw = (...a) => { escaneos++; return original.apply(Lap, a); };
+  try { TimingService._priorAggregates(e.raceId, e.m2); }
+  finally { Lap._aggRaw = original; }
+
+  assert.equal(escaneos, 1, 'un solo recorrido de las mangas anteriores, no tres');
+});
+
+test('la media de las mangas anteriores coincide con la de la vía vieja', () => {
+  const e = escenario();
+  vuelta(e, e.m1, 9000, 1);
+  vuelta(e, e.m1, 9400, 2);
+  Lap.create({ race_id: e.raceId, manga_id: e.m1, team_id: e.teamId, driver_id: null,
+    lane: 1, lap_number: 1, lap_time_ms: 30000, elapsed_ms: 0, is_warmup: 1 });   // fuera de la media
+  Lap.create({ race_id: e.raceId, manga_id: e.m1, team_id: e.teamId, driver_id: null,
+    lane: 1, lap_number: 3, lap_time_ms: 50, elapsed_ms: 0, is_ghost: 1 });       // fuera de todo
+  TimingService.invalidateStandingsCaches();
+
+  // La consulta que había antes, tal cual.
+  const viejo = db.prepare(`
+    SELECT CASE WHEN team_id IS NOT NULL THEN 't' || team_id ELSE 'd' || driver_id END AS ekey,
+           COUNT(*) AS cnt, AVG(lap_time_ms) AS avg_ms
+    FROM laps
+    WHERE race_id = ? AND manga_id != ? AND is_ghost = 0 AND is_warmup = 0 AND lap_number > 0
+    GROUP BY ekey
+  `).all(e.raceId, e.m2);
+
+  const nuevo = TimingService._priorAggregates(e.raceId, e.m2).priorByEntity;
+  viejo.forEach(v => {
+    assert.equal(nuevo[v.ekey].count, v.cnt, `${v.ekey}: mismo nº de vueltas`);
+    assert.ok(Math.abs(nuevo[v.ekey].avg - v.avg_ms) < 1e-9, `${v.ekey}: misma media`);
+  });
+  const k = 't' + e.teamId;
+  assert.equal(nuevo[k].count, 2, 'ni la warmup ni el fantasma entran en la media');
+  assert.equal(nuevo[k].avg, 9200);
+});
+
+test('el tiempo total por entidad SÍ incluye la warmup (y el fantasma no)', () => {
+  const e = escenario();
+  vuelta(e, e.m1, 9000, 1);
+  Lap.create({ race_id: e.raceId, manga_id: e.m1, team_id: e.teamId, driver_id: null,
+    lane: 1, lap_number: 1, lap_time_ms: 30000, elapsed_ms: 0, is_warmup: 1 });
+  Lap.create({ race_id: e.raceId, manga_id: e.m1, team_id: e.teamId, driver_id: null,
+    lane: 1, lap_number: 3, lap_time_ms: 50, elapsed_ms: 0, is_ghost: 1 });
+  TimingService.invalidateStandingsCaches();
+
+  assert.equal(TimingService._priorAggregates(e.raceId, e.m2).priorTimeByEntity['t' + e.teamId],
+    39000, 'el tiempo total es el que se pasó en pista: 9000 + 30000, sin el fantasma');
+});
+
 test('la caché se REFRESCA sola al tocar una manga anterior', () => {
   const e = escenario();
   vuelta(e, e.m1, 9000, 1);
