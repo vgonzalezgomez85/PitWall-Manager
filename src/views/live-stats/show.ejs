@@ -402,7 +402,13 @@
 
   // ── Fetch + render ────────────────────────────────────────────────────
   let latestData = null;
+  let fetchPending = false, fetchTimer = null;
   async function fetchData() {
+    // Un solo vuelo a la vez: la respuesta son ~213 KB y en una 24 h tarda lo
+    // suyo. Sin este cerrojo, en una red lenta se encadenaban peticiones que ya
+    // no interesaban a nadie.
+    if (fetchPending) return;
+    fetchPending = true;
     const params = new URLSearchParams({ mangaId: MANGA_ID });
     if (myKey) params.append('entity', myKey);
     params.append('usePaceClean', includeOutliers ? '0' : '1');
@@ -411,6 +417,17 @@
       latestData = await r.json();
       render(latestData);
     } catch (err) { console.error('[live-stats]', err); }
+    finally { fetchPending = false; }
+  }
+
+  // Los cruces llegan de 2 a 3 por segundo en una carrera de resistencia, y cada
+  // uno emite `lap` Y `standings`: pedir la vista entera en cada uno era pedirla
+  // ~5 veces por segundo. Con el rebote, como mucho una cada 400 ms — el mismo
+  // criterio que el cliente Lap del móvil. Nadie distingue 400 ms en una página
+  // de estadísticas, y el servidor deja de rehacer 213 KB para tirarlos.
+  function scheduleFetch() {
+    if (fetchTimer) return;
+    fetchTimer = setTimeout(() => { fetchTimer = null; fetchData(); }, 400);
   }
 
   // Vista activa: 'manga' | 'proj' | 'carril'. La fijan las pestañas.
@@ -947,9 +964,9 @@
   // (query view=livestats → el gate de acceso permite este socket aunque sea
   //  una IP externa: las estadísticas en vivo son públicas.)
   const socket = io({ query: { view: 'livestats' } });
-  socket.on('standings', fetchData);
-  socket.on('lap', fetchData);
-  socket.on('manga:started', fetchData);
+  socket.on('standings', scheduleFetch);   // ~2-3/s en resistencia → con rebote
+  socket.on('lap', scheduleFetch);         // idem, y llega junto al de arriba
+  socket.on('manga:started', fetchData);   // raro: sin rebote, cuanto antes mejor
   socket.on('manga:stopped', fetchData);
 </script>
 

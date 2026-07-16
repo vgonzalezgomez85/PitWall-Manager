@@ -273,7 +273,11 @@ const PORT = process.env.PORT || 3000;
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-app.use(morgan('dev'));
+// Una línea de log por petición. En una carrera de resistencia el cliente Lap y
+// los móviles hacen ~55 peticiones/s, y en Electron cada línea de stdout cruza el
+// IPC hacia el proceso principal: es trabajo constante a cambio de un log que
+// nadie mira. En desarrollo sí interesa.
+if (process.env.NODE_ENV !== 'production') app.use(morgan('dev'));
 // Límite elevado para soportar payloads de trazado con imagen base64 del circuito
 app.use(express.urlencoded({ extended: true, limit: '8mb' }));
 app.use(express.json({ limit: '8mb' }));
