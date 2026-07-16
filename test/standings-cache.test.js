@@ -207,7 +207,7 @@ test('la proyección se sirve de caché dentro del TTL y se recalcula fuera', ()
   assert.equal(a, b, 'dentro del TTL, el mismo objeto');
 
   // Envejecemos la caché a mano en vez de esperar un segundo.
-  TimingService._projCache.ts -= TimingServiceClassTtl() + 10;
+  TimingService._projCache.get(e.raceId).ts -= TimingServiceClassTtl() + 10;
   const c = TimingService._cachedProjection(e.raceId);
   assert.notEqual(c, a, 'pasado el TTL se recalcula');
   assert.deepEqual(c, a, 'y el resultado es el mismo si nada cambió');
@@ -222,11 +222,49 @@ test('invalidateStandingsCaches tira las dos cachés', () => {
   vuelta(e, e.m1, 9000, 1);
   TimingService._priorAggregates(e.raceId, e.m2);
   TimingService._cachedProjection(e.raceId);
-  assert.ok(TimingService._priorCache && TimingService._projCache);
+  assert.ok(TimingService._priorCache.size > 0 && TimingService._projCache.size > 0);
 
   TimingService.invalidateStandingsCaches();
-  assert.equal(TimingService._priorCache, null);
-  assert.equal(TimingService._projCache, null);
+  assert.equal(TimingService._priorCache.size, 0);
+  assert.equal(TimingService._projCache.size, 0);
+});
+
+// ── Las cachés son POR CARRERA ─────────────────────────────────────────────
+//
+// Con una sola ranura compartida, un móvil del cliente Lap abierto en una carrera
+// vieja expulsaba en cada refresco la caché de la carrera EN CURSO, y el motor
+// volvía a pagar los 100 ms en el siguiente cruce. Justo lo que veníamos a evitar.
+
+test('consultar otra carrera NO expulsa la caché de la carrera en curso', () => {
+  const enCurso = escenario();
+  vuelta(enCurso, enCurso.m1, 9000, 1);
+  const vieja = escenario();
+  vuelta(vieja, vieja.m1, 9000, 1);
+
+  TimingService.invalidateStandingsCaches();
+  const prior = TimingService._priorAggregates(enCurso.raceId, enCurso.m2);
+  const proj  = TimingService._cachedProjection(enCurso.raceId);
+
+  // El móvil de un equipo despistado, machacando la carrera de la semana pasada.
+  for (let i = 0; i < 5; i++) {
+    TimingService._priorAggregates(vieja.raceId, vieja.m2);
+    TimingService._cachedProjection(vieja.raceId);
+  }
+
+  assert.equal(TimingService._priorAggregates(enCurso.raceId, enCurso.m2), prior,
+    'el mismo objeto: la carrera en curso no se recalculó');
+  assert.equal(TimingService._cachedProjection(enCurso.raceId), proj);
+});
+
+test('las cachés no crecen sin límite', () => {
+  const techo = Object.getPrototypeOf(TimingService).constructor._CACHE_MAX_RACES;
+  TimingService.invalidateStandingsCaches();
+  for (let i = 0; i < techo + 5; i++) {
+    const e = escenario();
+    vuelta(e, e.m1, 9000, 1);
+    TimingService._cachedProjection(e.raceId);
+  }
+  assert.equal(TimingService._projCache.size, techo, 'las carreras viejas caen');
 });
 
 // ── Equivalencia: la vía rápida da EXACTAMENTE lo mismo que la lenta ────────

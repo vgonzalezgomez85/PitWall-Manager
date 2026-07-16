@@ -176,6 +176,13 @@ class Lap {
   /**
    * Sumas crudas por entidad para un subconjunto de vueltas. Sin nombres ni orden.
    *
+   * `pit_stops` viaja aquí y no en una consulta aparte porque el filtro que
+   * necesita (race_id, is_ghost = 0, manga_id no nulo) es exactamente este: es una
+   * columna más de un GROUP BY que ya recorre esas filas, así que sale gratis y
+   * hereda el troceado y la caché. Contarlo por separado costaba un escaneo
+   * completo de la carrera (35 ms sobre las 160.000 vueltas de una 24 h) por cada
+   * equipo y cada refresco del cliente Lap.
+   *
    * `INDEXED BY idx_laps_manga` en la rama de una sola manga no es un capricho:
    * el planificador elegía `idx_laps_race_flags` y escaneaba las 160.000 filas de
    * la carrera para filtrar 7.000 (26,9 ms). Por el índice de manga: 0,7 ms.
@@ -190,7 +197,9 @@ class Lap {
         SUM(CASE WHEN l.is_warmup = 0 AND l.lap_time_ms IS NOT NULL THEN 1 ELSE 0 END) AS avg_cnt,
         SUM(l.lap_time_ms) AS total_time_ms,
         COUNT(DISTINCT l.manga_id) AS mangas_raced,
-        SUM(l.is_exit) AS exit_count`;
+        SUM(l.is_exit) AS exit_count,
+        SUM(l.is_pit_stop) AS pit_stops,
+        MAX(CASE WHEN l.is_warmup = 0 AND l.lap_number > 0 THEN l.id END) AS last_lap_id`;
 
     if (onlyManga != null) {
       return db.prepare(`
@@ -268,7 +277,8 @@ class Lap {
         const a = acc[k] || (acc[k] = {
           entity_id: r.entity_id, entity_type: r.entity_type,
           total_laps: 0, best_lap_ms: null, avg_sum: 0, avg_cnt: 0,
-          total_time_ms: 0, mangas_raced: 0, exit_count: 0,
+          total_time_ms: 0, mangas_raced: 0, exit_count: 0, pit_stops: 0,
+          last_lap_id: null,
         });
         a.total_laps    += r.total_laps || 0;
         a.avg_sum       += r.avg_sum || 0;
@@ -276,8 +286,14 @@ class Lap {
         a.total_time_ms += r.total_time_ms || 0;
         a.mangas_raced  += r.mangas_raced || 0;   // los subconjuntos son disjuntos por manga
         a.exit_count    += r.exit_count || 0;
+        a.pit_stops     += r.pit_stops || 0;
         if (r.best_lap_ms != null && (a.best_lap_ms == null || r.best_lap_ms < a.best_lap_ms)) {
           a.best_lap_ms = r.best_lap_ms;
+        }
+        // Ids monótonos: la última vuelta de la entidad es la del id mayor de
+        // entre los subconjuntos (que son disjuntos por manga).
+        if (r.last_lap_id != null && (a.last_lap_id == null || r.last_lap_id > a.last_lap_id)) {
+          a.last_lap_id = r.last_lap_id;
         }
       }
     }
@@ -296,6 +312,8 @@ class Lap {
       total_time_ms: a.total_time_ms,
       mangas_raced: a.mangas_raced,
       exit_count:   a.exit_count,
+      pit_stops:    a.pit_stops,
+      last_lap_id:  a.last_lap_id,
       coma_total:      coma[k] || 0,       // suma (referencia)
       last_manga_coma: lastComa[k] || 0,   // desempate oficial
     }));
@@ -341,6 +359,10 @@ class Lap {
         SUM(l.lap_time_ms)                       AS total_time_ms,
         COUNT(DISTINCT l.manga_id)               AS mangas_raced,
         SUM(l.is_exit)                           AS exit_count,
+        SUM(l.is_pit_stop)                       AS pit_stops,
+        -- Id de la última vuelta válida (el mayor id: son monótonos). Solo el id;
+        -- su tiempo se busca por clave primaria cuando hace falta, que es gratis.
+        MAX(CASE WHEN l.is_warmup = 0 AND l.lap_number > 0 THEN l.id END) AS last_lap_id,
         -- Coma acumulada: fracción de vuelta en curso al caer la bandera de
         -- cada manga (estimada en stopManga). Desempate a igualdad de vueltas:
         -- más coma = llegó más lejos en las vueltas que no llegó a marcar.

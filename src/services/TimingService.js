@@ -57,13 +57,23 @@ class TimingServiceClass {
     this._lapHandler     = null;
     this._pendingSetup   = null; // manga queued for DS hardware GO
     this._tandaBoundary  = false; // true when last manga of a tanda just ended — blocks auto-GO
-    this._priorCache     = null; // agregados de mangas anteriores (ver _priorAggregates)
-    this._projCache      = null; // proyección de carrera con TTL (ver _cachedProjection)
+    // Cachés POR CARRERA (raceId → valor). Una sola ranura compartida se
+    // expulsaba sola: basta un móvil del cliente Lap abierto en una carrera vieja
+    // para que cada refresco suyo tirara la caché de la carrera EN CURSO, y el
+    // motor volviera a pagar los 100 ms en el siguiente cruce. Acotadas a
+    // `_CACHE_MAX_RACES`: solo se consultan a la vez la carrera viva y alguna que
+    // otra abierta en un móvil.
+    this._priorCache     = new Map(); // raceId → agregados de mangas anteriores (ver _priorAggregates)
+    this._projCache      = new Map(); // raceId → proyección de carrera con TTL (ver _cachedProjection)
   }
 
   // Cada cuánto se recalcula la proyección en el camino caliente. Es una
   // estimación a horas vista; 1 s de frescura sobra y ahorra 100 ms por cruce.
   static get PROJECTION_TTL_MS() { return 1000; }
+
+  // Techo de carreras cacheadas a la vez. No es memoria lo que protege (son
+  // ~22 filas por carrera), sino que un proceso largo no acumule carreras muertas.
+  static get _CACHE_MAX_RACES() { return 8; }
 
   /**
    * El contador de vueltas del DS-300 (byte12) es BCD de un byte: cuenta
@@ -1723,8 +1733,8 @@ class TimingServiceClass {
   _priorAggregates(raceId, mangaId) {
     const Lap = require('../models/Lap');
     const mut = Lap.mutationsOutside(mangaId);
-    const c = this._priorCache;
-    if (c && c.raceId === raceId && c.mangaId === mangaId && c.mut === mut) return c;
+    const c = this._priorCache.get(raceId);
+    if (c && c.mangaId === mangaId && c.mut === mut) return c;
 
     const db = require('../config/database');
     const priorByEntity = {};
@@ -1751,8 +1761,18 @@ class TimingServiceClass {
     // buildRaceProjection costara 100 ms en cada cruce.
     const priorAggRaw = Lap._aggRaw(raceId, { excludeManga: mangaId });
 
-    this._priorCache = { raceId, mangaId, mut, priorByEntity, priorTimeByEntity, priorAggRaw };
-    return this._priorCache;
+    const entrada = { raceId, mangaId, mut, priorByEntity, priorTimeByEntity, priorAggRaw };
+    this._cachePut(this._priorCache, raceId, entrada);
+    return entrada;
+  }
+
+  /** Guarda acotando el tamaño: al pasarse, cae la entrada más antigua (Map conserva el orden de inserción). */
+  _cachePut(cache, raceId, valor) {
+    cache.delete(raceId);        // reinsertar = renovar su puesto en el orden
+    cache.set(raceId, valor);
+    while (cache.size > TimingServiceClass._CACHE_MAX_RACES) {
+      cache.delete(cache.keys().next().value);
+    }
   }
 
   /**
@@ -1762,18 +1782,49 @@ class TimingServiceClass {
    * para que nadie vea una proyección de la manga anterior.
    */
   _cachedProjection(raceId) {
-    const c = this._projCache;
+    const c = this._projCache.get(raceId);
     const now = Date.now();
-    if (c && c.raceId === raceId && (now - c.ts) < TimingServiceClass.PROJECTION_TTL_MS) return c.value;
+    if (c && (now - c.ts) < TimingServiceClass.PROJECTION_TTL_MS) return c.value;
     const value = this.buildRaceProjection(raceId);
-    this._projCache = { raceId, ts: now, value };
+    this._cachePut(this._projCache, raceId, { raceId, ts: now, value });
     return value;
   }
 
   /** Tira las cachés del camino caliente. Las transiciones de manga la llaman. */
   invalidateStandingsCaches() {
-    this._priorCache = null;
-    this._projCache  = null;
+    this._priorCache.clear();
+    this._projCache.clear();
+  }
+
+  /**
+   * La manga EN CURSO de una carrera (started_at fijado y aún no 'finished'), o
+   * null. Desde BD, no desde `this.session`: vale para una carrera que no es la
+   * que este proceso está corriendo, y sobrevive a un reinicio.
+   */
+  activeMangaOf(raceId) {
+    const db = require('../config/database');
+    return db.prepare(`
+      SELECT id, started_at, actual_duration_ms
+      FROM mangas
+      WHERE race_id = ? AND status != 'finished' AND started_at IS NOT NULL
+      ORDER BY id DESC LIMIT 1
+    `).get(raceId) || null;
+  }
+
+  /**
+   * Agregado por entidad de TODA la carrera, por la vía barata siempre que se
+   * pueda. ÚNICO sitio que decide entre la vía troceada y el escaneo completo:
+   * con una manga en curso, las mangas ya cerradas se reutilizan de la caché y
+   * solo se agrega la manga viva (95 ms → ~2 ms sobre las 160.000 vueltas de una
+   * 24 h). Da EXACTAMENTE el mismo resultado — comprobado entidad a entidad sobre
+   * las 22 mangas de Modena.
+   */
+  raceAggregate(raceId) {
+    const Lap = require('../models/Lap');
+    const activa = this.activeMangaOf(raceId);
+    return activa
+      ? Lap.aggregateByRaceSplit(raceId, activa.id, this._priorAggregates(raceId, activa.id).priorAggRaw)
+      : Lap.aggregateByRace(raceId);
   }
 
   // ════════════════════════════════════════════════════════════════════════
@@ -1814,12 +1865,7 @@ class TimingServiceClass {
     // ── Manga ACTIVA (en curso): started_at fijado y aún no 'finished'.
     // Su duración real (actual_duration_ms) y su transcurrido/restante se
     // derivan del reloj, NO de la sesión en memoria.
-    const activeManga = db.prepare(`
-      SELECT id, started_at, actual_duration_ms
-      FROM mangas
-      WHERE race_id = ? AND status != 'finished' AND started_at IS NOT NULL
-      ORDER BY id DESC LIMIT 1
-    `).get(raceId);
+    const activeManga = this.activeMangaOf(raceId);
 
     let activeMangaId = null, activeRemMs = 0;
     if (activeManga) {
@@ -1859,13 +1905,7 @@ class TimingServiceClass {
     const futureMangaDurMs = durDefaultMs;
 
     // ── Agregado por entidad (media simple, total, coma, best) desde BD.
-    // Con una manga en curso, las mangas ya cerradas se reutilizan de la caché y
-    // solo se agrega la manga viva: 100 ms → ~4 ms. Da EXACTAMENTE el mismo
-    // resultado (comprobado entidad a entidad sobre las 22 mangas de Modena).
-    const agg = (activeMangaId
-      ? Lap.aggregateByRaceSplit(raceId, activeMangaId, this._priorAggregates(raceId, activeMangaId).priorAggRaw)
-      : Lap.aggregateByRace(raceId)
-    ).filter(p => p.entity_id != null);
+    const agg = this.raceAggregate(raceId).filter(p => p.entity_id != null);
 
     // Incluir TAMBIÉN las entidades asignadas a la carrera que aún no tienen
     // vueltas (tandas/mangas por empezar): deben salir en la clasificación con

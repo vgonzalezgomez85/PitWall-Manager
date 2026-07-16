@@ -21,14 +21,48 @@
 // móvil, sin instalar nada: entra en /lap, elige su carrera y equipo, mete el
 // PIN de 4 dígitos y ve su panel. Solo lectura (V1): no manda acciones.
 //
-// La data viva sale de lo que ya existe: Lap.aggregateByRace (acumulado de toda
-// la carrera, sobrevive entre mangas) + TimingService.getStandings (estado de la
-// manga en curso y proyección). El front refresca vía socket.io (view=lap).
+// La data viva sale de lo que ya existe: TimingService.raceAggregate (acumulado
+// de toda la carrera, sobrevive entre mangas) + TimingService.getStandings (estado
+// de la manga en curso y proyección). El front refresca vía socket.io (view=lap).
 
 const Race          = require('../models/Race');
 const Team          = require('../models/Team');
 const Lap           = require('../models/Lap');
 const db            = require('../config/database');
+
+// ── Caché del paquete POR CARRERA ────────────────────────────────────────────
+//
+// El snapshot de un equipo costaba ~266 ms sobre las 160.000 vueltas de una 24 h
+// (agregado 95 + proyección 100 + pit stops 35 + última vuelta 36). Y de esos
+// 266 ms, TODOS eran idénticos para los 22 equipos: la clasificación de la
+// carrera, la proyección y los pit stops no dependen de quién pregunte. Lo único
+// propio de cada equipo es cuál es SU fila.
+//
+// Con 22 móviles refrescando cada 5 s —y un rebote extra por cada cruce— eso eran
+// ~11 s de CPU por cada segundo de reloj en un proceso de un solo hilo. Y como
+// better-sqlite3 es síncrono, ese bloqueo no era solo lentitud: supera de largo
+// los 75 ms de FRAME_GAP_MS del serie, así que podía partir una trama del DS y
+// perder un cruce de verdad.
+//
+// Aquí se calcula UNA vez por carrera y se reparte a todos. La invalidación es la
+// misma idea que en el motor y no depende de que nadie se acuerde: cualquier
+// escritura sobre `laps` (contador de mutaciones) lo tira, y además caduca al
+// segundo porque la proyección depende del reloj, no solo de las vueltas. Un
+// segundo de frescura no lo puede ver nadie: el `tick` que refresca la pantalla
+// del piloto ya es de 1 s.
+//
+// Lo que NO entra aquí: el estado vivo (getStandings). Con las cachés del motor
+// calientes es un bucle en memoria sobre los carriles, así que sale más barato
+// pedirlo en cada petición que cachearlo, y el reloj de la manga va al ms.
+const RACE_BUNDLE_TTL_MS = 1000;
+const BUNDLE_MAX_RACES   = 8;
+const _bundles = new Map();   // raceId → paquete
+
+function _cachePut(cache, raceId, valor) {
+  cache.delete(raceId);            // reinsertar = renovar su puesto en el orden
+  cache.set(raceId, valor);
+  while (cache.size > BUNDLE_MAX_RACES) cache.delete(cache.keys().next().value);
+}
 
 function isEnduranceRace(race) {
   // No hay un flag "resistencia" en el esquema: la resistencia en PitWall es una
@@ -39,6 +73,13 @@ function isEnduranceRace(race) {
 
 const LapController = {
   isEnduranceRace,
+
+  /** Tira la caché por carrera. Para los tests; en producción caduca sola. */
+  _resetCaches() { _bundles.clear(); },
+
+  // Ganchos para los tests: el paquete cacheado de una carrera y su TTL.
+  _bundleOf(raceId) { return _bundles.get(raceId); },
+  get _BUNDLE_TTL_MS() { return RACE_BUNDLE_TTL_MS; },
 
   // GET /lap — elegir carrera (equipos, activas o pendientes)
   index(req, res) {
@@ -129,9 +170,21 @@ const LapController = {
     res.json(LapController._buildTeamSnapshot(race, team));
   },
 
-  // ── Construcción del snapshot de timing de un equipo ───────────────────────
-  _buildTeamSnapshot(race, team) {
+  // ── Paquete por carrera: lo que es igual para todos los equipos ────────────
+  _raceBundle(race) {
     const TimingService = require('../services/TimingService');
+    const ahora = Date.now();
+    const mut   = Lap.mutationCount;
+
+    // El TTL solo hace falta con una manga EN CURSO, que es cuando la proyección
+    // se mueve sola: cuenta el tiempo que queda. Entre mangas —y en una carrera
+    // acabada— no se inserta ni una vuelta, así que el paquete solo puede quedarse
+    // rancio si alguien corrige algo, y de eso ya avisa el contador de mutaciones.
+    // Sin esta distinción, un equipo con el móvil abierto entre mangas forzaba un
+    // escaneo completo de la carrera (230 ms) cada segundo, para nada.
+    const viva = TimingService.activeMangaOf(race.id);
+    const c = _bundles.get(race.id);
+    if (c && c.mut === mut && (!viva || (ahora - c.ts) < RACE_BUNDLE_TTL_MS)) return c;
 
     // Acumulado de TODA la carrera, agrupado por NOMBRE de equipo. En algunas
     // carreras los equipos están duplicados (varias filas en `teams` con el
@@ -139,47 +192,70 @@ const LapController = {
     // las vueltas se asignan a las filas por tanda. Si buscáramos por team_id
     // exacto veríamos 0 vueltas. Agrupando por nombre, cada equipo ve su total
     // real. Para Modena (una fila por equipo) el agrupado es idéntico.
-    const name = team.name;
-    const agg = Lap.aggregateByRace(race.id);
+    //
+    // Se descartan las entidades nulas: son las vueltas de carriles sin equipo
+    // asignado, que `aggregateByRace` junta en una fila sintética. Sin filtrar,
+    // esa fila competía como un equipo más y podía salir "líder", falseando el
+    // gap de todos. El resto de vistas ya la quitan.
     const byName = {};
-    agg.forEach(r => {
+    TimingService.raceAggregate(race.id).forEach(r => {
+      if (r.entity_id == null) return;
       let g = byName[r.entity_name];
       if (!g) g = byName[r.entity_name] = {
         name: r.entity_name, color: r.color, total_laps: 0, total_time_ms: 0,
-        best_lap_ms: null, exit_count: 0, mangas_raced: 0, _avgNum: 0, _avgDen: 0,
+        best_lap_ms: null, exit_count: 0, mangas_raced: 0, pit_stops: 0,
+        last_lap_id: null, _avgNum: 0, _avgDen: 0,
       };
       g.total_laps    += r.total_laps || 0;
       g.total_time_ms += r.total_time_ms || 0;
       g.exit_count    += r.exit_count || 0;
       g.mangas_raced  += r.mangas_raced || 0;
+      g.pit_stops     += r.pit_stops || 0;
       if (r.best_lap_ms != null && (g.best_lap_ms == null || r.best_lap_ms < g.best_lap_ms)) g.best_lap_ms = r.best_lap_ms;
+      if (r.last_lap_id != null && (g.last_lap_id == null || r.last_lap_id > g.last_lap_id)) g.last_lap_id = r.last_lap_id;
       if (r.avg_lap_ms != null) { g._avgNum += r.avg_lap_ms * (r.total_laps || 0); g._avgDen += (r.total_laps || 0); }
       if (!g.color && r.color) g.color = r.color;
     });
+    // El tiempo de la última vuelta, por clave primaria: un puñado de lookups que
+    // no se notan, en vez de un escaneo de la carrera por equipo y refresco.
+    const tiempoDeVuelta = db.prepare('SELECT lap_time_ms FROM laps WHERE id = ?');
     const groups = Object.values(byName).map(g => ({
       name: g.name, color: g.color, total_laps: g.total_laps, total_time_ms: g.total_time_ms,
       best_lap_ms: g.best_lap_ms, exit_count: g.exit_count, mangas_raced: g.mangas_raced,
+      pit_stops: g.pit_stops,
+      last_lap_ms: g.last_lap_id != null ? (tiempoDeVuelta.get(g.last_lap_id) || {}).lap_time_ms ?? null : null,
       avg_lap_ms: g._avgDen > 0 ? g._avgNum / g._avgDen : null,
     }));
     groups.sort((a, b) => (b.total_laps - a.total_laps) || ((a.total_time_ms || 0) - (b.total_time_ms || 0)));
-    const idx = groups.findIndex(g => g.name === name);
-    const row = idx >= 0 ? groups[idx] : null;
+    const idxByName = new Map(groups.map((g, i) => [g.name, i]));
+
+    // Proyección ÚNICA (media-based, desde BD): la MISMA que directo, Le Mans,
+    // panel y live-stats. Cacheada por el motor con su propio TTL.
+    const projByEntityId = new Map();
+    try {
+      TimingService._cachedProjection(race.id).forEach(p => {
+        if (p.entityType === 'team') projByEntityId.set(p.entityId, p);
+      });
+    } catch (e) { /* sin proyección si falla la consulta */ }
+
+    const teamsTotal = db.prepare('SELECT COUNT(DISTINCT name) AS c FROM teams WHERE race_id = ?').get(race.id).c;
+
+    const bundle = { ts: ahora, mut, groups, idxByName, projByEntityId, teamsTotal };
+    _cachePut(_bundles, race.id, bundle);
+    return bundle;
+  },
+
+  // ── Construcción del snapshot de timing de un equipo ───────────────────────
+  _buildTeamSnapshot(race, team) {
+    const TimingService = require('../services/TimingService');
+
+    const name   = team.name;
+    const b      = LapController._raceBundle(race);
+    const groups = b.groups;
+    const idx    = b.idxByName.has(name) ? b.idxByName.get(name) : -1;
+    const row    = idx >= 0 ? groups[idx] : null;
     const leader = groups[0] || null;
     const ahead  = idx > 0 ? groups[idx - 1] : null;
-
-    // Pit stops acumulados por NOMBRE de equipo.
-    const pitStops = db.prepare(`
-      SELECT COALESCE(SUM(l.is_pit_stop), 0) AS pits
-      FROM laps l JOIN teams t ON t.id = l.team_id
-      WHERE l.race_id = ? AND t.name = ? AND l.is_ghost = 0 AND l.manga_id IS NOT NULL
-    `).get(race.id, name).pits;
-
-    // Última vuelta válida registrada, por NOMBRE (fallback si no hay manga viva).
-    const lastRow = db.prepare(`
-      SELECT l.lap_time_ms FROM laps l JOIN teams t ON t.id = l.team_id
-      WHERE l.race_id = ? AND t.name = ? AND l.is_ghost = 0 AND l.is_warmup = 0 AND l.lap_number > 0
-      ORDER BY l.id DESC LIMIT 1
-    `).get(race.id, name);
 
     const timing = {
       position:       row ? idx + 1 : null,
@@ -188,10 +264,10 @@ const LapController = {
       gapToAheadLaps: (row && ahead) ? (ahead.total_laps - row.total_laps) : null,
       bestLapMs:      row ? row.best_lap_ms : null,
       avgLapMs:       row && row.avg_lap_ms != null ? Math.round(row.avg_lap_ms) : null,
-      lastLapMs:      lastRow ? lastRow.lap_time_ms : null,
+      lastLapMs:      row ? row.last_lap_ms : null,
       totalTimeMs:    row ? row.total_time_ms : null,
       mangasRaced:    row ? row.mangas_raced : 0,
-      pitStops,
+      pitStops:       row ? row.pit_stops : 0,
       exitCount:      row ? row.exit_count : 0,
     };
 
@@ -220,20 +296,17 @@ const LapController = {
     // Proyección ÚNICA (media-based, desde BD): la MISMA que directo, Le Mans,
     // panel y live-stats. Fuera del guard de sesión viva → funciona también tras
     // reinicio. Casamos por entityId (nombres pueden repetirse por tanda).
-    try {
-      const pr = TimingService.buildRaceProjection(race.id)
-        .find(p => p.entityType === 'team' && p.entityId === team.id);
-      if (pr) {
-        projection = {
-          position:       pr.position,
-          projectedTotal: pr.projectedTotal,
-          gapV:           pr.gapV,
-          avgToCatch:     pr.avgToCatch,
-        };
-      }
-    } catch (e) { /* sin proyección si falla la consulta */ }
+    const pr = b.projByEntityId.get(team.id);
+    if (pr) {
+      projection = {
+        position:       pr.position,
+        projectedTotal: pr.projectedTotal,
+        gapV:           pr.gapV,
+        avgToCatch:     pr.avgToCatch,
+      };
+    }
 
-    const teamsTotal = db.prepare('SELECT COUNT(DISTINCT name) AS c FROM teams WHERE race_id = ?').get(race.id).c;
+    const teamsTotal = b.teamsTotal;
 
     return {
       ok: true,
