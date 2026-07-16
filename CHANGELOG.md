@@ -13,6 +13,13 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.8.2] — 2026-07-16
+
+### Corregido
+- **La app Lap de los equipos ya no satura PitWall en carreras largas.** Cada móvil, en cada refresco, obligaba a recalcular desde cero la clasificación, la proyección, las paradas y la última vuelta leyendo **todas** las vueltas de la carrera: unas **266 milésimas por equipo** sobre las 160.569 vueltas reales de la carrera de 24 horas de Modena. Con 22 equipos pidiendo a la vez, el resultado era **idéntico para todos** pero se calculaba 22 veces. Ahora se calcula **una sola vez por carrera y se reparte** a todos los equipos, y se rehace al instante en cuanto entra una vuelta nueva o se corrige alguna. En una prueba con los 22 móviles reales, PitWall pasa de atender 4,2 peticiones por segundo —con esperas de hasta 20 segundos— a **53,7, respondiendo en 5 milésimas**. Lo más importante: ese bloqueo podía partir en dos una trama del DS-300 y **perder un cruce real**; ya no ocurre.
+- **Tener abierta una carrera antigua ya no frena a la que se está corriendo.** PitWall solo guardaba los cálculos de **una** carrera: si alguien dejaba abierta en el móvil una carrera ya terminada, cada refresco suyo tiraba los cálculos de la carrera **en curso** y el siguiente cruce volvía a pagarlos enteros (unas 100 milésimas). Ahora recuerda varias carreras a la vez y ninguna estorba a las demás. Entre mangas y en una carrera acabada, además, deja de rehacer cuentas que ya no cambian.
+- **Los carriles sin equipo asignado ya no falsean las vueltas de diferencia en la app Lap.** Las vueltas de los carriles que no tienen equipo se agrupan en una fila aparte; en la app Lap esa fila podía colarse en la clasificación e incluso salir como **líder**, con lo que el hueco en vueltas que se mostraba a **todos** los equipos era erróneo. Ahora se descarta, igual que ya hacían las demás pantallas.
+
 ## [1.8.1] — 2026-07-15
 
 ### Corregido
