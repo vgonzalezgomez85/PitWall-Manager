@@ -1,0 +1,119 @@
+<%- include('../partials/header', { pageTitle: (lang === 'es' ? 'Resultados del entreno' : 'Training results') }) %>
+
+<%
+  const fmtLap = (ms) => ms == null ? '—' : (ms / 1000).toFixed(3).replace('.', ',') + 's';
+  // Los heats vienen ordenados por (heat, carril); se agrupan para pintar uno por bloque.
+  const byHeat = new Map();
+  heats.forEach(h => {
+    if (!byHeat.has(h.heat_number)) byHeat.set(h.heat_number, []);
+    byHeat.get(h.heat_number).push(h);
+  });
+  const startedAt = heats[0] && heats[0].created_at;
+%>
+
+<div class="container">
+  <a href="/training/competition/results" class="vt-back-link" style="margin-top:1rem">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    <%= lang === 'es' ? 'Todos los entrenos' : 'All sessions' %>
+  </a>
+
+  <div class="page-header" style="display:flex; align-items:flex-start; justify-content:space-between; gap:1rem">
+    <div>
+      <h1 class="page-title">🎯 <%= lang === 'es' ? 'Entreno competitivo' : 'Competition training' %></h1>
+      <p style="color:#8b949e; margin-top:.3rem">
+        <% if (startedAt) { %><%= new Date(startedAt + 'Z').toLocaleString(lang === 'es' ? 'es-ES' : 'en-GB') %> · <% } %>
+        <%= byHeat.size %> <%= byHeat.size === 1 ? 'heat' : 'heats' %>
+      </p>
+    </div>
+    <form action="/training/competition/results/<%= encodeURIComponent(sessionId) %>/delete" method="POST"
+          onsubmit="return confirm('<%= lang === 'es' ? '¿Borrar este entreno? No se puede deshacer.' : 'Delete this session? This cannot be undone.' %>')">
+      <button class="vt-btn vt-btn--danger" type="submit"><%= lang === 'es' ? 'Borrar' : 'Delete' %></button>
+    </form>
+  </div>
+
+  <h2 class="ct-h2">🏆 <%= lang === 'es' ? 'Clasificación' : 'Standings' %></h2>
+  <p class="ct-note">
+    <%= lang === 'es'
+      ? 'Gana quien más vueltas suma en todos sus heats; a igualdad, la mejor vuelta. La media es la de todas sus vueltas de la sesión.'
+      : 'Most laps across all heats wins; ties broken by best lap. The average covers every lap of the session.' %>
+  </p>
+  <div class="ct-table-wrap">
+    <table class="ct-table">
+      <thead>
+        <tr>
+          <th style="width:3rem">#</th>
+          <th><%= lang === 'es' ? 'Participante' : 'Participant' %></th>
+          <th class="is-num">Heats</th>
+          <th class="is-num"><%= lang === 'es' ? 'Vueltas' : 'Laps' %></th>
+          <th class="is-num"><%= lang === 'es' ? 'Mejor vuelta' : 'Best lap' %></th>
+          <th class="is-num"><%= lang === 'es' ? 'Media' : 'Average' %></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% standings.forEach((s, i) => { %>
+          <tr>
+            <td class="ct-pos<%= i === 0 ? ' is-leader' : '' %>"><%= i + 1 %></td>
+            <td class="ct-name"><%= s.participant_name %></td>
+            <td class="is-num"><%= s.heats %></td>
+            <td class="is-num is-strong"><%= s.laps %></td>
+            <td class="is-num"><%= fmtLap(s.best_lap_ms) %></td>
+            <td class="is-num"><%= fmtLap(s.avg_lap_ms) %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="ct-h2" style="margin-top:2rem">🔁 <%= lang === 'es' ? 'Heat a heat' : 'Heat by heat' %></h2>
+  <div class="ct-heats">
+    <% for (const [heatNumber, rows] of byHeat) { %>
+      <div class="ct-heat">
+        <div class="ct-heat__title">Heat <%= heatNumber %></div>
+        <div class="ct-table-wrap">
+          <table class="ct-table">
+            <thead>
+              <tr>
+                <th style="width:4rem"><%= lang === 'es' ? 'Carril' : 'Lane' %></th>
+                <th><%= lang === 'es' ? 'Participante' : 'Participant' %></th>
+                <th class="is-num"><%= lang === 'es' ? 'Vueltas' : 'Laps' %></th>
+                <th class="is-num"><%= lang === 'es' ? 'Mejor' : 'Best' %></th>
+                <th class="is-num"><%= lang === 'es' ? 'Media' : 'Average' %></th>
+              </tr>
+            </thead>
+            <tbody>
+              <% rows.forEach(r => { %>
+                <tr>
+                  <td class="ct-lane"><%= r.lane %></td>
+                  <td class="ct-name"><%= r.participant_name %></td>
+                  <td class="is-num is-strong"><%= r.lap_count %></td>
+                  <td class="is-num"><%= fmtLap(r.best_lap_ms) %></td>
+                  <td class="is-num"><%= fmtLap(r.avg_lap_ms) %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <% } %>
+  </div>
+</div>
+
+<style>
+  .ct-h2 { font-size:1.1rem; font-weight:600; color:#e6edf3; margin:1.4rem 0 .4rem }
+  .ct-note { font-size:.8rem; color:#6e7681; margin:0 0 .7rem }
+  .ct-table-wrap { overflow-x:auto; border:1px solid #30363d; border-radius:10px; background:#161b22 }
+  .ct-table { width:100%; border-collapse:collapse; font-size:.88rem }
+  .ct-table th { text-align:left; font-size:.7rem; text-transform:uppercase; letter-spacing:.04em; color:#6e7681; font-weight:700; padding:.55rem .8rem; border-bottom:1px solid #30363d; white-space:nowrap }
+  .ct-table td { padding:.5rem .8rem; border-bottom:1px solid #21262d; color:#c9d1d9 }
+  .ct-table tr:last-child td { border-bottom:none }
+  .ct-table .is-num { text-align:right; font-variant-numeric:tabular-nums }
+  .ct-table .is-strong { color:#e6edf3; font-weight:600 }
+  .ct-name { font-weight:500; color:#e6edf3 }
+  .ct-pos { font-weight:700; color:#8b949e; text-align:center }
+  .ct-pos.is-leader { color:#f6c90e }
+  .ct-lane { text-align:center; font-weight:600; color:#8b949e }
+  .ct-heats { display:flex; flex-direction:column; gap:1rem }
+  .ct-heat__title { font-size:.8rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#58a6ff; margin-bottom:.35rem }
+</style>
+
+<%- include('../partials/footer') %>

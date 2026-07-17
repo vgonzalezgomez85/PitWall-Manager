@@ -64,6 +64,10 @@
       <button id="voiceBtn" class="tr-btn tr-btn--voice" onclick="toggleVoice()" title="<%= lang === 'es' ? 'Activar/silenciar voz' : 'Toggle voice' %>">🔊</button>
       <button id="viewBtn" class="tr-btn tr-btn--view" onclick="openTrainingPicker()" title="<%= lang === 'es' ? 'Cambiar vista' : 'Change view' %>">🖼 <%= lang === 'es' ? 'Vista' : 'View' %></button>
       <% if (typeof heatNumber !== 'undefined' && heatNumber !== null) { %>
+        <%# Con la sesión rodando, /training y /training/competition redirigen al
+            directo: esta es la única vía a los heats ya guardados. %>
+        <a class="tr-btn" href="/training/competition/results" target="_blank"
+           title="<%= lang === 'es' ? 'Heats guardados de esta sesión y de las anteriores' : 'Saved heats from this and previous sessions' %>">🏆 <%= lang === 'es' ? 'Resultados' : 'Results' %></a>
         <form action="/training/competition/stop" method="POST" style="display:inline"
           onsubmit="return confirm('<%= lang === 'es' ? '¿Reiniciar sesión? Se perderán todos los datos.' : 'Reset session? All data will be lost.' %>')">
           <button class="tr-btn tr-btn--reset">↺ <%= lang === 'es' ? 'Reset' : 'Reset' %></button>

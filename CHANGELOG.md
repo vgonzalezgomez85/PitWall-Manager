@@ -13,6 +13,14 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.9.0] — 2026-07-17
+
+### Añadido
+- **Los entrenos competitivos ya guardan sus resultados.** Una sesión de entreno por tandas con rotación de carriles solo existía **mientras estaba en marcha**: al pararla, los tiempos de **todos** los heats desaparecían y no quedaba rastro de quién había rodado ni cuánto. Ahora, **al caer la bandera de cada heat**, PitWall guarda una fila por cada carril que ha rodado con su **participante**, sus **vueltas**, su **mejor vuelta** y su **media**. Los participantes que **descansan** y los carriles **sin cruces** no dejan fila. Un **stop forzado no guarda nada**: ese heat se descarta y se repite entero, igual que se comportaba hasta ahora.
+- **Pantalla nueva de entrenos guardados.** Desde el setup del entreno competitivo, el enlace **«Ver entrenos guardados»** abre la lista de sesiones guardadas —**fecha**, **nº de heats**, **participantes**, **vueltas** y **mejor vuelta**—, con la más reciente arriba. Cada sesión se puede **borrar** desde su propio detalle.
+- **Detalle de una sesión, con clasificación y heat a heat.** El detalle de cada entreno trae dos bloques: la **Clasificación** de la sesión —gana quien **más vueltas suma** en todos sus heats y, a igualdad, quien tenga la **mejor vuelta**— y el desglose **heat a heat**. La **media** que se muestra es la de **todas** las vueltas del participante, ponderada por heat: un heat de 40 vueltas pesa lo que debe frente a uno de 3, cosa que no pasaría promediando las medias.
+- **Al parar la sesión, se acaba en los resultados.** Si la sesión llegó a guardar algún heat, el botón de **STOP** lleva directamente a **sus** resultados en vez de devolverte al setup.
+
 ## [1.8.2] — 2026-07-16
 
 ### Añadido
