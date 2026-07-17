@@ -13,6 +13,16 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.10.0] — 2026-07-17
+
+### Añadido
+- **La cámara del escáner QR ya funciona en los móviles y tablets de la red.** El escáner de QR del **control de pilotos** usa la cámara, y los navegadores solo la permiten en «localhost» o por **HTTPS**. En el ordenador del operador (localhost) siempre fue bien, pero cualquier dispositivo que entraba por la IP de la red (192.168.x.x) se encontraba la cámara **bloqueada** por el navegador, con el aviso «La cámara necesita HTTPS o localhost». Ahora PitWall puede servir **HTTPS en la red local** para que esos dispositivos escaneen sin problemas.
+- **HTTPS con certificado propio, sin instalar nada y sin internet.** PitWall crea su **propia autoridad raíz (CA)** y firma con ella el certificado del servidor. Sin instalar nada, el navegador avisa **una sola vez** («conexión no privada → continuar») y, al aceptar, la cámara funciona. Si se instala la **CA de PitWall** en el dispositivo, el aviso desaparece del todo. Y si cambia la IP de la red, PitWall solo reemite el certificado del servidor —la CA sigue siendo la misma—, así que **los dispositivos que ya confiaron no vuelven a avisar**. Todo se genera en el propio ordenador, sin conexión a internet, algo clave en un circuito.
+- **Corre en paralelo al PitWall de siempre.** El HTTP del puerto 3000 no cambia en nada; el HTTPS abre un **puerto aparte** (por defecto **3443**). El operador sigue trabajando en `http://localhost` y solo quien escanea usa el enlace `https://`.
+- **Nueva sección en Ajustes → «HTTPS local (cámara del escáner QR)».** Un interruptor para activarlo (abre un puerto nuevo, así que pide **reiniciar** el servidor), el puerto configurable, los **enlaces `https://IP:3443/control/shifts`** listos para cada dirección de la red, un botón para **descargar la CA** con su guía de instalación, y la **huella SHA-256** de la CA para cotejarla.
+- **Página nueva `/cert` con la guía de instalación de la CA.** Explica paso a paso cómo instalar la CA de PitWall en **iPhone/iPad, Android y Windows**; `/cert/ca` descarga el certificado (`PitWall-CA.crt`). Son páginas públicas a propósito: el certificado no lleva clave privada y los dispositivos de la red necesitan poder bajarlo.
+- **El aviso de la cámara ahora da el enlace directo.** Si abres el control de pilotos por HTTP en un dispositivo de la red y el HTTPS local está activado, el propio mensaje te ofrece el **enlace `https://`** a esa misma pantalla, ya en modo seguro.
+
 ## [1.9.0] — 2026-07-17
 
 ### Añadido

@@ -67,6 +67,10 @@ class SettingsController {
       bindIface,
       serverIps:      net.serverIPs(bindIface),
       serverPort:     parseInt(process.env.PORT || '3000', 10),
+      // HTTPS/cámara: estado, puerto y huella de la CA para cotejar.
+      httpsEnabled:   cfg.https_enabled === '1',
+      httpsPort:      parseInt(cfg.https_port || '3443', 10) || 3443,
+      caFingerprint:  (() => { try { return require('../services/TlsService').caFingerprint(); } catch { return null; } })(),
     });
   }
 
@@ -187,6 +191,10 @@ class SettingsController {
       // Interfaz de red a la que se ata el server (vacío = todas). Solo aplica
       // al reiniciar (no se puede re-atar un server en marcha).
       server_bind_iface:       String(req.body.server_bind_iface || '').trim(),
+      // HTTPS en la LAN para la cámara del escáner QR. Abre un puerto nuevo, así
+      // que solo aplica al reiniciar (como el bind de interfaz).
+      https_enabled:   (req.body.https_enabled === '1' || req.body.https_enabled === 'on') ? '1' : '0',
+      https_port:      String(parseInt(req.body.https_port || '3443', 10) || 3443),
       // Túnel público (Cloudflare del propio club). El proceso se arranca/para
       // con los botones de la sección (TunnelController), no al guardar.
       tunnel_mode:      ['off', 'quick', 'token'].includes(req.body.tunnel_mode) ? req.body.tunnel_mode : 'off',

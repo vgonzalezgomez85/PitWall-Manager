@@ -61,6 +61,7 @@ function flushStandings() {
 module.exports = {
   init(httpServer) {
     io = new Server(httpServer, { cors: { origin: '*' } });
+    this._servers = [httpServer];
 
     // Gate de acceso: bloquea sockets de navegadores desde IPs no autorizadas;
     // permite localhost, allowlist y la app móvil. (Infolap va por UDP, no
@@ -113,6 +114,18 @@ module.exports = {
 
       this._emitConnections();
     });
+  },
+
+  // Engancha socket.io a un servidor adicional (el HTTPS que corre en paralelo
+  // al HTTP). Una página servida por HTTPS solo puede abrir sockets seguros
+  // (wss://) contra el MISMO servidor HTTPS: sin esto, el escáner QR cargaría
+  // por HTTPS pero se quedaría sin datos en vivo (el live y los avisos van por
+  // socket). Toda la config —gate de acceso, handlers— ya está en `io`.
+  attach(server) {
+    if (io && server) {
+      io.attach(server, { cors: { origin: '*' } });
+      (this._servers = this._servers || []).push(server);
+    }
   },
 
   // Cuenta de conexiones por tipo, EXCLUYENDO localhost (el PC de control no
