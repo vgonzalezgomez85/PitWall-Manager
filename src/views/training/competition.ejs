@@ -19,6 +19,9 @@
             ? 'Asigna participantes a los carriles y prepara una sesión por tandas con rotación automática.'
             : 'Assign participants to lanes and prepare a session by heats with auto rotation.' %>
         </p>
+        <a href="/training/competition/results" style="font-size:.85rem;color:#58a6ff">
+          🏆 <%= lang === 'es' ? 'Ver entrenos guardados' : 'See saved sessions' %>
+        </a>
       </div>
     </div>
 
@@ -39,6 +42,7 @@
               ? 'El número de carriles se detecta automáticamente de los DS conectados.'
               : 'The number of lanes is detected automatically from the connected DS units.' %>
           </p>
+          <%- include('_min-lap-field', { lang, defaultMinLapMs }) %>
         </div>
       <% } else { %>
         <!-- Circuit selector (sin DS en serie: define los carriles) -->
@@ -55,7 +59,7 @@
                   <select name="circuit_id" id="circuitSelect">
                     <option value=""><%= lang === 'es' ? '— Por defecto (de ajustes) —' : '— Default (from settings) —' %></option>
                     <% (circuits || []).forEach(c => { %>
-                      <option value="<%= c.id %>" data-lanes="<%= c.lanes_count %>"
+                      <option value="<%= c.id %>" data-lanes="<%= c.lanes_count %>" data-min-ms="<%= c.min_lap_ms %>"
                         <%= defaultCircuitId === c.id ? 'selected' : '' %>>
                         <%= c.name %> (<%= c.lanes_count %> <%= lang === 'es' ? 'carriles' : 'lanes' %>)
                       </option>
@@ -69,6 +73,7 @@
                   ? 'Cambia aquí el circuito de la sesión sin tener que ir a ajustes.'
                   : 'Switch the circuit for this session without going to settings.' %>
               </p>
+              <%- include('_min-lap-field', { lang, defaultMinLapMs }) %>
             </div>
           </div>
         </div>
@@ -327,15 +332,22 @@ function renderLaneSeq() {
   const sel = document.getElementById('circuitSelect');
   if (!sel) { renderSlots(); renderLaneSeq(); return; }
   const hint = document.getElementById('circuitLanesHint');
+  const minLapInput = document.getElementById('minLapS');
   function update() {
     const lanes = sel.options[sel.selectedIndex]?.dataset?.lanes;
     hint.innerHTML = lanes
       ? `<span class="vt-badge__d"></span> ${lanes} ${LANG === 'es' ? 'carriles' : 'lanes'}`
       : `<span class="vt-badge__d"></span> ${FALLBACK_LANES} ${LANG === 'es' ? 'carriles' : 'lanes'} (def.)`;
     hint.style.display = '';
+    // El Pt sigue al circuito, pero sin pisar lo que haya tecleado el usuario.
+    const minMs = parseInt(sel.options[sel.selectedIndex]?.dataset?.minMs || '0', 10);
+    if (minLapInput && !minLapInput.dataset.touched) {
+      minLapInput.value = minMs > 0 ? (minMs / 1000).toFixed(2) : '';
+    }
     renderSlots();
     renderLaneSeq();
   }
+  if (minLapInput) minLapInput.addEventListener('input', () => { minLapInput.dataset.touched = '1'; });
   sel.addEventListener('change', update);
   update();
 })();

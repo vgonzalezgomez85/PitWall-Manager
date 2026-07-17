@@ -128,6 +128,21 @@ const c = typeof counts !== 'undefined' ? counts : { drivers: 0, teams: 0, cars:
           <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
         </a>
 
+        <a class="vh-card" href="/training/competition/results" style="--a:#38bdf8;--a-bg:rgba(56,189,248,.12)">
+          <div class="vh-ico">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7 4h10v4a5 5 0 0 1-10 0z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+              <path d="M7 5H4.5A1.5 1.5 0 0 0 3 6.5 3.5 3.5 0 0 0 6.5 10M17 5h2.5A1.5 1.5 0 0 1 21 6.5 3.5 3.5 0 0 1 17.5 10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+              <path d="M12 13v3M9 20h6M9.5 20l.4-4h4.2l.4 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="vh-body">
+            <div class="vh-t"><%= lang === 'es' ? 'Resultados de entrenos' : 'Training results' %></div>
+            <div class="vh-d"><%= lang === 'es' ? 'Heats guardados de los entrenos de competición.' : 'Saved heats from competition training.' %></div>
+          </div>
+          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </a>
+
         <a class="vh-card vh-card--feature" href="/races" style="--a:#ef4651;--a-bg:rgba(239,70,81,.13)">
           <div class="vh-ico">
             <svg viewBox="0 0 24 24" aria-hidden="true">

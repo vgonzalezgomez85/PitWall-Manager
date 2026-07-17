@@ -31,6 +31,8 @@ class CompetitionTrainingServiceClass {
   constructor() {
     this._participants = []; // [{name, color}]
     this._numLanes     = 0;
+    this._minLapMs     = 0;
+    this._sessionId    = null;
     this._heatNumber   = 0;
     this._active       = false;
     this._standby      = false;
@@ -72,7 +74,8 @@ class CompetitionTrainingServiceClass {
   }
 
   // ── Setup ─────────────────────────────────────────────────────────────────
-  setup(participants, numLanes, laneSequence) {
+  // minLapMs = tiempo mínimo de vuelta (Pt). 0 = sin filtro.
+  setup(participants, numLanes, laneSequence, minLapMs = 0) {
     if (this._active) this._deactivate();
     // Enriquece cada participante con la bandera del país emparejando su nombre
     // con el catálogo de equipos (los nombres se teclean a mano en competición).
@@ -87,7 +90,9 @@ class CompetitionTrainingServiceClass {
     } catch {}
     this._participants = participants;
     this._numLanes     = numLanes;
+    this._minLapMs     = Math.max(0, parseInt(minLapMs, 10) || 0);
     this._laneSequence = this._normalizeLaneSequence(laneSequence, numLanes);
+    this._sessionId    = `ct-${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}-${Math.random().toString(36).slice(2, 6)}`;
     this._heatNumber   = 0;
     this._prepareHeat();
   }
@@ -207,6 +212,16 @@ class CompetitionTrainingServiceClass {
       const ld = this._laneMap.get(lane);
       if (!ld) return;
 
+      // Vuelta fantasma: por debajo del Pt no es una vuelta real (adaptador que
+      // repite la trama, doble disparo del puente…). Se descarta entera — ni
+      // cuenta, ni entra en la media, ni puede ser la "mejor vuelta". Mismo
+      // criterio que la carrera (TimingService), que la marca is_ghost = 1.
+      if (this._minLapMs > 0 && lapTimeMs < this._minLapMs) {
+        console.log(`[CompetitionTraining] Ghost lap: lane ${lane} (${lapTimeMs}ms < Pt ${this._minLapMs}ms)`);
+        SocketService.emit('training:ghost', { lane, lapTimeMs, ptMs: this._minLapMs });
+        return;
+      }
+
       ld.count++;
       ld.sum   += lapTimeMs;
       ld.lastMs = lapTimeMs;
@@ -242,11 +257,39 @@ class CompetitionTrainingServiceClass {
     }
   }
 
+  // Guarda el heat que acaba de terminar. Solo se llama al caer la bandera: un
+  // stop forzado descarta el heat (se repite entero), así que no se persiste.
+  _saveHeat() {
+    const rows = [];
+    for (const [lane, ld] of this._laneMap) {
+      if (ld.participantIdx === null || ld.count === 0) continue;   // carril vacío o sin cruces
+      const p = this._participants[ld.participantIdx];
+      if (!p) continue;
+      rows.push({
+        lane,
+        participantName: p.name,
+        bestLapMs: ld.laps[0] ?? null,
+        avgLapMs:  Math.round(ld.sum / ld.count),
+        lapCount:  ld.count,
+      });
+    }
+    if (rows.length === 0) return;
+    try {
+      const CompetitionTrainingResult = require('../models/CompetitionTrainingResult');
+      CompetitionTrainingResult.saveHeat(this._sessionId, this._heatNumber, rows);
+      console.log(`[CompetitionTraining] Heat ${this._heatNumber} saved (${rows.length} lanes, session ${this._sessionId})`);
+    } catch (err) {
+      // Guardar es secundario: si falla, el heat siguiente debe arrancar igual.
+      console.error('[CompetitionTraining] No se pudo guardar el heat:', err.message);
+    }
+  }
+
   // ── Stop heat ─────────────────────────────────────────────────────────────
   _stopHeat(rotate) {
     this._deactivate();
     if (rotate) {
-      // Normal end → prepare next heat (lanes rotate)
+      // Normal end → save results, then prepare next heat (lanes rotate)
+      this._saveHeat();
       this._prepareHeat();
     } else {
       // Forced stop → stay on same heat, reset lap data
@@ -265,13 +308,16 @@ class CompetitionTrainingServiceClass {
   // ── Manual stop ───────────────────────────────────────────────────────────
   stop() {
     this._deactivate();
+    const endedSessionId = this._sessionId;
     this._active    = false;
     this._standby   = false;
     this._participants = [];
     this._numLanes  = 0;
+    this._minLapMs  = 0;
+    this._sessionId = null;
     this._heatNumber = 0;
     this._laneMap   = new Map();
-    SocketService.emit('training:stopped');
+    SocketService.emit('training:stopped', { sessionId: endedSessionId });
     console.log('[CompetitionTraining] Session stopped');
   }
 
@@ -279,6 +325,8 @@ class CompetitionTrainingServiceClass {
   get isActive()    { return this._active; }
   get isStandby()   { return this._standby && !this._active; }
   get isReady()     { return this._active || this._standby; }
+  get sessionId()   { return this._sessionId; }
+  get minLapMs()    { return this._minLapMs || 0; }
   get heatNumber()  { return this._heatNumber; }
   get startedAt()   { return this._startedAt; }
   get durationMs()  { return this._durationMs; }

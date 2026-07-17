@@ -1,0 +1,57 @@
+<%- include('../partials/header', { pageTitle: (lang === 'es' ? 'Resultados de entrenos' : 'Training results') }) %>
+
+<div class="container container--narrow">
+  <a href="/training/competition" class="vt-back-link" style="margin-top:1rem">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    <%= lang === 'es' ? 'Entreno competitivo' : 'Competition training' %>
+  </a>
+  <div class="page-header">
+    <h1 class="page-title">🎯 <%= lang === 'es' ? 'Resultados de entrenos' : 'Training results' %></h1>
+    <p style="color:#8b949e; margin-top:.3rem">
+      <%= lang === 'es'
+        ? 'Cada sesión de entreno competitivo guarda sus heats al caer la bandera.'
+        : 'Every competition training session saves its heats when the flag drops.' %>
+    </p>
+  </div>
+
+  <% if (sessions.length === 0) { %>
+    <div class="rx-empty">
+      <div class="rx-empty__icon">🎯</div>
+      <p class="rx-empty__title"><%= lang === 'es' ? 'Todavía no hay entrenos guardados.' : 'No saved training sessions yet.' %></p>
+      <p class="rx-empty__sub"><%= lang === 'es' ? 'Cuando termine un heat, aparecerá aquí.' : 'When a heat finishes, it will show up here.' %></p>
+    </div>
+  <% } else { %>
+    <div class="rx-race-list">
+      <% sessions.forEach(s => { %>
+        <a href="/training/competition/results/<%= encodeURIComponent(s.session_id) %>" class="rx-race-card">
+          <div class="rx-race-card__name">
+            <%= new Date(s.started_at + 'Z').toLocaleString(lang === 'es' ? 'es-ES' : 'en-GB') %>
+          </div>
+          <div class="rx-race-card__meta">
+            <span class="rx-race-card__status"><%= s.heats %> <%= lang === 'es' ? (s.heats === 1 ? 'heat' : 'heats') : (s.heats === 1 ? 'heat' : 'heats') %></span>
+            <span style="margin-left:.5rem"><%= s.participants %> <%= lang === 'es' ? 'participantes' : 'participants' %></span>
+            <span style="margin-left:.5rem"><%= s.laps %> <%= lang === 'es' ? 'vueltas' : 'laps' %></span>
+            <% if (s.best_lap_ms) { %>
+              <span style="margin-left:.5rem"><%= lang === 'es' ? 'mejor' : 'best' %> <%= (s.best_lap_ms / 1000).toFixed(3).replace('.', ',') %>s</span>
+            <% } %>
+          </div>
+        </a>
+      <% }) %>
+    </div>
+  <% } %>
+</div>
+
+<style>
+  .rx-race-list { display:flex; flex-direction:column; gap:.6rem; margin-top:1.2rem }
+  .rx-race-card { display:block; background:#161b22; border:1px solid #30363d; border-radius:10px; padding:.9rem 1.1rem; color:#c9d1d9; text-decoration:none; transition: border-color .15s }
+  .rx-race-card:hover { border-color:#f6c90e; text-decoration:none }
+  .rx-race-card__name { font-weight:600; font-size:1.05rem }
+  .rx-race-card__meta { font-size:.78rem; color:#6e7681; margin-top:.2rem }
+  .rx-race-card__status { display:inline-block; padding:1px 7px; border-radius:9px; font-size:.7rem; font-weight:700; text-transform:uppercase; background:rgba(88,166,255,.15); color:#58a6ff }
+  .rx-empty { text-align:center; margin-top:2.5rem; color:#8b949e }
+  .rx-empty__icon { font-size:3rem; opacity:.6 }
+  .rx-empty__title { color:#e6edf3; font-size:1.15rem; font-weight:600; margin:.8rem 0 .3rem }
+  .rx-empty__sub { font-size:.9rem }
+</style>
+
+<%- include('../partials/footer') %>
