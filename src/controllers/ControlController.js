@@ -31,6 +31,17 @@ const TimingService = require('../services/TimingService');
 const db            = require('../config/database');
 const { evaluate }  = require('../utils/shiftCompliance');
 const { fmtHmsFijo } = require('../utils/duration');
+const Settings      = require('../models/Settings');
+
+// HTTPS local para la cámara: si está activado, el kiosco puede ofrecer el
+// enlace seguro cuando se abre por HTTP en un dispositivo de la red (donde el
+// navegador bloquea la cámara). { enabled, port }.
+function httpsInfo() {
+  return {
+    enabled: Settings.get('https_enabled', '0') === '1',
+    port:    parseInt(Settings.get('https_port', '') || '3443', 10) || 3443,
+  };
+}
 
 class ControlController {
 
@@ -97,6 +108,7 @@ class ControlController {
         rosterByLane: {},
         restingTeams: [],
         mangaDurationMs: 0,
+        https: httpsInfo(),
       });
     }
     const { manga, race, liveStatus } = current;
@@ -182,6 +194,7 @@ class ControlController {
       restingTeams,
       mangaDurationMs,
       prearme,
+      https: httpsInfo(),
     });
   }
 

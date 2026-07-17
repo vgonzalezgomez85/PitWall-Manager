@@ -1,0 +1,71 @@
+<%- include('../partials/header', { pageTitle: (lang === 'es' ? 'Certificado' : 'Certificate') }) %>
+
+<div class="container container--narrow">
+  <a href="/settings" class="vt-back-link" style="margin-top:1rem">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    <%= lang === 'es' ? 'Ajustes' : 'Settings' %>
+  </a>
+
+  <div class="page-header">
+    <h1 class="page-title">🔒 <%= lang === 'es' ? 'Certificado de PitWall' : 'PitWall certificate' %></h1>
+    <p style="color:#8b949e; margin-top:.3rem">
+      <%= lang === 'es'
+        ? 'Instala este certificado en el dispositivo para que el escáner QR del control de pilotos abra la cámara SIN el aviso de «conexión no privada». Solo hace falta hacerlo una vez por dispositivo.'
+        : 'Install this certificate on the device so the driver-control QR scanner opens the camera WITHOUT the “connection not private” warning. Only needed once per device.' %>
+    </p>
+  </div>
+
+  <div class="ct-note-box">
+    <%= lang === 'es'
+      ? 'No es imprescindible: sin instalarlo, la cámara también funciona aceptando el aviso una vez. Instalar el certificado solo quita ese aviso.'
+      : 'Not mandatory: without it, the camera still works by accepting the warning once. Installing the certificate just removes that warning.' %>
+  </div>
+
+  <div style="margin:1.2rem 0;text-align:center">
+    <a class="vt-btn vt-btn--primary" href="/cert/ca" download style="font-size:1.05rem;padding:.7rem 1.4rem">
+      ⬇ <%= lang === 'es' ? 'Descargar certificado (PitWall-CA.crt)' : 'Download certificate (PitWall-CA.crt)' %>
+    </a>
+  </div>
+
+  <% if (fingerprint) { %>
+    <p style="text-align:center;color:#6e7681;font-size:.75rem;font-family:monospace;word-break:break-all">
+      <%= lang === 'es' ? 'Huella SHA-256:' : 'SHA-256 fingerprint:' %><br><%= fingerprint %>
+    </p>
+  <% } %>
+
+  <h2 class="ct-h2">🍎 iPhone / iPad</h2>
+  <ol class="ct-steps">
+    <li><%= lang === 'es' ? 'Descarga el certificado con el botón de arriba (usa Safari).' : 'Download the certificate with the button above (use Safari).' %></li>
+    <li><%= lang === 'es' ? 'Ve a Ajustes → General → VPN y gestión de dispositivos → instala el perfil «PitWall Local CA».' : 'Go to Settings → General → VPN & Device Management → install the “PitWall Local CA” profile.' %></li>
+    <li><%= lang === 'es' ? 'Luego Ajustes → General → Información → Ajustes de certificados de confianza y activa «PitWall Local CA».' : 'Then Settings → General → About → Certificate Trust Settings and enable “PitWall Local CA”.' %></li>
+  </ol>
+
+  <h2 class="ct-h2">🤖 Android</h2>
+  <ol class="ct-steps">
+    <li><%= lang === 'es' ? 'Descarga el certificado con el botón de arriba.' : 'Download the certificate with the button above.' %></li>
+    <li><%= lang === 'es' ? 'Ajustes → Seguridad → Cifrado y credenciales → Instalar un certificado → Certificado de CA.' : 'Settings → Security → Encryption & credentials → Install a certificate → CA certificate.' %></li>
+    <li><%= lang === 'es' ? 'Elige el fichero descargado y acepta.' : 'Pick the downloaded file and accept.' %>
+      <span style="color:#6e7681"><%= lang === 'es' ? '(La ruta exacta varía según la marca del móvil.)' : '(Exact path varies by phone brand.)' %></span></li>
+  </ol>
+
+  <h2 class="ct-h2">🪟 Windows</h2>
+  <ol class="ct-steps">
+    <li><%= lang === 'es' ? 'Descarga el certificado y ábrelo (doble clic).' : 'Download the certificate and open it (double-click).' %></li>
+    <li><%= lang === 'es' ? 'Instalar certificado → Equipo local → «Colocar todos los certificados en el siguiente almacén» → Entidades de certificación raíz de confianza.' : 'Install Certificate → Local Machine → “Place all certificates in the following store” → Trusted Root Certification Authorities.' %></li>
+  </ol>
+
+  <div class="ct-note-box" style="margin-top:1.5rem">
+    <%= lang === 'es'
+      ? 'Este certificado es la autoridad raíz local de PitWall. Es público (no contiene ninguna clave privada) y solo sirve para que los dispositivos confíen en el HTTPS de este servidor en tu red. Coteja la huella SHA-256 con la que aparece en Ajustes → HTTPS local si quieres asegurarte de que es la de tu PitWall.'
+      : 'This certificate is PitWall’s local root authority. It is public (contains no private key) and only makes devices trust this server’s HTTPS on your network. Cross-check the SHA-256 fingerprint against the one under Settings → Local HTTPS if you want to be sure it is your PitWall’s.' %>
+  </div>
+</div>
+
+<style>
+  .ct-note-box { background:rgba(88,166,255,.08); border:1px solid rgba(88,166,255,.25); border-radius:10px; padding:.8rem 1rem; color:#c9d1d9; font-size:.88rem; margin-top:1rem }
+  .ct-h2 { font-size:1.05rem; font-weight:600; color:#e6edf3; margin:1.6rem 0 .5rem }
+  .ct-steps { margin:0; padding-left:1.3rem; color:#c9d1d9; font-size:.9rem; line-height:1.7 }
+  .ct-steps li { margin-bottom:.3rem }
+</style>
+
+<%- include('../partials/footer') %>

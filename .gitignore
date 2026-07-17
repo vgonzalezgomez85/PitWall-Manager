@@ -21,3 +21,7 @@ database/_backup_pre_delete/
 # Datos generados / de entrada (no son código)
 database/sim/
 info para proyecto infolap slot/
+
+# Certificados TLS locales (incluyen la clave privada de la CA) — se generan
+# solos en cada instalación, NUNCA se suben.
+database/tls/

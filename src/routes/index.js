@@ -288,6 +288,13 @@ router.get( '/settings',           SettingsController.index);
 router.post('/settings',           SettingsController.save);
 router.get( '/api/settings/ports', SettingsController.listPorts);
 
+// ── Certificado de la CA (HTTPS local para la cámara del escáner QR) ─────────
+// Público a propósito: es un certificado sin clave privada, y los dispositivos
+// que escanean por la LAN necesitan poder descargarlo para instalarlo.
+const CertController = require('../controllers/CertController');
+router.get('/cert',    CertController.instructions);
+router.get('/cert/ca', CertController.downloadCA);
+
 // ── Túnel público (Cloudflare del propio club) — control LAN-only ────────────
 const TunnelController = require('../controllers/TunnelController');
 router.get( '/tunnel/status', TunnelController.status);

@@ -16,6 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 const http    = require('http');
+const https   = require('https');
 const express = require('express');
 const session = require('express-session');
 const methodOverride = require('method-override');
@@ -350,6 +351,32 @@ if (require.main === module) {
       console.warn('[tunnel] autostart no disponible:', e.message);
     }
   });
+
+  // ── HTTPS en la LAN (opt-in) ───────────────────────────────────────────────
+  // La cámara del escáner QR (control de pilotos) necesita "contexto seguro":
+  // en los móviles/tablets que entran por la IP de la red eso es HTTPS. Corre en
+  // PARALELO al HTTP de siempre (mismo `app`), así nada de lo existente cambia:
+  // el operador sigue en http://localhost, y solo quien escanee usa el HTTPS.
+  if (Settings.get('https_enabled', '0') === '1') {
+    const httpsPort = parseInt(Settings.get('https_port', '') || '3443', 10) || 3443;
+    try {
+      const TlsService = require('./services/TlsService');
+      const ips = net.serverIPs(bindIface).map(i => i.ip);
+      const creds = TlsService.ensure(ips);       // reutiliza CA, reemite hoja si cambió la IP
+      const httpsServer = https.createServer({ key: creds.key, cert: creds.cert }, app);
+      SocketService.attach(httpsServer);          // sockets seguros (wss://) para el kiosco
+      httpsServer.listen(...(bindIp ? [httpsPort, bindIp] : [httpsPort]), () => {
+        console.log(`  HTTPS (cámara/QR) en el puerto ${httpsPort}:`);
+        if (ips.length) {
+          console.log(`  ${ips.map(ip => `https://${ip}:${httpsPort}`).join('   ')}`);
+        }
+        console.log(`  Certificado propio — instala la CA (Ajustes → HTTPS) para quitar el aviso.\n`);
+      });
+      httpsServer.on('error', (e) => console.error('[HTTPS] no se pudo abrir el puerto:', e.message));
+    } catch (e) {
+      console.error('[HTTPS] no se pudo arrancar:', e.message);
+    }
+  }
 }
 
 function announceBonjour(port) {

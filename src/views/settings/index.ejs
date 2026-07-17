@@ -497,6 +497,54 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
           </div>
         </div>
 
+        <!-- ── HTTPS local (cámara del escáner QR del control de pilotos) ── -->
+        <div class="vt-debug">
+          <button type="button" class="vt-switch <%= httpsEnabled ? 'is-on' : '' %>" id="httpsSwitch" aria-label="Toggle HTTPS"></button>
+          <input type="hidden" name="https_enabled" id="httpsInput" value="<%= httpsEnabled ? '1' : '' %>">
+          <div style="flex:1">
+            <div class="vt-debug__t">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V8a5 5 0 0 1 10 0v3"/></svg>
+              <%= lang === 'es' ? 'HTTPS local (cámara del escáner QR)' : 'Local HTTPS (QR scanner camera)' %>
+            </div>
+            <div class="vt-debug__d">
+              <%= lang === 'es'
+                ? 'El escáner QR del control de pilotos usa la cámara, y el navegador solo la permite en «localhost» o por HTTPS. En los móviles/tablets que entran por la IP de la red hace falta esto. PitWall sirve HTTPS con un certificado propio, en paralelo al HTTP normal. Abre un puerto nuevo, así que requiere reiniciar el servidor.'
+                : 'The driver-control QR scanner uses the camera, and browsers only allow it on “localhost” or over HTTPS. Phones/tablets connecting by network IP need this. PitWall serves HTTPS with its own certificate, alongside normal HTTP. It opens a new port, so it requires a server restart.' %>
+            </div>
+
+            <div class="vt-field" style="max-width:220px;margin-top:.7rem">
+              <label><%= lang === 'es' ? 'Puerto HTTPS (requiere reiniciar)' : 'HTTPS port (requires restart)' %></label>
+              <input type="number" name="https_port" class="vt-inp is-mono" min="1" max="65535" value="<%= httpsPort %>">
+            </div>
+
+            <% if (httpsEnabled && serverIps && serverIps.length) { %>
+              <span class="vt-debug__d" style="display:block;margin-top:.7rem">
+                <%= lang === 'es' ? 'Abre el control de pilotos en el dispositivo por:' : 'Open driver control on the device at:' %>
+              </span>
+              <div style="margin-top:.25rem;font-family:monospace;font-size:.9rem">
+                <% serverIps.forEach(function (i) { %>
+                  <div>https://<%= i.ip %>:<%= httpsPort %>/control/shifts <span class="vt-debug__d">(<%= i.name %>)</span></div>
+                <% }); %>
+              </div>
+            <% } %>
+
+            <div class="vt-debug__d" style="margin-top:.8rem">
+              <%= lang === 'es'
+                ? 'Al abrirlo, el navegador avisará una vez («conexión no privada → continuar»). Para quitar ese aviso, instala la CA de PitWall en el dispositivo:'
+                : 'On first open the browser warns once (“not private → proceed”). To remove that warning, install the PitWall CA on the device:' %>
+            </div>
+            <div style="margin-top:.5rem;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+              <a class="vt-btn vt-btn--ghost vt-btn--sm" href="/cert" target="_blank">🔒 <%= lang === 'es' ? 'Instalar certificado (guía)' : 'Install certificate (guide)' %></a>
+              <a class="vt-btn vt-btn--ghost vt-btn--sm" href="/cert/ca" download>⬇ <%= lang === 'es' ? 'Descargar CA' : 'Download CA' %></a>
+            </div>
+            <% if (caFingerprint) { %>
+              <div class="vt-debug__d" style="margin-top:.6rem;font-family:monospace;font-size:.72rem;word-break:break-all">
+                <%= lang === 'es' ? 'Huella SHA-256 de la CA:' : 'CA SHA-256 fingerprint:' %> <%= caFingerprint %>
+              </div>
+            <% } %>
+          </div>
+        </div>
+
         <!-- ── Seguimiento público por internet (túnel del propio club) ── -->
         <div class="vt-debug">
           <div style="flex:1">
@@ -633,6 +681,15 @@ if (acSw && acInput) {
   acSw.addEventListener('click', () => {
     acSw.classList.toggle('is-on');
     acInput.value = acSw.classList.contains('is-on') ? '1' : '';
+  });
+}
+
+const hsSw = document.getElementById('httpsSwitch');
+const hsInput = document.getElementById('httpsInput');
+if (hsSw && hsInput) {
+  hsSw.addEventListener('click', () => {
+    hsSw.classList.toggle('is-on');
+    hsInput.value = hsSw.classList.contains('is-on') ? '1' : '';
   });
 }
 
