@@ -23,6 +23,11 @@ const Race  = require('../models/Race');
 const Lap   = require('../models/Lap');
 const db = require('../config/database');
 
+// Caché del dossier de resultados (ver buildStatsSnapshot).
+const SNAPSHOT_TTL_MS    = 1000;
+const SNAPSHOT_MAX_RACES = 8;
+const _snapshotCache = new Map();   // raceId → { ts, mut, value }
+
 const MobileController = {
   // GET /api/mobile/session
   session(req, res) {
@@ -425,7 +430,26 @@ const MobileController = {
     const race = Race.findById(raceId);
     if (!race) return null;
 
-    const aggregate = Lap.aggregateByRace(race.id);
+    // Cacheado por carrera: cuesta 69 ms sobre las 160.000 vueltas de una 24 h, y
+    // al acabar la carrera los móviles piden los resultados todos a la vez (con
+    // 100, siete segundos de cola). El resultado es el mismo para todos.
+    //
+    // Mismo criterio que en live-stats: con una manga en curso manda el reloj;
+    // con la carrera acabada no entra ni una vuelta, así que solo la cambia una
+    // corrección — y de eso avisa el contador de mutaciones.
+    const viva   = TimingService.activeMangaOf(race.id) != null;
+    const cached = _snapshotCache.get(race.id);
+    if (cached && (viva
+          ? (Date.now() - cached.ts) < SNAPSHOT_TTL_MS
+          : cached.mut === Lap.mutationCount)) {
+      return cached.value;
+    }
+
+    // Se descartan las entidades nulas: son las vueltas de carriles sin equipo
+    // asignado, que el agregado junta en una fila sintética. Sin filtrar competía
+    // como uno más y podía salir "líder", falseando el gap de todos. El resto de
+    // vistas ya la quitan.
+    const aggregate = TimingService.raceAggregate(race.id).filter(r => r.entity_id != null);
     const standings = aggregate.map((row, i) => ({
       position:     i + 1,
       entityId:     row.entity_id,
@@ -442,7 +466,7 @@ const MobileController = {
     const leaderLaps = standings[0]?.totalLaps ?? 0;
     standings.forEach(s => { s.gapLaps = leaderLaps - s.totalLaps; });
 
-    return {
+    const value = {
       raceId:      race.id,
       name:        race.name,
       format:      race.format,
@@ -455,7 +479,16 @@ const MobileController = {
       // formar la URL completa de descarga.
       excelPath:   `/races/${race.id}/results/xlsx`,
     };
+
+    _snapshotCache.set(race.id, { ts: Date.now(), mut: Lap.mutationCount, value });
+    while (_snapshotCache.size > SNAPSHOT_MAX_RACES) {
+      _snapshotCache.delete(_snapshotCache.keys().next().value);
+    }
+    return value;
   },
+
+  /** Tira la caché del dossier. Para los tests; en producción caduca sola. */
+  _resetCache() { _snapshotCache.clear(); },
 };
 
 module.exports = MobileController;

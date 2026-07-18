@@ -439,4 +439,35 @@ try {
   for (const r of racesWithoutKey) setKey.run(randomUUID(), r.id);
 } catch { /* columna aún no creada en primera ejecución — la migración la crea */ }
 
+// ── Estadísticas para el planificador ──────────────────────────────────────
+//
+// Sin ANALYZE, SQLite planifica a ciegas y para las consultas que agregan una
+// carrera entera elige `idx_laps_race_flags`. Es una mala elección: su segunda
+// columna es `is_ghost`, y `is_ghost = 0` lo cumplen 178.807 de las 178.809
+// vueltas reales de la BD — el índice no descarta NADA y encima se paga la
+// indirección por cada fila. Con estadísticas, el planificador prefiere el
+// escaneo directo. Medido sobre las 160.569 vueltas de la 24h de Modena:
+//     mejor vuelta por carril ....... 78 ms → 18 ms
+//     agregado de la carrera ........ 63 ms → 30 ms
+//     agregado de mangas anteriores . 71 ms → 39 ms
+// Ninguna de las consultas calientes empeora; las demás se quedan igual.
+//
+// Se rehace en CADA arranque (~45 ms con 180.000 vueltas; 0,05 ms en una BD
+// vacía) en vez de una sola vez, para que las estadísticas sigan a la BD según
+// crece. Dentro de una carrera de 24 h se quedan cortas —la carrera nueva crece
+// bajo los pies del planificador—, pero el error cae del lado bueno: subestimar
+// el tamaño de una carrera le hace preferir el índice, que es justo lo que elige
+// hoy sin estadísticas. El caso peor es el comportamiento actual.
+//
+// `PRAGMA optimize` (lo que recomienda SQLite para esto) NO sirve aquí: cuesta
+// 2 ms pero deja unas estadísticas que no cambian el plan — medido, 69 ms, lo
+// mismo que sin nada.
+try {
+  db.exec('ANALYZE');
+} catch (err) {
+  // Es una optimización, no un requisito: si la BD está bloqueada o montada en
+  // solo lectura, se arranca igual, con los planes de siempre.
+  console.error('[db] ANALYZE no pudo ejecutarse:', err.message);
+}
+
 module.exports = db;

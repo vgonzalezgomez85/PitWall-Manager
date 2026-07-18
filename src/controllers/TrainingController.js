@@ -22,6 +22,7 @@ const SerialService       = require('../services/SerialService');
 const SocketService       = require('../services/SocketService');
 const Settings            = require('../models/Settings');
 const Circuit             = require('../models/Circuit');
+const CompetitionResult   = require('../models/CompetitionTrainingResult');
 
 // Suma de carriles de TODOS los circuitos configurados (DS-300 o BART); 0 si no aplica.
 function serialLaneTotal() {
@@ -96,7 +97,14 @@ class TrainingController {
     const circuits = Circuit.findAll();
     const defaultCircuitId = parseInt(Settings.get('training_circuit_id', '') || '0', 10) || null;
     const fallbackLanes = parseInt(Settings.get('sim_lanes', '6'), 10) || 6;
-    res.render('training/competition', { t: req.t, circuits, defaultCircuitId, fallbackLanes, serialTotal: serialLaneTotal() });
+    // Pt por defecto: el del circuito de ajustes. Con varios DS no hay selector
+    // de circuito, así que este es el único valor que precarga el campo.
+    const defaultCircuit = defaultCircuitId ? Circuit.findById(defaultCircuitId) : null;
+    res.render('training/competition', {
+      t: req.t, circuits, defaultCircuitId, fallbackLanes,
+      defaultMinLapMs: defaultCircuit ? (defaultCircuit.min_lap_ms || 0) : 0,
+      serialTotal: serialLaneTotal(),
+    });
   }
 
   // POST /training/competition/start
@@ -127,7 +135,17 @@ class TrainingController {
     const rawSeq = req.body.lane_sequence;
     const laneSequence = Array.isArray(rawSeq) ? rawSeq.map(x => parseInt(x, 10)) : [];
 
-    CompetitionService.setup(participants, numLanes, laneSequence);
+    // Vuelta mínima (Pt), en segundos como en el alta de carrera. Por debajo de
+    // ella el cruce es fantasma y se descarta. Un 0 explícito desactiva el
+    // filtro; en blanco hereda la del circuito (con varios DS no hay circuito
+    // elegido, así que ahí el valor lo teclea el usuario).
+    const rawMinLap = String(req.body.min_lap_s ?? '').trim().replace(',', '.');
+    const minLapS   = rawMinLap === '' ? NaN : Number(rawMinLap);
+    const minLapMs  = (Number.isFinite(minLapS) && minLapS >= 0)
+      ? Math.round(minLapS * 1000)
+      : (circuit ? circuit.min_lap_ms || 0 : 0);
+
+    CompetitionService.setup(participants, numLanes, laneSequence, minLapMs);
     res.redirect('/training/competition/live');
   }
 
@@ -151,9 +169,39 @@ class TrainingController {
 
   // POST /training/competition/stop
   static competitionStop(req, res) {
+    const sessionId = CompetitionService.sessionId;
     CompetitionService.stop();
     try { SerialService.sendStop(); } catch {}   // para el Master BART (no-op DS/sim)
+    // Si la sesión llegó a guardar algún heat, se acaba en sus resultados; si no
+    // (se paró antes de la primera bandera), no hay nada que enseñar.
+    if (sessionId && CompetitionResult.getHeats(sessionId).length > 0) {
+      return res.redirect(`/training/competition/results/${encodeURIComponent(sessionId)}`);
+    }
     res.redirect('/training/competition');
+  }
+
+  // GET /training/competition/results — sesiones guardadas
+  static competitionResults(req, res) {
+    res.render('training/results-index', { t: req.t, sessions: CompetitionResult.listSessions() });
+  }
+
+  // GET /training/competition/results/:sessionId
+  static competitionResultsShow(req, res) {
+    const sessionId = req.params.sessionId;
+    const heats = CompetitionResult.getHeats(sessionId);
+    if (heats.length === 0) return res.redirect('/training/competition/results');
+    res.render('training/results-show', {
+      t: req.t,
+      sessionId,
+      heats,
+      standings: CompetitionResult.getStandings(sessionId),
+    });
+  }
+
+  // POST /training/competition/results/:sessionId/delete
+  static competitionResultsDelete(req, res) {
+    CompetitionResult.deleteSession(req.params.sessionId);
+    res.redirect('/training/competition/results');
   }
 
   // POST /training/go — GO manual para BART/simulación (no llega el race_started

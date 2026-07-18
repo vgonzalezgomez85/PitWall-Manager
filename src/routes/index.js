@@ -255,6 +255,9 @@ router.get( '/training/competition',          TrainingController.competition);
 router.post('/training/competition/start',    TrainingController.competitionStart);
 router.get( '/training/competition/live',     TrainingController.competitionLive);
 router.post('/training/competition/stop',     TrainingController.competitionStop);
+router.get( '/training/competition/results',  TrainingController.competitionResults);
+router.get( '/training/competition/results/:sessionId', TrainingController.competitionResultsShow);
+router.post('/training/competition/results/:sessionId/delete', TrainingController.competitionResultsDelete);
 router.get( '/training/live',                 TrainingController.live);
 router.post('/training/go',                   TrainingController.go);
 router.post('/training/pause',                 TrainingController.pause);
@@ -284,6 +287,13 @@ router.post('/diagnostico/reconnect-serial',      DiagnosticsController.reconnec
 router.get( '/settings',           SettingsController.index);
 router.post('/settings',           SettingsController.save);
 router.get( '/api/settings/ports', SettingsController.listPorts);
+
+// ── Certificado de la CA (HTTPS local para la cámara del escáner QR) ─────────
+// Público a propósito: es un certificado sin clave privada, y los dispositivos
+// que escanean por la LAN necesitan poder descargarlo para instalarlo.
+const CertController = require('../controllers/CertController');
+router.get('/cert',    CertController.instructions);
+router.get('/cert/ca', CertController.downloadCA);
 
 // ── Túnel público (Cloudflare del propio club) — control LAN-only ────────────
 const TunnelController = require('../controllers/TunnelController');

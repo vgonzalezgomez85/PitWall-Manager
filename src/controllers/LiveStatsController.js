@@ -18,6 +18,7 @@
 const Race          = require('../models/Race');
 const Manga         = require('../models/Manga');
 const Tanda         = require('../models/Tanda');
+const Lap           = require('../models/Lap');
 const TimingService = require('../services/TimingService');
 const db            = require('../config/database');
 const {
@@ -28,6 +29,29 @@ const {
   MIN_CONSISTENCY_LAPS,
   robustConsistency,
 } = require('../lib/consistency');
+
+// ── Caché de la respuesta JSON ─────────────────────────────────────────────
+//
+// Esta vista cuesta ~200 ms sobre las 160.000 vueltas de una 24 h y devuelve
+// 213 KB, y el cliente la repide en CADA cruce. Sin caché, cada espectador con la
+// página abierta costaba ~500 ms de CPU por segundo: dos pantallas puestas y el
+// proceso —un hilo, better-sqlite3 síncrono— se queda sin aire, retrasando el
+// tick y el procesado del serie.
+//
+// La respuesta depende SOLO de (carrera, manga): el `entity` y el `usePaceClean`
+// que manda el cliente no se leen aquí — la comparativa se calcula en el
+// navegador a partir de `entities`. Así que una sola copia sirve a todos.
+//
+// La invalidación NO puede ser por mutación como en el cliente Lap: allí rehacer
+// el paquete cuesta 3 ms y se puede permitir hacerlo en cada cruce; aquí cuesta
+// 200 ms, así que hacerlo en cada cruce sería exactamente el problema que se
+// viene a resolver. Con la manga viva manda el reloj (1 s de retraso no lo ve
+// nadie: el cliente ya lleva su propio contador). Con la manga acabada no entra
+// ninguna vuelta, así que solo la puede cambiar una corrección — y de eso sí
+// avisa el contador de mutaciones, sin caducar nunca por tiempo.
+const JSON_TTL_MS   = 1000;
+const JSON_MAX_KEYS = 8;
+const _jsonCache = new Map();   // `${raceId}:${mangaId}` → { ts, mut, payload }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -253,6 +277,15 @@ class LiveStatsController {
 
     // Duración de la sesión: in-memory si está activa, valor de race si no.
     const isActive = TimingService.activeMangaId === manga.id;
+
+    const cacheKey = `${race.id}:${manga.id}`;
+    const cached   = _jsonCache.get(cacheKey);
+    if (cached && (isActive
+          ? (Date.now() - cached.ts) < JSON_TTL_MS
+          : cached.mut === Lap.mutationCount)) {
+      return res.json(cached.payload);
+    }
+
     const session  = isActive ? TimingService.session : null;
     const mangaDurationMs = session?.durationMs
                           ?? (race.manga_duration_minutes * 60 * 1000);
@@ -437,15 +470,18 @@ class LiveStatsController {
     // el directo, Le Mans y el panel (TimingService.buildRaceProjection, desde
     // BD). Funciona haya o no sesión viva, así el espectador ve siempre la
     // clasificación estimada al final, no solo la manga.
+    // Cacheada (TTL corto, del motor): esta vista se repide en CADA cruce, y sin
+    // caché la proyección costaba 68 ms sobre las 160.000 vueltas de una 24 h en
+    // cada una de esas peticiones. Es la misma caché que usan el directo y Lap.
     let projection = null;
     try {
       const TimingService = require('../services/TimingService');
-      projection = TimingService.buildRaceProjection(race.id);
+      projection = TimingService._cachedProjection(race.id);
     } catch (e) { /* sin proyección si falla la consulta */ }
 
     // La comparativa en vivo (tú vs 1-2 rivales) se calcula en CLIENTE a partir
     // de `entities` (cada una trae lane, position, totalLaps, best/avg, última).
-    res.json({
+    const payload = {
       raceId: race.id,
       mangaId: manga.id,
       mangaNumber: manga.number,
@@ -458,8 +494,16 @@ class LiveStatsController {
       entities,
       projection,
       raceProgress,
-    });
+    };
+
+    _jsonCache.set(cacheKey, { ts: Date.now(), mut: Lap.mutationCount, payload });
+    while (_jsonCache.size > JSON_MAX_KEYS) _jsonCache.delete(_jsonCache.keys().next().value);
+
+    res.json(payload);
   }
+
+  /** Tira la caché de la respuesta. Para los tests; en producción caduca sola. */
+  static _resetCache() { _jsonCache.clear(); }
 }
 
 module.exports = LiveStatsController;

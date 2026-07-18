@@ -479,6 +479,7 @@ const LOCKOUT_MS = <%= lockoutMs %>;
 const MIN_MS = <%= minMs %>;
 const MAX_MS = <%= maxMs %>;
 const LANG = "<%= lang %>";
+const HTTPS_INFO = <%- JSON.stringify(typeof https !== 'undefined' ? https : { enabled: false, port: 3443 }) %>;
 const MANGA_DURATION_MS = <%= mangaDurationMs || 0 %>;
 const TEAM_PILOTS = <%- JSON.stringify(pilotsByLane) %>;
 const TEAM_NAMES  = <%- JSON.stringify(teamNameByLane) %>;
@@ -746,9 +747,24 @@ async function camStart(deviceId) {
     return;
   }
   if (!window.isSecureContext) {
-    camSetStatus(LANG === 'es'
-      ? 'La cámara necesita HTTPS o localhost (no funciona abriendo por IP de red)'
-      : 'Camera needs HTTPS or localhost (does not work over a network IP)');
+    // Contexto inseguro (abierto por IP sin HTTPS): la cámara está bloqueada por
+    // el navegador. Si el operador activó el HTTPS local, ofrecemos el enlace
+    // seguro al mismo control, en el mismo host y el puerto configurado.
+    if (HTTPS_INFO && HTTPS_INFO.enabled && location.protocol === 'http:') {
+      const secure = 'https://' + location.hostname + ':' + HTTPS_INFO.port + location.pathname + location.search;
+      camSetStatus(LANG === 'es' ? 'La cámara necesita HTTPS' : 'Camera needs HTTPS');
+      const hint = document.getElementById('scCamHint');
+      if (hint) {
+        hint.innerHTML = (LANG === 'es'
+          ? 'La cámara solo funciona por HTTPS. Abre esta misma pantalla en modo seguro: '
+          : 'The camera only works over HTTPS. Open this same screen in secure mode: ')
+          + '<a href="' + secure + '" style="color:#58a6ff;font-weight:600">' + secure + '</a>';
+      }
+    } else {
+      camSetStatus(LANG === 'es'
+        ? 'La cámara necesita HTTPS o localhost. Actívalo en Ajustes → HTTPS local.'
+        : 'Camera needs HTTPS or localhost. Enable it in Settings → Local HTTPS.');
+    }
     return;
   }
   try {

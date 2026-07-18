@@ -1182,7 +1182,11 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
 <script id="positionsData" type="application/json"><%- JSON.stringify(positionData || {}) %></script>
 <script id="progressionData" type="application/json"><%- JSON.stringify(progressionByEntity || {}) %></script>
 <script>const PER_OCCURRENCE = <%= perOccurrence ? 'true' : 'false' %>;</script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<!-- Chart.js SERVIDO POR NOSOTROS, no desde un CDN: en un circuito no siempre hay
+     internet, y esta página era la única del proyecto que dependía de ello — sin
+     línea, las gráficas de resultados no salían. Es el mismo fichero que ya usa
+     live-stats. -->
+<script src="/js/chart.umd.min.js"></script>
 <script>
   (function() {
     // Datos vuelta-a-vuelta: pueden ser muy grandes (carreras de 24h ≈ 12 MB).

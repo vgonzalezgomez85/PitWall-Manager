@@ -156,6 +156,67 @@ test('_priorAggregates devuelve lo mismo cacheado que recién calculado', () => 
   assert.equal(primera.priorTimeByEntity[k], 18400);
 });
 
+// La media y el tiempo de las mangas anteriores salen del MISMO agregado que la
+// proyección: un escaneo en vez de tres sobre las mismas 153.000 filas de una 24 h
+// (185 ms → 78 ms). Se paga una vez por manga, pero con la carrera en marcha.
+
+test('la media y el tiempo por entidad salen de un ÚNICO escaneo', () => {
+  const e = escenario();
+  vuelta(e, e.m1, 9000, 1);
+  vuelta(e, e.m1, 9400, 2);
+  TimingService.invalidateStandingsCaches();
+
+  let escaneos = 0;
+  const original = Lap._aggRaw;
+  Lap._aggRaw = (...a) => { escaneos++; return original.apply(Lap, a); };
+  try { TimingService._priorAggregates(e.raceId, e.m2); }
+  finally { Lap._aggRaw = original; }
+
+  assert.equal(escaneos, 1, 'un solo recorrido de las mangas anteriores, no tres');
+});
+
+test('la media de las mangas anteriores coincide con la de la vía vieja', () => {
+  const e = escenario();
+  vuelta(e, e.m1, 9000, 1);
+  vuelta(e, e.m1, 9400, 2);
+  Lap.create({ race_id: e.raceId, manga_id: e.m1, team_id: e.teamId, driver_id: null,
+    lane: 1, lap_number: 1, lap_time_ms: 30000, elapsed_ms: 0, is_warmup: 1 });   // fuera de la media
+  Lap.create({ race_id: e.raceId, manga_id: e.m1, team_id: e.teamId, driver_id: null,
+    lane: 1, lap_number: 3, lap_time_ms: 50, elapsed_ms: 0, is_ghost: 1 });       // fuera de todo
+  TimingService.invalidateStandingsCaches();
+
+  // La consulta que había antes, tal cual.
+  const viejo = db.prepare(`
+    SELECT CASE WHEN team_id IS NOT NULL THEN 't' || team_id ELSE 'd' || driver_id END AS ekey,
+           COUNT(*) AS cnt, AVG(lap_time_ms) AS avg_ms
+    FROM laps
+    WHERE race_id = ? AND manga_id != ? AND is_ghost = 0 AND is_warmup = 0 AND lap_number > 0
+    GROUP BY ekey
+  `).all(e.raceId, e.m2);
+
+  const nuevo = TimingService._priorAggregates(e.raceId, e.m2).priorByEntity;
+  viejo.forEach(v => {
+    assert.equal(nuevo[v.ekey].count, v.cnt, `${v.ekey}: mismo nº de vueltas`);
+    assert.ok(Math.abs(nuevo[v.ekey].avg - v.avg_ms) < 1e-9, `${v.ekey}: misma media`);
+  });
+  const k = 't' + e.teamId;
+  assert.equal(nuevo[k].count, 2, 'ni la warmup ni el fantasma entran en la media');
+  assert.equal(nuevo[k].avg, 9200);
+});
+
+test('el tiempo total por entidad SÍ incluye la warmup (y el fantasma no)', () => {
+  const e = escenario();
+  vuelta(e, e.m1, 9000, 1);
+  Lap.create({ race_id: e.raceId, manga_id: e.m1, team_id: e.teamId, driver_id: null,
+    lane: 1, lap_number: 1, lap_time_ms: 30000, elapsed_ms: 0, is_warmup: 1 });
+  Lap.create({ race_id: e.raceId, manga_id: e.m1, team_id: e.teamId, driver_id: null,
+    lane: 1, lap_number: 3, lap_time_ms: 50, elapsed_ms: 0, is_ghost: 1 });
+  TimingService.invalidateStandingsCaches();
+
+  assert.equal(TimingService._priorAggregates(e.raceId, e.m2).priorTimeByEntity['t' + e.teamId],
+    39000, 'el tiempo total es el que se pasó en pista: 9000 + 30000, sin el fantasma');
+});
+
 test('la caché se REFRESCA sola al tocar una manga anterior', () => {
   const e = escenario();
   vuelta(e, e.m1, 9000, 1);
@@ -207,7 +268,7 @@ test('la proyección se sirve de caché dentro del TTL y se recalcula fuera', ()
   assert.equal(a, b, 'dentro del TTL, el mismo objeto');
 
   // Envejecemos la caché a mano en vez de esperar un segundo.
-  TimingService._projCache.ts -= TimingServiceClassTtl() + 10;
+  TimingService._projCache.get(e.raceId).ts -= TimingServiceClassTtl() + 10;
   const c = TimingService._cachedProjection(e.raceId);
   assert.notEqual(c, a, 'pasado el TTL se recalcula');
   assert.deepEqual(c, a, 'y el resultado es el mismo si nada cambió');
@@ -222,11 +283,49 @@ test('invalidateStandingsCaches tira las dos cachés', () => {
   vuelta(e, e.m1, 9000, 1);
   TimingService._priorAggregates(e.raceId, e.m2);
   TimingService._cachedProjection(e.raceId);
-  assert.ok(TimingService._priorCache && TimingService._projCache);
+  assert.ok(TimingService._priorCache.size > 0 && TimingService._projCache.size > 0);
 
   TimingService.invalidateStandingsCaches();
-  assert.equal(TimingService._priorCache, null);
-  assert.equal(TimingService._projCache, null);
+  assert.equal(TimingService._priorCache.size, 0);
+  assert.equal(TimingService._projCache.size, 0);
+});
+
+// ── Las cachés son POR CARRERA ─────────────────────────────────────────────
+//
+// Con una sola ranura compartida, un móvil del cliente Lap abierto en una carrera
+// vieja expulsaba en cada refresco la caché de la carrera EN CURSO, y el motor
+// volvía a pagar los 100 ms en el siguiente cruce. Justo lo que veníamos a evitar.
+
+test('consultar otra carrera NO expulsa la caché de la carrera en curso', () => {
+  const enCurso = escenario();
+  vuelta(enCurso, enCurso.m1, 9000, 1);
+  const vieja = escenario();
+  vuelta(vieja, vieja.m1, 9000, 1);
+
+  TimingService.invalidateStandingsCaches();
+  const prior = TimingService._priorAggregates(enCurso.raceId, enCurso.m2);
+  const proj  = TimingService._cachedProjection(enCurso.raceId);
+
+  // El móvil de un equipo despistado, machacando la carrera de la semana pasada.
+  for (let i = 0; i < 5; i++) {
+    TimingService._priorAggregates(vieja.raceId, vieja.m2);
+    TimingService._cachedProjection(vieja.raceId);
+  }
+
+  assert.equal(TimingService._priorAggregates(enCurso.raceId, enCurso.m2), prior,
+    'el mismo objeto: la carrera en curso no se recalculó');
+  assert.equal(TimingService._cachedProjection(enCurso.raceId), proj);
+});
+
+test('las cachés no crecen sin límite', () => {
+  const techo = Object.getPrototypeOf(TimingService).constructor._CACHE_MAX_RACES;
+  TimingService.invalidateStandingsCaches();
+  for (let i = 0; i < techo + 5; i++) {
+    const e = escenario();
+    vuelta(e, e.m1, 9000, 1);
+    TimingService._cachedProjection(e.raceId);
+  }
+  assert.equal(TimingService._projCache.size, techo, 'las carreras viejas caen');
 });
 
 // ── Equivalencia: la vía rápida da EXACTAMENTE lo mismo que la lenta ────────
