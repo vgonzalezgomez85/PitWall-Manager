@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.10.1] — 2026-07-18
+
+### Corregido
+- **PitWall ya no necesita internet para NADA.** Las páginas cargaban sus **tipografías** desde Google (`fonts.googleapis.com`), la última cosa que aún dependía de tener línea. En un circuito sin conexión no era grave —el navegador usaba una fuente del sistema y todo funcionaba—, pero la letra no se veía como debe. Ahora las fuentes las sirve el **propio PitWall** desde el ordenador (igual que ya se hizo con las gráficas en la 1.8.2), así que el aspecto es idéntico haya o no internet. Se incluyen los subconjuntos latin y latin-ext, que cubren el español, inglés, francés e italiano (acentos, ñ, ç…). Con esto, **la versión de escritorio no hace una sola petición a internet** en toda su operación.
+
 ## [1.10.0] — 2026-07-17
 
 ### Añadido
