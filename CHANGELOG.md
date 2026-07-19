@@ -13,6 +13,13 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.10.2] — 2026-07-19
+
+### Mejorado
+- **La pantalla de Ajustes queda más limpia al configurar los puertos.** En cada circuito DS-300 (y en el modo Agrupador), las propiedades técnicas del puerto COM —**Data bits, Paridad, Stop bits y Control de flujo**, que casi nunca se tocan— ahora viven dentro de un desplegable **«Opciones avanzadas del puerto»**, plegado por defecto. El campo para escribir el path del puerto a mano también se oculta tras un enlace **«Escribir el path a mano»**, que solo aparece cuando de verdad hace falta (y se abre solo si el puerto guardado no está en la lista detectada). Así, de un vistazo, cada circuito muestra únicamente **Puerto** y **Baud rate**.
+- **El «Baud rate» vuelve a ser un desplegable de verdad.** Antes era un campo de texto con sugerencias que en algunos navegadores no llegaban a mostrarse al pulsar; ahora es una lista desplegable con las velocidades habituales (igual que el resto de campos del formulario), con un enlace **«Escribir a mano»** por si hiciera falta un valor fuera de lo común. Aplica también al modo Agrupador.
+- **El cronómetro BART usa BLE por defecto.** Al elegir la fuente **BART**, el transporte preseleccionado pasa de TCP (puente/emulador) a **BLE (directo)**, que es lo normal con hardware real. El TCP sigue disponible en el desplegable para pruebas con el emulador o un puente BLE→TCP.
+
 ## [1.10.1] — 2026-07-18
 
 ### Corregido

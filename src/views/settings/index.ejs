@@ -125,8 +125,8 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
             <label><%= lang === 'es' ? 'Transporte' : 'Transport' %></label>
             <div class="vt-selw">
               <select name="bart_transport" id="bartTransport">
-                <option value="tcp" <%= (cfg.bart_transport || 'tcp') === 'tcp' ? 'selected' : '' %>><%= lang === 'es' ? 'TCP (emulador / puente)' : 'TCP (emulator / bridge)' %></option>
-                <option value="ble" <%= cfg.bart_transport === 'ble' ? 'selected' : '' %>>BLE (<%= lang === 'es' ? 'directo' : 'direct' %>)</option>
+                <option value="ble" <%= (cfg.bart_transport || 'ble') === 'ble' ? 'selected' : '' %>>BLE (<%= lang === 'es' ? 'directo' : 'direct' %>)</option>
+                <option value="tcp" <%= cfg.bart_transport === 'tcp' ? 'selected' : '' %>><%= lang === 'es' ? 'TCP (emulador / puente)' : 'TCP (emulator / bridge)' %></option>
               </select>
             </div>
           </div>
@@ -202,14 +202,35 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
                 <% } %>
               </select>
             </div>
-            <input class="vt-inp is-mono port-manual" type="text"
-              placeholder="<%= lang === 'es' ? 'o escribe el path: /dev/ttys003' : 'or type path: COM3' %>"
+            <% const _aggCustomPort = cfg.agg_port && !ports.find(p => p.path === cfg.agg_port); %>
+            <button type="button" class="port-manual-toggle <%= _aggCustomPort ? 'is-open' : '' %>" aria-expanded="<%= _aggCustomPort ? 'true' : 'false' %>">
+              <svg class="port-manual-toggle__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+              <span><%= lang === 'es' ? 'Escribir el path a mano' : 'Type the path manually' %></span>
+            </button>
+            <input class="vt-inp is-mono port-manual <%= _aggCustomPort ? '' : 'is-hidden' %>" type="text"
+              placeholder="<%= lang === 'es' ? 'p. ej. /dev/ttys003' : 'e.g. COM3' %>"
               value="<%= cfg.agg_port || '' %>" style="margin-top:7px;font-size:13px">
           </div>
-          <div class="vt-field">
+          <% const _aggBauds = [9600,19200,38400,56000,57600,115200,230400,460800,921600]; %>
+          <% const _aggCur = Number(cfg.agg_baud || 57600); %>
+          <% const _aggCustomBaud = !_aggBauds.includes(_aggCur); %>
+          <div class="vt-field js-baud-field">
             <label>Baud rate</label>
-            <input class="vt-inp is-mono" type="number" name="agg_baud" list="baud-options"
-                   min="300" max="921600" step="1" value="<%= cfg.agg_baud || 57600 %>">
+            <div class="vt-selw">
+              <select class="baud-select" name="agg_baud">
+                <% if (_aggCustomBaud) { %><option value="<%= _aggCur %>" selected><%= _aggCur %></option><% } %>
+                <% _aggBauds.forEach(b => { %>
+                  <option value="<%= b %>" <%= _aggCur === b ? 'selected' : '' %>><%= b %></option>
+                <% }) %>
+              </select>
+            </div>
+            <button type="button" class="port-manual-toggle baud-manual-toggle <%= _aggCustomBaud ? 'is-open' : '' %>" aria-expanded="<%= _aggCustomBaud ? 'true' : 'false' %>">
+              <svg class="port-manual-toggle__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+              <span><%= lang === 'es' ? 'Escribir a mano' : 'Type manually' %></span>
+            </button>
+            <input class="vt-inp is-mono baud-manual <%= _aggCustomBaud ? '' : 'is-hidden' %>" type="number"
+              min="300" max="921600" step="1" placeholder="<%= lang === 'es' ? 'p. ej. 57600' : 'e.g. 57600' %>"
+              value="<%= _aggCur %>" style="margin-top:7px;font-size:13px">
           </div>
           <div class="vt-field">
             <label><%= lang === 'es' ? 'Nº de cajas en el puerto' : 'Boxes on the port' %></label>
@@ -287,57 +308,86 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
                       <% } %>
                     </select>
                   </div>
-                  <input class="vt-inp is-mono port-manual" type="text"
-                    placeholder="<%= lang === 'es' ? 'o escribe el path: /dev/ttys003' : 'or type path: COM3' %>"
+                  <% const isCustomPort = c.port && !ports.find(p => p.path === c.port); %>
+                  <button type="button" class="port-manual-toggle <%= isCustomPort ? 'is-open' : '' %>" aria-expanded="<%= isCustomPort ? 'true' : 'false' %>">
+                    <svg class="port-manual-toggle__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+                    <span><%= lang === 'es' ? 'Escribir el path a mano' : 'Type the path manually' %></span>
+                  </button>
+                  <input class="vt-inp is-mono port-manual <%= isCustomPort ? '' : 'is-hidden' %>" type="text"
+                    placeholder="<%= lang === 'es' ? 'p. ej. /dev/ttys003' : 'e.g. COM3' %>"
                     value="<%= c.port || '' %>" style="margin-top:7px;font-size:13px">
                 </div>
-                <div class="vt-field circuit-row__field circuit-row__field--baud">
+                <% const _bauds = [9600,19200,38400,56000,57600,115200,230400,460800,921600]; %>
+                <% const _curBaud = Number(c.baud || 57600); %>
+                <% const _customBaud = !_bauds.includes(_curBaud); %>
+                <div class="vt-field circuit-row__field circuit-row__field--baud js-baud-field">
                   <label>Baud rate</label>
-                  <input class="vt-inp is-mono" type="number" name="circuit_baud" list="baud-options"
-                         min="300" max="921600" step="1"
-                         value="<%= c.baud || 57600 %>" required>
-                </div>
-                <div class="vt-field circuit-row__field">
-                  <label>Data bits</label>
                   <div class="vt-selw">
-                    <select name="circuit_databits">
-                      <% [7, 8].forEach(v => { %>
-                        <option value="<%= v %>" <%= (c.dataBits || 8) == v ? 'selected' : '' %>><%= v %></option>
+                    <select class="baud-select" name="circuit_baud" required>
+                      <% if (_customBaud) { %><option value="<%= _curBaud %>" selected><%= _curBaud %></option><% } %>
+                      <% _bauds.forEach(b => { %>
+                        <option value="<%= b %>" <%= _curBaud === b ? 'selected' : '' %>><%= b %></option>
                       <% }) %>
                     </select>
                   </div>
-                </div>
-                <div class="vt-field circuit-row__field">
-                  <label><%= lang === 'es' ? 'Paridad' : 'Parity' %></label>
-                  <div class="vt-selw">
-                    <select name="circuit_parity">
-                      <% ['none','even','odd'].forEach(v => { %>
-                        <option value="<%= v %>" <%= (c.parity || 'none') === v ? 'selected' : '' %>><%= v %></option>
-                      <% }) %>
-                    </select>
-                  </div>
-                </div>
-                <div class="vt-field circuit-row__field">
-                  <label>Stop bits</label>
-                  <div class="vt-selw">
-                    <select name="circuit_stopbits">
-                      <% [1, 2].forEach(v => { %>
-                        <option value="<%= v %>" <%= (c.stopBits || 1) == v ? 'selected' : '' %>><%= v %></option>
-                      <% }) %>
-                    </select>
-                  </div>
-                </div>
-                <div class="vt-field circuit-row__field">
-                  <label><%= lang === 'es' ? 'Control de flujo' : 'Flow control' %></label>
-                  <div class="vt-selw">
-                    <select name="circuit_flow">
-                      <% ['none','rtscts','xonxoff'].forEach(v => { %>
-                        <option value="<%= v %>" <%= (c.flowControl || 'none') === v ? 'selected' : '' %>><%= v %></option>
-                      <% }) %>
-                    </select>
-                  </div>
+                  <button type="button" class="port-manual-toggle baud-manual-toggle <%= _customBaud ? 'is-open' : '' %>" aria-expanded="<%= _customBaud ? 'true' : 'false' %>">
+                    <svg class="port-manual-toggle__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+                    <span><%= lang === 'es' ? 'Escribir a mano' : 'Type manually' %></span>
+                  </button>
+                  <input class="vt-inp is-mono baud-manual <%= _customBaud ? '' : 'is-hidden' %>" type="number"
+                    min="300" max="921600" step="1" placeholder="<%= lang === 'es' ? 'p. ej. 57600' : 'e.g. 57600' %>"
+                    value="<%= _curBaud %>" style="margin-top:7px;font-size:13px">
                 </div>
               </div>
+
+              <details class="vt-adv circuit-row__adv">
+                <summary>
+                  <svg class="vt-adv__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+                  <%= lang === 'es' ? 'Opciones avanzadas del puerto' : 'Advanced port options' %>
+                </summary>
+                <div class="vt-adv__body vt-fields vt-fields--3">
+                  <div class="vt-field circuit-row__field">
+                    <label>Data bits</label>
+                    <div class="vt-selw">
+                      <select name="circuit_databits">
+                        <% [7, 8].forEach(v => { %>
+                          <option value="<%= v %>" <%= (c.dataBits || 8) == v ? 'selected' : '' %>><%= v %></option>
+                        <% }) %>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="vt-field circuit-row__field">
+                    <label><%= lang === 'es' ? 'Paridad' : 'Parity' %></label>
+                    <div class="vt-selw">
+                      <select name="circuit_parity">
+                        <% ['none','even','odd'].forEach(v => { %>
+                          <option value="<%= v %>" <%= (c.parity || 'none') === v ? 'selected' : '' %>><%= v %></option>
+                        <% }) %>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="vt-field circuit-row__field">
+                    <label>Stop bits</label>
+                    <div class="vt-selw">
+                      <select name="circuit_stopbits">
+                        <% [1, 2].forEach(v => { %>
+                          <option value="<%= v %>" <%= (c.stopBits || 1) == v ? 'selected' : '' %>><%= v %></option>
+                        <% }) %>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="vt-field circuit-row__field">
+                    <label><%= lang === 'es' ? 'Control de flujo' : 'Flow control' %></label>
+                    <div class="vt-selw">
+                      <select name="circuit_flow">
+                        <% ['none','rtscts','xonxoff'].forEach(v => { %>
+                          <option value="<%= v %>" <%= (c.flowControl || 'none') === v ? 'selected' : '' %>><%= v %></option>
+                        <% }) %>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </details>
 
               <div class="vt-divider"></div>
 
@@ -706,10 +756,10 @@ function updateLaneBadges(){
   });
 }
 
-/* ── port select ↔ manual ── */
-function wirePortFields(container){
-  const sel = container.querySelector('.port-select');
-  const inp = container.querySelector('.port-manual');
+/* ── combo desplegable ↔ escritura a mano (puerto y baud) ── */
+function wireCombo(container, selCls, inpCls, toggleCls){
+  const sel = container.querySelector(selCls);
+  const inp = container.querySelector(inpCls);
   if (!sel || !inp) return;
   sel.addEventListener('change', () => { if (sel.value) inp.value = sel.value; });
   inp.addEventListener('input', () => {
@@ -717,8 +767,18 @@ function wirePortFields(container){
     if (!opt && inp.value) { opt = new Option(inp.value, inp.value); sel.appendChild(opt); }
     sel.value = inp.value;
   });
+  const toggle = container.querySelector(toggleCls);
+  toggle?.addEventListener('click', () => {
+    const open = inp.classList.toggle('is-hidden') === false;
+    toggle.classList.toggle('is-open', open);
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) inp.focus();
+  });
 }
+function wirePortFields(container){ wireCombo(container, '.port-select', '.port-manual', '.port-manual-toggle'); }
+function wireBaudFields(container){ wireCombo(container, '.baud-select', '.baud-manual', '.baud-manual-toggle'); }
 document.querySelectorAll('.circuit-row__field--port').forEach(wirePortFields);
+document.querySelectorAll('.js-baud-field').forEach(wireBaudFields);
 
 /* ── escenario (circuito guardado) ↔ filas de DS ───────────────────────────
    Un escenario puede tener varios circuitos (sub-lazos de 2-8 carriles). Al
@@ -804,31 +864,50 @@ function circuitRowHTML(){
         <div class="vt-selw"><select class="port-select" name="circuit_port">
           <option value="">— ${LANG === 'es' ? 'seleccionar' : 'select'} —</option>${portOptions}
         </select></div>
-        <input class="vt-inp is-mono port-manual" type="text" style="margin-top:7px;font-size:13px"
-          placeholder="${LANG === 'es' ? 'o escribe el path' : 'or type path'}">
+        <button type="button" class="port-manual-toggle" aria-expanded="false">
+          <svg class="port-manual-toggle__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          <span>${LANG === 'es' ? 'Escribir el path a mano' : 'Type the path manually'}</span>
+        </button>
+        <input class="vt-inp is-mono port-manual is-hidden" type="text" style="margin-top:7px;font-size:13px"
+          placeholder="${LANG === 'es' ? 'p. ej. /dev/ttys003' : 'e.g. COM3'}">
       </div>
-      <div class="vt-field circuit-row__field circuit-row__field--baud">
+      <div class="vt-field circuit-row__field circuit-row__field--baud js-baud-field">
         <label>Baud rate</label>
-        <input class="vt-inp is-mono" type="number" name="circuit_baud" list="baud-options"
-               min="300" max="921600" step="1" value="57600" required>
-      </div>
-      <div class="vt-field circuit-row__field">
-        <label>Data bits</label>
-        <div class="vt-selw"><select name="circuit_databits"><option value="7">7</option><option value="8" selected>8</option></select></div>
-      </div>
-      <div class="vt-field circuit-row__field">
-        <label>${LANG === 'es' ? 'Paridad' : 'Parity'}</label>
-        <div class="vt-selw"><select name="circuit_parity"><option value="none" selected>none</option><option value="even">even</option><option value="odd">odd</option></select></div>
-      </div>
-      <div class="vt-field circuit-row__field">
-        <label>Stop bits</label>
-        <div class="vt-selw"><select name="circuit_stopbits"><option value="1" selected>1</option><option value="2">2</option></select></div>
-      </div>
-      <div class="vt-field circuit-row__field">
-        <label>${LANG === 'es' ? 'Control de flujo' : 'Flow control'}</label>
-        <div class="vt-selw"><select name="circuit_flow"><option value="none" selected>none</option><option value="rtscts">rtscts</option><option value="xonxoff">xonxoff</option></select></div>
+        <div class="vt-selw"><select class="baud-select" name="circuit_baud" required>
+          <option value="9600">9600</option><option value="19200">19200</option><option value="38400">38400</option><option value="56000">56000</option><option value="57600" selected>57600</option><option value="115200">115200</option><option value="230400">230400</option><option value="460800">460800</option><option value="921600">921600</option>
+        </select></div>
+        <button type="button" class="port-manual-toggle baud-manual-toggle" aria-expanded="false">
+          <svg class="port-manual-toggle__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          <span>${LANG === 'es' ? 'Escribir a mano' : 'Type manually'}</span>
+        </button>
+        <input class="vt-inp is-mono baud-manual is-hidden" type="number" min="300" max="921600" step="1"
+          placeholder="${LANG === 'es' ? 'p. ej. 57600' : 'e.g. 57600'}" value="57600" style="margin-top:7px;font-size:13px">
       </div>
     </div>
+    <details class="vt-adv circuit-row__adv">
+      <summary>
+        <svg class="vt-adv__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+        ${LANG === 'es' ? 'Opciones avanzadas del puerto' : 'Advanced port options'}
+      </summary>
+      <div class="vt-adv__body vt-fields vt-fields--3">
+        <div class="vt-field circuit-row__field">
+          <label>Data bits</label>
+          <div class="vt-selw"><select name="circuit_databits"><option value="7">7</option><option value="8" selected>8</option></select></div>
+        </div>
+        <div class="vt-field circuit-row__field">
+          <label>${LANG === 'es' ? 'Paridad' : 'Parity'}</label>
+          <div class="vt-selw"><select name="circuit_parity"><option value="none" selected>none</option><option value="even">even</option><option value="odd">odd</option></select></div>
+        </div>
+        <div class="vt-field circuit-row__field">
+          <label>Stop bits</label>
+          <div class="vt-selw"><select name="circuit_stopbits"><option value="1" selected>1</option><option value="2">2</option></select></div>
+        </div>
+        <div class="vt-field circuit-row__field">
+          <label>${LANG === 'es' ? 'Control de flujo' : 'Flow control'}</label>
+          <div class="vt-selw"><select name="circuit_flow"><option value="none" selected>none</option><option value="rtscts">rtscts</option><option value="xonxoff">xonxoff</option></select></div>
+        </div>
+      </div>
+    </details>
     <div class="vt-divider"></div>
     <div class="vt-group-lbl">${LANG === 'es' ? 'Asignación de carriles' : 'Lane assignment'}</div>
     <div class="vt-fields vt-fields--2">
@@ -848,6 +927,7 @@ function makeCircuitRow(){
   div.className = 'vt-circuit-row circuit-row';
   div.innerHTML = circuitRowHTML();
   wirePortFields(div.querySelector('.circuit-row__field--port'));
+  wireBaudFields(div.querySelector('.js-baud-field'));
   wireCircuitRef(div);
   return div;
 }
