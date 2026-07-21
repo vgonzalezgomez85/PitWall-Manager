@@ -13,6 +13,15 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.11.0] — 2026-07-20
+
+### Añadido
+- **Ya se puede ver, en directo, lo que llega por el cable del cronometraje.** Nueva pantalla **«Visor de tramas»** (`/diagnostico/tramas`), a la que se entra desde **Solución de problemas**. Muestra **cada trama que manda el hardware** según va llegando, ya **traducida a lenguaje normal**: hora, circuito, fuente y una etiqueta que se entiende —**«Cruce — carril 3»**, **«GO — arranque de manga»**, **«Fin de manga»**, **«Latido»**, **«Stop forzado»**…— con los datos que importan ya formateados (carril, tiempo de vuelta, número de vuelta, duración de la manga) y, debajo, la trama completa en hexadecimal. Sirve para lo que hasta ahora había que hacer a ciegas: saber si el **DS-300** o el **BART** están hablando, qué están diciendo y si el problema es del cable, de la caja o de PitWall. Vale para **las dos fuentes**, incluido el **agrupador** de varias cajas.
+- **Se ve qué parte del protocolo entiende PitWall y cuál no.** Los bytes que PitWall **no interpreta** salen **atenuados** en la trama: en un cruce del DS-300 son **10 de 21**, casi la mitad. Es lo que permite ir descifrando lo que queda del protocolo con hardware real delante, en vez de a base de suposiciones.
+- **Salen a la luz las tramas que antes se descartaban en silencio.** El visor **marca** lo que el cronometraje tira sin decir nada: cruces con un tiempo **fuera de rango** (un rebote o un coche parado), tramas **truncadas** y tramas que el lector **ignora por no tener sentido en ese momento** (por ejemplo, un semáforo en verde sin un GO previo). También señala las **ráfagas de retransmisión** de los adaptadores PL2303 —los que repiten la misma trama 2 o 3 veces—, indicando **cuántas copias se descartaron por duplicadas** y dejando ver las sub-tramas reales anidadas. Hasta ahora nada de esto se veía.
+- **Pensado para mirar con una carrera en marcha.** Botones de **Pausar/Reanudar** (congela el pintado sin desconectar nada), **Limpiar**, y filtros **«Ocultar latidos»** y **«Solo cruces»**, más los contadores de **tramas totales** y **tramas por segundo**. Muestra las **últimas 500** tramas: es un visor en vivo, no un registro histórico.
+- **Con la pantalla cerrada no cuesta absolutamente nada.** PitWall solo decodifica y envía tramas **mientras alguien tiene el visor abierto**. Con la página cerrada no se decodifica ni se manda nada por la red — importante para que ese chorro de tramas no acabe llegando a los móviles de los equipos.
+
 ## [1.10.2] — 2026-07-19
 
 ### Mejorado

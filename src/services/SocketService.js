@@ -99,6 +99,25 @@ module.exports = {
         }
       });
 
+      // ── Visor de tramas: presencia ────────────────────────────────────────
+      // Las tramas solo se decodifican y emiten si hay alguien mirando el visor;
+      // `emit` es broadcast global y no queremos el chorro de tramas del DS
+      // llegando a los móviles de los equipos.
+      let framesJoined = false;
+      const leaveFrames = () => {
+        if (!framesJoined) return;
+        framesJoined = false;
+        require('./FrameMonitor').removeViewer();
+      };
+      socket.on('diag:frames:join', () => {
+        if (framesJoined) return;
+        framesJoined = true;
+        const FrameMonitor = require('./FrameMonitor');
+        FrameMonitor.addViewer();
+        socket.emit('diag:frames', FrameMonitor.getRecent());   // historial inicial
+      });
+      socket.on('diag:frames:leave', leaveFrames);
+
       // ── Race-live viewer presence tracking (localhost only) ───────────────
       let counted = false;
       socket.on('race:live:join', () => {
@@ -109,6 +128,7 @@ module.exports = {
       });
       socket.on('disconnect', () => {
         if (counted) { counted = false; localLiveViewers = Math.max(0, localLiveViewers - 1); }
+        leaveFrames();
         setImmediate(() => this._emitConnections());
       });
 

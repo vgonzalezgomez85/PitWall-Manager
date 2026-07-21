@@ -3889,3 +3889,136 @@ body:has(.vt-page) { background: #000; }
 }
 
 /* Semaphore overlay → estilos en /css/semaphore.css */
+
+/* ── Visor de tramas en vivo (/diagnostico/tramas) ─────────────────────── */
+/* Barra de control: contadores + pausa/limpiar + filtros. */
+.vt-frames-bar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 12px 14px; margin-bottom: 14px;
+  background: var(--vt-panel, #0c0d11);
+  border: 1px solid var(--vt-border, rgba(255,255,255,.08));
+  border-radius: 12px;
+}
+.vt-frames-bar__sep { flex: 1 1 auto; }
+.vt-frames-stat {
+  display: inline-flex; align-items: baseline; gap: 6px;
+  font-family: 'IBM Plex Mono', monospace; font-size: 12.5px;
+  color: var(--vt-mute, #8a8a93);
+}
+.vt-frames-stat b { color: var(--vt-text, #f4f4f6); font-size: 14px; font-weight: 600; }
+.vt-chk {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 13px; color: var(--vt-mute, #8a8a93);
+  cursor: pointer; user-select: none;
+  padding: 6px 10px; border-radius: 9px;
+  background: var(--vt-surface, #14161c);
+  box-shadow: inset 0 0 0 1px var(--vt-border, rgba(255,255,255,.08));
+}
+.vt-chk:hover { color: var(--vt-text, #f4f4f6); }
+.vt-chk input { accent-color: var(--vt-red, #ef4651); margin: 0; }
+.vt-chk:has(input:checked) { color: var(--vt-text, #f4f4f6); box-shadow: inset 0 0 0 1px var(--vt-border-2, rgba(255,255,255,.16)); }
+
+/* Lista. El scroll es propio para no arrastrar la página entera. */
+.vt-frames {
+  max-height: calc(100vh - 330px); min-height: 260px; overflow-y: auto;
+  background: var(--vt-panel-2, #08090c);
+  border: 1px solid var(--vt-border, rgba(255,255,255,.08));
+  border-radius: 12px; padding: 4px;
+}
+.vt-frames.is-paused { box-shadow: inset 0 0 0 1px rgba(250,204,21,.28); }
+
+/* Filtros: puro CSS sobre data-kind, así cambiar de filtro no repinta nada. */
+.vt-frames.hide-hb  .vt-frame[data-kind="heartbeat"] { display: none; }
+.vt-frames.only-cross .vt-frame:not([data-kind="crossing"]):not(.vt-frame--sub) { display: none; }
+/* Un burst que trae cruces dentro SÍ interesa: es justo la retransmisión del
+   PL2303 que se está depurando. Se deja el padre y se ocultan sus subs que no
+   sean cruces. */
+.vt-frames.only-cross .vt-frame[data-kind="burst"]:has(.vt-frame[data-kind="crossing"]) { display: block; }
+.vt-frames.only-cross .vt-frame--sub:not([data-kind="crossing"]) { display: none; }
+
+/* Fila de trama. */
+.vt-frame {
+  padding: 7px 10px; border-radius: 9px;
+  border-left: 3px solid var(--vt-mute-2, #5c5c64);
+  background: rgba(255,255,255,.015);
+  margin-bottom: 3px;
+}
+.vt-frame__head { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
+.vt-frame__time {
+  font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+  color: var(--vt-mute-2, #5c5c64); flex: none;
+}
+.vt-frame__circ {
+  font-family: 'Saira Condensed', sans-serif; font-weight: 700;
+  font-size: 12px; letter-spacing: .06em;
+  padding: 1px 7px; border-radius: 6px; flex: none;
+  background: rgba(255,255,255,.06); color: var(--vt-mute, #8a8a93);
+}
+.vt-frame__src {
+  font-family: 'Saira Condensed', sans-serif; font-weight: 700;
+  font-size: 11px; letter-spacing: .08em;
+  padding: 1px 6px; border-radius: 6px; flex: none;
+  background: rgba(168,85,247,.14); color: #c9a6f5;
+}
+.vt-frame__badge { font-size: 13px; flex: none; }
+.vt-frame__label { font-size: 13.5px; color: var(--vt-text, #f4f4f6); font-weight: 500; }
+.vt-frame__fields { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+.vt-frame__f {
+  font-family: 'IBM Plex Mono', monospace; font-size: 11.5px;
+  color: var(--vt-mute, #8a8a93);
+  background: rgba(255,255,255,.04); padding: 1px 7px; border-radius: 6px;
+}
+.vt-frame__f b { color: var(--vt-text, #f4f4f6); font-weight: 600; }
+
+/* Hex: los bytes que el parser NO interpreta van atenuados. */
+.vt-frame__hex {
+  font-family: 'IBM Plex Mono', monospace; font-size: 11.5px;
+  margin-top: 4px; line-height: 1.5; word-break: break-all;
+  color: var(--vt-text, #f4f4f6);
+}
+.vt-hb { padding: 0 1px; }
+.vt-hb.is-unknown { opacity: .26; }
+.vt-hb:hover { background: rgba(255,255,255,.12); border-radius: 3px; }
+
+/* Sub-tramas de un burst: colgadas del padre. */
+.vt-frame__subs {
+  margin: 5px 0 2px 14px; padding-left: 10px;
+  border-left: 1px dashed var(--vt-border-2, rgba(255,255,255,.16));
+}
+.vt-frame--sub { background: none; margin-bottom: 0; padding: 4px 8px; }
+
+/* Color por tipo de trama. */
+.vt-frame.is-crossing {
+  border-left-color: var(--vt-green, #22c55e);
+  background: rgba(34,197,94,.06);
+}
+.vt-frame.is-crossing .vt-frame__label { color: #8ee6ab; font-weight: 600; }
+.vt-frame.is-go      { border-left-color: var(--vt-green, #22c55e); }
+.vt-frame.is-go .vt-frame__label { color: #8ee6ab; }
+.vt-frame.is-warn    { border-left-color: var(--vt-amber, #facc15); }
+.vt-frame.is-warn .vt-frame__label { color: #f3d579; }
+.vt-frame.is-end     { border-left-color: var(--vt-red-deep, #d8323d); }
+.vt-frame.is-end .vt-frame__label { color: #ff8e95; }
+.vt-frame.is-bad     { border-left-color: var(--vt-red, #ef4651); background: rgba(239,70,81,.07); }
+.vt-frame.is-bad .vt-frame__label { color: #ff8e95; font-weight: 600; }
+.vt-frame.is-faint   { border-left-color: transparent; opacity: .42; }
+.vt-frame.is-faint .vt-frame__label { color: var(--vt-mute, #8a8a93); }
+.vt-frame.is-drop    { border-left-color: transparent; opacity: .42; }
+.vt-frame.is-drop .vt-frame__label { color: var(--vt-mute, #8a8a93); text-decoration: line-through; }
+
+/* Estado vacío del visor (más compacto que .vt-empty). */
+.vt-frames-empty {
+  text-align: center; padding: 50px 20px;
+  color: var(--vt-mute-2, #5c5c64); font-size: 13.5px;
+}
+.vt-frames-empty__t {
+  font-family: 'Saira Condensed', sans-serif; font-weight: 700; font-size: 18px;
+  text-transform: uppercase; letter-spacing: .05em;
+  color: var(--vt-mute, #8a8a93); margin-bottom: 6px;
+}
+
+@media (max-width: 720px) {
+  .vt-frames { max-height: calc(100vh - 400px); }
+  .vt-frame__fields { margin-left: 0; width: 100%; }
+  .vt-frames-bar__sep { display: none; }
+}

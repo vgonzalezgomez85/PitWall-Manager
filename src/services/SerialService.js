@@ -21,6 +21,7 @@ const { performance } = require('perf_hooks');
 const EventEmitter = require('events');
 const Settings     = require('../models/Settings');
 const DebugLogger  = require('./DebugLogger');
+const FrameMonitor = require('./FrameMonitor');
 
 // Fixed offset so performance.now() (relative) maps to epoch ms (float, ~0.01ms precision)
 const _PERF_OFFSET = Date.now() - performance.now();
@@ -462,6 +463,17 @@ class CircuitConnection {
     if (this._frameBuf.length === 0) return;
     const frame = this._frameBuf;
     const ts    = this._frameStartTs;
+    // Visor de tramas en vivo. Aquí, y no en _processFrame, porque este es el
+    // punto de entrada de nivel superior: el de-merge se llama a sí mismo por
+    // recursión y desde ahí veríamos cada sub-trama duplicada. Además así el
+    // visor recibe la ráfaga tal y como vino por el cable. No debe poder tumbar
+    // el cronometraje: si falla, se ignora.
+    try {
+      FrameMonitor.push('ds300', this._circuitIndex + 1, frame, ts, {
+        boxesPerPort: this._boxesPerPort,
+        laneOffset:   this._laneOffset,
+      });
+    } catch {}
     try {
       this._processFrame(frame, ts);
     } catch (err) {

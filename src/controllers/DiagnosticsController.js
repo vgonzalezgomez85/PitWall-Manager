@@ -63,6 +63,18 @@ class DiagnosticsController {
     if (req.session) req.session.flash = null;
   }
 
+  // Visor de tramas en vivo. La página no precarga tramas: el historial llega
+  // por socket al emitir `diag:frames:join`, así el gate de FrameMonitor es la
+  // única puerta de entrada y no hay dos caminos que mantener.
+  static frames(req, res) {
+    const lang = req.session?.lang || 'es';
+    res.render('diagnostico/tramas', {
+      lang,
+      t: req.t,
+      link: SerialService.getLinkStatus(),
+    });
+  }
+
   static clearBoundary(req, res) {
     TimingService.clearTandaBoundary();
     if (req.session) req.session.flash = { type: 'success', text: 'Boundary de tanda limpiado.' };

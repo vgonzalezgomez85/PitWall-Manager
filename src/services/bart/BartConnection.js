@@ -337,6 +337,13 @@ class BartConnection {
   }
 
   _onFrame(msgType, frame) {
+    // Visor de tramas en vivo. Aquí la trama ya pasó el CRC en FrameParser.
+    // No debe poder tumbar el cronometraje: si falla, se ignora.
+    try {
+      require('../FrameMonitor').push('bart', this._circuitIndex + 1, frame, Date.now(), {
+        laneOffset: this._laneOffset,
+      });
+    } catch {}
     if (msgType === P.MSG.LAP)         this._onLap(frame);
     else if (msgType === P.MSG.STATUS) this._onStatus(frame);
     // ACK: nada que hacer en el camino de timing.

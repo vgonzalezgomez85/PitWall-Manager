@@ -1,0 +1,95 @@
+<%- include('../partials/header', { lang, pageTitle: 'Visor de tramas' }) %>
+
+<%
+// Descripción de la fuente para el estado vacío: lo que el operador necesita
+// para saber si el silencio es normal o es que no hay nadie hablando. La fuente
+// sale de los circuitos, no de una constante: con BART decir "DS-300" mandaría a
+// buscar el fallo al cable equivocado.
+const circuits = link.circuits || [];
+const anyBart  = circuits.some(c => c.isBart);
+const anyDs    = circuits.some(c => !c.isBart);
+const srcLabel = link.simulating ? 'Simulación'
+               : anyBart && anyDs ? 'DS-300 + BART'
+               : anyBart          ? 'BART'
+               : anyDs            ? 'DS-300'
+               :                    'sin fuente';
+const portList = (link.ports && link.ports.length) ? link.ports.join(' · ') : 'sin puerto';
+%>
+
+<div class="vt-page">
+  <div class="vt-wrap">
+
+    <a href="/diagnostico" class="vt-back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Solución de problemas
+    </a>
+
+    <div class="vt-head" style="align-items:flex-start;justify-content:flex-start;gap:16px;flex-wrap:nowrap">
+      <div class="vt-head__icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l3-7 4 14 3-7h6"/></svg>
+      </div>
+      <div>
+        <h1>Visor de tramas</h1>
+        <p class="vt-lead">
+          Lo que llega por el cable, byte a byte y en directo. Los bytes atenuados
+          son los que PitWall <strong>no</strong> interpreta.
+        </p>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+        <span class="vt-badge <%= link.connected ? 'is-ok is-live' : (link.simulating ? 'is-warn' : 'is-bad') %>">
+          <span class="vt-badge__d"></span>
+          <%= link.simulating ? 'Simulación' : (link.connected ? srcLabel + ' conectado' : 'Sin señal') %>
+        </span>
+      </div>
+    </div>
+
+    <!-- CONTROLES -->
+    <div class="vt-frames-bar">
+      <button type="button" id="btnPause" class="vt-btn vt-btn--ghost vt-btn--sm">
+        <svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg>
+        <span id="btnPauseTxt">Pausar</span>
+      </button>
+      <button type="button" id="btnClear" class="vt-btn vt-btn--ghost vt-btn--sm">
+        <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/></svg>
+        Limpiar
+      </button>
+
+      <label class="vt-chk">
+        <input type="checkbox" id="chkHideHb" checked>
+        Ocultar latidos
+      </label>
+      <label class="vt-chk">
+        <input type="checkbox" id="chkOnlyCross">
+        Solo cruces
+      </label>
+
+      <span class="vt-frames-bar__sep"></span>
+
+      <span class="vt-frames-stat"><b id="statTotal">0</b> tramas</span>
+      <span class="vt-frames-stat"><b id="statRate">0,0</b> /s</span>
+      <span class="vt-badge is-neutral" id="statPaused" hidden>
+        <span class="vt-badge__d"></span> En pausa · <span id="statBuffered">0</span> en cola
+      </span>
+    </div>
+
+    <!-- LISTA -->
+    <div class="vt-frames hide-hb" id="framesList"
+         data-src="<%= srcLabel %>" data-ports="<%= portList %>">
+      <div class="vt-frames-empty" id="framesEmpty">
+        <div class="vt-frames-empty__t">Esperando tramas…</div>
+        Fuente: <%= srcLabel %> · <span class="vt-mono"><%= portList %></span>
+      </div>
+    </div>
+
+    <p class="vt-note" style="margin-top:10px;color:var(--vt-mute-2)">
+      Solo se decodifica mientras esta página está abierta. Se muestran las últimas
+      500 tramas.
+    </p>
+
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/diagnostico-tramas.js?v=<%= Date.now() %>"></script>
+
+<%- include('../partials/footer') %>

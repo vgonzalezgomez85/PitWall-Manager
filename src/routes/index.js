@@ -278,6 +278,7 @@ router.get( '/results',                           SessionController.resultsIndex
 router.get( '/results/:id',                       SessionController.publicResults);
 
 router.get( '/diagnostico',                       DiagnosticsController.index);
+router.get( '/diagnostico/tramas',                DiagnosticsController.frames);
 router.post('/diagnostico/clear-boundary',        DiagnosticsController.clearBoundary);
 router.post('/diagnostico/cancel-active',         DiagnosticsController.cancelActive);
 router.post('/diagnostico/clear-pending',         DiagnosticsController.clearPending);

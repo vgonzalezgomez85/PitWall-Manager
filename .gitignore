@@ -25,3 +25,6 @@ info para proyecto infolap slot/
 # Certificados TLS locales (incluyen la clave privada de la CA) — se generan
 # solos en cada instalación, NUNCA se suben.
 database/tls/
+
+# Datos locales de pruebas de carrera (no son código)
+carrera test vicos/
