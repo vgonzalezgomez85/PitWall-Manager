@@ -566,10 +566,12 @@
       const gap = (i === 0 || p.projectedTotal == null || leader.projectedTotal == null)
         ? '—' : '-' + (leader.projectedTotal - p.projectedTotal).toFixed(1) + 'v';
       const proy = p.projectedTotal != null ? p.projectedTotal.toFixed(1) + 'v' : '—';
+      // Estimada PROVISIONAL: la 1ª manga aún no ha fijado su referencia (60 %).
+      const prov = p.provisional ? '<span title="Estimada provisional" style="color:#d29922">*</span>' : '';
       return `<tr class="${isMe ? 'ls-row--me' : ''}">
         <td>${p.position}</td>
         <td>${p.name}</td>
-        <td><b>${proy}</b></td>
+        <td><b>${proy}</b>${prov}</td>
         <td>${p.total}</td>
         <td>${gap}</td>
         <td>${fmtMs(p.avgLapMs)}</td>

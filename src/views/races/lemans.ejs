@@ -385,11 +385,16 @@
       return p === 1 ? 'p1' : p === 2 ? 'p2' : p === 3 ? 'p3' : '';
     }
 
-    function gapLabel(gap) {
-      if (gap === 0) return `<span class="gap-badge gap--leader">—</span>`;
-      const lbl = `+${gap} ${LANG === 'es' ? (gap === 1 ? 'vlt.' : 'vlts.') : (gap === 1 ? 'lap' : 'laps')}`;
-      const cls = gap === 1 ? 'gap--1lap' : gap <= 2 ? 'gap--2lap' : '';
-      return `<span class="gap-badge ${cls}">${lbl}</span>`;
+    // Gap FRACCIONARIO: vueltas (con la coma) al líder de distancia + su equivalente
+    // en segundos (gap × media del perseguidor), como el "a XX,X\"" de TicTac.
+    function gapLabel(gap, avgMs) {
+      if (!(gap > 0)) return `<span class="gap-badge gap--leader">—</span>`;
+      const v = gap.toFixed(1).replace('.', ',');
+      const secTxt = (avgMs && avgMs > 0)
+        ? ` <span class="gap-sec" style="color:#8b949e;font-size:.82em">(${(gap * avgMs / 1000).toFixed(1).replace('.', ',')}")</span>`
+        : '';
+      const cls = gap <= 1 ? 'gap--1lap' : gap <= 2 ? 'gap--2lap' : '';
+      return `<span class="gap-badge ${cls}">a ${v} v${secTxt}</span>`;
     }
 
     // ── State ─────────────────────────────────────────────────────────────────
@@ -456,8 +461,12 @@
       rows.forEach(r => {
         const remMs = (r.onTrack ? CUR_REM : 0) + (r.futureRemMs || 0);
         r._remMs = remMs;
+        // Posición fraccionaria: al terminar (fuera de pista) la coma de la última
+        // manga, para que la distancia no colapse a vueltas enteras. En pista manda
+        // el tick vivo (remMs/avg); el servidor refina la coma viva en cada refresco.
+        const frac = r.onTrack ? 0 : (r.lastMangaComa || 0);
         r.projectedRaw = (r.avgLapMs && r.avgLapMs > 0)
-          ? r.totalLaps + remMs / r.avgLapMs
+          ? r.totalLaps + frac + remMs / r.avgLapMs
           : null;
         r.projected = r.projectedRaw != null ? Math.round(r.projectedRaw) : null;
       });
@@ -472,12 +481,14 @@
             || (b.totalLaps - a.totalLaps)
             || ((a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity));
       });
-      const maxLaps   = Math.max(0, ...rows.map(r => r.totalLaps));
       const fastestMs  = Math.min(...rows.map(r => r.bestLapMs ?? Infinity));
+      const leaderRaw  = rows.length && rows[0].projectedRaw != null ? rows[0].projectedRaw : null;
 
       rows.forEach((r, i) => {
         r.position = i + 1;
-        r.gap = maxLaps - r.totalLaps;   // vueltas tras el líder de distancia
+        // Gap FRACCIONARIO al líder de distancia (incluye la coma), no el entero.
+        r.gap = (i === 0 || leaderRaw == null || r.projectedRaw == null)
+          ? 0 : (leaderRaw - r.projectedRaw);
       });
       rows.forEach((r, i) => {
         const above = rows[i - 1];
@@ -515,9 +526,9 @@
             ${driverHtml}
           </td>
           <td>${catHtml}</td>
-          <td class="td-proj">${r.projectedRaw != null ? r.projectedRaw.toFixed(1).replace('.', ',') + 'v' : '—'}</td>
+          <td class="td-proj">${r.projectedRaw != null ? r.projectedRaw.toFixed(1).replace('.', ',') + 'v' : '—'}${r.provisional ? '<span class="proj-prov" title="Estimada provisional: aún no se ha fijado la referencia de la 1ª manga" style="color:#d29922;margin-left:3px">*</span>' : ''}</td>
           <td class="td-laps" id="laps-${r.id}">${r.totalLaps}</td>
-          <td class="td-gap">${gapLabel(r.gap)}</td>
+          <td class="td-gap">${gapLabel(r.gap, r.avgLapMs)}</td>
           <td class="td-avg">${r.avgLapMs != null ? formatMs(r.avgLapMs) : '—'}</td>
           <td class="td-best">${bestHtml}</td>
           <td class="td-psub">${r.psubir != null ? formatMs(r.psubir) : '—'}</td>

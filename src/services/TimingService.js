@@ -375,7 +375,7 @@ class TimingServiceClass {
         lapCount: 0, bestLapMs: null, lastLapMs: null, lastCrossing: startTime,
         avgLapCount: 0, lapsMsSum: 0, lapAvgMs: 0,
         cleanAvgCount: 0, cleanLapsSum: 0, cleanAvgMs: 0,
-        firstLapDone: false, resumeWarmup: false,
+        firstRealLapDone: false, resumeWarmup: false,
         raceBestLapMs: null, raceBestEntity: null,
         pendingPauseAdjustMs: 0,
         refAvgMs: 0, circuitStartTime: null,
@@ -421,7 +421,10 @@ class TimingServiceClass {
       ld.cleanLapsSum  = f.cleanSum || 0;
       ld.cleanAvgMs    = ld.cleanAvgCount ? ld.cleanLapsSum / ld.cleanAvgCount : 0;
       ld.refAvgMs      = ld.cleanAvgMs || ld.lapAvgMs;
-      ld.firstLapDone  = ld.lapCount > 0;
+      // El nombre correcto que lee la lógica de warmup es firstRealLapDone: si
+      // el carril ya cruzó (hay vueltas en disco), el cruce de salida ya se
+      // consumió → la siguiente vuelta tras la restauración NO es warmup.
+      ld.firstRealLapDone = ld.lapCount > 0;
       ld.circuitStartTime = c ? c.startTime : null;
       // `elapsed_ms` es relativo al arranque de SU circuito, así que el último
       // cruce en reloj de pared se reconstruye sumándolo al ancla del circuito.
@@ -1360,6 +1363,14 @@ class TimingServiceClass {
       ld.lastLapMs    = firstLapMs;
       ld.lastCrossing = timestamp;
       // No best/avg update — first crossing isn't a true racing lap.
+      // Este cruce de salida (rejilla→línea, arranque desde parado) YA consume
+      // la única vuelta de calentamiento: es el parcial artefacto. La PRIMERA
+      // VUELTA COMPLETA (el siguiente cruce) es ritmo real y debe entrar en la
+      // media y competir por mejor vuelta, exactamente como la cuenta TicTac.
+      // Sin este flag, el flujo normal marcaría también esa 1ª vuelta completa
+      // como warmup y la sacaría de la media (media de carril ~14 ms baja y una
+      // vuelta menos en el divisor). Verificado al ms contra TicTac (carrera 90).
+      ld.firstRealLapDone = true;
 
       const race    = this.session.race;
       const manga   = this.session.manga;
@@ -1700,6 +1711,21 @@ class TimingServiceClass {
     // nada de lo que ve el usuario, y libera el bucle para el serie y el tick.
     const projection = this._cachedProjection(race.id);
 
+    // Unifica el tiempo total del directo con el de la tabla/proyección: la misma
+    // base BD + la corrección de la vuelta de salida (settledAvg). Sin esto, el
+    // directo excluía la warmup de la manga viva y la tabla la incluía → el
+    // desempate a igualdad de vueltas podía diferir entre panel y resultados.
+    if (Array.isArray(projection)) {
+      const ttByEntity = new Map();
+      projection.forEach(p => ttByEntity.set(`${p.entityType === 'team' ? 't' : 'd'}${p.entityId}`, p.totalTimeMs));
+      rows.forEach(r => {
+        const ld = laneMap[r.lane];
+        const ekey = ld?.teamId ? 't' + ld.teamId : (ld?.driverId ? 'd' + ld.driverId : null);
+        const tt = ekey != null ? ttByEntity.get(ekey) : null;
+        if (tt != null) r.totalTimeMs = tt;
+      });
+    }
+
     return {
       mangaId:      manga.id,
       raceId:       race.id,
@@ -1874,7 +1900,7 @@ class TimingServiceClass {
     // derivan del reloj, NO de la sesión en memoria.
     const activeManga = this.activeMangaOf(raceId);
 
-    let activeMangaId = null, activeRemMs = 0;
+    let activeMangaId = null, activeRemMs = 0, activeDurMs = 0, activeElapsedMs = 0;
     if (activeManga) {
       activeMangaId = activeManga.id;
       const durMs = activeManga.actual_duration_ms > 0 ? activeManga.actual_duration_ms : durDefaultMs;
@@ -1882,7 +1908,9 @@ class TimingServiceClass {
         ? (Date.parse(activeManga.started_at + 'Z') || Date.parse(activeManga.started_at))
         : null;
       const elapsed = startedMs != null ? (Date.now() - startedMs) : 0;
-      activeRemMs = Math.max(0, durMs - elapsed);
+      activeRemMs     = Math.max(0, durMs - elapsed);
+      activeDurMs     = durMs;
+      activeElapsedMs = Math.max(0, elapsed);
     }
 
     // ── Mangas PENDIENTES (aún por correr) por entidad. Excluye la activa: su
@@ -1910,6 +1938,24 @@ class TimingServiceClass {
     // futura si estuviera guardada; como aún no han corrido, usamos el default
     // de la carrera (mismo criterio que el resto de vistas).
     const futureMangaDurMs = durDefaultMs;
+
+    // ── Último cruce (elapsed_ms) de cada entidad en la manga ACTIVA, para la
+    // posición fraccionaria VIVA dentro de la vuelta en curso (liveFrac). 100 % BD.
+    const lastElapsedById = {};
+    if (activeMangaId) {
+      const lapIdCol = isTeam ? 'team_id' : 'driver_id';
+      db.prepare(`
+        SELECT ${lapIdCol} AS eid, MAX(elapsed_ms) AS last_el
+        FROM laps
+        WHERE manga_id = ? AND is_ghost = 0 AND ${lapIdCol} IS NOT NULL
+        GROUP BY eid
+      `).all(activeMangaId).forEach(r => { lastElapsedById[r.eid] = r.last_el || 0; });
+    }
+
+    // ── 1ª manga por entidad (para marcar la estimada PROVISIONAL mientras esa
+    // manga aún no ha cruzado el 60 % → settledAvg no bloqueado).
+    const settled = Lap.startSettledByEntity(raceId);
+    const entKey  = (p) => `${p.entity_type}:${p.entity_id}`;
 
     // ── Agregado por entidad (media simple, total, coma, best) desde BD.
     const agg = this.raceAggregate(raceId).filter(p => p.entity_id != null);
@@ -1941,10 +1987,33 @@ class TimingServiceClass {
       const futureRemMs = (pendingById[p.entity_id] || 0) * futureMangaDurMs;
       const remMs = (onTrack ? activeRemMs : 0) + futureRemMs;
       const avg   = p.avg_lap_ms;
-      // Proyección MEDIA-BASED: total + tiempo_restante / media.
+      // Posición FRACCIONARIA dentro de la vuelta en curso, para que la distancia
+      // no colapse a vueltas enteras al terminar (bug del gap 3,0 vs 2,8 real):
+      //   · en pista → coma VIVA (now − último cruce) / media, acotada a 0,99.
+      //   · si no (manga finalizada / descansa) → coma de la ÚLTIMA manga (la que
+      //     ya desempata en resultados). Sin esto, al caer la bandera se perdía la
+      //     posición en pista y el gap se redondeaba a entero.
+      let frac = 0;
+      if (avg != null && avg > 0) {
+        if (onTrack && lastElapsedById[p.entity_id] != null) {
+          frac = Math.min(0.99, Math.max(0, (activeElapsedMs - lastElapsedById[p.entity_id]) / avg));
+        } else {
+          frac = p.last_manga_coma || 0;
+        }
+      }
+      // Proyección MEDIA-BASED: total + posición fraccionaria + tiempo_restante / media.
+      // No hay doble conteo: el tiempo ya gastado en la vuelta en curso va en
+      // `elapsed` (no en remMs), así que `frac` (lo ya rodado sin contar como
+      // vuelta entera) es aditivo con remMs/avg (lo que queda por rodar).
       const projRaw = (avg != null && avg > 0)
-        ? p.total_laps + remMs / avg
+        ? p.total_laps + frac + remMs / avg
         : null;
+      // Estimada PROVISIONAL: la 1ª manga de la entidad es la activa y aún no ha
+      // cruzado el 60 % de su duración → settledAvg (tiempo total) no bloqueado.
+      const first = settled.get(entKey(p));
+      const provisional = !!(first && activeMangaId != null
+        && first.firstMangaId === activeMangaId
+        && activeElapsedMs < 0.6 * activeDurMs);
       return {
         entityId:    p.entity_id,
         entityType:  p.entity_type,
@@ -1959,6 +2028,7 @@ class TimingServiceClass {
         remainingMs: remMs,
         futureRemMs,
         onTrack,
+        provisional,
         projectedRaw: projRaw,
       };
     });
@@ -1998,6 +2068,11 @@ class TimingServiceClass {
         const req = lapsNeeded > 0 ? r.remainingMs / lapsNeeded : null;
         if (req != null && req > 0 && (!r.bestLapMs || req >= r.bestLapMs)) avgToCatch = Math.round(req);
       }
+      // Gap en SEGUNDOS = vueltas_gap × media del PERSEGUIDOR (esta fila). Es lo
+      // que tardaría este coche en recuperar esa distancia a su ritmo (cuadra con
+      // el "a XX,X\"" de TicTac: 2,8 v × 12,67 s ≈ 35,5").
+      const gapSec     = (gapV     != null && r.avgLapMs) ? Math.round(gapV     * r.avgLapMs) : null;
+      const gapSecLead = (gapVLead != null && r.avgLapMs) ? Math.round(gapVLead * r.avgLapMs) : null;
       return {
         position:       i + 1,
         entityId:       r.entityId,
@@ -2008,14 +2083,19 @@ class TimingServiceClass {
         avgLapMs:       r.avgLapMs,
         bestLapMs:      r.bestLapMs,
         comaTotal:      +r.comaTotal.toFixed ? +r.comaTotal.toFixed(3) : r.comaTotal,
+        lastMangaComa:  +(r.lastMangaComa || 0).toFixed(3),
         mangasRaced:    r.mangasRaced,
+        totalTimeMs:    r.totalTimeMs,   // total corregido (settledAvg) — unifica directo/tabla
         remainingMs:    r.remainingMs,
         futureRemMs:    r.futureRemMs,
         onTrack:        r.onTrack,
+        provisional:    r.provisional,
         projectedRaw:   r.projectedRaw,
         projectedTotal: r.projectedRaw != null ? +r.projectedRaw.toFixed(1) : null,
         gapV:           gapV     != null ? +gapV.toFixed(2)     : null,
         gapVLeader:     gapVLead != null ? +gapVLead.toFixed(2) : null,
+        gapSec:         gapSec,
+        gapSecLeader:   gapSecLead,
         avgToCatch,
       };
     });

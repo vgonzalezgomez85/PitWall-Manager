@@ -45,6 +45,12 @@ function _mangaOf(lapId) {
   return row ? row.manga_id : null;
 }
 
+// Caché de la corrección de salida por carrera, invalidada por el contador de
+// mutaciones (ver startSettledByEntity). Acotada a unas pocas carreras: solo
+// conviven la viva y alguna abierta en un móvil/Le Mans.
+const _settledCache = new Map();   // raceId → { mut, map }
+const _SETTLED_MAX = 8;
+
 class Lap {
   /** Nº de mutaciones que han tocado alguna manga distinta de `mangaId`. */
   static mutationsOutside(mangaId) {
@@ -267,6 +273,75 @@ class Lap {
     return out;
   }
 
+  /**
+   * Corrección de la vuelta de SALIDA para el TIEMPO TOTAL (solo el total, NUNCA
+   * la media de carril / avg_lap_ms, que sigue clavando TicTac).
+   *
+   * En la 1ª manga de cada entidad, el cruce de salida (is_warmup) trae un tiempo
+   * artefacto (rejilla→línea, arranque desde parado: ~1,2 s) que infravalora el
+   * tiempo total ~11 s. Para el total y el desempate se sustituye por `settledAvg`:
+   * media de las vueltas COMPLETAS (is_warmup=0, is_ghost=0 — INCLUYE salidas y
+   * pit-stops) cuyo cruce cae en el primer 60 % de la duración de la manga. Es
+   * determinista (sale de las vueltas y de la duración ya en disco) y restart-safe.
+   *
+   * Solo la 1ª manga de la entidad (la de menor manga_id con vueltas). Mangas 2+
+   * sin cambios. Devuelve Map key `team:ID` | `driver:ID` →
+   *   { firstMangaId, warmupMs, settledAvg, delta }  (delta = settledAvg − warmupMs).
+   */
+  static startSettledByEntity(raceId) {
+    const mut = _mutTotal;
+    const c = _settledCache.get(raceId);
+    if (c && c.mut === mut) return c.map;
+
+    const rows = db.prepare(`
+      WITH firsts AS (
+        SELECT COALESCE(l.team_id, l.driver_id) AS eid,
+               CASE WHEN l.team_id IS NOT NULL THEN 'team' ELSE 'driver' END AS etype,
+               MIN(l.manga_id) AS first_manga
+        FROM laps l
+        WHERE l.race_id = ? AND l.is_ghost = 0 AND l.manga_id IS NOT NULL
+          AND (l.team_id IS NOT NULL OR l.driver_id IS NOT NULL)
+        GROUP BY eid, etype
+      )
+      SELECT f.eid AS eid, f.etype AS etype, f.first_manga AS first_manga,
+        (SELECT COALESCE(SUM(w.lap_time_ms), 0)
+           FROM laps w
+          WHERE w.manga_id = f.first_manga AND w.is_ghost = 0 AND w.is_warmup = 1
+            AND COALESCE(w.team_id, w.driver_id) = f.eid) AS warmup_ms,
+        (SELECT AVG(cp.lap_time_ms)
+           FROM laps cp JOIN mangas m ON m.id = cp.manga_id
+          WHERE cp.manga_id = f.first_manga AND cp.is_ghost = 0 AND cp.is_warmup = 0
+            AND COALESCE(cp.team_id, cp.driver_id) = f.eid
+            AND cp.elapsed_ms <= 0.6 * COALESCE(m.actual_duration_ms,
+                  (SELECT manga_duration_minutes FROM races WHERE id = ?) * 60000)
+        ) AS settled_avg
+      FROM firsts f
+    `).all(raceId, raceId);
+
+    const map = new Map();
+    for (const r of rows) {
+      const delta = (r.settled_avg != null && r.warmup_ms > 0) ? (r.settled_avg - r.warmup_ms) : 0;
+      map.set(`${r.etype}:${r.eid}`, {
+        firstMangaId: r.first_manga, warmupMs: r.warmup_ms,
+        settledAvg: r.settled_avg, delta,
+      });
+    }
+
+    _settledCache.set(raceId, { mut, map });
+    while (_settledCache.size > _SETTLED_MAX) _settledCache.delete(_settledCache.keys().next().value);
+    return map;
+  }
+
+  /** Aplica la corrección de salida a total_time_ms sobre filas de forma pública. */
+  static _applyStartSettled(raceId, rows) {
+    const corr = Lap.startSettledByEntity(raceId);
+    for (const r of rows) {
+      const c = corr.get(r.entity_type + ':' + r.entity_id);
+      if (c && c.delta) r.total_time_ms += c.delta;
+    }
+    return rows;
+  }
+
   /** Funde varias sumas crudas de la misma entidad en una sola fila con la forma pública. */
   static _mergeAgg(raceId, partes) {
     const acc = {};
@@ -318,6 +393,11 @@ class Lap {
       last_manga_coma: lastComa[k] || 0,   // desempate oficial
     }));
 
+    // Corrección de la vuelta de salida sobre total_time_ms (1ª manga de cada
+    // entidad). Se aplica ANTES de ordenar para que el desempate por tiempo use
+    // el total corregido, idéntico al de aggregateByRace (comparado en tests).
+    Lap._applyStartSettled(raceId, rows);
+
     // Desempate a igualdad de vueltas: la coma de la ÚLTIMA manga (quién iba más
     // adelantado en pista al final). El tiempo total queda como criterio posterior
     // por si empataran también en esa coma. DEBE coincidir con aggregateByRace.
@@ -344,7 +424,7 @@ class Lap {
     // best_lap_ms still excludes exits so a crashed lap can't become "best",
     // y también la vuelta 1 (cruce de salida: en datos antiguos se guardó sin
     // is_warmup y un cruce a 3s del GO salía como mejor vuelta de la carrera).
-    return db.prepare(`
+    const rows = db.prepare(`
       SELECT
         COALESCE(t.id,   d.id)   AS entity_id,
         COALESCE(t.name, d.name) AS entity_name,
@@ -394,6 +474,16 @@ class Lap {
                last_manga_coma DESC,
                total_time_ms ASC
     `).all(raceId);
+
+    // Corrección de la vuelta de salida (1ª manga). Cambia total_time_ms, así que
+    // hay que reordenar en JS con el MISMO comparador que _mergeAgg — el ORDER BY
+    // de SQL ordenaba por el total crudo. Así ambas vías dan idéntico resultado.
+    Lap._applyStartSettled(raceId, rows);
+    rows.sort((x, y) =>
+      (y.total_laps - x.total_laps) ||
+      ((y.last_manga_coma || 0) - (x.last_manga_coma || 0)) ||
+      (x.total_time_ms - y.total_time_ms));
+    return rows;
   }
 
   // Per-lane breakdown for one entity across all mangas of a race

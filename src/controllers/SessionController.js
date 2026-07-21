@@ -751,7 +751,12 @@ class SessionController {
         projectedRaw:    p.projectedRaw,
         projected:       p.projectedTotal != null ? Math.round(p.projectedTotal) : null,
         gapV:            p.gapV,
+        gapSec:          p.gapSec,
         avgToCatch:      p.avgToCatch,
+        // Posición fraccionaria al terminar (coma de la última manga): la usa el
+        // cliente para que la distancia/gap no colapse a vueltas enteras.
+        lastMangaComa:   p.lastMangaComa ?? 0,
+        provisional:     p.provisional || false,
         futureRemMs:     p.futureRemMs,   // tiempo de mangas futuras (sin la activa)
         onTrack:         p.onTrack || onTrackTeams.includes(p.entityId),
         currentLane:     teamToLane[p.entityId] ?? null,

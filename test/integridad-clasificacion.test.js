@@ -237,7 +237,12 @@ test('a igualdad de vueltas gana la coma de la ÚLTIMA manga, no la suma', () =>
   const proj = TimingService.buildRaceProjection(raceId);
   const res  = Lap.aggregateByRace(raceId).filter(r => r.entity_id != null);
 
-  assert.equal(proj[0].projectedRaw, proj[1].projectedRaw, 'el escenario empata en proyección');
+  // Con el gap fraccionario, la coma de la ÚLTIMA manga entra YA en la proyección
+  // (distancia = vueltas + coma): Beta (2 + 0.50) va por delante de Alfa
+  // (2 + 0.30) sin depender del desempate — antes colapsaba a 2 = 2 enteros.
+  assert.ok(proj[0].projectedRaw > proj[1].projectedRaw, 'la coma de la última manga separa la proyección');
+  assert.equal(+(proj[0].projectedRaw - proj[1].projectedRaw).toFixed(2), 0.20,
+    'la diferencia de proyección es exactamente la diferencia de coma (0.50 − 0.30)');
   assert.equal(proj[0].name, 'Beta',
     'Beta: última manga 0.50 · Alfa: última manga 0.30 (aunque Alfa suma más: 0.60 vs 0.50)');
   assert.equal(res[0].entity_name, 'Beta', 'resultados coinciden con la proyección');
