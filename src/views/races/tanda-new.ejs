@@ -1,5 +1,11 @@
 <%- include('../partials/header', { pageTitle: lang === 'es' ? 'Nueva Tanda' : 'New Heat Group' }) %>
-<div class="container" style="max-width:860px">
+<%
+  // Con varios circuitos ensanchamos la página para que las columnas de
+  // asignación (una por circuito) quepan en fila, como en pole.
+  const _nc = (Array.isArray(circuitSizes) && circuitSizes.length) ? circuitSizes.length : 1;
+  const _pageMax = _nc >= 3 ? 1180 : (_nc === 2 ? 980 : 860);
+%>
+<div class="container" style="max-width:<%= _pageMax %>px">
 
   <a href="/races/<%= race.id %>" class="back-link">← <%= t('race.back_to_list') %></a>
   <h1 class="page-title"><%= lang === 'es' ? 'Nueva Tanda' : 'New Heat Group' %></h1>
@@ -76,8 +82,8 @@
 
         <p class="form-hint" style="margin-bottom:1.25rem">
           <%= lang === 'es'
-            ? `Mínimo ${laneSequence.length} pilotos. Añade más para rotaciones con descanso.`
-            : `Minimum ${laneSequence.length} drivers. Add more for rotation with rest slots.` %>
+            ? `Hasta ${laneSequence.length} pilotos por manga. Puedes dejar carriles vacíos, o añadir más pilotos para rotaciones con descanso.`
+            : `Up to ${laneSequence.length} drivers per heat. You can leave lanes empty, or add more drivers for rotation with rest slots.` %>
         </p>
 
         <%
@@ -132,8 +138,7 @@
                   placeholder="<%= t('wizard.driver_name_ph') %>"
                   value="<%= (body.drivers && body.drivers[i]) || '' %>"
                   autocomplete="off"
-                  tabindex="<%= _tabIdx %>"
-                  <%= i < laneSequence.length ? 'required' : '' %>>
+                  tabindex="<%= _tabIdx %>">
               </div>
               <% if (i >= laneSequence.length) { %>
                 <button type="button" class="btn btn--danger btn--sm remove-row" title="<%= lang === 'es' ? 'Eliminar' : 'Remove' %>">✕</button>
@@ -160,7 +165,7 @@
               <span class="form-label" style="margin:0"><%= lang === 'es' ? 'Equipos disponibles' : 'Available teams' %></span>
               <button type="button" id="btnNewTeamModal" class="btn btn--ghost btn--sm">+ <%= lang === 'es' ? 'Nuevo' : 'New' %></button>
             </div>
-            <div id="catalogList" style="display:flex;flex-direction:column;gap:.4rem;max-height:420px;overflow-y:auto;padding-right:2px">
+            <div id="catalogList" style="display:flex;flex-direction:column;gap:.4rem;max-height:calc(100vh - 210px);min-height:480px;overflow-y:auto;padding-right:2px">
               <% teamsCatalog.forEach(ct => { %>
                 <%
                   const flag = ct.country ? ct.country.split('|')[1] : null;
@@ -184,50 +189,63 @@
             </div>
           </div>
 
-          <!-- Right: tablero de carriles/descansos (estilo post-pole) -->
+          <!-- Right: tablero por circuito (estilo pole-lanes) — columnas
+               Circuito 1/2/3, carriles en fila y «+ descanso» propio. El orden
+               de envío (team_catalog_ids[]) lo fija syncHidden por id de carril
+               (orden de secuencia), independiente de esta disposición visual. -->
           <div style="flex:1;min-width:280px">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;flex-wrap:wrap;gap:.5rem">
               <span class="form-label" style="margin:0"><%= lang === 'es' ? 'Asignación de carriles' : 'Lane assignment' %></span>
-              <button type="button" id="btnAddRest" class="btn btn--ghost btn--sm">
-                💤 <%= lang === 'es' ? 'Añadir descanso' : 'Add rest' %>
-              </button>
             </div>
             <div id="restInfoTeams" class="alert" style="display:none;background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.25);color:#58a6ff;margin-bottom:.75rem;font-size:.85rem">
             </div>
             <p class="form-hint" id="pickHint" style="margin-bottom:.6rem">
               <%= lang === 'es'
-                ? 'Selecciona un equipo de la izquierda y pulsa un carril o descanso. Pulsa uno asignado para liberarlo.'
-                : 'Select a team on the left and click a lane or rest. Click an assigned one to free it.' %>
+                ? 'Selecciona un equipo de la izquierda y pulsa un carril o descanso (o arrástralo). Pulsa uno asignado para liberarlo.'
+                : 'Select a team on the left and click a lane or rest (or drag it). Click an assigned one to free it.' %>
             </p>
-            <div class="tanda-board" id="laneGrid">
-              <% activeLanes.forEach(lane => { %>
-                <button type="button" class="tanda-lane-btn" id="lane-btn-<%= lane %>" data-lane="<%= lane %>" style="--lane-color:<%= LANE_COLORS[lane-1] %>">
-                  <span class="tanda-lane-num"><%= lane %></span>
-                  <span class="tanda-lane-owner" id="lane-owner-<%= lane %>"></span>
-                </button>
-              <% }) %>
-              <%# Descansos que ya trae la secuencia de la carrera (circuito con DSC):
-                  se muestran ya puestos y etiquetados por circuito (n/total). %>
-              <%
-                const _restIdxs = [];
-                laneSequence.forEach((ln, i) => { if (ln === 0) _restIdxs.push(i); });
-                const _restTotByC = {};
-                _restIdxs.forEach(i => { const ci = _dscCircuitFor(i); _restTotByC[ci] = (_restTotByC[ci] || 0) + 1; });
-                const _restNthByC = {};
-              %>
-              <% _restIdxs.forEach((i, r) => {
-                   const ci = _dscCircuitFor(i);
-                   _restNthByC[ci] = (_restNthByC[ci] || 0) + 1;
-                   const _lbl = (lang === 'es' ? 'DSC ' : 'REST ') + _restNthByC[ci] + '/' + _restTotByC[ci]
-                              + (_numCircuits > 1 ? ' · C' + (ci + 1) : '');
-              %>
-                <button type="button" class="tanda-lane-btn tanda-lane-btn--rest" data-rest="<%= r %>">
-                  <span class="tanda-rest-remove" title="<%= lang === 'es' ? 'Quitar descanso' : 'Remove rest' %>">✕</span>
-                  <span class="tanda-lane-num">💤</span>
-                  <span class="tanda-rest-label"><%= _lbl %></span>
-                  <span class="tanda-lane-owner"></span>
-                </button>
-              <% }) %>
+            <%
+              // Carriles agrupados por circuito, en orden NUMÉRICO (como pole-lanes).
+              // Descansos de la secuencia (los ceros) repartidos por su circuito.
+              const _circuitLanes = {}, _circuitSeqRests = {};
+              for (let ci = 0; ci < _numCircuits; ci++) { _circuitLanes[ci] = []; _circuitSeqRests[ci] = []; }
+              Object.keys(_laneInfo).map(Number).sort((a, b) => a - b).forEach(lane => {
+                _circuitLanes[_laneInfo[lane].ci].push(lane);
+              });
+              laneSequence.forEach((ln, i) => { if (ln === 0) _circuitSeqRests[_dscCircuitFor(i)].push(i); });
+              let _restCtr = 0; // índice global para data-rest (único por descanso)
+            %>
+            <div class="tanda-board tanda-board--cols" id="laneGrid">
+              <% for (let ci = 0; ci < _numCircuits; ci++) { %>
+                <div class="tanda-col" data-ci="<%= ci %>">
+                  <% if (_numCircuits > 1) { %>
+                    <div class="tanda-col__hd"><%= lang === 'es' ? 'Circuito' : 'Circuit' %> <%= ci + 1 %></div>
+                  <% } %>
+                  <button type="button" class="tanda-addrest" data-ci="<%= ci %>">
+                    💤 <%= lang === 'es' ? '+ descanso' : '+ rest' %>
+                  </button>
+                  <div class="tanda-col__slots" id="col-slots-<%= ci %>">
+                    <% const _rTot = _circuitSeqRests[ci].length; %>
+                    <% _circuitSeqRests[ci].forEach((seqIdx, r) => {
+                         const _lbl = (lang === 'es' ? 'DSC ' : 'REST ') + (r + 1) + '/' + _rTot
+                                    + (_numCircuits > 1 ? ' · C' + (ci + 1) : '');
+                    %>
+                      <button type="button" class="tanda-lane-btn tanda-lane-btn--rest" data-rest="<%= _restCtr++ %>" data-ci="<%= ci %>">
+                        <span class="tanda-rest-remove" title="<%= lang === 'es' ? 'Quitar descanso' : 'Remove rest' %>">✕</span>
+                        <span class="tanda-lane-num">💤</span>
+                        <span class="tanda-rest-label"><%= _lbl %></span>
+                        <span class="tanda-lane-owner"></span>
+                      </button>
+                    <% }) %>
+                    <% _circuitLanes[ci].forEach(lane => { %>
+                      <button type="button" class="tanda-lane-btn" id="lane-btn-<%= lane %>" data-lane="<%= lane %>" data-ci="<%= ci %>" style="--lane-color:<%= LANE_COLORS[lane-1] %>">
+                        <span class="tanda-lane-num"><%= lane %></span>
+                        <span class="tanda-lane-owner" id="lane-owner-<%= lane %>"></span>
+                      </button>
+                    <% }) %>
+                  </div>
+                </div>
+              <% } %>
             </div>
           </div>
 
@@ -237,6 +255,35 @@
         <div id="hiddenInputs"></div>
 
       <% } %>
+
+      <div class="form-group" style="margin-top:1.75rem;padding-top:1.25rem;border-top:1px solid #21262d">
+        <span class="form-label" style="margin-bottom:.15rem">
+          <%= lang === 'es' ? 'Carriles sin participante' : 'Empty lanes' %>
+        </span>
+        <p class="form-hint" style="margin:0 0 .7rem">
+          <%= lang === 'es'
+            ? 'Si hay menos participantes que carriles, ¿qué hacer con los carriles que quedan libres?'
+            : 'If there are fewer participants than lanes, what should happen with the free lanes?' %>
+        </p>
+        <label style="display:flex;gap:.55rem;align-items:flex-start;margin-bottom:.5rem;cursor:pointer">
+          <input type="radio" name="empty_lane_mode" value="fixed" checked style="margin-top:.2rem">
+          <span>
+            <strong><%= lang === 'es' ? 'Sobran los últimos' : 'Leave the last ones free' %></strong>
+            — <%= lang === 'es'
+                 ? 'los carriles de mayor número quedan siempre vacíos; nadie corre por ellos.'
+                 : 'the highest-numbered lanes stay empty; nobody runs on them.' %>
+          </span>
+        </label>
+        <label style="display:flex;gap:.55rem;align-items:flex-start;cursor:pointer">
+          <input type="radio" name="empty_lane_mode" value="rotate" style="margin-top:.2rem">
+          <span>
+            <strong><%= lang === 'es' ? 'El hueco rota' : 'The gap rotates' %></strong>
+            — <%= lang === 'es'
+                 ? 'el carril libre va cambiando cada manga para que todos pasen por los mismos carriles.'
+                 : 'the free lane changes every heat so everyone runs on the same lanes.' %>
+          </span>
+        </label>
+      </div>
 
       <div class="form-actions" style="margin-top:1.5rem">
         <a href="/races/<%= race.id %>" class="btn btn--ghost">← <%= t('wizard.back') %></a>
@@ -531,6 +578,7 @@ if (document.getElementById('teamAssignUI')) {
   function assignBtn(btn, team) {
     btn.dataset.teamId = team.id;
     btn.classList.add('tanda-lane-btn--taken');
+    btn.setAttribute('draggable', 'true');   // un equipo colocado se puede arrastrar
     btn.querySelector('.tanda-lane-owner').innerHTML =
       `${flagHtml(team.country)}<span>${team.name}</span>`;
     markUsed(); syncHidden(); updateRestBanner();
@@ -539,21 +587,28 @@ if (document.getElementById('teamAssignUI')) {
   function unassignBtn(btn) {
     delete btn.dataset.teamId;
     btn.classList.remove('tanda-lane-btn--taken');
+    btn.removeAttribute('draggable');
     btn.querySelector('.tanda-lane-owner').innerHTML = '';
     markUsed(); syncHidden(); updateRestBanner();
   }
 
-  function addRestButton() {
+  // Añade un descanso al circuito `ci`, encima de sus carriles (estilo pole-lanes).
+  function addRestToCircuit(ci) {
+    const slots = document.getElementById('col-slots-' + ci);
+    if (!slots) return;
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'tanda-lane-btn tanda-lane-btn--rest';
     btn.dataset.rest = restCounter++;
+    btn.dataset.ci = ci;
     btn.innerHTML =
       `<span class="tanda-rest-remove" title="${LANG === 'es' ? 'Quitar descanso' : 'Remove rest'}">✕</span>` +
       `<span class="tanda-lane-num">💤</span>` +
       `<span class="tanda-rest-label">${LANG === 'es' ? 'DSC extra' : 'REST extra'}</span>` +
       `<span class="tanda-lane-owner"></span>`;
-    laneGrid.appendChild(btn);
+    // Va tras los descansos ya presentes del circuito, antes del primer carril.
+    const firstLane = slots.querySelector('.tanda-lane-btn:not(.tanda-lane-btn--rest)');
+    slots.insertBefore(btn, firstLane);
     updateRestBanner();
   }
 
@@ -566,6 +621,8 @@ if (document.getElementById('teamAssignUI')) {
   laneGrid.addEventListener('click', e => {
     resetHint();
     document.querySelectorAll('.tanda-lane-btn--missing').forEach(b => b.classList.remove('tanda-lane-btn--missing'));
+    const addrest = e.target.closest('.tanda-addrest');
+    if (addrest) { addRestToCircuit(+addrest.dataset.ci); return; }
     const rm = e.target.closest('.tanda-rest-remove');
     if (rm) {
       rm.closest('.tanda-lane-btn').remove();
@@ -574,31 +631,104 @@ if (document.getElementById('teamAssignUI')) {
     }
     const btn = e.target.closest('.tanda-lane-btn');
     if (!btn) return;
-    if (btn.dataset.teamId) { unassignBtn(btn); return; }
+    if (btn.dataset.teamId) {
+      // Ocupado: con un equipo seleccionado → SUSTITUIR; sin selección → QUITAR.
+      if (selected) { assignBtn(btn, selected); clearSelection(); }
+      else { unassignBtn(btn); }
+      return;
+    }
     if (selected) { assignBtn(btn, selected); clearSelection(); }
   });
 
-  document.getElementById('btnAddRest').addEventListener('click', addRestButton);
+  // ── Arrastrar y soltar ───────────────────────────────────────────────────────
+  // Fuentes: (a) tarjeta del catálogo → asignar; (b) equipo YA colocado en un
+  // carril → MOVER a otro carril, soltar en el catálogo o FUERA = quitar. Soltar
+  // sobre un carril ocupado lo SUSTITUYE.
+  let dragTeam = null;       // { id, name, country, fromBtn|null }
+  let dropHandled = false;
 
-  // Al enviar: todos los carriles activos deben estar asignados (garantiza el
-  // orden del contrato team_catalog_ids[] = [activos en secuencia, luego descansos]).
+  function startDrag(e, team, fromBtn) {
+    dragTeam = { id: team.id, name: team.name, country: team.country, fromBtn: fromBtn || null };
+    dropHandled = false;
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', team.name); } catch {}
+  }
+
+  // (a) desde el catálogo
+  catalogList.addEventListener('dragstart', e => {
+    const card = e.target.closest('.catalog-card');
+    if (!card || card.classList.contains('catalog-card--used')) { e.preventDefault(); return; }
+    startDrag(e, { id: card.dataset.teamId, name: card.dataset.teamName, country: card.dataset.teamCountry }, null);
+  });
+
+  // (b) desde un carril/descanso ya ocupado
+  laneGrid.addEventListener('dragstart', e => {
+    const btn = e.target.closest('.tanda-lane-btn');
+    if (!btn || !btn.dataset.teamId) { e.preventDefault(); return; }
+    const card = catalogList.querySelector('.catalog-card[data-team-id="' + btn.dataset.teamId + '"]');
+    startDrag(e, {
+      id: btn.dataset.teamId,
+      name: card ? card.dataset.teamName : (btn.querySelector('.tanda-lane-owner span')?.textContent || ''),
+      country: card ? card.dataset.teamCountry : ''
+    }, btn);
+  });
+
+  // Soltar sobre carril/descanso → asignar · mover · sustituir
+  laneGrid.addEventListener('dragover', e => {
+    if (!dragTeam) return;
+    if (e.target.closest('.tanda-lane-btn')) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }
+  });
+  laneGrid.addEventListener('drop', e => {
+    if (!dragTeam) return;
+    const btn = e.target.closest('.tanda-lane-btn');
+    if (!btn) return;
+    e.preventDefault();
+    dropHandled = true;
+    if (dragTeam.fromBtn === btn) { dragTeam = null; return; }   // soltado en el mismo sitio
+    const from = dragTeam.fromBtn;
+    assignBtn(btn, dragTeam);              // sustituye si el destino estaba ocupado
+    if (from) unassignBtn(from);           // mover: libera el carril de origen
+    dragTeam = null;
+  });
+
+  // Soltar en el catálogo → quitar (si venía de un carril)
+  catalogList.addEventListener('dragover', e => {
+    if (dragTeam && dragTeam.fromBtn) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }
+  });
+  catalogList.addEventListener('drop', e => {
+    if (!dragTeam || !dragTeam.fromBtn) return;
+    e.preventDefault();
+    dropHandled = true;
+    unassignBtn(dragTeam.fromBtn);
+    dragTeam = null;
+  });
+
+  // Soltar en cualquier otro sitio (fuera) = quitar, si venía de un carril.
+  document.addEventListener('dragend', () => {
+    if (dragTeam && dragTeam.fromBtn && !dropHandled) unassignBtn(dragTeam.fromBtn);
+    dragTeam = null; dropHandled = false;
+  });
+
+  // Al enviar solo exigimos AL MENOS un equipo asignado. Los carriles que queden
+  // libres son válidos: se resuelven con "empty_lane_mode" (sobran los últimos /
+  // el hueco rota). El orden del contrato team_catalog_ids[] = [activos en
+  // secuencia, luego descansos] lo garantiza syncHidden() aunque haya huecos.
   const teamForm = laneGrid.closest('form');
   if (teamForm) {
     teamForm.addEventListener('submit', e => {
-      const empty = ACTIVE_LANES.filter(l => {
+      const assigned = ACTIVE_LANES.some(l => {
         const b = document.getElementById('lane-btn-' + l);
-        return !(b && b.dataset.teamId);
+        return b && b.dataset.teamId;
       });
-      if (empty.length) {
+      if (!assigned) {
         e.preventDefault();
-        empty.forEach(l => document.getElementById('lane-btn-' + l)?.classList.add('tanda-lane-btn--missing'));
         if (pickHint) {
           pickHint.style.color = '#f85149';
           pickHint.textContent = LANG === 'es'
-            ? `Faltan ${empty.length} carril(es) por asignar: ${empty.join(', ')}.`
-            : `${empty.length} lane(s) still unassigned: ${empty.join(', ')}.`;
+            ? 'Asigna al menos un equipo a un carril.'
+            : 'Assign at least one team to a lane.';
         }
-        (document.getElementById('lane-btn-' + empty[0]) || laneGrid).scrollIntoView({ behavior: 'smooth', block: 'center' });
+        laneGrid.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     });
   }

@@ -101,6 +101,25 @@
       </p>
     </div>
 
+    <!-- Neumáticos por equipo (solo resistencia) -->
+    <% const tirePairs = body.tire_pairs_per_team != null ? body.tire_pairs_per_team : ''; %>
+    <div class="form-group" id="tireGroup" style="display:<%= body.type === 'championship' ? 'block' : 'none' %>">
+      <label class="form-label" for="tirePairs">
+        <%= lang === 'es' ? 'Neumáticos por equipo' : 'Tyres per team' %>
+      </label>
+      <p class="form-hint" style="margin:.2rem 0 .6rem">
+        <%= lang === 'es'
+          ? 'Solo carreras de resistencia. Pares de neumáticos (2 ruedas) que se suministran a CADA equipo para toda la carrera; igual para todos. Es la base del control de cambios de neumáticos.'
+          : 'Endurance races only. Pairs of tyres (2 wheels) supplied to EACH team for the whole race; the same for all. It is the basis of the tyre-change control.' %>
+      </p>
+      <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
+        <input class="form-input form-input--sm" type="number" id="tirePairs" name="tire_pairs_per_team"
+               min="0" max="99" step="1" placeholder="<%= lang === 'es' ? '0 = sin control' : '0 = no control' %>"
+               value="<%= tirePairs %>" style="width:6.5rem">
+        <span class="form-hint"><%= lang === 'es' ? 'pares por equipo' : 'pairs per team' %></span>
+      </div>
+    </div>
+
     <!-- Circuit selector -->
     <div class="form-group">
       <label class="form-label">
@@ -405,13 +424,13 @@ function applyCategoryFromSelect() {
 
 categorySelect.addEventListener('change', applyCategoryFromSelect);
 
-// Toggle del bloque "Reglas de turnos por piloto" según tipo de carrera
-const champRules = document.getElementById('champRulesGroup');
+// Toggle de los bloques solo-resistencia (turnos por piloto + neumáticos) según tipo
+const champOnlyGroups = ['champRulesGroup', 'tireGroup']
+  .map(id => document.getElementById(id)).filter(Boolean);
 document.querySelectorAll('input[name="type"]').forEach(r => {
   r.addEventListener('change', () => {
-    champRules.style.display = r.value === 'championship' && r.checked ? 'block' : (
-      document.querySelector('input[name="type"]:checked')?.value === 'championship' ? 'block' : 'none'
-    );
+    const isChamp = document.querySelector('input[name="type"]:checked')?.value === 'championship';
+    champOnlyGroups.forEach(g => { g.style.display = isChamp ? 'block' : 'none'; });
   });
 });
 

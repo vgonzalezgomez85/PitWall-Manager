@@ -1,0 +1,342 @@
+<%- include('../partials/header', { pageTitle: (race ? race.name + ' — ' : '') + (lang === 'es' ? 'Neumáticos' : 'Tyres') }) %>
+
+<link rel="stylesheet" href="/css/fonts.css">
+
+<style>
+  .tire-wrap { max-width: 1180px; margin: 0 auto; padding: 18px 16px 48px; }
+  .tire-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:6px; }
+  .tire-h1 { font-size:1.5rem; font-weight:800; letter-spacing:-.01em; margin:0; color:var(--rs-text); }
+  .tire-sub { color:var(--rs-muted); font-size:.9rem; margin-top:2px; }
+  .tire-ctx { display:flex; align-items:center; gap:10px; flex-wrap:wrap; background:var(--rs-panel); border:1px solid var(--rs-border); border-radius:12px; padding:8px 14px; }
+  .tire-ctx__pill { display:inline-flex; align-items:center; gap:7px; font-size:.85rem; color:var(--rs-text); }
+  .tire-ctx__dot { width:8px; height:8px; border-radius:50%; background:var(--rs-muted-2); }
+  .tire-ctx__dot--live { background:var(--rs-green); box-shadow:0 0 0 3px rgba(34,197,94,.18); }
+  .tire-ctx__clock { font-variant-numeric:tabular-nums; font-weight:700; color:var(--rs-gold); }
+  .tire-allow { color:var(--rs-muted); font-size:.85rem; }
+  .tire-allow b { color:var(--rs-text); }
+
+  .tire-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:12px; margin-top:16px; }
+  .tire-card { position:relative; background:var(--rs-panel); border:1px solid var(--rs-border); border-radius:14px; padding:14px 14px 12px; cursor:pointer; user-select:none; transition:border-color .12s, transform .06s, background .12s; text-align:left; }
+  .tire-card:hover { border-color:var(--rs-border-2); background:var(--rs-panel-2); }
+  .tire-card:active { transform:scale(.985); }
+  .tire-card--depleted { border-color:rgba(239,70,81,.5); }
+  .tire-card__flash { animation:tireFlash .5s ease; }
+  @keyframes tireFlash { 0% { background:rgba(59,158,255,.28); } 100% { background:var(--rs-panel); } }
+
+  .tire-card__name { display:flex; align-items:center; gap:8px; font-weight:700; color:var(--rs-text); font-size:.98rem; padding-right:26px; line-height:1.15; }
+  .tire-card__colordot { width:11px; height:11px; border-radius:3px; flex:0 0 auto; }
+  .tire-card__nums { display:flex; align-items:flex-end; gap:14px; margin-top:12px; }
+  .tire-card__num { display:flex; flex-direction:column; gap:1px; }
+  .tire-card__big { font-size:2rem; font-weight:800; line-height:1; font-variant-numeric:tabular-nums; color:var(--rs-green); }
+  .tire-card__big--zero { color:var(--rs-red); }
+  .tire-card__used { font-size:1.35rem; font-weight:800; line-height:1; font-variant-numeric:tabular-nums; color:var(--rs-text); }
+  .tire-card__lbl { font-size:.62rem; letter-spacing:.06em; text-transform:uppercase; color:var(--rs-muted); }
+  .tire-card__hint { margin-top:10px; font-size:.68rem; color:var(--rs-muted-2); display:flex; align-items:center; gap:5px; }
+
+  .tire-pencil { position:absolute; top:8px; right:8px; width:28px; height:28px; border-radius:8px; border:1px solid var(--rs-border); background:var(--rs-surface); color:var(--rs-muted); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:.85rem; line-height:1; padding:0; }
+  .tire-pencil:hover { color:var(--rs-text); border-color:var(--rs-border-2); }
+
+  .tire-empty { text-align:center; padding:60px 20px; color:var(--rs-muted); }
+  .tire-empty__ic { font-size:2.4rem; }
+  .tire-empty__t { font-weight:700; color:var(--rs-text); margin-top:10px; }
+
+  /* Modal historial */
+  .tire-modal { position:fixed; inset:0; background:rgba(0,0,0,.62); display:none; align-items:center; justify-content:center; padding:16px; z-index:60; }
+  .tire-modal.open { display:flex; }
+  .tire-modal__box { width:min(560px,100%); max-height:86vh; overflow:auto; background:var(--rs-panel); border:1px solid var(--rs-border-2); border-radius:16px; padding:18px; }
+  .tire-modal__head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:4px; }
+  .tire-modal__title { font-weight:800; font-size:1.15rem; color:var(--rs-text); margin:0; }
+  .tire-modal__meta { color:var(--rs-muted); font-size:.85rem; margin-top:2px; }
+  .tire-modal__x { background:none; border:none; color:var(--rs-muted); font-size:1.5rem; cursor:pointer; line-height:1; padding:0 4px; }
+  .tire-modal__x:hover { color:var(--rs-text); }
+
+  .tire-row { display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid var(--rs-border); }
+  .tire-row__when { flex:1 1 auto; font-size:.9rem; color:var(--rs-text); }
+  .tire-row__when small { color:var(--rs-muted); }
+  .tire-row__note { color:var(--rs-muted); font-style:italic; }
+  .tire-row__btns { display:flex; gap:6px; flex:0 0 auto; }
+  .tire-mini { border:1px solid var(--rs-border); background:var(--rs-surface); color:var(--rs-muted); border-radius:7px; padding:4px 8px; font-size:.78rem; cursor:pointer; }
+  .tire-mini:hover { color:var(--rs-text); border-color:var(--rs-border-2); }
+  .tire-mini--danger:hover { color:#fff; background:var(--rs-red-deep); border-color:var(--rs-red-deep); }
+
+  .tire-form { display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end; margin-top:14px; padding-top:14px; border-top:1px dashed var(--rs-border-2); }
+  .tire-form__f { display:flex; flex-direction:column; gap:3px; }
+  .tire-form__f label { font-size:.66rem; text-transform:uppercase; letter-spacing:.05em; color:var(--rs-muted); }
+  .tire-form input { background:var(--rs-surface); border:1px solid var(--rs-border); color:var(--rs-text); border-radius:8px; padding:7px 9px; font-size:.9rem; }
+  .tire-form input.w-manga { width:70px; }
+  .tire-form input.w-time { width:92px; }
+  .tire-form input.w-note { width:150px; }
+  .tire-empty-hist { color:var(--rs-muted); font-size:.88rem; padding:12px 0; }
+
+  /* Cabecera derecha: contexto + botón de historial global */
+  .tire-headright { display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
+  .tire-logbtn { white-space:nowrap; }
+</style>
+
+<!-- Scope .race-show: aquí viven los tokens --rs-* (paleta de resistencia). -->
+<div class="race-show">
+<div class="tire-wrap">
+
+  <a class="vt-back-link" href="<%= race ? '/races/' + race.id : '/' %>">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    <%= race ? (lang === 'es' ? 'Volver a la carrera' : 'Back to race') : (lang === 'es' ? 'Inicio' : 'Home') %>
+  </a>
+
+  <div class="tire-head">
+    <div>
+      <h1 class="tire-h1">🛞 <%= lang === 'es' ? 'Control de neumáticos' : 'Tyre control' %></h1>
+      <div class="tire-sub">
+        <% if (race) { %><%= race.name %><% } %>
+        <% if (kiosk) { %> · <span style="color:var(--rs-gold)"><%= lang === 'es' ? 'Kiosco (carrera activa)' : 'Kiosk (active race)' %></span><% } %>
+      </div>
+    </div>
+    <% if (race && enabled) { %>
+      <div class="tire-headright">
+        <div class="tire-ctx" id="ctxBox">
+          <span class="tire-ctx__pill" id="ctxManga"></span>
+          <span class="tire-allow"><%= lang === 'es' ? 'Dotación:' : 'Allowance:' %> <b><%= summary.allowance %></b> <%= lang === 'es' ? 'juegos/equipo' : 'sets/team' %></span>
+        </div>
+        <a href="/races/<%= race.id %>/tires/log" target="_blank" rel="noopener"
+           class="rs-btn rs-btn--ghost rs-btn--sm tire-logbtn">
+          🗒️ <%= lang === 'es' ? 'Historial de cambios' : 'Change log' %>
+        </a>
+      </div>
+    <% } %>
+  </div>
+
+  <% if (!race) { %>
+    <div class="tire-empty">
+      <div class="tire-empty__ic">🛞</div>
+      <div class="tire-empty__t"><%= lang === 'es' ? 'No hay ninguna carrera de resistencia activa' : 'No active endurance race' %></div>
+      <p><%= lang === 'es' ? 'Esta página se activará automáticamente cuando arranque una carrera con control de neumáticos.' : 'This page activates automatically when an endurance race with tyre control starts.' %></p>
+    </div>
+  <% } else if (!enabled) { %>
+    <div class="tire-empty">
+      <div class="tire-empty__ic">🛞</div>
+      <div class="tire-empty__t"><%= lang === 'es' ? 'Esta carrera no lleva control de neumáticos' : 'This race has no tyre control' %></div>
+      <p><%= lang === 'es' ? 'La dotación de neumáticos por equipo se fija al crear una carrera de resistencia (valor 0 = sin control).' : 'Tyre allowance per team is set when creating an endurance race (0 = no control).' %></p>
+    </div>
+  <% } else { %>
+    <div class="tire-grid" id="tireGrid"></div>
+  <% } %>
+
+</div>
+
+<!-- Modal historial por equipo -->
+<div class="tire-modal" id="histModal">
+  <div class="tire-modal__box">
+    <div class="tire-modal__head">
+      <div>
+        <h2 class="tire-modal__title" id="histTitle"></h2>
+        <div class="tire-modal__meta" id="histMeta"></div>
+      </div>
+      <button class="tire-modal__x" type="button" onclick="Tires.closeHist()">&times;</button>
+    </div>
+    <div id="histList"></div>
+    <form class="tire-form" id="histAddForm" onsubmit="return Tires.addManual(event)">
+      <div class="tire-form__f">
+        <label><%= lang === 'es' ? 'Manga' : 'Heat' %></label>
+        <input class="w-manga" type="number" min="1" name="manga_number" id="addManga" placeholder="—">
+      </div>
+      <div class="tire-form__f">
+        <label><%= lang === 'es' ? 'Tiempo (mm:ss)' : 'Time (mm:ss)' %></label>
+        <input class="w-time" type="text" name="elapsed" id="addElapsed" placeholder="mm:ss">
+      </div>
+      <div class="tire-form__f">
+        <label><%= lang === 'es' ? 'Nota' : 'Note' %></label>
+        <input class="w-note" type="text" name="note" id="addNote" placeholder="<%= lang === 'es' ? 'opcional' : 'optional' %>">
+      </div>
+      <button class="rs-btn rs-btn--primary rs-btn--sm" type="submit">＋ <%= lang === 'es' ? 'Añadir' : 'Add' %></button>
+    </form>
+  </div>
+</div>
+
+</div><!-- /.race-show -->
+
+<% if (race && enabled) { %>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+window.Tires = (function () {
+  var RACE_ID = <%= race.id %>;
+  var LANG    = '<%= lang %>';
+  var es = LANG === 'es';
+  var grid = document.getElementById('tireGrid');
+  var modal = document.getElementById('histModal');
+  var curTeam = null;   // equipo abierto en el modal por-equipo
+
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+
+  function fmtClock(ms){
+    if (ms == null) return '—';
+    var t = Math.floor(ms/1000);
+    var h = Math.floor(t/3600), m = Math.floor((t%3600)/60), s = t%60;
+    var pad = function(n){ return (n<10?'0':'')+n; };
+    return h>0 ? (h+':'+pad(m)+':'+pad(s)) : (pad(m)+':'+pad(s));
+  }
+
+  function whenLabel(ch){
+    var manga = ch.manga_number != null ? (es?'Manga ':'Heat ')+ch.manga_number : (es?'sin manga':'no heat');
+    var time  = ch.race_elapsed_ms != null ? fmtClock(ch.race_elapsed_ms) : '—';
+    return manga + ' · ' + time;
+  }
+
+  // ── Grid ──────────────────────────────────────────────────────────
+  function renderGrid(summary){
+    grid.innerHTML = '';
+    summary.teams.forEach(function(tm){
+      var card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'tire-card' + (tm.available <= 0 ? ' tire-card--depleted' : '');
+      card.setAttribute('data-team', tm.id);
+      var zero = tm.available <= 0 ? ' tire-card__big--zero' : '';
+      card.innerHTML =
+        '<button type="button" class="tire-pencil" title="'+(es?'Historial / editar':'History / edit')+'" data-pencil="'+tm.id+'">✏️</button>' +
+        '<div class="tire-card__name"><span class="tire-card__colordot" style="background:'+esc(tm.color||'#888')+'"></span>'+esc(tm.name)+'</div>' +
+        '<div class="tire-card__nums">' +
+          '<div class="tire-card__num"><span class="tire-card__big'+zero+'">'+tm.available+'</span><span class="tire-card__lbl">'+(es?'Disponibles':'Available')+'</span></div>' +
+          '<div class="tire-card__num"><span class="tire-card__used">'+tm.used+'</span><span class="tire-card__lbl">'+(es?'Usados':'Used')+'</span></div>' +
+        '</div>' +
+        '<div class="tire-card__hint">👆 '+(es?'Toca para entregar un juego':'Tap to hand out a set')+'</div>';
+      grid.appendChild(card);
+    });
+  }
+
+  function renderCtx(ctx){
+    var el = document.getElementById('ctxManga');
+    if (!el || !ctx) return;
+    if (ctx.mangaNumber != null){
+      var clk = ctx.live && ctx.raceElapsedMs != null ? ' · <span class="tire-ctx__clock">'+fmtClock(ctx.raceElapsedMs)+'</span>' : '';
+      el.innerHTML = '<span class="tire-ctx__dot'+(ctx.live?' tire-ctx__dot--live':'')+'"></span>'+(es?'Manga ':'Heat ')+ctx.mangaNumber+clk;
+    } else {
+      el.innerHTML = '<span class="tire-ctx__dot"></span>'+(es?'Sin manga en curso':'No heat running');
+    }
+  }
+
+  function apply(data){ renderGrid(data.summary); renderCtx(data.context); }
+
+  function refresh(){
+    fetch('/races/'+RACE_ID+'/tires.json').then(function(r){return r.json();}).then(function(d){
+      if (d.ok){ apply(d); if (curTeam!=null) loadHist(curTeam); }
+    });
+  }
+
+  // ── Entregar un juego (clic en la cajita) ─────────────────────────
+  function handOut(teamId, cardEl){
+    fetch('/races/'+RACE_ID+'/tires/'+teamId+'/change', { method:'POST', headers:{'Content-Type':'application/json'} })
+      .then(function(r){return r.json();}).then(function(d){
+        if (d.ok){ apply(d); if(cardEl){ var c=grid.querySelector('[data-team="'+teamId+'"]'); if(c) c.classList.add('tire-card__flash'); } }
+      });
+  }
+
+  // ── Historial ─────────────────────────────────────────────────────
+  function openHist(teamId){
+    curTeam = teamId;
+    modal.classList.add('open');
+    loadHist(teamId);
+  }
+  function closeHist(){ curTeam = null; modal.classList.remove('open'); }
+
+  function loadHist(teamId){
+    fetch('/races/'+RACE_ID+'/tires/'+teamId+'/history').then(function(r){return r.json();}).then(function(d){
+      if (!d.ok) return;
+      var tm = d.team || { name:'', used:0, available:0 };
+      document.getElementById('histTitle').textContent = tm.name;
+      document.getElementById('histMeta').innerHTML =
+        (es?'Dotación ':'Allowance ')+d.allowance+' · '+(es?'usados ':'used ')+'<b>'+tm.used+'</b> · '+(es?'disponibles ':'available ')+'<b>'+tm.available+'</b>';
+      var list = document.getElementById('histList');
+      if (!d.changes.length){
+        list.innerHTML = '<div class="tire-empty-hist">'+(es?'Sin cambios registrados todavía.':'No changes recorded yet.')+'</div>';
+        return;
+      }
+      list.innerHTML = d.changes.map(function(ch){
+        return '<div class="tire-row" data-ch="'+ch.id+'">' +
+          '<div class="tire-row__when">'+esc(whenLabel(ch))+(ch.note?' <span class="tire-row__note">'+esc(ch.note)+'</span>':'')+'</div>' +
+          '<div class="tire-row__btns">' +
+            '<button class="tire-mini" type="button" onclick="Tires.editRow('+ch.id+','+(ch.manga_number!=null?ch.manga_number:'null')+','+(ch.race_elapsed_ms!=null?ch.race_elapsed_ms:'null')+',this)">'+(es?'Editar':'Edit')+'</button>' +
+            '<button class="tire-mini tire-mini--danger" type="button" onclick="Tires.delRow('+ch.id+')">'+(es?'Borrar':'Delete')+'</button>' +
+          '</div></div>';
+      }).join('');
+    });
+  }
+
+  function editRow(id, manga, elapsedMs, btn){
+    var row = btn.closest('.tire-row');
+    var mm = manga!=null?manga:'';
+    var tt = elapsedMs!=null?fmtClock(elapsedMs):'';
+    row.innerHTML =
+      '<div class="tire-row__when" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">' +
+        '<input class="w-manga" style="width:64px" type="number" min="1" value="'+mm+'" id="e_m_'+id+'" placeholder="'+(es?'manga':'heat')+'">' +
+        '<input class="w-time" style="width:86px" type="text" value="'+tt+'" id="e_t_'+id+'" placeholder="mm:ss">' +
+      '</div>' +
+      '<div class="tire-row__btns">' +
+        '<button class="tire-mini" type="button" onclick="Tires.saveRow('+id+')">'+(es?'Guardar':'Save')+'</button>' +
+        '<button class="tire-mini" type="button" onclick="Tires.loadHist('+curTeam+')">'+(es?'Cancelar':'Cancel')+'</button>' +
+      '</div>';
+  }
+
+  function saveRow(id){
+    var m = document.getElementById('e_m_'+id).value;
+    var t = document.getElementById('e_t_'+id).value;
+    var body = new URLSearchParams({ manga_number:m, elapsed:t });
+    fetch('/races/'+RACE_ID+'/tires/change/'+id, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:body })
+      .then(function(r){return r.json();}).then(function(d){ if(d.ok){ apply(d); loadHist(curTeam); } });
+  }
+
+  function delRow(id){
+    if (!window.confirm(es?'¿Borrar este cambio? Devuelve el juego a disponibles.':'Delete this change? Returns the set to available.')) return;
+    fetch('/races/'+RACE_ID+'/tires/change/'+id+'/delete', { method:'POST' })
+      .then(function(r){return r.json();}).then(function(d){ if(d.ok){ apply(d); loadHist(curTeam); } });
+  }
+
+  function addManual(ev){
+    ev.preventDefault();
+    if (curTeam==null) return false;
+    var body = new URLSearchParams({
+      manga_number: document.getElementById('addManga').value,
+      elapsed:      document.getElementById('addElapsed').value,
+      note:         document.getElementById('addNote').value
+    });
+    fetch('/races/'+RACE_ID+'/tires/'+curTeam+'/history/add', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:body })
+      .then(function(r){return r.json();}).then(function(d){
+        if(d.ok){ apply(d); loadHist(curTeam); document.getElementById('histAddForm').reset(); }
+      });
+    return false;
+  }
+
+  // ── Eventos ───────────────────────────────────────────────────────
+  grid.addEventListener('click', function(ev){
+    var pencil = ev.target.closest('[data-pencil]');
+    if (pencil){ ev.stopPropagation(); openHist(parseInt(pencil.getAttribute('data-pencil'),10)); return; }
+    var card = ev.target.closest('.tire-card');
+    if (card){ handOut(parseInt(card.getAttribute('data-team'),10), card); }
+  });
+  modal.addEventListener('click', function(ev){ if (ev.target === modal) closeHist(); });
+  document.addEventListener('keydown', function(ev){ if (ev.key === 'Escape') closeHist(); });
+
+  // Refresco entre pantallas (kiosco + página) y con el reloj de la manga viva.
+  try {
+    var socket = io();
+    socket.on('tires:changed', function(d){ if (d && d.raceId === RACE_ID) refresh(); });
+    socket.on('tick', function(t){ if (t) renderCtx({ mangaNumber: (window.__ctxManga||null), live:true, raceElapsedMs:t.elapsedMs }); });
+  } catch(e){}
+  // El tick no trae el nº de manga; lo guardamos del último snapshot.
+  var _origRenderCtx = renderCtx;
+  renderCtx = function(ctx){ if (ctx && ctx.mangaNumber!=null) window.__ctxManga = ctx.mangaNumber; _origRenderCtx(ctx); };
+
+  // Init
+  apply({ summary: <%- JSON.stringify(summary) %>, context: <%- JSON.stringify(context) %> });
+
+  return { handOut:handOut, openHist:openHist, closeHist:closeHist, loadHist:loadHist,
+           editRow:editRow, saveRow:saveRow, delRow:delRow, addManual:addManual };
+})();
+</script>
+<% } else if (kiosk && !race) { %>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  // Kiosco sin carrera activa: recarga al arrancar/cambiar algo para engancharla.
+  try { var s = io(); s.on('tires:changed', function(){ location.reload(); }); s.on('manga:started', function(){ location.reload(); }); } catch(e){}
+  setTimeout(function(){ location.reload(); }, 20000);
+</script>
+<% } %>
+
+<%- include('../partials/footer') %>

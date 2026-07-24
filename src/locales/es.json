@@ -112,7 +112,9 @@
     "members_count_invalid": "El número de integrantes debe ser entre 1 y 10",
     "not_enough_teams": "El número de equipos debe ser igual al número de carriles en la secuencia",
     "not_enough_drivers": "El número de pilotos debe ser igual al número de carriles en la secuencia",
-    "category_required": "Debes seleccionar una categoría"
+    "no_participants": "Añade al menos un participante a la tanda",
+    "category_required": "Debes seleccionar una categoría",
+    "driver_max_below_min": "El máximo por piloto no puede ser menor que el mínimo"
   },
   "actions": {
     "save": "Guardar",

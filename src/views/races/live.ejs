@@ -330,6 +330,7 @@
       isActive:       isActive,
       isPaused:       typeof isPaused !== 'undefined' && isPaused,
       isTeam:         race.format === 'team',
+      tireControl:    (race.tire_pairs_per_team || 0) > 0,
       durationMs:     null,
       mangaDurationMs: race.manga_duration_minutes * 60000,
       standings:      standings,

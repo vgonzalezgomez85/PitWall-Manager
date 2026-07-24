@@ -39,6 +39,12 @@
         <td><%= wizard.lane_repeat %></td>
       </tr>
       <% } %>
+      <% if (wizard.tire_pairs_per_team > 0) { %>
+      <tr>
+        <th><%= lang === 'es' ? 'Neumáticos por equipo' : 'Tyres per team' %></th>
+        <td><%= wizard.tire_pairs_per_team %> <%= lang === 'es' ? 'pares' : 'pairs' %></td>
+      </tr>
+      <% } %>
       <tr>
         <th><%= lang === 'es' ? 'Pole position' : 'Pole position' %></th>
         <td>

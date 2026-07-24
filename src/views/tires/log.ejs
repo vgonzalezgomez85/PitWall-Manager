@@ -1,0 +1,143 @@
+<%- include('../partials/header', { pageTitle: (race ? race.name + ' — ' : '') + (lang === 'es' ? 'Historial de neumáticos' : 'Tyre change log') }) %>
+
+<link rel="stylesheet" href="/css/fonts.css">
+
+<style>
+  .tlog-wrap { max-width: 1600px; width: 100%; margin: 0 auto; padding: 8px 24px 32px; }
+  .tlog-top { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+  .tlog-back { margin: 0 !important; }
+  .tlog-titlerow { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin: 8px 0 12px; }
+  .tlog-h1 { font-size:1.2rem; font-weight:800; letter-spacing:-.01em; margin:0; color:var(--rs-text); white-space:nowrap; }
+  .tlog-sub { color:var(--rs-muted); font-size:.88rem; }
+  .tlog-meta { color:var(--rs-muted); font-size:.86rem; text-align:right; }
+  .tlog-meta b { color:var(--rs-text); }
+
+  /* Rejilla de mangas en columnas (hasta 3; baja a 2/1 según ancho). */
+  .tlog-cols { columns: 22rem 3; column-gap: 18px; }
+  .tlog-m {
+    break-inside: avoid; margin: 0 0 14px; border:1px solid var(--rs-border); border-radius:11px;
+    overflow:hidden; background:var(--rs-panel);
+  }
+  .tlog-m__h {
+    display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--rs-panel-2);
+    font-weight:800; text-transform:uppercase; letter-spacing:.02em; font-size:.85rem; color:var(--rs-text);
+  }
+  .tlog-m:not(.tlog-m--empty) .tlog-m__h { border-bottom:1px solid var(--rs-border); }
+  .tlog-m__count { margin-left:auto; font-size:.7rem; font-weight:700; color:var(--rs-green);
+                   background:rgba(34,197,94,.12); border-radius:999px; padding:1px 9px; }
+  .tlog-m__none { margin-left:auto; font-size:.78rem; font-weight:600; color:var(--rs-muted-2); font-style:italic; text-transform:none; letter-spacing:0; }
+
+  .tlog-m__row { display:flex; align-items:center; gap:9px; padding:8px 12px; border-top:1px solid var(--rs-border); font-size:.9rem; flex-wrap:wrap; }
+  .tlog-m__row:first-of-type { border-top:none; }
+  .tlog-dot { width:11px; height:11px; border-radius:3px; flex:0 0 auto; }
+  .tlog-team { flex:1 1 auto; min-width:0; font-weight:700; color:var(--rs-text); overflow-wrap:anywhere; }
+  .tlog-note { color:var(--rs-muted); font-style:italic; font-weight:400; font-size:.82rem; }
+  .tlog-set { flex:0 0 auto; font-weight:800; color:var(--rs-green); background:rgba(34,197,94,.12);
+              border-radius:7px; padding:2px 10px; font-size:.82rem; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .tlog-set--over { color:var(--rs-red); background:rgba(239,70,81,.14); }
+  .tlog-time { flex:0 0 auto; color:var(--rs-gold); font-weight:700; font-size:.82rem; font-variant-numeric:tabular-nums; min-width:52px; text-align:right; }
+
+  .tlog-empty { text-align:center; padding:60px 20px; color:var(--rs-muted); }
+  .tlog-empty__ic { font-size:2.4rem; }
+</style>
+
+<div class="race-show">
+<div class="tlog-wrap">
+
+  <div class="tlog-top">
+    <a class="vt-back-link tlog-back" href="/races/<%= race.id %>/tires">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      <%= lang === 'es' ? 'Volver al control de neumáticos' : 'Back to tyre control' %>
+    </a>
+    <div class="tlog-meta" id="logMeta"></div>
+  </div>
+
+  <div class="tlog-titlerow">
+    <h1 class="tlog-h1">🗒️ <%= lang === 'es' ? 'Historial de cambios' : 'Change log' %></h1>
+    <span class="tlog-sub">· <%= race.name %></span>
+  </div>
+
+  <% if (!enabled) { %>
+    <div class="tlog-empty">
+      <div class="tlog-empty__ic">🛞</div>
+      <p><%= lang === 'es' ? 'Esta carrera no lleva control de neumáticos.' : 'This race has no tyre control.' %></p>
+    </div>
+  <% } else { %>
+    <div id="logBody"></div>
+  <% } %>
+
+</div>
+</div>
+
+<% if (enabled) { %>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+(function () {
+  var RACE_ID = <%= race.id %>;
+  var LANG    = '<%= lang %>';
+  var es = LANG === 'es';
+
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function fmtClock(ms){
+    if (ms == null) return '—';
+    var t = Math.floor(ms/1000);
+    var h = Math.floor(t/3600), m = Math.floor((t%3600)/60), s = t%60;
+    var pad = function(n){ return (n<10?'0':'')+n; };
+    return h>0 ? (h+':'+pad(m)+':'+pad(s)) : (pad(m)+':'+pad(s));
+  }
+
+  function renderLog(d){
+    document.getElementById('logMeta').innerHTML =
+      (es?'Dotación ':'Allowance ')+'<b>'+d.allowance+'</b> '+(es?'juegos/equipo':'sets/team')+' · '+
+      '<b>'+d.totalChanges+'</b> '+(es? (d.totalChanges===1?'cambio':'cambios') : (d.totalChanges===1?'change':'changes'));
+
+    var body = document.getElementById('logBody');
+    if (!d.groups.length){
+      body.innerHTML = '<div class="tlog-empty"><p>'+(es?'Todavía no hay mangas.':'No heats yet.')+'</p></div>';
+      return;
+    }
+
+    var cards = d.groups.map(function(g){
+      var title = g.mangaNumber!=null ? (es?'Manga ':'Heat ')+g.mangaNumber : (es?'Sin manga':'No heat');
+
+      if (!g.changes.length){
+        return '<div class="tlog-m tlog-m--empty"><div class="tlog-m__h">'+esc(title)+
+          '<span class="tlog-m__none">'+(es?'sin cambios':'no changes')+'</span></div></div>';
+      }
+
+      var rows = g.changes.map(function(ch){
+        var time = ch.race_elapsed_ms!=null ? fmtClock(ch.race_elapsed_ms) : '—';
+        var over = (d.allowance>0 && ch.set_number>d.allowance) ? ' tlog-set--over' : '';
+        return '<div class="tlog-m__row">' +
+          '<span class="tlog-dot" style="background:'+esc(ch.team_color||'#888')+'"></span>' +
+          '<span class="tlog-team">'+esc(ch.team_name||('#'+ch.team_id)) +
+            (ch.note?' <span class="tlog-note">· '+esc(ch.note)+'</span>':'') + '</span>' +
+          '<span class="tlog-set'+over+'">'+(es?'juego ':'set ')+ch.set_number+(d.allowance>0?('/'+d.allowance):'')+'</span>' +
+          '<span class="tlog-time">'+time+'</span>' +
+        '</div>';
+      }).join('');
+
+      return '<div class="tlog-m"><div class="tlog-m__h">'+esc(title)+
+        '<span class="tlog-m__count">'+g.changes.length+'</span></div>'+rows+'</div>';
+    }).join('');
+
+    body.innerHTML = '<div class="tlog-cols">'+cards+'</div>';
+  }
+
+  function loadLog(){
+    fetch('/races/'+RACE_ID+'/tires/log.json').then(function(r){return r.json();}).then(function(d){
+      if (d.ok) renderLog(d);
+    });
+  }
+
+  // Primer pintado con los datos del servidor; refresco en vivo por socket.
+  renderLog(<%- JSON.stringify(log) %>);
+  try {
+    var socket = io();
+    socket.on('tires:changed', function(d){ if (!d || d.raceId === RACE_ID) loadLog(); });
+  } catch(e){}
+})();
+</script>
+<% } %>
+
+<%- include('../partials/footer') %>

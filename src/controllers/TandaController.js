@@ -74,18 +74,24 @@ class TandaController {
     const laneSequence = Race.getLaneSequence(race);
     const errors = [];
 
+    // Carriles sin participante: 'fixed' (sobran los últimos) o 'rotate' (el hueco
+    // rota). Solo tiene efecto si hay menos participantes que carriles activos.
+    const emptyLaneMode = req.body.empty_lane_mode === 'rotate' ? 'rotate' : 'fixed';
+
     // Parse participants from form
     // For team format: teams[0][name], teams[0][members][0], ...
     // For individual: drivers[0], drivers[1], ...
     let entities = []; // [{id, type, name}] — filled after DB inserts below
 
-    const tandaId = Tanda.create(race.id);
+    const tandaId = Tanda.create(race.id, emptyLaneMode);
 
     if (race.format === 'team') {
       const catalogIds = [].concat(req.body.team_catalog_ids || []).map(id => parseInt(id, 10)).filter(Boolean);
 
-      if (catalogIds.length < laneSequence.filter(l => l !== 0).length) {
-        errors.push('not_enough_teams');
+      // Se permite crear la tanda sin llenar todos los carriles; solo hace falta
+      // al menos un equipo. Los carriles libres se resuelven con emptyLaneMode.
+      if (catalogIds.length < 1) {
+        errors.push('no_participants');
       }
 
       if (errors.length) {
@@ -116,8 +122,10 @@ class TandaController {
       const rawDrivers = req.body.drivers || {};
       const driversArray = Array.isArray(rawDrivers) ? rawDrivers : Object.values(rawDrivers);
 
-      if (driversArray.filter(d => d?.trim()).length < laneSequence.length) {
-        errors.push('not_enough_drivers');
+      // Igual que en equipos: basta con un piloto; los carriles libres se
+      // resuelven con emptyLaneMode ('fixed' | 'rotate').
+      if (driversArray.filter(d => d?.trim()).length < 1) {
+        errors.push('no_participants');
       }
 
       if (errors.length) {
@@ -136,7 +144,7 @@ class TandaController {
     }
 
     // Generate and persist the manga schedule
-    const schedule = Manga.buildSchedule(laneSequence, entities, race.passes, race.lane_repeat);
+    const schedule = Manga.buildSchedule(laneSequence, entities, race.passes, race.lane_repeat, emptyLaneMode);
     Manga.persistSchedule(tandaId, race.id, schedule);
 
     // Mark race as active if it was pending
@@ -211,7 +219,8 @@ class TandaController {
       }
 
       const laneSequence = Race.getLaneSequence(race);
-      const schedule = Manga.buildSchedule(laneSequence, entities, race.passes, race.lane_repeat);
+      const mode = Tanda.findById(manga.tanda_id)?.empty_lane_mode || 'fixed';
+      const schedule = Manga.buildSchedule(laneSequence, entities, race.passes, race.lane_repeat, mode);
 
       // Drop all mangas of this tanda (cascade kills manga_lanes) and re-persist.
       // Las vueltas se borran explícitamente: la FK es ON DELETE SET NULL y
@@ -276,11 +285,11 @@ class TandaController {
 
       if (canRestructure) {
         const valid = driversArray.filter(d => (typeof d === 'string' ? d : d?.name)?.trim());
-        if (valid.length < laneSequence.length) {
+        if (valid.length < 1) {
           const drivers = Driver.findByTanda(tanda.id).filter(d => !d.team_id);
           return res.render('races/tanda-edit', {
             t: req.t, race, tanda, laneSequence, LANE_COLORS, profiles: DriverProfile.findAll(),
-            drivers, teams: [], canRestructure, errors: ['not_enough_drivers']
+            drivers, teams: [], canRestructure, errors: ['no_participants']
           });
         }
         db.prepare('DELETE FROM laps WHERE manga_id IN (SELECT id FROM mangas WHERE tanda_id = ?)').run(tanda.id);
@@ -293,7 +302,7 @@ class TandaController {
           const id   = Driver.create({ race_id: race.id, tanda_id: tanda.id, team_id: null, name, lane: idx + 1, car_number: idx + 1 });
           entities.push({ id, type: 'driver', name });
         });
-        Manga.persistSchedule(tanda.id, race.id, Manga.buildSchedule(laneSequence, entities, race.passes, race.lane_repeat));
+        Manga.persistSchedule(tanda.id, race.id, Manga.buildSchedule(laneSequence, entities, race.passes, race.lane_repeat, tanda.empty_lane_mode || 'fixed'));
       } else {
         driversArray.forEach(d => {
           const id   = parseInt(d.id);
@@ -308,11 +317,11 @@ class TandaController {
 
       if (canRestructure) {
         const valid = teamsArray.filter(t => t?.name?.trim());
-        if (valid.length < laneSequence.length) {
+        if (valid.length < 1) {
           const teams = require('../models/Team').findByTandaWithMembers(tanda.id);
           return res.render('races/tanda-edit', {
             t: req.t, race, tanda, laneSequence, LANE_COLORS, profiles: DriverProfile.findAll(),
-            drivers: [], teams, canRestructure, errors: ['not_enough_teams']
+            drivers: [], teams, canRestructure, errors: ['no_participants']
           });
         }
         db.prepare('DELETE FROM laps WHERE manga_id IN (SELECT id FROM mangas WHERE tanda_id = ?)').run(tanda.id);
@@ -331,7 +340,7 @@ class TandaController {
           });
           entities.push({ id: teamId, type: 'team', name: teamName });
         });
-        Manga.persistSchedule(tanda.id, race.id, Manga.buildSchedule(laneSequence, entities, race.passes, race.lane_repeat));
+        Manga.persistSchedule(tanda.id, race.id, Manga.buildSchedule(laneSequence, entities, race.passes, race.lane_repeat, tanda.empty_lane_mode || 'fixed'));
       } else {
         teamsArray.forEach(team => {
           const teamId = parseInt(team.id);

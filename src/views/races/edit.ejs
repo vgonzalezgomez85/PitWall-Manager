@@ -135,6 +135,89 @@
     </div>
     <% } %>
 
+    <% if (race.type === 'championship') { %>
+      <%
+        // BD en ms/ms; el formulario muestra minutos/segundos (como el asistente).
+        const rMinMin  = race.driver_min_total_ms > 0 ? Math.round(race.driver_min_total_ms / 60000) : '';
+        const rMaxMin  = race.driver_max_total_ms > 0 ? Math.round(race.driver_max_total_ms / 60000) : '';
+        const rMaxRuns = race.driver_max_runs > 0 ? race.driver_max_runs : '';
+        const rLockS   = race.driver_change_lockout_ms != null ? Math.round(race.driver_change_lockout_ms / 1000) : 120;
+        const rPairs   = race.tire_pairs_per_team > 0 ? race.tire_pairs_per_team : '';
+        const lockRules = hasRunManga;
+      %>
+
+      <% if (lockRules) { %>
+        <p class="form-hint" style="color:#e0a106;margin:.2rem 0 1rem">
+          🔒 <%= lang === 'es'
+            ? 'Las reglas de turnos y los neumáticos no se pueden cambiar: ya se ha corrido alguna manga de esta carrera.'
+            : 'Driver-shift rules and tyre allowance cannot be changed: a heat of this race has already been run.' %>
+        </p>
+      <% } %>
+
+      <!-- Reglas de turnos por piloto (solo resistencia, antes de correr) -->
+      <div class="form-group">
+        <label class="form-label">
+          <%= lang === 'es' ? 'Reglas de turnos por piloto' : 'Driver shift rules' %>
+        </label>
+        <p class="form-hint" style="margin:.2rem 0 .8rem">
+          <%= lang === 'es'
+            ? 'Cada piloto se identifica por QR; el contador suma sus minutos en TODAS las mangas de la carrera.'
+            : 'Each driver scans a QR; the counter sums their minutes across ALL heats of the race.' %>
+        </p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem">
+          <div>
+            <label class="form-label" for="driverMinMin" style="font-size:.85rem;color:var(--vt-mute,#9aa0a6)">
+              <%= lang === 'es' ? 'Mínimo por piloto (min)' : 'Min per driver (min)' %>
+            </label>
+            <input class="form-input form-input--sm" type="number" id="driverMinMin" name="driver_min_total_min"
+                   min="0" max="600" step="1" placeholder="0 = sin mínimo" value="<%= rMinMin %>" <%= lockRules ? 'disabled' : '' %>>
+          </div>
+          <div>
+            <label class="form-label" for="driverMaxMin" style="font-size:.85rem;color:var(--vt-mute,#9aa0a6)">
+              <%= lang === 'es' ? 'Máximo por piloto (min)' : 'Max per driver (min)' %>
+            </label>
+            <input class="form-input form-input--sm" type="number" id="driverMaxMin" name="driver_max_total_min"
+                   min="0" max="600" step="1" placeholder="0 = sin máximo" value="<%= rMaxMin %>" <%= lockRules ? 'disabled' : '' %>>
+          </div>
+          <div>
+            <label class="form-label" for="driverMaxRuns" style="font-size:.85rem;color:var(--vt-mute,#9aa0a6)">
+              <%= lang === 'es' ? 'Máximo de turnos por piloto' : 'Max turns per driver' %>
+            </label>
+            <input class="form-input form-input--sm" type="number" id="driverMaxRuns" name="driver_max_runs"
+                   min="0" max="100" step="1" placeholder="0 = sin máximo" value="<%= rMaxRuns %>" <%= lockRules ? 'disabled' : '' %>>
+          </div>
+          <div>
+            <label class="form-label" for="lockoutS" style="font-size:.85rem;color:var(--vt-mute,#9aa0a6)">
+              <%= lang === 'es' ? 'Bloqueo final de manga (s)' : 'Final-manga lockout (s)' %>
+            </label>
+            <input class="form-input form-input--sm" type="number" id="lockoutS" name="driver_change_lockout_s"
+                   min="0" max="600" step="1" value="<%= rLockS %>" <%= lockRules ? 'disabled' : '' %>>
+          </div>
+        </div>
+        <% if (errors.includes('driver_max_below_min')) { %>
+          <p class="form-hint" style="color:#ff6b6b;margin-top:.4rem"><%= t('errors.driver_max_below_min') %></p>
+        <% } %>
+      </div>
+
+      <!-- Neumáticos por equipo (solo resistencia, antes de correr) -->
+      <div class="form-group">
+        <label class="form-label" for="tirePairs">
+          <%= lang === 'es' ? 'Neumáticos por equipo' : 'Tyres per team' %>
+        </label>
+        <p class="form-hint" style="margin:.2rem 0 .6rem">
+          <%= lang === 'es'
+            ? 'Pares de neumáticos (2 ruedas) que se suministran a CADA equipo para toda la carrera; igual para todos. Es la base del control de cambios de neumáticos.'
+            : 'Pairs of tyres (2 wheels) supplied to EACH team for the whole race; the same for all. It is the basis of the tyre-change control.' %>
+        </p>
+        <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
+          <input class="form-input form-input--sm" type="number" id="tirePairs" name="tire_pairs_per_team"
+                 min="0" max="99" step="1" placeholder="<%= lang === 'es' ? '0 = sin control' : '0 = no control' %>"
+                 value="<%= rPairs %>" style="width:6.5rem" <%= lockRules ? 'disabled' : '' %>>
+          <span class="form-hint"><%= lang === 'es' ? 'pares por equipo' : 'pairs per team' %></span>
+        </div>
+      </div>
+    <% } %>
+
     <div class="form-actions">
       <a href="/races/<%= race.id %>" class="btn btn--ghost"><%= lang === 'es' ? 'Cancelar' : 'Cancel' %></a>
       <button type="submit" class="btn btn--primary"><%= lang === 'es' ? 'Guardar cambios' : 'Save changes' %></button>

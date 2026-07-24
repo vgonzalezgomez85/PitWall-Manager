@@ -66,6 +66,11 @@ function stepState(idx) {
           <span>🪪</span> <%= lang === 'es' ? 'Turnos' : 'Shifts' %>
         </a>
       <% } %>
+      <% if (race.type === 'championship' && race.tire_pairs_per_team > 0) { %>
+        <a href="/races/<%= race.id %>/tires" class="rs-btn rs-btn--ghost">
+          <span>🛞</span> <%= lang === 'es' ? 'Neumáticos' : 'Tyres' %>
+        </a>
+      <% } %>
       <% if (!isFinished) { %>
         <form action="/races/<%= race.id %>/complete" method="POST" style="display:inline"
               onsubmit="return confirm('<%= lang === 'es' ? '¿Marcar carrera como completada?' : 'Mark race as completed?' %>')">
@@ -236,9 +241,10 @@ function stepState(idx) {
     </div>
   <% } else { %>
     <% tandas.forEach(tanda => { %>
-      <section class="rs-card rs-tanda">
+      <section class="rs-card rs-tanda <%= tanda.status === 'finished' ? 'rs-tanda--collapsed' : '' %>">
         <div class="rs-tanda__head">
-          <div class="rs-tanda__left">
+          <button type="button" class="rs-tanda__left" aria-expanded="<%= tanda.status === 'finished' ? 'false' : 'true' %>">
+            <span class="rs-tanda__chevron" aria-hidden="true">▸</span>
             <span class="rs-tanda__num"><%= lang === 'es' ? 'Tanda' : 'Heat' %> <%= tanda.number %></span>
             <span class="rs-state rs-state--<%= tanda.status %>">
               <%= lang === 'es'
@@ -249,7 +255,7 @@ function stepState(idx) {
               <%= tanda.mangas_finished %> / <%= tanda.manga_count %>
               <%= lang === 'es' ? 'mangas' : 'heats' %>
             </span>
-          </div>
+          </button>
           <div class="rs-tanda__actions">
             <% const activeManga = tanda.mangas.find(m => m.status === 'active'); %>
             <% const nextManga   = tanda.mangas.find(m => m.status === 'pending'); %>
@@ -349,6 +355,15 @@ function stepState(idx) {
     document.addEventListener('click', () => menu.classList.remove('rs-menu--open'));
     menu.addEventListener('click', e => e.stopPropagation());
   })();
+
+  // Plegar / desplegar tandas
+  document.querySelectorAll('.rs-tanda__left').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tanda = btn.closest('.rs-tanda');
+      const collapsed = tanda.classList.toggle('rs-tanda--collapsed');
+      btn.setAttribute('aria-expanded', String(!collapsed));
+    });
+  });
 
   // Auto-navegar a live cuando arranca una manga
   const _raceId = <%= race.id %>;

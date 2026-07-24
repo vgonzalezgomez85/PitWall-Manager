@@ -405,6 +405,45 @@ const migrations = [
   // Sin esto, al rehidratar un turno abierto no se sabría desde qué punto seguir
   // contando, y se le regalaría (o se le robaría) al piloto el tiempo de la caída.
   `ALTER TABLE driver_shifts ADD COLUMN elapsed_at_ms INTEGER`,
+
+  // Qué hacer con los carriles libres cuando una tanda tiene MENOS participantes
+  // que carriles activos:
+  //   'fixed'  → los carriles de mayor número quedan siempre vacíos (nadie corre
+  //              por ellos); comportamiento histórico (Manga.buildSchedule usaba
+  //              activeLanes.slice(0, N)).
+  //   'rotate' → el hueco rota manga a manga para que todos pasen por los mismos
+  //              carriles (se rellena la rotación con huecos vacíos que NO generan
+  //              fila en manga_lanes → ni vueltas ni clasificación).
+  // Se lee al (re)generar el horario en creación y edición de la tanda.
+  `ALTER TABLE tandas ADD COLUMN empty_lane_mode TEXT NOT NULL DEFAULT 'fixed'`,
+
+  // Dotación de neumáticos por equipo en carreras de resistencia. Nº de PARES
+  // (2 ruedas) que se suministran a CADA equipo para toda la carrera; igual para
+  // todos. 0 = sin control de neumáticos (comportamiento histórico). Se fija en
+  // el asistente de creación (solo championship/resistencia) y es la base del
+  // control de cambios de neumáticos que se lleva durante la carrera.
+  `ALTER TABLE races ADD COLUMN tire_pairs_per_team INTEGER NOT NULL DEFAULT 0`,
+
+  // Registro de cambios de neumáticos durante la carrera (control de dotación).
+  // Cada fila = UN juego entregado a un equipo. Los "disponibles" de un equipo
+  // se DERIVAN: races.tire_pairs_per_team − COUNT(filas del equipo); los "usados"
+  // son ese COUNT. No se guardan contadores, así deshacer = borrar la última fila
+  // y nunca hay descuadre. `team_id` es el id CANÓNICO del equipo (el menor de
+  // las filas con el mismo nombre en la carrera; una carrera con tandas tiene
+  // varias filas por equipo), igual criterio que el cliente Lap. `manga_id`/
+  // `manga_number`/`race_elapsed_ms` capturan cuándo se hizo el cambio: en qué
+  // manga y en qué minuto:segundo de carrera; quedan NULL si no había manga viva.
+  `CREATE TABLE IF NOT EXISTS tire_changes (
+     id              INTEGER PRIMARY KEY AUTOINCREMENT,
+     race_id         INTEGER NOT NULL REFERENCES races(id)  ON DELETE CASCADE,
+     team_id         INTEGER NOT NULL REFERENCES teams(id)  ON DELETE CASCADE,
+     manga_id        INTEGER REFERENCES mangas(id) ON DELETE SET NULL,
+     manga_number    INTEGER,
+     race_elapsed_ms INTEGER,
+     created_at_ms   INTEGER NOT NULL,
+     note            TEXT
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_tire_changes_race_team ON tire_changes(race_id, team_id)`,
 ];
 for (const sql of migrations) {
   try {

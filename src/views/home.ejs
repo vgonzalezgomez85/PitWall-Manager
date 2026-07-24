@@ -107,10 +107,11 @@ const c = typeof counts !== 'undefined' ? counts : { drivers: 0, teams: 0, cars:
 
     <!-- ── COMPETICIÓN ─────────────────────────────────────────────── -->
     <section class="vh-section">
-      <div class="vh-sec-h">
+      <button type="button" class="vh-sec-h" aria-expanded="true">
+        <span class="vh-sec-chev" aria-hidden="true">▸</span>
         <span class="vh-sec-lbl"><%= lang === 'es' ? 'Competición' : 'Competition' %></span>
         <span class="vh-sec-line"></span>
-      </div>
+      </button>
       <div class="vh-grid">
 
         <a class="vh-card" href="/training" style="--a:#38bdf8;--a-bg:rgba(56,189,248,.12)">
@@ -220,15 +221,31 @@ const c = typeof counts !== 'undefined' ? counts : { drivers: 0, teams: 0, cars:
           <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
         </a>
 
+        <a class="vh-card" href="/control/tires" style="--a:#facc15;--a-bg:rgba(250,204,21,.12)">
+          <div class="vh-ico">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9"/>
+              <circle cx="12" cy="12" r="3.4"/>
+              <path d="M12 3v3.6M12 17.4V21M3 12h3.6M17.4 12H21"/>
+            </svg>
+          </div>
+          <div class="vh-body">
+            <div class="vh-t"><%= lang === 'es' ? 'Control de neumáticos' : 'Tyre control' %></div>
+            <div class="vh-d"><%= lang === 'es' ? 'Reparte y controla los juegos de neumáticos de cada equipo durante la carrera de resistencia.' : 'Hand out and track each team\'s tyre sets during the endurance race.' %></div>
+          </div>
+          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </a>
+
       </div>
     </section>
 
     <!-- ── CATÁLOGO ───────────────────────────────────────────────── -->
     <section class="vh-section">
-      <div class="vh-sec-h">
+      <button type="button" class="vh-sec-h" aria-expanded="true">
+        <span class="vh-sec-chev" aria-hidden="true">▸</span>
         <span class="vh-sec-lbl"><%= lang === 'es' ? 'Catálogo' : 'Catalog' %></span>
         <span class="vh-sec-line"></span>
-      </div>
+      </button>
       <div class="vh-grid">
 
         <a class="vh-card" href="/drivers" style="--a:#f59e0b;--a-bg:rgba(245,158,11,.12)">
@@ -326,10 +343,11 @@ const c = typeof counts !== 'undefined' ? counts : { drivers: 0, teams: 0, cars:
 
     <!-- ── SISTEMA ────────────────────────────────────────────────── -->
     <section class="vh-section">
-      <div class="vh-sec-h">
+      <button type="button" class="vh-sec-h" aria-expanded="true">
+        <span class="vh-sec-chev" aria-hidden="true">▸</span>
         <span class="vh-sec-lbl"><%= lang === 'es' ? 'Sistema' : 'System' %></span>
         <span class="vh-sec-line"></span>
-      </div>
+      </button>
       <div class="vh-grid">
 
         <a class="vh-card" href="/settings" style="--a:#94a3b8;--a-bg:rgba(148,163,184,.12)">
@@ -396,5 +414,32 @@ const c = typeof counts !== 'undefined' ? counts : { drivers: 0, teams: 0, cars:
 
   </div>
 </div>
+
+<script>
+  // Plegar / desplegar secciones de la home (estado recordado por sección)
+  (function () {
+    const KEY = 'pw:home:collapsed';
+    let stored = {};
+    try { stored = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (_) {}
+
+    document.querySelectorAll('.vol-home .vh-section > .vh-sec-h').forEach(head => {
+      const section = head.closest('.vh-section');
+      const lbl = head.querySelector('.vh-sec-lbl');
+      const id = lbl ? lbl.textContent.trim() : '';
+
+      if (stored[id]) {
+        section.classList.add('vh-section--collapsed');
+        head.setAttribute('aria-expanded', 'false');
+      }
+
+      head.addEventListener('click', () => {
+        const collapsed = section.classList.toggle('vh-section--collapsed');
+        head.setAttribute('aria-expanded', String(!collapsed));
+        stored[id] = collapsed;
+        try { localStorage.setItem(KEY, JSON.stringify(stored)); } catch (_) {}
+      });
+    });
+  })();
+</script>
 
 <%- include('partials/footer') %>

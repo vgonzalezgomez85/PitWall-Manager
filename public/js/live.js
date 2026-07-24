@@ -396,6 +396,9 @@ function buildCard(lane) {
         <span class="lane-card__exit" id="card-exit-${lane.lane}" hidden title="${LANG === 'es' ? 'Salidas' : 'Exits'}">
           ⚠️<span class="lane-card__exit-count" id="card-exit-count-${lane.lane}"></span>
         </span>
+        <span class="lane-card__tire" id="card-tire-${lane.lane}" hidden title="${LANG === 'es' ? 'Cambios de neumático' : 'Tyre changes'}">
+          🛞<span class="lane-card__tire-count" id="card-tire-count-${lane.lane}"></span>
+        </span>
       </div>
       <div class="lane-card__driver-row" id="card-driver-${lane.lane}"></div>
     </div>
@@ -583,6 +586,49 @@ function updateExitIndicator(lane, count) {
   }
   wrap.hidden = false;
   num.textContent = count;
+}
+
+// Badge 🛞 con el nº de cambios de neumático del equipo en la carrera. A
+// diferencia de pit/salidas (que vienen del cronometraje), se alimenta del
+// control de neumáticos vía `refreshTireIndicators()`. Destella al aumentar.
+let _tireUsedByLane = {};
+function updateTireIndicator(lane, used) {
+  const wrap = document.getElementById(`card-tire-${lane}`);
+  const num  = document.getElementById(`card-tire-count-${lane}`);
+  if (!wrap || !num) return;
+  if (!used || used <= 0) {
+    wrap.hidden = true;
+    num.textContent = '';
+    _tireUsedByLane[lane] = 0;
+    return;
+  }
+  wrap.hidden = false;
+  num.textContent = used;
+  if ((_tireUsedByLane[lane] || 0) < used) {
+    wrap.classList.remove('tire-flash');
+    void wrap.offsetWidth;               // reinicia la animación
+    wrap.classList.add('tire-flash');
+  }
+  _tireUsedByLane[lane] = used;
+}
+
+// Refetchea el estado de neumáticos y repinta los badges. El cruce tarjeta↔
+// equipo se hace por NOMBRE (standings no emite team_id, pero el nombre sale
+// de teams.name en ambos lados). Solo corre si la carrera lleva control.
+function refreshTireIndicators() {
+  if (!RACE_DATA.tireControl) return;
+  fetch(`/races/${RACE_DATA.raceId}/tires.json`)
+    .then(r => r.json())
+    .then(d => {
+      if (!d.ok || !d.summary) return;
+      const usedByName = {};
+      d.summary.teams.forEach(t => { usedByName[t.name] = t.used; });
+      (RACE_DATA.lanes || []).forEach(l => {
+        if (l.isRest) return;
+        updateTireIndicator(l.lane, usedByName[l.name] || 0);
+      });
+    })
+    .catch(() => {});
 }
 
 // ── Sidebar standings ─────────────────────────────────────────────────────────
@@ -1443,6 +1489,7 @@ function addTick(lap) {
 
 // ── Initialize ────────────────────────────────────────────────────────────────
 initCards();
+refreshTireIndicators();   // estado inicial de los badges de neumático (🛞)
 // Primera evaluación de paginación en V1 una vez pintadas las tarjetas
 requestAnimationFrame(_v1ApplyPaging);
 
@@ -1582,6 +1629,12 @@ function announce(text) {
 
   socket.on('connect', () => socket.emit('race:live:join'));
   window.addEventListener('beforeunload', () => socket.emit('race:live:leave'));
+
+  // Cambios de neumático: repinta los badges 🛞 en cuanto el control registra
+  // una entrega o edición. Vale con la manga activa o en espera.
+  socket.on('tires:changed', (d) => {
+    if (!d || d.raceId === RACE_DATA.raceId) refreshTireIndicators();
+  });
 
   // ── DS-300 link status banner ─────────────────────────────────────────────
   const banner      = document.getElementById('serialBanner');

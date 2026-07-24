@@ -137,6 +137,9 @@ class RaceController {
     // Reglas de turnos por piloto (solo si type === 'championship'; en otros
     // casos se guardan a 0 = sin límite y se ignoran).
     let driverMinMs = 0, driverMaxMs = 0, lockoutMs = 120000, driverMaxRuns = 0;
+    // Dotación de neumáticos por equipo (pares). Solo resistencia (championship);
+    // en el resto se guarda 0 = sin control de neumáticos.
+    let tirePairs = 0;
     if (type === 'championship') {
       const minMin = parseInt(req.body.driver_min_total_min, 10);
       const maxMin = parseInt(req.body.driver_max_total_min, 10);
@@ -146,6 +149,8 @@ class RaceController {
       if (!isNaN(maxMin) && maxMin > 0) driverMaxMs = maxMin * 60 * 1000;
       if (!isNaN(lockS)  && lockS  >= 0) lockoutMs = lockS * 1000;
       if (!isNaN(maxRuns) && maxRuns > 0) driverMaxRuns = maxRuns;
+      const pairs = parseInt(req.body.tire_pairs_per_team, 10);
+      if (!isNaN(pairs) && pairs > 0) tirePairs = pairs;
       // Validación coherencia: max debe ser >= min si ambos > 0
       if (driverMinMs > 0 && driverMaxMs > 0 && driverMaxMs < driverMinMs) {
         errors.push('driver_max_below_min');
@@ -181,6 +186,7 @@ class RaceController {
       driver_max_total_ms:      driverMaxMs,
       driver_change_lockout_ms: lockoutMs,
       driver_max_runs:          driverMaxRuns,
+      tire_pairs_per_team:      tirePairs,
     };
     // El paso 2 (Formato) ya no existe: enrutamos directamente.
     return RaceController._routeAfterFormat(req, res);
@@ -336,6 +342,7 @@ class RaceController {
       driver_max_runs:          wizard.driver_max_runs          || 0,
       passes:                   wizard.passes                   || 1,
       lane_repeat:              wizard.lane_repeat              || 1,
+      tire_pairs_per_team:      wizard.tire_pairs_per_team      || 0,
     });
 
     // If pole enabled, create session + entries from wizard participants
@@ -491,7 +498,8 @@ class RaceController {
     const restCount  = RaceController._restSlots(race, activeLen);
     res.render('races/edit', {
       t: req.t, race, savedCircuits, circuitCategoryTimes,
-      hasLaps: Race.hasRecordedLaps(race.id), errors: [],
+      hasLaps: Race.hasRecordedLaps(race.id),
+      hasRunManga: Race.hasRunAnyManga(race.id), errors: [],
       laneSequence: RaceController._editorSequence(race, restCount),
       restCount, LANE_COLORS,
     });
@@ -569,6 +577,37 @@ class RaceController {
       }
     }
 
+    // Reglas de resistencia (turnos de piloto + neumáticos por equipo): solo
+    // se pueden ajustar en carreras de campeonato y MIENTRAS no se haya corrido
+    // ninguna manga (una vez rodada, la dotación y los límites quedan fijados).
+    const hasRunManga = Race.hasRunAnyManga(race.id);
+    const editKeep    = { ...race }; // valores a re-mostrar si hay errores
+    if (race.type === 'championship' && !hasRunManga) {
+      const minMin  = parseInt(req.body.driver_min_total_min, 10);
+      const maxMin  = parseInt(req.body.driver_max_total_min, 10);
+      const lockS   = parseInt(req.body.driver_change_lockout_s, 10);
+      const maxRuns = parseInt(req.body.driver_max_runs, 10);
+      const pairs   = parseInt(req.body.tire_pairs_per_team, 10);
+      const driverMinMs = (!isNaN(minMin)  && minMin  > 0) ? minMin * 60 * 1000 : 0;
+      const driverMaxMs = (!isNaN(maxMin)  && maxMin  > 0) ? maxMin * 60 * 1000 : 0;
+      const lockoutMs   = (!isNaN(lockS)   && lockS  >= 0) ? lockS * 1000 : 120000;
+      const maxRunsN    = (!isNaN(maxRuns) && maxRuns > 0) ? maxRuns : 0;
+      const tirePairs   = (!isNaN(pairs)   && pairs   > 0) ? pairs : 0;
+      if (driverMinMs > 0 && driverMaxMs > 0 && driverMaxMs < driverMinMs) {
+        errors.push('driver_max_below_min');
+      }
+      patch.driver_min_total_ms      = driverMinMs;
+      patch.driver_max_total_ms      = driverMaxMs;
+      patch.driver_change_lockout_ms = lockoutMs;
+      patch.driver_max_runs          = maxRunsN;
+      patch.tire_pairs_per_team      = tirePairs;
+      Object.assign(editKeep, {
+        driver_min_total_ms: driverMinMs, driver_max_total_ms: driverMaxMs,
+        driver_change_lockout_ms: lockoutMs, driver_max_runs: maxRunsN,
+        tire_pairs_per_team: tirePairs,
+      });
+    }
+
     if (errors.length) {
       const savedCircuits = Circuit.findAll();
       const circuitCategoryTimes = {};
@@ -579,7 +618,8 @@ class RaceController {
       const activeLen = Race.getLaneSequence(race).filter(l => l > 0).length;
       const restCount = RaceController._restSlots(race, activeLen);
       return res.render('races/edit', {
-        t: req.t, race: { ...race, name }, savedCircuits, circuitCategoryTimes, hasLaps, errors,
+        t: req.t, race: { ...editKeep, name }, savedCircuits, circuitCategoryTimes,
+        hasLaps, hasRunManga, errors,
         laneSequence: RaceController._editorSequence(race, restCount), restCount, LANE_COLORS,
       });
     }

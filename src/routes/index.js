@@ -39,6 +39,7 @@ const LiveStatsController         = require('../controllers/LiveStatsController'
 const DatabaseController          = require('../controllers/DatabaseController');
 const LinkController               = require('../controllers/LinkController');
 const ImportController             = require('../controllers/ImportController');
+const TireController               = require('../controllers/TireController');
 
 router.get('/', (req, res) => {
   const Race          = require('../models/Race');
@@ -146,6 +147,20 @@ router.get( '/link/laps',                  LinkController.laps);
 router.get( '/link/compare',               LinkController.comparePage);
 router.get( '/link/compare/mangas',        LinkController.compareMangas);
 router.get( '/link/compare/data',          LinkController.compareData);
+
+// ── Control de neumáticos (resistencia) ───────────────────────────────────
+// Página por carrera + kiosco que auto-detecta la carrera activa. Las rutas de
+// /races/:id/tires* van ANTES de la genérica /races/:id (más abajo).
+router.get( '/control/tires',                         TireController.kiosk);
+router.get( '/races/:id/tires',                       TireController.race);
+router.get( '/races/:id/tires.json',                  TireController.snapshot);
+router.get( '/races/:id/tires/log',                   TireController.logPage);
+router.get( '/races/:id/tires/log.json',              TireController.log);
+router.get( '/races/:id/tires/:teamId/history',       TireController.history);
+router.post('/races/:id/tires/:teamId/change',        TireController.addChange);
+router.post('/races/:id/tires/:teamId/history/add',   TireController.addManual);
+router.post('/races/:id/tires/change/:changeId',      TireController.updateChange);
+router.post('/races/:id/tires/change/:changeId/delete', TireController.deleteChange);
 
 // ── QR shifts control ─────────────────────────────────────────────────────
 router.get('/control/shifts',     ControlController.live);

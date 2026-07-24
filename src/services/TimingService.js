@@ -2140,6 +2140,15 @@ class TimingServiceClass {
     return Math.max(0, this.session.durationMs - (ref - this.session.startTime));
   }
 
+  // Ms transcurridos de la manga viva (el mismo reloj que emite el tick). Null
+  // si no hay sesión. Durante pausa el tiempo no avanza. Lo usa el control de
+  // neumáticos para sellar en qué minuto:segundo de carrera se hizo un cambio.
+  getElapsedMs() {
+    if (!this.session) return null;
+    const ref = (this.isPaused && this.session.pauseStart) ? this.session.pauseStart : Date.now();
+    return Math.max(0, ref - this.session.startTime);
+  }
+
   // ── Driver shifts (solo carreras de campeonato) ─────────────────────
 
   // El tiempo de un piloto NO se acumula sumando ticks: se DERIVA del reloj

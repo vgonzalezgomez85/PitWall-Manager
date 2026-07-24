@@ -72,14 +72,33 @@ class Manga {
   //   manga a su tiempo, así que "repetir carril" son R mangas contiguas, no
   //   una manga más larga.
   // Total de mangas = P × seqLen × R.
-  static buildSchedule(laneSequence, entities, passes = 1, laneRepeat = 1) {
-    const N = entities.length;
-    if (N === 0 || laneSequence.length === 0) return [];
+  //
+  // `emptyLaneMode` decide qué pasa con los carriles libres cuando hay MENOS
+  // entidades que carriles activos:
+  //   'fixed'  → se usan solo los N primeros carriles activos; los de mayor
+  //              número quedan siempre vacíos (comportamiento histórico).
+  //   'rotate' → la rotación se rellena con HUECOS vacíos (entity null) para que
+  //              el carril libre vaya cambiando de manga en manga y todos pasen
+  //              por los mismos carriles. Los huecos ocupan sitio en la rotación
+  //              pero persistSchedule NO los guarda (no crean fila en manga_lanes
+  //              → ni vueltas ni clasificación fantasma).
+  static buildSchedule(laneSequence, entities, passes = 1, laneRepeat = 1, emptyLaneMode = 'fixed') {
+    const N0 = entities.length;
+    if (N0 === 0 || laneSequence.length === 0) return [];
     const P = Math.max(1, parseInt(passes, 10) || 1);
     const R = Math.max(1, parseInt(laneRepeat, 10) || 1);
 
     const activeLanes  = laneSequence.filter(l => l > 0);
     const hasExplicit0 = laneSequence.includes(0);
+
+    // Modo "rotate" con menos entidades que carriles: rellenamos la rotación con
+    // huecos vacíos (null) hasta cubrir todos los carriles activos, de modo que
+    // el/los hueco(s) roten por todos los carriles como una entidad más.
+    let ents = entities;
+    if (emptyLaneMode === 'rotate' && !hasExplicit0 && N0 < activeLanes.length) {
+      ents = [...entities, ...Array(activeLanes.length - N0).fill(null)];
+    }
+    const N = ents.length;
 
     let extended;
     if (hasExplicit0 && N >= activeLanes.length) {
@@ -102,9 +121,11 @@ class Manga {
     const schedule = [];
     for (let p = 0; p < P; p++) {
       for (let s = 0; s < seqLen; s++) {
-        const slots = entities.map((entity, i) => {
+        const slots = ents.map((entity, i) => {
           const lane = extended[(i + s) % seqLen];
-          return { lane, entity, isRest: lane === 0 };
+          // Un hueco vacío (entity null) que cae en un carril real no es un
+          // descanso: es un carril que simplemente se queda sin coche esa manga.
+          return { lane, entity, isRest: lane === 0, isEmpty: entity == null && lane !== 0 };
         });
         for (let rep = 0; rep < R; rep++) schedule.push(slots.map(x => ({ ...x })));
       }
@@ -127,7 +148,10 @@ class Manga {
       schedule.forEach((slots, idx) => {
         const { lastInsertRowid: mangaId } = insertManga.run(tandaId, raceId, idx + 1);
         mangaIds.push(mangaId);
-        slots.forEach(({ lane, entity, isRest }) => {
+        slots.forEach(({ lane, entity, isRest, isEmpty }) => {
+          // Hueco vacío (carril libre que rota): no se persiste ninguna fila, así
+          // el carril queda sin coche esa manga y no contamina ninguna agregación.
+          if (isEmpty || !entity) return;
           const teamId   = entity.type === 'team'   ? entity.id : null;
           const driverId = entity.type === 'driver' ? entity.id : null;
           insertLane.run(mangaId, lane, teamId, driverId, isRest ? 1 : 0);

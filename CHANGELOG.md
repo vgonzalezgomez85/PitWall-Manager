@@ -13,6 +13,38 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.17.0] — 2026-07-24
+
+### Añadido
+- **La pantalla en directo avisa cuando un equipo cambia de neumáticos.** En cada tarjeta de equipo, junto al nombre, aparece ahora un indicador **🛞 con el número de juegos que lleva usados** ese equipo —igual que los avisos de **salidas (⚠️)** y **pit-stops (🔧)**—. En cuanto se anota un cambio en el control de neumáticos, el indicador **se actualiza al instante** en la live (sin recargar) y **destella** para que se vea que se acaba de hacer. Funciona con la manga **en marcha o en espera**, y solo aparece en carreras de **resistencia con control de neumáticos**.
+
+## [1.16.0] — 2026-07-24
+
+### Añadido
+- **El control de neumáticos ya tiene su historial completo de la carrera.** En la cabecera de la pantalla de neumáticos (tanto en `/races/:id/tires` como en el kiosco `/control/tires`), junto a la dotación, hay un botón nuevo **«🗒️ Historial de cambios»** que abre el **registro global** de toda la carrera —no el de un solo equipo— **en una pestaña nueva**, presentado como una **tabla por mangas repartida en columnas** que aprovecha el ancho de la pantalla para verlo casi sin scroll. Los cambios salen **agrupados por manga**: se listan **todas las mangas** de la carrera, y las que no tuvieron ningún cambio de neumáticos aparecen igualmente marcadas como **«— sin cambios de neumáticos —»**, para que se vea de un vistazo dónde hubo movimiento y dónde no. Dentro de cada manga, cada entrega muestra el **equipo** (con su punto de color y su nombre), **qué número de juego era** para ese equipo (**juego N de la dotación**, contando por orden cronológico —1, 2, 3…—, y en **rojo** si se pasó de lo que le tocaba) y el **minuto:segundo de carrera** en que se hizo. Si algún cambio se guardó sin manga asignada, va a un grupo **«Sin manga»** al final.
+- **Es solo para consultar, y se actualiza en vivo.** El historial global es de **solo lectura** —para borrar, editar o añadir un cambio a mano se sigue usando el lápiz de cada equipo, como hasta ahora—. Y si lo dejas abierto mientras se dan neumáticos, **se refresca solo** en cuanto se anota un cambio en cualquier pantalla.
+
+## [1.15.0] — 2026-07-24
+
+### Añadido
+- **Ya puedes ajustar los turnos y los neumáticos de una resistencia después de crearla.** Hasta ahora, las **reglas de turnos por piloto** (mínimo y máximo por piloto, máximo de turnos y bloqueo del final de manga) y los **neumáticos por equipo** solo se fijaban al crear la carrera, en el asistente: si te equivocabas en un número, tocaba rehacer la carrera entera. Ahora, desde **Editar carrera**, en las carreras de **resistencia** puedes cambiar todos esos valores con calma **antes de que ruede la primera manga**.
+- **Con una manga rodada, esos campos se bloquean solos.** En cuanto empieza la primera manga, los ajustes de turnos y neumáticos aparecen **bloqueados y con un candado 🔒** —para no descuadrar el control de turnos ni la dotación de neumáticos de una carrera ya en marcha—. El **nombre** y el **escenario** siguen editándose con sus reglas de siempre. Y si pones un **máximo por piloto menor que el mínimo**, PitWall te avisa en vez de guardar un disparate.
+
+## [1.14.0] — 2026-07-24
+
+### Añadido
+- **Control de neumáticos para las carreras de resistencia.** Nueva página para repartir y llevar la cuenta de los **juegos de neumáticos** de cada equipo durante una carrera larga. Cada equipo parte de la **misma dotación**, la que fijas al crear la carrera (asistente, paso 1, **«Neumáticos por equipo»**); un **0** deja el control apagado, como hasta ahora. La pantalla es una **rejilla con todos los equipos**, y cada casilla muestra dos números: **Disponibles** y **Usados**. **Un clic en el equipo = entregar un juego**: baja uno los disponibles, sube uno los usados y queda anotado **en qué manga y en qué minuto:segundo de carrera** se hizo el cambio (se sella con la manga en marcha y su reloj; si en ese momento no hay ninguna corriendo, se guarda la manga sin tiempo). Todo se sincroniza al instante entre las pantallas que tengas abiertas.
+- **Historial por equipo, para arreglar lo que haga falta.** El **lápiz** de cada casilla abre el detalle de ese equipo, donde puedes **borrar** un registro (el juego vuelve a Disponibles), **editar** su manga y su tiempo (mm:ss) o **añadir uno a mano** (manga, tiempo y una nota). Los contadores no se guardan a pelo: se **calculan** a partir de los registros (dotación menos entregas), así que deshacer nunca deja descuadres. Si un equipo se pasa de su cupo, sus Disponibles pueden quedar en **negativo y en rojo** —pensado para cuando das un juego extra fuera de dotación.
+- **Dos formas de abrirlo.** Desde la propia carrera, con el botón **🛞 Neumáticos** (aparece solo en resistencia y con dotación mayor que 0); y como **kiosco** en `/control/tires`, que **detecta solo** la carrera de resistencia que esté en marcha —igual que el kiosco de turnos— y tiene su tarjeta en la pantalla de inicio, para dejarlo abierto en una tablet junto al box.
+
+## [1.13.0] — 2026-07-23
+
+### Añadido
+- **Ya puedes crear una tanda con menos participantes que carriles.** Hasta ahora, si tu pista tiene 8 carriles, hacía falta rellenar los 8 sí o sí: PitWall no te dejaba empezar con 5 equipos. Ese candado se ha quitado — ahora basta con **un participante como mínimo** y los carriles que sobran se quedan libres, sin coche fantasma que ensucie las vueltas ni la clasificación. Perfecto para cuando falla gente a última hora o simplemente sois menos que carriles.
+- **Y eliges qué pasa con los carriles que sobran.** Al crear la tanda aparece un selector con dos opciones:
+  - **Sobran los últimos** (por defecto): los carriles de mayor número quedan vacíos toda la carrera y nadie rueda por ellos. Es el comportamiento de siempre, ahora disponible aun sin llenar la pista.
+  - **El hueco rota**: el carril (o carriles) libre va rotando manga a manga, de modo que **todos los participantes acaban pasando por los mismos carriles**. Así nadie se lleva de gratis el carril bueno ni carga con el malo — la pista queda igual de justa que con la rejilla completa.
+
 ## [1.12.0] — 2026-07-21
 
 ### Añadido

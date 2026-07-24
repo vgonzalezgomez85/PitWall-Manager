@@ -327,6 +327,22 @@ body:not(:has(.live-lanes--vertical)) .lane-card.is-rest .lane-card__rest-label 
   font-family: 'Share Tech Mono', monospace;
   font-size: .85rem; font-weight: 700; color: #e63946;
 }
+/* Badge de neumáticos: mismo estilo compacto que pit/salidas, en cian. */
+.lane-card__tire {
+  font-size: 1.1rem; margin-left: .3rem; line-height: 1;
+  display: inline-flex; align-items: baseline; gap: .1rem;
+}
+.lane-card__tire[hidden] { display: none; }
+.lane-card__tire-count {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .85rem; font-weight: 700; color: #38bdf8;
+}
+.lane-card__tire.tire-flash { animation: tireBadgeFlash 1.1s ease; }
+@keyframes tireBadgeFlash {
+  0%   { transform: scale(1);   filter: none; }
+  15%  { transform: scale(1.5); filter: drop-shadow(0 0 8px #38bdf8); }
+  100% { transform: scale(1);   filter: none; }
+}
 .lane-card__laps {
   font-family: 'Share Tech Mono', monospace;
   font-size: 5rem; font-weight: 700; color: #f6c90e;
@@ -793,6 +809,9 @@ body.resizing-sidebar * { cursor: col-resize !important; }
 }
 .live-lanes--vertical:not(.live-lanes--detailed) .lane-card__exit {
   grid-column: 3 !important; grid-row: 1 !important; justify-self: start !important; align-self: center; margin: 0 !important;
+}
+.live-lanes--vertical:not(.live-lanes--detailed) .lane-card__tire {
+  grid-column: 4 !important; grid-row: 1 !important; justify-self: start !important; align-self: center; margin: 0 !important;
 }
 .live-lanes--vertical .lane-card__name {
   grid-column: 1 / -1 !important;
@@ -1509,6 +1528,7 @@ body:not(:has(.live-lanes--vertical)) .lane-card__name--overflow {
 }
 body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__pit { order: 5; }
 body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__exit { order: 6; }
+body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__tire { order: 7; }
 
 /* ── Flip nombre de equipo ↔ piloto activo (V1) ────────────────────────────
    Con piloto asignado se ve el EQUIPO casi siempre; durante la ventana

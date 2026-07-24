@@ -112,7 +112,9 @@
     "members_count_invalid": "Number of members must be between 1 and 10",
     "not_enough_teams": "Number of teams must equal the number of lanes in the sequence",
     "not_enough_drivers": "Number of drivers must equal the number of lanes in the sequence",
-    "category_required": "You must select a category"
+    "no_participants": "Add at least one participant to the heat group",
+    "category_required": "You must select a category",
+    "driver_max_below_min": "Max per driver cannot be lower than the minimum"
   },
   "actions": {
     "save": "Save",
