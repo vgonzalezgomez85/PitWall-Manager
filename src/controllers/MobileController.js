@@ -19,8 +19,9 @@ const TimingService     = require('../services/TimingService');
 const TrainingService   = require('../services/TrainingService');
 const PoleTimingService = require('../services/PoleTimingService');
 const PoleSession       = require('../models/PoleSession');
-const Race  = require('../models/Race');
-const Lap   = require('../models/Lap');
+const Race       = require('../models/Race');
+const Lap        = require('../models/Lap');
+const TireChange = require('../models/TireChange');
 const db = require('../config/database');
 
 // Caché del dossier de resultados (ver buildStatsSnapshot).
@@ -176,6 +177,9 @@ const MobileController = {
         mangaDurationMin:  race.manga_duration_minutes,
         startedAt:         race.started_at,
         hasPole:           !!race.has_pole,
+        // Dotación de neumáticos por equipo (pares suministrados para toda la
+        // carrera; 0 = sin control). La app la usa para la estrategia de goma.
+        tirePairsPerTeam:  race.tire_pairs_per_team || 0,
       },
       activeManga: activeManga ? {
         id:         activeManga.id,
@@ -350,6 +354,47 @@ const MobileController = {
       standings,
       live:          liveSnapshot,
     });
+  },
+
+  // GET /api/mobile/races/:id/tires
+  //
+  // Control de neumáticos de la carrera para la app: dotación por equipo y el
+  // historial de cambios de CADA equipo (canónico), con nº de juego, manga y
+  // minuto:segundo de carrera. La app casa su piloto/rivales por NOMBRE (único
+  // por carrera) para poblar la estrategia de goma sin bookkeeping manual.
+  //
+  // `allowance = 0` → la carrera no lleva control de neumáticos. La app se
+  // queda entonces con su configuración manual.
+  //
+  // Se refresca en el cliente al recibir el socket `tires:changed` (re-fetch).
+  racesTires(req, res) {
+    const race = Race.findById(req.params.id);
+    if (!race) return res.status(404).json({ error: 'race_not_found' });
+
+    const summary = TireChange.summaryByRace(race.id);
+    const teams = summary.teams.map(t => {
+      // historyByTeam viene de más reciente a más antiguo; lo invertimos a orden
+      // cronológico para numerar el juego (1, 2, 3…) igual que el historial global.
+      const rows = TireChange.historyByTeam(race.id, t.id).slice().reverse();
+      const changes = rows.map((r, i) => ({
+        setNumber:     i + 1,
+        mangaId:       r.manga_id ?? null,
+        mangaNumber:   r.manga_number ?? null,
+        raceElapsedMs: r.race_elapsed_ms ?? null,
+        createdAtMs:   r.created_at_ms,
+        note:          r.note ?? null,
+      }));
+      return {
+        id:        t.id,
+        name:      t.name,
+        color:     t.color || '#8b949e',
+        used:      t.used,
+        available: t.available,
+        changes,
+      };
+    });
+
+    return res.json({ raceId: race.id, allowance: summary.allowance, teams });
   },
 
   // GET /api/mobile/training

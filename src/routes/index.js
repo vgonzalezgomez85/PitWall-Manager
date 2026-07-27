@@ -340,6 +340,7 @@ router.get('/api/mobile/races/current',      MobileController.racesCurrent);
 router.get('/api/mobile/races/active',       MobileController.racesActive);
 router.get('/api/mobile/races',              MobileController.racesList);
 router.get('/api/mobile/races/:id/results',  MobileController.racesResults);
+router.get('/api/mobile/races/:id/tires',    MobileController.racesTires);
 router.get('/api/mobile/races/:id',          MobileController.racesShow);
 router.get('/api/mobile/races/:id/pole',     MobileController.racesPole);
 
