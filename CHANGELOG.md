@@ -13,7 +13,10 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
-## [1.17.0] — 2026-07-24
+## [1.18.0] — 2026-07-27
+
+### Añadido
+- **La app del piloto ya conoce el control de neumáticos de la carrera.** El detalle de carrera que consume la app móvil (**PitWall Lap**) incluye ahora la **dotación de juegos por equipo** (`tirePairsPerTeam`; **0** = la carrera no lleva control de neumáticos, y la app se queda con su configuración manual). Y hay un **endpoint nuevo** —`GET /api/mobile/races/:id/tires`— que devuelve, por equipo (**canónico por nombre**, igual que en la web), los **juegos usados y disponibles** y el **historial de cambios** en orden cronológico: **número de juego** (1, 2, 3…), **manga** y **minuto:segundo de carrera** de cada entrega. La app casa a su piloto y a los rivales **por nombre** para poblar la estrategia de goma sin llevar la cuenta a mano, y se refresca al recibir el socket `tires:changed`. Solo lectura; no toca ni las estadísticas ni el Control.
 
 ### Añadido
 - **La pantalla en directo avisa cuando un equipo cambia de neumáticos.** En cada tarjeta de equipo, junto al nombre, aparece ahora un indicador **🛞 con el número de juegos que lleva usados** ese equipo —igual que los avisos de **salidas (⚠️)** y **pit-stops (🔧)**—. En cuanto se anota un cambio en el control de neumáticos, el indicador **se actualiza al instante** en la live (sin recargar) y **destella** para que se vea que se acaba de hacer. Funciona con la manga **en marcha o en espera**, y solo aparece en carreras de **resistencia con control de neumáticos**.
