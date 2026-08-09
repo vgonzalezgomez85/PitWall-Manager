@@ -17,6 +17,15 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ### Añadido
 - **«Conexión ecosistema»: interruptor para permitir o bloquear PitWall Control.** Nueva página en el menú Sistema (`/ecosystem`) con un único interruptor que decide si PitWall Control puede conectarse a este equipo desde la red local: enviar tandas (protegido con PIN) y leer los resultados de cada tanda. Desactivado, se rechaza cualquier conexión de Control desde otro dispositivo de la LAN; este equipo y las IPs de la allowlist de Ajustes no se ven afectados. Activado por defecto, para no cambiar el comportamiento de las instalaciones existentes. La misma página muestra el PIN de emparejamiento.
+- **Verificaciones técnicas de PitWall Control, visibles en la carrera.** Con «Conexión ecosistema» activada, PitWall Control puede enviar por LAN (con el mismo PIN) el snapshot de las verificaciones técnicas de cada equipo por manga: pesos, motor, piñón/corona, llantas, trencilla, suspensión, bancada, chasis, neumático, validado y observaciones (con fotos). Dentro de la carrera aparece un botón «🔍 Verificaciones» en cuanto llega el primer envío, con una pantalla agrupada por manga. Es de **solo consulta**: en PitWall no se edita nada, cada envío de Control sustituye por completo las verificaciones de esa carrera.
+
+### Mejorado
+- **La categoría del equipo acompaña a su nombre en mejor vuelta y panel en vivo.** Cuando el equipo tiene categoría en el catálogo del club, la mejor vuelta de la manga y de la carrera, y las etiquetas del panel de pista en vivo, muestran ahora «Nombre - Categoría» en vez de solo el nombre.
+- **El tiempo mínimo de vuelta se resincroniza al vuelo.** Si se corrige el `Pt` (tiempo mínimo de vuelta) de un circuito o de una de sus categorías, todas las carreras ya asignadas a ese circuito se actualizan automáticamente — antes se quedaban con el valor que tenían copiado desde que se les asignó el circuito, y podían acabar desincronizadas de la caja DS-300 real, marcando como vuelta fantasma tiempos que eran perfectamente válidos. El cambio se nota al instante, sin reiniciar la manga en curso.
+
+### Corregido
+- **«Eliminar pending setup» ya no da por terminadas carreras de paso.** Este botón de Diagnóstico completaba de paso cualquier carrera activa con una manga pendiente que no fuera la que estaba corriendo en ese momento — pero eso incluía carreras «huérfanas» (activas, con mangas de verdad por correr, simplemente sin nada corriendo en el motor en ese instante, por ejemplo tras un corte de serie). Ahora el botón solo libera el aviso interno del próximo GO, sin tocar el estado de ninguna carrera.
+- **PitWall Lap ya no avisa por voz de «Último minuto» con la manga en pausa.** El motor de voz del cliente del equipo seguía extrapolando el tiempo restante por reloj de pared aunque la manga estuviera parada, así que el aviso de «Último minuto» o «Últimos 30 s» podía sonar tarde o no sonar al reanudar. Ahora se calla mientras dura la pausa y, al reanudar, resincroniza el reloj con el tiempo restante real del servidor.
 
 ## [1.21.0] — 2026-08-09
 
