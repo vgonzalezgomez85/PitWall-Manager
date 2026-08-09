@@ -98,9 +98,18 @@ class TrainingServiceClass {
       SocketService.emit('training:go', { durationMs: this._durationMs });
     });
 
-    // Pausa POR CIRCUITO: cada DS pausa solo sus carriles.
-    SerialService.on('race_paused',  ({ circuit } = {}) => { this._setCircuitPaused(circuit || 0, true);  });
-    SerialService.on('race_resumed', ({ circuit } = {}) => { this._setCircuitPaused(circuit || 0, false); });
+    // Pausa POR CIRCUITO: cada DS pausa solo sus carriles. Igual que race_go/
+    // race_started, se ignora si hay una manga oficial en marcha (TimingService)
+    // o si training ni siquiera está activo/en standby — si no, cada pausa de
+    // una carrera real generaba también un `training:circuit_state` fantasma.
+    SerialService.on('race_paused',  ({ circuit } = {}) => {
+      if (!this.isReady || TimingService.isBusy) return;
+      this._setCircuitPaused(circuit || 0, true);
+    });
+    SerialService.on('race_resumed', ({ circuit } = {}) => {
+      if (!this.isReady || TimingService.isBusy) return;
+      this._setCircuitPaused(circuit || 0, false);
+    });
     // Forced stop: preserve lap data, go back to standby to restart same session
     SerialService.on('race_stopped',  () => { if (this._active) this._pauseToStandby(); });
     // Normal end: clear data, standby for new session

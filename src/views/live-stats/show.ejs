@@ -15,7 +15,7 @@
         <span class="ls-badge ls-badge--live">EN DIRECTO</span>
       <% } %>
     </div>
-    <div class="ls-bar__controls">
+    <div class="ls-bar__controls" data-lsview="manga">
       <select id="lsManga" class="ls-select" title="Manga">
         <% allMangas.forEach(m => { %>
           <option value="<%= m.id %>" <%= m.id === selectedMangaId ? 'selected' : '' %>>
@@ -26,7 +26,7 @@
       <select id="lsEntity" class="ls-select" title="Yo soy…">
         <option value=""><%= lang === 'es' ? '— Elige tu equipo/piloto —' : '— Pick your team/driver —' %></option>
         <% entityRows.forEach(e => { %>
-          <option value="<%= e.entity_type %>_<%= e.entity_id %>"><%= e.entity_name %></option>
+          <option value="<%= e.entity_type %>_<%= e.entity_id %>"><%= e.entity_name %><%= e.categoria ? ' - ' + e.categoria : '' %></option>
         <% }) %>
       </select>
       <label class="ls-toggle" title="Δ y media incluyen vueltas con salida/pit-stop">
@@ -145,9 +145,12 @@
             <th><%= lang === 'es' ? 'Participante' : 'Participant' %></th>
             <th title="<%= lang === 'es' ? 'Vueltas proyectadas al final' : 'Projected laps at the end' %>"><%= lang === 'es' ? 'V. Proy.' : 'Proj.' %></th>
             <th><%= lang === 'es' ? 'Total' : 'Total' %></th>
-            <th title="<%= lang === 'es' ? 'Vueltas proyectadas respecto al líder' : 'Projected laps behind the leader' %>">Gap</th>
+            <th title="<%= lang === 'es' ? 'Vueltas proyectadas respecto al de delante' : 'Projected laps behind the car ahead' %>"><%= lang === 'es' ? 'Gap Sig.' : 'Gap Next' %></th>
+            <th title="<%= lang === 'es' ? 'Vueltas proyectadas respecto al líder' : 'Projected laps behind the leader' %>"><%= lang === 'es' ? 'Gap Líder' : 'Gap Leader' %></th>
             <th><%= lang === 'es' ? 'Media' : 'Avg' %></th>
             <th title="<%= lang === 'es' ? 'Media por vuelta que necesitas para alcanzar al de delante' : 'Lap pace needed to catch the car ahead' %>"><%= lang === 'es' ? 'P/Subir' : 'To climb' %></th>
+            <th title="<%= lang === 'es' ? 'Salidas de pista / pit-stops en TODA la carrera' : 'Track exits / pit-stops for the WHOLE race' %>"><%= lang === 'es' ? 'Sal./Pit Total' : 'Exits/Pit Total' %></th>
+            <th title="<%= lang === 'es' ? 'Tiempo perdido en esas salidas/pits (exceso sobre la media limpia de carrera)' : 'Time lost on those exits/pits (excess over the race-wide clean average)' %>"><%= lang === 'es' ? 'Perdido Total' : 'Lost Total' %></th>
           </tr>
         </thead>
         <tbody id="lsProjBody"></tbody>
@@ -165,6 +168,7 @@
             <th>#</th>
             <th><%= lang === 'es' ? 'Participante' : 'Participant' %></th>
             <th>V</th>
+            <th title="<%= lang === 'es' ? 'Vueltas respecto al de delante en la manga; a igualdad de vueltas, diferencia de media' : 'Laps behind the car ahead in this heat; if tied on laps, average pace difference' %>"><%= lang === 'es' ? 'Gap Sig.' : 'Gap Next' %></th>
             <th>Mejor</th>
             <th>Media</th>
             <th>Δ</th>
@@ -189,12 +193,22 @@
       <% for (var i = 1; i <= 3; i++) { %>
         <select id="lsLaneE<%= i %>" class="ls-select" title="<%= (lang === 'es' ? 'Equipo/piloto ' : 'Team/driver ') + i %>">
           <option value="">— <%= (lang === 'es' ? 'Equipo/piloto ' : 'Team/driver ') + i %> —</option>
-          <% entityRows.forEach(function (e) { %><option value="<%= e.entity_type %>_<%= e.entity_id %>"><%= e.entity_name %></option><% }); %>
+          <% entityRows.forEach(function (e) { %><option value="<%= e.entity_type %>_<%= e.entity_id %>"><%= e.entity_name %><%= e.categoria ? ' - ' + e.categoria : '' %></option><% }); %>
         </select>
       <% } %>
+      <button type="button" id="lsLaneClear" class="ls-select" style="cursor:pointer">
+        ✕ <%= lang === 'es' ? 'Limpiar filtros' : 'Clear filters' %>
+      </button>
     </div>
     <div class="ls-cmp" id="lsLaneBox" hidden>
       <div class="ls-cmp-table-wrap"><table class="ls-cmp2" id="lsLaneTable"></table></div>
+    </div>
+
+    <!-- Cuadrícula por defecto (sin filtros): un equipo/piloto por fila, un
+         grupo de columnas por carril con lo que hizo en ese tramo. -->
+    <div class="ls-cmp" id="lsLaneGridBox">
+      <div class="ls-cmp-scrolltop" id="lsGridScrollTop"><div id="lsGridScrollTopInner"></div></div>
+      <div class="ls-cmp-table-wrap" id="lsGridScrollBottom"><table class="ls-cmp2 ls-grid-table" id="lsLaneGridTable"></table></div>
     </div>
   </section>
   <% } %>
@@ -264,11 +278,61 @@
   .ls-cmp__chip--warn { background:rgba(187,128,9,.16); color:#e6a817 }
   .ls-cmp__chip--info { background:rgba(31,111,235,.15); color:#58a6ff }
 
+  /* Cuadrícula "un equipo por fila, un carril = grupo de columnas" */
+  /* Se sale del ancho de página (max-width:1100px) para aprovechar toda la
+     resolución de pantalla — solo esta caja, el resto de la página sigue
+     centrada en su columna. */
+  #lsLaneGridBox { width:100vw; max-width:100vw; margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw);
+    box-sizing:border-box; padding-left:1.2rem; padding-right:1.2rem; border-radius:0; border-left:none; border-right:none }
+  .ls-cmp-scrolltop { overflow-x:auto; overflow-y:hidden; height:16px; margin-bottom:.3rem }
+  .ls-cmp-scrolltop div { height:1px }
+  .ls-grid-table { white-space:nowrap }
+  .ls-grid-table th, .ls-grid-table td { text-align:left; padding:.4rem .6rem }
+  .ls-grid-table thead tr.ls-grid-lanehead th { text-align:center; background:#0d1117; color:#8b949e;
+    font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; border-bottom:1px solid #21262d }
+  .ls-grid-table thead tr.ls-grid-subhead th { text-align:center; color:#6e7681; font-size:.68rem;
+    text-transform:uppercase; letter-spacing:.04em; font-weight:600; border-bottom:1px solid #30363d; padding:.3rem .5rem }
+  .ls-grid-table tbody td { border-bottom:1px solid #21262d; font-size:.85rem; color:#c9d1d9; text-align:center }
+  .ls-grid-table tbody td.ls-grid-team { text-align:left; font-weight:700; font-family:Saira, system-ui, sans-serif; color:#e6edf3 }
+  .ls-grid-table tbody td.ls-grid-cat  { text-align:left; color:#8b949e; font-size:.8rem }
+  .ls-grid-table tbody td.ls-grid-total { font-weight:700; color:#f6c90e }
+  .ls-grid-table tbody tr:nth-child(even) td:not([class*="ls-grid-tone-"]) { background:rgba(255,255,255,.02) }
+  .ls-grid-driver { font-weight:600; color:#e6edf3 }
+  .ls-grid-mangas { display:flex; gap:3px; flex-wrap:wrap; margin-top:.2rem; justify-content:center }
+  .ls-grid-manga-badge { display:inline-block; background:rgba(88,166,255,.15); color:#58a6ff;
+    border-radius:6px; padding:0 5px; font-size:.62rem; font-weight:700; line-height:1.4 }
+  .ls-grid-empty { color:#484f58 }
+  /* Varios tramos (pasadas) del mismo carril, apilados y separados por una
+     línea — así se distingue de un vistazo que no es un único stint. */
+  .ls-grid-runs.ls-grid-stack { display:flex; flex-direction:column }
+  .ls-grid-run--sep { border-top:1px dashed rgba(255,255,255,.18); margin-top:.35rem; padding-top:.35rem }
+  .ls-grid-catbadge { display:inline-block; background:rgba(139,148,158,.16); color:#c9d1d9;
+    border-radius:6px; padding:1px 7px; font-size:.72rem; font-weight:700 }
+
+  /* Un tono por carril (se repite cada 6) para distinguir de un vistazo dónde
+     empieza y acaba cada grupo de columnas — la tabla llega a tener decenas. */
+  .ls-grid-tone-0 { background:rgba(88,166,255,.22) }
+  .ls-grid-tone-1 { background:rgba(230,168,23,.22) }
+  .ls-grid-tone-2 { background:rgba(63,185,80,.20) }
+  .ls-grid-tone-3 { background:rgba(248,81,149,.20) }
+  .ls-grid-tone-4 { background:rgba(188,140,255,.22) }
+  .ls-grid-tone-5 { background:rgba(57,197,207,.20) }
+  .ls-grid-table tbody td.ls-grid-team, .ls-grid-table tbody td.ls-grid-cat, .ls-grid-table tbody td.ls-grid-total,
+  .ls-grid-table thead th:not([class*="ls-grid-tone-"]) { background:#0d1117 }
+  thead .ls-grid-tone-0 { border-top:2px solid #58a6ff }
+  thead .ls-grid-tone-1 { border-top:2px solid #e6a817 }
+  thead .ls-grid-tone-2 { border-top:2px solid #3fb950 }
+  thead .ls-grid-tone-3 { border-top:2px solid #f85195 }
+  thead .ls-grid-tone-4 { border-top:2px solid #bc8cff }
+  thead .ls-grid-tone-5 { border-top:2px solid #39c5cf }
+
   .ls-table-wrap { overflow-x:auto }
   .ls-table { width:100%; border-collapse:collapse; font-size:.92rem }
   .ls-proj-hint { color:#8b949e; font-size:.85rem; margin:-.3rem 0 .7rem }
   .ls-row--me { background:rgba(88,166,255,.14) }
   .ls-row--me td { color:#e6edf3; font-weight:600 }
+  .ls-table tr.ls-row--resting { opacity:.6 }
+  .ls-proj-resting { color:#d29922; font-size:.85em; margin-left:.4em }
   /* Pestañas de vista (manga / proyectada / carril) */
   .ls-tabs { display:flex; gap:8px; flex-wrap:wrap; margin:0 0 1.1rem }
   .ls-tab { background:#161b22; color:#8b949e; border:1px solid #30363d; border-radius:10px;
@@ -481,18 +545,42 @@
 
     // Tabla general
     const tbody = $('lsTableBody');
-    tbody.innerHTML = data.entities.map(e => `
+    tbody.innerHTML = data.entities.map((e, i) => {
+      if (e.isResting) {
+        return `
+      <tr class="${e.key === myKey ? 'is-me' : ''} ls-row--resting">
+        <td>${e.position}</td>
+        <td><strong>${teamHtml(e.entityName)}</strong></td>
+        <td colspan="7" style="color:#6e7681;font-style:italic">💤 <%= lang === 'es' ? 'Descansando esta manga' : 'Resting this heat' %></td>
+      </tr>
+    `;
+      }
+      // Gap al de DELANTE en la manga actual (no al líder): vueltas si va
+      // por detrás, o diferencia de media si están empatados a vueltas —
+      // mismo criterio que el gap en segundos del directo (renderStandings).
+      // El de delante puede ser quien descansa (0 vueltas, sin media): en ese
+      // caso no hay gap real que calcular, se deja en "—".
+      const above = i > 0 ? data.entities[i - 1] : null;
+      let gapSig = '—';
+      if (above && !above.isResting) {
+        const lapGap = above.totalLaps - e.totalLaps;
+        if (lapGap > 0) gapSig = '-' + lapGap + 'v';
+        else if (above[useAvgKey] != null && e[useAvgKey] != null) gapSig = '+' + fmtSec(Math.max(0, e[useAvgKey] - above[useAvgKey]));
+      }
+      return `
       <tr class="${e.key === myKey ? 'is-me' : ''}">
         <td>${e.position}</td>
-        <td><strong>${e.entityName}</strong></td>
+        <td><strong>${teamHtml(e.entityName)}</strong></td>
         <td>${e.totalLaps}</td>
+        <td>${gapSig}</td>
         <td>${fmtMs(e.bestMs)}</td>
         <td>${fmtMs(e[useAvgKey])}</td>
         <td>${e[useDeltaKey] != null ? '+' + fmtSec(e[useDeltaKey]) : '—'}</td>
         <td>${e.exitCount + (e.pitStopCount ? ' / ' + e.pitStopCount + '🔧' : '')}</td>
         <td>${fmtSec(e.lostMs)} <span style="color:#6e7681">(≈${e.lostLapsEquiv}v)</span></td>
       </tr>
-    `).join('');
+    `;
+    }).join('');
 
     // Mi panel
     const me = data.entities.find(e => e.key === myKey);
@@ -501,7 +589,7 @@
       $('lsCmpSection').hidden = false;
       const isProj = currentLsView === 'proj';
       const pos = racePosOf(data, me);   // manga o proyectada según la vista
-      $('lsMeName').textContent = me.entityName + ' · P' + pos;
+      $('lsMeName').textContent = teamPlain(me.entityName) + ' · P' + pos;
       $('lsMePos').textContent = 'P' + pos;
       if (isProj) {
         // ── Datos de TODA la carrera ─────────────────────────────────────
@@ -560,22 +648,43 @@
     sec.hidden = false;
     const me = (data.entities || []).find(e => e.key === myKey);
     const myName = me ? me.entityName : null;
-    const leader = proj[0];
+    // raceExits/racePits/raceLostMs son de TODA la carrera (no de esta manga):
+    // vienen aparte en raceWideByKey (cubre también a quien descansa en la
+    // manga que se está viendo), casado por la MISMA key que usa entities
+    // (team_X / driver_Y), construida aquí a partir de entityType+entityId.
+    const raceWideByKey = data.raceWideByKey || {};
+    // Quién descansa en la manga REALMENTE activa ahora mismo (no depende del
+    // desplegable, que en esta pestaña ni se ve): un Set de key para marcar
+    // su fila en la clasificación de toda la carrera.
+    const restingActiveSet = new Set(data.restingKeysActive || []);
     $('lsProjBody').innerHTML = proj.map((p, i) => {
       const isMe = myName != null && p.name === myName;
-      const gap = (i === 0 || p.projectedTotal == null || leader.projectedTotal == null)
-        ? '—' : '-' + (leader.projectedTotal - p.projectedTotal).toFixed(1) + 'v';
+      // gapV/gapVLeader ya vienen calculados por el servidor (misma función
+      // que el directo y el pop-up de clasificación): gap al de DELANTE
+      // (escalonado, fila a fila) y gap al LÍDER (acumulado).
+      const gapNext   = (i === 0 || p.gapV == null)       ? '—' : '-' + p.gapV.toFixed(1) + 'v';
+      const gapLeader = (i === 0 || p.gapVLeader == null) ? '—' : '-' + p.gapVLeader.toFixed(1) + 'v';
       const proy = p.projectedTotal != null ? p.projectedTotal.toFixed(1) + 'v' : '—';
       // Estimada PROVISIONAL: la 1ª manga aún no ha fijado su referencia (60 %).
       const prov = p.provisional ? '<span title="Estimada provisional" style="color:#d29922">*</span>' : '';
+      const pKey = p.entityType + '_' + p.entityId;
+      const rs = raceWideByKey[pKey];
+      const exitsPitTotal = rs ? `${rs.raceExits || 0}${rs.racePits ? ' / ' + rs.racePits + '🔧' : ''}` : '—';
+      const lostTotal = rs ? `${fmtSec(rs.raceLostMs)} <span style="color:#6e7681">(≈${rs.raceLostLapsEquiv}v)</span>` : '—';
+      const restingBadge = restingActiveSet.has(pKey)
+        ? `<span class="ls-proj-resting" title="<%= lang === 'es' ? 'Descansa en la manga en curso' : 'Resting in the current heat' %>">💤 <%= lang === 'es' ? 'descansa' : 'resting' %></span>`
+        : '';
       return `<tr class="${isMe ? 'ls-row--me' : ''}">
         <td>${p.position}</td>
-        <td>${p.name}</td>
+        <td>${teamHtml(p.name)}${restingBadge}</td>
         <td><b>${proy}</b>${prov}</td>
         <td>${p.total}</td>
-        <td>${gap}</td>
+        <td>${gapNext}</td>
+        <td>${gapLeader}</td>
         <td>${fmtMs(p.avgLapMs)}</td>
         <td>${p.avgToCatch != null ? fmtMs(p.avgToCatch) : '—'}</td>
+        <td>${exitsPitTotal}</td>
+        <td>${lostTotal}</td>
       </tr>`;
     }).join('');
   }
@@ -590,7 +699,7 @@
   // Rellena los dos selectores de rival mostrando el CARRIL de cada uno
   // ("C3 · P2 · Nombre"), excluyendo al propio piloto. Conserva la selección.
   function populateCompareOptions(data) {
-    const mk = e => `<option value="${e.key}">C${e.lane != null ? e.lane : '—'} · P${racePosOf(data, e)} · ${e.entityName}</option>`;
+    const mk = e => `<option value="${e.key}">C${e.lane != null ? e.lane : '—'} · P${racePosOf(data, e)} · ${teamPlain(e.entityName)}</option>`;
     [['lsCompare1', '— Compárate con… —', 'ls_cmp1_'],
      ['lsCompare2', '— y con… (opcional) —', 'ls_cmp2_']].forEach(([id, ph, lk]) => {
       const sel = $(id);
@@ -630,7 +739,7 @@
       else if (pace > 0) { cls = 'bad';  text = `empatados a vueltas pero rueda más rápido${paceTxt}.`; }
       else               { cls = 'info'; text = `empate técnico: mismas vueltas y ritmo parejo.`; }
     }
-    return `<div class="ls-cmp__chip ls-cmp__chip--${cls}"><b>vs ${r.entityName}:</b> ${text}</div>`;
+    return `<div class="ls-cmp__chip ls-cmp__chip--${cls}"><b>vs ${teamHtml(r.entityName)}:</b> ${text}</div>`;
   }
 
   function renderComparison(data) {
@@ -655,7 +764,7 @@
     const avgKey = includeOutliers ? 'avgAll' : 'avgClean';
 
     let html = '<thead><tr><th></th>' + cols.map((e, i) =>
-      `<th class="${cls(i)}"><div class="ls-cmp2__name">${e.entityName}</div>` +
+      `<th class="${cls(i)}"><div class="ls-cmp2__name">${teamHtml(e.entityName)}</div>` +
       `<div class="ls-cmp2__sub">C${e.lane != null ? e.lane : '—'} · P${racePosOf(data, e)}</div></th>`
     ).join('') + '</tr></thead><tbody>';
     const row = (label, fn) => `<tr><td class="ls-cmp2__lbl">${label}</td>` +
@@ -710,7 +819,7 @@
     const rp = data && data.raceProgress;
     const mangas = (rp && rp.mangas) ? rp.mangas : [];
     const mk = (e, i, pts, tension) => ({
-      label: e.entityName, data: pts,
+      label: teamPlain(e.entityName), data: pts,
       borderColor: CMP_PALETTE[i % CMP_PALETTE.length], backgroundColor: CMP_PALETTE[i % CMP_PALETTE.length],
       borderWidth: 2, tension: tension != null ? tension : 0.25, pointRadius: 2, pointHoverRadius: 4, spanGaps: true,
     });
@@ -923,20 +1032,87 @@
   // ── Comparativa por carril ───────────────────────────────────────────────
   // Datos precalculados en servidor: clave (`tipo_id`) → carril → stats de esa
   // entidad EN ese carril a lo largo de toda la carrera. "—" si no hay datos.
-  const LANE_MATRIX  = <%- JSON.stringify(typeof laneMatrix !== 'undefined' ? laneMatrix : {}) %>;
-  const ENTITY_NAMES = <%- JSON.stringify(entityRows.reduce(function (o, e) { o[e.entity_type + '_' + e.entity_id] = e.entity_name; return o; }, {})) %>;
+  // `let`, no `const`: se reasignan al refrescar (ver fetchLaneGridData) —
+  // solo al terminar una manga, no en cada vuelta (consulta cara, toda la
+  // carrera — ver el comentario en LiveStatsController._buildLaneGridData).
+  let LANE_MATRIX  = <%- JSON.stringify(typeof laneMatrix !== 'undefined' ? laneMatrix : {}) %>;
+  let ENTITY_NAMES = <%- JSON.stringify(entityRows.reduce(function (o, e) { o[e.entity_type + '_' + e.entity_id] = e.entity_name; return o; }, {})) %>;
+  // Datos SOLO de la cuadrícula por defecto (sin filtros elegidos).
+  let ENTITY_ROWS   = <%- JSON.stringify(entityRows.map(function (e) { return { key: e.entity_type + '_' + e.entity_id, name: e.entity_name, categoria: e.categoria || null }; })) %>;
+
+  // Categoría por NOMBRE de entidad (catálogo del club) — se rehace cada vez
+  // que ENTITY_ROWS cambia. Un solo mapa central en vez de arrastrar el campo
+  // por cada estructura de esta vista (proyección, series, comparativa…), que
+  // ya usan el NOMBRE como clave en decenas de sitios.
+  let CATEGORIA_BY_NAME = {};
+  function rebuildCategoriaMap() {
+    CATEGORIA_BY_NAME = {};
+    (ENTITY_ROWS || []).forEach(e => { if (e.categoria) CATEGORIA_BY_NAME[e.name] = e.categoria; });
+  }
+  rebuildCategoriaMap();
+  // Color determinista por categoría (mismo string → mismo color, sin
+  // coordinación con el resto de paneles/ventanas del directo). Paleta FIJA
+  // (no hue continuo): dos categorías de la MISMA carrera (p.ej. "C1"/"C2")
+  // necesitan verse claramente distintas, y un hash sobre un círculo de
+  // tonos continuo puede acercarlas por casualidad (visto con C1/C2). Con
+  // una paleta corta y curada, cualquier carrera con un puñado de
+  // categorías (lo habitual) sale con colores nítidamente diferentes.
+  const CAT_PALETTE = ['#58a6ff','#f6c90e','#3fb950','#ff6b9d','#ff9800','#ba68c8','#00bcd4','#e63946','#8bc34a','#ce93d8','#4dd0e1','#ffab40'];
+  function catColor(cat) {
+    if (!cat) return null;
+    let h = 0;
+    for (let i = 0; i < cat.length; i++) h = (h * 31 + cat.charCodeAt(i)) >>> 0;
+    return CAT_PALETTE[h % CAT_PALETTE.length];
+  }
+  function teamHtml(name) {
+    const cat = CATEGORIA_BY_NAME[name];
+    return cat ? `${name}<span class="cat-suffix" style="color:${catColor(cat)}"> - ${cat}</span>` : name;
+  }
+  function teamPlain(name) {
+    const cat = CATEGORIA_BY_NAME[name];
+    return cat ? `${name} - ${cat}` : name;
+  }
+
+  let LANES_LIST    = <%- JSON.stringify(typeof lanesList !== 'undefined' ? lanesList : []) %>;
+  let TOTAL_LAPS_BY_KEY = <%- JSON.stringify(typeof totalLapsByKey !== 'undefined' ? totalLapsByKey : {}) %>;
+  // key → carril → [ { mangas:[n], drivers:[…], laps, bestMs, avgAllMs, avgCleanMs, exits, pits }, … ]
+  // Un bloque por MANGA, siempre — si el carril se repite en mangas
+  // consecutivas (lane_repeat) igualmente se pintan separadas (M1 aparte de M2).
+  let LANE_RUNS = <%- JSON.stringify(typeof laneRuns !== 'undefined' ? laneRuns : {}) %>;
+
+  // Refresco de "Comparativa por carril" (cuadrícula Y comparación con
+  // filtros) SOLO cuando termina una manga — ver socket.on('manga:stopped').
+  async function fetchLaneGridData() {
+    try {
+      const res = await fetch(`/races/${RACE_ID}/live-stats/lanes.json`);
+      if (!res.ok) return;
+      const d = await res.json();
+      LANE_MATRIX = d.laneMatrix || {};
+      ENTITY_NAMES = (d.entityRows || []).reduce((o, e) => { o[e.entity_type + '_' + e.entity_id] = e.entity_name; return o; }, {});
+      ENTITY_ROWS = (d.entityRows || []).map(e => ({ key: e.entity_type + '_' + e.entity_id, name: e.entity_name, categoria: e.categoria || null }));
+      rebuildCategoriaMap();
+      LANES_LIST = d.lanesList || [];
+      TOTAL_LAPS_BY_KEY = d.totalLapsByKey || {};
+      LANE_RUNS = d.laneRuns || {};
+      // Decide sola si toca la cuadrícula por defecto o la comparación con
+      // filtros (mira el estado actual de los selects) — cubre los dos casos.
+      renderLaneCompare();
+    } catch (e) { /* red caída: se queda con los datos que tenía */ }
+  }
 
   function renderLaneCompare() {
     if (!$('lsLaneBox')) return;
     const lane = $('lsLane').value;
     const keys = ['lsLaneE1', 'lsLaneE2', 'lsLaneE3'].map(id => $(id).value).filter(Boolean);
-    if (!lane || keys.length === 0) { $('lsLaneBox').hidden = true; return; }
+    const noFilter = !lane || keys.length === 0;
+    if ($('lsLaneGridBox')) $('lsLaneGridBox').hidden = !noFilter;
+    if (noFilter) { $('lsLaneBox').hidden = true; renderLaneGrid(); return; }
     $('lsLaneBox').hidden = false;
     const avgKey = ($('lsIncludeOutliers') && $('lsIncludeOutliers').checked) ? 'avgAllMs' : 'avgCleanMs';
     const cls  = i => i === 0 ? 'is-me' : 'is-rv' + i;
     const cols = keys.map(k => ({ name: ENTITY_NAMES[k] || k, d: (LANE_MATRIX[k] || {})[lane] || null }));
     let html = '<thead><tr><th></th>' + cols.map((c, i) =>
-      `<th class="${cls(i)}"><div class="ls-cmp2__name">${c.name}</div></th>`).join('') + '</tr></thead><tbody>';
+      `<th class="${cls(i)}"><div class="ls-cmp2__name">${teamHtml(c.name)}</div></th>`).join('') + '</tr></thead><tbody>';
     const row = (label, fn) => `<tr><td class="ls-cmp2__lbl">${label}</td>` +
       cols.map((c, i) => `<td class="${cls(i)}">${c.d ? fn(c.d) : '—'}</td>`).join('') + '</tr>';
     html += row('<%= lang === "es" ? "Mejor" : "Best" %>',   d => fmtMs(d.bestMs));
@@ -950,13 +1126,105 @@
     const el = $(id); if (el) el.addEventListener('change', renderLaneCompare);
   });
   if ($('lsIncludeOutliers')) $('lsIncludeOutliers').addEventListener('change', renderLaneCompare);
+  if ($('lsLaneClear')) $('lsLaneClear').addEventListener('click', () => {
+    ['lsLane', 'lsLaneE1', 'lsLaneE2', 'lsLaneE3'].forEach(id => { if ($(id)) $(id).value = ''; });
+    renderLaneCompare();
+  });
+
+  // ── Cuadrícula por defecto: equipo/piloto × carril, sin filtros ─────────
+  // Una fila por entidad (equipo o piloto suelto), y un grupo de 6 columnas
+  // por cada carril que haya usado alguna vez: piloto, vueltas, VR, VM,
+  // salidas, pit-stops. La categoría sale del catálogo de equipos del club
+  // (emparejada por nombre en el servidor); las mangas de cada tramo se
+  // muestran como insignias bajo el nombre del piloto.
+  function renderLaneGrid() {
+    const box = $('lsLaneGridBox');
+    if (!box || box.hidden) return;
+    const avgKey = ($('lsIncludeOutliers') && $('lsIncludeOutliers').checked) ? 'avgAllMs' : 'avgCleanMs';
+    const esLang = '<%= lang %>' === 'es';
+
+    const toneOf = i => 'ls-grid-tone-' + (i % 6);
+
+    let thead = '<thead><tr class="ls-grid-lanehead"><th rowspan="2">' +
+      (esLang ? 'Equipo/Piloto' : 'Team/Driver') + '</th><th rowspan="2">' +
+      (esLang ? 'Categoría' : 'Category') + '</th><th rowspan="2">' +
+      (esLang ? 'Vueltas totales' : 'Total laps') + '</th>';
+    LANES_LIST.forEach((ln, i) => { thead += `<th colspan="6" class="${toneOf(i)}">${esLang ? 'Carril' : 'Lane'} ${ln}</th>`; });
+    thead += '</tr><tr class="ls-grid-subhead">';
+    LANES_LIST.forEach((ln, i) => {
+      const tn = toneOf(i);
+      thead += `<th class="${tn}">${esLang ? 'Piloto' : 'Driver'}</th><th class="${tn}">${esLang ? 'Vueltas' : 'Laps'}</th>` +
+               `<th class="${tn}">VR</th><th class="${tn}">VM</th>` +
+               `<th class="${tn}">${esLang ? 'Salidas' : 'Exits'}</th><th class="${tn}">${esLang ? 'Pit-stops' : 'Pit stops'}</th>`;
+    });
+    thead += '</tr></thead>';
+
+    // Mayor a menor por vueltas totales (empate → orden alfabético de servidor).
+    const sortedRows = ENTITY_ROWS.slice().sort((a, b) =>
+      (TOTAL_LAPS_BY_KEY[b.key] || 0) - (TOTAL_LAPS_BY_KEY[a.key] || 0));
+
+    let tbody = '<tbody>';
+    sortedRows.forEach(e => {
+      const totalLaps = TOTAL_LAPS_BY_KEY[e.key] || 0;
+      tbody += '<tr>' +
+        `<td class="ls-grid-team">${teamHtml(e.name)}</td>` +
+        `<td class="ls-grid-cat">${e.categoria ? `<span class="ls-grid-catbadge" style="border-color:${catColor(e.categoria)};color:${catColor(e.categoria)}">${e.categoria}</span>` : '<span class="ls-grid-empty">—</span>'}</td>` +
+        `<td class="ls-grid-total">${totalLaps}</td>`;
+      LANES_LIST.forEach((ln, i) => {
+        const tn = toneOf(i);
+        const runs = ((LANE_RUNS[e.key] || {})[ln]) || [];
+        if (!runs.length) {
+          tbody += `<td class="ls-grid-empty ${tn}">—</td>`.repeat(6);
+          return;
+        }
+        // Una manga = un bloque. Si hay más de una en este carril, se apilan
+        // separadas dentro de la misma celda con una línea divisoria — nunca
+        // se mezclan M1 y M2 en un solo número.
+        const multi = runs.length > 1;
+        const stackCls = multi ? ' ls-grid-stack' : '';
+        const wrap = html => `<div class="ls-grid-runs${stackCls}">${html}</div>`;
+        const block = fn => runs.map((r, ri) =>
+          `<div class="ls-grid-run${ri > 0 ? ' ls-grid-run--sep' : ''}">${fn(r)}</div>`).join('');
+
+        const driverLabel = r => r.drivers.length ? r.drivers.join(', ') : e.name;
+        const mangaBadges = r => `<div class="ls-grid-mangas">${r.mangas.map(n => `<span class="ls-grid-manga-badge">M${n}</span>`).join('')}</div>`;
+
+        tbody += `<td class="${tn}">${wrap(block(r => `<div class="ls-grid-driver">${driverLabel(r)}</div>${mangaBadges(r)}`))}</td>` +
+          `<td class="${tn}">${wrap(block(r => r.laps))}</td>` +
+          `<td class="${tn}">${wrap(block(r => fmtMs(r.bestMs)))}</td>` +
+          `<td class="${tn}">${wrap(block(r => fmtMs(r[avgKey])))}</td>` +
+          `<td class="${tn}">${wrap(block(r => r.exits))}</td>` +
+          `<td class="${tn}">${wrap(block(r => r.pits))}</td>`;
+      });
+      tbody += '</tr>';
+    });
+    tbody += '</tbody>';
+
+    $('lsLaneGridTable').innerHTML = thead + tbody;
+    if ($('lsGridScrollTopInner') && $('lsGridScrollBottom')) {
+      $('lsGridScrollTopInner').style.width = $('lsGridScrollBottom').scrollWidth + 'px';
+    }
+  }
+  // Scroll horizontal reflejado arriba y abajo de la cuadrícula: una barra fina
+  // encima de la tabla, sincronizada con la de debajo (nativa del wrap ancho).
+  (function setupGridScrollSync() {
+    const top = $('lsGridScrollTop'), bottom = $('lsGridScrollBottom');
+    if (!top || !bottom) return;
+    let syncing = false;
+    top.addEventListener('scroll', () => { if (syncing) return; syncing = true; bottom.scrollLeft = top.scrollLeft; syncing = false; });
+    bottom.addEventListener('scroll', () => { if (syncing) return; syncing = true; top.scrollLeft = bottom.scrollLeft; syncing = false; });
+  })();
+  renderLaneGrid();
 
   // ── Initial + socket live updates ─────────────────────────────────────
   fetchData();
 
-  // Refresh clock every second locally
+  // Refresh clock every second locally. Con la manga en pausa el reloj real
+  // está congelado en el servidor: si seguimos descontando aquí, el contador
+  // sigue bajando en vacío mientras no se corre ni una vuelta.
+  let racePaused = false;
   setInterval(() => {
-    if (latestData?.isActive && latestData.remainingMs != null) {
+    if (!racePaused && latestData?.isActive && latestData.remainingMs != null) {
       latestData.remainingMs = Math.max(0, latestData.remainingMs - 1000);
       $('lsClockRemaining').textContent = fmtElapsed(latestData.remainingMs);
     }
@@ -970,6 +1238,9 @@
   socket.on('lap', scheduleFetch);         // idem, y llega junto al de arriba
   socket.on('manga:started', fetchData);   // raro: sin rebote, cuanto antes mejor
   socket.on('manga:stopped', fetchData);
+  socket.on('manga:stopped', fetchLaneGridData);
+  socket.on('manga:paused', () => { racePaused = true; });
+  socket.on('manga:resumed', () => { racePaused = false; fetchData(); });
 </script>
 
 <%- include('../partials/footer') %>

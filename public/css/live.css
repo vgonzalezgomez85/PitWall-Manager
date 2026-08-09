@@ -72,6 +72,7 @@
   background: #3fb950; box-shadow: 0 0 6px #3fb950;
   animation: blink 1.2s ease-in-out infinite;
 }
+.status-dot--paused { background: #f0883e; box-shadow: 0 0 6px #f0883e; }
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50%       { opacity: .35; }
@@ -80,6 +81,7 @@
   font-size: .88rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
 }
 .status-text--active   { color: #3fb950; }
+.status-text--paused   { color: #f0883e; }
 .status-text--pending  { color: #f6c90e; }
 .status-text--finished { color: #8b949e; }
 
@@ -179,6 +181,7 @@
 /* ── Main layout ─────────────────────────────────────────────────────────── */
 .live-layout {
   flex: 1; display: flex; min-height: 0; overflow: hidden;
+  position: relative;   /* ancla al overlay de pausa (ver .pause-overlay) */
 }
 
 /* ── Lane cards area — vista horizontal: una fila por carril ────────────── */
@@ -195,7 +198,14 @@
 }
 .live-lanes::-webkit-scrollbar { width: 6px; }
 .live-lanes::-webkit-scrollbar-thumb { background: #21262d; border-radius: 3px; }
-.live-lanes > .lane-card { transition: order 0s; }
+/* `.live-lanes > .lane-card` (2 clases) pesa más que `.lane-card` sola, así
+   que el `transition` que se declare aquí es el que de verdad se aplica —
+   por eso border-color y el transform del FLIP (ver ReorderFX/sortCards en
+   live.js) viven en esta regla y no en la de abajo. `order` en sí no es
+   animable (el navegador lo ignora), el desplazamiento lo hace el transform. */
+.live-lanes > .lane-card {
+  transition: border-color .3s, transform .45s cubic-bezier(.22,.8,.2,1);
+}
 
 .lane-card {
   background: #0a0a0a;
@@ -214,7 +224,24 @@
   flex: 1 1 auto;
   min-height: clamp(60px, 10vh, 120px);
   overflow: hidden;
-  transition: border-color .3s;
+}
+
+/* Destello direccional cuando una tarjeta cambia de puesto en la
+   clasificación (ver ReorderFX.capture/play en sortCards, live.js). */
+@keyframes laneCardGlowUp {
+  0%   { box-shadow: 0 0 0 2px rgba(34,197,94,.55), 0 0 18px 2px rgba(34,197,94,.35); }
+  100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+}
+@keyframes laneCardGlowDown {
+  0%   { box-shadow: 0 0 0 2px rgba(239,70,81,.55), 0 0 18px 2px rgba(239,70,81,.35); }
+  100% { box-shadow: 0 0 0 0 rgba(239,70,81,0); }
+}
+.lane-card.rfx-up   { animation: laneCardGlowUp .9s ease-out; }
+.lane-card.rfx-down { animation: laneCardGlowDown .9s ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  .live-lanes > .lane-card { transition: border-color .3s; }
+  .lane-card.rfx-up, .lane-card.rfx-down { animation: none; }
 }
 /* Pesos relativos por columna — equivalente al grid-template-columns previo */
 .lane-card > .lane-card__col            { flex: 1 1 0; min-width: 0; }
@@ -676,12 +703,16 @@ body.resizing-sidebar * { cursor: col-resize !important; }
    Estilos en /css/semaphore.css (compartido). La vista debe cargarlo. */
 
 /* ── Pause overlay ─────────────────────────────────────────────────────────── */
+/* Cubre SOLO .live-layout (tarjetas/carriles), no .live-header: los botones
+   de la cabecera (Vista, Sin voz, stats, mapa, editar, Volver...) tienen que
+   seguir usables con la manga en pausa. */
 .pause-overlay {
-  position: fixed; inset: 0; z-index: 8000;
+  position: absolute; inset: 0; z-index: 8000;
   background: rgba(0,0,0,.75);
   display: flex; align-items: center; justify-content: center;
   font-size: 4rem; font-weight: 700; letter-spacing: .2em;
   color: #fff; font-family: 'Rajdhani', sans-serif;
+  pointer-events: none;   /* decorativo: no debe robar clics a lo que hay debajo */
 }
 
 /* ── Vista expandida ─────────────────────────────────────────────────────── */

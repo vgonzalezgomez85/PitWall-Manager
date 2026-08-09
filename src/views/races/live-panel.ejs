@@ -110,6 +110,18 @@
     .pt-avg     { font-family: 'Share Tech Mono', monospace; color: #58a6ff; }
     .pt-tocatch { font-family: 'Share Tech Mono', monospace; color: #3fb950; }
     .pt-gap     { font-family: 'Share Tech Mono', monospace; color: #8b949e; }
+
+    /* Transición al reordenar (ReorderFX) + destello direccional cuando una
+       fila cambia de puesto respecto al render anterior. */
+    .pt-row { transition: transform .45s cubic-bezier(.22,.8,.2,1); }
+    .pt-row.rfx-up   { animation: pt-row-glow-up .9s ease-out; }
+    .pt-row.rfx-down { animation: pt-row-glow-down .9s ease-out; }
+    @keyframes pt-row-glow-up   { 0% { background: rgba(63,185,80,.28); } 100% { background: transparent; } }
+    @keyframes pt-row-glow-down { 0% { background: rgba(230,57,70,.28); } 100% { background: transparent; } }
+    @media (prefers-reduced-motion: reduce) {
+      .pt-row { transition: none; }
+      .pt-row.rfx-up, .pt-row.rfx-down { animation: none; }
+    }
   </style>
 </head>
 <body class="panel-body">
@@ -125,7 +137,10 @@
     </div>
     <div class="panel-header__left">
       <div id="panelStatus" class="panel-status">
-        <% if (isActive) { %>
+        <% if (typeof isPaused !== 'undefined' && isPaused) { %>
+          <span class="status-dot status-dot--paused"></span>
+          <span class="status-text status-text--paused"><%= lang === 'es' ? 'Pausada' : 'Paused' %></span>
+        <% } else if (isActive) { %>
           <span class="status-dot status-dot--active"></span>
           <span class="status-text status-text--active"><%= lang === 'es' ? 'En carrera' : 'Racing' %></span>
         <% } else if (manga.status === 'finished') { %>
@@ -193,6 +208,7 @@
       mangaId:          manga.id,
       mangaStatus:      manga.status,
       isActive:         isActive,
+      isPaused:         typeof isPaused !== 'undefined' && isPaused,
       lanesCount:       race.lanes_count,
       mangaDurationMs:  (typeof effectiveMangaDurationMs !== 'undefined' && effectiveMangaDurationMs > 0)
                           ? effectiveMangaDurationMs
@@ -209,6 +225,7 @@
     const LANG = "<%= lang %>";
   </script>
   <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/reorder-fx.js"></script>
   <script>
     function formatMs(ms) {
       if (ms == null) return '—';
@@ -224,6 +241,25 @@
     function fmtLaps1(n) { return (n == null) ? '—' : n.toFixed(1).replace('.', ','); }
 
     function posClass(pos) { return ['p1','p2','p3'][pos-1] || 'pn'; }
+
+    // Color determinista por categoría (mismo string → mismo color, sin
+    // coordinación entre ventanas): así el directo, Le Mans y el resto de
+    // paneles pintan la categoría del mismo color aunque sean páginas distintas.
+    // Paleta FIJA (no hue continuo): dos categorías de la MISMA carrera (p.ej.
+    // "C1"/"C2") necesitan verse claramente distintas, y un hash sobre un
+    // círculo de tonos continuo puede acercarlas por casualidad (visto con
+    // C1/C2). Con una paleta corta y curada, cualquier carrera con un puñado
+    // de categorías (lo habitual) sale con colores nítidamente diferentes.
+    const CAT_PALETTE = ['#58a6ff','#f6c90e','#3fb950','#ff6b9d','#ff9800','#ba68c8','#00bcd4','#e63946','#8bc34a','#ce93d8','#4dd0e1','#ffab40'];
+    function catColor(cat) {
+      if (!cat) return null;
+      let h = 0;
+      for (let i = 0; i < cat.length; i++) h = (h * 31 + cat.charCodeAt(i)) >>> 0;
+      return CAT_PALETTE[h % CAT_PALETTE.length];
+    }
+    function teamHtml(name, cat) {
+      return cat ? `${name}<span class="cat-suffix" style="color:${catColor(cat)}"> - ${cat}</span>` : name;
+    }
 
     const panelBody = document.getElementById('panelBody');
 
@@ -362,6 +398,7 @@
       const rows = proj.map(p => ({
         _id:               p.entityId,
         name:              p.name,
+        categoria:         p.categoria || null,
         lane:              liveLaneById.has(p.entityId) ? liveLaneById.get(p.entityId) : null,
         total:             p.total ?? p.totalLaps ?? 0,
         avgLapMs:          p.avgLapMs ?? null,
@@ -428,26 +465,37 @@
 
     function render(data) {
       const rows = buildRows(data);
-      panelBody.innerHTML = rows.map((r, i) => {
+      // Filas persistentes (identificadas por _id de entidad) reordenadas con
+      // ReorderFX en vez de reconstruir la tabla entera: así una fila puede
+      // deslizarse a su puesto nuevo en lugar de aparecer ya reubicada.
+      const build = window.ReorderFX ? window.ReorderFX.reconcileAnimated : (c, items, keyFn, renderFn) => {
+        c.innerHTML = '';
+        items.forEach(item => c.appendChild(renderFn(item, null)));
+      };
+      build(panelBody, rows, r => r._id, (r, tr) => {
+        const i = rows.indexOf(r);
+        if (!tr) tr = document.createElement('tr');
+        tr.className = `pt-row${r.hasData ? '' : ' pt-row--idle'}`;
+        tr.dataset.lane = r.lane != null ? r.lane : '';
+
         const upCls   = r._trUp === 'good' ? ' good' : r._trUp === 'bad' ? ' bad' : '';
         const downCls = r._trDown === 'good' ? ' good' : r._trDown === 'bad' ? ' bad' : '';
         const upCh    = i === 0 ? '' : '▲';
         const downCh  = i === rows.length - 1 ? '' : '▼';
-        return `
-        <tr class="pt-row${r.hasData ? '' : ' pt-row--idle'}" data-lane="${r.lane != null ? r.lane : ''}">
+        tr.innerHTML = `
           <td><span class="pt-pos ${posClass(i+1)}">${i+1}</span></td>
           <td class="pt-arrows">
             <span class="pt-arrow-up${upCls}">${upCh}</span>
             <span class="pt-arrow-down${downCls}">${downCh}</span>
           </td>
-          <td class="pt-name-cell"><span class="pt-name${r.onTrack ? ' pt-name--ontrack' : ''}">${r.name}</span></td>
+          <td class="pt-name-cell"><span class="pt-name${r.onTrack ? ' pt-name--ontrack' : ''}">${teamHtml(r.name, r.categoria)}</span></td>
           <td class="pt-right"><span class="pt-proj">${r.projectedTotalRaw == null ? '—' : fmtLaps1(r.projectedTotalRaw) + 'v'}</span></td>
           <td class="pt-right"><span class="pt-ontrack">${r.total}</span></td>
           <td class="pt-right"><span class="pt-gap">${r._gapV  > 0 ? 'a ' + fmtLaps1(r._gapV) + 'v' : '—'}</span></td>
           <td class="pt-right"><span class="pt-avg">${formatMs(r.avgLapMs)}</span></td>
-          <td class="pt-right"><span class="pt-tocatch">${r._avgToCatch != null ? formatMs(r._avgToCatch) : '—'}</span></td>
-        </tr>`;
-      }).join('');
+          <td class="pt-right"><span class="pt-tocatch">${r._avgToCatch != null ? formatMs(r._avgToCatch) : '—'}</span></td>`;
+        return tr;
+      });
       applyPausedRows();
       requestAnimationFrame(() => { fitTable(); refreshMarquees(); });
     }
@@ -495,14 +543,22 @@
     let _remainMs = (PANEL_DATA.standings && PANEL_DATA.standings.remainingMs != null)
       ? PANEL_DATA.standings.remainingMs
       : (PANEL_DATA.mangaStatus === 'finished' ? 0 : (PANEL_DATA.mangaDurationMs || 0));
-    let _timerRunning = !!PANEL_DATA.isActive;
+    // _paused SOLO lo tocan manga:paused/manga:resumed (la pausa real del
+    // servidor). El handler de 'standings' NO debe pisarlo: antes ponía
+    // _timerRunning = true en cada 'standings' (que llega constantemente,
+    // incluido el que emite el propio pauseCircuit()), así que el freeze de
+    // manga:paused se deshacía un instante después y el reloj seguía bajando.
+    let _paused       = !!PANEL_DATA.isPaused;
+    let _timerRunning = !!PANEL_DATA.isActive && !_paused;
     function renderTimer() { if (panelTimer) panelTimer.textContent = fmtClock(_remainMs); }
     renderTimer();
 
-    // Estado de la cabecera (En espera / En carrera / Finalizada). Se pinta al
-    // cargar según isActive, pero hay que ACTUALIZARLO en vivo: si abriste el
-    // panel en "En espera" y luego dio GO, debe pasar a "En carrera".
-    let _statusShown = PANEL_DATA.isActive ? 'active'
+    // Estado de la cabecera (En espera / En carrera / Pausada / Finalizada). Se
+    // pinta al cargar según isActive/isPaused, pero hay que ACTUALIZARLO en
+    // vivo: si abriste el panel en "En espera" y luego dio GO, debe pasar a
+    // "En carrera" (y a "Pausada" si el director pausa la manga).
+    let _statusShown = _paused ? 'paused'
+                     : PANEL_DATA.isActive ? 'active'
                      : (PANEL_DATA.mangaStatus === 'finished' ? 'finished' : 'pending');
     function setPanelStatus(state) {
       if (state === _statusShown) return;
@@ -511,6 +567,8 @@
       if (!s) return;
       if (state === 'active')
         s.innerHTML = `<span class="status-dot status-dot--active"></span><span class="status-text status-text--active">${LANG === 'es' ? 'En carrera' : 'Racing'}</span>`;
+      else if (state === 'paused')
+        s.innerHTML = `<span class="status-dot status-dot--paused"></span><span class="status-text status-text--paused">${LANG === 'es' ? 'Pausada' : 'Paused'}</span>`;
       else if (state === 'finished')
         s.innerHTML = `<span class="status-text status-text--finished">${LANG === 'es' ? 'Finalizada' : 'Finished'}</span>`;
       else
@@ -536,7 +594,15 @@
       // ya en marcha), saltamos a ella. Si es la nuestra, render normal.
       if (data.raceId === RACE_ID && data.mangaId !== MANGA_ID) { repointTo(data.mangaId); return; }
       if (data.mangaId === MANGA_ID) {
-        if (typeof data.remainingMs === 'number') { _remainMs = data.remainingMs; _timerRunning = true; renderTimer(); setPanelStatus('active'); }
+        // 'standings' llega constantemente (incluido el que emite el propio
+        // pauseCircuit()) — NO debe reactivar el reloj ni el estado "En
+        // carrera" mientras _paused siga en pie; eso lo deciden solo
+        // manga:paused/manga:resumed más abajo.
+        if (typeof data.remainingMs === 'number') {
+          _remainMs = data.remainingMs;
+          if (!_paused) { _timerRunning = true; setPanelStatus('active'); }
+          renderTimer();
+        }
         render(data);
       }
     });
@@ -558,6 +624,12 @@
       _timerRunning = false; _remainMs = 0; renderTimer();
       setPanelStatus('finished');
     });
+    // Con la manga en pausa el reloj real está congelado en el servidor;
+    // sin esto el contador local seguía bajando cada segundo aunque no se
+    // corriera ni una vuelta. _paused es lo único que gobierna esa decisión
+    // (ver el handler de 'standings' más arriba).
+    socket.on('manga:paused',  () => { _paused = true;  _timerRunning = false; setPanelStatus('paused'); });
+    socket.on('manga:resumed', () => { _paused = false; _timerRunning = true;  setPanelStatus('active'); try { socket.emit('standings:request'); } catch(e){} });
     socket.on('manga:cancelled', (data) => { if (!data || data.raceId === RACE_ID) location.reload(); });
   </script>
 </body>

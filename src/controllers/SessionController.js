@@ -213,6 +213,14 @@ class SessionController {
     const laps     = Lap.findByManga(manga.id);
     const isActive = TimingService.activeMangaId === manga.id;
     const standings = isActive ? TimingService.getStandings() : null;
+    // Proyección de carrera COMPLETA (todas las tandas/mangas), siempre —
+    // no solo cuando esta manga es la activa. Es la MISMA función que usa el
+    // pop-up "Clasificación General" (panel/standings), así las tarjetas de
+    // una manga ya finalizada (visor histórico) muestran el mismo orden P.x
+    // y Gap V que el pop-up, en vez de recalcular una proyección aproximada
+    // solo con los datos de esta manga. Si la manga está activa, reutiliza la
+    // ya calculada dentro de getStandings() (misma función) para no duplicar.
+    const projection = isActive ? standings.projection : TimingService.buildRaceProjection(race.id);
 
     // Previous-manga lap totals per lane (for "race total" display)
     const prevLapsByLane = {};
@@ -268,7 +276,7 @@ class SessionController {
     // Race-wide best lap per lane (for non-active or page reload)
     const raceBestLapsArr = Lap.raceBestByLane(race.id);
     const raceBestLaps = {};
-    raceBestLapsArr.forEach(r => { raceBestLaps[r.lane] = { bestLapMs: r.bestLapMs, entityName: r.entityName }; });
+    raceBestLapsArr.forEach(r => { raceBestLaps[r.lane] = { bestLapMs: r.bestLapMs, entityName: r.entityName, categoria: r.entityCategoria || null }; });
 
     // Next tanda button: show whenever this tanda is finished (regardless of manga state)
     let nextTanda = null;
@@ -408,7 +416,7 @@ class SessionController {
     const isSimulating = SerialService.isSimulating;
     const isBart       = SerialService.isBart;
     const isPaused     = TimingService.isPaused && isActive;
-    res.render('races/live', { t: req.t, race, manga, tanda, lanes, laps, isActive, standings, prevLapsByLane, totalMangas, totalTandas, totalRaceMs, effectiveMangaDurationMs, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, allParticipants, nextLaneByLane, nextMangaInfo, raceOver, isSimulating, isBart, isPaused });
+    res.render('races/live', { t: req.t, race, manga, tanda, lanes, laps, isActive, standings, projection, prevLapsByLane, totalMangas, totalTandas, totalRaceMs, effectiveMangaDurationMs, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, allParticipants, nextLaneByLane, nextMangaInfo, raceOver, isSimulating, isBart, isPaused });
   }
 
   // GET /races/:id/mangas/:mangaId/panel/:type  (standalone popup)
@@ -422,6 +430,7 @@ class SessionController {
     const laps     = Lap.findByManga(manga.id);
     const isActive = TimingService.activeMangaId === manga.id;
     const standings = isActive ? TimingService.getStandings() : null;
+    const isPaused  = TimingService.isPaused && isActive;
 
     // All-race participants (includes pending tandas) — see live() for details
     const allParticipants = Lap.aggregateByRace(race.id);
@@ -524,7 +533,7 @@ class SessionController {
     // Mejor vuelta por carril (race-wide) — necesario para el panel fastest
     const raceBestLapsArr = Lap.raceBestByLane(race.id);
     const raceBestLaps = {};
-    raceBestLapsArr.forEach(r => { raceBestLaps[r.lane] = { bestLapMs: r.bestLapMs, entityName: r.entityName }; });
+    raceBestLapsArr.forEach(r => { raceBestLaps[r.lane] = { bestLapMs: r.bestLapMs, entityName: r.entityName, categoria: r.entityCategoria || null }; });
 
     // Minimapa: para el panel `track` necesitamos el trazado del circuito
     // (imagen base64 + polilínea) y, por carril, la última vuelta para
@@ -592,7 +601,7 @@ class SessionController {
     const projection = TimingService.buildRaceProjection(race.id);
 
     res.render(view, {
-      t: req.t, race, manga, tanda, lanes, laps, isActive, standings,
+      t: req.t, race, manga, tanda, lanes, laps, isActive, standings, isPaused,
       allParticipants, prevLapsByLane, raceBestLaps,
       circuit, trackOutline, lastLapByLane, circuitsLayout,
       effectiveMangaDurationMs, totalTandas, totalMangasInTanda, projection,

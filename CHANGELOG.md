@@ -13,6 +13,20 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.19.0] — 2026-08-09
+
+### Añadido
+- **Cambio de posición con transición, en toda la app.** Cuando un equipo adelanta o es adelantado en la clasificación, la tarjeta o fila ya no salta de golpe a su puesto nuevo: se desliza hasta él y destella en **verde** (sube) o **rojo** (baja). Aplica a las **5 vistas** que reordenan una clasificación en vivo: las tarjetas del directo (las 3 variantes de vista), el pop-up «Clasificación General», el pop-up «Vueltas rápidas», la pantalla **TV** y la pantalla **Le Mans**. Respeta «reducir movimiento» del sistema.
+- **Gap al siguiente, además del gap al líder.** Tanto en el directo como en «Estadísticas en vivo» (clasificación proyectada y clasificación de la manga actual), ahora se ve el hueco (en vueltas, o en tiempo si van empatados) respecto al que va **justo delante**, no solo respecto al líder de la general.
+- **«Estadísticas en vivo» ya no depende de qué manga tengas seleccionada arriba.** La clasificación proyectada, el total de salidas/pit-stops y el tiempo perdido pasan a ser siempre de **toda la carrera** (mangas finalizadas + la que está en marcha), y el desplegable de manga/equipo y el check «Con salidas» —que no pintaban nada ahí— ahora solo se ven en la pestaña «Manga actual».
+- **El equipo que descansa ya no desaparece.** En «Manga actual» sale igualmente, marcado como «💤 Descansando esta manga»; en la clasificación proyectada, quien esté descansando en la manga realmente en marcha lleva la misma marca junto a su nombre.
+- **La cabecera del directo y del pop-up ya avisan de la pausa.** Antes se quedaban clavados en «En carrera» aunque la manga estuviera parada; ahora muestran «Pausada» (punto naranja) en cuanto se pausa, y vuelven a «En carrera» al reanudar.
+
+### Corregido
+- **El pop-up de clasificación dejaba de congelar el reloj al pausar.** El evento de reanudación del propio pausado («standings», que llega constantemente) volvía a poner en marcha el contador un instante después de que la pausa lo congelara — el reloj seguía bajando con la carrera parada. Ahora solo `manga:paused`/`manga:resumed` deciden si corre.
+- **El aviso de «⏸ PAUSA» tapaba los botones de la cabecera.** Cubría toda la pantalla y bloqueaba clics en «Vista», «Sin voz», mapa, editar, Volver… Ahora cubre solo el área de tarjetas.
+- **Al ver una manga ya finalizada, el orden de las tarjetas no cuadraba con el pop-up.** Sin manga activa, el directo recalculaba su propia proyección aproximada en el cliente en vez de usar la del servidor; ahora usa siempre la misma (`TimingService.buildRaceProjection`) que el pop-up y el resto de vistas.
+
 ## [1.18.0] — 2026-07-27
 
 ### Añadido

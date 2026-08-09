@@ -88,12 +88,24 @@ html, body { width: 100%; height: 100%; overflow: hidden; }
 
 .tv-row {
   border-bottom: 1px solid #0f1419;
-  transition: background .3s;
+  transition: background .3s, transform .45s cubic-bezier(.22,.8,.2,1);
 }
 .tv-row:nth-child(even) { background: rgba(255,255,255,.018); }
 
 @keyframes tvFlash { 0% { background: rgba(246,201,14,.2); } 100% {} }
 .tv-row.flash { animation: tvFlash .8s ease-out forwards; }
+
+/* Transición al reordenar (ReorderFX) + destello direccional cuando un
+   equipo cambia de puesto respecto al render anterior. */
+@keyframes tvRowGlowUp   { 0% { background: rgba(63,185,80,.28); } 100% { background: transparent; } }
+@keyframes tvRowGlowDown { 0% { background: rgba(230,57,70,.28); } 100% { background: transparent; } }
+.tv-row.rfx-up   { animation: tvRowGlowUp .9s ease-out; }
+.tv-row.rfx-down { animation: tvRowGlowDown .9s ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tv-row { transition: background .3s; }
+  .tv-row.rfx-up, .tv-row.rfx-down { animation: none; }
+}
 
 .tv-table td { padding: .6vh 1.2vw; vertical-align: middle; }
 .tv-right { text-align: right; }

@@ -193,7 +193,7 @@
     /* Row */
     .lm-row {
       background: var(--surface);
-      transition: background .15s;
+      transition: background .15s, transform .45s cubic-bezier(.22,.8,.2,1);
       cursor: default;
     }
     .lm-row:hover { background: var(--surface2); }
@@ -203,6 +203,17 @@
     @keyframes bestFlash {
       0%   { background: rgba(63,185,80,.25); }
       100% { background: transparent; }
+    }
+
+    /* Transición al reordenar (ReorderFX) + destello direccional cuando un
+       equipo cambia de puesto en la clasificación proyectada. */
+    .lm-row.rfx-up   { animation: lmRowGlowUp .9s ease-out; }
+    .lm-row.rfx-down { animation: lmRowGlowDown .9s ease-out; }
+    @keyframes lmRowGlowUp   { 0% { background: rgba(63,185,80,.28); } 100% { background: transparent; } }
+    @keyframes lmRowGlowDown { 0% { background: rgba(230,57,70,.28); } 100% { background: transparent; } }
+    @media (prefers-reduced-motion: reduce) {
+      .lm-row { transition: background .15s; }
+      .lm-row.rfx-up, .lm-row.rfx-down { animation: none; }
     }
 
     .lm-row td {
@@ -369,6 +380,7 @@
     const LANG = "<%= lang %>";
   </script>
   <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/reorder-fx.js"></script>
   <script>
     // ── Helpers ───────────────────────────────────────────────────────────────
     function formatMs(ms) {
@@ -395,6 +407,25 @@
         : '';
       const cls = gap <= 1 ? 'gap--1lap' : gap <= 2 ? 'gap--2lap' : '';
       return `<span class="gap-badge ${cls}">a ${v} v${secTxt}</span>`;
+    }
+
+    // Color determinista por categoría (mismo string → mismo color, sin
+    // coordinación entre ventanas): así el directo y el resto de paneles
+    // pintan la categoría del mismo color aunque sean páginas distintas.
+    // Paleta FIJA (no hue continuo): dos categorías de la MISMA carrera
+    // (p.ej. "C1"/"C2") necesitan verse claramente distintas, y un hash sobre
+    // un círculo de tonos continuo puede acercarlas por casualidad (visto con
+    // C1/C2). Con una paleta corta y curada, cualquier carrera con un puñado
+    // de categorías (lo habitual) sale con colores nítidamente diferentes.
+    const CAT_PALETTE = ['#58a6ff','#f6c90e','#3fb950','#ff6b9d','#ff9800','#ba68c8','#00bcd4','#e63946','#8bc34a','#ce93d8','#4dd0e1','#ffab40'];
+    function catColor(cat) {
+      if (!cat) return null;
+      let h = 0;
+      for (let i = 0; i < cat.length; i++) h = (h * 31 + cat.charCodeAt(i)) >>> 0;
+      return CAT_PALETTE[h % CAT_PALETTE.length];
+    }
+    function teamHtml(name, cat) {
+      return cat ? `${name}<span class="cat-suffix" style="color:${catColor(cat)}"> - ${cat}</span>` : name;
     }
 
     // ── State ─────────────────────────────────────────────────────────────────
@@ -498,7 +529,14 @@
         r.psubir = (req != null && req > 0 && (!r.bestLapMs || req >= r.bestLapMs)) ? req : null;
       });
 
-      tbody.innerHTML = rows.map(r => {
+      // Filas persistentes (por equipo) reordenadas con ReorderFX: un cambio
+      // de posición desliza la fila a su sitio nuevo con un destello en vez
+      // de reconstruir la tabla entera de golpe.
+      const build = window.ReorderFX ? window.ReorderFX.reconcileAnimated : (c, items, keyFn, renderFn) => {
+        c.innerHTML = '';
+        items.forEach(item => c.appendChild(renderFn(item, null)));
+      };
+      build(tbody, rows, r => r.id, (r, tr) => {
         const driver = activeDrivers[r.id] ?? r.currentDriver;
         const driverHtml = driver
           ? `<div class="team-driver"><span>${driver}</span></div>`
@@ -511,17 +549,20 @@
           ? `<img class="car-img" src="${r.car_photo}" alt="${r.coche||''}">`
           : `<div class="car-placeholder">${r.coche ? r.coche.substring(0,8) : '—'}</div>`;
         const catHtml = r.categoria
-          ? `<span class="cat-badge">${r.categoria}</span>`
+          ? `<span class="cat-badge" style="border-color:${catColor(r.categoria)};color:${catColor(r.categoria)}">${r.categoria}</span>`
           : `<span style="color:#30363d">—</span>`;
 
-        return `<tr class="lm-row ${r.position===1?'row--leader':''}" data-team="${r.id}">
+        if (!tr) { tr = document.createElement('tr'); }
+        tr.className = `lm-row ${r.position===1?'row--leader':''}`;
+        tr.dataset.team = r.id;
+        tr.innerHTML = `
           <td class="td-pos"><span class="pos-badge ${posClass(r.position)}">${r.position}</span></td>
           <td class="td-bar">${r.currentLane != null
             ? `<span class="lane-pill" style="background:${r.color}">${r.currentLane}</span>`
             : `<span class="lane-pill" style="background:#21262d;color:#8b949e">—</span>`}</td>
           <td class="td-car">${carHtml}</td>
           <td class="td-team">
-            <div class="team-name">${r.name}</div>
+            <div class="team-name">${teamHtml(r.name, r.categoria)}</div>
             ${r.coche ? `<div class="team-driver" style="color:#8b949e">${r.coche}</div>` : ''}
             ${driverHtml}
           </td>
@@ -531,9 +572,9 @@
           <td class="td-gap">${gapLabel(r.gap, r.avgLapMs)}</td>
           <td class="td-avg">${r.avgLapMs != null ? formatMs(r.avgLapMs) : '—'}</td>
           <td class="td-best">${bestHtml}</td>
-          <td class="td-psub">${r.psubir != null ? formatMs(r.psubir) : '—'}</td>
-        </tr>`;
-      }).join('');
+          <td class="td-psub">${r.psubir != null ? formatMs(r.psubir) : '—'}</td>`;
+        return tr;
+      });
       applyCarousel();
     }
 

@@ -83,6 +83,18 @@
       text-align: center; padding: 2rem;
       color: #6e7681; font-size: .9rem; font-style: italic;
     }
+
+    /* Transición al reordenar (ReorderFX) + destello direccional cuando una
+       píldora cambia de puesto respecto al render anterior. */
+    .bl-pill { transition: transform .45s cubic-bezier(.22,.8,.2,1); }
+    .bl-pill.rfx-up   { animation: pf-pill-glow-up .9s ease-out; }
+    .bl-pill.rfx-down { animation: pf-pill-glow-down .9s ease-out; }
+    @keyframes pf-pill-glow-up   { 0% { background: rgba(63,185,80,.28); border-color: #3fb950; } 100% { background: #0a0a0a; } }
+    @keyframes pf-pill-glow-down { 0% { background: rgba(230,57,70,.28); border-color: #e63946; } 100% { background: #0a0a0a; } }
+    @media (prefers-reduced-motion: reduce) {
+      .bl-pill { transition: none; }
+      .bl-pill.rfx-up, .bl-pill.rfx-down { animation: none; }
+    }
   </style>
 </head>
 <body>
@@ -121,6 +133,7 @@
     const LANG = "<%= lang %>";
   </script>
   <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/reorder-fx.js"></script>
   <script>
     // Idéntica a la de live.js: 2 decimales (centésimas) TRUNCANDO, sin redondear
     // (12.069s → 12.06). El panel mostraba milésimas redondeadas, así que la misma
@@ -135,6 +148,23 @@
       return `${mins > 0 ? mins + ':' : ''}${String(secs).padStart(mins > 0 ? 2 : 1, '0')}.${String(hundredths).padStart(2, '0')}`;
     }
 
+    // Color determinista por categoría (mismo string → mismo color, sin
+    // coordinación entre ventanas). Paleta FIJA (no hue continuo): dos
+    // categorías de la MISMA carrera necesitan verse claramente distintas, y
+    // un hash sobre un círculo de tonos continuo puede acercarlas por
+    // casualidad (visto con "C1"/"C2").
+    const CAT_PALETTE = ['#58a6ff','#f6c90e','#3fb950','#ff6b9d','#ff9800','#ba68c8','#00bcd4','#e63946','#8bc34a','#ce93d8','#4dd0e1','#ffab40'];
+    function catColor(cat) {
+      if (!cat) return null;
+      let h = 0;
+      for (let i = 0; i < cat.length; i++) h = (h * 31 + cat.charCodeAt(i)) >>> 0;
+      return CAT_PALETTE[h % CAT_PALETTE.length];
+    }
+    function teamHtml(name, cat) {
+      return cat ? `${name}<span class="cat-suffix" style="color:${catColor(cat)}"> - ${cat}</span>` : name;
+    }
+    function teamPlain(name, cat) { return cat ? `${name} - ${cat}` : name; }
+
     const pfBody  = document.getElementById('pfBody');
     let _raceBestLaps = { ...(PANEL_DATA.raceBestLaps || {}) };
 
@@ -144,6 +174,7 @@
           ...l,
           bestLapMs:  _raceBestLaps[l.lane]?.bestLapMs  ?? null,
           entityName: _raceBestLaps[l.lane]?.entityName ?? null,
+          categoria:  _raceBestLaps[l.lane]?.categoria  ?? null,
         }))
         .filter(r => r.bestLapMs != null)
         .sort((a, b) => a.bestLapMs - b.bestLapMs);
@@ -155,14 +186,25 @@
 
       // Mismo marcado que el ticker del directo (`.bl-pill` en live.js): así los
       // dos sitios se ven igual y un retoque de estilo no se queda a medias.
-      pfBody.innerHTML = rows.map((r, i) => {
+      // Píldoras persistentes (por carril) reordenadas con ReorderFX: cuando
+      // alguien mejora su vuelta y adelanta a otro, la píldora se desliza en
+      // vez de que la lista salte entera a su forma nueva.
+      const build = window.ReorderFX ? window.ReorderFX.reconcileAnimated : (c, items, keyFn, renderFn) => {
+        c.innerHTML = '';
+        items.forEach(item => c.appendChild(renderFn(item, null)));
+      };
+      build(pfBody, rows, r => r.lane, (r, el) => {
+        const i = rows.indexOf(r);
         const nombre = r.entityName || r.name;
-        return `<div class="bl-pill${i === 0 ? ' bl-pill--gold' : ''}">
+        const nombrePlain = teamPlain(nombre, r.categoria);
+        if (!el) { el = document.createElement('div'); }
+        el.className = `bl-pill${i === 0 ? ' bl-pill--gold' : ''}`;
+        el.innerHTML = `
           <span class="bl-pill__lane" style="background:${r.color}">${r.lane}</span>
-          <span class="bl-pill__name" title="${nombre}">${nombre}</span>
-          <span class="bl-pill__time">${formatMs(r.bestLapMs)}</span>
-        </div>`;
-      }).join('');
+          <span class="bl-pill__name" title="${nombrePlain}">${teamHtml(nombre, r.categoria)}</span>
+          <span class="bl-pill__time">${formatMs(r.bestLapMs)}</span>`;
+        return el;
+      });
     }
 
     render();

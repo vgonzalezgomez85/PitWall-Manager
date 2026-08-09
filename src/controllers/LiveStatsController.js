@@ -189,6 +189,133 @@ class LiveStatsController {
     });
   }
 
+  // Todo lo que necesita "Comparativa por carril" (la cuadrícula por defecto Y
+  // la comparación con filtros): entidades, matriz por carril, vueltas totales
+  // y tramos por manga. Recorre TODA la carrera (no solo la manga activa) —
+  // es caro en una 24h, así que NO va en el JSON de refresco por vuelta; el
+  // cliente solo lo vuelve a pedir cuando termina una manga (ver lanes()).
+  static _buildLaneGridData(race) {
+    // Lista de entidades disponibles (de TODA la carrera, para que el piloto
+    // se encuentre aunque ahora esté descansando en esta manga). La categoría
+    // sale del catálogo de equipos del club (`teams_catalog`), que no está
+    // enlazado por id — se empareja por NOMBRE, igual que en /races/:id/lemans.
+    const entityRows = db.prepare(`
+      SELECT DISTINCT
+        COALESCE(t.id, d.id)   AS entity_id,
+        COALESCE(t.name, d.name) AS entity_name,
+        CASE WHEN t.id IS NOT NULL THEN 'team' ELSE 'driver' END AS entity_type,
+        tc.categoria AS categoria
+      FROM manga_lanes ml
+      JOIN mangas m ON m.id = ml.manga_id
+      JOIN tandas tn ON tn.id = m.tanda_id
+      LEFT JOIN teams   t ON t.id = ml.team_id
+      LEFT JOIN drivers d ON d.id = ml.driver_id
+      LEFT JOIN teams_catalog tc ON tc.name = t.name
+      WHERE tn.race_id = ? AND ml.is_rest = 0
+      ORDER BY entity_name COLLATE NOCASE ASC
+    `).all(race.id);
+
+    // ── Matriz por carril ────────────────────────────────────────────────
+    // Stats de cada entidad EN cada carril a lo largo de TODA la carrera, para
+    // la comparativa por carril. clave (`tipo_id`) → carril → { stats }.
+    // best = excluye salidas/warmup/1ª vuelta (igual que raceBestByLane).
+    // avgAll = media sucia (con salidas, sin warmup); avgClean = sin salidas.
+    // exits/pits: mismo criterio que raceWide en el JSON (is_pit_stop aparte
+    // de is_exit, no es un subconjunto).
+    const laneStatRows = db.prepare(`
+      SELECT
+        CASE WHEN l.team_id IS NOT NULL THEN 'team_'||l.team_id ELSE 'driver_'||l.driver_id END AS key,
+        l.lane,
+        COUNT(*) AS laps,
+        MIN(CASE WHEN l.is_exit=0 AND l.is_warmup=0 AND l.lap_number>1 THEN l.lap_time_ms END) AS bestMs,
+        AVG(CASE WHEN l.is_warmup=0 THEN l.lap_time_ms END)                    AS avgAllMs,
+        AVG(CASE WHEN l.is_warmup=0 AND l.is_exit=0 THEN l.lap_time_ms END)    AS avgCleanMs,
+        SUM(CASE WHEN l.is_exit=1 AND l.is_pit_stop=0 THEN 1 ELSE 0 END)       AS exits,
+        SUM(CASE WHEN l.is_pit_stop=1 THEN 1 ELSE 0 END)                      AS pits
+      FROM laps l
+      WHERE l.race_id = ? AND l.is_ghost = 0 AND (l.team_id IS NOT NULL OR l.driver_id IS NOT NULL)
+      GROUP BY key, l.lane
+    `).all(race.id);
+    const laneMatrix = {};
+    const laneSet = new Set();
+    laneStatRows.forEach(r => {
+      if (r.lane == null || r.lane <= 0) return;
+      laneSet.add(r.lane);
+      (laneMatrix[r.key] = laneMatrix[r.key] || {})[r.lane] = {
+        laps: r.laps, bestMs: r.bestMs, avgAllMs: r.avgAllMs, avgCleanMs: r.avgCleanMs,
+        exits: r.exits || 0, pits: r.pits || 0,
+      };
+    });
+    const lanesList = [...laneSet].sort((a, b) => a - b);
+
+    // Vueltas totales de cada entidad en TODA la carrera (todos los carriles).
+    const totalLapsRows = db.prepare(`
+      SELECT CASE WHEN l.team_id IS NOT NULL THEN 'team_'||l.team_id ELSE 'driver_'||l.driver_id END AS key,
+             COUNT(*) AS total_laps
+      FROM laps l
+      WHERE l.race_id = ? AND l.is_ghost = 0 AND l.lap_number > 0
+        AND (l.team_id IS NOT NULL OR l.driver_id IS NOT NULL)
+      GROUP BY key
+    `).all(race.id);
+    const totalLapsByKey = {};
+    totalLapsRows.forEach(r => { totalLapsByKey[r.key] = r.total_laps; });
+
+    // ── Tramos (runs) por entidad×carril ────────────────────────────────
+    // Un bloque por MANGA, siempre — aunque el carril se repita en mangas
+    // consecutivas (`lane_repeat`), cada manga se pinta separada con sus
+    // propios datos (M1 no se mezcla con M2). No hay fusión: es la fila
+    // per-manga tal cual sale de la query.
+    const perMangaRows = db.prepare(`
+      SELECT
+        CASE WHEN l.team_id IS NOT NULL THEN 'team_'||l.team_id ELSE 'driver_'||l.driver_id END AS key,
+        l.lane, m.number AS manga_number,
+        COUNT(*) AS laps,
+        MIN(CASE WHEN l.is_exit=0 AND l.is_warmup=0 AND l.lap_number>1 THEN l.lap_time_ms END) AS bestMs,
+        SUM(CASE WHEN l.is_warmup=0 THEN l.lap_time_ms ELSE 0 END)                  AS sumAll,
+        SUM(CASE WHEN l.is_warmup=0 THEN 1 ELSE 0 END)                             AS cntAll,
+        SUM(CASE WHEN l.is_warmup=0 AND l.is_exit=0 THEN l.lap_time_ms ELSE 0 END) AS sumClean,
+        SUM(CASE WHEN l.is_warmup=0 AND l.is_exit=0 THEN 1 ELSE 0 END)             AS cntClean,
+        SUM(CASE WHEN l.is_exit=1 AND l.is_pit_stop=0 THEN 1 ELSE 0 END)           AS exits,
+        SUM(CASE WHEN l.is_pit_stop=1 THEN 1 ELSE 0 END)                          AS pits
+      FROM laps l
+      JOIN mangas m ON m.id = l.manga_id
+      WHERE l.race_id = ? AND l.is_ghost = 0 AND (l.team_id IS NOT NULL OR l.driver_id IS NOT NULL)
+      GROUP BY key, l.lane, m.number
+      ORDER BY m.number ASC
+    `).all(race.id);
+    const laneDriverRows = db.prepare(`
+      SELECT DISTINCT 'team_'||l.team_id AS key, l.lane, m.number AS manga_number, d.name AS driver_name
+      FROM laps l
+      JOIN drivers d ON d.id = l.driver_id
+      JOIN mangas m ON m.id = l.manga_id
+      WHERE l.race_id = ? AND l.is_ghost = 0 AND l.team_id IS NOT NULL
+    `).all(race.id);
+    const driversByKeyLaneManga = {}; // key → lane → manga_number → [driver_name, …]
+    laneDriverRows.forEach(r => {
+      if (r.lane == null || r.lane <= 0) return;
+      const byLane  = (driversByKeyLaneManga[r.key] = driversByKeyLaneManga[r.key] || {});
+      const byManga = (byLane[r.lane] = byLane[r.lane] || {});
+      (byManga[r.manga_number] = byManga[r.manga_number] || []).push(r.driver_name);
+    });
+
+    const laneRuns = {}; // key → lane → [ { mangas:[n], drivers:[…], laps, bestMs, avgAllMs, avgCleanMs, exits, pits }, … ]
+    perMangaRows.forEach(r => {
+      if (r.lane == null || r.lane <= 0) return;
+      const byLane = (laneRuns[r.key] = laneRuns[r.key] || {});
+      const runs   = (byLane[r.lane] = byLane[r.lane] || []);
+      runs.push({
+        mangas: [r.manga_number],
+        drivers: [...(((driversByKeyLaneManga[r.key] || {})[r.lane] || {})[r.manga_number] || [])],
+        laps: r.laps, bestMs: r.bestMs,
+        avgAllMs:   r.cntAll   > 0 ? r.sumAll   / r.cntAll   : null,
+        avgCleanMs: r.cntClean > 0 ? r.sumClean / r.cntClean : null,
+        exits: r.exits || 0, pits: r.pits || 0,
+      });
+    });
+
+    return { entityRows, laneMatrix, lanesList, totalLapsByKey, laneRuns };
+  }
+
   // GET /races/:id/live-stats?mangaId=N&entity=team_5
   static show(req, res) {
     const lang = req.session?.lang || 'es';
@@ -209,57 +336,25 @@ class LiveStatsController {
                         || allMangas[0]?.id || null;
     }
 
-    // Lista de entidades disponibles (de TODA la carrera, para que el piloto
-    // se encuentre aunque ahora esté descansando en esta manga).
-    const entityRows = db.prepare(`
-      SELECT DISTINCT
-        COALESCE(t.id, d.id)   AS entity_id,
-        COALESCE(t.name, d.name) AS entity_name,
-        CASE WHEN t.id IS NOT NULL THEN 'team' ELSE 'driver' END AS entity_type
-      FROM manga_lanes ml
-      JOIN mangas m ON m.id = ml.manga_id
-      JOIN tandas tn ON tn.id = m.tanda_id
-      LEFT JOIN teams   t ON t.id = ml.team_id
-      LEFT JOIN drivers d ON d.id = ml.driver_id
-      WHERE tn.race_id = ? AND ml.is_rest = 0
-      ORDER BY entity_name COLLATE NOCASE ASC
-    `).all(race.id);
-
-    // ── Matriz por carril ────────────────────────────────────────────────
-    // Stats de cada entidad EN cada carril a lo largo de TODA la carrera, para
-    // la comparativa por carril. clave (`tipo_id`) → carril → { stats }.
-    // best = excluye salidas/warmup/1ª vuelta (igual que raceBestByLane).
-    // avgAll = media sucia (con salidas, sin warmup); avgClean = sin salidas.
-    const laneStatRows = db.prepare(`
-      SELECT
-        CASE WHEN l.team_id IS NOT NULL THEN 'team_'||l.team_id ELSE 'driver_'||l.driver_id END AS key,
-        l.lane,
-        COUNT(*) AS laps,
-        MIN(CASE WHEN l.is_exit=0 AND l.is_warmup=0 AND l.lap_number>1 THEN l.lap_time_ms END) AS bestMs,
-        AVG(CASE WHEN l.is_warmup=0 THEN l.lap_time_ms END)                    AS avgAllMs,
-        AVG(CASE WHEN l.is_warmup=0 AND l.is_exit=0 THEN l.lap_time_ms END)    AS avgCleanMs,
-        SUM(l.is_exit) AS exits
-      FROM laps l
-      WHERE l.race_id = ? AND l.is_ghost = 0 AND (l.team_id IS NOT NULL OR l.driver_id IS NOT NULL)
-      GROUP BY key, l.lane
-    `).all(race.id);
-    const laneMatrix = {};
-    const laneSet = new Set();
-    laneStatRows.forEach(r => {
-      if (r.lane == null || r.lane <= 0) return;
-      laneSet.add(r.lane);
-      (laneMatrix[r.key] = laneMatrix[r.key] || {})[r.lane] = {
-        laps: r.laps, bestMs: r.bestMs, avgAllMs: r.avgAllMs, avgCleanMs: r.avgCleanMs, exits: r.exits || 0,
-      };
-    });
-    const lanesList = [...laneSet].sort((a, b) => a - b);
+    const laneGrid = LiveStatsController._buildLaneGridData(race);
 
     res.render('live-stats/show', {
-      t: req.t, lang, race, tandas, allMangas, entityRows,
+      t: req.t, lang, race, tandas, allMangas,
       selectedMangaId,
       isActive: TimingService.activeMangaId === selectedMangaId,
-      laneMatrix, lanesList,
+      ...laneGrid,
     });
+  }
+
+  // GET /races/:id/live-stats/lanes.json
+  // Mismos datos que `show` usa para "Comparativa por carril", pero servidos
+  // aparte para que el cliente los pueda refrescar SIN recargar la página —
+  // solo al terminar una manga (ver comentario en _buildLaneGridData: es una
+  // consulta cara sobre TODA la carrera, no apta para cada vuelta).
+  static lanes(req, res) {
+    const race = Race.findById(req.params.id);
+    if (!race) return res.status(404).json({ error: 'race_not_found' });
+    res.json(LiveStatsController._buildLaneGridData(race));
   }
 
   // GET /races/:id/live-stats.json?mangaId=N&entity=team_5
@@ -330,7 +425,30 @@ class LiveStatsController {
       lapSeries:  e.laps.map(l => ({ n: l.lap_number, t: l.lap_time_ms, x: l.is_exit ? 1 : 0 })),
     }));
 
-    // Clasificación por total laps (desc), luego best (asc)
+    // Quien DESCANSA esta manga no tiene vueltas → no sale en `laps`, así que
+    // sin esto desaparecía sin más de "Manga actual" en vez de indicar que le
+    // toca descanso. Se añade con stats a 0 y isResting=true.
+    const restRows = db.prepare(`
+      SELECT ml.team_id, ml.driver_id, COALESCE(t.name, d.name) AS entity_name,
+             CASE WHEN ml.team_id IS NOT NULL THEN 'team' ELSE 'driver' END AS entity_type
+      FROM manga_lanes ml
+      LEFT JOIN teams   t ON t.id = ml.team_id
+      LEFT JOIN drivers d ON d.id = ml.driver_id
+      WHERE ml.manga_id = ? AND ml.is_rest = 1 AND (ml.team_id IS NOT NULL OR ml.driver_id IS NOT NULL)
+    `).all(manga.id);
+    restRows.forEach(r => {
+      const key = `${r.entity_type}_${r.entity_type === 'team' ? r.team_id : r.driver_id}`;
+      if (byEntity.has(key)) return;   // ya tiene vueltas (no debería pasar si descansa)
+      entities.push({
+        key, entityName: r.entity_name, lane: null,
+        ...buildEntityStats({ laps: [], mangaDurationMs, minLapMs: race.min_lap_ms || 0 }),
+        lapSeries: [],
+        isResting: true,
+      });
+    });
+
+    // Clasificación por total laps (desc), luego best (asc). Quien descansa
+    // (0 vueltas, sin mejor) cae naturalmente al final por este mismo orden.
     entities.sort((a, b) => b.totalLaps - a.totalLaps
                          || (a.bestMs ?? Infinity) - (b.bestMs ?? Infinity));
     entities.forEach((e, i) => { e.position = i + 1; });
@@ -386,6 +504,7 @@ class LiveStatsController {
     `).all(race.id);
     const raceCleanByKey = new Map();  // SIN salidas/pits
     const raceAllByKey   = new Map();  // CON salidas/pits
+    const raceExitTimesByKey = new Map();  // solo los tiempos de las salidas/pits (para el perdido total)
     for (const r of eligibleLapRows) {
       let all = raceAllByKey.get(r.key);
       if (!all) { all = []; raceAllByKey.set(r.key, all); }
@@ -394,6 +513,10 @@ class LiveStatsController {
         let cln = raceCleanByKey.get(r.key);
         if (!cln) { cln = []; raceCleanByKey.set(r.key, cln); }
         cln.push(r.t);
+      } else {
+        let ex = raceExitTimesByKey.get(r.key);
+        if (!ex) { ex = []; raceExitTimesByKey.set(r.key, ex); }
+        ex.push(r.t);
       }
     }
     const raceConsByKey    = new Map();  // SIN
@@ -411,15 +534,39 @@ class LiveStatsController {
       JOIN tandas t ON t.id = m.tanda_id
       WHERE t.race_id = ? AND m.status = 'pending'
     `).get(race.id).n;
+    // Stats race-wide de UNA key (team_X / driver_Y) — se usa tanto para
+    // enriquecer `entities` (solo quienes corren ESTA manga) como para
+    // `raceWideByKey`, que cubre a TODOS los participantes de la carrera
+    // (incluidos los que descansan en la manga que se está viendo), para la
+    // tabla de Clasificación Proyectada.
+    function raceWideOf(key) {
+      const rw = raceByKey.get(key) || {};
+      const racePaceAllMs   = rw.pace_all_ms   ? Math.round(rw.pace_all_ms)   : null;
+      const racePaceCleanMs = rw.pace_clean_ms ? Math.round(rw.pace_clean_ms) : null;
+      // Perdido TOTAL de carrera: mismo criterio que el de manga (Σ sobre las
+      // salidas/pits del exceso frente a la media limpia), pero con la media
+      // race-wide como referencia y sobre TODAS las salidas de la carrera.
+      const ref = racePaceCleanMs ?? racePaceAllMs ?? 0;
+      const exitTimes = raceExitTimesByKey.get(key) || [];
+      let raceLostMs = 0;
+      for (const t of exitTimes) { const over = t - ref; if (over > 0) raceLostMs += over; }
+      return {
+        raceTotalLaps: rw.total_laps || 0,
+        racePaceAllMs, racePaceCleanMs,
+        raceBestMs: rw.best_ms != null ? rw.best_ms : null,
+        raceExits: rw.exits || 0,
+        racePits:  rw.pits  || 0,
+        raceLostMs,
+        raceLostLapsEquiv: ref > 0 ? +(raceLostMs / ref).toFixed(2) : 0,
+        mangasRaced: rw.mangas_raced || 0,
+      };
+    }
+    const raceWideByKey = {};
+    for (const key of raceByKey.keys()) raceWideByKey[key] = raceWideOf(key);
+
     // Enriquecer cada entity con su total race-wide
     entities.forEach(e => {
-      const rw = raceByKey.get(e.key) || {};
-      e.raceTotalLaps   = rw.total_laps  || 0;
-      e.racePaceAllMs   = rw.pace_all_ms   ? Math.round(rw.pace_all_ms)   : null;
-      e.racePaceCleanMs = rw.pace_clean_ms ? Math.round(rw.pace_clean_ms) : null;
-      e.raceBestMs      = rw.best_ms != null ? rw.best_ms : null;
-      e.raceExits       = rw.exits || 0;
-      e.racePits        = rw.pits  || 0;
+      Object.assign(e, raceWideOf(e.key));
       const rc = raceConsByKey.get(e.key) || null;
       e.raceConsistency      = rc ? rc.pct    : null;
       e.raceConsistencyStdMs = rc ? rc.stdMs  : null;
@@ -430,7 +577,6 @@ class LiveStatsController {
       e.raceConsistencyAllStdMs = rcA ? rcA.stdMs  : null;
       e.raceConsistencyAllLevel = rcA ? rcA.level  : null;
       e.raceConsistencyAllMeanMs = rcA ? rcA.meanMs : null;
-      e.mangasRaced     = rw.mangas_raced || 0;
     });
 
     // Progreso de carrera: vueltas ACUMULADAS de cada equipo manga a manga
@@ -475,9 +621,21 @@ class LiveStatsController {
     // cada una de esas peticiones. Es la misma caché que usan el directo y Lap.
     let projection = null;
     try {
-      const TimingService = require('../services/TimingService');
       projection = TimingService._cachedProjection(race.id);
     } catch (e) { /* sin proyección si falla la consulta */ }
+
+    // Quién descansa AHORA MISMO (en la manga realmente activa, no la que se
+    // esté mirando en el desplegable) — la Clasificación Proyectada es de toda
+    // la carrera y no depende de la manga seleccionada, así que el descanso
+    // que marca también tiene que ser el de la manga en curso de verdad.
+    let restingKeysActive = [];
+    if (TimingService.activeMangaId != null) {
+      restingKeysActive = db.prepare(`
+        SELECT CASE WHEN ml.team_id IS NOT NULL THEN 'team_' || ml.team_id ELSE 'driver_' || ml.driver_id END AS key
+        FROM manga_lanes ml
+        WHERE ml.manga_id = ? AND ml.is_rest = 1 AND (ml.team_id IS NOT NULL OR ml.driver_id IS NOT NULL)
+      `).all(TimingService.activeMangaId).map(r => r.key);
+    }
 
     // La comparativa en vivo (tú vs 1-2 rivales) se calcula en CLIENTE a partir
     // de `entities` (cada una trae lane, position, totalLaps, best/avg, última).
@@ -494,6 +652,8 @@ class LiveStatsController {
       entities,
       projection,
       raceProgress,
+      raceWideByKey,
+      restingKeysActive,
     };
 
     _jsonCache.set(cacheKey, { ts: Date.now(), mut: Lap.mutationCount, payload });

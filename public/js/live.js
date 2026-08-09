@@ -26,6 +26,26 @@ function flagHtml(country) {
   const inner = flag === '__SVG__' ? SENYERA_SVG : `<span style="line-height:1">${flag}</span>`;
   return `<span class="lane-flag">${inner}</span>`;
 }
+// Color determinista por categoría (mismo string → mismo color, sin
+// coordinación entre ventanas): así el directo y el resto de paneles pintan
+// la categoría del mismo color aunque sean páginas distintas. Paleta FIJA
+// (no hue continuo): dos categorías de la MISMA carrera (p.ej. "C1"/"C2")
+// necesitan verse claramente distintas, y un hash sobre un círculo de tonos
+// continuo puede acercarlas por casualidad (visto con C1/C2). Con una
+// paleta corta y curada, cualquier carrera con un puñado de categorías
+// (lo habitual) sale con colores nítidamente diferentes.
+const CAT_PALETTE = ['#58a6ff','#f6c90e','#3fb950','#ff6b9d','#ff9800','#ba68c8','#00bcd4','#e63946','#8bc34a','#ce93d8','#4dd0e1','#ffab40'];
+function catColor(cat) {
+  if (!cat) return null;
+  let h = 0;
+  for (let i = 0; i < cat.length; i++) h = (h * 31 + cat.charCodeAt(i)) >>> 0;
+  return CAT_PALETTE[h % CAT_PALETTE.length];
+}
+function teamHtml(name, cat) {
+  return cat ? `${name}<span class="cat-suffix" style="color:${catColor(cat)}"> - ${cat}</span>` : name;
+}
+function teamPlain(name, cat) { return cat ? `${name} - ${cat}` : name; }
+
 function formatMs(ms) {
   if (ms == null) return '—';
   // 2 decimales (centésimas) TRUNCANDO, sin redondear (12.069s → 12.06).
@@ -353,6 +373,7 @@ function buildCard(lane) {
   const card = document.createElement('div');
   card.className = 'lane-card' + (lane.isRest ? ' is-rest' : '');
   card.id = `card-${lane.cardId || lane.lane}`;
+  card.dataset.rfxKey = lane.cardId || lane.lane;   // key estable para ReorderFX (ver sortCards)
   card.style.setProperty('--card-color', lane.color);
 
   if (lane.isRest) {
@@ -370,7 +391,7 @@ function buildCard(lane) {
         <span class="lane-card__rest-icon">${icon}</span>
         <span class="lane-card__pos" id="card-pos-${lane.cardId || lane.lane}"></span>
       </div>
-      <div class="lane-card__rest-name">${flagHtml(lane.country)}${lane.name}</div>
+      <div class="lane-card__rest-name">${flagHtml(lane.country)}${teamHtml(lane.name, lane.categoria)}</div>
       <div class="lane-card__rest-laps" id="card-rest-laps-${lane.cardId || lane.lane}">${restTotal}</div>
       <div class="lane-card__rest-label">${posLabel}</div>`;
     return card;
@@ -389,7 +410,7 @@ function buildCard(lane) {
           <span class="lane-card__trend-up"></span>
           <span class="lane-card__trend-down"></span>
         </span>
-        <span class="lane-card__name"><span class="lane-card__name-scroll">${flagHtml(lane.country)}${lane.name}</span></span>
+        <span class="lane-card__name"><span class="lane-card__name-scroll">${flagHtml(lane.country)}${teamHtml(lane.name, lane.categoria)}</span></span>
         <span class="lane-card__pit" id="card-pit-${lane.lane}" hidden title="Pit-stop">
           🔧<span class="lane-card__pit-count" id="card-pit-count-${lane.lane}"></span>
         </span>
@@ -934,6 +955,10 @@ function sortCards(rows) {
     hasGlobal ? (posOf(a) - posOf(b))
               : (totalOf(b) - totalOf(a) || (a.totalTimeMs ?? Infinity) - (b.totalTimeMs ?? Infinity)));
 
+  // FLIP: mide la posición de cada tarjeta ANTES de tocar su `order` (ver
+  // más abajo) para poder deslizarla a la nueva en vez de que salte de golpe.
+  const finishReorderFx = window.ReorderFX ? window.ReorderFX.capture(lanesGrid) : null;
+
   // Gaps entre tarjetas consecutivas (en vueltas proyectadas si hay global).
   const gapAbove = {}, gapBelow = {};
   sorted.forEach((r, i) => {
@@ -983,6 +1008,10 @@ function sortCards(rows) {
     }
   });
 
+  // El `order` de todas las tarjetas ya está fijado: dispara el FLIP (desliza
+  // desde la posición de antes + destello verde/rojo en las que cambiaron de rank).
+  if (finishReorderFx) finishReorderFx(sorted.map(cardKey));
+
   prevLaneGap = {};
   sorted.forEach(r => { const k = cardKey(r); prevLaneGap[k] = { above: gapAbove[k], below: gapBelow[k] }; });
 }
@@ -1017,7 +1046,7 @@ function renderStandings(data) {
   if (!data?.standings) return;
   // Merge active lanes with resting entities (lapCount=0 this manga)
   const restRows = restLanes.map(l => ({
-    lane: l.lane, name: l.name, color: l.color, country: l.country,
+    lane: l.lane, name: l.name, color: l.color, country: l.country, categoria: l.categoria,
     lapCount: 0, lastLapMs: null, bestLapMs: null, avgLapMs: null,
     exitCount: 0, isRest: true, prevLapCount: l.prevLapCount || 0,
   }));
@@ -1056,7 +1085,7 @@ function renderStandings(data) {
       return `
       <tr class="srow srow--rest" id="srow-rest-${i}">
         <td><span class="sr-pos">${i+1}</span></td>
-        <td style="max-width:80px"><span class="sr-name sr-name--rest" title="${r.name}">💤 ${flagHtml(r.country)}${r.name}</span></td>
+        <td style="max-width:80px"><span class="sr-name sr-name--rest" title="${teamPlain(r.name, r.categoria)}">💤 ${flagHtml(r.country)}${teamHtml(r.name, r.categoria)}</span></td>
         <td class="sr-right">—</td>
         <td class="sr-right"><span class="sr-total">${r.prevLapCount}</span></td>
         <td class="sr-right">—</td>
@@ -1071,7 +1100,7 @@ function renderStandings(data) {
     return `
     <tr class="srow" id="srow-${r.lane}">
       <td style="width:28px"><span class="sr-pos ${posClass(i+1)}">${i+1}</span></td>
-      <td style="max-width:80px"><span class="sr-name" title="${r.name}">${flagHtml(r.country)}${r.name}</span></td>
+      <td style="max-width:80px"><span class="sr-name" title="${teamPlain(r.name, r.categoria)}">${flagHtml(r.country)}${teamHtml(r.name, r.categoria)}</span></td>
       <td class="sr-right"><span class="sr-laps">${r.lapCount}</span></td>
       <td class="sr-right"><span class="sr-total">${getTotalLaps(r.lane, r.lapCount)}</span></td>
       <td class="sr-right"><span class="sr-best">${formatMs(r.bestLapMs)}</span></td>
@@ -1208,7 +1237,7 @@ function renderProjected(data) {
   if (data.projection && data.projection.length) {
     rows.length = 0;
     data.projection.forEach(p => rows.push({
-      name: p.name, total: p.total, avgLapMs: p.avgLapMs,
+      name: p.name, categoria: p.categoria || null, total: p.total, avgLapMs: p.avgLapMs,
       projectedTotal: p.projectedTotal != null ? Math.round(p.projectedTotal) : null,
       projectedTotalRaw: p.projectedTotal, bestLapMs: null,
     }));
@@ -1293,7 +1322,7 @@ function renderProjected(data) {
     return `
     <tr class="srow">
       <td><span class="sr-pos ${posClass(i+1)}">${i+1}</span></td>
-      <td><span class="sr-name" title="${r.name}">${r.name}</span></td>
+      <td><span class="sr-name" title="${teamPlain(r.name, r.categoria)}">${teamHtml(r.name, r.categoria)}</span></td>
       <td class="sr-right"><span class="sr-proj">${r.projectedTotalRaw != null ? r.projectedTotalRaw.toFixed(1) : '—'}</span></td>
       <td class="sr-right"><span class="sr-ontrack">${r.total}</span></td>
       <td class="sr-right"><span class="sr-avg">${formatMs(r.avgLapMs)}</span></td>
@@ -1323,6 +1352,7 @@ function renderBestLaps() {
       name:       l.name,
       bestLapMs:  (_raceBestLaps[l.lane]?.bestLapMs) ?? null,
       entityName: (_raceBestLaps[l.lane]?.entityName) ?? null,
+      categoria:  (_raceBestLaps[l.lane]?.categoria) ?? null,
     }))
     .filter(r => r.bestLapMs != null)
     .sort((a, b) => a.bestLapMs - b.bestLapMs);
@@ -1337,7 +1367,7 @@ function renderBestLaps() {
         const dot = `<span class="ticker-dot" style="background:${r.color};display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;font-size:10px;color:#fff;font-weight:700">${r.lane}</span>`;
         return `<tr class="srow best-lap-row ${cls}">
           <td class="sr-center">${dot}</td>
-          <td style="max-width:90px"><span class="sr-name" title="${r.entityName || r.name}">${r.entityName || r.name}</span></td>
+          <td style="max-width:90px"><span class="sr-name" title="${teamPlain(r.entityName || r.name, r.categoria)}">${teamHtml(r.entityName || r.name, r.categoria)}</span></td>
           <td class="sr-right"><span class="sr-best" style="${i===0?'color:#ffd700;font-weight:700':''}">${formatMs(r.bestLapMs)}</span></td>
         </tr>`;
       }).join('');
@@ -1354,7 +1384,7 @@ function renderBestLaps() {
         const cls = i === 0 ? ' bl-pill--gold' : '';
         return `<div class="bl-pill${cls}">
           <span class="bl-pill__lane" style="background:${r.color}">${r.lane}</span>
-          <span class="bl-pill__name" title="${r.entityName || r.name}">${r.entityName || r.name}</span>
+          <span class="bl-pill__name" title="${teamPlain(r.entityName || r.name, r.categoria)}">${teamHtml(r.entityName || r.name, r.categoria)}</span>
           <span class="bl-pill__time">${formatMs(r.bestLapMs)}</span>
         </div>`;
       }).join('');
@@ -1457,7 +1487,7 @@ function addTick(lap) {
   const badge = lap.isPitStop ? '🔧' : (lap.isExit ? '⚠️' : '');
   el.innerHTML = `
     <span class="ticker-dot" style="background:${lap.color}">${lap.lane}</span>
-    <span class="ticker-name">${lap.name}</span>
+    <span class="ticker-name">${teamHtml(lap.name, lap.categoria)}</span>
     <span class="ticker-lapn">V${lap.lapNumber}</span>
     <span class="ticker-time">${badge ? badge + ' ' : ''}${formatMs(lap.lapTimeMs)}</span>`;
   ticker.insertBefore(el, ticker.firstChild);
@@ -1524,6 +1554,11 @@ if (RACE_DATA.standings) {
         return tb - ta || (a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity);
       })
       .map((r, i) => ({ ...r, position: i+1, gap: 0, exitCount: r.exitCount ?? 0 })),
+    // Proyección de carrera COMPLETA calculada por el servidor (misma función
+    // que el pop-up "Clasificación General"), para que el orden P.x y el Gap V
+    // de las tarjetas coincidan con el pop-up también al ver una manga ya
+    // finalizada (donde no hay socket 'standings' en vivo).
+    projection: RACE_DATA.projection || [],
     elapsedMs: 0, remainingMs: 0
   };
   if (initialData.standings.length > 0) renderStandings(initialData);
@@ -1855,13 +1890,17 @@ function announce(text) {
         ov.id = 'pause-overlay';
         ov.className = 'pause-overlay';
         ov.textContent = LANG === 'es' ? '⏸ PAUSA' : '⏸ PAUSED';
-        document.body.appendChild(ov);
+        // Dentro de .live-layout (no document.body): así cubre solo las
+        // tarjetas y deja los botones de la cabecera clicables.
+        (document.querySelector('.live-layout') || document.body).appendChild(ov);
       }
+      if (statusEl) statusEl.innerHTML = `<span class="status-dot status-dot--paused"></span><span class="status-text status-text--paused">${LANG === 'es' ? 'Pausada' : 'Paused'}</span>`;
     });
 
     socket.on('manga:resumed', () => {
       RACE_DATA.isPaused = false;
       document.getElementById('pause-overlay')?.remove();
+      if (statusEl) statusEl.innerHTML = `<span class="status-dot status-dot--active"></span><span class="status-text status-text--active">${LANG === 'es' ? 'En carrera' : 'Racing'}</span>`;
       const hasSema = !!document.getElementById('semaphore-overlay');
       // Quien pulsó RESUME (AJAX) recarga tras el verde para refrescar el botón
       // (RESUME → PAUSE) y el reloj. El resto de clientes reanudan en caliente.
