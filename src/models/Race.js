@@ -103,6 +103,18 @@ class Race {
     return [race.lanes_count]; // fallback: single circuit
   }
 
+  // Al editar un escenario se cambia su min_lap_ms (o el de una categoría), pero
+  // las carreras ya asignadas a ese circuito lo tienen copiado en su propia
+  // columna desde que se asignó (no es una referencia en vivo). Sin este sync
+  // se desincroniza: DS-300 real 5000ms vs. carrera con el 9000ms de cuando se
+  // creó, y el filtro de vuelta fantasma empieza a comerse vueltas válidas.
+  // No hay category_id guardado por carrera, así que el resync solo puede usar
+  // el valor base del circuito (una carrera creada con override de categoría
+  // pierde ese override en el próximo resync del circuito).
+  static syncMinLapMsFromCircuit(circuitId, minLapMs) {
+    db.prepare('UPDATE races SET min_lap_ms=? WHERE circuit_id=?').run(minLapMs, circuitId);
+  }
+
   static updateStatus(id, status) {
     const now = new Date().toISOString();
     if (status === 'active') {

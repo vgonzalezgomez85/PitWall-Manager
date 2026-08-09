@@ -243,6 +243,7 @@
     // ── Motor de voz (deriva los mismos eventos que la app desde el socket)─
     var prevOverallPos = null, bestLap = null, prevMyLane = null, prevMangaId = null;
     var mangaDurationMs = 0, remAtSync = null, syncAt = 0;
+    var isPaused = false;
     var myStatus = 'rest', myLane = null, myCtx = {};
     var firedHalf = false, firedLastMin = false, firedLast30 = false, firedFinish = false;
     var lastAvgMin = -1, lastGapMin = -1, lastCatchMin = -1;
@@ -535,6 +536,11 @@
 
     function tick(){
       if (myStatus !== 'my-turn') return;
+      // Con la manga en pausa el reloj real está congelado: si seguimos
+      // extrapolando por reloj de pared, "remaining" baja igual y puede
+      // disparar "Último minuto" o "Últimos 30 s" con la carrera parada
+      // (el aviso real llegará tarde o nunca al reanudar).
+      if (isPaused) return;
       var remaining = (remAtSync != null) ? (remAtSync - (Date.now() - syncAt)) : null;
       if (remaining != null && mangaDurationMs > 0){
         if (!firedHalf    && S.enabled && S.sayHalfManga && remaining <= mangaDurationMs/2 && remaining > 60000){ firedHalf = true; say('Media manga'); }
@@ -722,11 +728,20 @@
         // la ASIGNACIÓN al carril que recibe la vuelta.
         if (d.toLane   === myLane) sayCritical('Vuelta asignada');
       });
-      socket.on('manga:started', function(){ resetManga(); prevMyLane = null; try { socket.emit('standings:request'); } catch(e){} scheduleRefresh(); });
+      socket.on('manga:started', function(){ resetManga(); isPaused = false; prevMyLane = null; try { socket.emit('standings:request'); } catch(e){} scheduleRefresh(); });
       ['manga:stopped','race_finished','race:finished'].forEach(function(ev){
         socket.on(ev, function(){ if (myStatus === 'my-turn' && !firedFinish){ firedFinish = true; say('Fin de la manga'); } myStatus = 'rest'; prevMyLane = null; scheduleRefresh(); });
       });
-      ['manga:paused','manga:resumed','manga:cancelled'].forEach(function(ev){ socket.on(ev, scheduleRefresh); });
+      socket.on('manga:paused', function(){ isPaused = true; scheduleRefresh(); });
+      socket.on('manga:resumed', function(){
+        isPaused = false;
+        // Al reanudar, `startTime` se desplaza por la duración de la pausa:
+        // re-sincronizamos remAtSync/syncAt con el remainingMs real del
+        // servidor en vez de seguir extrapolando desde antes de la pausa.
+        try { socket.emit('standings:request'); } catch(e){}
+        scheduleRefresh();
+      });
+      socket.on('manga:cancelled', scheduleRefresh);
     } catch(e){}
 
     setInterval(refresh, 5000);

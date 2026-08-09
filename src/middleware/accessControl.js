@@ -112,6 +112,17 @@ function isPublicPath(p) {
       || p === '/control/shifts';
 }
 
+// ── Conexión ecosistema (PitWall Control) ───────────────────────────────────
+// Interruptor único que decide si Control puede alcanzar a Manager desde la
+// LAN: envío de tandas y verificaciones (POST /import/tanda, POST
+// /import/verificaciones, ambos con PIN) y lectura de resultados (GET
+// /link/races/:id/results.json). '1' por defecto (comportamiento previo a
+// este ajuste). El operador local (localhost/allowlist) nunca se ve afectado
+// por este interruptor, solo los dispositivos de Control en la LAN.
+function ecosystemBridgeEnabled() {
+  return Settings.get('ecosystem_control_enabled', '1') === '1';
+}
+
 // ── Race Link (maestro↔esclavo) ─────────────────────────────────────────────
 // Endpoints que una instancia REMOTA de PitWall (el otro extremo del enlace)
 // debe poder alcanzar aunque su IP no esté en la allowlist. Se dividen en:
@@ -132,12 +143,14 @@ function isLinkControlPath(p) {
   return p === '/link/state' || p === '/link/event';
 }
 
-// Importación de tandas desde PitWall Control (LAN). El POST debe ser alcanzable
-// aunque la IP de Control no esté en la allowlist; la ACEPTACIÓN la gatea el PIN
-// dentro de ImportController (importAuthorized). La página (GET) NO se exime: la
-// abre el operador local y se queda tras la restricción por IP normal.
+// Importación de tandas/verificaciones desde PitWall Control (LAN). El POST
+// debe ser alcanzable aunque la IP de Control no esté en la allowlist; la
+// ACEPTACIÓN la gatea el PIN dentro de ImportController/VerificationController
+// (importAuthorized). Las páginas (GET) NO se eximen: las abre el operador
+// local y se quedan tras la restricción por IP normal.
 function isImportPath(p, method) {
-  return p === '/import/tanda' && String(method || '').toUpperCase() === 'POST';
+  if (String(method || '').toUpperCase() !== 'POST') return false;
+  return p === '/import/tanda' || p === '/import/verificaciones';
 }
 
 // ¿La petición de control del enlace está autorizada? Solo si esta instancia es
@@ -202,5 +215,5 @@ module.exports = {
   ipAllowed, restrictAccess, isSocketAllowed,
   isLocalRequest, annotateAccess,
   isLinkReadPath, isLinkControlPath, linkControlAuthorized,
-  isImportPath,
+  isImportPath, ecosystemBridgeEnabled,
 };

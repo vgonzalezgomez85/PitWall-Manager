@@ -143,6 +143,7 @@ class TimingServiceClass {
         driverId:     ml.driver_id || null,
         color:        ml.team_color || '#8b949e',
         country:      ml.team_country || null,
+        categoria:    ml.team_categoria || null,
         lapCount:      0,
         bestLapMs:     null,
         lastLapMs:     null,
@@ -172,6 +173,7 @@ class TimingServiceClass {
         pitStopCount:  0,
         raceBestLapMs:    null,
         raceBestEntity:   null,
+        raceBestCategoria: null,
         pendingPauseAdjustMs: 0,  // ms to subtract from the next reported lap_time
                                   //   so the first crossing post-resume reflects
                                   //   only real driving time (accumulates if
@@ -186,6 +188,7 @@ class TimingServiceClass {
       if (laneMap[row.lane]) {
         laneMap[row.lane].raceBestLapMs  = row.bestLapMs;
         laneMap[row.lane].raceBestEntity = row.entityName;
+        laneMap[row.lane].raceBestCategoria = row.entityCategoria || null;
       }
     });
 
@@ -372,11 +375,12 @@ class TimingServiceClass {
         driverId: ml.driver_id || null,
         color: ml.team_color || '#8b949e',
         country: ml.team_country || null,
+        categoria: ml.team_categoria || null,
         lapCount: 0, bestLapMs: null, lastLapMs: null, lastCrossing: startTime,
         avgLapCount: 0, lapsMsSum: 0, lapAvgMs: 0,
         cleanAvgCount: 0, cleanLapsSum: 0, cleanAvgMs: 0,
         firstRealLapDone: false, resumeWarmup: false,
-        raceBestLapMs: null, raceBestEntity: null,
+        raceBestLapMs: null, raceBestEntity: null, raceBestCategoria: null,
         pendingPauseAdjustMs: 0,
         refAvgMs: 0, circuitStartTime: null,
       };
@@ -441,6 +445,7 @@ class TimingServiceClass {
         if (!ld) return;
         ld.raceBestLapMs = row.bestLapMs;
         ld.raceBestEntity = row.entityName;
+        ld.raceBestCategoria = row.entityCategoria || null;
       });
     } catch { /* sin vueltas previas */ }
 
@@ -1393,9 +1398,9 @@ class TimingServiceClass {
         } catch (err) { console.error('[TimingService] DB error:', err.message); }
       });
 
-      SocketService.emit('lane:on_track', { lane, color: ld.color, name: ld.name });
+      SocketService.emit('lane:on_track', { lane, color: ld.color, name: ld.name, categoria: ld.categoria });
       SocketService.emit('lap', {
-        lane, color: ld.color, name: ld.name,
+        lane, color: ld.color, name: ld.name, categoria: ld.categoria,
         lapNumber: ld.lapCount, lapTimeMs: firstLapMs, bestLapMs: ld.bestLapMs,
         elapsedMs: firstLapMs, isExit: false, isFirstCrossing: true,
       });
@@ -1405,10 +1410,13 @@ class TimingServiceClass {
 
     // ── Auto-ghost detection ─────────────────────────────────────────────────
     // Per DS-300 manual: a ghost lap is one whose time is below the configured
-    // Pt (minimum lap time). The effective Pt comes from
-    // category override > circuit default > 0 (already resolved at race creation
-    // time into `race.min_lap_ms`).
-    const minLapMs = this.session.race.min_lap_ms || 0;
+    // Pt (minimum lap time). `this.session.race` is a snapshot taken when the
+    // manga started (and re-propagated as-is on cancel/re-arm), so it goes
+    // stale if the Pt is edited mid-race (directly or via el escenario). Se
+    // relee de BD en cada vuelta para que el cambio se note al instante, sin
+    // reiniciar la manga.
+    const liveRace = require('../models/Race').findById(this.session.race.id);
+    const minLapMs = (liveRace ? liveRace.min_lap_ms : this.session.race.min_lap_ms) || 0;
     const autoGhost = minLapMs > 0 && lapTimeMs < minLapMs;
     if (autoGhost) {
       DebugLogger.log('ghost_lap', { lane, lapTimeMs, minLapMs });
@@ -1555,6 +1563,7 @@ class TimingServiceClass {
       if (!ld.raceBestLapMs || lapTimeMs < ld.raceBestLapMs) {
         ld.raceBestLapMs  = lapTimeMs;
         ld.raceBestEntity = ld.name;
+        ld.raceBestCategoria = ld.categoria;
       }
     }
 
@@ -1604,7 +1613,7 @@ class TimingServiceClass {
     } catch (err) { console.error('[TimingService] DB error:', err.message); }
 
     SocketService.emit('lap', {
-      lane, color: ld.color, name: ld.name,
+      lane, color: ld.color, name: ld.name, categoria: ld.categoria,
       lapNumber: ld.lapCount, lapTimeMs, bestLapMs: ld.bestLapMs,
       elapsedMs, isExit, isPitStop,
       pitStopCount: ld.pitStopCount,
@@ -1648,7 +1657,7 @@ class TimingServiceClass {
 
     const rows = Object.values(laneMap)
       .map(l => ({
-        lane: l.lane, color: l.color, name: l.name, country: l.country,
+        lane: l.lane, color: l.color, name: l.name, country: l.country, categoria: l.categoria,
         lapCount: l.lapCount, lastLapMs: l.lastLapMs, bestLapMs: l.bestLapMs,
         exitCount: l.exitCount,
         pitStopCount: l.pitStopCount || 0,
@@ -1661,7 +1670,7 @@ class TimingServiceClass {
 
     const raceBestLaps = {};
     Object.values(laneMap).forEach(l => {
-      raceBestLaps[l.lane] = { bestLapMs: l.raceBestLapMs, entityName: l.raceBestEntity };
+      raceBestLaps[l.lane] = { bestLapMs: l.raceBestLapMs, entityName: l.raceBestEntity, categoria: l.raceBestCategoria };
     });
 
     // Media de carrera por ENTIDAD (equipo/piloto): media simple de los tiempos
@@ -1893,6 +1902,19 @@ class TimingServiceClass {
     const isTeam = race.format === 'team';
     const idCol  = isTeam ? 'ml.team_id' : 'ml.driver_id';
 
+    // ── Categoría por equipo (catálogo del club, empareja por NOMBRE — igual
+    // que Le Mans/live-stats). Solo aplica a carreras por equipos; un piloto
+    // suelto no tiene categoría de equipo.
+    const categoriaById = {};
+    if (isTeam) {
+      db.prepare(`
+        SELECT t.id AS eid, tc.categoria AS categoria
+        FROM teams t
+        LEFT JOIN teams_catalog tc ON tc.name = t.name
+        WHERE t.race_id = ? AND tc.categoria IS NOT NULL
+      `).all(raceId).forEach(r => { categoriaById[r.eid] = r.categoria; });
+    }
+
     const durDefaultMs = (race.manga_duration_minutes || 0) * 60000;
 
     // ── Manga ACTIVA (en curso): started_at fijado y aún no 'finished'.
@@ -2018,6 +2040,7 @@ class TimingServiceClass {
         entityId:    p.entity_id,
         entityType:  p.entity_type,
         name:        p.entity_name,
+        categoria:   categoriaById[p.entity_id] || null,
         totalLaps:   p.total_laps,
         avgLapMs:    avg != null ? Math.round(avg) : null,
         bestLapMs:   p.best_lap_ms,
@@ -2078,6 +2101,7 @@ class TimingServiceClass {
         entityId:       r.entityId,
         entityType:     r.entityType,
         name:           r.name,
+        categoria:      r.categoria,
         totalLaps:      r.totalLaps,
         total:          r.totalLaps,   // alias legacy (live.js, Lap, live-stats)
         avgLapMs:       r.avgLapMs,

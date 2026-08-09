@@ -93,29 +93,14 @@ class DiagnosticsController {
   }
 
   static clearPending(req, res) {
+    // Solo libera el "listener" del próximo GO (TimingService._pendingSetup a
+    // null). NO toca el status de ninguna carrera: antes esto completaba de
+    // paso cualquier carrera 'active' con una manga 'pending' para que dejara
+    // de "robar" el auto-buscador de app.js, pero eso mentía sobre carreras
+    // que en realidad seguían vivas (p.ej. la 93 quedó 'completed' con 52
+    // mangas por correr). El próximo GO vuelve a auto-buscar desde cero.
     TimingService.clearPendingManga();
-    // El "pendiente" se regenera en cada GO porque app.js auto-busca una manga
-    // pendiente en carreras ACTIVAS. Si no cerramos esas carreras, reaparece y
-    // sigue robando el GO (al entreno, p.ej.). Las completamos aquí.
-    //
-    // PERO NUNCA la carrera que se está corriendo AHORA. En una 24h siempre hay
-    // mangas de tandas futuras en 'pending': sin esta guarda, un operario que
-    // pulsara este botón viendo el cronometraje encallado marcaba como
-    // 'completed' la propia carrera de 24 h. A partir de ahí el auto-buscador de
-    // app.js ya no la encuentra y, al acabar la manga en curso, el GO del DS no
-    // arma la siguiente: la carrera se para sin decir nada.
-    const Race = require('../models/Race');
-    const enCurso = TimingService.activeRaceId;
-    const ids = db.prepare(
-      `SELECT DISTINCT r.id FROM races r
-       JOIN mangas m ON m.race_id = r.id
-       WHERE r.status = 'active' AND m.status = 'pending'`
-    ).all().map(r => r.id).filter(id => id !== enCurso);
-
-    ids.forEach(id => { try { Race.updateStatus(id, 'completed'); } catch {} });
-    const extra = ids.length ? ` · ${ids.length} carrera(s) activa(s) cerrada(s) (ya no desvían el GO)` : '';
-    const protegida = enCurso ? ` · la carrera ${enCurso} está EN CURSO y no se ha tocado` : '';
-    if (req.session) req.session.flash = { type: 'success', text: 'Pending setup eliminado' + extra + protegida + '.' };
+    if (req.session) req.session.flash = { type: 'success', text: 'Pending setup eliminado.' };
     res.redirect('/diagnostico');
   }
 

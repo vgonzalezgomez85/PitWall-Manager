@@ -17,6 +17,7 @@
  */
 const Circuit  = require('../models/Circuit');
 const Category = require('../models/Category');
+const Race     = require('../models/Race');
 
 function parseCategoryTimes(body, categories) {
   const out = {};
@@ -198,6 +199,10 @@ class CircuitController {
       track_direction: (req.body.track_direction === 'ccw') ? 'ccw' : 'cw',
     });
     Circuit.setCategoryTimes(parseInt(req.params.id, 10), parseCategoryTimes(req.body, categories));
+    // Las carreras ya asignadas a este circuito llevan el min_lap_ms copiado
+    // desde que se les asignó: si el circuito cambia, hay que resincronizarlas
+    // o se quedan con un Pt obsoleto (vueltas válidas marcadas fantasma).
+    Race.syncMinLapMsFromCircuit(parseInt(req.params.id, 10), minLapMs);
     res.redirect('/circuits');
   }
 

@@ -39,9 +39,11 @@ class Manga {
     return db.prepare(`
       SELECT ml.*,
         t.name  AS team_name,  t.color AS team_color,  t.country AS team_country,
+        tc.categoria AS team_categoria,
         d.name  AS driver_name
       FROM manga_lanes ml
       LEFT JOIN teams   t ON t.id = ml.team_id
+      LEFT JOIN teams_catalog tc ON tc.name = t.name
       LEFT JOIN drivers d ON d.id = ml.driver_id
       WHERE ml.manga_id = ?
       ORDER BY ml.lane ASC

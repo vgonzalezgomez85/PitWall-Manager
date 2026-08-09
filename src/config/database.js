@@ -444,6 +444,58 @@ const migrations = [
      note            TEXT
    )`,
   `CREATE INDEX IF NOT EXISTS idx_tire_changes_race_team ON tire_changes(race_id, team_id)`,
+
+  // ── Verificaciones técnicas (PitWall Control) ────────────────────────────
+  // Snapshot de lo que Control tiene verificado para una prueba, enviado por
+  // LAN (POST /import/verificaciones) a modo de SOLO CONSULTA: no hay ninguna
+  // ruta en Manager que edite estas filas. Nombres de columna en español,
+  // calcados de `pitwall.verificaciones/v1` (mismos campos que la tabla
+  // `verificaciones` de Control) para que el mapeo entre los dos sistemas sea
+  // 1:1 y no haga falta traducir nada al depurar. Cada envío REEMPLAZA por
+  // completo las filas de esa race_id (Control manda siempre el conjunto
+  // entero de la prueba, no altas/bajas sueltas), así nunca queda basura de
+  // un equipo borrado o una copa cambiada. Ver VerificationImport.replaceForRace.
+  `CREATE TABLE IF NOT EXISTS verifications (
+     id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+     race_id              INTEGER NOT NULL REFERENCES races(id) ON DELETE CASCADE,
+     manga_numero         INTEGER NOT NULL,
+     equipo_nombre        TEXT    NOT NULL,
+     equipo_copa          TEXT,
+     pilotos_json         TEXT    NOT NULL DEFAULT '[]',
+     coche                TEXT,
+     validado             INTEGER NOT NULL DEFAULT 0,
+     peso_inicial         REAL,
+     peso_final           REAL,
+     peso_min             REAL,
+     peso_inicial_coche   REAL,
+     peso_final_coche     REAL,
+     motor                TEXT,
+     motor_tipo           TEXT,
+     motor_rpm            INTEGER,
+     motor_ums            REAL,
+     pinon_marca          TEXT,
+     pinon_dientes        INTEGER,
+     pinon_diametro       TEXT,
+     pinon_material       TEXT,
+     corona_marca         TEXT,
+     corona_dientes       INTEGER,
+     corona_diametro      TEXT,
+     corona_material      TEXT,
+     llanta_del_marca     TEXT,
+     llanta_del_dimension TEXT,
+     llanta_tra_marca     TEXT,
+     llanta_tra_dimension TEXT,
+     trencilla            TEXT,
+     suspension           TEXT,
+     bancada              TEXT,
+     chasis               TEXT,
+     neumatico            TEXT,
+     observaciones        TEXT,
+     fotos_json           TEXT    NOT NULL DEFAULT '[]',
+     created_at           DATETIME DEFAULT CURRENT_TIMESTAMP
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_verifications_race  ON verifications(race_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_verifications_manga ON verifications(race_id, manga_numero)`,
 ];
 for (const sql of migrations) {
   try {

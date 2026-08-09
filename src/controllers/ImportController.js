@@ -37,11 +37,13 @@ function ensureImportPin() {
   return pin;
 }
 
-// ¿Autorizada la importación? localhost/allowlist siempre; en otro caso, el PIN
-// correcto en la cabecera x-import-pin (mismo patrón que linkControlAuthorized).
+// ¿Autorizada la importación? localhost/allowlist siempre; en otro caso, solo si
+// la Conexión ecosistema está activada y el PIN de la cabecera x-import-pin es
+// correcto (mismo patrón que linkControlAuthorized).
 function importAuthorized(req) {
   const ip = accessControl.normIp(req.ip || req.socket?.remoteAddress || '');
   if (accessControl.ipAllowed(ip)) return true;
+  if (!accessControl.ecosystemBridgeEnabled()) return false;
   const expected = String(Settings.get('import_pin', '') || '');
   if (!/^\d{4}$/.test(expected)) return false;
   return String(req.headers['x-import-pin'] || '') === expected;
@@ -68,5 +70,11 @@ const ImportController = {
     }
   },
 };
+
+// Expuesto para EcosystemController (la página de Conexión ecosistema también
+// muestra el PIN de emparejamiento junto al interruptor) y para
+// VerificationController (mismo criterio de autorización que /import/tanda).
+ImportController.ensureImportPin = ensureImportPin;
+ImportController.importAuthorized = importAuthorized;
 
 module.exports = ImportController;

@@ -40,6 +40,8 @@ const DatabaseController          = require('../controllers/DatabaseController')
 const LinkController               = require('../controllers/LinkController');
 const ImportController             = require('../controllers/ImportController');
 const TireController               = require('../controllers/TireController');
+const EcosystemController          = require('../controllers/EcosystemController');
+const VerificationController       = require('../controllers/VerificationController');
 
 router.get('/', (req, res) => {
   const Race          = require('../models/Race');
@@ -86,9 +88,16 @@ router.get('/races/new/step4',   RaceController.newStep4);
 router.post('/races/new/step4',  RaceController.postStep4);
 router.get('/races/new/confirm', RaceController.newConfirm);
 
+// ── Conexión ecosistema (activar/desactivar el puente con PitWall Control) ──
+router.get( '/ecosystem', EcosystemController.page);
+router.post('/ecosystem', EcosystemController.save);
+
 // ── Importar tanda desde PitWall Control (fichero JSON o LAN) ───────────────
 router.get( '/import/tanda', ImportController.page);    // pantalla de subida (operador local)
 router.post('/import/tanda', ImportController.create);  // crea la carrera (fichero o LAN + PIN)
+
+// ── Verificaciones técnicas desde PitWall Control (LAN, solo consulta) ─────
+router.post('/import/verificaciones', VerificationController.create);
 
 // ── Carrera simulada (desde fichero de tramas DS-300) ───────────────────────
 router.get( '/races/sim/new',     SimController.newForm);
@@ -160,6 +169,8 @@ router.get( '/races/:id/tires/:teamId/history',       TireController.history);
 router.post('/races/:id/tires/:teamId/change',        TireController.addChange);
 router.post('/races/:id/tires/:teamId/history/add',   TireController.addManual);
 router.post('/races/:id/tires/change/:changeId',      TireController.updateChange);
+
+router.get( '/races/:id/verificaciones',               VerificationController.race);
 router.post('/races/:id/tires/change/:changeId/delete', TireController.deleteChange);
 
 // ── QR shifts control ─────────────────────────────────────────────────────
@@ -287,6 +298,7 @@ router.post('/training/exit',                 TrainingController.exit);
 router.get( '/race-stats',                        LiveStatsController.index);
 router.get( '/races/:id/live-stats',              LiveStatsController.show);
 router.get( '/races/:id/live-stats.json',         LiveStatsController.json);
+router.get( '/races/:id/live-stats/lanes.json',   LiveStatsController.lanes);
 
 // Resultados públicos (consulta de carreras finalizadas, sin corrección)
 router.get( '/results',                           SessionController.resultsIndex);

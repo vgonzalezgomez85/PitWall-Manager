@@ -25,6 +25,11 @@
 //        'completed' TODAS las carreras activas con mangas pendientes. En una 24h
 //        siempre las hay (las tandas futuras), así que completaba la carrera en
 //        curso y el GO dejaba de encadenar mangas: la carrera se paraba sin aviso.
+//        Fix 2026-07: excluir la carrera en curso. Pero el 2026-08-09 se vio que
+//        seguía completando carreras "huérfanas" (activas, sin nada corriendo en
+//        ese momento, pero con mangas de verdad por correr — p.ej. tras un corte
+//        de serie que canceló la manga en marcha). Fix definitivo: el botón ya NO
+//        toca el status de ninguna carrera, solo libera `_pendingSetup`.
 
 const { usarBdTemporal, limpiarBdTemporal } = require('./helpers/db');
 usarBdTemporal();                       // ← antes de cualquier require de la BD
@@ -73,10 +78,9 @@ test('"Eliminar pending setup" NO completa la carrera que se está corriendo', (
 
   assert.equal(estadoCarrera(raceId), 'active',
     'la carrera de 24 h en curso no se puede dar por terminada desde diagnóstico');
-  assert.match(req.session.flash.text, /EN CURSO/, 'y se le dice al operario por qué');
 });
 
-test('"Eliminar pending setup" SÍ cierra las carreras activas que no se están corriendo', () => {
+test('"Eliminar pending setup" tampoco completa carreras activas huérfanas (sin nada corriendo)', () => {
   const { raceId } = carreraEnCurso();            // esta no está en el motor
   TimingService.session = null;
 
@@ -84,11 +88,11 @@ test('"Eliminar pending setup" SÍ cierra las carreras activas que no se están 
   const req = { session: {}, t: (k) => k };
   DiagnosticsController.clearPending(req, { redirect: () => {} });
 
-  assert.equal(estadoCarrera(raceId), 'completed',
-    'una carrera activa huérfana sí roba el GO y hay que cerrarla');
+  assert.equal(estadoCarrera(raceId), 'active',
+    'una carrera huérfana sigue teniendo mangas de verdad por correr: no se completa sola');
 });
 
-test('con dos carreras activas, solo se cierra la que no corre', () => {
+test('con dos carreras activas, ninguna cambia de status', () => {
   const viva = carreraEnCurso();
   const otra = carreraEnCurso();
   TimingService.session = { manga: { id: viva.enCurso }, race: { id: viva.raceId }, circuits: {}, laneToCircuit: {} };
@@ -97,7 +101,19 @@ test('con dos carreras activas, solo se cierra la que no corre', () => {
   DiagnosticsController.clearPending({ session: {}, t: (k) => k }, { redirect: () => {} });
 
   assert.equal(estadoCarrera(viva.raceId), 'active');
-  assert.equal(estadoCarrera(otra.raceId), 'completed');
+  assert.equal(estadoCarrera(otra.raceId), 'active');
+});
+
+test('"Eliminar pending setup" libera el pending-setup del motor (el "listener" del próximo GO)', () => {
+  const { raceId, siguiente } = carreraEnCurso();
+  TimingService.session = null;
+  TimingService._pendingSetup = { manga: { id: siguiente }, race: { id: raceId }, lanes: [], teams: [], drivers: [] };
+
+  const DiagnosticsController = require('../src/controllers/DiagnosticsController');
+  DiagnosticsController.clearPending({ session: {}, t: (k) => k }, { redirect: () => {} });
+
+  assert.equal(TimingService._pendingSetup, null,
+    'libera el registro para que el próximo GO auto-busque de cero (y otra carrera pueda usarlo)');
 });
 
 // ── D5: los endpoints destructivos ─────────────────────────────────────────

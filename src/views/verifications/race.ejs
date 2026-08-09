@@ -1,0 +1,202 @@
+<%- include('../partials/header', { pageTitle: (race.name + ' — ' + (lang === 'es' ? 'Verificaciones' : 'Scrutineering')) }) %>
+
+<link rel="stylesheet" href="/css/fonts.css">
+
+<style>
+  .verif-wrap { max-width: 1180px; margin: 0 auto; padding: 18px 16px 48px; }
+  .verif-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:6px; }
+  .verif-h1 { font-size:1.5rem; font-weight:800; letter-spacing:-.01em; margin:0; color:var(--rs-text); }
+  .verif-sub { color:var(--rs-muted); font-size:.9rem; margin-top:2px; }
+
+  .verif-manga { margin-top:26px; }
+  .verif-manga__title { font-size:1.05rem; font-weight:800; color:var(--rs-text); margin:0 0 10px; display:flex; align-items:center; gap:8px; }
+  .verif-manga__count { font-size:.75rem; font-weight:600; color:var(--rs-muted); background:var(--rs-surface); border:1px solid var(--rs-border); border-radius:20px; padding:1px 9px; }
+
+  .verif-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(380px,1fr)); gap:16px; align-items:start; }
+
+  /* `<details>` nativo: compacta = solo el <summary>, sin JS. */
+  .verif-card { background:var(--rs-panel); border:1px solid var(--rs-border); border-radius:14px; }
+  .verif-card__head { list-style:none; cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:14px 16px; user-select:none; }
+  .verif-card__head::-webkit-details-marker { display:none; }
+  .verif-card__head:hover { background:var(--rs-panel-2); border-radius:14px; }
+  .verif-card[open] .verif-card__head { border-bottom:1px solid var(--rs-border); border-radius:14px 14px 0 0; }
+  .verif-card__headleft { display:flex; align-items:center; gap:10px; min-width:0; }
+  .verif-card__chevron { flex:0 0 auto; color:var(--rs-muted); transition:transform .15s; }
+  .verif-card[open] .verif-card__chevron { transform:rotate(90deg); }
+  .verif-card__name { font-weight:700; color:var(--rs-text); font-size:1.05rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .verif-card__cup { font-size:.75rem; color:var(--rs-muted); margin-top:2px; }
+  .verif-card__drivers { font-size:.8rem; color:var(--rs-muted); margin-top:2px; }
+  .verif-card__body { padding:16px; }
+  .verif-badge { flex:0 0 auto; font-size:.68rem; font-weight:700; letter-spacing:.02em; border-radius:20px; padding:3px 10px; white-space:nowrap; }
+  .verif-badge--ok { background:rgba(34,197,94,.16); color:var(--rs-green); }
+  .verif-badge--pending { background:rgba(139,148,158,.16); color:var(--rs-muted); }
+
+  /* ── Secciones de tiles (icono + etiqueta + valor), estilo ficha ── */
+  .verif-sec { margin-top:16px; }
+  .verif-sec__title { display:flex; align-items:center; gap:7px; font-size:.72rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--rs-muted); margin-bottom:8px; }
+  .verif-tile-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .verif-tile { background:var(--rs-surface); border:1px solid var(--rs-border); border-radius:12px; padding:12px 10px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .verif-tile__icon { font-size:1.05rem; opacity:.75; line-height:1; }
+  .verif-tile__label { font-size:.62rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--rs-muted); }
+  .verif-tile__value { font-size:.92rem; font-weight:700; color:var(--rs-text); word-break:break-word; }
+  .verif-tile__value--empty { color:var(--rs-muted-2); font-weight:400; }
+
+  .verif-notes { margin-top:14px; padding-top:10px; border-top:1px dashed var(--rs-border-2); font-size:.85rem; color:var(--rs-text); font-style:italic; }
+
+  .verif-sec__photos { margin-top:8px; }
+  .verif-photos { display:flex; flex-wrap:wrap; gap:6px; }
+  .verif-photos img { width:64px; height:64px; object-fit:cover; border-radius:8px; border:1px solid var(--rs-border); cursor:zoom-in; }
+  .verif-photos-empty { font-size:.82rem; color:var(--rs-muted); }
+
+  .verif-empty { text-align:center; padding:60px 20px; color:var(--rs-muted); }
+  .verif-empty__ic { font-size:2.4rem; }
+  .verif-empty__t { font-weight:700; color:var(--rs-text); margin-top:10px; }
+</style>
+
+<div class="race-show">
+<div class="verif-wrap">
+
+  <a class="vt-back-link" href="/races/<%= race.id %>">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    <%= lang === 'es' ? 'Volver a la carrera' : 'Back to race' %>
+  </a>
+
+  <div class="verif-head">
+    <div>
+      <h1 class="verif-h1">🔍 <%= lang === 'es' ? 'Verificaciones técnicas' : 'Scrutineering' %></h1>
+      <div class="verif-sub"><%= race.name %> · <%= total %> <%= lang === 'es' ? 'verificación(es)' : 'verification(s)' %></div>
+    </div>
+  </div>
+
+  <% if (!mangas.length) { %>
+    <div class="verif-empty">
+      <div class="verif-empty__ic">🔍</div>
+      <div class="verif-empty__t"><%= lang === 'es' ? 'Todavía no se ha enviado ninguna verificación' : 'No verifications sent yet' %></div>
+    </div>
+  <% } %>
+
+  <% mangas.forEach(function(m) { %>
+    <div class="verif-manga">
+      <h2 class="verif-manga__title">
+        <%= lang === 'es' ? 'Manga' : 'Heat' %> <%= m.numero %>
+        <span class="verif-manga__count"><%= m.items.length %></span>
+      </h2>
+      <div class="verif-grid">
+        <% m.items.forEach(function(v) {
+          var motorTxt = v.motor
+            ? v.motor + (v.motor_tipo ? ' (' + v.motor_tipo + ')' : '')
+            : (v.motor_rpm != null || v.motor_ums != null
+                ? [v.motor_rpm != null ? v.motor_rpm + ' RPM' : null, v.motor_ums != null ? v.motor_ums + ' uMs' : null].filter(Boolean).join(' · ')
+                : null);
+          var pesoCarroceria = (v.peso_inicial != null || v.peso_min != null)
+            ? [v.peso_inicial != null ? v.peso_inicial + ' g' : null, v.peso_min != null ? ('mín ' + v.peso_min + ' g') : null].filter(Boolean).join(' / ')
+            : null;
+          var pesoCompleto = (v.peso_inicial_coche != null || v.peso_final_coche != null)
+            ? [v.peso_inicial_coche != null ? v.peso_inicial_coche + ' g' : null, v.peso_final_coche != null ? v.peso_final_coche + ' g' : null].filter(Boolean).join(' / ')
+            : null;
+          var pinonTxt = [v.pinon_marca, v.pinon_dientes, v.pinon_diametro, v.pinon_material].filter(function(x){return x != null && x !== '';}).join(' · ') || null;
+          var coronaTxt = [v.corona_marca, v.corona_dientes, v.corona_diametro, v.corona_material].filter(function(x){return x != null && x !== '';}).join(' · ') || null;
+          var llantaDelTxt = [v.llanta_del_marca, v.llanta_del_dimension].filter(function(x){return x != null && x !== '';}).join(' · ') || null;
+          var llantaTraTxt = [v.llanta_tra_marca, v.llanta_tra_dimension].filter(function(x){return x != null && x !== '';}).join(' · ') || null;
+
+          var especTiles = [
+            { icon: '🏷️', label: lang === 'es' ? 'Modelo coche' : 'Car model', value: v.coche },
+            { icon: '👥', label: lang === 'es' ? 'Copa' : 'Class', value: v.equipo_copa },
+            { icon: '⚡', label: lang === 'es' ? 'Motor' : 'Engine', value: motorTxt },
+            { icon: '⚙️', label: lang === 'es' ? 'Chasis' : 'Chassis', value: v.chasis },
+            { icon: '🔧', label: lang === 'es' ? 'Bancada' : 'Motor pod', value: v.bancada },
+            { icon: '🔩', label: lang === 'es' ? 'Suspensión' : 'Suspension', value: v.suspension },
+          ];
+          var transTiles = [
+            { icon: '⚙️', label: lang === 'es' ? 'Corona' : 'Crown', value: coronaTxt },
+            { icon: '⚙️', label: lang === 'es' ? 'Piñón' : 'Pinion', value: pinonTxt },
+            { icon: '🛞', label: lang === 'es' ? 'Neumático' : 'Tyre', value: v.neumatico },
+            { icon: '⭕', label: lang === 'es' ? 'Trencilla' : 'Braid', value: v.trencilla },
+            { icon: '⭕', label: lang === 'es' ? 'Llanta del.' : 'Front rim', value: llantaDelTxt },
+            { icon: '⭕', label: lang === 'es' ? 'Llanta tra.' : 'Rear rim', value: llantaTraTxt },
+          ];
+          var pesoTiles = [
+            { icon: '⚖️', label: lang === 'es' ? 'Peso carrocería' : 'Body weight', value: pesoCarroceria },
+            { icon: '⚖️', label: lang === 'es' ? 'Peso completo' : 'Full weight', value: pesoCompleto },
+          ];
+        %>
+          <details class="verif-card">
+            <summary class="verif-card__head">
+              <div class="verif-card__headleft">
+                <svg class="verif-card__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+                <div class="verif-card__name"><%= v.equipo_nombre %></div>
+              </div>
+              <span class="verif-badge <%= v.validado ? 'verif-badge--ok' : 'verif-badge--pending' %>">
+                <%= v.validado ? (lang === 'es' ? 'Validada' : 'Validated') : (lang === 'es' ? 'Pendiente' : 'Pending') %>
+              </span>
+            </summary>
+
+            <div class="verif-card__body">
+              <% if (v.pilotos && v.pilotos.length) { %><div class="verif-card__drivers"><%= v.pilotos.join(' + ') %></div><% } %>
+
+              <div class="verif-sec">
+                <div class="verif-sec__title">🚗 <%= lang === 'es' ? 'Especificaciones' : 'Specs' %></div>
+                <div class="verif-tile-grid">
+                  <% especTiles.forEach(function(tl) { %>
+                    <div class="verif-tile">
+                      <div class="verif-tile__icon"><%= tl.icon %></div>
+                      <div class="verif-tile__label"><%= tl.label %></div>
+                      <div class="verif-tile__value<%= tl.value ? '' : ' verif-tile__value--empty' %>"><%= tl.value || '—' %></div>
+                    </div>
+                  <% }) %>
+                </div>
+              </div>
+
+              <div class="verif-sec">
+                <div class="verif-sec__title">⚙️ <%= lang === 'es' ? 'Transmisión y ruedas' : 'Drivetrain & wheels' %></div>
+                <div class="verif-tile-grid">
+                  <% transTiles.forEach(function(tl) { %>
+                    <div class="verif-tile">
+                      <div class="verif-tile__icon"><%= tl.icon %></div>
+                      <div class="verif-tile__label"><%= tl.label %></div>
+                      <div class="verif-tile__value<%= tl.value ? '' : ' verif-tile__value--empty' %>"><%= tl.value || '—' %></div>
+                    </div>
+                  <% }) %>
+                </div>
+              </div>
+
+              <div class="verif-sec">
+                <div class="verif-sec__title">⚖️ <%= lang === 'es' ? 'Pesos' : 'Weights' %></div>
+                <div class="verif-tile-grid">
+                  <% pesoTiles.forEach(function(tl) { %>
+                    <div class="verif-tile">
+                      <div class="verif-tile__icon"><%= tl.icon %></div>
+                      <div class="verif-tile__label"><%= tl.label %></div>
+                      <div class="verif-tile__value<%= tl.value ? '' : ' verif-tile__value--empty' %>"><%= tl.value || '—' %></div>
+                    </div>
+                  <% }) %>
+                </div>
+              </div>
+
+              <% if (v.observaciones) { %>
+                <div class="verif-notes">“<%= v.observaciones %>”</div>
+              <% } %>
+
+              <div class="verif-sec verif-sec__photos">
+                <div class="verif-sec__title">📷 <%= lang === 'es' ? 'Fotos de verificación' : 'Verification photos' %></div>
+                <% if (v.fotos && v.fotos.length) { %>
+                  <div class="verif-photos">
+                    <% v.fotos.forEach(function(f) { %>
+                      <a href="<%= f.dataUrl %>" target="_blank" rel="noopener"><img src="<%= f.dataUrl %>" alt="<%= f.nombre %>"></a>
+                    <% }) %>
+                  </div>
+                <% } else { %>
+                  <div class="verif-photos-empty"><%= lang === 'es' ? 'No hay fotos registradas.' : 'No photos recorded.' %></div>
+                <% } %>
+              </div>
+            </div>
+          </details>
+        <% }) %>
+      </div>
+    </div>
+  <% }) %>
+
+</div>
+</div>
+
+<%- include('../partials/footer') %>

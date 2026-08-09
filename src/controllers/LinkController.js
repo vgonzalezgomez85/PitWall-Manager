@@ -21,6 +21,7 @@ const Settings = require('../models/Settings');
 const { getJson } = require('../utils/linkHttp');
 const db = require('../config/database');
 const LinkComparator = require('../services/LinkComparator');
+const accessControl = require('../middleware/accessControl');
 
 // Flujo de cruces de una manga identificada por (race_key, tanda#, manga#),
 // por carril. Común al endpoint /link/laps y al comparador local.
@@ -172,6 +173,13 @@ class LinkController {
   // Vueltas/coma/mejor vuelta van solo como referencia para la vista previa.
   static resultsRace(req, res) {
     try {
+      // Este endpoint no lleva PIN (solo lectura); el gate de LAN es el
+      // interruptor de Conexión ecosistema. El operador local nunca lo pierde.
+      const ip = accessControl.normIp(req.ip || req.socket?.remoteAddress || '');
+      if (!accessControl.ipAllowed(ip) && !accessControl.ecosystemBridgeEnabled()) {
+        return res.status(403).json({ error: 'Conexión con PitWall Control desactivada.' });
+      }
+
       const race = Race.findById(parseInt(req.params.id, 10));
       if (!race) return res.status(404).json({ error: 'Carrera no encontrada' });
 

@@ -422,9 +422,10 @@ class RaceController {
 
     const isSim = require('fs').existsSync(
       require('path').join(require('../lib/simPaths').SIM_DIR, `${race.id}.json`));
+    const verificationsCount = require('../models/Verification').countByRace(race.id);
     res.render('races/show', {
       t: req.t, race, laneSequence, tandas: tandasWithMangas,
-      virtualStandings, LANE_COLORS, poleSession, isSim,
+      virtualStandings, LANE_COLORS, poleSession, isSim, verificationsCount,
     });
   }
 

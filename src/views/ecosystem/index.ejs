@@ -1,0 +1,88 @@
+<%- include('../partials/header', { pageTitle: lang === 'es' ? 'Conexión ecosistema' : 'Ecosystem connection' }) %>
+
+<div class="vt-page">
+  <div class="vt-wrap vt-wrap--narrow">
+
+    <a href="/" class="vt-back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      <%= lang === 'es' ? 'Inicio' : 'Home' %>
+    </a>
+
+    <% if (typeof flash !== 'undefined' && flash) { %>
+      <div class="flash flash--<%= flash.type %>" style="margin-bottom:1rem"><%- flash.text %></div>
+    <% } %>
+
+    <div class="vt-head">
+      <div class="vt-head__title">
+        <h1><%= lang === 'es' ? 'Conexión ecosistema' : 'Ecosystem connection' %></h1>
+      </div>
+    </div>
+
+    <p class="vt-sub" style="margin:-6px 0 20px;color:var(--vt-mute);max-width:64ch;line-height:1.5">
+      <%= lang === 'es'
+        ? 'Controla si PitWall Control puede conectarse a este Manager por la red local para enviarnos información.'
+        : 'Controls whether PitWall Control can connect to this Manager over the local network to send us information.' %>
+    </p>
+
+    <form method="POST" action="/ecosystem">
+      <div class="vt-panel" style="margin-bottom:18px">
+        <div class="vt-sec-lbl"><%= lang === 'es' ? 'Puente con PitWall Control' : 'PitWall Control bridge' %></div>
+
+        <div class="vt-debug" style="margin-top:8px">
+          <button type="button" class="vt-switch <%= enabled ? 'is-on' : '' %>" id="ecoSwitch" aria-label="Toggle ecosystem connection"></button>
+          <input type="hidden" name="ecosystem_control_enabled" id="ecoInput" value="<%= enabled ? '1' : '' %>">
+          <div style="flex:1">
+            <div class="vt-debug__t">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="18" r="1.5" fill="currentColor"/><path d="M8.5 14.5a5 5 0 0 1 7 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.5 11.5a9 9 0 0 1 13 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+              <%= lang === 'es' ? 'Permitir que PitWall Control se conecte' : 'Allow PitWall Control to connect' %>
+            </div>
+            <div class="vt-debug__d">
+              <%= lang === 'es'
+                ? 'Activado: Control puede enviarnos tandas por la red (con PIN) y leer los resultados de cada tanda. Desactivado: se rechaza cualquier conexión de Control desde otro dispositivo de la LAN; este equipo (localhost) y las IPs de la allowlist de Ajustes no se ven afectados.'
+                : 'Enabled: Control can send us rounds over the network (with a PIN) and read per-round results. Disabled: any connection from Control on another LAN device is rejected; this machine (localhost) and the allowlisted IPs in Settings are not affected.' %>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:16px">
+          <button type="submit" class="vt-btn vt-btn--primary">
+            <%= lang === 'es' ? 'Guardar' : 'Save' %>
+          </button>
+        </div>
+      </div>
+    </form>
+
+    <div class="vt-panel">
+      <div class="vt-sec-lbl"><%= lang === 'es' ? 'PIN de emparejamiento' : 'Pairing PIN' %></div>
+      <p style="color:var(--vt-mute);margin:2px 0 14px;line-height:1.5;max-width:62ch">
+        <%= lang === 'es'
+          ? 'Cuando Control se conecta desde otro dispositivo de la red, tiene que introducir este PIN.'
+          : 'When Control connects from another device on the network, it has to enter this PIN.' %>
+      </p>
+      <div style="font-size:2rem;font-weight:700;letter-spacing:.35rem;text-align:center;padding:.5rem 0">
+        <%= pin %>
+      </div>
+      <p style="color:var(--vt-mute);text-align:center;margin:.2rem 0 0;font-size:13.5px">
+        <%= lang === 'es'
+          ? 'También puedes importar una tanda a mano desde '
+          : 'You can also import a round by hand from ' %><a href="/import/tanda"><%= lang === 'es' ? 'Importar tanda' : 'Import round' %></a>.
+      </p>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  var sw  = document.getElementById('ecoSwitch');
+  var inp = document.getElementById('ecoInput');
+  if (sw && inp) {
+    sw.addEventListener('click', function () {
+      sw.classList.toggle('is-on');
+      inp.value = sw.classList.contains('is-on') ? '1' : '';
+    });
+  }
+})();
+</script>
+
+<%- include('../partials/footer') %>

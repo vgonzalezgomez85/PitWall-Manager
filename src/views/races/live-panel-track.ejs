@@ -100,6 +100,7 @@
         lane:  l.lane,
         color: LC[l.lane - 1] || '#8b949e',
         name:  l.team_name || l.driver_name || ('Lane ' + l.lane),
+        categoria: l.team_categoria || null,
       }));
   %>
 
@@ -120,6 +121,8 @@
   <script src="/socket.io/socket.io.js"></script>
   <script>
   (function () {
+    function teamPlain(name, cat) { return cat ? `${name} - ${cat}` : name; }
+
     const grid    = document.getElementById('tkGrid');
     const outline = PANEL_DATA.trackOutline || [];
     const hasTrack = outline.length >= 3;
@@ -267,7 +270,7 @@
           ctx.textAlign='center'; ctx.textBaseline='middle';
           ctx.fillText(String(l.lane), px, py+1);
           ctx.font=`600 ${Math.round(dotR*0.8)}px Inter, sans-serif`;
-          ctx.fillText(l.name, px, py+dotR+Math.round(dotR*0.9));
+          ctx.fillText(teamPlain(l.name, l.categoria), px, py+dotR+Math.round(dotR*0.9));
           ctx.globalAlpha = 1;
         });
       }

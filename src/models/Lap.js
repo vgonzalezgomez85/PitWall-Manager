@@ -154,12 +154,14 @@ class Lap {
       SELECT b.lane,
         b.bestLapMs,
         COALESCE(t.name, d.name) AS entityName,
-        CASE WHEN t.id IS NOT NULL THEN 'team' ELSE 'driver' END AS entityType
+        CASE WHEN t.id IS NOT NULL THEN 'team' ELSE 'driver' END AS entityType,
+        tc.categoria AS entityCategoria
       FROM best_per_lane b
       JOIN laps l ON l.race_id = ? AND l.lane = b.lane AND l.lap_time_ms = b.bestLapMs
                  AND l.is_ghost = 0 AND l.is_exit = 0 AND l.is_warmup = 0 AND l.lap_number > 1
       LEFT JOIN teams   t ON t.id = l.team_id
       LEFT JOIN drivers d ON d.id = l.driver_id
+      LEFT JOIN teams_catalog tc ON tc.name = t.name
       GROUP BY b.lane
     `).all(raceId, raceId, raceId);
   }

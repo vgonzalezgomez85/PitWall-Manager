@@ -71,6 +71,11 @@ function stepState(idx) {
           <span>🛞</span> <%= lang === 'es' ? 'Neumáticos' : 'Tyres' %>
         </a>
       <% } %>
+      <% if (typeof verificationsCount !== 'undefined' && verificationsCount > 0) { %>
+        <a href="/races/<%= race.id %>/verificaciones" class="rs-btn rs-btn--ghost">
+          <span>🔍</span> <%= lang === 'es' ? 'Verificaciones' : 'Scrutineering' %>
+        </a>
+      <% } %>
       <% if (!isFinished) { %>
         <form action="/races/<%= race.id %>/complete" method="POST" style="display:inline"
               onsubmit="return confirm('<%= lang === 'es' ? '¿Marcar carrera como completada?' : 'Mark race as completed?' %>')">

@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.22.0] — 2026-08-09
+
+### Añadido
+- **«Conexión ecosistema»: interruptor para permitir o bloquear PitWall Control.** Nueva página en el menú Sistema (`/ecosystem`) con un único interruptor que decide si PitWall Control puede conectarse a este equipo desde la red local: enviar tandas (protegido con PIN) y leer los resultados de cada tanda. Desactivado, se rechaza cualquier conexión de Control desde otro dispositivo de la LAN; este equipo y las IPs de la allowlist de Ajustes no se ven afectados. Activado por defecto, para no cambiar el comportamiento de las instalaciones existentes. La misma página muestra el PIN de emparejamiento.
+
 ## [1.21.0] — 2026-08-09
 
 ### Añadido
