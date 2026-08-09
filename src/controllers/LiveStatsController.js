@@ -19,6 +19,7 @@ const Race          = require('../models/Race');
 const Manga         = require('../models/Manga');
 const Tanda         = require('../models/Tanda');
 const Lap           = require('../models/Lap');
+const TireChange    = require('../models/TireChange');
 const TimingService = require('../services/TimingService');
 const db            = require('../config/database');
 const {
@@ -377,13 +378,33 @@ class LiveStatsController {
     const cached   = _jsonCache.get(cacheKey);
     if (cached && (isActive
           ? (Date.now() - cached.ts) < JSON_TTL_MS
-          : cached.mut === Lap.mutationCount)) {
+          : cached.mut === Lap.mutationCount && cached.tireMut === TireChange.mutationCount)) {
       return res.json(cached.payload);
     }
 
     const session  = isActive ? TimingService.session : null;
     const mangaDurationMs = session?.durationMs
                           ?? (race.manga_duration_minutes * 60 * 1000);
+
+    // ── Cambios de neumático (solo resistencia con control activado) ───────
+    // Se cruza por NOMBRE de equipo, igual que el indicador 🛞 del directo
+    // (refreshTireIndicators en live.js): "Manga actual" usa el conteo de
+    // ESTA manga, "Proyectada" el TOTAL de carrera (ver raceWideOf más abajo).
+    const hasTireControl = race.type === 'championship' && (race.tire_pairs_per_team || 0) > 0;
+    const tireByNameManga = {};   // `${name}::${mangaNumber}` -> count
+    const tireByNameTotal = {};   // name -> count total
+    if (hasTireControl) {
+      db.prepare(`
+        SELECT t.name AS team_name, tc.manga_number, COUNT(*) AS n
+        FROM tire_changes tc
+        JOIN teams t ON t.id = tc.team_id
+        WHERE tc.race_id = ?
+        GROUP BY t.name, tc.manga_number
+      `).all(race.id).forEach(r => {
+        tireByNameTotal[r.team_name] = (tireByNameTotal[r.team_name] || 0) + r.n;
+        if (r.manga_number != null) tireByNameManga[`${r.team_name}::${r.manga_number}`] = r.n;
+      });
+    }
 
     // Cargar todas las vueltas de la manga con flags.
     const laps = db.prepare(`
@@ -447,6 +468,11 @@ class LiveStatsController {
       });
     });
 
+    // Cambios de neumático de ESTA manga (0 si la carrera no lleva control).
+    entities.forEach(e => {
+      e.tireChangesManga = hasTireControl ? (tireByNameManga[`${e.entityName}::${manga.number}`] || 0) : 0;
+    });
+
     // Clasificación por total laps (desc), luego best (asc). Quien descansa
     // (0 vueltas, sin mejor) cae naturalmente al final por este mismo orden.
     entities.sort((a, b) => b.totalLaps - a.totalLaps
@@ -463,6 +489,7 @@ class LiveStatsController {
     const raceWide = db.prepare(`
       SELECT
         CASE WHEN l.team_id IS NOT NULL THEN 'team_' || l.team_id ELSE 'driver_' || l.driver_id END AS key,
+        COALESCE(tm.name, dr.name) AS entity_name,
         SUM(CASE WHEN l.is_ghost = 0 THEN 1 ELSE 0 END) AS total_laps,
         -- Media SIMPLE sin warmup (= TicTac) para la predicción.
         AVG(CASE WHEN l.is_ghost = 0 AND l.is_warmup = 0 THEN l.lap_time_ms END) AS pace_all_ms,
@@ -473,8 +500,10 @@ class LiveStatsController {
         COUNT(DISTINCT l.manga_id) AS mangas_raced
       FROM laps l
       JOIN mangas m ON m.id = l.manga_id
-      JOIN tandas t ON t.id = m.tanda_id
-      WHERE t.race_id = ?
+      JOIN tandas tn ON tn.id = m.tanda_id
+      LEFT JOIN teams   tm ON tm.id = l.team_id
+      LEFT JOIN drivers dr ON dr.id = l.driver_id
+      WHERE tn.race_id = ?
       GROUP BY key
     `).all(race.id);
     const raceByKey = new Map();
@@ -539,8 +568,9 @@ class LiveStatsController {
     // `raceWideByKey`, que cubre a TODOS los participantes de la carrera
     // (incluidos los que descansan en la manga que se está viendo), para la
     // tabla de Clasificación Proyectada.
-    function raceWideOf(key) {
+    function raceWideOf(key, nameHint) {
       const rw = raceByKey.get(key) || {};
+      const name = rw.entity_name || nameHint || null;
       const racePaceAllMs   = rw.pace_all_ms   ? Math.round(rw.pace_all_ms)   : null;
       const racePaceCleanMs = rw.pace_clean_ms ? Math.round(rw.pace_clean_ms) : null;
       // Perdido TOTAL de carrera: mismo criterio que el de manga (Σ sobre las
@@ -559,6 +589,7 @@ class LiveStatsController {
         raceLostMs,
         raceLostLapsEquiv: ref > 0 ? +(raceLostMs / ref).toFixed(2) : 0,
         mangasRaced: rw.mangas_raced || 0,
+        raceTireChanges: hasTireControl && name ? (tireByNameTotal[name] || 0) : 0,
       };
     }
     const raceWideByKey = {};
@@ -566,7 +597,7 @@ class LiveStatsController {
 
     // Enriquecer cada entity con su total race-wide
     entities.forEach(e => {
-      Object.assign(e, raceWideOf(e.key));
+      Object.assign(e, raceWideOf(e.key, e.entityName));
       const rc = raceConsByKey.get(e.key) || null;
       e.raceConsistency      = rc ? rc.pct    : null;
       e.raceConsistencyStdMs = rc ? rc.stdMs  : null;
@@ -656,7 +687,7 @@ class LiveStatsController {
       restingKeysActive,
     };
 
-    _jsonCache.set(cacheKey, { ts: Date.now(), mut: Lap.mutationCount, payload });
+    _jsonCache.set(cacheKey, { ts: Date.now(), mut: Lap.mutationCount, tireMut: TireChange.mutationCount, payload });
     while (_jsonCache.size > JSON_MAX_KEYS) _jsonCache.delete(_jsonCache.keys().next().value);
 
     res.json(payload);

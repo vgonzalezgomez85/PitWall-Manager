@@ -29,7 +29,14 @@
 // Lap. Todas las escrituras usan ese id canónico.
 const db = require('../config/database');
 
+// Contador de mutaciones: lo usa LiveStatsController para invalidar su caché
+// de mangas ya finalizadas (indexada por Lap.mutationCount, que un cambio de
+// neumático no toca) en cuanto se registra/edita/borra una entrega.
+let _mutTotal = 0;
+
 class TireChange {
+  /** Total de mutaciones sobre `tire_changes` en este proceso. */
+  static get mutationCount() { return _mutTotal; }
   // Equipos canónicos de la carrera (uno por nombre, el de menor id) con su
   // dotación, usados y disponibles. Ordenados por tanda/carril como el resto.
   static summaryByRace(raceId) {
@@ -154,6 +161,7 @@ class TireChange {
       createdAtMs,
       note ?? null
     );
+    _mutTotal++;
     return lastInsertRowid;
   }
 
@@ -164,10 +172,12 @@ class TireChange {
       SET manga_id = ?, manga_number = ?, race_elapsed_ms = ?, note = ?
       WHERE id = ?
     `).run(mangaId ?? null, mangaNumber ?? null, raceElapsedMs ?? null, note ?? null, id);
+    _mutTotal++;
   }
 
   static remove(id) {
     db.prepare('DELETE FROM tire_changes WHERE id = ?').run(id);
+    _mutTotal++;
   }
 }
 

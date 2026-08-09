@@ -149,7 +149,7 @@
             <th title="<%= lang === 'es' ? 'Vueltas proyectadas respecto al líder' : 'Projected laps behind the leader' %>"><%= lang === 'es' ? 'Gap Líder' : 'Gap Leader' %></th>
             <th><%= lang === 'es' ? 'Media' : 'Avg' %></th>
             <th title="<%= lang === 'es' ? 'Media por vuelta que necesitas para alcanzar al de delante' : 'Lap pace needed to catch the car ahead' %>"><%= lang === 'es' ? 'P/Subir' : 'To climb' %></th>
-            <th title="<%= lang === 'es' ? 'Salidas de pista / pit-stops en TODA la carrera' : 'Track exits / pit-stops for the WHOLE race' %>"><%= lang === 'es' ? 'Sal./Pit Total' : 'Exits/Pit Total' %></th>
+            <th title="<%= lang === 'es' ? 'Salidas de pista / pit-stops / cambios de neumático 🛞 en TODA la carrera' : 'Track exits / pit-stops / tire changes 🛞 for the WHOLE race' %>"><%= lang === 'es' ? 'Sal./Pit Total' : 'Exits/Pit Total' %></th>
             <th title="<%= lang === 'es' ? 'Tiempo perdido en esas salidas/pits (exceso sobre la media limpia de carrera)' : 'Time lost on those exits/pits (excess over the race-wide clean average)' %>"><%= lang === 'es' ? 'Perdido Total' : 'Lost Total' %></th>
           </tr>
         </thead>
@@ -172,7 +172,7 @@
             <th>Mejor</th>
             <th>Media</th>
             <th>Δ</th>
-            <th>Salidas</th>
+            <th title="<%= lang === 'es' ? 'Salidas de pista / pit-stops / cambios de neumático 🛞 en esta manga' : 'Track exits / pit-stops / tire changes 🛞 in this heat' %>">Salidas</th>
             <th><%= lang === 'es' ? '⏱ Perdido' : '⏱ Lost' %></th>
           </tr>
         </thead>
@@ -576,7 +576,7 @@
         <td>${fmtMs(e.bestMs)}</td>
         <td>${fmtMs(e[useAvgKey])}</td>
         <td>${e[useDeltaKey] != null ? '+' + fmtSec(e[useDeltaKey]) : '—'}</td>
-        <td>${e.exitCount + (e.pitStopCount ? ' / ' + e.pitStopCount + '🔧' : '')}</td>
+        <td>${e.exitCount + (e.pitStopCount ? ' / ' + e.pitStopCount + '🔧' : '')}${e.tireChangesManga ? ' · ' + e.tireChangesManga + '🛞' : ''}</td>
         <td>${fmtSec(e.lostMs)} <span style="color:#6e7681">(≈${e.lostLapsEquiv}v)</span></td>
       </tr>
     `;
@@ -669,7 +669,7 @@
       const prov = p.provisional ? '<span title="Estimada provisional" style="color:#d29922">*</span>' : '';
       const pKey = p.entityType + '_' + p.entityId;
       const rs = raceWideByKey[pKey];
-      const exitsPitTotal = rs ? `${rs.raceExits || 0}${rs.racePits ? ' / ' + rs.racePits + '🔧' : ''}` : '—';
+      const exitsPitTotal = rs ? `${rs.raceExits || 0}${rs.racePits ? ' / ' + rs.racePits + '🔧' : ''}${rs.raceTireChanges ? ' · ' + rs.raceTireChanges + '🛞' : ''}` : '—';
       const lostTotal = rs ? `${fmtSec(rs.raceLostMs)} <span style="color:#6e7681">(≈${rs.raceLostLapsEquiv}v)</span>` : '—';
       const restingBadge = restingActiveSet.has(pKey)
         ? `<span class="ls-proj-resting" title="<%= lang === 'es' ? 'Descansa en la manga en curso' : 'Resting in the current heat' %>">💤 <%= lang === 'es' ? 'descansa' : 'resting' %></span>`
@@ -1241,6 +1241,8 @@
   socket.on('manga:stopped', fetchLaneGridData);
   socket.on('manga:paused', () => { racePaused = true; });
   socket.on('manga:resumed', () => { racePaused = false; fetchData(); });
+  // Cambio de neumático: refresca cuanto antes el 🛞 de la columna Salidas.
+  socket.on('tires:changed', (d) => { if (!d || d.raceId === <%= race.id %>) fetchData(); });
 </script>
 
 <%- include('../partials/footer') %>

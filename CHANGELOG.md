@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.20.0] — 2026-08-09
+
+### Añadido
+- **«Estadísticas en vivo» ya avisa de los cambios de neumático.** En resistencia con control de neumáticos activado, la columna «Salidas» de «Manga actual» y «Sal./Pit Total» de «Clasificación proyectada» añaden ahora, junto a las salidas/pit-stops, los cambios de neumático del equipo con el mismo indicador **🛞** que ya usa la pantalla en directo — el de la manga que se está viendo en la primera tabla, el TOTAL de la carrera en la segunda. Se refresca al instante con el socket `tires:changed`, igual que el resto del control.
+
 ## [1.19.1] — 2026-08-09
 
 ### Mejorado
