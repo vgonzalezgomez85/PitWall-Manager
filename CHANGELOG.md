@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.19.1] — 2026-08-09
+
+### Mejorado
+- **La home de invitado agrupa sus accesos por título.** El acceso público (visitante externo sin IP autorizada) ahora separa sus tarjetas bajo dos secciones: «Carreras activas» (Estadísticas en vivo y Lap) y «Carreras pasadas» (Resultados), en vez de una única fila sin etiquetar.
+
 ## [1.19.0] — 2026-08-09
 
 ### Añadido
