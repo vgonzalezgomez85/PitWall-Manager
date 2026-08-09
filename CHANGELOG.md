@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.21.0] — 2026-08-09
+
+### Añadido
+- **«Control de pilotos» ya es visible para invitados.** La home de invitado (IP externa no autorizada) suma una tarjeta «Control de pilotos» bajo «Carreras activas», que enlaza a `/control/shifts` (nueva ruta pública de solo lectura). El invitado ve las tarjetas de carril tal cual, pero sin ningún botón de acción: se ocultan la barra de cámara/escaneo, el lápiz de «Corregir tiempo» de cada carril y el enlace «Histórico» — los POST de fichaje/corrección siguen bloqueados por IP de todos modos.
+
 ## [1.20.0] — 2026-08-09
 
 ### Añadido

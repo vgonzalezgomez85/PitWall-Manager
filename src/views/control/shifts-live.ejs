@@ -87,7 +87,7 @@ const teamNameByLane = {};
 });
 %>
 
-<div class="vt-page vt-page--shifts">
+<div class="vt-page vt-page--shifts<%= isGuestAccess ? ' sc-guest' : '' %>">
   <!-- Botón de pantalla completa: solo en el modo panel "todas las tarjetas"
        (flotante arriba a la derecha, ya que ahí se oculta la cabecera). -->
   <button type="button" id="scFsBtn" class="sc-fs-btn" title="<%= lang === 'es' ? 'Pantalla completa' : 'Fullscreen' %>">
@@ -163,10 +163,12 @@ const teamNameByLane = {};
             <%= lang === 'es' ? 'Todas las tarjetas' : 'All cards' %>
           </button>
         <% } %>
+        <% if (!isGuestAccess) { %>
         <a href="<%= current ? '/races/' + current.race.id + '/shifts' : '#' %>" class="vt-btn vt-btn--ghost vt-btn--sm" <%= current ? '' : 'aria-disabled="true" style="opacity:.4;pointer-events:none"' %>>
           <svg viewBox="0 0 24 24"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
           <%= lang === 'es' ? 'Histórico' : 'History' %>
         </a>
+        <% } %>
       </div>
     </div>
 
@@ -1231,6 +1233,14 @@ socket.on('manga:started', () => location.reload());
 .sc-allcards .sc-fs-btn:hover { filter: brightness(1.12); transform: translateY(-1px); }
 .sc-allcards .sc-fs-btn:active { transform: translateY(0); }
 .sc-allcards .sc-fs-btn svg { width: 24px; height: 24px; }
+
+/* ── Invitado (IP externa no autorizada): vista de SOLO LECTURA ────────────
+   Los elementos siguen en el DOM (el script de la página los referencia sin
+   comprobar null) — se ocultan por CSS, igual que el modo panel de arriba.
+   Los POST de checkin/correct-time los bloquea aparte `restrictAccess`. */
+.sc-guest .sc-left,
+.sc-guest .sc-lane__fix,
+.sc-guest .sc-fix-modal { display: none !important; }
 .vt-page--shifts .sc-lane {
   background: linear-gradient(180deg, var(--vt-panel), var(--vt-panel-2));
   border: 1px solid var(--vt-border); border-radius: 12px;

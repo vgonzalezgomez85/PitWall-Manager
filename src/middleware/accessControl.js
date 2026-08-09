@@ -104,7 +104,12 @@ function isPublicPath(p) {
       // Certificado de la CA: los dispositivos que escanean el QR por la LAN
       // necesitan bajarlo para instalarlo y que la cámara vaya sin aviso. Es un
       // certificado público (sin clave privada), seguro de exponer.
-      || p === '/cert' || p === '/cert/ca';
+      || p === '/cert' || p === '/cert/ca'
+      // Control de pilotos en directo (kiosco de turnos): solo LECTURA para
+      // invitado, la vista oculta sus propios botones de acción (escaneo,
+      // corrección) con `isGuestAccess` — los POST de checkin/correct-time
+      // siguen bloqueados por IP igualmente.
+      || p === '/control/shifts';
 }
 
 // ── Race Link (maestro↔esclavo) ─────────────────────────────────────────────

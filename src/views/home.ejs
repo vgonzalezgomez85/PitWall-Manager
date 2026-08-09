@@ -94,6 +94,22 @@ const c = typeof counts !== 'undefined' ? counts : { drivers: 0, teams: 0, cars:
             </div>
             <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
           </a>
+
+          <a class="vh-card" href="/control/shifts?allcards=1" style="--a:#a855f7;--a-bg:rgba(168,85,247,.12)">
+            <div class="vh-ico">
+              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="7"/>
+                <rect x="14" y="3" width="7" height="7"/>
+                <rect x="3" y="14" width="7" height="7"/>
+                <path d="M14 14h3v3M20 14v3M14 20h3v1M20 17v4"/>
+              </svg>
+            </div>
+            <div class="vh-body">
+              <div class="vh-t"><%= lang === 'es' ? 'Control de pilotos' : 'Driver shifts' %></div>
+              <div class="vh-d"><%= lang === 'es' ? 'Consulta el estado de los turnos de piloto en cada carril.' : 'Check driver shift status on each lane.' %></div>
+            </div>
+            <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          </a>
         </div>
       </section>
 
