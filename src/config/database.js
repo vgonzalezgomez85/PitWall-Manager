@@ -20,10 +20,25 @@ const path = require('path');
 const fs   = require('fs');
 
 // In production (Electron), SLOTIME_DATA is set to app.getPath('userData')
-const DB_PATH = process.env.SLOTIME_DATA
-  ? path.join(process.env.SLOTIME_DATA, 'slotime.db')
-  : path.join(__dirname, '../../database/slotime.db');
-fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+const DATA_DIR = process.env.SLOTIME_DATA || path.join(__dirname, '../../database');
+const DB_PATH  = path.join(DATA_DIR, 'pitwall.db');
+fs.mkdirSync(DATA_DIR, { recursive: true });
+
+// Renombrado slotime.db → pitwall.db: si esta carpeta trae la BD con el
+// nombre antiguo y todavía no hay una pitwall.db, se renombra en sitio (junto
+// con -wal/-shm) para no perder datos. Solo pasa una vez, al primer arranque
+// tras la actualización; requiere que ningún otro proceso tenga el fichero
+// antiguo abierto (igual que cualquier otro reinicio de PitWall).
+if (!fs.existsSync(DB_PATH)) {
+  const OLD_PATH = path.join(DATA_DIR, 'slotime.db');
+  if (fs.existsSync(OLD_PATH)) {
+    for (const ext of ['', '-wal', '-shm']) {
+      const src = OLD_PATH + ext;
+      if (fs.existsSync(src)) fs.renameSync(src, DB_PATH + ext);
+    }
+    console.log('[database] Migrado slotime.db → pitwall.db en', DATA_DIR);
+  }
+}
 
 const db = new Database(DB_PATH);
 

@@ -32,7 +32,7 @@
 const path = require('path');
 const Database = require(path.join(__dirname, '..', 'node_modules', 'better-sqlite3'));
 
-const DB_PATH = path.join(__dirname, '..', 'database', 'slotime.db');
+const DB_PATH = path.join(__dirname, '..', 'database', 'pitwall.db');
 const PID     = process.env.STRESS_PID ? parseInt(process.env.STRESS_PID, 10) : null;
 
 const N_LANES   = 32;

@@ -56,7 +56,7 @@ public/
   css/
     live.css              — Estilos de la vista live
 electron/                 — Electron main + launcher
-database/                 — slotime.db (SQLite, no commitear)
+database/                 — pitwall.db (SQLite, no commitear)
 ```
 
 ---
@@ -176,7 +176,7 @@ cd /Users/victor/ds300-emulator
 node emulator.js     # puerto 3001, REST: POST /api/go, POST /api/stop
 
 # Limpiar base de datos
-rm database/slotime.db && npm run dev
+rm database/pitwall.db && npm run dev
 ```
 
 ---

@@ -81,11 +81,11 @@ const FRAME_GAP_MS = 75;
 // ── Copia desechable de la BD ───────────────────────────────────────────────
 const Database = require(path.join(RAIZ, 'node_modules', 'better-sqlite3'));
 const ORIGEN = process.env.SLOTIME_DATA
-  ? path.join(process.env.SLOTIME_DATA, 'slotime.db')
-  : path.join(RAIZ, 'database', 'slotime.db');
+  ? path.join(process.env.SLOTIME_DATA, 'pitwall.db')
+  : path.join(RAIZ, 'database', 'pitwall.db');
 
 const dirTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pitwall-stress-'));
-const COPIA  = path.join(dirTmp, 'slotime.db');
+const COPIA  = path.join(dirTmp, 'pitwall.db');
 
 function limpiar() {
   if (KEEP) { console.log(`\n(copia conservada en ${dirTmp})`); return; }

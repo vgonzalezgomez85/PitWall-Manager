@@ -116,7 +116,7 @@ function seed() {
 // ── Lecturas ───────────────────────────────────────────────────────────────
 function abrirBd() {
   const Database = require('better-sqlite3');
-  return new Database(path.join(process.env.SLOTIME_DATA, 'slotime.db'), { readonly: true });
+  return new Database(path.join(process.env.SLOTIME_DATA, 'pitwall.db'), { readonly: true });
 }
 const turnos = (db, mangaId) =>
   db.prepare('SELECT * FROM driver_shifts WHERE manga_id = ? ORDER BY id').all(mangaId);

@@ -90,14 +90,18 @@ function getOrCreateSecret(userData) {
 // La carpeta antigua se conserva como respaldo (no se borra).
 function migrateLegacyUserData(userData) {
   try {
-    const newDb = path.join(userData, 'slotime.db');
-    if (fs.existsSync(newDb)) return; // ya hay datos en PitWall — nada que hacer
+    const newDb = path.join(userData, 'pitwall.db');
+    if (fs.existsSync(newDb) || fs.existsSync(path.join(userData, 'slotime.db'))) return; // ya hay datos en PitWall — nada que hacer
     const oldDir = path.join(path.dirname(userData), 'Voltrace Manager');
     if (!fs.existsSync(path.join(oldDir, 'slotime.db'))) return;
     fs.mkdirSync(userData, { recursive: true });
-    for (const f of ['slotime.db', 'slotime.db-wal', 'slotime.db-shm', '.session_secret']) {
+    for (const f of ['slotime.db', 'slotime.db-wal', 'slotime.db-shm']) {
       const src = path.join(oldDir, f);
-      if (fs.existsSync(src)) fs.copyFileSync(src, path.join(userData, f));
+      if (fs.existsSync(src)) fs.copyFileSync(src, path.join(userData, f.replace('slotime.db', 'pitwall.db')));
+    }
+    { // .session_secret no lleva el nombre de la BD, se copia tal cual
+      const src = path.join(oldDir, '.session_secret');
+      if (fs.existsSync(src)) fs.copyFileSync(src, path.join(userData, '.session_secret'));
     }
     const oldLogs = path.join(oldDir, 'logs');
     if (fs.existsSync(oldLogs)) {

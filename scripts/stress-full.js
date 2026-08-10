@@ -42,7 +42,7 @@ const BASE        = process.env.STRESS_BASE        || 'http://localhost:3000';
 const DURATION_S  = parseInt(process.env.STRESS_DURATION_S || '60', 10);
 const CONCURRENCY = parseInt(process.env.STRESS_CONC       || '200', 10);
 const PID         = process.env.STRESS_PID ? parseInt(process.env.STRESS_PID, 10) : null;
-const DB_PATH     = path.join(__dirname, '..', 'database', 'slotime.db');
+const DB_PATH     = path.join(__dirname, '..', 'database', 'pitwall.db');
 
 // 4 circuitos × 8 carriles
 const N_CIRCUITS = 4;

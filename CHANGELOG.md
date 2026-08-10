@@ -13,6 +13,12 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.25.2] — 2026-08-10
+
+### Corregido
+- **Limpieza de código muerto en el servidor.** Métodos de modelos, exports y wrappers que ya no llamaba nadie (Car, Driver, DriverShift, Lap, Race, Team, el lado "master" nunca usado del protocolo BART, SerialService, `isLocalRequest`, `DebugLogger.logError`).
+- **El fichero de la base de datos pasa a llamarse `pitwall.db`** (antes `slotime.db`, nombre heredado de antes del cambio de marca). Migración automática al arrancar: si no hay `pitwall.db` pero sí `slotime.db`, se renombra en sitio (con `-wal`/`-shm`) sin perder datos; cubre también la migración legacy de instalaciones "Voltrace Manager".
+
 ## [1.25.1] — 2026-08-10
 
 ### Añadido

@@ -80,11 +80,11 @@ Acceder en el navegador: `http://localhost:3000`
 
 ## Base de datos
 
-SQLite gestionado con `better-sqlite3`. El fichero se crea automáticamente en `database/slotime.db` al primer arranque.
+SQLite gestionado con `better-sqlite3`. El fichero se crea automáticamente en `database/pitwall.db` al primer arranque.
 
 El schema se inicializa en `src/config/database.js`. No requiere migraciones manuales: las tablas se crean con `CREATE TABLE IF NOT EXISTS`.
 
-**Para hacer backup** basta con copiar el fichero `database/slotime.db`.  
+**Para hacer backup** basta con copiar el fichero `database/pitwall.db`.  
 **Para resetear** basta con borrarlo; se vuelve a crear vacío al reiniciar.
 
 ---
@@ -202,7 +202,7 @@ taskkill /PID <PID> /F         # Windows
 Editar o eliminar la entrada `serial_mode` en la base de datos, o acceder a `/settings` y guardar con modo simulación.
 
 ### Backup y restauración
-- **Backup:** copiar `database/slotime.db`
+- **Backup:** copiar `database/pitwall.db`
 - **Restauración:** reemplazar ambos ficheros y reiniciar la aplicación
 
 ---
