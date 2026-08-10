@@ -29,17 +29,20 @@
           🎲 <%= lang === 'es' ? 'Aleatorio' : 'Random' %>
         </button>
       </div>
-      <div id="entriesList" style="display:flex;flex-wrap:wrap;gap:.4rem">
+      <div id="entriesList" class="entry-grid">
         <% entries.forEach((e, i) => { %>
-          <span class="badge badge--neutral entry-badge" data-id="<%= e.id %>" style="background:rgba(255,255,255,.06)"><%= e.entity_name %></span>
+          <div class="entry-badge" data-id="<%= e.id %>" draggable="true">
+            <span class="entry-num"><%= i + 1 %></span>
+            <span class="entry-name"><%= e.entity_name %></span>
+          </div>
         <% }) %>
       </div>
       <input type="hidden" name="entry_order" id="entryOrderInput"
              value="<%= entries.map(e => e.id).join(',') %>">
       <p class="form-hint" style="margin-top:.6rem">
         <%= lang === 'es'
-          ? 'Pulsa 🎲 para barajar el orden. El orden actual será el de salida en la pole.'
-          : 'Press 🎲 to shuffle. The current order will be used for the pole start.' %>
+          ? 'Arrastra un participante para reordenarlo, o pulsa 🎲 para barajar. El orden actual será el de salida en la pole.'
+          : 'Drag a participant to reorder it, or press 🎲 to shuffle. The current order will be used for the pole start.' %>
       </p>
     </div>
 
@@ -101,6 +104,26 @@
   background: #1f6feb; border-color: #1f6feb; color: #fff;
 }
 .pole-circ-btn.is-active span { opacity: .85 !important; }
+.entry-grid {
+  column-width: 150px; column-gap: .4rem;
+}
+.entry-badge {
+  display: flex; align-items: center; gap: .5rem; min-width: 0;
+  padding: .4rem .6rem; margin: 0 0 .4rem; background: rgba(255,255,255,.06);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  cursor: grab; user-select: none; transition: background .1s, opacity .1s;
+  break-inside: avoid;
+}
+.entry-badge:hover  { background: var(--bg-hover); border-color: var(--text-muted); }
+.entry-badge:active { cursor: grabbing; }
+.entry-badge.dragging { opacity: .35; }
+.entry-num {
+  min-width: 22px; height: 22px; flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 5px; background: var(--bg-input); color: var(--text-sub);
+  font-family: var(--font-race); font-size: .75rem; font-weight: 700;
+}
+.entry-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>
 <script>
 const TOTAL_LANES = <%= race.lanes_count %>;
@@ -142,8 +165,9 @@ document.getElementById('poleLaneRandom').addEventListener('click', () => {
   if (!list || !input || !btn) return;
 
   function syncHidden() {
-    const ids = [...list.querySelectorAll('.entry-badge')].map(el => el.dataset.id);
-    input.value = ids.join(',');
+    const nodes = [...list.querySelectorAll('.entry-badge')];
+    nodes.forEach((el, i) => { el.querySelector('.entry-num').textContent = i + 1; });
+    input.value = nodes.map(el => el.dataset.id).join(',');
   }
   btn.addEventListener('click', () => {
     const nodes = [...list.querySelectorAll('.entry-badge')];
@@ -154,6 +178,30 @@ document.getElementById('poleLaneRandom').addEventListener('click', () => {
     }
     list.innerHTML = '';
     nodes.forEach(n => list.appendChild(n));
+    syncHidden();
+  });
+
+  // ── Reorden manual arrastrando ───────────────────────────────────────────
+  let dragSrc = null;
+  list.addEventListener('dragstart', e => {
+    dragSrc = e.target.closest('.entry-badge');
+    if (!dragSrc) return;
+    dragSrc.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  list.addEventListener('dragover', e => {
+    if (!dragSrc) return;
+    e.preventDefault();
+    const target = e.target.closest('.entry-badge');
+    if (target && target !== dragSrc) {
+      const rect  = target.getBoundingClientRect();
+      const after = e.clientY > rect.top + rect.height / 2;
+      list.insertBefore(dragSrc, after ? target.nextSibling : target);
+    }
+  });
+  list.addEventListener('dragend', () => {
+    if (dragSrc) dragSrc.classList.remove('dragging');
+    dragSrc = null;
     syncHidden();
   });
 })();

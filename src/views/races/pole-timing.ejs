@@ -67,6 +67,18 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
       <% } %>
     </div>
 
+    <!-- ── Cambio de piloto: manual (por defecto) o automático ─────────── -->
+    <div class="pole-omit">
+      <label class="pole-omit-switch" title="<%= lang === 'es'
+              ? 'Si está activo, al terminar un intento se pasa solo al siguiente piloto tras una breve cuenta atrás'
+              : 'When on, the next pilot loads automatically after a short countdown once an attempt finishes' %>">
+        <input type="checkbox" id="autoAdvanceToggle">
+        <span class="pole-omit-track"><span class="pole-omit-thumb"></span></span>
+      </label>
+      <span class="pole-omit-text"><%= lang === 'es' ? 'Cambio automático de piloto' : 'Automatic pilot change' %></span>
+      <span id="autoAdvanceState" class="pole-omit-state"></span>
+    </div>
+
     </div><!-- /.pole-topbar -->
 
     <!-- ── Grid principal ────────────────────────────────────────────── -->
@@ -129,9 +141,9 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
         </div>
 
         <div id="js-btn-finished" class="pole-btn-row" style="display:none">
-          <form action="/races/<%= race.id %>/pole/next" method="POST">
+          <form id="js-next-form" action="/races/<%= race.id %>/pole/next" method="POST">
             <button type="submit" class="pole-btn-next">
-              <%= lang === 'es' ? 'Siguiente piloto →' : 'Next pilot →' %>
+              <span id="js-btn-next-label"><%= lang === 'es' ? 'Siguiente piloto →' : 'Next pilot →' %></span>
             </button>
           </form>
         </div>
@@ -323,12 +335,14 @@ function setStateSub(text) {
 
 function enterIdle() {
   state = 'idle';
+  clearAutoAdvance();
   show('js-btn-idle'); hide('js-btn-running'); hide('js-btn-finished');
   hide('js-chrono-wrap'); hide('js-countdown-wrap'); hide('js-finished-result');
   setStateSub(LANG_ES ? 'Preparado' : 'Ready');
 }
 function enterStandby() {
   state = 'standby';
+  clearAutoAdvance();
   hide('js-btn-idle'); show('js-btn-running'); hide('js-btn-finished');
   hide('js-chrono-wrap'); hide('js-countdown-wrap'); hide('js-laps-wrap'); hide('js-finished-result');
   setStateSub(LANG_ES ? '⏳ Esperando GO del DS-300…' : '⏳ Waiting for DS-300 GO…');
@@ -338,6 +352,7 @@ function enterStandby() {
 }
 function enterRunning() {
   state = 'running';
+  clearAutoAdvance();
   hide('js-btn-idle'); show('js-btn-running'); hide('js-btn-finished');
   show('js-chrono-wrap'); show('js-countdown-wrap'); show('js-laps-wrap'); hide('js-finished-result');
   setStateSub(LANG_ES ? 'Cronometrando vuelta' : 'Timing lap');
@@ -358,6 +373,35 @@ function enterFinished(bestLapMs, lapCount) {
   const n = lapCount || 0;
   document.getElementById('js-final-laps').textContent =
     n === 0 ? '' : (n === 1 ? (LANG_ES ? '· 1 vuelta' : '· 1 lap') : (LANG_ES ? '· ' + n + ' vueltas' : '· ' + n + ' laps'));
+  if (isAutoAdvance()) scheduleAutoAdvance();
+}
+
+// ── Cambio automático de piloto ─────────────────────────────────────────
+const AUTO_ADVANCE_KEY = 'pw_pole_auto_advance';
+const AUTO_ADVANCE_SECONDS = 3;
+let autoAdvanceTimer = null;
+function isAutoAdvance() { return localStorage.getItem(AUTO_ADVANCE_KEY) === '1'; }
+function clearAutoAdvance() {
+  if (autoAdvanceTimer) { clearTimeout(autoAdvanceTimer); autoAdvanceTimer = null; }
+  const label = document.getElementById('js-btn-next-label');
+  if (label) label.textContent = LANG_ES ? 'Siguiente piloto →' : 'Next pilot →';
+}
+function scheduleAutoAdvance() {
+  clearAutoAdvance();
+  let secsLeft = AUTO_ADVANCE_SECONDS;
+  const label = document.getElementById('js-btn-next-label');
+  const tick = () => {
+    if (label) label.textContent = (LANG_ES ? 'Siguiente piloto en ' : 'Next pilot in ') + secsLeft + 's…';
+    if (secsLeft <= 0) {
+      autoAdvanceTimer = null;
+      const form = document.getElementById('js-next-form');
+      if (form) form.submit();
+      return;
+    }
+    secsLeft--;
+    autoAdvanceTimer = setTimeout(tick, 1000);
+  };
+  tick();
 }
 
 function setCountdown(remainingMs) {
@@ -483,12 +527,28 @@ socket.on('pole:finished', ({ entryName, bestLapMs, lapCount }) => {
 renderTower();
 if (IS_RUNNING) {
   enterRunning();
-} else if (!current) {
+} else if (!CURRENT_NAME) {
   enterIdle();
 } else {
   enterStandby();
   startTiming();
 }
+
+// ── Toggle: cambio automático de piloto (preferencia local del navegador) ──
+(function () {
+  const tgl   = document.getElementById('autoAdvanceToggle');
+  const label = document.getElementById('autoAdvanceState');
+  if (!tgl) return;
+  function paint() { if (label) label.textContent = tgl.checked ? 'ON' : 'OFF'; }
+  tgl.checked = isAutoAdvance();
+  paint();
+  tgl.addEventListener('change', () => {
+    localStorage.setItem(AUTO_ADVANCE_KEY, tgl.checked ? '1' : '0');
+    paint();
+    if (tgl.checked && state === 'finished') scheduleAutoAdvance();
+    else clearAutoAdvance();
+  });
+})();
 
 // ── Toggle: omitir el primer cruce (out-lap) — decisión de la organización ──
 (function () {

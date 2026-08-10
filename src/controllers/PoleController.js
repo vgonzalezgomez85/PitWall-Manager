@@ -276,9 +276,14 @@ class PoleController {
     const session = PoleSession.findByRace(race.id);
     if (!session) return res.redirect(`/races/${race.id}`);
 
+    // Los campos vienen como times[e<id>] (prefijo "e" a propósito: con claves
+    // puramente numéricas qs las trata como índices de array y compacta el
+    // hueco en 0 -inexistente, ya que los id empiezan en 1-, desplazando cada
+    // tiempo al piloto equivocado sin avisar).
     const times = req.body.times || {};
-    Object.entries(times).forEach(([entryId, val]) => {
-      PoleSession.updateEntryTime(parseInt(entryId, 10), parseTimeMs(val));
+    Object.entries(times).forEach(([key, val]) => {
+      const entryId = parseInt(String(key).replace(/^e/, ''), 10);
+      if (Number.isFinite(entryId)) PoleSession.updateEntryTime(entryId, parseTimeMs(val));
     });
 
     res.redirect(`/races/${race.id}/pole/results`);

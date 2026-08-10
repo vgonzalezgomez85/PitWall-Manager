@@ -126,7 +126,7 @@ const poleHolderName = timedEntries.length > 0 ? timedEntries[0].entity_name : n
             <input
               class="pole-edit-input"
               type="text"
-              name="times[<%= entry.id %>]"
+              name="times[e<%= entry.id %>]"
               value="<%= entry.lap_time_ms ? (entry.lap_time_ms / 1000).toFixed(3) : '' %>"
               placeholder="<%= lang === 'es' ? 'ej: 8.456' : 'e.g. 8.456' %>">
           </div>

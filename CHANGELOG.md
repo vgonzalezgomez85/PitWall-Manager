@@ -13,6 +13,16 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.23.0] — 2026-08-10
+
+### Añadido
+- **La lista de pole ya se puede reordenar arrastrando.** En «Configurar Pole Position», los participantes se muestran en una cuadrícula numerada (1, 2, 3…) que se ajusta sola al ancho de la pantalla y rellena por columnas —coincidiendo con los grupos de circuito C1/C2/C3—, y ahora se pueden arrastrar a mano para cambiar el orden de paso, además del botón «Aleatorio» que ya existía.
+- **Cambio automático de piloto en pole.** Nuevo interruptor «Cambio automático de piloto» junto al de «Omitir 1er cruce»: con la casilla activa, al terminar el intento de un piloto el botón «Siguiente piloto» hace una cuenta atrás de 3 segundos y avanza solo, sin esperar el clic manual. Es una preferencia del puesto de control (se guarda en el propio navegador), no de la carrera.
+
+### Corregido
+- **«Editar tiempos» de resultados de pole podía desplazar los tiempos a otro piloto, en silencio.** Al guardar el formulario de tiempos de la pole, si entre los participantes había un piloto cuyo identificador interno era el primero de la lista, el tiempo se desplazaba al piloto siguiente sin ningún aviso —un fallo del formato con el que viajaban los campos del formulario—. Confirmado y corregido de cara a la 24h de Llinars.
+- **La página de tiempos de pole podía quedarse rota tras terminar un intento.** Un error de JavaScript en el cliente al marcar un intento como terminado dejaba inservibles el resto de botones de la página hasta recargarla. Ya no ocurre.
+
 ## [1.22.0] — 2026-08-09
 
 ### Añadido
