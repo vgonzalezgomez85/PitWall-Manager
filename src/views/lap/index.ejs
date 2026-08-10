@@ -1,38 +1,53 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#000000">
-  <title>PitWall Lap</title>
-  <link rel="stylesheet" href="/css/lap.css">
-</head>
-<body>
-  <div class="wrap">
-    <a href="/" style="display:inline-flex;align-items:center;gap:6px;color:var(--muted);text-decoration:none;font-weight:600;font-size:.9rem;margin-bottom:12px">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      Inicio
-    </a>
-    <div class="brand"><span class="dot"></span> PitWall <small>Lap</small></div>
-    <h1>Elige tu carrera</h1>
-    <p class="sub">Sigue el timing de tu equipo en directo desde el móvil.</p>
+<%- include('../partials/header', { lang, pageTitle: 'Lap' }) %>
 
-    <% if (races.length === 0) { %>
-      <div class="card">No hay carreras de resistencia activas ahora mismo.</div>
-    <% } else { %>
-      <div class="list">
-        <% races.forEach(r => { %>
-          <a class="item" href="/lap/<%= r.id %>">
-            <span><%= r.name %></span>
-            <% if (r.status === 'active') { %>
-              <span class="chip live">EN VIVO</span>
-            <% } else { %>
-              <span class="chip"><%= r.teamsCount %> equipos</span>
-            <% } %>
-          </a>
-        <% }) %>
-      </div>
-    <% } %>
+<div class="container container--narrow">
+  <a href="/" class="vt-back-link" style="margin-top:1rem">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    <%= lang === 'es' ? 'Inicio' : 'Home' %>
+  </a>
+  <div class="page-header">
+    <h1 class="page-title">Lap</h1>
+    <p style="color:#8b949e; margin-top:.3rem">
+      <%= lang === 'es'
+        ? 'Elige tu carrera para seguir el timing de tu equipo en directo desde el móvil.'
+        : 'Pick your race to follow your team timing live from your phone.' %>
+    </p>
   </div>
-</body>
-</html>
+
+  <% if (races.length === 0) { %>
+    <div class="ls-nolive">
+      <div class="ls-nolive__icon">🏎️</div>
+      <p class="ls-nolive__title"><%= lang === 'es' ? 'No hay carreras de resistencia activas ahora mismo.' : 'No endurance races active right now.' %></p>
+    </div>
+  <% } else { %>
+    <div class="ls-race-list">
+      <% races.forEach(r => { %>
+        <a href="/lap/<%= r.id %>" class="ls-race-card">
+          <div class="ls-race-card__name"><%= r.name %></div>
+          <div class="ls-race-card__meta">
+            <% if (r.status === 'active') { %>
+              <span class="ls-race-card__status ls-race-card__status--active"><%= lang === 'es' ? 'en vivo' : 'live' %></span>
+            <% } else { %>
+              <span class="ls-race-card__status"><%= r.teamsCount %> <%= lang === 'es' ? 'equipos' : 'teams' %></span>
+            <% } %>
+          </div>
+        </a>
+      <% }) %>
+    </div>
+  <% } %>
+</div>
+
+<style>
+  .ls-race-list { display:flex; flex-direction:column; gap:.6rem; margin-top:1.2rem }
+  .ls-race-card { display:block; background:#161b22; border:1px solid #30363d; border-radius:10px; padding:.9rem 1.1rem; color:#c9d1d9; text-decoration:none; transition: border-color .15s }
+  .ls-race-card:hover { border-color:#58a6ff; text-decoration:none }
+  .ls-race-card__name { font-weight:600; font-size:1.05rem }
+  .ls-race-card__meta { font-size:.78rem; color:#6e7681; margin-top:.2rem }
+  .ls-race-card__status { display:inline-block; padding:1px 7px; border-radius:9px; font-size:.7rem; font-weight:700; text-transform:uppercase; background:#21262d; color:#8b949e }
+  .ls-race-card__status--active { background:rgba(46,160,67,.18); color:#3fb950 }
+  .ls-nolive { text-align:center; margin-top:2.5rem; color:#8b949e }
+  .ls-nolive__icon { font-size:3rem; opacity:.6 }
+  .ls-nolive__title { color:#e6edf3; font-size:1.15rem; font-weight:600; margin:.8rem 0 .3rem }
+</style>
+
+<%- include('../partials/footer') %>

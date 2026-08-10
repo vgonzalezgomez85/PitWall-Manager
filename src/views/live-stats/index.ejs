@@ -14,34 +14,52 @@
     </p>
   </div>
 
+  <% const poleRacesList = typeof poleRaces !== 'undefined' ? poleRaces : []; %>
+
   <% if (typeof noLive !== 'undefined' && noLive) { %>
     <div class="ls-nolive">
       <div class="ls-nolive__icon">🏁</div>
       <p class="ls-nolive__title"><%= lang === 'es' ? 'No hay ninguna carrera en directo ahora mismo.' : 'No race is live right now.' %></p>
       <p class="ls-nolive__sub"><%= lang === 'es' ? 'Cuando se dé el GO a una carrera, aparecerá aquí automáticamente.' : 'When a race gets the GO, it will appear here automatically.' %></p>
     </div>
-  <% } else if (races.length === 0) { %>
-    <p style="color:#8b949e">
-      <%= lang === 'es' ? 'No hay carreras creadas todavía.' : 'No races created yet.' %>
-    </p>
   <% } else { %>
-    <div class="ls-race-list">
-      <% races.forEach(r => { %>
-        <a href="/races/<%= r.id %>/live-stats" class="ls-race-card">
-          <div class="ls-race-card__name"><%= r.name %></div>
-          <div class="ls-race-card__meta">
-            <span class="ls-race-card__status ls-race-card__status--<%= r.status %>"><%= r.status %></span>
-            <% if (r.created_at) { %>
-              <span style="margin-left:.5rem"><%= new Date(r.created_at).toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-GB') %></span>
-            <% } %>
-          </div>
-        </a>
-      <% }) %>
-    </div>
+    <% if (poleRacesList.length > 0) { %>
+      <p class="ls-section-title"><%= lang === 'es' ? '🏁 Pole en directo' : '🏁 Pole live' %></p>
+      <div class="ls-race-list" style="margin-bottom:1.4rem">
+        <% poleRacesList.forEach(r => { %>
+          <a href="/races/<%= r.id %>/pole/timing" class="ls-race-card">
+            <div class="ls-race-card__name"><%= r.name %></div>
+            <div class="ls-race-card__meta">
+              <span class="ls-race-card__status ls-race-card__status--active"><%= lang === 'es' ? 'pole en curso' : 'pole in progress' %></span>
+            </div>
+          </a>
+        <% }) %>
+      </div>
+    <% } %>
+    <% if (races.length > 0) { %>
+      <div class="ls-race-list">
+        <% races.forEach(r => { %>
+          <a href="/races/<%= r.id %>/live-stats" class="ls-race-card">
+            <div class="ls-race-card__name"><%= r.name %></div>
+            <div class="ls-race-card__meta">
+              <span class="ls-race-card__status ls-race-card__status--<%= r.status %>"><%= r.status %></span>
+              <% if (r.created_at) { %>
+                <span style="margin-left:.5rem"><%= new Date(r.created_at).toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-GB') %></span>
+              <% } %>
+            </div>
+          </a>
+        <% }) %>
+      </div>
+    <% } else if (poleRacesList.length === 0) { %>
+      <p style="color:#8b949e">
+        <%= lang === 'es' ? 'No hay carreras creadas todavía.' : 'No races created yet.' %>
+      </p>
+    <% } %>
   <% } %>
 </div>
 
 <style>
+  .ls-section-title { font-size:.8rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#8b949e; margin:1.4rem 0 .5rem }
   .ls-race-list { display:flex; flex-direction:column; gap:.6rem; margin-top:1.2rem }
   .ls-race-card { display:block; background:#161b22; border:1px solid #30363d; border-radius:10px; padding:.9rem 1.1rem; color:#c9d1d9; text-decoration:none; transition: border-color .15s }
   .ls-race-card:hover { border-color:#58a6ff; text-decoration:none }

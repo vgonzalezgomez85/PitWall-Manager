@@ -15,7 +15,7 @@
   <div class="wrap">
     <div class="toprow">
       <div class="brand"><span class="dot"></span> PitWall <small>Lap</small></div>
-      <a href="/lap/<%= race.id %>">Cambiar equipo</a>
+      <a href="/lap/<%= race.id %>" class="switch-team-btn">Cambiar equipo</a>
     </div>
 
     <div class="teamhead">
@@ -26,6 +26,8 @@
       <span class="led" id="led"></span>
       <span id="statusText"><%= race.name %></span>
     </div>
+
+    <div id="poleCard" style="display:none"></div>
 
     <div class="voicebar">
       <button id="voiceToggle" class="audiobtn" type="button" aria-pressed="false">🔇 Voz</button>
@@ -91,6 +93,7 @@
       </div>
 
       <button id="tireChangeBtn" type="button" class="audiobtn" style="width:100%;margin-top:10px">🛞 Cambié gomas</button>
+      <div id="tireControlNote" class="footnote" style="margin-top:8px;text-align:center;color:var(--accent)" hidden>—</div>
 
       <details style="margin-top:12px;color:var(--muted)">
         <summary style="cursor:pointer;font-size:.8rem;text-transform:uppercase;letter-spacing:.4px">Configuración de estrategia</summary>
@@ -360,8 +363,15 @@
     function computeStrategy(snap){
       var cfg = STRAT;
       var fit = fitDegradation();
-      var changesMade = cfg.changesMade || 0;
-      var changesRemaining = Math.max(0, (cfg.setsTotal - 1) - changesMade);
+      // Si la carrera lleva control de neumáticos real (organización, kiosco),
+      // ESE es el dato bueno — no el nº de juegos ni los cambios que el equipo
+      // se configura a mano en el móvil (eso solo vale de respaldo cuando la
+      // carrera no lleva control, `tireControl` es null). `used` cuenta el
+      // juego inicial también, así que un cambio de más equivale a used-1.
+      var tc = snap && snap.tireControl;
+      var setsTotal   = tc ? tc.allowance : cfg.setsTotal;
+      var changesMade = tc ? Math.max(0, tc.used - 1) : (cfg.changesMade || 0);
+      var changesRemaining = Math.max(0, (setsTotal - 1) - changesMade);
       var stintsRemaining = changesRemaining + 1;
 
       var t = (snap && snap.timing) || {};
@@ -375,6 +385,12 @@
 
       var result = {
         changesMade: changesMade, changesRemaining: changesRemaining,
+        // "Juegos usados/restantes" en pantalla: con control real se muestran
+        // tal cual manda el servidor (0 usados es válido — antes de la 1ª
+        // entrega, no "1" como saldría de sumarle +1 a cero changesMade
+        // recortado a 0). Sin control real, se derivan de la config manual.
+        setsUsedDisplay: tc ? tc.used : (changesMade + 1),
+        setsLeftDisplay: tc ? Math.max(0, tc.available) : changesRemaining,
         stintLap: fit.stintLap, d: fit.d, confidence: fit.confidence, n: fit.n,
         remainingLaps: remainingLaps, recommendation: '', positionAdvice: null, whatIf: null
       };
@@ -441,15 +457,42 @@
       return result;
     }
 
+    // Los campos "Nº de juegos" / "Cambios ya realizados" y el botón "Cambié
+    // gomas" solo tienen sentido como respaldo MANUAL cuando la carrera NO
+    // lleva control de neumáticos real (organización, kiosco) — con control
+    // real esos datos los manda el servidor y editarlos a mano solo los
+    // desincroniza. `tc` es `snap.tireControl` (null si allowance=0).
+    function applyTireControl(tc){
+      var elSets = document.getElementById('cfgSetsTotal');
+      var elMade = document.getElementById('cfgChangesMade');
+      var btn    = document.getElementById('tireChangeBtn');
+      var note   = document.getElementById('tireControlNote');
+      if (tc){
+        if (elSets){ elSets.value = tc.allowance; elSets.disabled = true; }
+        if (elMade){ elMade.value = Math.max(0, tc.used - 1); elMade.disabled = true; }
+        if (btn){ btn.disabled = true; btn.style.opacity = '.5'; btn.title = 'Lo registra la organización'; }
+        if (note){
+          note.hidden = false;
+          note.textContent = '🛞 Control de la organización: ' + tc.used + ' de ' + tc.allowance + ' juegos entregados';
+        }
+      } else {
+        if (elSets) elSets.disabled = false;
+        if (elMade) elMade.disabled = false;
+        if (btn){ btn.disabled = false; btn.style.opacity = ''; btn.title = ''; }
+        if (note) note.hidden = true;
+      }
+    }
+
     function renderStrategy(){
       var wrap = document.getElementById('stratWrap');
       if (!wrap) return;
       var r = computeStrategy(lastSnap);
       var live = (lastSnap && lastSnap.live) || {};
+      applyTireControl(lastSnap && lastSnap.tireControl);
 
       set('stratStatus', !live.running ? 'Sin manga en curso' : (myStatus === 'my-turn' ? 'En pista' : 'En descanso'));
-      set('stratSetsUsed', r.changesMade + 1);
-      set('stratSetsLeft', r.changesRemaining);
+      set('stratSetsUsed', r.setsUsedDisplay);
+      set('stratSetsLeft', r.setsLeftDisplay);
       set('stratStintLap', r.stintLap || 0);
       set('stratDeg', fmtDeg(r.d));
       set('stratConf', 'Confianza: ' + r.n + '/' + MIN_CONFIDENCE_LAPS + ' vueltas limpias (' + (r.confidence === 'ok' ? 'ok' : 'baja') + ')');
@@ -566,11 +609,76 @@
     }
     setInterval(tick, 1000);
 
+    // ── Pole (en directo o resultado) ─────────────────────────────────────
+    // Durante la pole (antes de que arranque la carrera) no llegan eventos
+    // 'standings'/'lap' de la carrera — la única señal viva son los pole:*
+    // (broadcast global, igual que en pole-timing.ejs: no van a una sala, los
+    // recibe cualquier socket conectado). `poleUI.snap` es lo que trae el
+    // snapshot (posición en el orden, clasificación parcial); el resto
+    // (cronómetro, vueltas, mejor de ESTE intento) lo llevan los propios
+    // eventos pole:*, filtrando por si el turno es el mío.
+    var poleUI = { snap: null, myTurnLive: false, running: false, chronoMs: 0, lapCount: 0, bestMs: null };
+    var poleCurrentName = null;   // a quién le toca ahora mismo, según pole:standby/started
+
+    function paintPole(){
+      var card = document.getElementById('poleCard');
+      if (!card) return;
+      var live = poleUI.snap && poleUI.snap.poleLive;
+      var res  = poleUI.snap && poleUI.snap.poleResult;
+      if (live){
+        card.style.display = '';
+        var html = '<div class="section-title">🏁 Pole en directo</div>';
+        if (poleUI.myTurnLive){
+          html += '<div class="proj" style="margin-bottom:8px">'
+            + '<div class="p" style="flex:1 1 100%">'
+            + '<div class="k">' + (poleUI.running ? 'Cronometrando' : '🚦 Tu turno — esperando el GO') + '</div>'
+            + (poleUI.running ? '<div class="v" style="font-size:1.7rem">' + fmtLap(poleUI.chronoMs) + '</div>' : '')
+            + '</div></div>'
+            + '<div class="proj">'
+            + '<div class="p"><div class="k">Vueltas</div><div class="v" style="font-size:1.15rem">' + poleUI.lapCount + '</div></div>'
+            + '<div class="p"><div class="k">Tu mejor</div><div class="v" style="font-size:1.15rem">' + fmtLap(poleUI.bestMs) + '</div></div>'
+            + '</div>';
+        } else {
+          var head = live.myLapTimeMs != null
+            ? '✓ Ya corriste: ' + fmtLap(live.myLapTimeMs)
+            : '⏳ Pendiente — posición ' + live.myPosition + ' de ' + live.totalEntries + ' en el orden de salida';
+          html += '<div class="proj" style="margin-bottom:8px"><div class="p" style="flex:1 1 100%"><div class="k">Estado</div><div class="v" style="font-size:1rem">' + head + '</div></div></div>';
+        }
+        var rows = (live.standings || []).map(function(s){
+          return '<div class="p"><div class="k">P' + s.position + '</div><div class="v" style="font-size:1rem">' + s.name + ' · ' + fmtLap(s.lapTimeMs) + '</div></div>';
+        }).join('');
+        if (rows) html += '<div class="proj" style="flex-wrap:wrap">' + rows + '</div>';
+        card.innerHTML = html;
+      } else if (res){
+        card.style.display = '';
+        card.innerHTML =
+          '<div class="section-title">🏁 Resultado de la pole</div>' +
+          '<div class="proj"><div class="p"><div class="k">Posición</div><div class="v">P' + res.position +
+          '<small style="font-size:.7rem;color:var(--muted)"> de ' + res.totalEntries + '</small></div></div>' +
+          '<div class="p"><div class="k">Tiempo</div><div class="v">' + (res.lapTimeMs != null ? (res.lapTimeMs/1000).toFixed(3) : '—') + '</div></div></div>';
+      } else {
+        card.style.display = 'none';
+        card.innerHTML = '';
+      }
+    }
+
+    function poleMyTurnStart(alreadyRunning){
+      poleUI.myTurnLive = true; poleUI.running = !!alreadyRunning; poleUI.chronoMs = 0;
+      poleUI.lapCount = 0; poleUI.bestMs = null;
+      paintPole();
+    }
+    function poleMyTurnEnd(){
+      poleUI.myTurnLive = false; poleUI.running = false;
+      paintPole();
+    }
+
     // ── Render visual del panel (acumulado de la carrera) ────────────────
     var lastLapShown = null;
     function render(snap){
       if (!snap || !snap.ok) return;
       lastSnap = snap;
+      poleUI.snap = snap;
+      paintPole();
       var t = snap.timing, live = snap.live || {}, proj = snap.projection;
       // Posición grande = la PROYECTADA (la misma que las tarjetas del directo);
       // si no hay manga viva, cae a la posición por vueltas totales.
@@ -619,13 +727,21 @@
         set('statusText', bits.join(' · '));
       } else {
         led.classList.add(snap.race.status === 'finished' ? 'off' : '');
-        set('statusText', snap.race.status === 'finished' ? 'Carrera finalizada' : 'Esperando próxima manga');
+        set('statusText', snap.race.status === 'finished' ? 'Carrera finalizada'
+          : snap.poleLive ? 'Pole en curso'
+          : 'Esperando próxima manga');
       }
       set('foot', 'Actualizado ' + new Date(snap.updatedAt).toLocaleTimeString('es-ES'));
       renderStrategy();
     }
 
     try { render(JSON.parse(document.getElementById('snap').textContent || '{}')); } catch(e){}
+    // Si la página se abre (o se refresca) YA con el turno en marcha, no
+    // llegará un pole:standby/started nuevo que lo avise — se siembra aquí.
+    if (lastSnap && lastSnap.poleLive && lastSnap.poleLive.myTurn){
+      poleCurrentName = TEAM_NAME;
+      poleMyTurnStart(lastSnap.poleLive.myTurnRunning);
+    }
 
     var pending = false, timer = null;
     function refresh(){
@@ -733,6 +849,49 @@
         socket.on(ev, function(){ if (myStatus === 'my-turn' && !firedFinish){ firedFinish = true; say('Fin de la manga'); } myStatus = 'rest'; prevMyLane = null; scheduleRefresh(); });
       });
       socket.on('manga:paused', function(){ isPaused = true; scheduleRefresh(); });
+
+      // ── Pole en directo: cronómetro, vueltas y voz de ESTE equipo ──────
+      // pole:standby/started llevan `entryName` — con eso se sabe a quién le
+      // toca sin esperar el sondeo de 5 s. pole:tick/lap NO llevan nombre
+      // (solo corre uno a la vez): se aplican si `poleUI.myTurnLive`.
+      socket.on('pole:standby', function(data){
+        var name = data && data.entryName;
+        if (name && name !== poleCurrentName){
+          poleCurrentName = name;
+          if (name === TEAM_NAME) { say('Tu turno'); poleMyTurnStart(false); }
+          else if (poleUI.myTurnLive) { poleMyTurnEnd(); }
+        }
+        scheduleRefresh();
+      });
+      socket.on('pole:started', function(data){
+        if (data && data.entryName === TEAM_NAME && poleUI.myTurnLive && !poleUI.running){
+          poleUI.running = true; paintPole();
+        }
+      });
+      socket.on('pole:paused', function(){ if (poleUI.myTurnLive) { poleUI.running = false; paintPole(); } });
+      socket.on('pole:resumed', function(){ if (poleUI.myTurnLive) { poleUI.running = true; paintPole(); } });
+      socket.on('pole:tick', function(d){
+        if (!poleUI.myTurnLive || !poleUI.running || !d) return;
+        poleUI.chronoMs = d.currentLapMs;
+        paintPole();
+      });
+      socket.on('pole:lap', function(d){
+        if (!poleUI.myTurnLive || !d) return;
+        poleUI.lapCount = d.lapNumber;
+        poleUI.bestMs = d.bestLapMs;
+        paintPole();
+        if (S.sayLaps) say(d.improved ? ('Vuelta rápida, ' + speakTime(d.lapTimeMs)) : speakTime(d.lapTimeMs));
+      });
+      socket.on('pole:finished', function(d){
+        if (d && d.entryName === TEAM_NAME){
+          say('Pole terminada. Mejor vuelta, ' + speakTime(d.bestLapMs));
+          poleMyTurnEnd();
+        }
+        scheduleRefresh();
+      });
+      socket.on('pole:aborted', function(d){
+        if (poleUI.myTurnLive){ poleUI.running = false; poleUI.chronoMs = 0; poleUI.lapCount = 0; poleUI.bestMs = null; paintPole(); }
+      });
       socket.on('manga:resumed', function(){
         isPaused = false;
         // Al reanudar, `startTime` se desplaza por la duración de la pausa:
@@ -742,6 +901,7 @@
         scheduleRefresh();
       });
       socket.on('manga:cancelled', scheduleRefresh);
+      socket.on('tires:changed', scheduleRefresh);
     } catch(e){}
 
     setInterval(refresh, 5000);

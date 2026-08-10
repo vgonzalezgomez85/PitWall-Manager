@@ -68,6 +68,24 @@ const c = typeof counts !== 'undefined' ? counts : { drivers: 0, teams: 0, cars:
           <span class="vh-sec-line"></span>
         </button>
         <div class="vh-grid">
+          <% if (typeof activePoleRaces !== 'undefined' && activePoleRaces.length > 0) { %>
+          <a class="vh-card" href="/races/<%= activePoleRaces[0].id %>/pole/timing" style="--a:#f0404c;--a-bg:rgba(240,64,76,.13)">
+            <div class="vh-ico">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 3v18M6 4h11l-2 4 2 4H6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="vh-body">
+              <div class="vh-t">
+                <%= lang === 'es' ? 'Pole en directo' : 'Pole live' %>
+                <span class="vh-live"><span class="vh-live__d"></span><%= lang === 'es' ? 'en curso' : 'in progress' %></span>
+              </div>
+              <div class="vh-d"><%= lang === 'es' ? 'Sigue el cronometraje de la pole en directo.' : 'Follow the live pole timing.' %></div>
+            </div>
+            <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          </a>
+          <% } %>
+
           <a class="vh-card" href="/race-stats" style="--a:#22c55e;--a-bg:rgba(34,197,94,.12)">
             <div class="vh-ico">
               <svg viewBox="0 0 24 24" aria-hidden="true">

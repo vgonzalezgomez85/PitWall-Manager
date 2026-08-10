@@ -23,7 +23,11 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
 <div class="pole-broadcast pole-timing-fit">
   <div class="pole-bcast-wrap">
 
-    <a href="/races/<%= race.id %>" class="pole-back">← <%= t('race.back_to_list') %></a>
+    <% if (isGuestAccess) { %>
+      <a href="/race-stats" class="pole-back">← <%= lang === 'es' ? 'Estadísticas en vivo' : 'Live stats' %></a>
+    <% } else { %>
+      <a href="/races/<%= race.id %>" class="pole-back">← <%= t('race.back_to_list') %></a>
+    <% } %>
 
     <!-- ── Cabecera horizontal (título · meta · carril · progreso) ───── -->
     <div class="pole-topbar">
@@ -52,6 +56,7 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
       <div class="pole-bar"><div class="pole-bar-fill" style="width: <%= progressPct %>%"></div></div>
     </div>
 
+    <% if (!isGuestAccess) { %>
     <!-- ── Opción de organización: omitir el primer cruce (out-lap) ─────── -->
     <div class="pole-omit<%= poleLocked ? ' pole-omit--locked' : '' %>">
       <label class="pole-omit-switch" title="<%= poleLocked
@@ -78,6 +83,7 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
       <span class="pole-omit-text"><%= lang === 'es' ? 'Cambio automático de piloto' : 'Automatic pilot change' %></span>
       <span id="autoAdvanceState" class="pole-omit-state"></span>
     </div>
+    <% } %>
 
     </div><!-- /.pole-topbar -->
 
@@ -127,7 +133,8 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
           <span class="pole-finished-laps" id="js-final-laps"></span>
         </div>
 
-        <!-- Botones -->
+        <!-- Botones (solo operador; el invitado sigue el estado en modo lectura) -->
+        <% if (!isGuestAccess) { %>
         <div id="js-btn-idle" class="pole-btn-row" style="display:none">
           <button id="js-btn-start" class="pole-btn-start" onclick="startTiming()">
             <span class="pole-btn-tri">▶</span> <%= lang === 'es' ? 'Iniciar' : 'Start' %>
@@ -147,14 +154,13 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
             </button>
           </form>
         </div>
+        <% } %>
 
         <!-- Siguiente piloto (chip al pie) -->
-        <% if (next) { %>
-          <div class="pole-next-chip">
-            <span class="pole-next-chip-lbl">⏭ <%= lang === 'es' ? 'Siguiente' : 'Next' %></span>
-            <span class="pole-next-chip-name"><%= next.entity_name %></span>
-          </div>
-        <% } %>
+        <div class="pole-next-chip" id="js-next-chip" style="<%= next ? '' : 'display:none' %>">
+          <span class="pole-next-chip-lbl">⏭ <%= lang === 'es' ? 'Siguiente' : 'Next' %></span>
+          <span class="pole-next-chip-name" id="js-next-chip-name"><%= next ? next.entity_name : '' %></span>
+        </div>
 
       </section>
       <% } %>
@@ -165,24 +171,9 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
           <span class="pole-bcast-ico">▶</span>
           <%= lang === 'es' ? 'Orden de salida' : 'Start order' %>
         </div>
-        <div class="pole-bcast-list">
-          <% entries.forEach((e, i) => {
-            const isCurrent = i === session.current_idx;
-            const isDone    = i < session.current_idx;
-            const cls = isCurrent ? 'pole-bcast-row pole-bcast-row--now'
-                     : isDone    ? 'pole-bcast-row pole-bcast-row--done'
-                     :             'pole-bcast-row';
-          %>
-            <div class="<%= cls %>">
-              <span class="pole-bcast-pos"><%= i + 1 %></span>
-              <span class="pole-bcast-name"><%= e.entity_name %></span>
-              <% if (isCurrent) { %>
-                <span class="pole-bcast-tag pole-bcast-tag--now"><%= lang === 'es' ? '● En pista' : '● On track' %></span>
-              <% } else if (isDone) { %>
-                <span class="pole-bcast-tag pole-bcast-tag--done">✓ <%= lang === 'es' ? 'Hecho' : 'Done' %></span>
-              <% } %>
-            </div>
-          <% }) %>
+        <div class="pole-bcast-list" id="js-order">
+          <!-- populated by JS / renderOrder — así se mantiene al día sin recargar
+               cuando avanza el piloto actual (ver switchCurrent) -->
         </div>
       </section>
 
@@ -212,6 +203,7 @@ const RACE_ID      = '<%= race.id %>';
 const IS_RUNNING   = <%- isTimingRunning ? 'true' : 'false' %>;
 const DURATION_MS  = <%= durationMs %>;
 const LANG_ES      = '<%= lang %>' === 'es';
+const IS_GUEST     = <%- isGuestAccess ? 'true' : 'false' %>;
 let   poleBestMs   = <%- poleBestMs != null ? poleBestMs : 'null' %>; // tiempo a batir (ms)
 let   poleHolder   = <%- poleHolder ? JSON.stringify(poleHolder.entity_name) : 'null' %>;
 const CURRENT_NAME = <%- current ? JSON.stringify(current.entity_name) : 'null' %>;
@@ -322,6 +314,54 @@ function updateEntryTime(name, bestLapMs) {
     poleBestMs = bestLapMs;
     poleHolder = name;
   }
+  renderTower();
+}
+
+// ── Orden de salida ──────────────────────────────────────────────────────
+function renderOrder() {
+  const list = document.getElementById('js-order');
+  if (!list) return;
+  list.innerHTML = seedEntries.map((e, i) => {
+    const cls = e.isCurrent ? 'pole-bcast-row pole-bcast-row--now'
+              : e.isDone    ? 'pole-bcast-row pole-bcast-row--done'
+              :               'pole-bcast-row';
+    const tag = e.isCurrent
+      ? '<span class="pole-bcast-tag pole-bcast-tag--now">' + (LANG_ES ? '● En pista' : '● On track') + '</span>'
+      : e.isDone
+      ? '<span class="pole-bcast-tag pole-bcast-tag--done">✓ ' + (LANG_ES ? 'Hecho' : 'Done') + '</span>'
+      : '';
+    return '<div class="' + cls + '">'
+      + '<span class="pole-bcast-pos">' + (i + 1) + '</span>'
+      + '<span class="pole-bcast-name">' + e.name + '</span>'
+      + tag + '</div>';
+  }).join('');
+}
+
+// Cambia el piloto actual (avance de la sesión) SIN recargar: lo detectan los
+// espectadores (invitado, y en el futuro el cliente Lap) que se quedan en esta
+// misma página varios pilotos seguidos, cosa que antes no pasaba — solo la
+// veía el operador, que recargaba al pulsar "Siguiente piloto".
+let currentEntryName = CURRENT_NAME;
+function switchCurrent(name) {
+  if (!name || name === currentEntryName) return;
+  currentEntryName = name;
+  const idx = seedEntries.findIndex(e => e.name === name);
+  seedEntries.forEach((e, i) => {
+    e.isCurrent = i === idx;
+    e.isDone    = idx >= 0 ? i < idx : e.isDone;
+  });
+  const nameEl = document.getElementById('js-current-name');
+  if (nameEl) nameEl.textContent = name;
+  const next = idx >= 0 ? seedEntries[idx + 1] : null;
+  const chip = document.getElementById('js-next-chip');
+  const chipName = document.getElementById('js-next-chip-name');
+  if (chip) chip.style.display = next ? '' : 'none';
+  if (chipName) chipName.textContent = next ? next.name : '';
+  const bestEl = document.getElementById('js-best-val');
+  if (bestEl) bestEl.textContent = '—';   // nuevo piloto: aún sin vuelta
+  const list = document.getElementById('js-laps-list');
+  if (list) list.innerHTML = '';
+  renderOrder();
   renderTower();
 }
 
@@ -470,12 +510,16 @@ async function stopTiming() {
   }
 }
 
-const socket = io();
+const socket = io({ query: { view: 'pole' } });
 socket.on('race:semaphore',      () => showSemaphore());
 socket.on('race:semaphore_step', () => semaphoreStep());
 
-socket.on('pole:standby', () => { if (state !== 'standby') enterStandby(); });
-socket.on('pole:started', () => {
+socket.on('pole:standby', (data) => {
+  switchCurrent(data && data.entryName);
+  if (state !== 'standby') enterStandby();
+});
+socket.on('pole:started', (data) => {
+  switchCurrent(data && data.entryName);
   if (document.getElementById('semaphore-overlay')) semaphoreGo(null);
   if (state !== 'running') enterRunning();
 });
@@ -503,7 +547,7 @@ socket.on('pole:tick', ({ remainingMs, currentLapMs }) => {
 socket.on('pole:lap', ({ lapNumber, lapTimeMs, bestLapMs, improved }) => {
   const bestEl = document.getElementById('js-best-val');
   if (bestEl) bestEl.textContent = formatMs(bestLapMs);
-  if (improved && CURRENT_NAME) updateEntryTime(CURRENT_NAME, bestLapMs);
+  if (improved && currentEntryName) updateEntryTime(currentEntryName, bestLapMs);
   // Añadir fila de vuelta al historial (más reciente arriba)
   const list = document.getElementById('js-laps-list');
   if (list) {
@@ -525,10 +569,16 @@ socket.on('pole:finished', ({ entryName, bestLapMs, lapCount }) => {
 
 // ── Init ─────────────────────────────────────────────────────────────────
 renderTower();
+renderOrder();
 if (IS_RUNNING) {
   enterRunning();
 } else if (!CURRENT_NAME) {
   enterIdle();
+} else if (IS_GUEST) {
+  // El invitado no arma el cronometraje (esa llamada la bloquea el servidor
+  // por IP); se limita a reflejar el estado — los sockets lo corrigen en
+  // cuanto el operador (u otro espectador) lo ponga en marcha.
+  enterStandby();
 } else {
   enterStandby();
   startTiming();

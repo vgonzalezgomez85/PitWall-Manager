@@ -20,6 +20,7 @@ const Manga         = require('../models/Manga');
 const Tanda         = require('../models/Tanda');
 const Lap           = require('../models/Lap');
 const TireChange    = require('../models/TireChange');
+const PoleSession   = require('../models/PoleSession');
 const TimingService = require('../services/TimingService');
 const db            = require('../config/database');
 const {
@@ -184,9 +185,23 @@ class LiveStatsController {
   static index(req, res) {
     const lang = req.session?.lang || 'es';
     const activeRaces = Race.findAll().filter(r => r.status === 'active');
-    if (activeRaces.length === 1) return res.redirect(`/races/${activeRaces[0].id}/live-stats`);
+
+    // Carreras con la POLE en curso: la carrera en sí aún no está "active"
+    // (eso arranca con la primera manga, después de la pole), pero un
+    // invitado también quiere poder seguirla en directo.
+    const poleRaces = Race.findAll()
+      .filter(r => r.has_pole && r.status !== 'active' && r.status !== 'finished')
+      .filter(r => {
+        const s = PoleSession.findByRace(r.id);
+        return s && s.status === 'in_progress';
+      });
+
+    if (activeRaces.length === 1 && poleRaces.length === 0) return res.redirect(`/races/${activeRaces[0].id}/live-stats`);
+    if (poleRaces.length === 1 && activeRaces.length === 0) return res.redirect(`/races/${poleRaces[0].id}/pole/timing`);
+
     res.render('live-stats/index', {
-      t: req.t, lang, races: activeRaces, noLive: activeRaces.length === 0,
+      t: req.t, lang, races: activeRaces, poleRaces,
+      noLive: activeRaces.length === 0 && poleRaces.length === 0,
     });
   }
 

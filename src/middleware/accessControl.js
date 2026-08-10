@@ -92,6 +92,11 @@ function isPublicPath(p) {
       || /^\/races\/\d+\/live-stats(\.json)?$/.test(p)
       // Clasificación Le Mans (seguimiento en vivo de la carrera): solo lectura.
       || /^\/races\/\d+\/lemans$/.test(p)
+      // Pantalla en directo de la pole (cronometraje): solo lectura para
+      // invitado — la vista oculta sus propios botones de control (arrancar,
+      // parar, siguiente piloto) con `isGuestAccess`; los POST de control
+      // siguen bloqueados por IP igualmente (mismo patrón que /control/shifts).
+      || /^\/races\/\d+\/pole\/timing$/.test(p)
       || p === '/results' || /^\/results\/\d+$/.test(p)
       // Cliente web "Lap" (timing del equipo desde el móvil). El acceso a los
       // datos de timing lo gatea el PIN por equipo; estas rutas deben ser
@@ -195,6 +200,7 @@ function isSocketAllowed(socket) {
   const ua = socket.handshake.headers['user-agent'] || '';
   if (q.view === 'livestats') return true;   // espectador de estadísticas en vivo (público)
   if (q.view === 'lap') return true;         // cliente web "Lap" del equipo (público)
+  if (q.view === 'pole') return true;        // espectador de la pole en directo (público)
   // app móvil: se identifica (client=mobile) o NO es un navegador (sin "Mozilla")
   return q.client === 'mobile' || !/mozilla/i.test(ua);
 }

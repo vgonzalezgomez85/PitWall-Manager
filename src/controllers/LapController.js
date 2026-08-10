@@ -28,6 +28,9 @@
 const Race          = require('../models/Race');
 const Team          = require('../models/Team');
 const Lap           = require('../models/Lap');
+const TireChange        = require('../models/TireChange');
+const PoleSession       = require('../models/PoleSession');
+const PoleTimingService = require('../services/PoleTimingService');
 const db            = require('../config/database');
 
 // ── Caché del paquete POR CARRERA ────────────────────────────────────────────
@@ -83,6 +86,7 @@ const LapController = {
 
   // GET /lap — elegir carrera (equipos, activas o pendientes)
   index(req, res) {
+    const lang = req.session?.lang || 'es';
     const rows = db.prepare(`
       SELECT id, name, status, lanes_count, created_at, started_at
       FROM races
@@ -93,7 +97,7 @@ const LapController = {
       id: r.id, name: r.name, status: r.status,
       teamsCount: db.prepare('SELECT COUNT(*) AS c FROM teams WHERE race_id = ?').get(r.id).c,
     }));
-    res.render('lap/index', { races, layout: false });
+    res.render('lap/index', { t: req.t, lang, races });
   },
 
   // GET /lap/:raceId — elegir equipo + PIN
@@ -318,6 +322,69 @@ const LapController = {
       timing,
       live,
       projection,
+      poleResult:  LapController._buildPoleResult(race, team),
+      poleLive:    LapController._buildPoleLive(race, team),
+      tireControl: LapController._buildTireControl(race, team),
+    };
+  },
+
+  // Control de neumáticos REAL de la carrera (organización, kiosco) para este
+  // equipo — null si la carrera no lo lleva (tire_pairs_per_team=0). Es la
+  // fuente de verdad: cuando existe, sustituye a la configuración manual del
+  // widget de estrategia del propio cliente Lap (que sirve de respaldo si no
+  // hay control real). Mismo id canónico que el resto (menor id por nombre).
+  _buildTireControl(race, team) {
+    const summary = TireChange.summaryByRace(race.id);
+    if (!summary.allowance) return null;
+    const row = summary.teams.find(t => t.name === team.name);
+    if (!row) return null;
+    return { allowance: summary.allowance, used: row.used, available: row.available };
+  },
+
+  // Resultado de la pole (si la carrera la tuvo y ya terminó) que le tocó a
+  // este equipo. Los pole_entries no llevan team_id — se empareja por NOMBRE,
+  // igual que el resto del cliente Lap.
+  _buildPoleResult(race, team) {
+    if (!race.has_pole) return null;
+    const session = PoleSession.findByRace(race.id);
+    if (!session || session.status !== 'done') return null;
+    const sorted = PoleSession.getEntriesSorted(session.id);
+    const idx = sorted.findIndex(e => e.entity_name === team.name);
+    if (idx < 0) return null;
+    return { position: idx + 1, totalEntries: sorted.length, lapTimeMs: sorted[idx].lap_time_ms };
+  },
+
+  // Estado EN VIVO de la pole (mientras se está corriendo, antes de asignar
+  // carriles): el equipo "maestro" ya existe desde que se creó la carrera —
+  // RaceController.create los crea con su PIN de Lap por adelantado, sin
+  // esperar a que la pole termine — así que el equipo puede entrar a Lap y
+  // seguir su turno mientras la pole está en marcha. El resto de la sesión se
+  // sigue por los mismos eventos de socket que pinta pole-timing.ejs
+  // (pole:standby/started/tick/lap/finished), que ya son un broadcast global.
+  _buildPoleLive(race, team) {
+    if (!race.has_pole) return null;
+    const session = PoleSession.findByRace(race.id);
+    if (!session || session.status !== 'in_progress') return null;
+    const entries = PoleSession.getEntriesOrdered(session.id);
+    const myIdx = entries.findIndex(e => e.entity_name === team.name);
+    if (myIdx < 0) return null;
+    const current = entries[session.current_idx] || null;
+    const myTurn  = !!current && current.entity_name === team.name;
+    const standings = PoleSession.getEntriesSorted(session.id)
+      .filter(e => e.lap_time_ms != null)
+      .map((e, i) => ({ name: e.entity_name, position: i + 1, lapTimeMs: e.lap_time_ms }));
+    return {
+      myTurn,
+      myPosition:    myIdx + 1,
+      totalEntries:  entries.length,
+      currentName:   current ? current.entity_name : null,
+      myLapTimeMs:   entries[myIdx].lap_time_ms,
+      // Para que un refresco de página A MITAD del propio intento (F5, o
+      // simplemente abrir el panel un poco tarde) arranque ya en el estado
+      // correcto en vez de esperar al próximo pole:standby/started — esos
+      // eventos ya pasaron y no se repiten.
+      myTurnRunning: myTurn && PoleTimingService.isRunning,
+      standings,
     };
   },
 

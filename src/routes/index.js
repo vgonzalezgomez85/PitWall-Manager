@@ -52,10 +52,18 @@ router.get('/', (req, res) => {
   const Category      = require('../models/Category');
   const Circuit       = require('../models/Circuit');
   const SerialService = require('../services/SerialService');
+  const PoleSession   = require('../models/PoleSession');
 
   // Contadores ligeros (rápidos sobre tablas pequeñas) + race en curso
   const allRaces       = Race.findAll();
   const activeRaceCount = allRaces.filter(r => r.status === 'active').length;
+
+  // Carreras con la POLE en curso: la carrera en sí aún no está "active" (eso
+  // arranca con la primera manga, después de la pole) pero ya se puede seguir
+  // en directo — mismo criterio que LiveStatsController.index.
+  const activePoleRaces = allRaces
+    .filter(r => r.has_pole && r.status !== 'active' && r.status !== 'finished')
+    .filter(r => { const s = PoleSession.findByRace(r.id); return s && s.status === 'in_progress'; });
   const counts = {
     drivers:    DriverProfile.findAll().length,
     teams:      TeamCatalog.findAll().length,
@@ -71,7 +79,7 @@ router.get('/', (req, res) => {
   const serverIps  = net.serverIPs(Settings.get('server_bind_iface', ''));
   const serverPort = parseInt(process.env.PORT || '3000', 10);
 
-  res.render('home', { t: req.t, counts, activeRaceCount, serial, serverIps, serverPort });
+  res.render('home', { t: req.t, counts, activeRaceCount, activePoleRaces, serial, serverIps, serverPort });
 });
 
 // ── EULA ──────────────────────────────────────────────────────────────────────

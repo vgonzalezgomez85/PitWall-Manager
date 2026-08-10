@@ -13,6 +13,20 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.25.0] — 2026-08-10
+
+### Añadido
+- **Los invitados ya pueden seguir la pole en directo.** El tablero de cronometraje de pole (antes solo visible para el operador) es ahora accesible sin restricción de IP, en modo solo lectura: se ocultan los controles (iniciar/parar/siguiente) y se ve en tiempo real quién está en pista, el orden de salida y la clasificación provisional. Accesible desde «Estadísticas en vivo» y con una tarjeta nueva en la home de invitado cuando hay una pole en marcha.
+- **PitWall Lap funciona durante la propia pole, no solo tras terminarla.** Los equipos (con su PIN) se crean ya al confirmar el asistente de carrera, en vez de esperar a asignar los carriles al final de la pole. Cada equipo ve en su panel si le toca ahora, un cronómetro en vivo de su intento, sus vueltas y su mejor tiempo, con la voz cantando cada vuelta igual que en carrera; al terminar la pole, el panel pasa solo a mostrar su resultado (posición y tiempo).
+
+### Corregido
+- **La estrategia de neumáticos de Lap podía mostrar un número de juegos disparatado.** El widget usaba un contador local del propio móvil (4 juegos por defecto) sin relación con la dotación configurada en la carrera ni con las entregas reales registradas por la organización. Ahora, si la carrera lleva control de neumáticos, usa siempre ese dato real (y bloquea la configuración manual, que queda solo de respaldo para las carreras sin control).
+- **La pantalla de pole podía quedarse con el nombre del piloto anterior.** Estaba pensada para que solo la viera el operador, que siempre recargaba la página al pasar de piloto; con un espectador que se queda varios pilotos seguidos (el tablero nuevo de invitados, o Lap), el piloto en pista y el orden de salida se quedaban congelados en el primero. Se corrige actualizándose por socket sin recargar.
+
+### Mejorado
+- **La vista de Lap donde eliges la carrera** usa ahora el mismo estilo del resto de la web (cabecera, botón de volver) en vez de su propia página independiente.
+- **«Cambiar equipo» en el panel de Lap** se ve como un botón, no como un enlace de texto suelto.
+
 ## [1.24.1] — 2026-08-10
 
 ### Mejorado

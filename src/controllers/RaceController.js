@@ -349,14 +349,26 @@ class RaceController {
     if (wizard.has_pole && wizard.participants?.length) {
       const sessionId = PoleSession.create(raceId);
       const entityType = wizard.format === 'team' ? 'team' : 'driver';
-      wizard.participants.forEach(p => {
+      wizard.participants.forEach((p, idx) => {
         PoleSession.addEntry({
           poleSessionId: sessionId,
           entityType,
           entityName:    p.name,
           membersJson:   p.members?.length ? JSON.stringify(p.members) : null
         });
+
+        // Equipos "maestros" SIN tanda (tanda_id null): existen ya desde antes
+        // de correr la pole para que el cliente Lap (PIN por equipo) funcione
+        // durante la propia pole. PoleController.assignLanes reutiliza esta
+        // misma fila (por nombre) al crear la tanda, en vez de duplicarla.
+        if (entityType === 'team') {
+          Team.create({
+            race_id: raceId, tanda_id: null,
+            name: p.name, lane: 0, color: LANE_COLORS[idx % LANE_COLORS.length],
+          });
+        }
       });
+      if (entityType === 'team') Team.ensureLapPins(raceId);
     }
 
     req.session.wizard = null;

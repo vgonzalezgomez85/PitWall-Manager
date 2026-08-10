@@ -113,7 +113,11 @@ input.pin{letter-spacing:.4em;text-align:center;font-size:1.6rem;font-weight:700
 
 .footnote{color:var(--muted);font-size:.72rem;text-align:center;margin:18px 0 8px}
 .toprow{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.toprow a{font-size:.85rem;color:var(--muted)}
+.toprow a.switch-team-btn{
+  background:var(--card);color:var(--text);border:1px solid var(--border);
+  border-radius:999px;padding:6px 12px;font-size:.8rem;font-weight:600;
+}
+.toprow a.switch-team-btn:active{filter:brightness(.92)}
 
 /* hoja de PINs (admin) */
 table.pins{width:100%;border-collapse:collapse;margin-top:10px}

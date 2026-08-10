@@ -60,6 +60,19 @@ class Team {
     db.prepare('UPDATE teams SET lane = ? WHERE id = ?').run(lane, id);
   }
 
+  // ── Equipo "maestro" pre-pole (sin tanda todavía) ───────────────────────────
+  // La pole crea estos equipos ANTES de correrse (con su PIN de Lap ya listo)
+  // para que el cliente Lap funcione durante la propia pole. Al asignar
+  // carriles, assignLanes reutiliza esta misma fila por nombre en vez de
+  // duplicarla — así el equipo conserva su id (y su PIN) de principio a fin.
+  static findUnassignedByName(raceId, name) {
+    return db.prepare('SELECT * FROM teams WHERE race_id = ? AND name = ? AND tanda_id IS NULL').get(raceId, name);
+  }
+
+  static assignToTanda(id, tandaId, lane, color) {
+    db.prepare('UPDATE teams SET tanda_id = ?, lane = ?, color = ? WHERE id = ?').run(tandaId, lane, color, id);
+  }
+
   static findById(id) {
     return db.prepare('SELECT * FROM teams WHERE id = ?').get(id);
   }

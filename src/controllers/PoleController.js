@@ -350,10 +350,18 @@ class PoleController {
       });
     } else {
       orderedEntries.forEach((entry, idx) => {
-        const teamId = Team.create({
-          race_id: race.id, tanda_id: tandaId,
-          name: entry.entity_name, lane: 0, color: LANE_COLORS[idx % LANE_COLORS.length]
-        });
+        const color    = LANE_COLORS[idx % LANE_COLORS.length];
+        // Reutiliza el equipo "maestro" creado al confirmar la pole (mismo id
+        // → el PIN de Lap ya repartido sigue valiendo). Si no existe (carreras
+        // creadas antes de este cambio), se crea aquí como antes.
+        const existing = Team.findUnassignedByName(race.id, entry.entity_name);
+        let teamId;
+        if (existing) {
+          teamId = existing.id;
+          Team.assignToTanda(teamId, tandaId, 0, color);
+        } else {
+          teamId = Team.create({ race_id: race.id, tanda_id: tandaId, name: entry.entity_name, lane: 0, color });
+        }
         let members = [];
         try { members = JSON.parse(entry.members_json || '[]'); } catch {}
         members.forEach(mName => {
