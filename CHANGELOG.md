@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.24.1] — 2026-08-10
+
+### Mejorado
+- **Línea separadora entre filas en las vistas «Cuadrícula compacta» y «Tarjetas con detalles» del directo.** Ahora se distingue de un vistazo dónde termina una fila de tarjetas y empieza la siguiente, útil con muchos carriles en pantalla.
+
 ## [1.24.0] — 2026-08-10
 
 ### Añadido

@@ -764,21 +764,20 @@ body.resizing-sidebar * { cursor: col-resize !important; }
   z-index: 2;
 }
 
-/* Línea separadora entre filas de tarjetas (V2/V3). Cada tarjeta que no está
-   en la primera fila pinta su propio segmento justo por dentro del borde
-   superior; al compartir todas la misma altura de fila (fijada por JS en
-   fitVerticalGrid), los segmentos quedan alineados y se leen como una única
-   línea de un extremo a otro de la rejilla. Va DENTRO de la caja (top: 0, no
-   negativo) porque la tarjeta tiene overflow:hidden y recortaría cualquier
-   cosa que sobresaliera por encima. */
-.live-lanes--vertical .lane-card--row-divider::before {
-  content: '';
+/* Línea separadora entre filas de tarjetas (V2/V3): un div suelto por cada
+   hueco entre filas, hermano de las tarjetas dentro de #lanesGrid (ver
+   renderRowDividers en live.js). NO va pegada al borde de una tarjeta —
+   las tarjetas tienen overflow:hidden y una línea ahí se recortaría o se
+   confundiría con su propio borde de color — sino centrada en el gap real
+   entre filas, con su `top` calculado a mano a partir de la altura de fila
+   fija que ya usa fitVerticalGrid. */
+.live-lanes--vertical { position: relative; }
+.live-lanes--vertical .lv-row-divider {
   position: absolute;
   left: 0;
   right: 0;
-  top: 0;
-  height: 2px;
-  background: #30363d;
+  height: 4px;
+  background: #ffffff;
   pointer-events: none;
   z-index: 1;
 }
