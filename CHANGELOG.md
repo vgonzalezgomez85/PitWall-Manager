@@ -13,6 +13,14 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.25.1] — 2026-08-10
+
+### Añadido
+- **Botón «Pines Lap» en la ficha de la carrera.** Antes solo se llegaba a la hoja de PINs dando un rodeo por `/lap/<id>` → enlace de organización; ahora hay un acceso directo junto a Turnos/Neumáticos/Sucesos (solo en carreras por equipos).
+
+### Mejorado
+- **La hoja de PINs se ve entera sin hacer scroll.** Con carreras grandes (24 equipos o más) se repartía en una sola columna y se salía de la pantalla; ahora se ajusta sola al alto de la ventana, repartiendo los equipos en tantas columnas como haga falta.
+
 ## [1.25.0] — 2026-08-10
 
 ### Añadido

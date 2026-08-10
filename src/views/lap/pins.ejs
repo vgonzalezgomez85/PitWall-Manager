@@ -1,10 +1,10 @@
 <%- include('../partials/header', { pageTitle: 'PINs Lap — ' + race.name }) %>
 <link rel="stylesheet" href="/css/lap.css">
 
-<div class="wrap">
-  <a href="/lap/<%= race.id %>" class="vt-back-link" style="margin:0 0 10px">
+<div class="wrap wrap--pins">
+  <a href="/races/<%= race.id %>" class="vt-back-link" style="margin:0 0 10px">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-    Acceso equipos
+    Volver a la carrera
   </a>
 
   <div class="brand"><span class="dot"></span> PitWall <small>Lap · PINs</small></div>
@@ -13,32 +13,62 @@
   <% if (!isEndurance) { %>
     <div class="err">Esta carrera no es por equipos: el cliente Lap solo aplica a carreras de resistencia.</div>
   <% } else { %>
-    <p class="sub">Reparte a cada equipo su PIN. Para entrar abren esta dirección en el móvil:</p>
-    <div class="url" id="joinUrl">/lap/<%= race.id %></div>
-
-    <table class="pins">
-      <thead><tr><th>Equipo</th><th>PIN</th><th></th></tr></thead>
-      <tbody>
-        <% teams.forEach(t => { %>
-          <tr>
-            <td><span class="swatch" style="display:inline-block;background:<%= t.color || '#8b949e' %>;vertical-align:middle;margin-right:8px"></span><%= t.name %></td>
-            <td class="pin"><%= t.lap_pin || '—' %></td>
-            <td>
-              <form method="POST" action="/lap/<%= race.id %>/pins/<%= t.id %>/regenerate" style="margin:0">
-                <button class="regen" type="submit">↻ Nuevo</button>
-              </form>
-            </td>
-          </tr>
-        <% }) %>
-      </tbody>
-    </table>
+    <div class="pins-grid" id="pinsGrid">
+      <% teams.forEach(t => { %>
+        <div class="pin-row">
+          <span class="swatch" style="background:<%= t.color || '#8b949e' %>"></span>
+          <span class="pin-name"><%= t.name %></span>
+          <span class="pin-code"><%= t.lap_pin || '—' %></span>
+          <form method="POST" action="/lap/<%= race.id %>/pins/<%= t.id %>/regenerate" class="pin-form">
+            <button class="pin-regen" type="submit" title="Nuevo PIN">↻</button>
+          </form>
+        </div>
+      <% }) %>
+    </div>
   <% } %>
 </div>
 
 <script>
-  // Mostrar la URL completa con el host/IP por el que entró el organizador.
-  var el = document.getElementById('joinUrl');
-  if (el) el.textContent = window.location.origin + '/lap/<%= race.id %>';
+  // La rejilla se ajusta a lo que quede de ventana (multi-columna, sin
+  // scroll): se le fija la altura disponible y CSS reparte los equipos en
+  // tantas columnas como haga falta (column-fill: auto los va llenando de
+  // arriba abajo, columna a columna).
+  function fitPinsGrid(){
+    var grid = document.getElementById('pinsGrid');
+    if (!grid) return;
+    var top = grid.getBoundingClientRect().top;
+    var footer = document.querySelector('.footer');
+    var footerH = footer ? footer.getBoundingClientRect().height : 0;
+    var h = window.innerHeight - top - footerH - 16;
+    grid.style.height = Math.max(240, h) + 'px';
+  }
+  fitPinsGrid();
+  window.addEventListener('resize', fitPinsGrid);
 </script>
+
+<style>
+  .wrap--pins { max-width: none; padding: 16px 24px; }
+  .pins-grid {
+    column-width: 260px; column-gap: .6rem; column-fill: auto;
+    overflow: hidden; margin-top: 10px;
+  }
+  .pin-row {
+    display: flex; align-items: center; gap: 10px;
+    break-inside: avoid; padding: 9px 12px; margin: 0 0 8px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  }
+  .pin-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .pin-code { font-family: 'IBM Plex Mono', monospace; font-weight: 700; letter-spacing: .12em; font-size: 1.05rem; color: var(--accent); }
+  .pin-form { margin: 0; }
+  .pin-regen {
+    background: transparent; color: var(--muted); border: 1px solid var(--border);
+    border-radius: 8px; padding: 4px 8px; font-size: .95rem; cursor: pointer; line-height: 1;
+  }
+  .pin-regen:active { filter: brightness(1.3); }
+  @media (max-width: 640px) {
+    .wrap--pins { padding: 16px; }
+    .pins-grid { column-width: 100%; height: auto !important; overflow: visible; }
+  }
+</style>
 
 <%- include('../partials/footer') %>
