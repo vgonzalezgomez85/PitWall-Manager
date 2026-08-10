@@ -383,10 +383,10 @@ function announceBonjour(port) {
   try {
     const { Bonjour } = require('bonjour-service');
     const bonjour = new Bonjour();
-    // OJO: el `type` se mantiene como 'voltrace-manager' a propósito — es el
-    // identificador de servicio que busca la app Android Infolap para
-    // descubrir el servidor; cambiarlo rompería esa integración.
-    bonjour.publish({ name: 'PitWall', type: 'voltrace-manager', port });
+    // El `type` era 'voltrace-manager' (legado de la marca antigua). Se
+    // renombró a 'pitwall-manager' — rompe a propósito el descubrimiento
+    // de la app Android "Infolap" desactualizada; usar PitWall Lap.
+    bonjour.publish({ name: 'PitWall', type: 'pitwall-manager', port });
     console.log(`  [mDNS] PitWall announced on local network (port ${port})\n`);
     process.on('exit', () => bonjour.destroy());
   } catch (e) {

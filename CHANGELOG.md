@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.25.4] — 2026-08-10
+
+### Corregido
+- **El anuncio mDNS ya no dice "voltrace-manager".** El `type` del servicio Bonjour pasa de `'voltrace-manager'` a `'pitwall-manager'` (decisión explícita: se rompe a propósito el descubrimiento de la app Android "Infolap" desactualizada que dependía del nombre viejo; el cliente soportado hoy es PitWall Lap). Cambio coordinado con el cliente móvil, que ahora busca `_pitwall-manager._tcp`.
+
 ## [1.25.3] — 2026-08-10
 
 ### Corregido
