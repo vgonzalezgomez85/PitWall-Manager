@@ -96,9 +96,6 @@ function stepState(idx) {
           <button onclick="location.href='/races/<%= race.id %>/edit'" type="button">
             <span>✏️</span> <%= lang === 'es' ? 'Editar carrera' : 'Edit race' %>
           </button>
-          <button onclick="location.href='/races/<%= race.id %>/duplicate'" type="button">
-            <span>📋</span> <%= lang === 'es' ? 'Duplicar' : 'Duplicate' %>
-          </button>
           <div class="rs-menu__sep"></div>
           <form action="/races/<%= race.id %>?_method=DELETE" method="POST"
                 onsubmit="return confirm('<%= t('race.delete_confirm') %>')" style="margin:0">
