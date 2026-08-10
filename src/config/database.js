@@ -19,8 +19,8 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs   = require('fs');
 
-// In production (Electron), SLOTIME_DATA is set to app.getPath('userData')
-const DATA_DIR = process.env.SLOTIME_DATA || path.join(__dirname, '../../database');
+// In production (Electron), PITWALL_DATA is set to app.getPath('userData')
+const DATA_DIR = process.env.PITWALL_DATA || path.join(__dirname, '../../database');
 const DB_PATH  = path.join(DATA_DIR, 'pitwall.db');
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
@@ -45,7 +45,7 @@ const db = new Database(DB_PATH);
 // ── PRAGMAs de rendimiento ────────────────────────────────────────────────
 // WAL + synchronous=NORMAL es la combinación recomendada para apps de
 // escritura concurrente moderada y lecturas frecuentes (caso típico
-// SloTime: writes ~1-5/s desde TimingService, reads ~100s/s desde clientes).
+// PitWall: writes ~1-5/s desde TimingService, reads ~100s/s desde clientes).
 db.pragma('journal_mode = WAL');
 db.pragma('synchronous = NORMAL');     // antes FULL — same WAL safety, ~2-3× faster writes
 db.pragma('temp_store  = MEMORY');     // sorts/temp en RAM

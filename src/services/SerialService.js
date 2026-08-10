@@ -416,10 +416,10 @@ class CircuitConnection {
       this._rawLog.push({ byte: b, ts: now });
       if (this._rawLog.length > 50000) this._rawLog.shift();
     }
-    if (process.env.SLOTIME_RAW_DUMP) {
+    if (process.env.PITWALL_RAW_DUMP) {
       try {
         require('fs').appendFileSync(
-          process.env.SLOTIME_RAW_DUMP,
+          process.env.PITWALL_RAW_DUMP,
           Array.from(chunk).map(b => b.toString(16).padStart(2,'0')).join(' ') + ` @${now.toFixed(2)}\n`
         );
       } catch {}

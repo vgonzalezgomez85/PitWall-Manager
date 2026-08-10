@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-// Conecta al socket.io de SloTime como cliente y muestra el primer
+// Conecta al socket.io de PitWall como cliente y muestra el primer
 // serial:status que llega tras el handshake.
 const { io } = require('socket.io-client');
 const sock = io('http://localhost:3000', { transports: ['websocket'] });

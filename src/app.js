@@ -285,7 +285,7 @@ app.use(express.json({ limit: '8mb' }));
 app.use(methodOverride('_method'));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'slotime-dev-secret',
+  secret: process.env.SESSION_SECRET || 'pitwall-dev-secret',
   resave: false,
   saveUninitialized: true,
   cookie: { secure: false }

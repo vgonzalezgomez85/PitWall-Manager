@@ -2086,7 +2086,7 @@ class SessionController {
     };
 
     const wb = new ExcelJS.Workbook();
-    wb.creator = 'SloTime';
+    wb.creator = 'PitWall';
     wb.created = new Date();
     const ws = wb.addWorksheet(isEs ? 'Puntos' : 'Points');
     ws.columns = [{ width: 5 }, { width: 30 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 10 }, { width: 12 }];

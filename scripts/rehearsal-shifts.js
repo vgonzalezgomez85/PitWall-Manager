@@ -28,7 +28,7 @@
 //   2) arrancar el servidor apuntando a esa BD
 //   3) node scripts/rehearsal-shifts.js            ← el ensayo
 //
-// Variables: SLOTIME_DATA (BD), PW (url), EMUS (puertos de los emuladores).
+// Variables: PITWALL_DATA (BD), PW (url), EMUS (puertos de los emuladores).
 
 const path = require('node:path');
 
@@ -60,7 +60,7 @@ function seed() {
   const db = require('../src/config/database');
   const Settings = require('../src/models/Settings');
 
-  console.log(`BD: ${process.env.SLOTIME_DATA}`);
+  console.log(`BD: ${process.env.PITWALL_DATA}`);
   for (const t of ['driver_shifts', 'laps', 'manga_lanes', 'drivers', 'teams', 'mangas', 'tandas',
                    'races', 'teams_catalog_members', 'teams_catalog', 'driver_profiles']) {
     try { db.prepare(`DELETE FROM ${t}`).run(); } catch {}
@@ -116,7 +116,7 @@ function seed() {
 // ── Lecturas ───────────────────────────────────────────────────────────────
 function abrirBd() {
   const Database = require('better-sqlite3');
-  return new Database(path.join(process.env.SLOTIME_DATA, 'pitwall.db'), { readonly: true });
+  return new Database(path.join(process.env.PITWALL_DATA, 'pitwall.db'), { readonly: true });
 }
 const turnos = (db, mangaId) =>
   db.prepare('SELECT * FROM driver_shifts WHERE manga_id = ? ORDER BY id').all(mangaId);
@@ -354,6 +354,6 @@ async function ensayo() {
   process.exit(fallos === 0 ? 0 : 1);
 }
 
-if (!process.env.SLOTIME_DATA) { console.error('Define SLOTIME_DATA (BD del ensayo).'); process.exit(1); }
+if (!process.env.PITWALL_DATA) { console.error('Define PITWALL_DATA (BD del ensayo).'); process.exit(1); }
 if (process.argv.includes('--seed')) seed();
 else ensayo().catch(e => { console.error('\n✖ El ensayo se rompió:', e.stack); process.exit(1); });

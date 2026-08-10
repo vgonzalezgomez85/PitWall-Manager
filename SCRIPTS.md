@@ -1,6 +1,6 @@
-# Scripts de Arranque — SloTime
+# Scripts de Arranque — PitWall
 
-Scripts para facilitar el desarrollo y testing con SloTime + Emulador DS-300.
+Scripts para facilitar el desarrollo y testing con PitWall + Emulador DS-300.
 
 ## Requerimientos
 
@@ -10,14 +10,14 @@ Scripts para facilitar el desarrollo y testing con SloTime + Emulador DS-300.
 
 ## Scripts
 
-### 1. `start-server.sh` — Arrancar SloTime Server
+### 1. `start-server.sh` — Arrancar PitWall Server
 
 ```bash
 ./start-server.sh
 ```
 
 **¿Qué hace?**
-- Arranca el servidor Express de SloTime en `http://localhost:3000`
+- Arranca el servidor Express de PitWall en `http://localhost:3000`
 - Abre la aplicación web en el navegador automáticamente
 
 **Logs:**
@@ -47,7 +47,7 @@ Scripts para facilitar el desarrollo y testing con SloTime + Emulador DS-300.
 [Emulador 1] Creando puertos virtuales...
 ✓ Puertos creados:
   Emulador: /dev/ttys000
-  SloTime:  /dev/ttys003
+  PitWall:  /dev/ttys003
 
 [Emulador 1] Arrancando en puerto HTTP 3100...
 [Emulador 1] Conectando puerto virtual...
@@ -56,7 +56,7 @@ Scripts para facilitar el desarrollo y testing con SloTime + Emulador DS-300.
 [Emulador 2] Creando puertos virtuales...
 ✓ Puertos creados:
   Emulador: /dev/ttys004
-  SloTime:  /dev/ttys005
+  PitWall:  /dev/ttys005
 
 [Emulador 2] Arrancando en puerto HTTP 3101...
 ✓ Emulador 2 listo en http://localhost:3101
@@ -79,7 +79,7 @@ Emuladores disponibles:
 ### Setup Inicial (terminal 1)
 
 ```bash
-cd ~/SloTime
+cd ~/PitWall
 ./start-emulators.sh
 # Responder: 2 (por ejemplo, para 2 circuitos)
 ```
@@ -87,7 +87,7 @@ cd ~/SloTime
 ### Arrancar servidor (terminal 2)
 
 ```bash
-cd ~/SloTime
+cd ~/PitWall
 ./start-server.sh
 ```
 
@@ -96,9 +96,9 @@ cd ~/SloTime
 1. **Abre en el navegador:**
    - Emulador 1: `http://localhost:3100`
    - Emulador 2: `http://localhost:3101`
-   - SloTime: `http://localhost:3000`
+   - PitWall: `http://localhost:3000`
 
-2. **Configura SloTime** (primera vez):
+2. **Configura PitWall** (primera vez):
    - Ve a **Settings → Hardware**
    - Modo: `Modo Manual (Serial)`
    - Añade circuitos con los puertos que muestra el script:
@@ -107,7 +107,7 @@ cd ~/SloTime
 
 3. **Inicia una carrera:**
    - En el emulador, presiona **GO**
-   - Los datos aparecerán en tiempo real en SloTime
+   - Los datos aparecerán en tiempo real en PitWall
 
 ---
 
@@ -119,7 +119,7 @@ En la terminal donde corre `start-emulators.sh`:
 Ctrl+C
 ```
 
-### Detener servidor SloTime
+### Detener servidor PitWall
 En la terminal donde corre `start-server.sh`:
 ```
 Ctrl+C
@@ -152,7 +152,7 @@ lsof -i :3000
 kill -9 <PID>
 ```
 
-### Emulador no se conecta a SloTime
+### Emulador no se conecta a PitWall
 - Verifica que `socat` está corriendo
 - Comprueba que los puertos en Settings coinciden
 - Reinicia ambos procesos

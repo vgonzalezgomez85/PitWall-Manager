@@ -48,7 +48,7 @@ const COMMON_PATHS = [
 // Binario gestionado por PitWall: si el club pulsa "Instalar cloudflared", se
 // descarga el release oficial a la carpeta de datos y se usa desde ahí.
 function managedDir() {
-  const base = process.env.SLOTIME_DATA || path.join(__dirname, '../../database');
+  const base = process.env.PITWALL_DATA || path.join(__dirname, '../../database');
   return path.join(base, 'bin');
 }
 function managedPath() {

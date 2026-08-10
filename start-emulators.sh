@@ -63,7 +63,7 @@ launch_emulator() {
 
   echo -e "${GREEN}✓ Puertos creados:${NC}"
   echo -e "  Emulador: ${BLUE}$pty1${NC}"
-  echo -e "  SloTime:  ${BLUE}$pty2${NC}"
+  echo -e "  PitWall:  ${BLUE}$pty2${NC}"
   echo ""
 
   echo -e "${YELLOW}[Emulador $idx]${NC} Arrancando en puerto HTTP ${BLUE}$http_port${NC}..."
@@ -128,10 +128,10 @@ echo ""
 
 echo -e "${YELLOW}Próximos pasos:${NC}"
 echo "1. Abre los emuladores en el navegador"
-echo "2. En otra terminal, arranca el servidor SloTime:"
+echo "2. En otra terminal, arranca el servidor PitWall:"
 echo -e "   ${BLUE}./start-server.sh${NC}"
 echo ""
-echo "3. Configura los puertos en SloTime → Settings → Hardware:"
+echo "3. Configura los puertos en PitWall → Settings → Hardware:"
 for info in "${EMULATOR_INFO[@]}"; do
   IFS='|' read -r idx port pty1 pty2 <<< "$info"
   echo -e "   Circuito $idx: ${BLUE}$pty2${NC}"

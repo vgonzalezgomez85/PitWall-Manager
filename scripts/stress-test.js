@@ -78,7 +78,7 @@ function fetchOnce(endpoint) {
     const start = process.hrtime.bigint();
     const req = http.request({
       hostname: url.hostname, port: url.port, path: url.pathname + (url.search || ''), method: 'GET',
-      headers: { 'User-Agent': 'slotime-stress/1.0', 'Connection': 'keep-alive' },
+      headers: { 'User-Agent': 'pitwall-stress/1.0', 'Connection': 'keep-alive' },
     }, (res) => {
       let bytes = 0;
       res.on('data', (chunk) => { bytes += chunk.length; });

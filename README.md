@@ -71,8 +71,8 @@ Acceder en el navegador: `http://localhost:3000`
 | Variable | Descripción | Valor por defecto |
 |----------|-------------|-------------------|
 | `PORT` | Puerto HTTP del servidor | `3000` |
-| `SLOTIME_DATA` | Ruta a la carpeta de datos (BD) | `./database` |
-| `SESSION_SECRET` | Secreto para las sesiones Express | `slotime-dev-secret` |
+| `PITWALL_DATA` | Ruta a la carpeta de datos (BD) | `./database` |
+| `SESSION_SECRET` | Secreto para las sesiones Express | `pitwall-dev-secret` |
 
 > En producción cambiar siempre `SESSION_SECRET` por un valor aleatorio largo.
 

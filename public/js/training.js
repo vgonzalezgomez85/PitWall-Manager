@@ -215,8 +215,21 @@ function updateCard(data) {
   if (lapsEl)   lapsEl.innerHTML     = renderLapList(data.laps);
 }
 
+// Renombrado slotime.* → pitwall.* de las claves de localStorage: si el
+// navegador trae un valor guardado con el nombre antiguo y aún no hay uno
+// nuevo, se copia para no perder la preferencia del usuario.
+function _lsMigrate(oldKey, newKey) {
+  try {
+    if (localStorage.getItem(newKey) === null) {
+      const v = localStorage.getItem(oldKey);
+      if (v !== null) localStorage.setItem(newKey, v);
+    }
+  } catch {}
+}
+
 // ── View picker (modal) — 2 modos: historial (default) / compacta ─────────
-const TR_VIEW_KEY = 'slotime.training.view';
+const TR_VIEW_KEY = 'pitwall.training.view';
+_lsMigrate('slotime.training.view', TR_VIEW_KEY);
 function openTrainingPicker() {
   const ov = document.getElementById('trainingPickerOverlay');
   if (!ov) return;
@@ -276,7 +289,8 @@ let   speechBusy  = false;
 
 // Modos: 'all' = canta cada cruce (default), 'best' = solo cuando es nueva
 // vuelta rápida de la tanda actual, 'off' = silenciado.
-const VOICE_KEY = 'slotime.training.voiceMode';
+const VOICE_KEY = 'pitwall.training.voiceMode';
+_lsMigrate('slotime.training.voiceMode', VOICE_KEY);
 const VOICE_MODES = ['all', 'best', 'off'];
 // Default: en competición arranca silenciado (hay muchos pilotos y cantar
 // todo es ruido); en libre arranca con todas las vueltas.

@@ -25,9 +25,9 @@ const os   = require('node:os');
 const path = require('node:path');
 
 // Directorio de datos aislado ANTES de requerir el servicio (resuelve dataDir()
-// leyendo SLOTIME_DATA en cada llamada, así que basta con fijarlo aquí).
+// leyendo PITWALL_DATA en cada llamada, así que basta con fijarlo aquí).
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pitwall-tls-'));
-process.env.SLOTIME_DATA = dir;
+process.env.PITWALL_DATA = dir;
 
 const { test, after } = require('node:test');
 const assert = require('node:assert/strict');

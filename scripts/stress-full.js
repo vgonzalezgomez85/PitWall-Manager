@@ -132,7 +132,7 @@ function fetchOnce(endpoint) {
       hostname: url.hostname, port: url.port,
       path: url.pathname + (url.search || ''),
       method: 'GET',
-      headers: { 'User-Agent': 'slotime-stress-full/1.0', 'Connection': 'keep-alive' },
+      headers: { 'User-Agent': 'pitwall-stress-full/1.0', 'Connection': 'keep-alive' },
     }, (res) => {
       res.on('data', () => {});
       res.on('end', () => {

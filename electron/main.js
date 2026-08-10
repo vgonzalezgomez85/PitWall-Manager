@@ -120,7 +120,7 @@ function startServer(userData) {
       env: {
         ...process.env,
         PORT:           String(PORT),
-        SLOTIME_DATA:   userData,
+        PITWALL_DATA:   userData,
         SESSION_SECRET: getOrCreateSecret(userData),
       },
       silent: false,

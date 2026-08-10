@@ -1599,9 +1599,22 @@ if (RACE_DATA.standings) {
 const speechQueue = [];
 let   speechBusy  = false;
 
+// Renombrado slotime.* → pitwall.* de las claves de localStorage: si el
+// navegador trae un valor guardado con el nombre antiguo y aún no hay uno
+// nuevo, se copia para no perder la preferencia del usuario.
+function _lsMigrate(oldKey, newKey) {
+  try {
+    if (localStorage.getItem(newKey) === null) {
+      const v = localStorage.getItem(oldKey);
+      if (v !== null) localStorage.setItem(newKey, v);
+    }
+  } catch {}
+}
+
 // 3 modos: 'all' = canta cada cruce, 'best' = solo nueva vuelta rápida del
 // carril, 'off' = silenciado. Default: 'best' (comportamiento histórico).
-const RACE_VOICE_KEY = 'slotime.race.voiceMode';
+const RACE_VOICE_KEY = 'pitwall.race.voiceMode';
+_lsMigrate('slotime.race.voiceMode', RACE_VOICE_KEY);
 const RACE_VOICE_MODES = ['all', 'best', 'off'];
 let voiceMode = localStorage.getItem(RACE_VOICE_KEY) || 'best';
 
@@ -2175,8 +2188,10 @@ if (RACE_DATA.isTeam && RACE_DATA.hasQrCheckin) {
 (function () {
   const COLS = ['vlt', 'total', 'ultima', 'mejor', 'media', 'delta'];
   const body = document.body;
-  const LS_COLS = 'slotime.live.cols';
-  const LS_ZOOM = 'slotime.live.zoom';
+  const LS_COLS = 'pitwall.live.cols';
+  const LS_ZOOM = 'pitwall.live.zoom';
+  _lsMigrate('slotime.live.cols', LS_COLS);
+  _lsMigrate('slotime.live.zoom', LS_ZOOM);
 
   // Estado inicial
   let cols = {};

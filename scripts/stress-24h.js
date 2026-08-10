@@ -80,8 +80,8 @@ const FRAME_GAP_MS = 75;
 
 // ── Copia desechable de la BD ───────────────────────────────────────────────
 const Database = require(path.join(RAIZ, 'node_modules', 'better-sqlite3'));
-const ORIGEN = process.env.SLOTIME_DATA
-  ? path.join(process.env.SLOTIME_DATA, 'pitwall.db')
+const ORIGEN = process.env.PITWALL_DATA
+  ? path.join(process.env.PITWALL_DATA, 'pitwall.db')
   : path.join(RAIZ, 'database', 'pitwall.db');
 
 const dirTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pitwall-stress-'));
@@ -103,7 +103,7 @@ function limpiar() {
   await src.backup(COPIA);
   src.close();
 
-  process.env.SLOTIME_DATA = dirTmp;
+  process.env.PITWALL_DATA = dirTmp;
   process.env.NODE_ENV     = 'production';
   process.env.PORT         = String(PORT);
 

@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.25.3] — 2026-08-10
+
+### Corregido
+- **Últimos restos del nombre "SloTime" en el código.** Variables de entorno (`SLOTIME_DATA`→`PITWALL_DATA`, `SLOTIME_RAW_DUMP`→`PITWALL_RAW_DUMP`), claves de `localStorage` del navegador (con migración automática del valor guardado, sin perder preferencias), el autor grabado en los `.xlsx` exportados, el secreto de sesión por defecto, el nombre interno del paquete npm y los scripts/documentación de desarrollo. Se deja intacto adrede el `type: 'voltrace-manager'` del anuncio mDNS (lo usa la app Android "Infolap" para descubrir el servidor) y el nombre de la carpeta legacy "Voltrace Manager" en la migración de datos de Electron.
+
 ## [1.25.2] — 2026-08-10
 
 ### Corregido

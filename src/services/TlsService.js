@@ -33,7 +33,7 @@
 // certificado HOJA (con las nuevas IPs): los dispositivos que ya confiaron en la
 // CA NO vuelven a avisar. Igual que hace `mkcert`, pero autocontenido.
 //
-// Los ficheros viven junto a la base de datos (SLOTIME_DATA), en `tls/`.
+// Los ficheros viven junto a la base de datos (PITWALL_DATA), en `tls/`.
 const path   = require('path');
 const fs     = require('fs');
 const forge  = require('node-forge');
@@ -42,8 +42,8 @@ const CA_DAYS   = 3650;   // 10 años — la CA se instala una vez y no queremos
 const LEAF_DAYS = 825;    // límite de facto de los navegadores modernos para hojas TLS
 
 function dataDir() {
-  return process.env.SLOTIME_DATA
-    ? path.join(process.env.SLOTIME_DATA, 'tls')
+  return process.env.PITWALL_DATA
+    ? path.join(process.env.PITWALL_DATA, 'tls')
     : path.join(__dirname, '../../database/tls');
 }
 

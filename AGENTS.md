@@ -168,7 +168,7 @@ Siguiente manga pendiente se activa automáticamente
 
 ```bash
 # Servidor web (modo desarrollo)
-cd /Users/victor/SloTime
+cd /Users/victor/PitWall
 npm run dev          # nodemon src/app.js → http://localhost:3000
 
 # Emulador DS-300 (en otra terminal)

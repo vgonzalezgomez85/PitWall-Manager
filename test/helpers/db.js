@@ -18,7 +18,7 @@
 // Base de datos aislada para los tests.
 //
 // `src/config/database.js` resuelve la ruta UNA sola vez, en su top-level, y
-// exporta un singleton ya abierto. Por eso hay que fijar SLOTIME_DATA ANTES de
+// exporta un singleton ya abierto. Por eso hay que fijar PITWALL_DATA ANTES de
 // que nadie haga require() de la BD o de un modelo. Como `node --test` corre un
 // proceso por fichero, basta con llamar a usarBdTemporal() en la primera línea
 // del test, antes de los require.
@@ -37,7 +37,7 @@ let dir = null;
 function usarBdTemporal() {
   if (dir) return dir;
   dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pitwall-test-'));
-  process.env.SLOTIME_DATA = dir;
+  process.env.PITWALL_DATA = dir;
   return dir;
 }
 
