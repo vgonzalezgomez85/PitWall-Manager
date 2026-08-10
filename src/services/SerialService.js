@@ -886,11 +886,6 @@ class SerialServiceClass extends EventEmitter {
     this._broadcastLinkStatus();
   }
 
-  async connectSerial(portPath, baudRate) {
-    if (!baudRate) throw new Error('baudRate required (configure in Settings)');
-    await this.connectMultiple([{ port: portPath, baud: baudRate, lanes: 8 }]);
-  }
-
   async closeAll() {
     for (const conn of this._connections) {
       await conn.close().catch(() => {});
@@ -963,8 +958,6 @@ class SerialServiceClass extends EventEmitter {
       SocketService.emit('serial:status', this.getLinkStatus());
     } catch {}
   }
-
-  async closeSerial() { await this.closeAll(); }
 
   // ── Simulation ───────────────────────────────────────────────────────────
 
@@ -1209,14 +1202,6 @@ class SerialServiceClass extends EventEmitter {
       circuits,
       down:       circuits.filter(c => !c.connected).map(c => c.circuit),
     };
-  }
-
-  // Nº de circuitos configurados (de circuits_serial). 1 si no hay multi.
-  circuitCount() {
-    try {
-      const cfg = JSON.parse(Settings.get('circuits_serial', '[]')) || [];
-      return Array.isArray(cfg) && cfg.length > 0 ? cfg.length : 1;
-    } catch { return 1; }
   }
 
   // Carriles (globales, con offset) que pertenecen a un circuito según

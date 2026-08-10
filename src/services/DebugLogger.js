@@ -41,7 +41,6 @@ const LOG_DIR   = path.join(DATA_BASE, 'logs', 'debug');
 //   startMangaLog(manga, race) — rotates current streams to a new manga pair
 //   endMangaLog()              — closes current streams, returns to session log
 //   log(category, payload)     — write an event (no-op if disabled)
-//   logError(origin, err)      — convenience for caught exceptions
 class DebugLogger {
   constructor() {
     this._enabled  = false;
@@ -98,14 +97,6 @@ class DebugLogger {
       // Never let logging crash the app
       console.error('[DebugLogger] write failed:', e.message);
     }
-  }
-
-  logError(origin, err) {
-    this.log('error', {
-      origin,
-      message: err?.message ?? String(err),
-      stack:   err?.stack ?? null,
-    });
   }
 
   _fmtLine(evt) {

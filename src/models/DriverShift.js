@@ -39,16 +39,6 @@ class DriverShift {
     `).all(mangaId);
   }
 
-  // Shifts pre-armados de una manga (started_at_ms IS NULL, pre_armed=1).
-  // Se usan al arrancar la manga para "activarlos".
-  static findPreArmedByManga(mangaId) {
-    return db.prepare(`
-      SELECT * FROM driver_shifts
-      WHERE manga_id = ? AND pre_armed = 1 AND started_at_ms IS NULL
-      ORDER BY lane ASC
-    `).all(mangaId);
-  }
-
   // Shift activo por carril en una manga (último checkin sea cual sea su estado).
   static currentByManga(mangaId) {
     return db.prepare(`
@@ -279,16 +269,7 @@ class DriverShift {
     `).run(endedAtMs, mangaId);
   }
 
-  // Borra todos los shifts de una manga (usado en cancelManga).
-  static deleteByManga(mangaId) {
-    db.prepare('DELETE FROM driver_shifts WHERE manga_id = ?').run(mangaId);
-  }
-
   // ── Lookups auxiliares ──────────────────────────────────────────────
-
-  static findProfileByQR(qrCode) {
-    return db.prepare('SELECT * FROM driver_profiles WHERE qr_code = ?').get(qrCode);
-  }
 
   // True si el equipo del piloto DESCANSA en esta manga (manga_lanes.is_rest=1).
   // Se usa para rechazar el fichaje con un motivo claro: un piloto de un equipo

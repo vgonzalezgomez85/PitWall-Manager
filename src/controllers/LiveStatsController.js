@@ -26,8 +26,6 @@ const db            = require('../config/database');
 const {
   CONSISTENCY_LEVELS,
   consistencyLevel,
-  median,
-  filterIncidentLaps,
   MIN_CONSISTENCY_LAPS,
   robustConsistency,
 } = require('../lib/consistency');

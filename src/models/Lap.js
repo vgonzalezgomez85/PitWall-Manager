@@ -119,17 +119,6 @@ class Lap {
     `).all(mangaId);
   }
 
-  static findByRace(raceId) {
-    return db.prepare(`
-      SELECT l.*, d.name AS driver_name, t.name AS team_name
-      FROM laps l
-      LEFT JOIN drivers d ON d.id = l.driver_id
-      LEFT JOIN teams   t ON t.id = l.team_id
-      WHERE l.race_id = ? AND l.is_ghost = 0 AND l.manga_id IS NOT NULL
-      ORDER BY l.elapsed_ms ASC
-    `).all(raceId);
-  }
-
   // Best valid lap per lane across the entire race, with team/driver attribution
   static raceBestByLane(raceId) {
     // CTE: primero calculamos la mejor vuelta por carril (O(N) con índice
@@ -585,19 +574,6 @@ class Lap {
   static markGhost(id) {
     _bump(_mangaOf(id));
     db.prepare('UPDATE laps SET is_ghost = 1 WHERE id = ?').run(id);
-  }
-
-  // Link a ghost lap to the real lap on another lane (auto-transfer linkage).
-  // Sets realLap.source_lap_id = ghostLapId so findByMangaAll shows the
-  // bidirectional "→ / ↔ de" relationship without creating a duplicate lap.
-  static linkGhostToRealLap(ghostLapId, mangaId, realLane) {
-    _bump(mangaId);
-    const realLap = db.prepare(
-      'SELECT id FROM laps WHERE manga_id = ? AND lane = ? AND is_ghost = 0 ORDER BY elapsed_ms DESC LIMIT 1'
-    ).get(mangaId, realLane);
-    if (realLap) {
-      db.prepare('UPDATE laps SET source_lap_id = ? WHERE id = ?').run(ghostLapId, realLap.id);
-    }
   }
 
   static restore(id) {

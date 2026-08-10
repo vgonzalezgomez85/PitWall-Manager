@@ -95,14 +95,6 @@ class Race {
     ).get(id);
   }
 
-  static getCircuits(race) {
-    try {
-      const c = JSON.parse(race.circuits_config || '[]');
-      if (Array.isArray(c) && c.length > 0) return c;
-    } catch {}
-    return [race.lanes_count]; // fallback: single circuit
-  }
-
   // Al editar un escenario se cambia su min_lap_ms (o el de una categoría), pero
   // las carreras ya asignadas a ese circuito lo tienen copiado en su propia
   // columna desde que se asignó (no es una referencia en vivo). Sin este sync

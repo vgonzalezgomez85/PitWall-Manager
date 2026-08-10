@@ -46,17 +46,6 @@ class Car {
     return stmt.get(id);
   }
 
-  static findByCategory(categoryId) {
-    const stmt = db.prepare(`
-      SELECT c.*, cat.name as category_name
-      FROM cars c
-      LEFT JOIN categories cat ON c.category_id = cat.id
-      WHERE c.category_id = ?
-      ORDER BY c.brand, c.model
-    `);
-    return stmt.all(categoryId);
-  }
-
   static update(id, brand, model, categoryId, description = '') {
     const stmt = db.prepare(`
       UPDATE cars SET brand = ?, model = ?, category_id = ?, description = ? WHERE id = ?

@@ -18,17 +18,6 @@
 const db = require('../config/database');
 
 class Team {
-  static findByRace(raceId) {
-    return db.prepare(`
-      SELECT t.*, GROUP_CONCAT(d.name, ', ') AS member_names, COUNT(d.id) AS member_count
-      FROM teams t
-      LEFT JOIN drivers d ON d.team_id = t.id
-      WHERE t.race_id = ?
-      GROUP BY t.id
-      ORDER BY t.tanda_id ASC, t.lane ASC
-    `).all(raceId);
-  }
-
   static findByTanda(tandaId) {
     return db.prepare(`
       SELECT t.*, GROUP_CONCAT(d.name, ', ') AS member_names, COUNT(d.id) AS member_count
@@ -54,10 +43,6 @@ class Team {
       VALUES (?, ?, ?, ?, ?, ?)
     `).run(race_id, tanda_id ?? null, name, lane ?? 0, color || '#e63946', country ?? null);
     return lastInsertRowid;
-  }
-
-  static updateLane(id, lane) {
-    db.prepare('UPDATE teams SET lane = ? WHERE id = ?').run(lane, id);
   }
 
   // ── Equipo "maestro" pre-pole (sin tanda todavía) ───────────────────────────

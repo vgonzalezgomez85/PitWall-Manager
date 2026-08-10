@@ -205,8 +205,6 @@ function isSocketAllowed(socket) {
   return q.client === 'mobile' || !/mozilla/i.test(ua);
 }
 
-// ── Legacy (se conservan; ya no se usan directamente) ───────────────────────
-function isLocalRequest(req) { return isLocal(reqIp(req)); }
 // Admin = acceso completo (localhost o allowlist; o restricción desactivada).
 // Guest = IP externa no permitida → ve la home reducida (solo botón).
 function annotateAccess(req, res, next) {
@@ -219,7 +217,7 @@ function annotateAccess(req, res, next) {
 module.exports = {
   normIp, isLocal, ipToInt, ipMatches, isRestrictEnabled, getAllowlist,
   ipAllowed, restrictAccess, isSocketAllowed,
-  isLocalRequest, annotateAccess,
+  annotateAccess,
   isLinkReadPath, isLinkControlPath, linkControlAuthorized,
   isImportPath, ecosystemBridgeEnabled,
 };

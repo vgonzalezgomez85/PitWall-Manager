@@ -50,19 +50,8 @@ const OP = {
   READ_CONFIG: 0x50,
 };
 
-// ACK RESULT codes (5.4 / 8.2)
-const RESULT = {
-  OK: 0x00,
-  CRC: 0x01,
-  BAD_LENGTH: 0x02,
-  UNKNOWN_OP: 0x03,
-  BUSY: 0x04,
-  DENIED: 0x05,
-};
-
 // Race state machine (4.1 / Appendix H)
 const STATE = { FREE: 0, RUN: 1, PAUSE: 2, STOP: 3 };
-const STATE_NAME = { 0: 'FREE', 1: 'RUN', 2: 'PAUSE', 3: 'STOP' };
 
 // ---- CRC-8, polynomial 0x07, init 0x00 (Appendix G) -----------------------
 function crc8(bytes) {
@@ -82,68 +71,10 @@ function seal(bytes) {
   return Buffer.concat([body, Buffer.from([crc8(body)])]);
 }
 
-// ---- Packet builders ------------------------------------------------------
-
-// A5 01 01 lane laps[2] lap_ms[2] ts_d10[2] reserved[2] seq CRC   (14 bytes)
-//
-// El hardware real (Policar FL_BLE) emite 14 bytes: igual que el layout
-// documentado pero con un byte extra ANTES del CRC que actúa de contador de
-// trama (`seq`, incremental por paquete). Lane/laps/lap_ms quedan en los mismos
-// offsets, así que _onLap no cambia; solo el encuadre. Mantenemos el emulador
-// alineado con el hardware (14 bytes) para que parser y builder concuerden.
-function buildLap(lane, laps, lapMs, tsD10, reserved = 0, seq = 0) {
-  const b = Buffer.alloc(13);
-  b[0] = SYNC; b[1] = MSG.LAP; b[2] = 0x01;
-  b[3] = lane & 0xFF;
-  b.writeUInt16LE(laps & 0xFFFF, 4);
-  b.writeUInt16LE(lapMs & 0xFFFF, 6);
-  b.writeUInt16LE(tsD10 & 0xFFFF, 8);
-  b.writeUInt16LE(reserved & 0xFFFF, 10);
-  b[12] = seq & 0xFF;
-  return seal(b);
-}
-
-// A5 7F OP RESULT CRC   (5 bytes)
-function buildAck(op, result) {
-  return seal([SYNC, MSG.ACK, op & 0xFF, result & 0xFF]);
-}
-
-// A5 20 01 state minlap[2] uptime_d10[2] lanes reserved[2] CRC   (12 bytes)
-// (field sizes per 9.6, fixed here so emulator + client agree)
-function buildStatus(state, minlap, uptimeD10, lanes, reserved = 0) {
-  const b = Buffer.alloc(11);
-  b[0] = SYNC; b[1] = MSG.STATUS; b[2] = 0x01;
-  b[3] = state & 0xFF;
-  b.writeUInt16LE(minlap & 0xFFFF, 4);
-  b.writeUInt16LE(uptimeD10 & 0xFFFF, 6);
-  b[8] = lanes & 0xFF;
-  b.writeUInt16LE(reserved & 0xFFFF, 9);
-  return seal(b);
-}
-
 // ---- Stream framing -------------------------------------------------------
 // BART frames carry NO length byte. Over BLE each notification/write is one
 // packet, so boundaries are implicit. Over a stream (TCP/serial) we must know
 // the expected length from (MSG_TYPE, OP). These resolvers provide that.
-
-// length of a Phone->Master command given its OP
-function cmdLength(op) {
-  switch (op) {
-    case OP.START:
-    case OP.STOP:
-    case OP.PAUSE:
-    case OP.CLEAR:
-    case OP.READ_STAT:
-    case OP.READ_CONFIG:
-      return 4;   // A5 90 OP CRC
-    case OP.SET_MINLAP:
-      return 6;   // A5 90 10 LL HH CRC
-    case OP.NOTIFY:
-      return 5;   // A5 90 30 VV CRC
-    default:
-      return null; // unknown / variable -> cannot frame from a stream
-  }
-}
 
 // length of a Master->Phone notification given its MSG_TYPE
 function notifyLength(msgType) {
@@ -205,8 +136,7 @@ function hex(buf) {
 }
 
 module.exports = {
-  SYNC, MSG, OP, RESULT, STATE, STATE_NAME,
+  SYNC, MSG, OP, STATE,
   crc8, seal, hex,
-  buildLap, buildAck, buildStatus,
-  cmdLength, notifyLength, FrameParser,
+  notifyLength, FrameParser,
 };
