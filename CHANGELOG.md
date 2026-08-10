@@ -13,6 +13,12 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.24.0] — 2026-08-10
+
+### Añadido
+- **Registro de sucesos de carrera.** Nueva página «🗒️ Sucesos» (accesible desde la ficha de la carrera y con un botón nuevo en la cabecera del directo) que muestra, manga a manga, todo lo que va pasando durante la sesión en formato fácil de leer: **GO** (también cuando se da en varias cajas por separado, circuito a circuito, algo que antes no quedaba registrado), **pausa y reanudado** por circuito, **fin de manga**, **cancelación**, **recuperación tras un corte**, **vueltas fantasma/ignoradas** y su **reasignación** al carril correcto, **salidas retroactivas** y los **fichajes de piloto** (QR, cambio en caliente o corrección manual). Las mangas se muestran compactadas por defecto —solo la que está en marcha aparece abierta— y se despliegan con un clic en su cabecera; un checkbox permite ocultar los fichajes de piloto rutinarios previos al GO cuando solo interesa el resto de sucesos. Disponible en español e inglés.
+- **Se refresca en vivo.** Con la manga en marcha, la página va sumando los sucesos nuevos según ocurren, sin recargar.
+
 ## [1.23.0] — 2026-08-10
 
 ### Añadido

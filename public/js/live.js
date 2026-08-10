@@ -369,6 +369,28 @@ const restLanes = RACE_DATA.lanes.filter(l => l.isRest);
 const lanesGrid = document.getElementById('lanesGrid');
 const laneLabel = '';
 
+// Nº de columnas actual de la rejilla V2/V3 (lo calcula fitVerticalGrid).
+// Con este dato marcamos qué tarjetas abren una fila nueva para pintarles
+// la línea separadora (ver .lane-card--row-divider en live.css).
+let _vGridCols = 1;
+
+// Recorre las tarjetas en su orden VISUAL (style.order, el que fija
+// sortCards) y marca con .lane-card--row-divider las que no están en la
+// primera fila. Cada tarjeta pinta su propio segmento de línea por encima;
+// al estar todas alineadas a la misma altura de fila, los segmentos forman
+// una línea continua de un extremo a otro de la rejilla.
+function updateRowDividers() {
+  if (!lanesGrid) return;
+  const cards = Array.from(lanesGrid.querySelectorAll('.lane-card'));
+  if (!lanesGrid.classList.contains('live-lanes--vertical')) {
+    cards.forEach(c => c.classList.remove('lane-card--row-divider'));
+    return;
+  }
+  cards
+    .sort((a, b) => (parseInt(a.style.order || '0', 10)) - (parseInt(b.style.order || '0', 10)))
+    .forEach((c, i) => c.classList.toggle('lane-card--row-divider', i >= _vGridCols));
+}
+
 function buildCard(lane) {
   const card = document.createElement('div');
   card.className = 'lane-card' + (lane.isRest ? ' is-rest' : '');
@@ -758,6 +780,7 @@ function fitLaneCards() {
   lanesGrid.style.removeProperty('align-content');
   lanesGrid.style.removeProperty('overflow-y');
   root.style.removeProperty('--lv-scale');
+  updateRowDividers();
 
   // Modo horizontal: una tarjeta por carril, una fila por carril.
   // Card height ≈ H / nLanes  (descontando pequeño gap), pero NUNCA por
@@ -840,6 +863,9 @@ function fitVerticalGrid(root, W, H) {
   lanesGrid.style.gridAutoRows = best.cardH.toFixed(1) + 'px';
   lanesGrid.style.alignContent = 'start';   // el sobrante (redondeo) queda abajo
   lanesGrid.style.overflowY = overflow;
+
+  _vGridCols = best.cols;
+  updateRowDividers();
 
   // Escala de fuente: 1 a ~150px de alto de tarjeta (donde el CSS base cuadra).
   const scale = Math.max(0.8, Math.min(2.4, best.cardH / 150));
@@ -1011,6 +1037,8 @@ function sortCards(rows) {
   // El `order` de todas las tarjetas ya está fijado: dispara el FLIP (desliza
   // desde la posición de antes + destello verde/rojo en las que cambiaron de rank).
   if (finishReorderFx) finishReorderFx(sorted.map(cardKey));
+
+  updateRowDividers();
 
   prevLaneGap = {};
   sorted.forEach(r => { const k = cardKey(r); prevLaneGap[k] = { above: gapAbove[k], below: gapBelow[k] }; });

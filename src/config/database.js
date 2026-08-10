@@ -496,6 +496,27 @@ const migrations = [
    )`,
   `CREATE INDEX IF NOT EXISTS idx_verifications_race  ON verifications(race_id)`,
   `CREATE INDEX IF NOT EXISTS idx_verifications_manga ON verifications(race_id, manga_numero)`,
+
+  // ── Registro de sucesos de carrera ──────────────────────────────────────
+  // Hechos de control/anomalía (GO, pausa, reanudado, stop, cancelación,
+  // vuelta fantasma, reasignación, salida retroactiva, fichaje de piloto) —
+  // NO vueltas normales: esas ya viven íntegras en `laps` (duplicarlas aquí
+  // doblaría el tamaño de la tabla más grande de la BD sin aportar nada).
+  // `message` NO se persiste: se formatea en cliente (es/en) desde `type` +
+  // `payload_json`, igual que hace tires/log.ejs con sus propias cadenas.
+  `CREATE TABLE IF NOT EXISTS race_events (
+     id            INTEGER PRIMARY KEY AUTOINCREMENT,
+     race_id       INTEGER NOT NULL REFERENCES races(id) ON DELETE CASCADE,
+     manga_id      INTEGER REFERENCES mangas(id) ON DELETE SET NULL,
+     manga_number  INTEGER,
+     type          TEXT NOT NULL,
+     circuit       INTEGER,
+     lane          INTEGER,
+     entity_name   TEXT,
+     payload_json  TEXT,
+     created_at_ms INTEGER NOT NULL
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_race_events_race_manga ON race_events(race_id, manga_id, created_at_ms)`,
 ];
 for (const sql of migrations) {
   try {

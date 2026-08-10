@@ -25,6 +25,7 @@ const DriverShift    = require('../models/DriverShift');
 const SocketService  = require('../services/SocketService');
 const SerialService  = require('../services/SerialService');
 const TimingService  = require('../services/TimingService');
+const RaceEventLog   = require('../services/RaceEventLog');
 const ExcelJS        = require('exceljs');
 const { robustConsistency, MIN_CONSISTENCY_LAPS } = require('../lib/consistency');
 
@@ -2362,6 +2363,10 @@ class SessionController {
       teamId:     assignment.team_id,
       mode,
     });
+    RaceEventLog.record('driver_checkin', {
+      raceId: race.id, mangaId: manga.id, mangaNumber: manga.number,
+      lane: assignment.lane, entityName: assignment.driver_name, payload: { mode },
+    });
 
     return res.json({
       ok: true,
@@ -2407,6 +2412,10 @@ class SessionController {
     });
 
     SocketService.emit('driver_checkin', { mangaId: manga.id, lane, driverName: drv.name, driverId: drv.id, teamId: drv.team_id, mode: 'manual_correction' });
+    RaceEventLog.record('driver_checkin', {
+      raceId: race.id, mangaId: manga.id, mangaNumber: manga.number,
+      lane, entityName: drv.name, payload: { mode: 'manual_correction' },
+    });
     return res.json({ ok: true, driverName: drv.name, ms, lane, shiftId });
   }
 

@@ -42,6 +42,7 @@ const ImportController             = require('../controllers/ImportController');
 const TireController               = require('../controllers/TireController');
 const EcosystemController          = require('../controllers/EcosystemController');
 const VerificationController       = require('../controllers/VerificationController');
+const RaceEventController          = require('../controllers/RaceEventController');
 
 router.get('/', (req, res) => {
   const Race          = require('../models/Race');
@@ -172,6 +173,9 @@ router.post('/races/:id/tires/change/:changeId',      TireController.updateChang
 
 router.get( '/races/:id/verificaciones',               VerificationController.race);
 router.post('/races/:id/tires/change/:changeId/delete', TireController.deleteChange);
+
+router.get( '/races/:id/events',                      RaceEventController.page);
+router.get( '/races/:id/events.json',                 RaceEventController.json);
 
 // ── QR shifts control ─────────────────────────────────────────────────────
 router.get('/control/shifts',     ControlController.live);

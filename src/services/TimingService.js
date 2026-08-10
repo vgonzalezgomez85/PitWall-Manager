@@ -30,6 +30,7 @@ const RECONCILE_OUTAGE_DELAY_MS = 25000;
 const SerialService = require('./SerialService');
 const SocketService = require('./SocketService');
 const DebugLogger   = require('./DebugLogger');
+const RaceEventLog  = require('./RaceEventLog');
 
 const DEBOUNCE_MS    = 3000;
 // Salida de pista (crash): a single lap is flagged as "exit" when it exceeds
@@ -65,6 +66,14 @@ class TimingServiceClass {
     // otra abierta en un móvil.
     this._priorCache     = new Map(); // raceId → agregados de mangas anteriores (ver _priorAggregates)
     this._projCache      = new Map(); // raceId → proyección de carrera con TTL (ver _cachedProjection)
+  }
+
+  // Registra un suceso en el registro de carrera (GO, pausa, vuelta
+  // fantasma…). Nunca debe poder romper el motor de cronometraje: cualquier
+  // fallo aquí se traga y se loguea, no se propaga.
+  _logEvent(type, data) {
+    try { RaceEventLog.record(type, data); }
+    catch (err) { console.error('[TimingService] _logEvent error:', err.message); }
   }
 
   // Cada cuánto se recalcula la proyección en el camino caliente. Es una
@@ -271,6 +280,7 @@ class TimingServiceClass {
     DebugLogger.log('manga', { event: 'start', mangaNumber: manga.number, durationMs: sessionDurationMs, activeLanes });
     SocketService.emit('manga:started', { mangaId: manga.id, ...this.getStandings() });
     console.log(`[TimingService] Manga ${manga.number} started @ ${Date.now()} — ${activeLanes.length} active lanes — ${race.manga_duration_minutes}min`);
+    this._logEvent('go', { raceId: race.id, mangaId: manga.id, mangaNumber: manga.number, circuit: startCircuitIndex });
 
     // Inversión de control: en fuentes que SlotTime pilota (BART) hay que
     // ARRANCAR el hardware. No-op en DS-300 (manda la caja). Best-effort.
@@ -359,6 +369,7 @@ class TimingServiceClass {
     DebugLogger.startMangaLog(manga, race);
     SocketService.emit('manga:recovered', { mangaId: manga.id, raceId: race.id, outageMs, ...this.getStandings() });
     console.warn(`[TimingService] Manga ${manga.number} RECUPERADA — caída de ${(outageMs / 1000).toFixed(0)}s · ${restaurados.lanes} carriles, ${restaurados.laps} vueltas`);
+    this._logEvent('recovered', { raceId: race.id, mangaId: manga.id, mangaNumber: manga.number, payload: { outageMs } });
 
     return { lanes: restaurados.lanes, laps: restaurados.laps, circuits: filas.length };
   }
@@ -647,6 +658,7 @@ class TimingServiceClass {
     this._scheduleCircuitAutoFinish(ci);
     this._persistCircuits();
     console.log(`[TimingService] Circuito ${ci + 1} arrancado @ ${c.startTime}`);
+    this._logEvent('go', { raceId: this.session.race.id, mangaId: this.session.manga.id, mangaNumber: this.session.manga.number, circuit: ci });
     SocketService.emitStandings(this.getStandings());
   }
 
@@ -931,6 +943,7 @@ class TimingServiceClass {
     DebugLogger.endMangaLog();
     SocketService.emit('manga:stopped', { mangaId: this.session.manga.id, nextMangaId, nextLanes, isTandaEnd, nextTandaId, nextTandaNumber });
     console.log(`[TimingService] Manga ${this.session.manga.number} stopped`);
+    this._logEvent('stop', { raceId: this.session.race.id, mangaId: this.session.manga.id, mangaNumber: this.session.manga.number, payload: { isTandaEnd } });
 
     // Cuando se cierra la ÚLTIMA manga de una tanda, empujamos el dossier
     // de stats acumulado a los clientes móviles para que actualicen su
@@ -1110,6 +1123,7 @@ class TimingServiceClass {
     this._persistCircuits();
     console.log(`[TimingService] Circuito ${ci + 1} pausado`);
     DebugLogger.log('manga', { event: 'pause', circuit: ci, mangaNumber: this.session.manga.number });
+    this._logEvent('pause', { raceId: this.session.race.id, mangaId: this.session.manga.id, mangaNumber: this.session.manga.number, circuit: ci });
 
     // Si ya no queda ningún circuito corriendo, la manga está totalmente en
     // pausa: congelamos el cronómetro global y mostramos el overlay.
@@ -1156,6 +1170,7 @@ class TimingServiceClass {
     this._persistCircuits();
     console.log(`[TimingService] Circuito ${ci + 1} reanudado tras ${pausedMs}ms`);
     DebugLogger.log('manga', { event: 'resume', circuit: ci, pausedMs, mangaNumber: this.session.manga.number });
+    this._logEvent('resume', { raceId: this.session.race.id, mangaId: this.session.manga.id, mangaNumber: this.session.manga.number, circuit: ci, payload: { pausedMs } });
 
     // Si la manga estaba totalmente pausada (cronómetro congelado), lo
     // reanudamos desplazando el inicio global por el tiempo que estuvo parada.
@@ -1271,6 +1286,7 @@ class TimingServiceClass {
     DebugLogger.endMangaLog();
     SocketService.emit('manga:cancelled', { mangaId, raceId });
     console.log(`[TimingService] Manga ${this.session.manga.number} cancelled — reset to pending`);
+    this._logEvent('cancel', { raceId, mangaId, mangaNumber: this.session.manga.number });
 
     } catch (err) {
       console.error('[TimingService] Error cancelando la manga:', err.message);
@@ -1456,6 +1472,7 @@ class TimingServiceClass {
         lane, color: ld.color, name: ld.name,
         lapTimeMs, ptMs: minLapMs, elapsedMs,
       });
+      this._logEvent('ghost_lap', { raceId: race.id, mangaId: manga.id, mangaNumber: manga.number, lane, entityName: ld.name, payload: { lapTimeMs, ptMs: minLapMs, elapsedMs } });
       return;
     }
 
@@ -1497,6 +1514,10 @@ class TimingServiceClass {
             color: ld.color, name: ld.name,
             lapTimeMs: Math.round(_assignMs), elapsedMs: timestamp - circuit.startTime,
           });
+          this._logEvent('lap_reassigned', {
+            raceId: _race.id, mangaId: _manga.id, mangaNumber: _manga.number, lane, entityName: ld.name,
+            payload: { fromLane: _ghost.lane, toLane: lane, lapTimeMs: Math.round(_assignMs), elapsedMs: timestamp - circuit.startTime },
+          });
         } else {
           console.log(`[TimingService] 2× de fantasma (carril ${lane}): ${Math.round(_origMs)}ms → media ${lapTimeMs}ms (fantasma sin id, solo neutralizado)`);
         }
@@ -1535,6 +1556,10 @@ class TimingServiceClass {
       SocketService.emit('lap:retro_exit', {
         lane, color: ld.color, name: ld.name,
         lapNumber: 1, lapTimeMs: prevMs, isPitStop: wasPit,
+      });
+      this._logEvent('retro_exit', {
+        raceId: this.session.race.id, mangaId: this.session.manga.id, mangaNumber: this.session.manga.number,
+        lane, entityName: ld.name, payload: { lapNumber: 1, lapTimeMs: prevMs, isPitStop: wasPit },
       });
     }
 

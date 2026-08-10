@@ -1,0 +1,177 @@
+<%- include('../partials/header', { pageTitle: (race ? race.name + ' — ' : '') + (lang === 'es' ? 'Registro de sucesos' : 'Event log') }) %>
+
+<link rel="stylesheet" href="/css/fonts.css">
+
+<style>
+  .evlog-wrap { max-width: 1600px; width: 100%; margin: 0 auto; padding: 8px 24px 32px; }
+  .evlog-top { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+  .evlog-back { margin: 0 !important; }
+  .evlog-titlerow { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin: 8px 0 4px; }
+  .evlog-h1 { font-size:1.2rem; font-weight:800; letter-spacing:-.01em; margin:0; color:var(--rs-text); white-space:nowrap; }
+  .evlog-sub { color:var(--rs-muted); font-size:.88rem; }
+  .evlog-meta { color:var(--rs-muted); font-size:.86rem; text-align:right; }
+  .evlog-meta b { color:var(--rs-text); }
+
+  .evlog-filter { display:flex; align-items:center; gap:6px; margin: 10px 0 14px; font-size:.85rem; color:var(--rs-muted); }
+  .evlog-filter input { accent-color: var(--rs-green); }
+
+  /* Rejilla de mangas en columnas (hasta 3; baja a 2/1 según ancho). */
+  .evlog-cols { columns: 24rem 3; column-gap: 18px; }
+  .evlog-m {
+    break-inside: avoid; margin: 0 0 14px; border:1px solid var(--rs-border); border-radius:11px;
+    overflow:hidden; background:var(--rs-panel);
+  }
+  .evlog-m__h {
+    display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--rs-panel-2);
+    font-weight:800; text-transform:uppercase; letter-spacing:.02em; font-size:.85rem; color:var(--rs-text);
+    cursor:pointer; user-select:none;
+  }
+  .evlog-m.is-open .evlog-m__h { border-bottom:1px solid var(--rs-border); }
+  .evlog-m__chev { flex-shrink:0; color:var(--rs-muted); transition:transform .15s; font-size:.75rem; }
+  .evlog-m.is-open .evlog-m__chev { transform:rotate(90deg); }
+  .evlog-m__count { margin-left:auto; font-size:.7rem; font-weight:700; color:var(--rs-green);
+                   background:rgba(34,197,94,.12); border-radius:999px; padding:1px 9px; }
+  .evlog-m__rows { display:none; }
+  .evlog-m.is-open .evlog-m__rows { display:block; }
+
+  .evlog-row { display:flex; align-items:center; gap:9px; padding:7px 12px; border-top:1px solid var(--rs-border);
+               border-left:3px solid transparent; font-size:.88rem; flex-wrap:wrap; }
+  .evlog-row:first-of-type { border-top:none; }
+  .evlog-ic { flex:0 0 auto; font-size:.95rem; }
+  .evlog-text { flex:1 1 auto; min-width:0; color:var(--rs-text); overflow-wrap:anywhere; }
+  .evlog-time { flex:0 0 auto; color:var(--rs-gold); font-weight:700; font-size:.78rem; font-variant-numeric:tabular-nums; min-width:64px; text-align:right; }
+
+  .evlog-empty { text-align:center; padding:60px 20px; color:var(--rs-muted); }
+  .evlog-empty__ic { font-size:2.4rem; }
+</style>
+
+<div class="race-show">
+<div class="evlog-wrap">
+
+  <div class="evlog-top">
+    <a class="vt-back-link evlog-back" href="/races/<%= race.id %>">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      <%= lang === 'es' ? 'Volver a la carrera' : 'Back to race' %>
+    </a>
+    <div class="evlog-meta" id="logMeta"></div>
+  </div>
+
+  <div class="evlog-titlerow">
+    <h1 class="evlog-h1">🗒️ <%= lang === 'es' ? 'Registro de sucesos' : 'Event log' %></h1>
+    <span class="evlog-sub">· <%= race.name %></span>
+  </div>
+
+  <label class="evlog-filter">
+    <input type="checkbox" id="chkPreArm">
+    <%= lang === 'es' ? 'Mostrar fichajes de piloto antes del GO (rutina de arranque)' : 'Show driver check-ins before GO (routine start-up)' %>
+  </label>
+
+  <div id="logBody"></div>
+
+</div>
+</div>
+
+<script src="/js/raceEvents.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+(function () {
+  var RACE_ID = <%= race.id %>;
+  var LANG    = '<%= lang %>';
+  var es = LANG === 'es';
+  var MULTI_CIRCUIT = (function () {
+    try { return (JSON.parse('<%- race.circuits_config || "[]" %>') || []).length > 1; } catch (e) { return false; }
+  })();
+
+  var chkPreArm = document.getElementById('chkPreArm');
+  var lastData = null;
+  // Qué mangas están extendidas — persiste entre refrescos en vivo. Se
+  // siembra una vez con la manga activa (o la más reciente si no hay
+  // ninguna corriendo); el resto arrancan compactadas.
+  var expanded = null;
+
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function fmtClock(ms){
+    var d = new Date(ms);
+    var pad = function(n){ return (n<10?'0':'')+n; };
+    return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+  }
+  function isPreArm(evt){ return evt.type === 'driver_checkin' && evt.payload && evt.payload.mode === 'pre_arm'; }
+
+  function renderLog(d){
+    lastData = d;
+    document.getElementById('logMeta').innerHTML =
+      '<b>'+d.totalEvents+'</b> '+(es? (d.totalEvents===1?'suceso':'sucesos') : (d.totalEvents===1?'event':'events'));
+
+    var showPreArm = chkPreArm.checked;
+    var body = document.getElementById('logBody');
+    var groups = d.groups.map(function (g) {
+      return { mangaNumber: g.mangaNumber, items: g.items.filter(function (it) { return showPreArm || !isPreArm(it); }) };
+    }).filter(function (g) { return g.items.length > 0; });
+
+    if (!groups.length){
+      body.innerHTML = '<div class="evlog-empty"><div class="evlog-empty__ic">🗒️</div><p>'+(es?'Todavía no hay sucesos.':'No events yet.')+'</p></div>';
+      return;
+    }
+
+    // Sembrar el set de "extendidas" solo la primera vez: la manga activa
+    // (o, si ninguna está corriendo, la más reciente — groups[0], ya que
+    // vienen ordenados de más a menos reciente).
+    if (!expanded) {
+      expanded = {};
+      var seed = d.activeMangaNumber != null ? d.activeMangaNumber : groups[0].mangaNumber;
+      expanded[seed] = true;
+    }
+
+    var cards = groups.map(function(g){
+      var title = g.mangaNumber!=null ? (es?'Manga ':'Heat ')+g.mangaNumber : (es?'Sin manga':'No heat');
+      var isOpen = !!expanded[g.mangaNumber];
+
+      var rows = g.items.map(function(evt){
+        var f = formatRaceEvent(evt, { lang: LANG, multiCircuit: MULTI_CIRCUIT });
+        return '<div class="evlog-row" style="border-left-color:'+f.color+'">' +
+          '<span class="evlog-ic">'+f.icon+'</span>' +
+          '<span class="evlog-text">'+esc(f.text)+'</span>' +
+          '<span class="evlog-time">'+fmtClock(evt.createdAtMs)+'</span>' +
+        '</div>';
+      }).join('');
+
+      return '<div class="evlog-m'+(isOpen?' is-open':'')+'" data-manga="'+esc(g.mangaNumber)+'">' +
+        '<div class="evlog-m__h"><span class="evlog-m__chev">▸</span>'+esc(title)+
+        '<span class="evlog-m__count">'+g.items.length+'</span></div>' +
+        '<div class="evlog-m__rows">'+rows+'</div></div>';
+    }).join('');
+
+    body.innerHTML = '<div class="evlog-cols">'+cards+'</div>';
+  }
+
+  // Un clic en la cabecera abre/cierra esa manga — delegado, sobrevive a los
+  // repintados de renderLog().
+  document.getElementById('logBody').addEventListener('click', function (e) {
+    var head = e.target.closest('.evlog-m__h');
+    if (!head) return;
+    var card = head.closest('.evlog-m');
+    var key = card.dataset.manga === 'null' ? null : card.dataset.manga;
+    var open = !card.classList.contains('is-open');
+    card.classList.toggle('is-open', open);
+    if (!expanded) expanded = {};
+    expanded[key] = open;
+  });
+
+  function loadLog(){
+    fetch('/races/'+RACE_ID+'/events.json').then(function(r){return r.json();}).then(function(d){
+      if (d.ok) renderLog(d);
+    });
+  }
+
+  chkPreArm.addEventListener('change', function () { if (lastData) renderLog(lastData); });
+
+  // Primer pintado con los datos del servidor; refresco en vivo por socket.
+  renderLog(<%- JSON.stringify(Object.assign({ activeMangaNumber: typeof activeMangaNumber !== 'undefined' ? activeMangaNumber : null }, log)) %>);
+  try {
+    var socket = io();
+    socket.on('race:event', function(d){ if (!d || d.raceId === RACE_ID) loadLog(); });
+  } catch(e){}
+})();
+</script>
+
+<%- include('../partials/footer') %>
