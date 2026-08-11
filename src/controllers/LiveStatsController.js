@@ -389,7 +389,11 @@ class LiveStatsController {
 
     const cacheKey = `${race.id}:${manga.id}`;
     const cached   = _jsonCache.get(cacheKey);
-    if (cached && (isActive
+    // cached.isActive tiene que coincidir con el isActive de AHORA: si no,
+    // la caché es de antes/después de un GO (p.ej. finished→pending→active
+    // al re-lanzar una manga) y el TTL de 1 s la daría por buena aunque el
+    // payload todavía diga "finished" — justo el salto que importa enseñar.
+    if (cached && cached.isActive === isActive && (isActive
           ? (Date.now() - cached.ts) < JSON_TTL_MS
           : cached.mut === Lap.mutationCount && cached.tireMut === TireChange.mutationCount)) {
       return res.json(cached.payload);
@@ -700,7 +704,7 @@ class LiveStatsController {
       restingKeysActive,
     };
 
-    _jsonCache.set(cacheKey, { ts: Date.now(), mut: Lap.mutationCount, tireMut: TireChange.mutationCount, payload });
+    _jsonCache.set(cacheKey, { ts: Date.now(), mut: Lap.mutationCount, tireMut: TireChange.mutationCount, isActive, payload });
     while (_jsonCache.size > JSON_MAX_KEYS) _jsonCache.delete(_jsonCache.keys().next().value);
 
     res.json(payload);

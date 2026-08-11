@@ -1243,6 +1243,15 @@
   socket.on('manga:resumed', () => { racePaused = false; fetchData(); });
   // Cambio de neumático: refresca cuanto antes el 🛞 de la columna Salidas.
   socket.on('tires:changed', (d) => { if (!d || d.raceId === <%= race.id %>) fetchData(); });
+  <% if (typeof lanesList === 'undefined' || !lanesList.length) { %>
+  // La carrera todavía no ha corrido ni una vuelta: la sección "Comparativa
+  // por carril" ni siquiera está en el DOM (gateada arriba en el render,
+  // porque necesita al menos un carril con datos). fetchData()/scheduleFetch
+  // ya refrescan el resto de pestañas al vuelo, pero esa sección solo puede
+  // aparecer con un render nuevo del servidor — así que en el primer GO de la
+  // carrera recargamos UNA vez para que ya salga completa.
+  socket.once('manga:started', () => location.reload());
+  <% } %>
 </script>
 
 <%- include('../partials/footer') %>

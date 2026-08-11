@@ -13,6 +13,12 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.25.10] — 2026-08-11
+
+### Corregido
+- **Estadísticas en vivo: al dar el GO, la pantalla ya no se quedaba mostrando la manga anterior como "finished".** La caché de `/races/:id/live-stats.json` daba por buena una respuesta de hasta 1 segundo de antigüedad sin comprobar si mientras tanto la manga había pasado de no-activa a activa (p.ej. al relanzar una manga ya corrida) — si la petición llegaba justo en ese salto, se servía el payload viejo ("finished", reloj a 00:00) aunque la manga ya estuviera corriendo de verdad. Ahora la caché también guarda si la respuesta se calculó con la manga activa o no, y solo se reutiliza si coincide con el estado actual.
+- **Estadísticas en vivo: la pestaña "Comparativa por carril" no aparecía si se abría la página antes de la primera vuelta de la carrera.** Esa sección solo se genera en el servidor si ya hay algún carril con datos, así que si no había corrido ni una vuelta, ni siquiera existía en el HTML y ningún refresco por socket podía rellenarla. Ahora, en ese caso concreto, la página se recarga sola una vez en cuanto se da el primer GO de la carrera para que el servidor la incluya ya completa; el resto de mangas siguen refrescándose sin recargar, como hasta ahora.
+
 ## [1.25.9] — 2026-08-11
 
 ### Mejorado
