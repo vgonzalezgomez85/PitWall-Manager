@@ -289,12 +289,21 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
   </div>
 
   <% if (results.length === 0) { %>
-    <div class="vt-empty" style="margin-top:32px">
-      <div class="vt-empty__t"><%= lang === 'es' ? 'Sin datos todavía' : 'No data yet' %></div>
-      <p style="color:var(--vt-mute);margin:6px 0 0">
-        <%= lang === 'es' ? 'Completa al menos una manga para ver resultados.' : 'Complete at least one heat to see results.' %>
-      </p>
-    </div>
+    <% if (typeof pole !== 'undefined' && pole) { %>
+      <%- include('_pole-panel', { pole, lang }) %>
+      <div class="vt-empty" style="margin-top:20px">
+        <p style="color:var(--vt-mute);margin:0">
+          <%= lang === 'es' ? 'Completa al menos una manga para ver el resto de resultados.' : 'Complete at least one heat to see the rest of the results.' %>
+        </p>
+      </div>
+    <% } else { %>
+      <div class="vt-empty" style="margin-top:32px">
+        <div class="vt-empty__t"><%= lang === 'es' ? 'Sin datos todavía' : 'No data yet' %></div>
+        <p style="color:var(--vt-mute);margin:6px 0 0">
+          <%= lang === 'es' ? 'Completa al menos una manga para ver resultados.' : 'Complete at least one heat to see results.' %>
+        </p>
+      </div>
+    <% } %>
   <% } else { %>
 
     <%
@@ -335,61 +344,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
 
     <% if (typeof pole !== 'undefined' && pole) { %>
     <div class="results-panel" id="tab-pole">
-      <%
-        const fmtPoleMs = (ms) => {
-          if (ms == null) return '—';
-          const m = Math.floor(ms / 60000);
-          const s = ((ms % 60000) / 1000).toFixed(3).padStart(6, '0').replace('.', ',');
-          return (m > 0 ? m + ':' + s : s) + 's';
-        };
-        const fmtPoleGap = (ms) => (ms == null || ms === 0) ? '—' : '+' + (ms / 1000).toFixed(3).replace('.', ',');
-      %>
-      <div class="pole-tab">
-        <div class="pole-tab__head">
-          <span class="pole-tab__title">🏁 <%= lang === 'es' ? 'Clasificación de la pole' : 'Pole classification' %></span>
-          <span class="pole-tab__meta"><%= lang === 'es' ? 'Carril de pole' : 'Pole lane' %> <b><%= pole.lane %></b></span>
-          <% if (pole.poleHolder) { %><span class="pole-tab__meta">Pole: <b><%= pole.poleHolder %></b></span><% } %>
-        </div>
-        <table class="pole-tab__table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th><%= lang === 'es' ? 'Participante' : 'Participant' %></th>
-              <th><%= lang === 'es' ? 'Tiempo' : 'Time' %></th>
-              <th>Gap</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% pole.rows.forEach(r => { %>
-            <tr class="<%= r.pos === 1 ? 'is-pole' : '' %><%= r.lapTimeMs == null ? ' is-none' : '' %>">
-              <td class="pole-tab__pos"><%= r.pos != null ? r.pos : '—' %></td>
-              <td class="pole-tab__name"><%= r.name %><% if (r.pos === 1) { %> <span class="pole-tab__badge">POLE</span><% } %></td>
-              <td class="pole-tab__time"><%= fmtPoleMs(r.lapTimeMs) %></td>
-              <td class="pole-tab__gap"><%= fmtPoleGap(r.gapMs) %></td>
-            </tr>
-            <% }) %>
-          </tbody>
-        </table>
-      </div>
-      <style>
-        .pole-tab{border:1px solid #21262d;border-radius:12px;background:#0d1117;overflow:hidden}
-        .pole-tab__head{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;padding:.9rem 1.1rem;border-bottom:1px solid #21262d;background:#161b22}
-        .pole-tab__title{font-weight:700;color:#e6edf3}
-        .pole-tab__meta{font-size:.8rem;color:#8b949e}
-        .pole-tab__meta b{color:#c9d1d9}
-        .pole-tab__table{width:100%;border-collapse:collapse}
-        .pole-tab__table th{text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8b949e;font-weight:600;padding:.6rem 1.1rem;border-bottom:1px solid #21262d}
-        .pole-tab__table td{padding:.6rem 1.1rem;border-bottom:1px solid #161b22}
-        .pole-tab__table th:nth-child(3),.pole-tab__table td:nth-child(3),.pole-tab__table th:last-child,.pole-tab__table td:last-child{text-align:right}
-        .pole-tab__pos{font-variant-numeric:tabular-nums;color:#8b949e;font-weight:700;width:3rem}
-        .pole-tab__name{font-weight:600;color:#e6edf3}
-        .pole-tab__time{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:#e6edf3}
-        .pole-tab__gap{font-family:'IBM Plex Mono',monospace;color:#8b949e}
-        .pole-tab tr.is-pole td{background:linear-gradient(135deg,rgba(251,191,36,.18),rgba(245,158,11,.12))}
-        .pole-tab tr.is-pole .pole-tab__pos,.pole-tab tr.is-pole .pole-tab__time{color:#fbbf24}
-        .pole-tab__badge{margin-left:.4rem;font-size:.62rem;font-weight:700;color:#fbbf24;background:rgba(251,191,36,.18);padding:.1rem .35rem;border-radius:4px;vertical-align:middle}
-        .pole-tab tr.is-none td{color:#6e7681}
-      </style>
+      <%- include('_pole-panel', { pole, lang }) %>
     </div>
     <% } %>
 

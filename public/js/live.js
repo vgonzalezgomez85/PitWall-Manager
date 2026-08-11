@@ -67,10 +67,11 @@ function formatDelta(bestMs, avgMs) {
   return '+' + formatMs(d);
 }
 
-// "Gap V" de la CLASIFICACIÓN ESTIMADA: vueltas proyectadas respecto al de
-// delante. Mismo formato que la tabla (renderProjected): -N.NN o "—".
-function formatProjGapV(gap) {
-  return (gap && Math.abs(gap) >= 0.01) ? `-${gap.toFixed(2)}` : '—';
+// "Gap V" REAL de la tarjeta: vueltas de distancia YA corridas respecto al
+// que tiene delante ahora mismo (gapInLaps de renderStandings), no la
+// proyección a fin de carrera. Siempre entero (son vueltas ya completadas).
+function formatRealGapV(gap) {
+  return (gap != null && gap !== 0) ? `-${gap}` : '—';
 }
 
 // Color para ÚLTIMA: verde si ≤ mejor, blanco si ≤ media, ámbar si ≤ mejor*1.05, rojo si peor.
@@ -578,21 +579,22 @@ function updateCard(lane, lapCount, lastLapMs, bestLapMs, avgLapMs, exitCount) {
     exitsEl.classList.toggle('lane-card__col-val--exits-active', (exitCount ?? 0) > 0);
   }
   // El Δ de la tarjeta ya NO es la consistencia (media−mejor): ahora muestra el
-  // "Gap V" de la clasificación estimada. Lo rellena updateCardGaps() tras
-  // renderProjected, porque depende de la proyección de TODA la carrera.
+  // "Gap V" REAL (vueltas ya corridas de distancia respecto al que va delante
+  // ahora mismo). Lo rellena updateCardGaps() tras renderStandings, que es
+  // quien calcula gapInLaps con las vueltas reales de toda la carrera.
   // Colores condicionales (V1 los muestra; en V2 se imponen los del mockup B vía CSS)
   _setLvColor(lastEl,  ultColor(lastLapMs, bestLapMs, avgLapMs));
 }
 
-// Vuelca el "Gap V" de la clasificación estimada (_globalProjGapAhead, por
-// nombre de entidad) en el Δ de cada tarjeta. Se llama tras renderProjected,
-// que es quien recalcula la proyección de toda la carrera.
+// Vuelca el "Gap V" REAL (_globalRealGapAhead, por carril, de renderStandings)
+// en el Δ de cada tarjeta. Se llama tras renderStandings haber recalculado
+// gapInLaps con las vueltas reales acumuladas de toda la carrera.
 function updateCardGaps() {
   (RACE_DATA.lanes || []).forEach(l => {
     if (l.isRest) return;
     const el = document.getElementById(`card-delta-${l.lane}`);
     if (!el) return;
-    el.textContent = formatProjGapV(_globalProjGapAhead.get(l.name));
+    el.textContent = formatRealGapV(_globalRealGapAhead[l.lane]);
     _setLvColor(el, null);   // el Gap V no lleva color de consistencia
   });
 }
@@ -880,17 +882,94 @@ function fitVerticalGrid(root, W, H) {
 // Alterna el modo pantalla completa del navegador sobre TODA la vista de directo.
 // Al entrar/salir, el contenedor #lanesGrid cambia de tamaño → el ResizeObserver
 // vuelve a llamar a fitLaneCards y las tarjetas rellenan la pantalla.
+//
+// La página se recarga sola varias veces durante una carrera (tras el
+// semáforo, fin de manga, pausa/reanudación...) y el navegador SIEMPRE sale
+// de pantalla completa al recargar/navegar — es una restricción de seguridad
+// del propio navegador (la Fullscreen API exige un gesto del usuario), no
+// hay forma de reentrar por JS nada más cargar. Lo que sí podemos hacer es
+// recordar que estábamos en pantalla completa (sessionStorage, sobrevive a
+// la recarga) y reentrar silenciosamente en el primer toque/clic/tecla que
+// dé el director en la página nueva, sin que tenga que buscar el botón.
+const FS_KEY = 'pw_live_fullscreen';
+
 function toggleFullscreen() {
   const el = document.documentElement;
   if (!document.fullscreenElement) {
     (el.requestFullscreen || el.webkitRequestFullscreen || (() => {})).call(el);
   } else {
+    try { sessionStorage.removeItem(FS_KEY); } catch {}
     (document.exitFullscreen || document.webkitExitFullscreen || (() => {})).call(document);
   }
 }
+// Salir con Esc no pasa por toggleFullscreen(): también hay que olvidar la preferencia.
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.fullscreenElement) {
+    try { sessionStorage.removeItem(FS_KEY); } catch {}
+  }
+});
+
+// Abre una página auxiliar (clasificación, minimapa, sucesos...) en ventana
+// aparte. Si el directo está en pantalla completa hay que salir Y ESPERAR A
+// QUE TERMINE (exitFullscreen() es asíncrono; en macOS, por ejemplo, implica
+// una animación de cambio de Space) antes de abrir la ventana: si se abre
+// mientras el navegador todavía está saliendo, la ventana nueva hereda la
+// pantalla completa o queda atrapada detrás, "bloqueada". Esperamos la
+// confirmación por evento (con un margen por si el navegador no lo dispara).
+// No borramos FS_KEY: al volver a esta pestaña, el primer toque restaura la
+// pantalla completa sola (ver armFullscreenRestore).
+function openPanel(url, features) {
+  if (!document.fullscreenElement) {
+    window.open(url, '_blank', features);
+    return;
+  }
+  let opened = false;
+  const doOpen = () => {
+    if (opened) return;
+    opened = true;
+    document.removeEventListener('fullscreenchange', onExit);
+    window.open(url, '_blank', features);
+  };
+  const onExit = () => { if (!document.fullscreenElement) doOpen(); };
+  document.addEventListener('fullscreenchange', onExit);
+  (document.exitFullscreen || document.webkitExitFullscreen || (() => {})).call(document);
+  setTimeout(doOpen, 600); // red de seguridad si el evento no llega a tiempo
+}
+
+// Deja armado un listener de "un solo toque" que reentra en pantalla
+// completa. Se usa tanto justo tras cargar la página (si veníamos de una
+// recarga en pantalla completa) como cada vez que salimos de ella nosotros
+// mismos (p. ej. desde openPanel) sin que el usuario lo pidiera explícitamente.
+let _fsRestoreArmed = false;
+function armFullscreenRestore() {
+  if (_fsRestoreArmed) return;
+  let wanted;
+  try { wanted = sessionStorage.getItem(FS_KEY) === '1'; } catch { wanted = false; }
+  if (!wanted) return;
+  _fsRestoreArmed = true;
+  const restore = () => {
+    _fsRestoreArmed = false;
+    document.removeEventListener('pointerdown', restore, true);
+    document.removeEventListener('keydown', restore, true);
+    if (document.fullscreenElement) return;
+    const el = document.documentElement;
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (req) { const p = req.call(el); if (p && p.catch) p.catch(() => {}); }
+  };
+  document.addEventListener('pointerdown', restore, true);
+  document.addEventListener('keydown', restore, true);
+}
+
 // Refleja el estado en el icono del botón (expandir ↔ contraer) y reajusta.
 document.addEventListener('fullscreenchange', () => {
   const on = !!document.fullscreenElement;
+  if (on) {
+    try { sessionStorage.setItem(FS_KEY, '1'); } catch {}
+  } else {
+    // Si seguimos "queriendo" pantalla completa (FS_KEY no se borró explícitamente
+    // desde toggleFullscreen/Esc), es que ha salido por sí sola: arma la reentrada.
+    armFullscreenRestore();
+  }
   const btn = document.getElementById('fsBtn');
   if (btn) {
     const open  = btn.querySelector('.fs-ico-open');
@@ -902,6 +981,9 @@ document.addEventListener('fullscreenchange', () => {
   }
   if (typeof fitLaneCards === 'function') requestAnimationFrame(() => fitLaneCards());
 });
+// Tras una recarga, si veníamos de pantalla completa, reentra en el primer
+// gesto del usuario en la página nueva (clic/toque/tecla cualquiera).
+armFullscreenRestore();
 
 // Reaplica fitLaneCards cuando el contenedor cambia (p. ej. arrastrar el
 // resizer del sidebar). El window resize no se dispara en ese caso.
@@ -1109,6 +1191,9 @@ function renderStandings(data) {
       gapInMs[r.lane] = 0;
     }
   });
+  // Expuesto por carril para que updateCardGaps() rellene el "Gap V" REAL de
+  // cada tarjeta (vueltas ya corridas, no la proyección a fin de carrera).
+  _globalRealGapAhead = gapInLaps;
 
   if (projectedBody) projectedBody.innerHTML = rows.map((r, i) => {
     if (r.isRest) {
@@ -1151,7 +1236,7 @@ function renderStandings(data) {
   // renderProjected ANTES que sortCards: calcula la posición general (todas las
   // tandas) que las tarjetas usan para su orden y su P.x.
   renderProjected(data);
-  // Con la proyección ya calculada, vuelca el "Gap V" en el Δ de cada tarjeta.
+  // gapInLaps (real) ya está calculado arriba: vuelca el "Gap V" en el Δ de cada tarjeta.
   updateCardGaps();
   sortCards(data.standings);
   // Re-evaluar paginación tras reordenar cards en V1
@@ -1163,10 +1248,10 @@ let prevProjGap = {};
 // La rellena renderProjected y la consumen las tarjetas (sortCards) para
 // mostrar la P.x real del conjunto de la carrera, no solo de la tanda.
 let _globalProjPos = new Map();
-// "Gap V" (vueltas proyectadas respecto al de delante) por nombre de entidad.
-// La rellena renderProjected y la consumen las tarjetas (updateCardGaps) para
-// mostrar en el Δ el MISMO valor que la clasificación estimada.
-let _globalProjGapAhead = new Map();
+// "Gap V" REAL (vueltas ya corridas respecto al que va delante ahora mismo)
+// por carril. La rellena renderStandings (gapInLaps) y la consume
+// updateCardGaps() para el Δ de cada tarjeta.
+let _globalRealGapAhead = {};
 
 function renderProjected(data) {
   if (!data?.standings) return;
@@ -1333,10 +1418,6 @@ function renderProjected(data) {
   rows.forEach(r => {
     prevProjGap[r.name] = { above: gapAboveNow[r.name], below: gapBelowNow[r.name] };
   });
-
-  // Exponer el "Gap V" por entidad para que las tarjetas lo muestren en su Δ.
-  _globalProjGapAhead = new Map();
-  rows.forEach(r => _globalProjGapAhead.set(r.name, projGapAhead[r.name]));
 
   if (projectedBody) projectedBody.innerHTML = rows.map((r, i) => {
     const gV  = projGapAhead[r.name];

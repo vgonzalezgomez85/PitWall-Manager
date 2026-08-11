@@ -13,6 +13,16 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.25.8] — 2026-08-11
+
+### Corregido
+- **Los botones del directo (clasificación general, minimapa, Le Mans, corrección de vueltas, registro de sucesos) ya no se abren en pantalla completa ni se quedan "bloqueados".** Antes unos usaban `target="_blank"` (en muchos navegadores abre en pestaña de la MISMA ventana: con el directo en pantalla completa, parecía que se había cerrado) y otros ya abrían ventana aparte pero, al estar el directo en pantalla completa, la ventana nueva se abría también a pantalla completa o quedaba oculta detrás sin poder interactuar con ella. Ahora los 5 pasan por un `openPanel()` común que sale de pantalla completa ANTES de abrir la ventana emergente (tamaño fijo, sin pantalla completa), dejando el directo detrás tal cual estaba; al volver a esa pestaña, el primer toque restaura la pantalla completa solo (mismo mecanismo de la v1.25.7).
+
+## [1.25.7] — 2026-08-11
+
+### Corregido
+- **La pantalla completa del directo ya no se pierde con cada recarga.** La vista `/live` se recarga sola varias veces durante una manga (tras el semáforo, fin de manga, pausa/reanudación...) y el navegador sale de pantalla completa en cada una — es una restricción de seguridad del propio navegador que ninguna web puede evitar por JavaScript (reentrar exige un gesto del usuario). Ahora, si se salió de pantalla completa por una recarga (no por Esc o el botón), el primer toque/clic/tecla que dé el director en la página nueva la restaura sola, sin tener que volver a buscar el icono.
+
 ## [1.25.6] — 2026-08-11
 
 ### Mejorado
