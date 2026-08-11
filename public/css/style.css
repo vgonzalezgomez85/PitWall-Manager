@@ -1691,6 +1691,11 @@ body:has(.pole-timing-fit) { overflow: hidden; }
 }
 .pole-timing-fit .pole-bcast-wrap {
   flex: 1 1 auto; min-height: 0; width: 100%;
+  /* A diferencia del resto de páginas (tope de 1240px, ver .vt-wrap), esta
+     vista kiosco/broadcast está pensada para llenar TODA la pantalla
+     (TV/monitor de boxes): en pantallas anchas sobraba mucho negro a la
+     derecha y la clasificación se quedaba estrecha (nombres cortados). */
+  max-width: none;
   display: flex; flex-direction: column;
 }
 /* Cabecera HORIZONTAL a lo ancho (no se reduce): título · meta · carril ·
@@ -1714,12 +1719,18 @@ body:has(.pole-timing-fit) { overflow: hidden; }
 .pole-timing-fit .pole-tower-time { font-size: 14px; }
 .pole-timing-fit .pole-tower-pos  { font-size: 14px; }
 
-/* Clasificación en vivo: columnas AUTOMÁTICAS que llenan el alto disponible y
-   crean tantas como hagan falta para ver todos los equipos en orden (relleno por
-   columnas: 1ª col 1..k, 2ª col k+1.., …). Sin scroll vertical. */
+/* Clasificación en vivo: columnas que llenan el alto Y el ancho disponibles,
+   creando tantas como hagan falta para ver todos los equipos en orden
+   (relleno por columnas: 1ª col 1..k, 2ª col k+1.., …). Sin scroll vertical.
+   El número exacto de columnas lo calcula pole-timing.ejs (layoutTowerColumns)
+   a partir del alto/ancho reales de la tarjeta y lo aplica como column-count
+   inline, así las columnas se ESTIRAN para ocupar todo el ancho (antes,
+   con solo un column-width mínimo, sobraba un hueco vacío a la derecha
+   aunque los nombres cupieran de sobra). column-width aquí es solo el
+   fallback si JS no ha corrido todavía. */
 .pole-timing-fit .pole-tower {
   display: block;
-  column-width: 175px; column-gap: 14px;    /* columnas más estrechas → caben más (todos los equipos) */
+  column-width: 260px; column-gap: 18px;
   column-fill: auto;                          /* llena la 1ª columna del todo y luego la 2ª (no reparte) */
   overflow-x: hidden; overflow-y: auto;      /* nunca scroll horizontal */
 }
@@ -1728,15 +1739,21 @@ body:has(.pole-timing-fit) { overflow: hidden; }
   /* Altura uniforme y una sola línea → las columnas quedan alineadas. */
   min-height: 42px; overflow: hidden;
 }
-/* El nombre nunca parte la fila (elipsis si no cabe) */
+/* El nombre nunca parte la fila (elipsis si no cabe, pero con columnas más
+   anchas ahora es el último recurso, no lo habitual) */
 .pole-timing-fit .pole-tower-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 /* En columnas estrechas no caben los badges verbosos del líder/en pista:
    se ocultan (el líder ya se distingue por el color y "Líder"/gap). */
 .pole-timing-fit .pole-tower-fastest,
 .pole-timing-fit .pole-tower-livetag { display: none; }
-/* La clasificación ocupa más parte derecha para que quepan las columnas */
+/* La clasificación ocupa más parte derecha para que quepan las columnas
+   anchas; al liberar el tope de 1240px del wrap (arriba), en pantallas
+   grandes hay bastante más sitio real para repartir entre las 3 columnas. */
 @media (min-width: 981px) {
-  .pole-timing-fit .pole-bcast-grid { grid-template-columns: 300px 1fr 1.9fr; }
+  .pole-timing-fit .pole-bcast-grid { grid-template-columns: 300px 1fr 2fr; }
+}
+@media (min-width: 1500px) {
+  .pole-timing-fit .pole-bcast-grid { grid-template-columns: 340px 1fr 2.3fr; }
 }
 /* Nombre del equipo en "En pista" un poco más pequeño */
 .pole-timing-fit .pole-driver-big { font-size: 46px; }

@@ -13,6 +13,12 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.25.6] — 2026-08-11
+
+### Mejorado
+- **Clasificación en vivo de la pole más legible en pantalla grande.** En `/pole/timing`, el panel "🏆 Clasificación en vivo" ya no recorta con "…" los nombres de equipo largos: la vista ahora aprovecha toda la pantalla (antes se quedaba encorsetada en el ancho del resto del sitio) y calcula sobre la marcha cuántas columnas hacen falta, estirándolas para llenar el hueco vacío que antes quedaba a la derecha en monitores anchos.
+- **Categoría del equipo, también en la pole.** La clasificación en vivo de la pole muestra ahora la categoría de cada equipo junto a su nombre, coloreada igual que en el directo de carrera (mismo color para la misma categoría en ambas pantallas).
+
 ## [1.25.5] — 2026-08-11
 
 ### Corregido

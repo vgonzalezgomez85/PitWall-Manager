@@ -213,6 +213,7 @@ const seedEntries = [
   <% entries.forEach((e, i) => { %>
     {
       name:      <%- JSON.stringify(e.entity_name) %>,
+      categoria: <%- e.categoria ? JSON.stringify(e.categoria) : 'null' %>,
       bestLapMs: <%- e.lap_time_ms != null ? e.lap_time_ms : 'null' %>,
       isCurrent: <%= i === session.current_idx ? 'true' : 'false' %>,
       isDone:    <%= i < session.current_idx ? 'true' : 'false' %>,
@@ -235,6 +236,18 @@ function fmtDelta(ms) {
 }
 function show(id) { const el = document.getElementById(id); if (el) el.style.display = ''; }
 function hide(id) { const el = document.getElementById(id); if (el) el.style.display = 'none'; }
+
+// Sufijo de categoría coloreado, igual que en el live (misma paleta y hash).
+const CAT_PALETTE = ['#58a6ff','#f6c90e','#3fb950','#ff6b9d','#ff9800','#ba68c8','#00bcd4','#e63946','#8bc34a','#ce93d8','#4dd0e1','#ffab40'];
+function catColor(cat) {
+  if (!cat) return null;
+  let h = 0;
+  for (let i = 0; i < cat.length; i++) h = (h * 31 + cat.charCodeAt(i)) >>> 0;
+  return CAT_PALETTE[h % CAT_PALETTE.length];
+}
+function teamHtml(name, cat) {
+  return cat ? `${name}<span class="cat-suffix" style="color:${catColor(cat)}"> - ${cat}</span>` : name;
+}
 
 // ── Torre de tiempos ─────────────────────────────────────────────────────
 function renderTower() {
@@ -271,7 +284,7 @@ function renderTower() {
     rows.push(`
       <div class="${cls}">
         <div class="pole-tower-pos">${i + 1}</div>
-        <div class="pole-tower-name">${e.name}${nameSuffix}${liveTag}</div>
+        <div class="pole-tower-name">${teamHtml(e.name, e.categoria)}${nameSuffix}${liveTag}</div>
         <div class="pole-tower-time">
           ${fmtSeconds3(e.bestLapMs)}
           ${isP1
@@ -287,7 +300,7 @@ function renderTower() {
     rows.push(`
       <div class="pole-tower-row pole-tower-row--running">
         <div class="pole-tower-pos">●</div>
-        <div class="pole-tower-name">${currentNoTime.name}</div>
+        <div class="pole-tower-name">${teamHtml(currentNoTime.name, currentNoTime.categoria)}</div>
         <div class="pole-tower-time">${liveTxt}</div>
       </div>`);
   }
@@ -296,13 +309,43 @@ function renderTower() {
     rows.push(`
       <div class="pole-tower-row pole-tower-row--pending">
         <div class="pole-tower-pos">—</div>
-        <div class="pole-tower-name">${e.name}</div>
+        <div class="pole-tower-name">${teamHtml(e.name, e.categoria)}</div>
         <div class="pole-tower-time">—</div>
       </div>`);
   });
 
   tower.innerHTML = rows.join('');
+  layoutTowerColumns(rows.length);
 }
+
+// Reparte la "Clasificación en vivo" en tantas columnas como hagan falta para
+// que quepan TODOS los equipos sin scroll, pero estirándolas para llenar el
+// ancho real de la tarjeta (antes se usaba solo un ancho mínimo por columna
+// y sobraba un hueco vacío a la derecha aunque los nombres cupieran de sobra).
+let _towerLastRowCount = 0;
+function layoutTowerColumns(rowCount) {
+  if (typeof rowCount === 'number') _towerLastRowCount = rowCount;
+  const tower = document.getElementById('js-tower');
+  if (!tower || !_towerLastRowCount) return;
+  requestAnimationFrame(() => {
+    const availH = tower.clientHeight;
+    const availW = tower.clientWidth;
+    if (!availH || !availW) return;
+    const ROW_H  = 46;   // alto aprox. de fila (padding + margen entre filas)
+    const MIN_COL_W = 215; // nunca más estrechas que esto (deja sitio de sobra al nombre
+                            // aparte de la posición y el tiempo; con columnas más
+                            // estrechas el nombre se quedaba con muy poco margen y
+                            // volvía a recortarse con "…")
+    const GAP = 18;
+    const perCol       = Math.max(1, Math.floor(availH / ROW_H));
+    const neededCols    = Math.max(1, Math.ceil(_towerLastRowCount / perCol));
+    const maxColsByWidth = Math.max(1, Math.floor((availW + GAP) / (MIN_COL_W + GAP)));
+    const cols = Math.min(neededCols, maxColsByWidth);
+    tower.style.columnCount = cols;
+    tower.style.columnWidth = 'auto'; // las columnas se estiran para llenar el ancho
+  });
+}
+window.addEventListener('resize', () => layoutTowerColumns());
 
 // Actualiza un entry y re-renderiza
 function updateEntryTime(name, bestLapMs) {

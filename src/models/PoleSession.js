@@ -65,9 +65,11 @@ class PoleSession {
   // Get entries in random (shuffled) order
   static getEntriesOrdered(poleSessionId) {
     return db.prepare(`
-      SELECT * FROM pole_entries
-      WHERE pole_session_id = ?
-      ORDER BY order_idx ASC, id ASC
+      SELECT pe.*, tc.categoria AS categoria
+      FROM pole_entries pe
+      LEFT JOIN teams_catalog tc ON tc.name = pe.entity_name
+      WHERE pe.pole_session_id = ?
+      ORDER BY pe.order_idx ASC, pe.id ASC
     `).all(poleSessionId);
   }
 
@@ -89,9 +91,11 @@ class PoleSession {
   // Returns entries sorted by lap_time_ms ASC (null times at the end)
   static getEntriesSorted(poleSessionId) {
     return db.prepare(`
-      SELECT * FROM pole_entries
-      WHERE pole_session_id = ?
-      ORDER BY CASE WHEN lap_time_ms IS NULL THEN 1 ELSE 0 END, lap_time_ms ASC
+      SELECT pe.*, tc.categoria AS categoria
+      FROM pole_entries pe
+      LEFT JOIN teams_catalog tc ON tc.name = pe.entity_name
+      WHERE pe.pole_session_id = ?
+      ORDER BY CASE WHEN pe.lap_time_ms IS NULL THEN 1 ELSE 0 END, pe.lap_time_ms ASC
     `).all(poleSessionId);
   }
 
