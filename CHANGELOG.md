@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.25.9] — 2026-08-11
+
+### Mejorado
+- **El "Gap V" de las tarjetas del directo ahora es el gap REAL, no el estimado.** Antes mostraba la diferencia proyectada a fin de carrera (podía dar valores enormes, tipo "-33.60", en una 24h con muchas mangas por delante). Ahora muestra las vueltas de distancia YA corridas respecto al que va delante ahora mismo, con un decimal que afina con la fracción de vuelta en curso de cada uno (tiempo desde su último cruce ÷ su media). Si van a la par en vueltas enteras, muestra en su lugar el gap real en segundos entre sus últimos cruces de esta manga, para hacerse una idea de lo lejos que están en pista.
+
 ## [1.25.8] — 2026-08-11
 
 ### Corregido

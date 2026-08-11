@@ -69,9 +69,14 @@ function formatDelta(bestMs, avgMs) {
 
 // "Gap V" REAL de la tarjeta: vueltas de distancia YA corridas respecto al
 // que tiene delante ahora mismo (gapInLaps de renderStandings), no la
-// proyección a fin de carrera. Siempre entero (son vueltas ya completadas).
-function formatRealGapV(gap) {
-  return (gap != null && gap !== 0) ? `-${gap}` : '—';
+// proyección a fin de carrera. Con decimal (coma viva en pista) cuando hay
+// diferencia de vueltas enteras. A la par en vueltas (gapLaps===0), cae al
+// gap en segundos entre los últimos cruces (gapMs de renderStandings) para
+// dar una idea de lo lejos que están en pista.
+function formatRealGapV(gapLaps, gapMs) {
+  if (gapLaps != null && gapLaps !== 0) return `-${gapLaps.toFixed(1)}v`;
+  if (gapMs != null) return `-${(gapMs / 1000).toFixed(1)}s`;
+  return '—';
 }
 
 // Color para ÚLTIMA: verde si ≤ mejor, blanco si ≤ media, ámbar si ≤ mejor*1.05, rojo si peor.
@@ -594,7 +599,7 @@ function updateCardGaps() {
     if (l.isRest) return;
     const el = document.getElementById(`card-delta-${l.lane}`);
     if (!el) return;
-    el.textContent = formatRealGapV(_globalRealGapAhead[l.lane]);
+    el.textContent = formatRealGapV(_globalRealGapAhead[l.lane], _globalRealGapMsAhead[l.lane]);
     _setLvColor(el, null);   // el Gap V no lleva color de consistencia
   });
 }
@@ -1154,6 +1159,21 @@ function highlightMangaLeader(standings) {
   }
 }
 
+// Fracción (0..~1) de la vuelta que lleva corrida AHORA MISMO un carril
+// activo: tiempo transcurrido desde su último cruce (mangaCrossMs) ÷ su
+// media de manga. Da la "coma viva en pista" para afinar el Gap V con
+// decimales en vez de solo vueltas enteras. 0 si no es calculable (descanso,
+// sin cruce todavía, sin media).
+function lapFraction(r) {
+  if (!r || r.isRest || r.avgLapMs == null || r.avgLapMs <= 0) return 0;
+  const cross = mangaCrossMs[r.lane];
+  if (cross == null) return 0;
+  const elapsedNow = Math.max(0, (RACE_DATA.durationMs || 0) - remainingMs);
+  const sinceCross = elapsedNow - cross;
+  if (!(sinceCross > 0)) return 0;
+  return Math.min(sinceCross / r.avgLapMs, 1.5); // clamp por si el reloj cliente/servidor se desincroniza
+}
+
 function renderStandings(data) {
   if (!data?.standings) return;
   // Merge active lanes with resting entities (lapCount=0 this manga)
@@ -1176,24 +1196,36 @@ function renderStandings(data) {
   rows.forEach((r, i) => {
     if (i === 0) {
       gapInLaps[r.lane] = 0;
-      gapInMs[r.lane] = 0;
+      gapInMs[r.lane] = null;
       return;
     }
-    const prevTotal = rowTotal(rows[i-1]);
+    const above = rows[i - 1];
+    const prevTotal = rowTotal(above);
     const currTotal = rowTotal(r);
     const lapGap = prevTotal - currTotal;
-    gapInLaps[r.lane] = lapGap;
 
-    // Gap en segundos: si está el mismo número de vueltas, usa la diferencia de promedio
-    if (lapGap === 0 && r.avgLapMs != null && rows[i-1].avgLapMs != null) {
-      gapInMs[r.lane] = rows[i-1].avgLapMs - r.avgLapMs;
+    if (lapGap === 0) {
+      // A la par en vueltas enteras: diferencia REAL en segundos entre sus
+      // últimos cruces de esta manga (mangaCrossMs), para hacerse una idea de
+      // lo lejos que están en pista. Solo tiene sentido entre dos carriles
+      // activos (no en descanso) con cruce ya registrado esta manga.
+      gapInLaps[r.lane] = 0;
+      gapInMs[r.lane] = (!r.isRest && !above.isRest &&
+        mangaCrossMs[r.lane] != null && mangaCrossMs[above.lane] != null)
+        ? Math.abs(mangaCrossMs[r.lane] - mangaCrossMs[above.lane])
+        : null;
     } else {
-      gapInMs[r.lane] = 0;
+      // Con diferencia de vueltas enteras: afina con la fracción de vuelta
+      // en curso de cada uno (coma viva en pista), en vez del entero pelado.
+      gapInLaps[r.lane] = Math.max(0, lapGap + (lapFraction(above) - lapFraction(r)));
+      gapInMs[r.lane] = null;
     }
   });
   // Expuesto por carril para que updateCardGaps() rellene el "Gap V" REAL de
-  // cada tarjeta (vueltas ya corridas, no la proyección a fin de carrera).
-  _globalRealGapAhead = gapInLaps;
+  // cada tarjeta (vueltas ya corridas, no la proyección a fin de carrera; o el
+  // gap en segundos entre cruces cuando van a la par en vueltas).
+  _globalRealGapAhead   = gapInLaps;
+  _globalRealGapMsAhead = gapInMs;
 
   if (projectedBody) projectedBody.innerHTML = rows.map((r, i) => {
     if (r.isRest) {
@@ -1209,8 +1241,8 @@ function renderStandings(data) {
         <td class="sr-right">—</td>
       </tr>`;
     }
-    const gapLapDisplay = gapInLaps[r.lane] !== 0 ? `-${gapInLaps[r.lane]}` : '—';
-    const gapSecDisplay = gapInMs[r.lane] > 0 ? `+${formatMs(gapInMs[r.lane])}` : '—';
+    const gapLapDisplay = gapInLaps[r.lane] !== 0 ? `-${gapInLaps[r.lane].toFixed(1)}` : '—';
+    const gapSecDisplay = gapInMs[r.lane] != null ? `-${formatMs(gapInMs[r.lane])}` : '—';
 
     return `
     <tr class="srow" id="srow-${r.lane}">
@@ -1252,6 +1284,9 @@ let _globalProjPos = new Map();
 // por carril. La rellena renderStandings (gapInLaps) y la consume
 // updateCardGaps() para el Δ de cada tarjeta.
 let _globalRealGapAhead = {};
+// Gap REAL en ms entre cruces, para cuando van a la par en vueltas
+// (gapInLaps === 0). También la rellena renderStandings (gapInMs).
+let _globalRealGapMsAhead = {};
 
 function renderProjected(data) {
   if (!data?.standings) return;
