@@ -167,6 +167,8 @@
           <tr>
             <th>#</th>
             <th><%= lang === 'es' ? 'Participante' : 'Participant' %></th>
+            <th><%= lang === 'es' ? 'Carril' : 'Lane' %></th>
+            <% if (race.format === 'team') { %><th><%= lang === 'es' ? 'Piloto' : 'Driver' %></th><% } %>
             <th>V</th>
             <th title="<%= lang === 'es' ? 'Vueltas respecto al de delante en la manga; a igualdad de vueltas, diferencia de media' : 'Laps behind the car ahead in this heat; if tied on laps, average pace difference' %>"><%= lang === 'es' ? 'Gap Sig.' : 'Gap Next' %></th>
             <th>Mejor</th>
@@ -391,6 +393,7 @@
 <script src="/js/chart.umd.min.js"></script>
 <script>
   const RACE_ID = <%= race.id %>;
+  const RACE_FORMAT = <%- JSON.stringify(race.format) %>;
   let MANGA_ID = <%= selectedMangaId %>;
   let myKey = localStorage.getItem('ls_entity_' + RACE_ID) || '';
   let includeOutliers = localStorage.getItem('ls_include_outliers') === '1';
@@ -545,13 +548,14 @@
 
     // Tabla general
     const tbody = $('lsTableBody');
+    const restColspan = RACE_FORMAT === 'team' ? 9 : 8;   // #, Participante + resto (Carril [+ Piloto])
     tbody.innerHTML = data.entities.map((e, i) => {
       if (e.isResting) {
         return `
       <tr class="${e.key === myKey ? 'is-me' : ''} ls-row--resting">
         <td>${e.position}</td>
         <td><strong>${teamHtml(e.entityName)}</strong></td>
-        <td colspan="7" style="color:#6e7681;font-style:italic">💤 <%= lang === 'es' ? 'Descansando esta manga' : 'Resting this heat' %></td>
+        <td colspan="${restColspan}" style="color:#6e7681;font-style:italic">💤 <%= lang === 'es' ? 'Descansando esta manga' : 'Resting this heat' %></td>
       </tr>
     `;
       }
@@ -567,10 +571,13 @@
         if (lapGap > 0) gapSig = '-' + lapGap + 'v';
         else if (above[useAvgKey] != null && e[useAvgKey] != null) gapSig = '+' + fmtSec(Math.max(0, e[useAvgKey] - above[useAvgKey]));
       }
+      const driverTd = RACE_FORMAT === 'team' ? `<td>${e.driverName || '—'}</td>` : '';
       return `
       <tr class="${e.key === myKey ? 'is-me' : ''}">
         <td>${e.position}</td>
         <td><strong>${teamHtml(e.entityName)}</strong></td>
+        <td>${e.lane != null ? 'C' + e.lane : '—'}</td>
+        ${driverTd}
         <td>${e.totalLaps}</td>
         <td>${gapSig}</td>
         <td>${fmtMs(e.bestMs)}</td>

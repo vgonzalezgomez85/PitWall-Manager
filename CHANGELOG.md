@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.25.11] — 2026-08-11
+
+### Añadido
+- **Estadísticas en vivo: carril y piloto en la clasificación de la manga actual.** La tabla "Clasificación de manga actual" de `/races/:id/live-stats` muestra ahora el carril de cada participante y, en carreras por equipos, el piloto que lleva el carril ahora mismo (el turno más reciente registrado en esta manga, mismo origen que el directo). En carreras individuales no aparece la columna de piloto, porque el participante ya lo es.
+
 ## [1.25.10] — 2026-08-11
 
 ### Corregido

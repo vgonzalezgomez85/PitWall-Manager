@@ -21,6 +21,7 @@ const Tanda         = require('../models/Tanda');
 const Lap           = require('../models/Lap');
 const TireChange    = require('../models/TireChange');
 const PoleSession   = require('../models/PoleSession');
+const DriverShift   = require('../models/DriverShift');
 const TimingService = require('../services/TimingService');
 const db            = require('../config/database');
 const {
@@ -489,6 +490,16 @@ class LiveStatsController {
     entities.forEach(e => {
       e.tireChangesManga = hasTireControl ? (tireByNameManga[`${e.entityName}::${manga.number}`] || 0) : 0;
     });
+
+    // Piloto que lleva AHORA el carril (solo carreras por equipos, donde el
+    // conductor puede rotar dentro de la misma manga sin cambiar de carril).
+    // Mismo origen que el directo (SessionController.live): el último turno
+    // (driver_shift) registrado para cada carril en esta manga.
+    if (race.format === 'team') {
+      const driverByLane = {};
+      DriverShift.currentByManga(manga.id).forEach(s => { driverByLane[s.lane] = s.driver_name; });
+      entities.forEach(e => { e.driverName = e.lane != null ? (driverByLane[e.lane] || null) : null; });
+    }
 
     // Clasificación por total laps (desc), luego best (asc). Quien descansa
     // (0 vueltas, sin mejor) cae naturalmente al final por este mismo orden.
