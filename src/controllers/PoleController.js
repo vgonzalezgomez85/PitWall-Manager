@@ -220,10 +220,12 @@ class PoleController {
     res.json({ ok: true, entryName: current.entity_name, durationMs });
   }
 
-  // POST /races/:id/pole/participant/stop  — stop manual (aborta y reinicia
-  // la pole del piloto actual sin guardar tiempo).
+  // POST /races/:id/pole/participant/stop  — stop forzado (aborta sin guardar
+  // tiempo y re-arma standby para el MISMO piloto en el acto — ver
+  // PoleTimingService.forceStop; evita quedarse "congelado" sin volver a
+  // "esperando GO" si el GO físico del DS-300 llega antes que el próximo clic).
   static stopParticipant(req, res) {
-    PoleTimingService.abort();
+    PoleTimingService.forceStop();
     res.json({ ok: true });
   }
 

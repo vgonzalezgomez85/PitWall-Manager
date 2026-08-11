@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.25.5] — 2026-08-11
+
+### Corregido
+- **La pole ya no se quedaba "congelada" tras un stop forzado.** Al parar a un piloto a mitad de tanda (botón ⏹ "Parar" o stop físico del DS-300), si el siguiente GO físico llegaba antes de pulsar manualmente "Iniciar" en pantalla, el sistema lo descartaba en silencio: el piloto seguía marcado "EN PISTA" en la lista pero el panel se quedaba en "PREPARADO" sin responder a ningún clic. Ahora el stop forzado re-arma al mismo piloto en el acto, así el siguiente GO ya no se pierde. Verificado en caliente durante una carrera real; no tiene relación con el interruptor de cambio automático de piloto.
+
 ## [1.25.4] — 2026-08-10
 
 ### Corregido

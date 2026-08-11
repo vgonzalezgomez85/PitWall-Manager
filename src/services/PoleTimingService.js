@@ -77,9 +77,16 @@ class PoleTimingServiceClass {
       }
     });
 
-    // Stop manual del DS-300 → abortamos la pole de este piloto (sin guardar
-    // tiempo). Finished/timer expiry → guardamos mejor vuelta y avanzamos.
-    SerialService.on('race_stopped',  () => { if (this._active || this._standby) this.abort(); });
+    // Stop manual/forzado del DS-300 → abortamos la pole de este piloto (sin
+    // guardar tiempo) y lo re-armamos EN EL ACTO (mismo tick, sin async de por
+    // medio): si dejáramos el servicio en idle a la espera de que alguien
+    // pulse "Iniciar" en el navegador, un GO físico que llegue mientras tanto
+    // se pierde en silencio (race_go/race_started exigen _standby=true) y,
+    // como el DS-300 no repite una transición de estado (_setRaceState corta
+    // en seco si no cambia), esa manga se queda muerta hasta el siguiente
+    // ciclo stop→go. forceStop() imita el "pilotos pre-armados" del stop
+    // forzado de resistencia. Finished/timer expiry → guardamos mejor vuelta.
+    SerialService.on('race_stopped',  () => { if (this._active || this._standby) this.forceStop(); });
     SerialService.on('race_finished', () => { if (this._active || this._standby) this.finish(true); });
   }
 
@@ -225,6 +232,20 @@ class PoleTimingServiceClass {
   // Compat: stop(auto) sigue funcionando — true = finish, false = abort.
   stop(auto = false) {
     return auto ? this.finish(true) : this.abort();
+  }
+
+  // STOP FORZADO de este piloto: aborta sin persistir tiempo (como abort()) y
+  // re-arma standby para EL MISMO piloto de inmediato, en el mismo tick — sin
+  // depender de un clic posterior en "Iniciar" que puede llegar tarde frente a
+  // un GO físico del DS-300 (ver comentario del listener 'race_stopped').
+  // Usado por el botón ⏹ "Parar" de la UI y por el stop físico del DS-300.
+  forceStop() {
+    const s = this.session;
+    if (!s) return null;
+    const { poleSessionId, entryId, entryName, poleLane, durationMs, minLapMs } = s;
+    this.abort();
+    this.start({ poleSessionId, entryId, entryName, poleLane, durationMs, minLapMs });
+    return null;
   }
 
   _teardown() {
