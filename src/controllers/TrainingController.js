@@ -100,10 +100,12 @@ class TrainingController {
     // Pt por defecto: el del circuito de ajustes. Con varios DS no hay selector
     // de circuito, así que este es el único valor que precarga el campo.
     const defaultCircuit = defaultCircuitId ? Circuit.findById(defaultCircuitId) : null;
+    const TeamCatalog = require('../models/TeamCatalog');
     res.render('training/competition', {
       t: req.t, circuits, defaultCircuitId, fallbackLanes,
       defaultMinLapMs: defaultCircuit ? (defaultCircuit.min_lap_ms || 0) : 0,
       serialTotal: serialLaneTotal(),
+      teamsCatalog: TeamCatalog.findAll(),
     });
   }
 

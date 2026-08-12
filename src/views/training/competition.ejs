@@ -87,6 +87,23 @@
           <span class="vt-cnt" id="partCount" style="margin-left:auto">0 / 0</span>
         </div>
 
+        <% if ((teamsCatalog || []).length) { %>
+          <div style="margin-top:14px">
+            <p class="vt-hint" style="margin-bottom:8px">
+              <%= lang === 'es'
+                ? '📋 Toca un equipo del catálogo para añadirlo. Si no existe, escribe su nombre a mano abajo.'
+                : '📋 Tap a catalog team to add it. If it doesn\'t exist, type its name manually below.' %>
+            </p>
+            <div id="catalogPicker" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.4rem;max-height:220px;overflow-y:auto;padding:.6rem;border:1px solid #30363d;border-radius:8px;background:#0d1117">
+              <% teamsCatalog.forEach(ct => { %>
+                <div class="catalog-card" data-team-name="<%= ct.name %>">
+                  <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><%= ct.name %></span>
+                </div>
+              <% }) %>
+            </div>
+          </div>
+        <% } %>
+
         <div id="participantList" class="tc-part-list" style="margin-top:14px;margin-bottom:6px"></div>
 
         <button type="button" id="addPilotBtn" class="vt-btn vt-btn--ghost" style="margin-top:6px">
@@ -223,7 +240,24 @@ function renderSlots() {
   const filled = slots.filter(n => n.trim()).length;
   count.textContent = `${filled} / ${slots.length}`;
   btn.disabled = filled < 2;
+  refreshCatalogUsedState();
 }
+
+/* ── Catálogo de equipos: un toque para añadir uno al primer hueco libre ──── */
+function refreshCatalogUsedState() {
+  const used = new Set(slots.map(s => s.trim().toLowerCase()).filter(Boolean));
+  document.querySelectorAll('#catalogPicker .catalog-card').forEach(card => {
+    card.classList.toggle('catalog-card--used', used.has(card.dataset.teamName.trim().toLowerCase()));
+  });
+}
+document.getElementById('catalogPicker')?.addEventListener('click', e => {
+  const card = e.target.closest('.catalog-card');
+  if (!card || card.classList.contains('catalog-card--used')) return;
+  let idx = slots.findIndex(s => !s.trim());
+  if (idx === -1) { slots.push(''); idx = slots.length - 1; }
+  slots[idx] = card.dataset.teamName;
+  renderSlots();
+});
 
 /* listeners delegados sobre la lista */
 document.getElementById('participantList').addEventListener('input', e => {
@@ -249,6 +283,7 @@ document.getElementById('participantList').addEventListener('input', e => {
             <input type="hidden" name="participants[${i}][color]" value="${COLORS[i % COLORS.length]}">
             <input type="hidden" name="participants[${i}][lane]" value="${i + 1}">`;
   }).join('');
+  refreshCatalogUsedState();
 });
 
 document.getElementById('participantList').addEventListener('click', e => {

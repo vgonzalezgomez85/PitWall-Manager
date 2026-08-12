@@ -13,6 +13,14 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.28.0] — 2026-08-12
+
+### Añadido
+- **Elegir equipos del catálogo con un toque, en dos sitios más.** Además del autocompletado de texto que ya sugería equipos al escribir, ahora aparece un panel con una **tarjeta por cada equipo del catálogo** (nombre y nº de pilotos) para añadirlo de un clic, sin teclear nada:
+  - En el paso **Participantes** del asistente de nueva carrera (cuando la carrera tiene **Pole**), un clic en una tarjeta rellena el siguiente hueco libre con el nombre del equipo **y sus pilotos**.
+  - En **Entrenamiento de competición**, un clic en una tarjeta pone al equipo en el siguiente carril libre.
+  Las tarjetas ya usadas se atenúan y dejan de poder pulsarse; si el equipo no está en el catálogo, se sigue pudiendo escribir su nombre a mano (el botón pasa a llamarse **"+ Añadir equipo a mano"** en el asistente, para dejar claro que el catálogo es ahora el camino más rápido).
+
 ## [1.27.0] — 2026-08-12
 
 ### Añadido

@@ -58,6 +58,24 @@
 
       <% } else { %>
 
+        <% if ((teamsCatalog || []).length) { %>
+          <div style="margin-bottom:1.25rem">
+            <div class="form-hint" style="margin-bottom:.5rem">
+              <%= lang === 'es'
+                ? '📋 Toca un equipo del catálogo para añadirlo con sus pilotos. Si no existe, créalo a mano más abajo.'
+                : '📋 Tap a catalog team to add it with its drivers. If it doesn\'t exist, add it manually below.' %>
+            </div>
+            <div id="catalogPicker" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.4rem;max-height:220px;overflow-y:auto;padding:.6rem;border:1px solid #30363d;border-radius:8px;background:#0d1117">
+              <% teamsCatalog.forEach(ct => { %>
+                <div class="catalog-card" data-team-id="<%= ct.id %>" data-team-name="<%= ct.name %>">
+                  <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><%= ct.name %></span>
+                  <span style="font-size:.75rem;color:#8b949e;flex-shrink:0"><%= ct.members.length %>👤</span>
+                </div>
+              <% }) %>
+            </div>
+          </div>
+        <% } %>
+
         <div id="teamsContainer" class="teams-container">
           <% const initT = Math.max(_minRows, body.teams ? Object.keys(body.teams).length : 0); %>
           <% for (let i = 0; i < initT; i++) { %>
@@ -100,15 +118,8 @@
         </div>
 
         <button type="button" id="addTeam" class="btn btn--ghost btn--sm" style="margin-top:.75rem">
-          + <%= lang === 'es' ? 'Añadir equipo' : 'Add team' %>
+          + <%= lang === 'es' ? 'Añadir equipo a mano' : 'Add team manually' %>
         </button>
-        <% if ((teamsCatalog || []).length) { %>
-          <p class="form-hint" style="margin-top:.5rem;font-size:.82rem">
-            <%= lang === 'es'
-              ? '💡 Empieza a escribir el nombre de un equipo del catálogo y elígelo para rellenar sus pilotos automáticamente.'
-              : '💡 Start typing a catalog team name and pick it to auto-fill its drivers.' %>
-          </p>
-        <% } %>
 
       <% } %>
 
@@ -180,7 +191,7 @@ function acShowTeams(input) {
 function acChoose(item) {
   if (acMode === 'team') {
     const team = CATALOG.find(t => t.id === parseInt(item.dataset.teamId, 10));
-    if (team && acTarget) { fillTeamBlock(acTarget.closest('.participant-row'), team.name, team.members); }
+    if (team && acTarget) { fillTeamBlock(acTarget.closest('.participant-row'), team.name, team.members); refreshCatalogUsedState(); }
     acHide();
   } else {
     acSelect(item.dataset.name);
@@ -188,7 +199,7 @@ function acChoose(item) {
 }
 
 document.addEventListener('input', e => {
-  if (e.target.classList.contains('team-name-input')) { acShowTeams(e.target); }
+  if (e.target.classList.contains('team-name-input')) { acShowTeams(e.target); refreshCatalogUsedState(); }
   else if (e.target.classList.contains('participant-name')) { acMode = 'pilot'; acShow(e.target, acFilter(e.target.value)); }
 });
 document.addEventListener('focusin', e => { if (e.target.classList.contains('team-name-input')) acShowTeams(e.target); });
@@ -304,9 +315,32 @@ document.getElementById('addTeam')?.addEventListener('click', () => {
   const b = appendTeamBlock(); b.querySelector('.team-name-input').focus();
 });
 
+// ── Catálogo: un toque para añadir un equipo con sus pilotos ────────────────
+// Reusa fillTeamBlock/appendTeamBlock (las mismas que rellenan un bloque al
+// elegir una sugerencia del autocompletado de texto de arriba).
+function refreshCatalogUsedState() {
+  const used = new Set();
+  document.querySelectorAll('.team-name-input').forEach(inp => {
+    const v = inp.value.trim().toLowerCase(); if (v) used.add(v);
+  });
+  document.querySelectorAll('#catalogPicker .catalog-card').forEach(card => {
+    card.classList.toggle('catalog-card--used', used.has(card.dataset.teamName.trim().toLowerCase()));
+  });
+}
+document.getElementById('catalogPicker')?.addEventListener('click', e => {
+  const card = e.target.closest('.catalog-card');
+  if (!card || card.classList.contains('catalog-card--used')) return;
+  const team = CATALOG.find(t => t.id === parseInt(card.dataset.teamId, 10));
+  if (!team) return;
+  const block = firstEmptyTeamBlock() || appendTeamBlock();
+  fillTeamBlock(block, team.name, team.members);
+  refreshCatalogUsedState();
+});
+refreshCatalogUsedState();
+
 document.getElementById('teamsContainer')?.addEventListener('click', e => {
   if (e.target.classList.contains('remove-row')) {
-    e.target.closest('.participant-row').remove(); renumber('teamsContainer');
+    e.target.closest('.participant-row').remove(); renumber('teamsContainer'); refreshCatalogUsedState();
   } else if (e.target.classList.contains('add-member')) {
     const block = e.target.closest('.participant-row');
     const wrap  = block.querySelector('.team-members');
