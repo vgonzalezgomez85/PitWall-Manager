@@ -19,6 +19,7 @@
 // Compartida entre el form de equipos (cliente) y el importador CSV (server).
 const COUNTRIES = [
   ['Catalunya', '__SVG__'],
+  ['Euskadi', '__SVG_EUS__'],
   ['Afghanistan','🇦🇫'],['Albania','🇦🇱'],['Algeria','🇩🇿'],['Andorra','🇦🇩'],['Angola','🇦🇴'],
   ['Argentina','🇦🇷'],['Armenia','🇦🇲'],['Australia','🇦🇺'],['Austria','🇦🇹'],['Azerbaijan','🇦🇿'],
   ['Bahrain','🇧🇭'],['Bangladesh','🇧🇩'],['Belarus','🇧🇾'],['Belgium','🇧🇪'],['Bolivia','🇧🇴'],
@@ -45,6 +46,7 @@ const COUNTRIES = [
 // Aliases en español → nombre canónico inglés, para el importador CSV.
 const ALIASES = {
   'cataluña': 'Catalunya', 'catalunya': 'Catalunya',
+  'país vasco': 'Euskadi', 'pais vasco': 'Euskadi', 'euskadi': 'Euskadi', 'euskal herria': 'Euskadi', 'vascongadas': 'Euskadi', 'basque country': 'Euskadi',
   'españa': 'Spain', 'espana': 'Spain', 'spain': 'Spain',
   'reino unido': 'United Kingdom', 'inglaterra': 'United Kingdom', 'uk': 'United Kingdom',
   'estados unidos': 'United States', 'eeuu': 'United States', 'usa': 'United States', 'us': 'United States',

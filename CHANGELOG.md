@@ -13,6 +13,16 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.26.0] — 2026-08-12
+
+### Añadido
+- **Bandera de Euskadi (ikurriña), junto a la de Catalunya.** El selector de país de los equipos no tenía forma de representar la ikurriña —no existe como emoji Unicode, igual que la senyera—, así que se añade como una segunda "bandera dibujada" en el mismo selector: al elegir "Euskadi" aparece la ikurriña (fondo rojo, aspa verde, cruz blanca) en la ficha del equipo, en la tabla de `/teams`, en el importador CSV (también reconoce "país vasco", "euskadi", "euskal herria", "vascongadas" o "basque country" al importar) y en las pantallas de entrenos y de asignación de carriles.
+- **Exportar los QR de los pilotos agrupados por equipo.** Nuevo botón «Exportar QR» en `/teams` que abre en una pestaña nueva una página lista para imprimir con el código QR de cada piloto del club, agrupados por equipo (nombre y categoría como cabecera de cada bloque). Los equipos sin pilotos se marcan como «Sin pilotos», y los miembros de equipo que todavía no tienen un piloto del club vinculado se marcan «⚠️ sin perfil» en vez de mostrar un QR. Complementa a la exportación ya existente de todos los pilotos sin agrupar.
+
+### Mejorado
+- **Las categorías de equipo, en `/teams`, ya se distinguen por color.** El indicador de categoría de cada equipo era siempre morado, sin distinción; ahora usa la misma paleta de colores por categoría que ya pinta el directo y la clasificación Le Mans (el mismo color para la misma categoría en toda la app).
+- **La columna de país de `/teams` ya no se queda en blanco.** Los equipos sin país asignado mostraban esa celda vacía; ahora muestran un icono 🌐 atenuado a modo de aviso, para distinguir de un vistazo "sin país" de "cargando".
+
 ## [1.25.11] — 2026-08-11
 
 ### Añadido

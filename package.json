@@ -1,7 +1,7 @@
 {
   "name": "pitwall-manager",
   "productName": "PitWall",
-  "version": "1.25.11",
+  "version": "1.26.0",
   "description": "PitWall — Slot car race management and timing system",
   "author": "Víctor González Gómez <vgonzalezgomez@outlook.es>",
   "license": "AGPL-3.0-or-later",

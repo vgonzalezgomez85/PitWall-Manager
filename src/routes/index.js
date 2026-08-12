@@ -277,6 +277,7 @@ router.post(  '/cars/:id/delete', CarController.delete);
 
 router.get(   '/teams',            TeamCatalogController.index);
 router.get(   '/teams/new',        TeamCatalogController.newForm);
+router.get(   '/teams/qr-export',  TeamCatalogController.qrByTeam);
 router.post(  '/teams/import/preview', TeamCatalogController.importPreview);
 router.post(  '/teams/import',     TeamCatalogController.importConfirm);
 router.post(  '/teams',            TeamCatalogController.create);

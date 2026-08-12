@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="<%= lang %>">
+<head>
+  <meta charset="UTF-8">
+  <title>QR Pilotos por equipo — PitWall</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #fff; padding: 1cm; }
+    .team-block { margin-bottom: 1.5rem; page-break-inside: avoid; }
+    .team-h {
+      display: flex; align-items: center; gap: .5rem;
+      font-size: 1rem; font-weight: 700; color: #222;
+      border-bottom: 2px solid #ddd; padding-bottom: .35rem; margin-bottom: .6rem;
+    }
+    .team-h .team-cat { font-size: .75rem; font-weight: 600; color: #888; margin-left: auto; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: .6rem;
+    }
+    .qr-card {
+      border: 1.5px solid #ccc;
+      border-radius: 8px;
+      padding: .6rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: .3rem;
+      page-break-inside: avoid;
+    }
+    .qr-name  { font-size: .8rem; font-weight: 700; text-align: center; word-break: break-word; }
+    .qr-cat   { font-size: .65rem; color: #666; }
+    .qr-img   { display: block; width: 110px; height: 110px; }
+    .qr-code  { font-family: monospace; font-size: .55rem; color: #aaa; }
+    .qr-warn  { width: 110px; height: 110px; display: grid; place-items: center; color: #a00; font-size: .65rem; text-align: center; border: 1px dashed #ccc; border-radius: 6px; padding: .3rem; }
+    .no-print { padding: .75rem 0; display: flex; gap: .75rem; justify-content: center; margin-bottom: 1rem; }
+    button { padding: .45rem 1.1rem; border-radius: 6px; border: 1px solid #ccc; cursor: pointer; font-size: .9rem; }
+    button.primary { background: #1a7f37; color: #fff; border-color: #1a7f37; }
+    @media print {
+      .no-print { display: none; }
+      body { padding: .3cm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print">
+    <button onclick="window.print()" class="primary">🖨 <%= lang === 'es' ? 'Imprimir todo' : 'Print all' %></button>
+    <button onclick="window.close()"><%= lang === 'es' ? 'Cerrar' : 'Close' %></button>
+  </div>
+
+  <% if (groups.length === 0) { %>
+    <p style="color:#888"><%= lang === 'es' ? 'No hay equipos.' : 'No teams.' %></p>
+  <% } else { %>
+    <% groups.forEach(g => { %>
+      <div class="team-block">
+        <div class="team-h">
+          <%= g.team.name %>
+          <% if (g.team.categoria) { %><span class="team-cat"><%= g.team.categoria %></span><% } %>
+        </div>
+        <% if (g.items.length === 0) { %>
+          <p style="color:#aaa;font-size:.8rem"><%= lang === 'es' ? 'Sin pilotos.' : 'No drivers.' %></p>
+        <% } else { %>
+          <div class="grid">
+            <% g.items.forEach(p => { %>
+              <div class="qr-card">
+                <% if (p.qrDataUrl) { %>
+                  <img class="qr-img" src="<%= p.qrDataUrl %>" alt="QR">
+                <% } else { %>
+                  <div class="qr-warn">⚠️ <%= lang === 'es' ? 'sin perfil' : 'no profile' %></div>
+                <% } %>
+                <div class="qr-name"><%= p.name %></div>
+                <% if (p.category) { %>
+                  <div class="qr-cat"><%= { platino:'💎 Platino', oro:'🥇 Oro', plata:'🥈 Plata', bronce:'🥉 Bronce' }[p.category] || p.category %></div>
+                <% } %>
+                <div class="qr-code"><%= p.qr_code || '—' %></div>
+              </div>
+            <% }) %>
+          </div>
+        <% } %>
+      </div>
+    <% }) %>
+  <% } %>
+</body>
+</html>

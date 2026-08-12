@@ -398,6 +398,38 @@ class TeamCatalogController {
     }
     return members;
   }
+
+  // GET /teams/qr-export — QR de todos los pilotos agrupados por equipo,
+  // para imprimir. Solo los miembros enlazados a un perfil de piloto
+  // (driver_id) tienen QR; los escritos a mano sin enlazar salen marcados.
+  static async qrByTeam(req, res, next) {
+    try {
+      const QRCode = require('qrcode');
+      const DriverProfileController = require('./DriverProfileController');
+      const teams = TeamCatalog.findAll();
+
+      const groups = await Promise.all(teams.map(async team => {
+        const items = await Promise.all(team.members.map(async m => {
+          const profile = m.driver_id ? DriverProfile.findById(m.driver_id) : null;
+          if (!profile) return { name: m.name, category: null, qrDataUrl: null, qr_code: null };
+
+          DriverProfileController._ensureQR(db, profile);
+          let qrDataUrl = null;
+          try {
+            if (profile.qr_code) qrDataUrl = await QRCode.toDataURL(profile.qr_code, { width: 200, margin: 2 });
+          } catch (e) {
+            console.error('[qrByTeam] error generando QR para piloto', profile.id, e.message);
+          }
+          return { name: profile.name, category: profile.category, qrDataUrl, qr_code: profile.qr_code };
+        }));
+        return { team, items };
+      }));
+
+      res.render('teams/qr-by-team', { t: req.t, groups });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 module.exports = TeamCatalogController;
