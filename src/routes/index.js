@@ -344,8 +344,10 @@ router.post('/tunnel/stop',   TunnelController.stop);
 router.post('/tunnel/install', TunnelController.install);  // descarga cloudflared (opcional)
 
 // ── Gestión de base de datos ───────────────────────────────────────────────────
-router.get( '/database',        DatabaseController.index);
-router.get( '/database/backup', DatabaseController.backup);
+router.get( '/database',               DatabaseController.index);
+router.get( '/database/backup',        DatabaseController.backup);
+router.post('/database/restore',       DatabaseController.restore);
+router.post('/database/restore/cancel', DatabaseController.cancelRestore);
 router.get( '/api/serial/status', (req, res) => {
   const SerialService = require('../services/SerialService');
   res.json(SerialService.getLinkStatus());

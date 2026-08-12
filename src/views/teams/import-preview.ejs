@@ -95,7 +95,7 @@
                       const cName = cParts[0];
                       const cFlag = cParts[1];
                     %>
-                    <% if (cFlag === '__SVG__' || cFlag === '__SVG_EUS__') { %>🏴<% } else if (cFlag) { %><%= cFlag %><% } %>
+                    <% if (cFlag === '__SVG__' || cFlag === '__SVG_EUS__') { %>🏴<% } else if (cFlag && flagEmojiToIso(cFlag)) { %><img src="/flags/4x3/<%= flagEmojiToIso(cFlag) %>.svg" alt="" width="16" height="11" style="object-fit:cover;border-radius:2px;vertical-align:middle"><% } %>
                     <%= cName %>
                   <% } else if (r.rawCountry) { %>
                     <span style="color:var(--vt-amber)" title="<%= lang === 'es' ? 'País no reconocido' : 'Unknown country' %>">⚠ <%= r.rawCountry %></span>

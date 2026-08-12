@@ -93,4 +93,18 @@ function resolveCountry(input) {
   return `${match.name}|${match.flag}`;
 }
 
-module.exports = { COUNTRIES, resolveCountry };
+// Windows no pinta banderas emoji (regional indicator symbols) salvo en
+// builds muy recientes: se ve el código ISO en texto o directamente nada. Por
+// eso las vistas NO pintan el emoji tal cual — lo convierten a su código ISO
+// 3166-1 alfa-2 (cada emoji de bandera son 2 "regional indicator symbols",
+// uno por letra: 🇪🇸 = 🇪+🇸 = "ES") y sirven el SVG ya copiado en
+// public/flags/4x3/{iso}.svg (de flag-icons, ver public/flags/LICENSE).
+// Catalunya/Euskadi no tienen código ISO — siguen siendo el marcador
+// '__SVG__'/'__SVG_EUS__' con el SVG dibujado a mano de siempre.
+function flagEmojiToIso(flag) {
+  const codePoints = [...flag].map(c => c.codePointAt(0));
+  if (codePoints.length !== 2) return null;
+  return codePoints.map(cp => String.fromCharCode(cp - 0x1F1E6 + 65)).join('').toLowerCase();
+}
+
+module.exports = { COUNTRIES, resolveCountry, flagEmojiToIso };

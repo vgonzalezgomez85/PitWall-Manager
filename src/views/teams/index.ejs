@@ -119,8 +119,8 @@
                       <rect x="0" y="2.4" width="9" height="1.2" fill="#FFFFFF"/>
                       <rect x="3.9" y="0" width="1.2" height="6" fill="#FFFFFF"/>
                     </svg>
-                  <% } else if (flag) { %>
-                    <span style="font-size:1.4rem"><%= flag %></span>
+                  <% } else if (flag && flagEmojiToIso(flag)) { %>
+                    <img src="/flags/4x3/<%= flagEmojiToIso(flag) %>.svg" alt="" width="28" height="18" style="object-fit:cover;border-radius:3px;vertical-align:middle">
                   <% } else { %>
                     <span style="font-size:1.4rem;opacity:.3" title="<%= lang === 'es' ? 'Sin país' : 'No country' %>">🌐</span>
                   <% } %>

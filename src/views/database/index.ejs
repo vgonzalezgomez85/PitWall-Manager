@@ -18,6 +18,10 @@
 
   <h1 class="page-title"><%= lang === 'es' ? 'Gestión de base de datos' : 'Database management' %></h1>
 
+  <% if (flash) { %>
+    <div class="flash flash--<%= flash.type %>" style="margin-bottom:1rem"><%- flash.text %></div>
+  <% } %>
+
   <!-- Estado actual de la BD -->
   <div class="form-card" style="margin-bottom:1rem">
     <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
@@ -44,17 +48,36 @@
     </a>
   </div>
 
-  <!-- Importar (próximamente) -->
-  <div class="form-card" style="opacity:.55">
+  <!-- Importar copia -->
+  <div class="form-card">
     <div class="form-label" style="font-size:1.05rem;margin-bottom:.35rem">
       ⬆ <%= lang === 'es' ? 'Importar copia' : 'Import backup' %>
-      <span class="form-hint" style="margin-left:.4rem">(<%= lang === 'es' ? 'próximamente' : 'coming soon' %>)</span>
     </div>
-    <p class="form-hint" style="margin:0">
+
+    <% if (pendingRestore) { %>
+      <div class="flash flash--info" style="margin-bottom:1rem">
+        <%= lang === 'es'
+          ? `Hay una copia pendiente de aplicar (${humanSize(pendingRestore.sizeBytes)}, subida el ${pendingRestore.uploadedAt.toLocaleString('es-ES')}). Se aplicará al cerrar PitWall por completo y volver a abrirlo, sustituyendo TODOS los datos actuales.`
+          : `A pending import is waiting to be applied (${humanSize(pendingRestore.sizeBytes)}, uploaded ${pendingRestore.uploadedAt.toLocaleString('en-US')}). It will be applied the next time you fully close and reopen PitWall, replacing ALL current data.` %>
+      </div>
+      <form action="/database/restore/cancel" method="POST" style="margin-bottom:1rem"
+            onsubmit="return confirm('<%= lang === 'es' ? '¿Cancelar la importación pendiente? No se aplicará.' : 'Cancel the pending import? It will not be applied.' %>')">
+        <button type="submit" class="btn btn--ghost"><%= lang === 'es' ? 'Cancelar importación pendiente' : 'Cancel pending import' %></button>
+      </form>
+    <% } %>
+
+    <p class="form-hint" style="margin:0 0 1rem">
       <%= lang === 'es'
-        ? 'Cargar un archivo de copia de seguridad para restaurar los datos en este PC. Disponible en una próxima versión.'
-        : 'Load a backup file to restore data on this PC. Available in a future version.' %>
+        ? 'Sube un archivo .db (de "Descargar copia de seguridad", de esta u otra instalación de PitWall) para restaurar todos los datos en este PC. No se aplica al momento: hace falta cerrar PitWall por completo y volver a abrirlo. Antes de aplicarla se guarda automáticamente una copia de los datos actuales, por si hace falta deshacer.'
+        : 'Upload a .db file (from "Download backup", from this or another PitWall install) to restore all data on this PC. It does not apply instantly: you need to fully close PitWall and reopen it. The current data is backed up automatically before applying it, in case you need to undo it.' %>
     </p>
+    <form action="/database/restore" method="POST" enctype="multipart/form-data" style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+      <input type="file" name="backup_file" accept=".db" required class="form-input" style="flex:1;min-width:220px">
+      <button type="submit" class="btn btn--primary"
+              onclick="return confirm('<%= lang === 'es' ? 'Esto reemplazará TODOS los datos actuales la próxima vez que abras PitWall. ¿Continuar?' : 'This will replace ALL current data the next time you open PitWall. Continue?' %>')">
+        ⬆ <%= lang === 'es' ? 'Subir copia' : 'Upload backup' %>
+      </button>
+    </form>
   </div>
 
 </div>

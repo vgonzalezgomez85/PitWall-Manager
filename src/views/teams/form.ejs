@@ -95,8 +95,10 @@
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 6" width="26" height="17" style="border-radius:2px"><rect width="9" height="6" fill="#FCDD09"/><rect y="0.667" width="9" height="0.889" fill="#DA121A"/><rect y="2.222" width="9" height="0.889" fill="#DA121A"/><rect y="3.778" width="9" height="0.889" fill="#DA121A"/><rect y="5.333" width="9" height="0.667" fill="#DA121A"/></svg>
             <% } else if (body.country && body.country.split('|')[1] === '__SVG_EUS__') { %>
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 6" width="26" height="17" style="border-radius:2px"><rect width="9" height="6" fill="#DC0A2D"/><line x1="0" y1="0" x2="9" y2="6" stroke="#00933C" stroke-width="1.8"/><line x1="0" y1="6" x2="9" y2="0" stroke="#00933C" stroke-width="1.8"/><rect x="0" y="2.4" width="9" height="1.2" fill="#FFFFFF"/><rect x="3.9" y="0" width="1.2" height="6" fill="#FFFFFF"/></svg>
+            <% } else if (body.country && flagEmojiToIso(body.country.split('|')[1])) { %>
+              <img src="/flags/4x3/<%= flagEmojiToIso(body.country.split('|')[1]) %>.svg" alt="" width="26" height="17" style="object-fit:cover;border-radius:2px">
             <% } else { %>
-              <%= body.country ? body.country.split('|')[1] : '🌐' %>
+              🌐
             <% } %>
           </span>
           <span id="flagLabel" style="flex:1;color:<%= body.country ? '#e6edf3' : '#8b949e' %>">
@@ -244,9 +246,20 @@ const flagDisplay  = document.getElementById('flagDisplay');
 const flagLabel    = document.getElementById('flagLabel');
 const countryInput = document.getElementById('countryInput');
 
+// Windows no pinta banderas emoji (regional indicator symbols): se sirve el
+// SVG de public/flags/4x3/ (de flag-icons) resuelto por código ISO en vez del
+// emoji en crudo. Mismo cálculo que countries.js#flagEmojiToIso.
+function flagEmojiToIso(flag) {
+  const codePoints = [...flag].map(c => c.codePointAt(0));
+  if (codePoints.length !== 2) return null;
+  return codePoints.map(cp => String.fromCharCode(cp - 0x1F1E6 + 65)).join('').toLowerCase();
+}
+
 function flagHtml(flag, size = '1.3rem') {
   if (flag === '__SVG__') return SENYERA_SVG;
   if (flag === '__SVG_EUS__') return IKURRINA_SVG;
+  const iso = flagEmojiToIso(flag);
+  if (iso) return `<img src="/flags/4x3/${iso}.svg" alt="" style="width:${size};height:auto;object-fit:cover;border-radius:2px;vertical-align:middle">`;
   return `<span style="font-size:${size};line-height:1">${flag}</span>`;
 }
 
@@ -256,8 +269,13 @@ function setFlagDisplay(name, flag) {
   } else if (flag === '__SVG_EUS__') {
     flagDisplay.innerHTML = IKURRINA_SVG;
   } else {
-    flagDisplay.innerHTML = '';
-    flagDisplay.textContent = flag;
+    const iso = flagEmojiToIso(flag);
+    if (iso) {
+      flagDisplay.innerHTML = `<img src="/flags/4x3/${iso}.svg" alt="" style="width:1.5rem;height:auto;object-fit:cover;border-radius:2px">`;
+    } else {
+      flagDisplay.innerHTML = '';
+      flagDisplay.textContent = flag;
+    }
   }
   flagLabel.textContent = name;
   flagLabel.style.color = '#e6edf3';

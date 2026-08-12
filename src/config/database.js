@@ -40,6 +40,40 @@ if (!fs.existsSync(DB_PATH)) {
   }
 }
 
+// Restauración de una copia de seguridad importada desde /database. No se
+// puede sustituir en caliente el fichero que la app tiene abierto en WAL, así
+// que la subida solo deja el archivo en "staging" (ver DatabaseController) y
+// se aplica aquí, en el único momento seguro: antes de abrir la conexión.
+const RESTORE_STAGING_PATH = path.join(DATA_DIR, 'pitwall-restore-pending.db');
+if (fs.existsSync(RESTORE_STAGING_PATH)) {
+  try {
+    const header = Buffer.alloc(16);
+    const fd = fs.openSync(RESTORE_STAGING_PATH, 'r');
+    fs.readSync(fd, header, 0, 16, 0);
+    fs.closeSync(fd);
+    if (header.toString('utf8', 0, 15) === 'SQLite format 3') {
+      if (fs.existsSync(DB_PATH)) {
+        const safety = path.join(DATA_DIR, `pitwall-pre-restore-${Date.now()}.db`);
+        fs.copyFileSync(DB_PATH, safety);
+        console.log('[database] Copia de seguridad previa a la restauración:', safety);
+      }
+      // El -wal/-shm del .db ANTERIOR no pertenecen al fichero importado: si se
+      // dejan, SQLite intentaría reproducirlos sobre datos que no son los suyos.
+      for (const ext of ['-wal', '-shm']) {
+        const f = DB_PATH + ext;
+        if (fs.existsSync(f)) fs.unlinkSync(f);
+      }
+      fs.renameSync(RESTORE_STAGING_PATH, DB_PATH);
+      console.log('[database] Copia de seguridad importada aplicada:', DB_PATH);
+    } else {
+      console.error('[database] pitwall-restore-pending.db no es una BD SQLite válida; se descarta sin aplicar.');
+      fs.unlinkSync(RESTORE_STAGING_PATH);
+    }
+  } catch (err) {
+    console.error('[database] Error aplicando la copia importada:', err.message);
+  }
+}
+
 const db = new Database(DB_PATH);
 
 // ── PRAGMAs de rendimiento ────────────────────────────────────────────────

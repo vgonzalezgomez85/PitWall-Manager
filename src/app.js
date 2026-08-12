@@ -302,6 +302,9 @@ app.use((req, res, next) => {
   // caído seguía contando y el pie la pintaba en verde.
   res.locals.serialStatus = SerialService.getLinkStatus();
   delete req.session.flash;
+  // Windows no pinta banderas emoji: las vistas que muestran país de equipo
+  // usan esto para servir el SVG de public/flags/4x3/ en vez del emoji.
+  res.locals.flagEmojiToIso = require('./config/countries').flagEmojiToIso;
   next();
 });
 

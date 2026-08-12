@@ -13,6 +13,14 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.27.0] — 2026-08-12
+
+### Añadido
+- **Restaurar una copia de seguridad desde la propia app.** La tarjeta "Importar copia" de `/database` (Base de datos) ya no es un aviso de "próximamente": ahora se puede subir un archivo `.db` (descargado antes con "Descargar copia de seguridad", de este PC o de otro) para restaurar todos los datos. La subida se valida al momento (tiene que ser realmente una base de datos SQLite) y queda pendiente sin tocar nada: se aplica en el siguiente arranque de PitWall —hay que cerrarlo del todo y volver a abrirlo—, momento en el que se guarda automáticamente una copia de seguridad de los datos que había antes, por si hace falta deshacer. Se puede cancelar una importación pendiente en cualquier momento antes de reiniciar.
+
+### Corregido
+- **Las banderas de país de los equipos ya se ven en Windows.** Desde la v1.26.0, en algunos PC con Windows solo se veían la senyera de Catalunya y la ikurriña de Euskadi: el resto de banderas (~99 países) no aparecían porque Windows, salvo en builds muy recientes, no compone el emoji de bandera y muestra el código de dos letras en texto o nada. Ahora esas banderas se dibujan siempre como icono (igual que ya pasaba con Catalunya y Euskadi), así que se ven igual en cualquier sistema operativo.
+
 ## [1.26.0] — 2026-08-12
 
 ### Añadido
