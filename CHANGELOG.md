@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.28.1] — 2026-08-13
+
+### Corregido
+- **El instalador de macOS ya muestra el icono de PitWall en Finder.** El fichero `.dmg` generado al construir la app para Mac se veía en Finder con el icono genérico de "imagen de disco", aunque el icono de PitWall sí aparecía correctamente al abrirlo (dentro del volumen montado). Ahora el propio instalador `.dmg` también lleva el icono de la app.
+
 ## [1.28.0] — 2026-08-12
 
 ### Añadido
