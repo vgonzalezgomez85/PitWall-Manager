@@ -928,10 +928,24 @@ class SerialServiceClass extends EventEmitter {
   }
 
   // Inyecta una trama (array/Buffer de 21 bytes) en el circuito indicado (0..N).
-  feedFrame(circuitIdx, bytes) {
+  // `ts`: reloj a usar para la reconciliación de vueltas perdidas (gap del
+  // contador de vuelta, ver CircuitConnection._processFrame). SimPlayerService
+  // pasa el reloj DETERMINISTA de la propia trama (f.ts); si no se indica (otros
+  // usos de feedFrame), se usa Date.now() como antes.
+  feedFrame(circuitIdx, bytes, ts) {
     const conn = this._connections[circuitIdx];
     if (conn && typeof conn._processFrame === 'function') {
-      try { conn._processFrame(Buffer.from(bytes), Date.now()); } catch (e) {}
+      try {
+        conn._processFrame(Buffer.from(bytes), typeof ts === 'number' ? ts : Date.now());
+      } catch (err) {
+        // Antes este catch era silencioso: una excepción en CUALQUIER listener
+        // de 'lane_crossing' (TimingService, SessionRecovery, InfolapServer…)
+        // se tragaba aquí sin dejar rastro y ese cruce simulado desaparecía sin
+        // registrarse ni como vuelta válida ni como fantasma. Mismo criterio
+        // que _flushFrameBuf (hardware real): que falle a la vista, no en silencio.
+        console.error(`[SerialService] Trama simulada descartada por error (circuito ${circuitIdx}):`, err.message);
+        DebugLogger.log('ds_frame_error', { circuit: circuitIdx, sim: true, error: err.message });
+      }
     }
   }
 

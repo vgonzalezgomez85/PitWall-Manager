@@ -13,6 +13,12 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.28.2] — 2026-08-15
+
+### Corregido
+- **Cronometraje: ya no se puede perder la última vuelta de un circuito al final de una manga.** Cada circuito tiene un temporizador de seguridad que lo cierra por tiempo si su caja nunca manda la trama de fin (para que una caja averiada no cuelgue la manga para siempre) — pero corría contra el reloj real del servidor, compitiendo con la llegada de la trama de fin de verdad. Si el procesado de esa trama se retrasaba aunque fueran unos segundos (por ejemplo con mucha gente conectada a estadísticas en directo a la vez), el temporizador de seguridad podía adelantarse, cerrar el circuito, y la última vuelta legítima que llegaba justo después se descartaba sin ningún aviso. Ahora ese temporizador tiene un margen de 15 segundos: la trama de fin real siempre gana esa carrera salvo que el circuito esté genuinamente parado. Detectado y verificado con una prueba de estrés de 24 carriles y 600 espectadores simulados en los tres canales (app, Lap web, estadísticas en directo).
+- Corregido también un fallo relacionado en "carrera simulada" (la función de pruebas sin hardware DS-300): al reponer vueltas perdidas por un corte de cable usaba el reloj del servidor en vez del de la propia trama, lo que bajo carga podía descuadrar el recuento de vueltas de la simulación.
+
 ## [1.28.1] — 2026-08-13
 
 ### Corregido

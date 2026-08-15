@@ -578,14 +578,26 @@ class TimingServiceClass {
   }
 
   // (Re)programa el auto-fin de un circuito según el tiempo que le queda.
+  //
+  // Margen de seguridad: este timeout es un respaldo por si una caja no manda
+  // NUNCA su trama de fin (0xA4/0xA7) — pero corre por reloj real, y compite
+  // en el tiempo contra la trama de fin de verdad. Si el bucle de eventos va
+  // cargado (muchos espectadores, un pico de trabajo puntual…) el procesado de
+  // esa trama real se puede retrasar unos segundos — y sin margen, este
+  // respaldo se adelanta, cierra el circuito, y la última vuelta legítima que
+  // llega justo después se descarta en silencio (circuit_not_running). Con el
+  // margen, una caja de verdad muerta tarda unos segundos más en detectarse
+  // (irrelevante en una manga de varios minutos), pero la trama real gana la
+  // carrera salvo que el circuito esté genuinamente parado.
   _scheduleCircuitAutoFinish(ci) {
     const c = this.session && this.session.circuits[ci];
     if (!c) return;
     if (c.autoStopTimer) { clearTimeout(c.autoStopTimer); c.autoStopTimer = null; }
+    const AUTO_FINISH_GRACE_MS = 15000;
     const elapsed   = c.startTime ? (Date.now() - c.startTime) : 0;
-    const remaining = Math.max(0, c.durationMs - elapsed);
+    const remaining = Math.max(0, c.durationMs - elapsed) + AUTO_FINISH_GRACE_MS;
     c.autoStopTimer = setTimeout(() => {
-      console.log(`[TimingService] Circuito ${ci + 1} auto-finalizado (tiempo agotado)`);
+      console.log(`[TimingService] Circuito ${ci + 1} auto-finalizado (tiempo agotado + margen)`);
       this.finishCircuit(ci);
     }, remaining);
   }

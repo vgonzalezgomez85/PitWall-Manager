@@ -215,7 +215,14 @@ class SimPlayer {
         // elapsed_ms de la vuelta cae en su minuto real, incluso al volcar el
         // final de manga de golpe.
         TimingService.simSetClock(f.ts - this.gos[r]);
-        SerialService.feedFrame(DS_INDEX[f.ds] != null ? DS_INDEX[f.ds] : 0, f.bytes);
+        // f.ts (reloj de la trama, determinista) — NO Date.now(): SerialService usa
+        // este timestamp para estimar cuántas vueltas caben en un hueco del contador
+        // de vuelta (reconciliación de vueltas perdidas). Con el reloj REAL del
+        // servidor, un bucle de eventos cargado (muchos espectadores conectados)
+        // retrasa y agrupa en ráfagas la llegada de tramas, y esa estimación se
+        // descuadra — cuela fantasmas que no tocan o pierde la cuenta de verdad,
+        // sin lanzar ningún error. Ver SerialService._processFrame ~L718-732.
+        SerialService.feedFrame(DS_INDEX[f.ds] != null ? DS_INDEX[f.ds] : 0, f.bytes, f.ts);
         this.frameIdx++;
       }
 
