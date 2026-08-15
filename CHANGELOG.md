@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.28.3] — 2026-08-15
+
+### Corregido
+- **El margen de la v1.28.2 no bastaba con congestión severa.** Verificado contra la máquina real de la 24h de Llinars con 600 espectadores simulados: con picos de latencia de hasta ~31s (red real, no en local), el margen fijo de 15s del temporizador de auto-fin se quedaba corto y se seguían perdiendo vueltas. Ahora, además del margen, **cada cruce real de un circuito reinicia su propio temporizador de auto-fin** — así el respaldo por tiempo agotado cuenta el tiempo desde el ÚLTIMO cruce visto de ese circuito, no desde el inicio de la manga, y nunca dispara mientras sigan llegando cruces (aunque lleguen tarde). Solo se activa tras un silencio real del circuito, sea cual sea el nivel de congestión del servidor. Reverificado en local (24 carriles, 600 espectadores): recuento de vueltas idéntico con y sin carga.
+
 ## [1.28.2] — 2026-08-15
 
 ### Corregido

@@ -579,21 +579,27 @@ class TimingServiceClass {
 
   // (Re)programa el auto-fin de un circuito según el tiempo que le queda.
   //
-  // Margen de seguridad: este timeout es un respaldo por si una caja no manda
-  // NUNCA su trama de fin (0xA4/0xA7) — pero corre por reloj real, y compite
-  // en el tiempo contra la trama de fin de verdad. Si el bucle de eventos va
-  // cargado (muchos espectadores, un pico de trabajo puntual…) el procesado de
-  // esa trama real se puede retrasar unos segundos — y sin margen, este
-  // respaldo se adelanta, cierra el circuito, y la última vuelta legítima que
-  // llega justo después se descarta en silencio (circuit_not_running). Con el
-  // margen, una caja de verdad muerta tarda unos segundos más en detectarse
+  // Este timeout es un respaldo por si una caja no manda NUNCA su trama de fin
+  // (0xA4/0xA7) — pero corre por reloj real, y compite en el tiempo contra la
+  // trama de fin de verdad. Si el bucle de eventos va cargado (muchos
+  // espectadores, un pico de trabajo puntual…) el procesado de esa trama real
+  // se puede retrasar — y sin margen, este respaldo se adelanta, cierra el
+  // circuito, y la última vuelta legítima que llega justo después se descarta
+  // en silencio (circuit_not_running). Dos capas de protección:
+  //   1) AUTO_FINISH_GRACE_MS: margen sobre la duración nominal.
+  //   2) _onCrossing() reprograma este mismo timer en CADA cruce real de este
+  //      circuito (ver ahí) — así el respaldo cuenta el tiempo desde el
+  //      ÚLTIMO cruce visto, no desde el inicio de la manga. Mientras sigan
+  //      llegando cruces (aunque lleguen tarde por congestión) el respaldo
+  //      nunca dispara; solo lo hace tras un silencio real de ese circuito.
+  // Una caja de verdad muerta tarda unos segundos más en detectarse
   // (irrelevante en una manga de varios minutos), pero la trama real gana la
   // carrera salvo que el circuito esté genuinamente parado.
   _scheduleCircuitAutoFinish(ci) {
     const c = this.session && this.session.circuits[ci];
     if (!c) return;
     if (c.autoStopTimer) { clearTimeout(c.autoStopTimer); c.autoStopTimer = null; }
-    const AUTO_FINISH_GRACE_MS = 15000;
+    const AUTO_FINISH_GRACE_MS = 30000;
     const elapsed   = c.startTime ? (Date.now() - c.startTime) : 0;
     const remaining = Math.max(0, c.durationMs - elapsed) + AUTO_FINISH_GRACE_MS;
     c.autoStopTimer = setTimeout(() => {
@@ -1358,6 +1364,13 @@ class TimingServiceClass {
       DebugLogger.log('crossing_dropped', { lane, deviceLapTimeMs, reason: 'circuit_not_running', circuit: ci });
       return;
     }
+    // Todo cruce real visto reinicia el temporizador de auto-fin de ESTE
+    // circuito: así el respaldo por tiempo agotado solo dispara tras un
+    // silencio genuino (caja de verdad desconectada), sea cual sea el nivel de
+    // congestión del servidor en ese momento — un margen fijo obliga a
+    // adivinar el peor caso; esto es inmune a cualquier retraso siempre que
+    // sigan llegando cruces, aunque lleguen tarde. Ver _scheduleCircuitAutoFinish.
+    this._scheduleCircuitAutoFinish(ci);
 
     const ld = this.session.laneMap[lane];
     if (!ld) {
