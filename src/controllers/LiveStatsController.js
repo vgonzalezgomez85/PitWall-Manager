@@ -52,6 +52,22 @@ const {
 // avisa el contador de mutaciones, sin caducar nunca por tiempo.
 const JSON_TTL_MS   = 1000;
 const JSON_MAX_KEYS = 8;
+
+// El coste de este cálculo crece con las vueltas acumuladas de TODA la carrera
+// (agregados race-wide: pace/consistencia/progreso manga a manga), no solo con
+// la manga activa — verificado en un banco de resistencia: ~35ms en la manga 3
+// de una carrera de 24 carriles, ~65ms en la manga 25, y con espectadores
+// concurrentes de verdad ese coste creciente + un TTL fijo de 1s puede acumular
+// más trabajo del que el hilo único llega a servir según avanza la sesión. Con
+// una manga ya avanzada (muchas mangas acumuladas) nadie nota unos segundos
+// más de retraso en un gráfico de tendencia — así que se recorta cuánto se
+// recalcula, no lo que se calcula.
+function jsonTtlFor(mangaNumber) {
+  if (mangaNumber > 30) return 10000;
+  if (mangaNumber > 15) return 6000;
+  if (mangaNumber > 5)  return 3000;
+  return JSON_TTL_MS;
+}
 const _jsonCache = new Map();   // `${raceId}:${mangaId}` → { ts, mut, payload }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -395,7 +411,7 @@ class LiveStatsController {
     // al re-lanzar una manga) y el TTL de 1 s la daría por buena aunque el
     // payload todavía diga "finished" — justo el salto que importa enseñar.
     if (cached && cached.isActive === isActive && (isActive
-          ? (Date.now() - cached.ts) < JSON_TTL_MS
+          ? (Date.now() - cached.ts) < jsonTtlFor(manga.number)
           : cached.mut === Lap.mutationCount && cached.tireMut === TireChange.mutationCount)) {
       return res.json(cached.payload);
     }

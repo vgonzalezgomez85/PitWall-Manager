@@ -61,6 +61,20 @@ const RACE_BUNDLE_TTL_MS = 1000;
 const BUNDLE_MAX_RACES   = 8;
 const _bundles = new Map();   // raceId → paquete
 
+// El coste de raceAggregate() crece con las vueltas acumuladas de TODA la
+// carrera (no solo la manga activa) — perfilado con --prof bajo una carrera de
+// 48 mangas / 24 carriles + 30 espectadores Lap web: este cálculo por sí solo
+// se comió el 69% de la CPU total. Con muchas mangas ya corridas, un TTL fijo
+// de 1s obliga a repetir ese cálculo, cada vez más caro, una vez por segundo
+// sin parar. Con la manga avanzada nadie nota unos segundos más de retraso en
+// el snapshot del equipo — así que se recorta cuánto se recalcula.
+function bundleTtlFor(mangaNumber) {
+  if (mangaNumber > 30) return 10000;
+  if (mangaNumber > 15) return 6000;
+  if (mangaNumber > 5)  return 3000;
+  return RACE_BUNDLE_TTL_MS;
+}
+
 function _cachePut(cache, raceId, valor) {
   cache.delete(raceId);            // reinsertar = renovar su puesto en el orden
   cache.set(raceId, valor);
@@ -188,7 +202,7 @@ const LapController = {
     // escaneo completo de la carrera (230 ms) cada segundo, para nada.
     const viva = TimingService.activeMangaOf(race.id);
     const c = _bundles.get(race.id);
-    if (c && c.mut === mut && (!viva || (ahora - c.ts) < RACE_BUNDLE_TTL_MS)) return c;
+    if (c && c.mut === mut && (!viva || (ahora - c.ts) < bundleTtlFor(viva.number))) return c;
 
     // Acumulado de TODA la carrera, agrupado por NOMBRE de equipo. En algunas
     // carreras los equipos están duplicados (varias filas en `teams` con el

@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.28.5] — 2026-08-17
+
+### Mejorado
+- **Lap web y live-stats aguantan mejor bien avanzada una carrera de 24h.** Dos vistas (el resumen de equipo de Lap web y el "Gap de vueltas" de live-stats) recalculan un agregado de TODA la carrera acumulada hasta ahora, no solo de la manga en curso — cuanto más avanzada la carrera, más caro ese cálculo. Ambas ya tenían caché, pero con un tiempo de vida fijo de 1 segundo: bien al principio, insuficiente pasadas muchas mangas, cuando recalcular una vez por segundo por sí solo puede saturar el proceso. Ahora el tiempo de vida de la caché crece con el número de mangas ya corridas (hasta 10 s con muchas), sin que se note en pantalla. Detectado con un perfil de CPU (`node --prof`) bajo una carrera de 48 mangas/24 carriles con 30-180 espectadores simulados en Lap web: eliminó los errores HTTP y redujo a la mitad la latencia típica de live-stats bajo esa carga. No afecta al cronometraje ni al recuento de vueltas.
+
 ## [1.28.4] — 2026-08-16
 
 ### Mejorado

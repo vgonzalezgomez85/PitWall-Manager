@@ -28,15 +28,30 @@ if ($OutCsv -eq "") {
 }
 New-Item -ItemType Directory -Force -Path (Split-Path $OutCsv) | Out-Null
 
-$dbPath  = Join-Path $PitWallDir "database\pitwall.db"
+# La BD vive en database\pitwall.db en un checkout de desarrollo, pero en la
+# app EMPAQUETADA (instalada, la que corre de verdad el día del evento) vive
+# en %APPDATA%\PitWall\pitwall.db (electron/main.js: app.getPath('userData')).
+# Sin este fallback, apuntar siempre a la ruta del repo da lecturas planas
+# falsas contra un fichero que ni siquiera es el que usa el proceso real.
+# El día del evento lo que corre de verdad es la app INSTALADA (%APPDATA%), no
+# el checkout de desarrollo — se prioriza esa ruta. Si no existe (probando en
+# modo dev con `npm start`/`node src/app.js` desde el propio repo), se cae a
+# database\pitwall.db.
+$dbPathUser = Join-Path $env:APPDATA "PitWall\pitwall.db"
+$dbPathRepo = Join-Path $PitWallDir "database\pitwall.db"
+$dbPath = if (Test-Path $dbPathUser) { $dbPathUser } elseif (Test-Path $dbPathRepo) { $dbPathRepo } else { $dbPathUser }
 $walPath = "$dbPath-wal"
+Write-Host "Base de datos detectada: $dbPath"
 
 "timestamp,rss_mb,cpu_pct,db_mb,wal_mb,free_disk_gb,conn_web,conn_mobile,http_ok" | Out-File -FilePath $OutCsv -Encoding utf8
 
 Write-Host "Monitor de resistencia arrancado. Muestra cada $IntervalSeconds s -> $OutCsv"
 Write-Host "Ctrl+C para parar."
 
-$drive = (Get-Item $PitWallDir).PSDrive.Name
+# Disco de la unidad donde vive la BD de verdad, no la del checkout — pueden
+# no coincidir (BD en %APPDATA% de la unidad de sistema, repo en otra unidad).
+$dbDirForDrive = if (Test-Path (Split-Path $dbPath)) { Split-Path $dbPath } else { $PitWallDir }
+$drive = (Get-Item $dbDirForDrive).PSDrive.Name
 
 while ($true) {
   $now = Get-Date -Format "yyyy-MM-dd HH:mm:ss"

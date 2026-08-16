@@ -1896,7 +1896,7 @@ class TimingServiceClass {
   activeMangaOf(raceId) {
     const db = require('../config/database');
     return db.prepare(`
-      SELECT id, started_at, actual_duration_ms
+      SELECT id, number, started_at, actual_duration_ms
       FROM mangas
       WHERE race_id = ? AND status != 'finished' AND started_at IS NOT NULL
       ORDER BY id DESC LIMIT 1
