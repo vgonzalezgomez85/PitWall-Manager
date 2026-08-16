@@ -294,14 +294,24 @@ app.use(i18n);
 
 // Expose serial status and flash messages to all views
 app.use((req, res, next) => {
-  res.locals.flash   = req.session.flash || null;
+  // Solo tocar la sesión si de verdad hay un flash que borrar. `delete
+  // req.session.flash` incondicional (como antes) marca la sesión como
+  // "modificada" en CADA petición, aunque el 99,9% nunca tuvo flash — con el
+  // polling de Lap web/live-stats (cientos/s bajo carga) eso es muchísima
+  // escritura de sesión de sobra. Detectado con perfil de CPU bajo 600
+  // espectadores simulados.
+  if (req.session.flash) {
+    res.locals.flash = req.session.flash;
+    delete req.session.flash;
+  } else {
+    res.locals.flash = null;
+  }
   // Serial port status (computed at render time, lightweight)
   const SerialService = require('./services/SerialService');
   // getLinkStatus() trae `circuits`/`down` (estado POR caja). Antes se armaba a
   // mano con `connectedPorts`, que lista puertos abiertos: una caja con el enlace
   // caído seguía contando y el pie la pintaba en verde.
   res.locals.serialStatus = SerialService.getLinkStatus();
-  delete req.session.flash;
   // Windows no pinta banderas emoji: las vistas que muestran país de equipo
   // usan esto para servir el SVG de public/flags/4x3/ en vez del emoji.
   res.locals.flagEmojiToIso = require('./config/countries').flagEmojiToIso;

@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.28.4] — 2026-08-16
+
+### Mejorado
+- **Menos trabajo de sesión en cada petición, bajo mucha carga de espectadores.** Un middleware interno tocaba (y por tanto reescribía) la sesión en TODAS las peticiones, aunque el 99,9% nunca tenían un mensaje pendiente que mostrar — con el polling de Lap web y live-stats (cientos de peticiones por segundo con muchos espectadores conectados a la vez) eso suponía muchas escrituras de sesión de sobra, identificado con un perfil de CPU bajo carga simulada de 600 espectadores. Ahora solo se toca la sesión cuando de verdad hay algo que mostrar; el comportamiento para el usuario es idéntico. No afecta al cronometraje.
+
 ## [1.28.3] — 2026-08-15
 
 ### Corregido
