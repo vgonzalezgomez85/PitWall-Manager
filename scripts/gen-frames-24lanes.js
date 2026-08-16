@@ -24,7 +24,10 @@ const path = require('path');
 // ── Parámetros del dataset ───────────────────────────────────────────────────
 const BOXES               = ['DS1', 'DS2', 'DS3'];
 const NUM_LANES_PER_BOX   = 8;                 // 3×8 = 24 carriles global
-const NUM_MANGAS          = 3;
+// NUM_MANGAS configurable por env var para generar datasets largos de
+// resistencia (p.ej. NUM_MANGAS=60 ≈ 5h a 5 min/manga) sin tocar el uso por
+// defecto (3 mangas) de los tests de estrés ya existentes.
+const NUM_MANGAS          = parseInt(process.env.NUM_MANGAS, 10) || 3;
 const MANGA_DURATION_MIN  = 5;
 const MANGA_DURATION_MS   = MANGA_DURATION_MIN * 60000;
 const MANGA_GAP_MS        = 15000;             // pausa entre mangas (cambio de manga)
@@ -228,6 +231,6 @@ console.log(`Fichero generado: ${outPath}`);
 console.log(`Tramas totales: ${lines.length}`);
 console.log(`Mangas: ${NUM_MANGAS} × ${MANGA_DURATION_MIN} min`);
 console.log(`Carriles: ${laneNums.length} (${BOXES.map(b => `${b}=1..${NUM_LANES_PER_BOX}`).join(', ')})`);
-console.log(`Vueltas por carril (3 mangas, incl. 1er cruce): min=${minLaps} max=${maxLaps}`);
+console.log(`Vueltas por carril (${NUM_MANGAS} mangas, incl. 1er cruce): min=${minLaps} max=${maxLaps}`);
 console.log(`Duración real del fichero (última bandera, ×1): ${(fileDurationMs / 60000).toFixed(2)} min (${fileDurationMs} ms)`);
 console.log(`Instante del último byte escrito: ${fmtTs(lines[lines.length - 1].ts)}`);
