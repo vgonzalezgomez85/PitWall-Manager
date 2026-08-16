@@ -28,7 +28,9 @@ const NUM_LANES_PER_BOX   = 8;                 // 3×8 = 24 carriles global
 // resistencia (p.ej. NUM_MANGAS=60 ≈ 5h a 5 min/manga) sin tocar el uso por
 // defecto (3 mangas) de los tests de estrés ya existentes.
 const NUM_MANGAS          = parseInt(process.env.NUM_MANGAS, 10) || 3;
-const MANGA_DURATION_MIN  = 5;
+// Configurable por env var para simular la duración real de manga del evento
+// (por defecto 5 min, el usado en los tests de estrés de pico de carga).
+const MANGA_DURATION_MIN  = parseInt(process.env.MANGA_DURATION_MIN, 10) || 5;
 const MANGA_DURATION_MS   = MANGA_DURATION_MIN * 60000;
 const MANGA_GAP_MS        = 15000;             // pausa entre mangas (cambio de manga)
 const START_OFFSET_MS     = 5000;              // primer GO no arranca en t=0
