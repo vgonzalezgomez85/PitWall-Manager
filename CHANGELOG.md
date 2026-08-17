@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.29.0] — 2026-08-17
+
+### Añadido
+- **Pole: saltar a quien no está en su turno.** Nuevo botón "No se presenta" en la pantalla de cronometraje de pole: al primer salto, el participante se manda al final de la cola y tendrá otra oportunidad cuando le vuelva a tocar; si se le vuelve a saltar sin haber llegado a correr, se marca como **Ausente** de verdad. Los ausentes ya no compiten por la pole con un 0.00 como si fuera la vuelta más rápida: aparecen en su propio bloque, separado, tanto en la clasificación en vivo como en los resultados finales.
+
 ## [1.28.6] — 2026-08-17
 
 ### Corregido

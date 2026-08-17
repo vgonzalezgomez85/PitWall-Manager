@@ -151,8 +151,9 @@ class PoleController {
     }
     const isTimingRunning = PoleTimingService.isRunning;
 
-    // Mejor tiempo de la sesión (tiempo a batir para el piloto actual)
-    const timedEntries = entries.filter(e => e.lap_time_ms != null);
+    // Mejor tiempo de la sesión (tiempo a batir para el piloto actual).
+    // Excluye ausentes: su 0.00 sintético no puede ser "el tiempo a batir".
+    const timedEntries = entries.filter(e => e.lap_time_ms != null && !e.is_noshow);
     const poleBestMs   = timedEntries.length > 0
       ? Math.min(...timedEntries.map(e => e.lap_time_ms))
       : null;
@@ -227,6 +228,46 @@ class PoleController {
   static stopParticipant(req, res) {
     PoleTimingService.forceStop();
     res.json({ ok: true });
+  }
+
+  // POST /races/:id/pole/participant/skip  — el piloto/equipo actual no está
+  // (o la organización decide no esperarle). 1er salto: se manda al final de
+  // la cola, tendrá otra oportunidad cuando le vuelva a tocar. 2º salto
+  // SEGUIDO (sin haber corrido entre medias) para el MISMO participante: ya
+  // se marca AUSENTE de verdad (0.00 + is_noshow) y se avanza al siguiente.
+  static skipParticipant(req, res) {
+    const race = Race.findById(req.params.id);
+    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
+
+    const session = PoleSession.findByRace(race.id);
+    if (!session || !['in_progress', 'timing'].includes(session.status)) return res.redirect(`/races/${race.id}/pole/results`);
+
+    // Si el cronometraje estaba armado/corriendo para este piloto, abortar sin guardar.
+    if (PoleTimingService.isRunning || PoleTimingService.isStandby) PoleTimingService.abort();
+
+    const entries = PoleSession.getEntriesOrdered(session.id);
+    const current = entries[session.current_idx];
+    if (!current) return res.redirect(`/races/${race.id}/pole/timing`);
+
+    const skipCount = PoleSession.registerSkip(current.id);
+
+    if (skipCount <= 1) {
+      // 1er salto: al final de la cola. current_idx NO se toca — al mandar
+      // a `current` al final, quien iba justo detrás pasa a ocupar su mismo
+      // índice en el array reordenado.
+      PoleSession.moveToEnd(session.id, current.id);
+      return res.redirect(`/races/${race.id}/pole/timing`);
+    }
+
+    // 2º salto seguido: ya tuvo su oportunidad al final de la cola. Ausente.
+    PoleSession.markNoShow(current.id);
+    const nextIdx = session.current_idx + 1;
+    if (nextIdx >= entries.length) {
+      PoleSession.finish(session.id);
+      return res.redirect(`/races/${race.id}/pole/results`);
+    }
+    PoleSession.advanceIdx(session.id, nextIdx);
+    res.redirect(`/races/${race.id}/pole/timing`);
   }
 
   // POST /races/:id/pole/next  — advance to next participant

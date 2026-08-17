@@ -209,6 +209,16 @@ const migrations = [
   )`,
   `ALTER TABLE pole_sessions ADD COLUMN current_idx INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE pole_entries  ADD COLUMN order_idx INTEGER`,
+  // No-show: el piloto/equipo no se presenta a su turno de pole. Se le asigna
+  // lap_time_ms = 0 para que quede resuelto (no se queda esperando un tiempo
+  // que nunca llega), pero is_noshow lo distingue de un 0 real para que no
+  // cuele como "vuelta más rápida" en ningún ranking.
+  `ALTER TABLE pole_entries ADD COLUMN is_noshow INTEGER NOT NULL DEFAULT 0`,
+  // skip_count: nº de veces que se ha pulsado "saltar" para este participante.
+  // 1er salto → se manda al final de la cola (otra oportunidad cuando le
+  // vuelva a tocar). 2º salto seguido (sin haber corrido entre medias) → ya
+  // se marca is_noshow de verdad. Ver PoleController.skipParticipant.
+  `ALTER TABLE pole_entries ADD COLUMN skip_count INTEGER NOT NULL DEFAULT 0`,
   `UPDATE pole_sessions SET status = 'in_progress' WHERE status = 'timing'`,
   `ALTER TABLE laps ADD COLUMN is_ghost INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE laps ADD COLUMN source_lap_id INTEGER REFERENCES laps(id) ON DELETE SET NULL`,

@@ -135,6 +135,20 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
 
         <!-- Botones (solo operador; el invitado sigue el estado en modo lectura) -->
         <% if (!isGuestAccess) { %>
+        <%
+          // Saltar: 1er salto → al final de la cola (otra oportunidad luego).
+          // 2º salto seguido → ya se marca AUSENTE. El texto avisa de cuál toca.
+          const skipCount = current ? (current.skip_count || 0) : 0;
+          const skipLabelEs = skipCount === 0 ? 'No se presenta →' : 'Confirmar ausencia →';
+          const skipLabelEn = skipCount === 0 ? 'No-show →' : 'Confirm absent →';
+          const skipConfirmEs = skipCount === 0
+            ? `${current ? current.entity_name : ''} no está en pista. Pasará al final de la cola y tendrá otra oportunidad cuando le vuelva a tocar.`
+            : `${current ? current.entity_name : ''} sigue sin presentarse. Quedará marcado como AUSENTE (0.00) y no tendrá más oportunidades.`;
+          const skipConfirmEn = skipCount === 0
+            ? `${current ? current.entity_name : ''} isn't on track. They'll move to the end of the queue and get another chance later.`
+            : `${current ? current.entity_name : ''} is still not showing up. They'll be marked ABSENT (0.00) with no further chances.`;
+          const skipConfirmMsg = (lang === 'es' ? skipConfirmEs : skipConfirmEn).replace(/'/g, "\\'");
+        %>
         <div id="js-btn-idle" class="pole-btn-row" style="display:none">
           <button id="js-btn-start" class="pole-btn-start" onclick="startTiming()">
             <span class="pole-btn-tri">▶</span> <%= lang === 'es' ? 'Iniciar' : 'Start' %>
@@ -145,6 +159,19 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
           <button id="js-btn-stop" class="pole-btn-stop" onclick="stopTiming()">
             ⏹ <%= lang === 'es' ? 'Parar' : 'Stop' %>
           </button>
+        </div>
+
+        <!-- "Saltar": visible en idle Y en standby (esperando GO) — que es donde
+             el operador aterriza casi siempre, ver enterStandby()/init más abajo.
+             Oculto mientras se cronometra de verdad (running) o tras terminar
+             (finished), donde no tiene sentido saltar a quien ya ha corrido. -->
+        <div id="js-btn-skip-row" class="pole-btn-row" style="display:none">
+          <form class="pole-skip-form" action="/races/<%= race.id %>/pole/participant/skip" method="POST"
+                onsubmit="return confirm('<%= skipConfirmMsg %>')">
+            <button type="submit" class="pole-btn-skip">
+              ⏭ <%= lang === 'es' ? skipLabelEs : skipLabelEn %>
+            </button>
+          </form>
         </div>
 
         <div id="js-btn-finished" class="pole-btn-row" style="display:none">
@@ -215,6 +242,7 @@ const seedEntries = [
       name:      <%- JSON.stringify(e.entity_name) %>,
       categoria: <%- e.categoria ? JSON.stringify(e.categoria) : 'null' %>,
       bestLapMs: <%- e.lap_time_ms != null ? e.lap_time_ms : 'null' %>,
+      isNoShow:  <%= e.is_noshow ? 'true' : 'false' %>,
       isCurrent: <%= i === session.current_idx ? 'true' : 'false' %>,
       isDone:    <%= i < session.current_idx ? 'true' : 'false' %>,
     },
@@ -254,9 +282,11 @@ function renderTower() {
   // Mezcla el piloto en pista con los timed según su mejor vuelta actual.
   // Si aún no tiene tiempo, se muestra al final con "En pista".
   const current        = seedEntries.find(e => e.isCurrent);
-  const timedAll       = seedEntries.filter(e => e.bestLapMs != null)
+  // Ausentes fuera del ranking por tiempo: su 0.00 sintético no es una vuelta real.
+  const timedAll       = seedEntries.filter(e => e.bestLapMs != null && !e.isNoShow)
                                     .slice()
                                     .sort((a, b) => a.bestLapMs - b.bestLapMs);
+  const noShow         = seedEntries.filter(e => e.isNoShow);
   const pending        = seedEntries.filter(e => e.bestLapMs == null && !e.isCurrent && !e.isDone);
   const currentNoTime  = current && current.bestLapMs == null ? current : null;
 
@@ -311,6 +341,16 @@ function renderTower() {
         <div class="pole-tower-pos">—</div>
         <div class="pole-tower-name">${teamHtml(e.name, e.categoria)}</div>
         <div class="pole-tower-time">—</div>
+      </div>`);
+  });
+
+  // Ausentes: siempre al final, con su propia etiqueta en vez de un tiempo.
+  noShow.forEach(e => {
+    rows.push(`
+      <div class="pole-tower-row pole-tower-row--pending">
+        <div class="pole-tower-pos">—</div>
+        <div class="pole-tower-name">${teamHtml(e.name, e.categoria)}</div>
+        <div class="pole-tower-time">${LANG_ES ? 'Ausente' : 'No-show'}</div>
       </div>`);
   });
 
@@ -419,14 +459,14 @@ function setStateSub(text) {
 function enterIdle() {
   state = 'idle';
   clearAutoAdvance();
-  show('js-btn-idle'); hide('js-btn-running'); hide('js-btn-finished');
+  show('js-btn-idle'); hide('js-btn-running'); hide('js-btn-finished'); show('js-btn-skip-row');
   hide('js-chrono-wrap'); hide('js-countdown-wrap'); hide('js-finished-result');
   setStateSub(LANG_ES ? 'Preparado' : 'Ready');
 }
 function enterStandby() {
   state = 'standby';
   clearAutoAdvance();
-  hide('js-btn-idle'); show('js-btn-running'); hide('js-btn-finished');
+  hide('js-btn-idle'); show('js-btn-running'); hide('js-btn-finished'); show('js-btn-skip-row');
   hide('js-chrono-wrap'); hide('js-countdown-wrap'); hide('js-laps-wrap'); hide('js-finished-result');
   setStateSub(LANG_ES ? '⏳ Esperando GO del DS-300…' : '⏳ Waiting for DS-300 GO…');
   // Limpiar historial al entrar en standby (nuevo intento)
@@ -436,7 +476,7 @@ function enterStandby() {
 function enterRunning() {
   state = 'running';
   clearAutoAdvance();
-  hide('js-btn-idle'); show('js-btn-running'); hide('js-btn-finished');
+  hide('js-btn-idle'); show('js-btn-running'); hide('js-btn-finished'); hide('js-btn-skip-row');
   show('js-chrono-wrap'); show('js-countdown-wrap'); show('js-laps-wrap'); hide('js-finished-result');
   setStateSub(LANG_ES ? 'Cronometrando vuelta' : 'Timing lap');
   setCountdown(DURATION_MS);
@@ -444,11 +484,12 @@ function enterRunning() {
 }
 function enterPaused() {
   state = 'paused';
+  hide('js-btn-skip-row');
   setStateSub(LANG_ES ? '⏸ Pausa' : '⏸ Paused');
 }
 function enterFinished(bestLapMs, lapCount) {
   state = 'finished';
-  hide('js-btn-idle'); hide('js-btn-running'); show('js-btn-finished');
+  hide('js-btn-idle'); hide('js-btn-running'); show('js-btn-finished'); hide('js-btn-skip-row');
   hide('js-chrono-wrap');
   show('js-finished-result');
   setStateSub(LANG_ES ? 'Intento terminado' : 'Attempt finished');

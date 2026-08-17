@@ -88,19 +88,47 @@ class PoleSession {
     }
   }
 
-  // Returns entries sorted by lap_time_ms ASC (null times at the end)
+  // Returns entries sorted by lap_time_ms ASC. Ausentes (is_noshow, 0.00
+  // sintético) van DESPUÉS de todos los tiempos reales — si no, su 0 saldría
+  // primero como si fuera la vuelta más rápida. Sin tiempo todavía (NULL,
+  // no debería darse ya con sesión 'done') van al final de todo.
   static getEntriesSorted(poleSessionId) {
     return db.prepare(`
       SELECT pe.*, tc.categoria AS categoria
       FROM pole_entries pe
       LEFT JOIN teams_catalog tc ON tc.name = pe.entity_name
       WHERE pe.pole_session_id = ?
-      ORDER BY CASE WHEN pe.lap_time_ms IS NULL THEN 1 ELSE 0 END, pe.lap_time_ms ASC
+      ORDER BY
+        CASE WHEN pe.lap_time_ms IS NULL THEN 2 WHEN pe.is_noshow = 1 THEN 1 ELSE 0 END,
+        pe.lap_time_ms ASC
     `).all(poleSessionId);
   }
 
   static updateEntryTime(entryId, lapTimeMs) {
     db.prepare('UPDATE pole_entries SET lap_time_ms = ? WHERE id = ?').run(lapTimeMs, entryId);
+  }
+
+  // Manda la entrada al FINAL de la cola (mayor order_idx de la sesión + 1).
+  // No hace falta reajustar el resto: como getEntriesOrdered ordena por
+  // order_idx ASC, esto basta para que todas las pendientes se desplacen una
+  // posición hacia delante en el array (current_idx no se toca, ver
+  // PoleController.skipParticipant).
+  static moveToEnd(sessionId, entryId) {
+    const row = db.prepare('SELECT MAX(order_idx) AS m FROM pole_entries WHERE pole_session_id = ?').get(sessionId);
+    const newIdx = (row && row.m != null ? row.m : 0) + 1;
+    db.prepare('UPDATE pole_entries SET order_idx = ? WHERE id = ?').run(newIdx, entryId);
+  }
+
+  // Incrementa el contador de saltos de la entrada y devuelve el valor nuevo.
+  static registerSkip(entryId) {
+    db.prepare('UPDATE pole_entries SET skip_count = skip_count + 1 WHERE id = ?').run(entryId);
+    return db.prepare('SELECT skip_count FROM pole_entries WHERE id = ?').get(entryId).skip_count;
+  }
+
+  // Marca la entrada como AUSENTE de verdad (tras su 2º salto): 0.00 fijo,
+  // is_noshow=1 para que ningún ranking la confunda con una vuelta real de 0.
+  static markNoShow(entryId) {
+    db.prepare('UPDATE pole_entries SET lap_time_ms = 0, is_noshow = 1 WHERE id = ?').run(entryId);
   }
 
   static advanceIdx(sessionId, newIdx) {

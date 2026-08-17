@@ -9,9 +9,12 @@ function fmtSeconds3(ms) {
   if (!ms) return '—';
   return (ms / 1000).toFixed(3);
 }
-const timedEntries = entries.filter(e => e.lap_time_ms != null)
+// Ausentes (is_noshow) fuera del ranking por tiempo: su 0.00 sintético no
+// puede salir como "vuelta rápida" ni marcar la pole. Van en su propio bloque.
+const timedEntries = entries.filter(e => e.lap_time_ms != null && !e.is_noshow)
                             .slice().sort((a, b) => a.lap_time_ms - b.lap_time_ms);
-const pendingEntries = entries.filter(e => e.lap_time_ms == null);
+const noShowEntries = entries.filter(e => e.is_noshow);
+const pendingEntries = entries.filter(e => e.lap_time_ms == null && !e.is_noshow);
 const bestMs = timedEntries.length > 0 ? timedEntries[0].lap_time_ms : null;
 const poleHolderName = timedEntries.length > 0 ? timedEntries[0].entity_name : null;
 %>
@@ -90,6 +93,14 @@ const poleHolderName = timedEntries.length > 0 ? timedEntries[0].entity_name : n
             <div class="pole-tower-pos">—</div>
             <div class="pole-tower-name"><%= entry.entity_name %></div>
             <div class="pole-tower-time">—</div>
+          </div>
+        <% }) %>
+
+        <% noShowEntries.forEach((entry) => { %>
+          <div class="pole-tower-row pole-tower-row--pending">
+            <div class="pole-tower-pos">—</div>
+            <div class="pole-tower-name"><%= entry.entity_name %></div>
+            <div class="pole-tower-time"><%= lang === 'es' ? 'Ausente' : 'No-show' %></div>
           </div>
         <% }) %>
       </div>

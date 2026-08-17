@@ -1488,6 +1488,18 @@ input, button, select { font-family: inherit; }
 }
 .pole-btn-stop:hover { background: rgba(225,6,0,.08); }
 
+.pole-skip-form { margin-top: 10px; }
+.pole-btn-skip {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; padding: 12px; border: none; border-radius: 13px;
+  cursor: pointer; font-family: 'Saira Condensed', sans-serif;
+  font-size: 15px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  background: transparent; color: var(--pb-muted-2);
+  border: 1px solid var(--pb-border);
+  transition: background .15s, color .15s;
+}
+.pole-btn-skip:hover { background: rgba(255,255,255,.05); color: #fff; }
+
 .pole-btn-next {
   background: linear-gradient(180deg, #18e878, var(--pb-green)); color: #04150b;
   box-shadow: 0 10px 28px -8px rgba(19,215,106,.4), inset 0 1px 0 rgba(255,255,255,.25);

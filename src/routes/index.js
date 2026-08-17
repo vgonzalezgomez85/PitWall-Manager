@@ -212,6 +212,7 @@ router.post('/races/:id/pole/start',             PoleController.startPole);
 router.get( '/races/:id/pole/timing',            PoleController.timing);
 router.post('/races/:id/pole/participant/start', PoleController.startParticipant);
 router.post('/races/:id/pole/participant/stop',  PoleController.stopParticipant);
+router.post('/races/:id/pole/participant/skip',  PoleController.skipParticipant);
 router.post('/races/:id/pole/next',              PoleController.advanceParticipant);
 router.post('/races/:id/pole/omit-first',        PoleController.setOmitFirstCrossing);
 router.get( '/races/:id/pole/results',           PoleController.results);
