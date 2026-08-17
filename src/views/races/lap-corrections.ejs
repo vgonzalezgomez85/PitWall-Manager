@@ -440,9 +440,12 @@ document.querySelectorAll('.lc-lane').forEach(el => {
   const socket = io({ transports: ['websocket', 'polling'] });
   socket.on('connect', () => {});
   socket.on('lap', data => {
-    // Solo refrescamos si la vuelta es de NUESTRA manga
+    // El servidor agrupa cruces en lote bajo carga (SocketService.emitLap):
+    // `data` es siempre un array. Ninguna vuelta trae mangaId todavía, así
+    // que de momento un solo cruce de cualquier manga dispara el refresco
+    // (mismo comportamiento previo, ahora una vez por lote en vez de una por
+    // cruce individual).
     if (!data || data.mangaId == null) {
-      // Algunos eventos legacy no traen mangaId pero asumimos la activa
       schedule();
       return;
     }

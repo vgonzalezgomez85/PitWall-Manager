@@ -1440,7 +1440,7 @@ class TimingServiceClass {
       });
 
       SocketService.emit('lane:on_track', { lane, color: ld.color, name: ld.name, categoria: ld.categoria });
-      SocketService.emit('lap', {
+      SocketService.emitLap({
         lane, color: ld.color, name: ld.name, categoria: ld.categoria,
         lapNumber: ld.lapCount, lapTimeMs: firstLapMs, bestLapMs: ld.bestLapMs,
         elapsedMs: firstLapMs, isExit: false, isFirstCrossing: true,
@@ -1662,7 +1662,7 @@ class TimingServiceClass {
       });
     } catch (err) { console.error('[TimingService] DB error:', err.message); }
 
-    SocketService.emit('lap', {
+    SocketService.emitLap({
       lane, color: ld.color, name: ld.name, categoria: ld.categoria,
       lapNumber: ld.lapCount, lapTimeMs, bestLapMs: ld.bestLapMs,
       elapsedMs, isExit, isPitStop,

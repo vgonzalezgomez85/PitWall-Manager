@@ -13,6 +13,12 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.29.1] — 2026-08-17
+
+### Mejorado
+- **El aviso de vuelta al público ahora se agrupa bajo mucha carga, en vez de disparar uno por cruce.** Con mucho público conectado, cada cruce de meta enviaba su propio aviso en el acto por el directo; ahora, si el servidor está ocupado, varios cruces cercanos se agrupan en un mismo aviso (nunca se pierde ninguno, solo puede llegar con un pequeño retraso agrupado con otros). Con poco público, el comportamiento es idéntico a antes: cada cruce llega al instante. No afecta al cronometraje ni al recuento de vueltas.
+- **El resumen de equipo de Lap web, en el sondeo de respaldo, pasa de 5 a 10 segundos.** Ese sondeo es solo la red de seguridad por si falla el aviso en directo; como el aviso en directo ya refresca al instante, no hacía falta comprobarlo cada 5 segundos.
+
 ## [1.29.0] — 2026-08-17
 
 ### Añadido

@@ -168,12 +168,14 @@ if (TV_DATA.isActive) {
     }
   });
 
-  socket.on('lap', (lap) => {
+  // El servidor agrupa cruces en lote bajo carga: el evento siempre llega
+  // como array (de 1 elemento con pocos clientes), ver SocketService.emitLap.
+  socket.on('lap', (laps) => laps.forEach((lap) => {
     if (!lap.isExit) {
       addTick(lap);
       flashRow(lap.lane);
     }
-  });
+  }));
 
   socket.on('tick', ({ elapsedMs }) => {
     if (timerInt === null && TV_DATA.durationMs) {

@@ -332,7 +332,9 @@
     // ── Socket: cruces ──────────────────────────────────────────────────
     const socket = io({ transports: ['websocket', 'polling'] });
     socket.on('connect', () => socket.emit('race:live:join'));
-    socket.on('lap', (lap) => {
+    // El servidor agrupa cruces en lote bajo carga: el evento siempre llega
+    // como array (de 1 elemento con pocos clientes), ver SocketService.emitLap.
+    socket.on('lap', (laps) => laps.forEach((lap) => {
       if (!lap || !lap.lane) return;
       for (const r of renderers) {
         const ls = r.laneState();
@@ -342,7 +344,7 @@
           break;
         }
       }
-    });
+    }));
     socket.on('manga:stopped', () => { /* deja el último estado */ });
   })();
   </script>

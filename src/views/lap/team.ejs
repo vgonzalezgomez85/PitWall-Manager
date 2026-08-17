@@ -830,7 +830,9 @@
       var socket = io({ query: { view: 'lap' } });
       socket.on('connect', function(){ try { socket.emit('standings:request'); } catch(e){} });
       socket.on('standings', function(st){ onStandings(st); scheduleRefresh(); });
-      socket.on('lap', onLap);
+      // El servidor agrupa cruces en lote bajo carga: el evento siempre llega
+      // como array (de 1 elemento con pocos clientes), ver SocketService.emitLap.
+      socket.on('lap', function(laps){ laps.forEach(onLap); });
       // Fantasma / de-merge: se anuncia solo al equipo del carril afectado y solo
       // cuando está en pista (igual que el resto de avisos de voz).
       socket.on('lap:ghost', function(d){
@@ -904,7 +906,10 @@
       socket.on('tires:changed', scheduleRefresh);
     } catch(e){}
 
-    setInterval(refresh, 5000);
+    // Red de seguridad por si el socket se cae o se pierde un aviso — los
+    // avisos por socket ya disparan scheduleRefresh() al instante, así que
+    // este intervalo no necesita ser corto.
+    setInterval(refresh, 10000);
   })();
   </script>
 </body>

@@ -58,6 +58,25 @@ function flushStandings() {
   _standingsTimer = null;
 }
 
+// ── Adaptive lap batching ────────────────────────────────────────────────────
+// Cada cruce dispara un emit('lap', ...) global a TODOS los sockets — mismo
+// coste de ancho de banda/CPU que standings (ver adaptiveDelay). A diferencia
+// de standings, aquí NO se puede coalescer quedándose con "el último": una
+// ráfaga de cruces de carriles DISTINTOS perdería avisos de vueltas ajenas.
+// En vez de descartar, se agrupan en LOTE: se acumulan y se emiten juntos como
+// array cuando toca — nunca se pierde ninguno, solo se retrasa el aviso.
+let _lapQueue    = [];
+let _lapTimer    = null;
+let _lapLastEmit = 0;
+
+function flushLaps() {
+  if (!io || _lapQueue.length === 0) { _lapTimer = null; return; }
+  io.emit('lap', _lapQueue);
+  _lapQueue = [];
+  _lapLastEmit = Date.now();
+  _lapTimer = null;
+}
+
 module.exports = {
   init(httpServer) {
     io = new Server(httpServer, { cors: { origin: '*' } });
@@ -195,6 +214,26 @@ module.exports = {
     const sinceLast = Date.now() - _standingsLastEmit;
     const wait = Math.max(0, delay - sinceLast);
     _standingsTimer = setTimeout(flushStandings, wait);
+  },
+
+  // Batching emit for `lap`: agrupa cruces (nunca descarta ninguno, a
+  // diferencia de emitStandings) a una frecuencia adaptada al nº de clientes.
+  // El cliente SIEMPRE recibe un array — de 1 elemento en clubes pequeños
+  // (delay=0, mismo comportamiento inmediato de siempre), varios agrupados
+  // cuando hay mucho público. Usar esto en vez de emit('lap', ...) directo.
+  emitLap(data) {
+    if (!io) return;
+    _lapQueue.push(data);
+    const delay = adaptiveDelay();
+    if (delay === 0) {
+      if (_lapTimer) { clearTimeout(_lapTimer); _lapTimer = null; }
+      flushLaps();
+      return;
+    }
+    if (_lapTimer) return; // ya hay un flush programado — este lap ya está en la cola
+    const sinceLast = Date.now() - _lapLastEmit;
+    const wait = Math.max(0, delay - sinceLast);
+    _lapTimer = setTimeout(flushLaps, wait);
   },
 
   get io() {
