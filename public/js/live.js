@@ -67,16 +67,11 @@ function formatDelta(bestMs, avgMs) {
   return '+' + formatMs(d);
 }
 
-// "Gap V" REAL de la tarjeta: vueltas de distancia YA corridas respecto al
-// que tiene delante ahora mismo (gapInLaps de renderStandings), no la
-// proyección a fin de carrera. Con decimal (coma viva en pista) cuando hay
-// diferencia de vueltas enteras. A la par en vueltas (gapLaps===0), cae al
-// gap en segundos entre los últimos cruces (gapMs de renderStandings) para
-// dar una idea de lo lejos que están en pista.
-function formatRealGapV(gapLaps, gapMs) {
-  if (gapLaps != null && gapLaps !== 0) return `-${gapLaps.toFixed(1)}v`;
-  if (gapMs != null) return `-${(gapMs / 1000).toFixed(1)}s`;
-  return '—';
+// "Gap V" de la tarjeta y de la tabla "Clasificación": vueltas PROYECTADAS
+// de distancia respecto al que tiene delante (projGapAhead de
+// renderProjected), mismo formato en los dos sitios.
+function formatProjGapV(g) {
+  return (g && Math.abs(g) >= 0.01) ? `-${g.toFixed(2)}` : '—';
 }
 
 // Color para ÚLTIMA: verde si ≤ mejor, blanco si ≤ media, ámbar si ≤ mejor*1.05, rojo si peor.
@@ -585,24 +580,12 @@ function updateCard(lane, lapCount, lastLapMs, bestLapMs, avgLapMs, exitCount) {
   }
   // El Δ de la tarjeta ya NO es la consistencia (media−mejor): ahora muestra el
   // "Gap V" REAL (vueltas ya corridas de distancia respecto al que va delante
-  // ahora mismo). Lo rellena updateCardGaps() tras renderStandings, que es
-  // quien calcula gapInLaps con las vueltas reales de toda la carrera.
+  // ahora mismo, entre vecinos del orden PROYECTADO). Lo rellena sortCards()
+  // tras renderProjected, que es quien fija ese orden y las P.x.
   // Colores condicionales (V1 los muestra; en V2 se imponen los del mockup B vía CSS)
   _setLvColor(lastEl,  ultColor(lastLapMs, bestLapMs, avgLapMs));
 }
 
-// Vuelca el "Gap V" REAL (_globalRealGapAhead, por carril, de renderStandings)
-// en el Δ de cada tarjeta. Se llama tras renderStandings haber recalculado
-// gapInLaps con las vueltas reales acumuladas de toda la carrera.
-function updateCardGaps() {
-  (RACE_DATA.lanes || []).forEach(l => {
-    if (l.isRest) return;
-    const el = document.getElementById(`card-delta-${l.lane}`);
-    if (!el) return;
-    el.textContent = formatRealGapV(_globalRealGapAhead[l.lane], _globalRealGapMsAhead[l.lane]);
-    _setLvColor(el, null);   // el Gap V no lleva color de consistencia
-  });
-}
 
 function flashCard(lane, isExit) {
   const el = document.getElementById(`card-${lane}`);
@@ -1095,7 +1078,13 @@ function sortCards(rows) {
       posEl.className = `lane-card__pos lane-card__pos--${['1','2','3'][gpos-1] ?? 'n'}`;
     }
 
-    if (r.isRest) return;   // los descansos ya tienen su orden y P.x; sin trend
+    // "Gap V" de la tarjeta = el mismo gap PROYECTADO que se ve en la tabla
+    // "Clasificación" del sidebar (projGapAhead de renderProjected, por
+    // nombre) — mismo número, mismo formato, ninguna divergencia entre los dos sitios.
+    const deltaEl = document.getElementById(`card-delta-${k}`);
+    if (deltaEl) deltaEl.textContent = formatProjGapV(_globalProjGapAhead[r.name]);
+
+    if (r.isRest) return;   // los descansos ya tienen su orden y P.x; sin trend ni Gap V (no tienen ese elemento)
 
     const trendEl = document.getElementById(`card-trend-${r.lane}`);
     if (trendEl) {
@@ -1221,12 +1210,6 @@ function renderStandings(data) {
       gapInMs[r.lane] = null;
     }
   });
-  // Expuesto por carril para que updateCardGaps() rellene el "Gap V" REAL de
-  // cada tarjeta (vueltas ya corridas, no la proyección a fin de carrera; o el
-  // gap en segundos entre cruces cuando van a la par en vueltas).
-  _globalRealGapAhead   = gapInLaps;
-  _globalRealGapMsAhead = gapInMs;
-
   if (projectedBody) projectedBody.innerHTML = rows.map((r, i) => {
     if (r.isRest) {
       return `
@@ -1268,8 +1251,8 @@ function renderStandings(data) {
   // renderProjected ANTES que sortCards: calcula la posición general (todas las
   // tandas) que las tarjetas usan para su orden y su P.x.
   renderProjected(data);
-  // gapInLaps (real) ya está calculado arriba: vuelca el "Gap V" en el Δ de cada tarjeta.
-  updateCardGaps();
+  // sortCards calcula y vuelca el "Gap V" real de cada tarjeta (sobre los
+  // vecinos del orden proyectado que fija aquí mismo, ver realGapAbove).
   sortCards(data.standings);
   // Re-evaluar paginación tras reordenar cards en V1
   _v1SchedulePaging();
@@ -1280,13 +1263,10 @@ let prevProjGap = {};
 // La rellena renderProjected y la consumen las tarjetas (sortCards) para
 // mostrar la P.x real del conjunto de la carrera, no solo de la tanda.
 let _globalProjPos = new Map();
-// "Gap V" REAL (vueltas ya corridas respecto al que va delante ahora mismo)
-// por carril. La rellena renderStandings (gapInLaps) y la consume
-// updateCardGaps() para el Δ de cada tarjeta.
-let _globalRealGapAhead = {};
-// Gap REAL en ms entre cruces, para cuando van a la par en vueltas
-// (gapInLaps === 0). También la rellena renderStandings (gapInMs).
-let _globalRealGapMsAhead = {};
+// Gap V PROYECTADO por nombre (vs el de delante). La rellena renderProjected
+// (projGapAhead) y la consume sortCards() para el Δ de cada tarjeta — mismo
+// valor que se ve en la tabla "Clasificación" del sidebar, sin divergencia.
+let _globalProjGapAhead = {};
 
 function renderProjected(data) {
   if (!data?.standings) return;
@@ -1431,6 +1411,8 @@ function renderProjected(data) {
     gapBelowNow[r.name] = (below && r.projectedTotal != null && below.projectedTotal != null)
       ? scoreOf(r) - scoreOf(below) : null;
   });
+  // Exponer para que sortCards() rinde el mismo Gap V en las tarjetas.
+  _globalProjGapAhead = projGapAhead;
 
   // Compare with previous render to determine trend arrows
   const trend = {};
@@ -1455,10 +1437,8 @@ function renderProjected(data) {
   });
 
   if (projectedBody) projectedBody.innerHTML = rows.map((r, i) => {
-    const gV  = projGapAhead[r.name];
-    const gVT = projGapLeader[r.name];
-    const gapVDisplay  = (gV  && Math.abs(gV)  >= 0.01) ? `-${gV.toFixed(2)}`  : '—';
-    const gapVTDisplay = (gVT && Math.abs(gVT) >= 0.01) ? `-${gVT.toFixed(2)}` : '—';
+    const gapVDisplay  = formatProjGapV(projGapAhead[r.name]);
+    const gapVTDisplay = formatProjGapV(projGapLeader[r.name]);
     const tr = trend[r.name];
     const upCls   = tr.up === 'good' ? ' good' : tr.up === 'bad' ? ' bad' : '';
     const downCls = tr.down === 'good' ? ' good' : tr.down === 'bad' ? ' bad' : '';
@@ -1910,7 +1890,10 @@ function announce(text) {
       setTimeout(() => msg.remove(), 3000);
     });
 
-    socket.on('lap', (lap) => {
+    // El servidor agrupa cruces en lote bajo carga (SocketService.emitLap):
+    // el evento SIEMPRE llega como array (de 1 elemento con pocos clientes),
+    // nunca se pierde ninguno aunque estén repartidos entre varios carriles.
+    function processLap(lap) {
       addTick(lap);
       flashCard(lap.lane, lap.isExit);
       // Marca de tiempo del cruce, para desempatar el líder de vueltas de manga.
@@ -1944,7 +1927,8 @@ function announce(text) {
           announce(text);
         }
       }
-    });
+    }
+    socket.on('lap', (laps) => laps.forEach(processLap));
 
     // Ghost lap discarded by Pt: TTS announcement so the race director hears it
     // y pueda revisar/corregir desde la pantalla de correcciones.

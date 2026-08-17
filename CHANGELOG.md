@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.28.6] — 2026-08-17
+
+### Corregido
+- **El "Gap V" de las tarjetas del directo ya no podía divergir del que se ve en la tabla "Clasificación" del sidebar.** Eran dos cálculos distintos que en algún caso raro no coincidían y hacían que el líder (P.1) no mostrara "—" como cabía esperar. Ahora las tarjetas usan el mismo gap ya calculado para la tabla, así que siempre son el mismo número.
+
 ## [1.28.5] — 2026-08-17
 
 ### Mejorado
