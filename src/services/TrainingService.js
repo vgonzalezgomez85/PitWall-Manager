@@ -65,6 +65,7 @@ class TrainingServiceClass {
     this._startedAt        = null;
     this._durationMs       = null;
     this._pendingDurationMs = null;
+    this._autoFinishTimer  = null;
     this._sessionRecords   = new Map(); // lane → bestMs, persists until reset
 
     // Trama 1 del GO: limpia datos de la sesión anterior y guarda la duración.
@@ -222,11 +223,31 @@ class TrainingServiceClass {
     SerialService.on('lane_crossing', this._handler);
     SocketService.emit('training:activated', this.getLanes());
     console.log(`[TrainingService] Activated — ${this._lanes.length} lanes`);
+    this._scheduleAutoFinish();
+  }
+
+  // Respaldo de fin automático, source-agnóstico. El DS-300 manda su propia
+  // trama de fin (0xa4 → race_finished) y este timer, con margen, pierde esa
+  // carrera casi siempre — pero BART es pasivo (nunca emite race_finished:
+  // "SlotTime lleva su propia lógica de carrera") y sin esto el entreno se
+  // queda "activo" para siempre pasado el contador visual. Mismo patrón que
+  // TimingService._scheduleCircuitAutoFinish.
+  _scheduleAutoFinish() {
+    if (this._autoFinishTimer) { clearTimeout(this._autoFinishTimer); this._autoFinishTimer = null; }
+    if (!this._durationMs) return;
+    const AUTO_FINISH_GRACE_MS = 3000;
+    const elapsed   = this._startedAt ? (Date.now() - this._startedAt) : 0;
+    const remaining = Math.max(0, this._durationMs - elapsed) + AUTO_FINISH_GRACE_MS;
+    this._autoFinishTimer = setTimeout(() => {
+      console.log('[TrainingService] Auto-finalizado (tiempo agotado + margen)');
+      this._resetToStandby();
+    }, remaining);
   }
 
   // ── Deactivate: stop recording, keep lane config ──────────────────────────
   _deactivate() {
     this._active = false;
+    if (this._autoFinishTimer) { clearTimeout(this._autoFinishTimer); this._autoFinishTimer = null; }
     if (this._handler) {
       SerialService.off('lane_crossing', this._handler);
       this._handler = null;

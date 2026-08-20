@@ -42,6 +42,7 @@ class CompetitionTrainingServiceClass {
     this._startedAt        = null;
     this._durationMs       = null;
     this._pendingDurationMs = null;
+    this._autoFinishTimer  = null;
 
     // Trama 1: guarda la duración pero no arranca el cronómetro.
     // Trama 3 (race_started): activa el heat y emite training:go.
@@ -247,10 +248,27 @@ class CompetitionTrainingServiceClass {
     SerialService.on('lane_crossing', this._handler);
     SocketService.emit('training:activated', this.getLanes());
     console.log(`[CompetitionTraining] Heat ${this._heatNumber} started`);
+    this._scheduleAutoFinish();
+  }
+
+  // Respaldo de fin automático, source-agnóstico — ver TrainingService para el
+  // porqué (BART nunca emite race_finished). Mismo patrón que
+  // TimingService._scheduleCircuitAutoFinish.
+  _scheduleAutoFinish() {
+    if (this._autoFinishTimer) { clearTimeout(this._autoFinishTimer); this._autoFinishTimer = null; }
+    if (!this._durationMs) return;
+    const AUTO_FINISH_GRACE_MS = 3000;
+    const elapsed   = this._startedAt ? (Date.now() - this._startedAt) : 0;
+    const remaining = Math.max(0, this._durationMs - elapsed) + AUTO_FINISH_GRACE_MS;
+    this._autoFinishTimer = setTimeout(() => {
+      console.log('[CompetitionTraining] Auto-finalizado (tiempo agotado + margen)');
+      this._stopHeat(true);
+    }, remaining);
   }
 
   _deactivate() {
     this._active = false;
+    if (this._autoFinishTimer) { clearTimeout(this._autoFinishTimer); this._autoFinishTimer = null; }
     if (this._handler) {
       SerialService.off('lane_crossing', this._handler);
       this._handler = null;

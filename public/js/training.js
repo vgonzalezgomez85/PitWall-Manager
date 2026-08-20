@@ -121,6 +121,22 @@ function wireTrAjax(id) {
 wireTrAjax('trGoForm');
 wireTrAjax('trResumeForm');
 
+// ── Duración del GO: recordar la última usada (localStorage) para no tener
+//    que volver a teclearla cada vez (por defecto sale "10" siempre) ────────
+const TR_DURATION_KEY = 'pitwall.training.duration_min';
+(function restoreDurationInput() {
+  const inp = document.querySelector('#trGoForm input[name="duration_minutes"]');
+  if (!inp) return;
+  try {
+    const saved = localStorage.getItem(TR_DURATION_KEY);
+    if (saved) inp.value = saved;
+  } catch {}
+})();
+document.getElementById('trGoForm')?.addEventListener('submit', () => {
+  const inp = document.querySelector('#trGoForm input[name="duration_minutes"]');
+  if (inp && inp.value) { try { localStorage.setItem(TR_DURATION_KEY, inp.value); } catch {} }
+});
+
 function setStandby(isStandby) {
   standby = isStandby;
   const statusEl = document.getElementById('tr-status');
@@ -433,10 +449,17 @@ socket.on('training:activated', (lanes) => {
 });
 
 socket.on('training:standby', (lanes) => {
+  // Transición activo → standby SIN que el usuario haya enviado un form (fin
+  // automático por tiempo, tanda de competición que rota sola…): los botones
+  // GO/Pausa/STOP son server-side y solo se refrescan con un reload — igual
+  // que ya hace GO/RESUME más abajo (_trPendingReload). Sin esto el panel se
+  // queda con Pausa/STOP aunque el servidor ya esté en standby.
+  const wasActive = !standby;
   durationMs = 0;
   elapsedMs  = 0;
   setStandby(true);
   lanes.forEach(lane => updateCard(lane));
+  if (wasActive) setTimeout(() => location.reload(), 500);
 });
 
 socket.on('training:record', ({ lane, recordMs }) => {

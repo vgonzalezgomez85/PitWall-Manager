@@ -71,7 +71,6 @@ class BartConnection {
     this._sock       = null;         // socket TCP (transporte tcp)
     this._peripheral = null;         // periférico BLE (transporte ble)
     this._rxChar     = null;         // característica RX para escribir comandos (BLE)
-    this._bleScanTimer = null;
     this._connected = false;         // false hasta que haya conexión REAL (estado honesto en la UI)
     this._raceState = null;          // 'running' | 'paused' | 'stopped' | null
     this._rawLog    = [];
@@ -156,6 +155,12 @@ class BartConnection {
   // Escanea por el servicio NUS, conecta al Master, suscribe TX (notify) y
   // escribe comandos en RX. El día de mañana, un BART físico entra por aquí
   // igual que el emulador BLE.
+  //
+  // El escaneo en sí (startScanning/stopScanning/'discover') NO lo gestiona
+  // esta instancia: `noble` es un único adaptador BLE por proceso, y con
+  // varios Masters (multi-BART_TRACKx) cada BartConnection escaneando por su
+  // cuenta se pisaba con las demás — BleScanCoordinator serializa eso y solo
+  // entrega el periférico que le corresponde a cada uno.
   _openBle() {
     return new Promise((resolve, reject) => {
       let noble;
@@ -175,39 +180,17 @@ class BartConnection {
         p,
         new Promise((_, rej) => setTimeout(() => rej(new Error(`${label} (timeout ${ms}ms)`)), ms)),
       ]);
-      let settled = false;
 
-      const cleanup = () => {
-        if (this._bleScanTimer) { clearTimeout(this._bleScanTimer); this._bleScanTimer = null; }
-        try { noble.removeListener('discover', onDiscover); } catch {}
-        try { noble.stopScanning(); } catch {}
-      };
-      const fail = (e) => { cleanup(); if (!settled) { settled = true; reject(e); } };
-
-      const startScan = () => {
+      const connectToPeripheral = async () => {
+        const BleScanCoordinator = require('./BleScanCoordinator');
         console.log(`[BART C${this._circuitIndex + 1}] escaneando BLE (NUS / "${wantName}")…`);
-        // Sin filtro de servicio: muchos periféricos (p.ej. bleno) NO meten el
-        // UUID del NUS en el paquete de anuncio (va en scan-response o falta),
-        // así que filtrar por servicio se los pierde. Emparejamos en onDiscover
-        // por servicio O por nombre.
-        try { noble.startScanning([], false); } catch (e) { fail(e); }
-      };
-
-      const onDiscover = async (peripheral) => {
-        const adv = peripheral.advertisement || {};
-        // Si el periférico anuncia nombre, EXIGIMOS que sea el nuestro: así no nos
-        // enganchamos a OTRO Master BART en rango (p.ej. "BART_VERONA") que también
-        // expone el servicio NUS. El match por servicio queda solo como respaldo
-        // para periféricos que no anuncian nombre en el paquete de advertising.
-        const hasName   = !!adv.localName;
-        const matchName = hasName && adv.localName === wantName;
-        const matchSvc  = !hasName && (adv.serviceUuids || []).map(_u).includes(NUS_SERVICE);
-        if (!matchName && !matchSvc) return;             // no es nuestro BART
-        noble.removeListener('discover', onDiscover);
-        try { await noble.stopScanningAsync(); } catch {}
-        // Ya no necesitamos el guardia de "no encontrado": a partir de aquí los
-        // timeouts por intento (withTimeout) acotan cada paso.
-        if (this._bleScanTimer) { clearTimeout(this._bleScanTimer); this._bleScanTimer = null; }
+        let peripheral;
+        try {
+          peripheral = await BleScanCoordinator.waitForPeripheral(noble, NUS_SERVICE, wantName, 15000);
+        } catch (e) {
+          return reject(e);
+        }
+        if (this._explicitClose) return reject(new Error('BLE: conexión cerrada'));
 
         // El Master corta a veces el enlace justo al descubrir servicios
         // ("Disconnected unknown"). Reintentamos connect+discover un par de veces
@@ -235,7 +218,7 @@ class BartConnection {
             this._setConnected(true);
             console.log(`[BART C${this._circuitIndex + 1}] conectado por BLE a ${peripheral.address || wantName} (intento ${attempt})`);
             this._sendSetup();
-            if (!settled) { settled = true; resolve(); }
+            resolve();
             return;
           } catch (e) {
             lastErr = e;
@@ -245,21 +228,14 @@ class BartConnection {
             await sleep(400);
           }
         }
-        fail(lastErr || new Error('BLE: no se pudo establecer el enlace'));
+        reject(lastErr || new Error('BLE: no se pudo establecer el enlace'));
       };
 
-      noble.on('discover', onDiscover);
-      if (noble.state === 'poweredOn') startScan();
+      if (noble.state === 'poweredOn') connectToPeripheral();
       else noble.once('stateChange', (s) => {
-        if (s === 'poweredOn') startScan();
-        else fail(new Error('BLE no disponible: ' + s));
+        if (s === 'poweredOn') connectToPeripheral();
+        else reject(new Error('BLE no disponible: ' + s));
       });
-
-      // Si en 15s no aparece nada que encaje, falla y deja que connect() /
-      // _scheduleReconnect reintenten en segundo plano (no caemos a sim en BART).
-      this._bleScanTimer = setTimeout(() => {
-        if (!settled) fail(new Error('BLE: periférico no encontrado (timeout)'));
-      }, 15000);
     });
   }
 
@@ -308,7 +284,6 @@ class BartConnection {
   async close() {
     this._explicitClose = true;
     if (this._reconnectTimer) { clearTimeout(this._reconnectTimer); this._reconnectTimer = null; }
-    if (this._bleScanTimer) { clearTimeout(this._bleScanTimer); this._bleScanTimer = null; }
     if (this._sock) { try { this._sock.destroy(); } catch {} this._sock = null; }
     if (this._peripheral) { try { await this._peripheral.disconnectAsync(); } catch {} this._peripheral = null; }
     this._rxChar = null;

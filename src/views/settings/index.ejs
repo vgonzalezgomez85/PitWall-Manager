@@ -115,12 +115,19 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
             <h3><%= lang === 'es' ? 'Cronómetro BART (BLE)' : 'BART timer (BLE)' %></h3>
             <p class="vt-sub__p">
               <%= lang === 'es'
-                ? 'SlotTime se conecta por TCP a un puente BART (emulador o puente BLE→TCP). El puente entrega los cruces; SlotTime lleva la carrera. Carriles numerados de forma global.'
-                : 'SlotTime connects over TCP to a BART bridge (emulator or BLE→TCP bridge). The bridge delivers crossings; SlotTime runs the race. Lanes numbered globally.' %>
+                ? 'Cada Master BART (p. ej. BART_TRACK1, BART_TRACK2…) es un aparato independiente que hay que emparejar por separado — no comparten carriles entre sí. Añade una fila por cada Master físico; los carriles se numeran de forma global en el orden de la lista.'
+                : 'Each BART Master (e.g. BART_TRACK1, BART_TRACK2…) is an independent device that must be paired separately — they don\'t share lanes with each other. Add one row per physical Master; lanes are numbered globally in list order.' %>
             </p>
           </div>
+          <div class="vt-sub__actions">
+            <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="addBartMaster">
+              <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+              <%= lang === 'es' ? 'Añadir Master' : 'Add Master' %>
+            </button>
+          </div>
         </div>
-        <div class="vt-fields vt-fields--3" style="margin-top:14px">
+
+        <div class="vt-fields vt-fields--2" style="margin-top:14px">
           <div class="vt-field">
             <label><%= lang === 'es' ? 'Transporte' : 'Transport' %></label>
             <div class="vt-selw">
@@ -131,11 +138,6 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
             </div>
           </div>
           <div class="vt-field">
-            <label><%= lang === 'es' ? 'Nº de carriles' : 'Lanes' %></label>
-            <input class="vt-inp is-mono" type="number" name="bart_lanes" min="2" max="32"
-                   value="<%= cfg.bart_lanes || 4 %>">
-          </div>
-          <div class="vt-field">
             <label><%= lang === 'es' ? 'MinLap del Master (ms)' : 'Master MinLap (ms)' %></label>
             <input class="vt-inp is-mono" type="number" name="bart_minlap" min="0" max="65535" step="100"
                    value="<%= cfg.bart_minlap || 2000 %>"
@@ -143,27 +145,41 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
           </div>
         </div>
 
-        <!-- Campos de TCP -->
-        <div id="bartTcpFields" class="vt-fields vt-fields--2" style="margin-top:14px">
-          <div class="vt-field">
-            <label><%= lang === 'es' ? 'Host del puente' : 'Bridge host' %></label>
-            <input class="vt-inp is-mono" type="text" name="bart_host" placeholder="127.0.0.1"
-                   value="<%= cfg.bart_host || '127.0.0.1' %>">
-          </div>
-          <div class="vt-field">
-            <label><%= lang === 'es' ? 'Puerto' : 'Port' %></label>
-            <input class="vt-inp is-mono" type="number" name="bart_port" min="1" max="65535"
-                   value="<%= cfg.bart_port || 9300 %>">
-          </div>
-        </div>
-
-        <!-- Campos de BLE -->
-        <div id="bartBleFields" class="vt-fields vt-fields--2" style="margin-top:14px;display:none">
-          <div class="vt-field">
-            <label><%= lang === 'es' ? 'Nombre BLE del Master' : 'Master BLE name' %></label>
-            <input class="vt-inp is-mono" type="text" name="bart_name" placeholder="BART_MST"
-                   value="<%= cfg.bart_name || 'BART_MST' %>">
-          </div>
+        <div id="bartList" style="margin-top:14px">
+          <% bartCircuits.forEach((c, i) => { %>
+            <div class="vt-circuit-row bart-row" data-index="<%= i %>">
+              <div class="vt-circuit-row__h">
+                <div class="vt-circuit-row__num bnum"><%= i + 1 %></div>
+                <div class="vt-circuit-row__title bname"><%= lang === 'es' ? 'Master' : 'Master' %> <%= i + 1 %></div>
+                <span class="vt-circuit-row__lanes-badge bart-lanes-badge"></span>
+                <% if (bartCircuits.length > 1) { %>
+                  <button type="button" class="vt-circuit-row__x btn-remove-bart" data-index="<%= i %>" title="<%= lang === 'es' ? 'Eliminar' : 'Remove' %>">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                  </button>
+                <% } %>
+              </div>
+              <div class="vt-fields vt-fields--2 circuit-row__body">
+                <div class="vt-field">
+                  <label><%= lang === 'es' ? 'Nombre BLE del Master' : 'Master BLE name' %></label>
+                  <input class="vt-inp is-mono bart-name-input" type="text" name="bart_master_name" placeholder="BART_TRACK<%= i + 1 %>" value="<%= c.name || '' %>">
+                </div>
+                <div class="vt-field">
+                  <label><%= lang === 'es' ? 'Nº de carriles' : 'Lanes' %></label>
+                  <input class="vt-inp is-mono bart-lanes-input" type="number" name="bart_master_lanes" min="2" max="32" value="<%= c.lanes || 8 %>">
+                </div>
+              </div>
+              <div class="vt-fields vt-fields--2 bart-tcp-fields" style="margin-top:14px<%= (cfg.bart_transport || 'ble') === 'tcp' ? '' : ';display:none' %>">
+                <div class="vt-field">
+                  <label><%= lang === 'es' ? 'Host del puente' : 'Bridge host' %></label>
+                  <input class="vt-inp is-mono" type="text" name="bart_master_host" placeholder="127.0.0.1" value="<%= c.host || '127.0.0.1' %>">
+                </div>
+                <div class="vt-field">
+                  <label><%= lang === 'es' ? 'Puerto' : 'Port' %></label>
+                  <input class="vt-inp is-mono" type="number" name="bart_master_port" min="1" max="65535" value="<%= c.port || 9300 %>">
+                </div>
+              </div>
+            </div>
+          <% }) %>
         </div>
       </div>
 
@@ -695,16 +711,80 @@ function pickSource(){
 document.querySelectorAll('input[name="serial_mode"]').forEach(r => r.addEventListener('change', pickSource));
 pickSource();
 
-/* ── BART: transporte TCP vs BLE ── */
+/* ── BART: transporte TCP vs BLE (aplica a todos los Master de la lista) ── */
 const bartTransport = document.getElementById('bartTransport');
-const bartTcpFields = document.getElementById('bartTcpFields');
-const bartBleFields = document.getElementById('bartBleFields');
 function pickBartTransport(){
-  const t = bartTransport ? bartTransport.value : 'tcp';
-  if (bartTcpFields) bartTcpFields.style.display = t === 'ble' ? 'none' : '';
-  if (bartBleFields) bartBleFields.style.display = t === 'ble' ? '' : 'none';
+  const t = bartTransport ? bartTransport.value : 'ble';
+  document.querySelectorAll('.bart-tcp-fields').forEach(el => { el.style.display = t === 'ble' ? 'none' : ''; });
 }
 if (bartTransport) { bartTransport.addEventListener('change', pickBartTransport); pickBartTransport(); }
+
+/* ── BART: varios Master, numeración de carriles global ── */
+function updateBartBadges(){
+  let offset = 1;
+  document.querySelectorAll('.bart-row').forEach((row, idx) => {
+    const lanes = parseInt(row.querySelector('.bart-lanes-input')?.value || '8', 10) || 8;
+    const badge = row.querySelector('.bart-lanes-badge');
+    const title = row.querySelector('.bname');
+    if (title) title.textContent = (LANG === 'es' ? 'Master ' : 'Master ') + (idx + 1);
+    if (badge) badge.textContent = (LANG === 'es' ? 'Carriles ' : 'Lanes ') + offset + '–' + (offset + lanes - 1);
+    offset += lanes;
+  });
+}
+function renumberBartRows(){
+  document.querySelectorAll('.bart-row').forEach((row, i) => { row.dataset.index = i; });
+}
+function bartRowHTML(idx){
+  const tcpHidden = (bartTransport && bartTransport.value === 'tcp') ? '' : 'display:none';
+  return `
+    <div class="vt-circuit-row__h">
+      <div class="vt-circuit-row__num bnum"></div>
+      <div class="vt-circuit-row__title bname"></div>
+      <span class="vt-circuit-row__lanes-badge bart-lanes-badge"></span>
+      <button type="button" class="vt-circuit-row__x btn-remove-bart" title="${LANG === 'es' ? 'Eliminar' : 'Remove'}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="vt-fields vt-fields--2 circuit-row__body">
+      <div class="vt-field">
+        <label>${LANG === 'es' ? 'Nombre BLE del Master' : 'Master BLE name'}</label>
+        <input class="vt-inp is-mono bart-name-input" type="text" name="bart_master_name" placeholder="BART_TRACK${idx + 1}" value="">
+      </div>
+      <div class="vt-field">
+        <label>${LANG === 'es' ? 'Nº de carriles' : 'Lanes'}</label>
+        <input class="vt-inp is-mono bart-lanes-input" type="number" name="bart_master_lanes" min="2" max="32" value="8">
+      </div>
+    </div>
+    <div class="vt-fields vt-fields--2 bart-tcp-fields" style="margin-top:14px;${tcpHidden}">
+      <div class="vt-field">
+        <label>${LANG === 'es' ? 'Host del puente' : 'Bridge host'}</label>
+        <input class="vt-inp is-mono" type="text" name="bart_master_host" placeholder="127.0.0.1" value="127.0.0.1">
+      </div>
+      <div class="vt-field">
+        <label>${LANG === 'es' ? 'Puerto' : 'Port'}</label>
+        <input class="vt-inp is-mono" type="number" name="bart_master_port" min="1" max="65535" value="9300">
+      </div>
+    </div>`;
+}
+document.getElementById('addBartMaster')?.addEventListener('click', () => {
+  const list = document.getElementById('bartList');
+  const div = document.createElement('div');
+  div.className = 'vt-circuit-row bart-row';
+  div.innerHTML = bartRowHTML(document.querySelectorAll('.bart-row').length);
+  list.appendChild(div);
+  renumberBartRows();
+  updateBartBadges();
+});
+document.getElementById('bartList')?.addEventListener('click', e => {
+  const btn = e.target.closest('.btn-remove-bart');
+  if (!btn) return;
+  const rows = document.querySelectorAll('.bart-row');
+  if (rows.length > 1) { btn.closest('.bart-row').remove(); renumberBartRows(); updateBartBadges(); }
+});
+document.getElementById('bartList')?.addEventListener('input', e => {
+  if (e.target.classList.contains('bart-lanes-input')) updateBartBadges();
+});
+updateBartBadges();
 
 /* ── debug switch ── */
 const sw = document.getElementById('dbgSwitch');

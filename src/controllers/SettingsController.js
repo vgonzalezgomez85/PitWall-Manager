@@ -49,6 +49,11 @@ class SettingsController {
 
     const multiCircuit = true;
 
+    // BART: cada Master físico (BART_TRACK1, BART_TRACK2…) es una entrada
+    // independiente de circuits_serial. Sin configuración previa, una fila vacía.
+    let bartCircuits = circuits.filter(c => c.type === 'bart');
+    if (bartCircuits.length === 0) bartCircuits = [{ name: '', lanes: 8, host: '127.0.0.1', port: 9300 }];
+
     const net = require('../utils/network');
     const bindIface = cfg.server_bind_iface || '';
 
@@ -59,6 +64,7 @@ class SettingsController {
       circuits,
       multiCircuit,
       allCircuits:    Circuit.findAll(),
+      bartCircuits,
       isSimulating:   SerialService.isSimulating,
       connectedPorts: SerialService.connectedPorts,
       rawLog:         SerialService.getRawLog().slice(-20),
@@ -139,18 +145,34 @@ class SettingsController {
     const fg = parseInt(serial_frame_gap_ms, 10);
     const fgClean = (Number.isFinite(fg) && fg >= 10 && fg <= 500) ? fg : 75;
 
-    // BART source: TCP bridge (emulator or BLE→TCP). Stored as a single circuit
-    // entry with type:'bart' so SerialService.connectMultiple builds a
-    // BartConnection. Lanes still numbered globally like the DS-300 path.
+    // BART source: uno o varios Master independientes (BART_TRACK1, BART_TRACK2…),
+    // cada uno con su propio nombre/host/puerto. El fabricante documenta este
+    // despliegue como "Multi-Master Environments" (§9.9): cada Master mantiene su
+    // propio namespace de carriles y es el software cliente quien conecta a cada
+    // uno por separado y agrega la numeración global — igual que varias cajas
+    // DS-300. Una entrada de circuits_serial (type:'bart') por Master;
+    // SerialService.connectMultiple acumula el laneOffset en el orden de la lista.
     const bartTransport = req.body.bart_transport === 'tcp' ? 'tcp' : 'ble';
-    const bartHost  = String(req.body.bart_host || '127.0.0.1').trim() || '127.0.0.1';
-    const bartPort  = parseInt(req.body.bart_port  || '9300', 10) || 9300;
-    const bartName  = String(req.body.bart_name || 'BART_MST').trim() || 'BART_MST';
-    const bartLanes = parseInt(req.body.bart_lanes || '4', 10) || 4;
     const bm = parseInt(req.body.bart_minlap, 10);
     const bartMinlap = (Number.isFinite(bm) && bm >= 0 && bm <= 65535) ? bm : 2000;
+
+    const bNameArr  = [].concat(req.body['bart_master_name']  || []);
+    const bLanesArr = [].concat(req.body['bart_master_lanes'] || []);
+    const bHostArr  = [].concat(req.body['bart_master_host']  || []);
+    const bPortArr  = [].concat(req.body['bart_master_port']  || []);
+
+    const bartMasters = bNameArr
+      .map((name, i) => ({
+        type:      'bart',
+        transport: bartTransport,
+        name:      String(name || `BART_TRACK${i + 1}`).trim() || `BART_TRACK${i + 1}`,
+        lanes:     parseInt(bLanesArr[i] || '8', 10) || 8,
+        host:      String(bHostArr[i] || '127.0.0.1').trim() || '127.0.0.1',
+        port:      parseInt(bPortArr[i] || '9300', 10) || 9300,
+        minlap:    bartMinlap,
+      }));
     if (serial_mode === 'bart') {
-      circuits = [{ type: 'bart', transport: bartTransport, host: bartHost, port: bartPort, name: bartName, lanes: bartLanes, minlap: bartMinlap }];
+      circuits = bartMasters;
     }
 
     // Agrupador DS-300: varias cajas DS multiplexadas en un ÚNICO puerto COM.
@@ -172,10 +194,6 @@ class SettingsController {
       serial_mode:          serial_mode || 'simulation',
       circuits_serial:      JSON.stringify(circuits),
       bart_transport:       bartTransport,
-      bart_host:            bartHost,
-      bart_port:            String(bartPort),
-      bart_name:            bartName,
-      bart_lanes:           String(bartLanes),
       bart_minlap:          String(bartMinlap),
       agg_port:             aggPort,
       agg_baud:             String(aggBaud),

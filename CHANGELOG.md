@@ -13,6 +13,24 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.30.1] — 2026-08-20
+
+### Corregido
+- **Con BART, un entrenamiento que se acababa el tiempo se quedaba "activo" para siempre.** El DS-300 avisa solo cuando se agota el tiempo de una sesión (para volver a standby y poder pulsar GO de nuevo), pero BART no manda ese aviso (lleva su propio reloj interno). Ahora el entrenamiento (libre y de competición) tiene su propio respaldo por tiempo, igual que ya tenía el modo Carrera, así que con BART también vuelve solo a standby al agotarse el tiempo.
+- **Tras ese auto-fin (o tras rotar sola de tanda en un entrenamiento de competición), el botón GO no reaparecía** aunque el servidor ya estuviera listo para arrancar de nuevo — había que recargar la página a mano. Ahora la pantalla se refresca sola en ese momento, igual que ya hacía al pulsar GO.
+
+### Mejorado
+- **El campo de duración del GO en entrenamiento recuerda el último valor usado**, en vez de volver siempre a "10" minutos.
+- Se etiqueta con el texto "Tiempo" el campo de duración del GO en entrenamiento, antes solo tenía un tooltip.
+
+## [1.30.0] — 2026-08-20
+
+### Añadido
+- **Soporte para varios cronómetros BART independientes en la misma carrera.** Con más de un Master BART físico (por ejemplo `BART_TRACK1`, `BART_TRACK2`, `BART_TRACK3`, cada uno cronometrando su propio tramo de carriles), Ajustes solo dejaba configurar uno y los carriles de los demás nunca recibían cruces. Ahora la sección BART de Ajustes es una lista: añade una fila por cada Master con su nombre BLE y su nº de carriles, y PitWall se conecta a todos y numera los carriles de corrido (Master 1 → 1-8, Master 2 → 9-16…), igual que ya hacía con varias cajas DS-300.
+
+### Corregido
+- **Con varios Master BART activados a la vez, ninguno llegaba a conectar.** El escaneo Bluetooth es un único recurso compartido del proceso; al intentar conectar a varios Master en paralelo, cada uno se pisaba el escaneo de los demás y todos se quedaban reintentando sin encontrar nunca su cronómetro. Ahora el escaneo BLE se coordina entre todos los Master configurados, así que cada uno encuentra el suyo sin interferir con el resto. Verificado con hardware real: tres Master BART conectando a la vez y cruces correctos en sus 24 carriles.
+
 ## [1.29.1] — 2026-08-17
 
 ### Mejorado
