@@ -66,13 +66,13 @@ class Lap {
    */
   static markExternalMutation() { _bump(null); }
 
-  static create({ race_id, manga_id, team_id, driver_id, lane, lap_number, lap_time_ms, elapsed_ms, is_exit = 0, is_ghost = 0, is_pit_stop = 0, is_warmup = 0, ghost_from_lane = null, is_estimated = 0 }) {
+  static create({ race_id, manga_id, team_id, driver_id, lane, lap_number, lap_time_ms, elapsed_ms, is_exit = 0, is_ghost = 0, is_pit_stop = 0, is_warmup = 0, ghost_from_lane = null, is_estimated = 0, is_flag_lap = 0 }) {
     _bump(manga_id);
     const { lastInsertRowid } = db.prepare(`
-      INSERT INTO laps (race_id, manga_id, team_id, driver_id, lane, lap_number, lap_time_ms, elapsed_ms, is_exit, is_ghost, is_pit_stop, is_warmup, ghost_from_lane, is_estimated)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO laps (race_id, manga_id, team_id, driver_id, lane, lap_number, lap_time_ms, elapsed_ms, is_exit, is_ghost, is_pit_stop, is_warmup, ghost_from_lane, is_estimated, is_flag_lap)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(race_id, manga_id ?? null, team_id ?? null, driver_id ?? null,
-           lane, lap_number, lap_time_ms, elapsed_ms ?? 0, is_exit, is_ghost, is_pit_stop, is_warmup, ghost_from_lane ?? null, is_estimated ? 1 : 0);
+           lane, lap_number, lap_time_ms, elapsed_ms ?? 0, is_exit, is_ghost, is_pit_stop, is_warmup, ghost_from_lane ?? null, is_estimated ? 1 : 0, is_flag_lap ? 1 : 0);
     return lastInsertRowid;
   }
 

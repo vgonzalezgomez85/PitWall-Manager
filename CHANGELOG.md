@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.30.2] — 2026-08-24
+
+### Corregido
+- **El corrector de vueltas y el registro de sucesos no distinguían la vuelta "de final de bandera" de una reposición por caída de conexión.** Cuando el DS-300 cuenta un cruce justo al caer la bandera (llega con el circuito ya cerrado y se descartaba en directo), PitWall la repone con la media del carril igual que hace con las vueltas perdidas en una caída — pero son dos situaciones distintas: una es un corte real, la otra pasa en toda manga normal. Ahora el corrector las separa en dos categorías ("repuestas (estimadas)" en morado vs. "final de bandera" en azul) y la de final de bandera también queda registrada en el registro de sucesos de la manga (antes ninguna de las dos aparecía ahí).
+
 ## [1.30.1] — 2026-08-20
 
 ### Corregido

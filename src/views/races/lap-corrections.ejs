@@ -18,11 +18,14 @@ function fmtS(ms) {
 const totalFlagged = laneGroups.reduce((acc, g) => acc + g.laps.filter(l => l.is_ghost).length, 0);
 
 // Vueltas REPUESTAS: la caja DS las contó pero PitWall no las vio (cable fuera,
-// proceso caído, cruce en la bandera). Se rellenaron con la media del carril, así
-// que su tiempo es una estimación. Hay que poder localizarlas para corregirlas o
-// borrarlas a mano: si un coche se paró en pista durante el corte, se habrán
-// repuesto más vueltas de las que dio.
-const totalEstimated = laneGroups.reduce((acc, g) => acc + g.laps.filter(l => l.is_estimated && !l.is_ghost).length, 0);
+// proceso caído). Se rellenaron con la media del carril, así que su tiempo es
+// una estimación. Hay que poder localizarlas para corregirlas o borrarlas a
+// mano: si un coche se paró en pista durante el corte, se habrán repuesto más
+// vueltas de las que dio. Distintas de las de FINAL DE BANDERA (is_flag_lap):
+// esas no vienen de una caída, sino del cruce que completó justo al caer la
+// bandera y que el circuito ya 'finished' descartó en directo.
+const totalEstimated = laneGroups.reduce((acc, g) => acc + g.laps.filter(l => l.is_estimated && !l.is_flag_lap && !l.is_ghost).length, 0);
+const totalFlagLap    = laneGroups.reduce((acc, g) => acc + g.laps.filter(l => l.is_flag_lap && !l.is_ghost).length, 0);
 
 // Stats por carril para la sidebar
 const laneStats = laneGroups.map(g => {
@@ -38,13 +41,15 @@ const laneStats = laneGroups.map(g => {
   const forBest   = g.laps.filter(l => !l.is_ghost && !l.is_warmup && !l.is_exit && l.lap_number > 1);
   const bestMs    = forBest.length ? Math.min(...forBest.map(l => l.lap_time_ms)) : null;
   // Vueltas repuestas en este carril: las que hay que revisar a mano.
-  const estCount  = g.laps.filter(l => l.is_estimated && !l.is_ghost).length;
+  const estCount     = g.laps.filter(l => l.is_estimated && !l.is_flag_lap && !l.is_ghost).length;
+  const flagLapCount = g.laps.filter(l => l.is_flag_lap && !l.is_ghost).length;
   return {
     info: g.info,
     laps: g.laps,
     validCount: valid.length,
     flagCount:  flags,
     estCount,
+    flagLapCount,
     avgMs, bestMs,
     entityName: g.info.team_name || g.info.driver_name || ('Lane ' + g.info.lane),
   };
@@ -85,10 +90,20 @@ if (firstFlagged >= 0) initActive = firstFlagged;
       <% if (totalEstimated > 0) { %>
         <span class="lc-meta-pill" style="color:#c792ea;border-color:rgba(199,146,234,.35)"
               title="<%= lang === 'es'
-                ? 'La caja DS las contó pero PitWall no las vio (cable, reinicio o cruce en la bandera). Su tiempo es la media del carril: revísalas y corrígelas o bórralas si no ocurrieron.'
-                : 'The DS box counted them but PitWall never saw them. Their time is the lane average.' %>">
+                ? 'La caja DS las contó pero PitWall no las vio (cable fuera o proceso caído). Su tiempo es la media del carril: revísalas y corrígelas o bórralas si no ocurrieron.'
+                : 'The DS box counted them but PitWall never saw them (link outage). Their time is the lane average.' %>">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" style="width:14px;height:14px"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
           <b><%= totalEstimated %></b> <%= lang === 'es' ? 'vueltas repuestas (estimadas)' : 'estimated laps' %>
+        </span>
+      <% } %>
+
+      <% if (totalFlagLap > 0) { %>
+        <span class="lc-meta-pill" style="color:#58a6ff;border-color:rgba(88,166,255,.35)"
+              title="<%= lang === 'es'
+                ? 'El cruce que completó justo al caer la bandera: la caja DS lo contó pero llegó con el circuito ya cerrado y se descartó. Su tiempo es la media del carril.'
+                : 'The crossing that completed right as the flag fell: the DS box counted it but it arrived after the circuit had already closed. Its time is the lane average.' %>">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M4 21V4M4 4h13l-2.5 4L17 12H4"/></svg>
+          <b><%= totalFlagLap %></b> <%= lang === 'es' ? 'vueltas de final de bandera' : 'flag-finish laps' %>
         </span>
       <% } %>
 
@@ -175,6 +190,11 @@ if (firstFlagged >= 0) initActive = firstFlagged;
                           <%= s.estCount %> <%= lang === 'es' ? 'repuestas' : 'estimated' %>
                         </span>
                     <% } %>
+                    <% if (s.flagLapCount > 0) { %>
+                      · <span class="lc-flaglap-count">
+                          <%= s.flagLapCount %> <%= lang === 'es' ? 'bandera' : 'flag-finish' %>
+                        </span>
+                    <% } %>
                   </div>
                 </div>
                 <div class="lc-kpis">
@@ -218,13 +238,15 @@ if (firstFlagged >= 0) initActive = firstFlagged;
                        const isFastest = lap.id === fastestId;
                        const flagClass = lap.is_ghost ? 'is-flag' : '';
                        const fastClass = isFastest ? 'is-fastest' : '';
-                       // Vuelta que PitWall no vio (cable fuera, proceso caído, cruce
-                       // en la bandera): la caja SÍ la contó y se repuso con la media
-                       // del carril. Su tiempo es una estimación, no un cruce real,
-                       // así que hay que poder encontrarla para corregirla a mano.
-                       const estClass = (lap.is_estimated && !lap.is_ghost) ? 'is-estimated' : '';
+                       // Vuelta que PitWall no vio: la caja SÍ la contó y se repuso con
+                       // la media del carril. Su tiempo es una estimación, no un cruce
+                       // real, así que hay que poder encontrarla para corregirla a mano.
+                       // `is_flag_lap` la distingue del caso de caída de conexión: es
+                       // el cruce que completó justo al caer la bandera.
+                       const estClass = (lap.is_estimated && !lap.is_flag_lap && !lap.is_ghost) ? 'is-estimated' : '';
+                       const flagLapClass = (lap.is_flag_lap && !lap.is_ghost) ? 'is-flaglap' : '';
                   %>
-                    <div class="lc-lap <%= flagClass %> <%= fastClass %> <%= estClass %>">
+                    <div class="lc-lap <%= flagClass %> <%= fastClass %> <%= estClass %> <%= flagLapClass %>">
                       <div class="lc-lap__n">
                         <%= lap.lap_number %>
                         <% if (isFastest) { %><span class="lc-lap__fl">FL</span><% } %>
@@ -242,11 +264,19 @@ if (firstFlagged >= 0) initActive = firstFlagged;
                               <%= lang === 'es' ? 'Fantasma' : 'Ghost' %>
                             <% } %>
                           </span>
+                        <% } else if (lap.is_flag_lap) { %>
+                          <span class="lc-flagtag is-flaglap"
+                                title="<%= lang === 'es'
+                                  ? 'El cruce que completó justo al caer la bandera: la caja DS lo contó pero llegó con el circuito ya cerrado. Su tiempo es la media del carril: corrígelo si sabes el real.'
+                                  : 'The crossing that completed right as the flag fell: the DS box counted it but the circuit had already closed. Its time is the lane average.' %>">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V4M4 4h13l-2.5 4L17 12H4"/></svg>
+                            <%= lang === 'es' ? 'Final de bandera' : 'Flag finish' %>
+                          </span>
                         <% } else if (lap.is_estimated) { %>
                           <span class="lc-flagtag is-est"
                                 title="<%= lang === 'es'
-                                  ? 'La caja DS contó esta vuelta pero PitWall no la vio (cable, reinicio o cruce en la bandera). Su tiempo es la media del carril: corrígelo si sabes el real.'
-                                  : 'The DS box counted this lap but PitWall never saw it. Its time is the lane average.' %>">
+                                  ? 'La caja DS contó esta vuelta pero PitWall no la vio (cable fuera o proceso caído). Su tiempo es la media del carril: corrígelo si sabes el real.'
+                                  : 'The DS box counted this lap but PitWall never saw it (link outage). Its time is the lane average.' %>">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
                             <%= lang === 'es' ? 'Estimada' : 'Estimated' %>
                           </span>
@@ -786,6 +816,21 @@ document.querySelectorAll('.lc-lane').forEach(el => {
 .lc-est-count {
   display: inline-flex; align-items: center; gap: 5px;
   font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: #c792ea;
+}
+
+/* Vuelta de final de bandera: mismo mecanismo que la repuesta (la caja la
+   contó, PitWall no la vio), pero SIN caída de conexión — es el cruce que
+   completó justo al caer la bandera y el circuito ya cerrado descartó. Azul
+   para no confundirla con la reposición por caída (morado). */
+.lc-flagtag.is-flaglap { color: #58a6ff; }
+.lc-lap.is-flaglap {
+  border-left: 3px solid #58a6ff;
+  background: color-mix(in srgb, #58a6ff 7%, transparent);
+}
+.lc-lap.is-flaglap .lc-lap__time { color: #58a6ff; }
+.lc-flaglap-count {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: #58a6ff;
 }
 
 /* Insertar vuelta */

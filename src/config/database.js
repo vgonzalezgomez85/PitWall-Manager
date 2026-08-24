@@ -576,6 +576,13 @@ const migrations = [
      created_at_ms INTEGER NOT NULL
    )`,
   `CREATE INDEX IF NOT EXISTS idx_race_events_race_manga ON race_events(race_id, manga_id, created_at_ms)`,
+
+  // Subcaso de `is_estimated`: el cruce que completó justo al caer la
+  // bandera, contado por la caja DS-300 pero descartado en directo porque el
+  // circuito ya estaba 'finished'. A diferencia de una caída de conexión, no
+  // hubo corte — se distingue en el corrector de vueltas y en el registro de
+  // sucesos para no confundirla con una reposición por caída.
+  `ALTER TABLE laps ADD COLUMN is_flag_lap INTEGER NOT NULL DEFAULT 0`,
 ];
 for (const sql of migrations) {
   try {

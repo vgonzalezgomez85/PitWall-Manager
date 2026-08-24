@@ -27,13 +27,13 @@
   const ICON = {
     go: '🚦', pause: '⏸', resume: '▶', stop: '🏁', cancel: '✕',
     recovered: '🔌', ghost_lap: '👻', lap_reassigned: '🔁', retro_exit: '↩️',
-    driver_checkin: '🪪', lap_assigned: '✅',
+    driver_checkin: '🪪', lap_assigned: '✅', flag_lap: '🏁',
   };
   const COLOR = {
     go: '#3fb950', pause: '#e6a817', resume: '#3fb950', stop: '#8b949e',
     cancel: '#e63946', recovered: '#a855f7', ghost_lap: '#8b949e',
     lap_reassigned: '#3fb950', retro_exit: '#e6a817', driver_checkin: '#a855f7',
-    lap_assigned: '#58a6ff',
+    lap_assigned: '#58a6ff', flag_lap: '#58a6ff',
   };
 
   const MODE_TEXT = {
@@ -90,6 +90,14 @@
     },
     lap_assigned: (d, es) => {
       return `${who(d, es)} — ${es ? 'vuelta' : 'lap'} ${d.lapNumber || ''}: ${fmtS(d.lapTimeMs)}s`;
+    },
+    flag_lap: (d, es) => {
+      const p = d.payload || {};
+      const n = p.count || 1;
+      const base = es
+        ? `${who(d, es)} — ${n > 1 ? n + ' vueltas de final de bandera repuestas' : 'vuelta de final de bandera repuesta'}`
+        : `${who(d, es)} — ${n} flag-finish lap${n > 1 ? 's' : ''} restored`;
+      return base + ` (${fmtS(p.lapTimeMs)}s ${es ? 'media' : 'avg'})`;
     },
   };
 

@@ -850,8 +850,9 @@ class TimingServiceClass {
       const simNow = SerialService.getLinkStatus().simulating;
       if (!simNow && !SerialService.isBart) {
         reconcileData = {
-          mangaId: this.session.manga.id,
-          raceId:  this.session.race.id,
+          mangaId:     this.session.manga.id,
+          raceId:      this.session.race.id,
+          mangaNumber: this.session.manga.number,
           lanes: Object.values(this.session.laneMap).map(ld => {
             const ci = this.session.laneToCircuit[ld.lane];
             const c  = ci != null ? this.session.circuits[ci] : null;
@@ -859,6 +860,7 @@ class TimingServiceClass {
               lane:             ld.lane,
               teamId:           ld.teamId,
               driverId:         ld.driverId,
+              name:             ld.name,
               refAvgMs:         ld.cleanAvgMs > 0 ? ld.cleanAvgMs : ld.lapAvgMs,
               lastCrossing:     ld.lastCrossing,
               circuitStartTime: c ? c.startTime : null,
@@ -1071,12 +1073,19 @@ class TimingServiceClass {
             is_exit: 0, is_ghost: 0, is_warmup: 0,
             // Su tiempo es la media del carril, no un cruce real. El equipo no
             // pierde la vuelta, pero queda constancia de que es una estimación.
-            is_estimated: 1,
+            // `is_flag_lap` la distingue de una reposición por caída: aquí no
+            // hubo corte, es el cruce que completó justo al caer la bandera.
+            is_estimated: 1, is_flag_lap: 1,
           });
           inserted++;
         } catch (err) { console.error('[TimingService] reconcile insert error:', err.message); }
       }
       console.log(`[TimingService] Reconciliación bandera: carril ${ld.lane} DS=${dsCount} BD=${registered} → +${missing} vuelta(s) @ ${refAvg}ms`);
+      this._logEvent('flag_lap', {
+        raceId: data.raceId, mangaId: data.mangaId, mangaNumber: data.mangaNumber,
+        lane: ld.lane, entityName: ld.name,
+        payload: { count: missing, lapTimeMs: refAvg },
+      });
     }
 
     if (inserted > 0) {
