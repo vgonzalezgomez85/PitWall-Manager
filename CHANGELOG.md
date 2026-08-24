@@ -13,6 +13,12 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.30.3] — 2026-08-24
+
+### Corregido
+- **La exportación a Excel sumaba en una sola celda las vueltas de un carril repetido**, en vez de separarlas por manga como ya hacía la pantalla de resultados. Las hojas "Por carril" y "Comparativa" del Excel ahora reproducen el mismo desglose por ocurrencia (carril × manga) que la web cuando la carrera tiene repetición de carril o varias pasadas.
+- **Las tandas creadas desde el flujo de pole ignoraban la repetición de carril de la carrera.** Al generar el calendario no se le pasaban `race.passes`/`race.lane_repeat`, así que una carrera con repetición de carril activada generaba solo la mitad de las mangas necesarias si la tanda se creaba por pole en vez de por el flujo normal de "Nueva tanda".
+
 ## [1.30.2] — 2026-08-24
 
 ### Corregido

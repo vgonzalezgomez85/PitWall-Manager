@@ -1532,20 +1532,24 @@ class SessionController {
     });
 
     // ── Sheet 3 — Por carril ────────────────────────────────────────────────
+    // Desglosado por (carril, manga) — no por carril solo — para que una
+    // entidad que repite carril (race.passes>1 || race.lane_repeat>1) aparezca
+    // en filas separadas por manga, igual que en pantalla, en vez de sumarse
+    // en una única fila por carril.
     const s3 = wb.addWorksheet(isEs ? 'Por carril' : 'Per lane');
-    s3.columns = [{ width: 30 }, { width: 8 }, { width: 10 }, { width: 12 }, { width: 12 }, { width: 10 }];
-    addRaceHeader(s3, 6);
-    const s3Header = s3.addRow([isEs ? 'Piloto / Equipo' : 'Driver / Team', isEs ? 'Carril' : 'Lane', isEs ? 'Vueltas' : 'Laps', isEs ? 'Mejor' : 'Best', isEs ? 'Media' : 'Avg', isEs ? 'Salidas' : 'Exits']);
+    s3.columns = [{ width: 30 }, { width: 8 }, { width: 10 }, { width: 10 }, { width: 12 }, { width: 12 }, { width: 10 }];
+    addRaceHeader(s3, 7);
+    const s3Header = s3.addRow([isEs ? 'Piloto / Equipo' : 'Driver / Team', isEs ? 'Carril' : 'Lane', isEs ? 'Manga' : 'Heat', isEs ? 'Vueltas' : 'Laps', isEs ? 'Mejor' : 'Best', isEs ? 'Media' : 'Avg', isEs ? 'Salidas' : 'Exits']);
     s3Header.height = 22;
     s3Header.eachCell(c => Object.assign(c, headerStyle));
     s3.views = [{ state: 'frozen', ySplit: s3Header.number }];
     aggregate.forEach(r => {
-      const perLane = Lap.perLaneByEntity(race.id, r.entity_id, r.entity_type);
-      perLane.forEach(pl => {
-        const row = s3.addRow([r.entity_name, pl.lane, pl.laps, fmtMs(pl.best_ms), fmtMs(Math.round(pl.avg_ms)), pl.exit_count || 0]);
+      const perLaneManga = Lap.perLaneMangaByEntity(race.id, r.entity_id, r.entity_type);
+      perLaneManga.forEach(pl => {
+        const row = s3.addRow([r.entity_name, pl.lane, pl.manga_number, pl.laps, fmtMs(pl.best_ms), fmtMs(Math.round(pl.avg_ms)), pl.exit_count || 0]);
         row.eachCell(c => c.border = thinBorder);
-        row.getCell(4).font = { color: { argb: 'FF1A7F37' }, bold: true };
-        if (pl.exit_count > 0) row.getCell(6).font = { color: { argb: COL.exit }, bold: true };
+        row.getCell(5).font = { color: { argb: 'FF1A7F37' }, bold: true };
+        if (pl.exit_count > 0) row.getCell(7).font = { color: { argb: COL.exit }, bold: true };
       });
     });
 
@@ -1568,10 +1572,61 @@ class SessionController {
       || (a.total_time_ms||Infinity) - (b.total_time_ms||Infinity)
       || (a.best_lap_ms||Infinity) - (b.best_lap_ms||Infinity));
 
+    // ── Modo OCURRENCIA (pasadas / repetir-carril) ─────────────────────────
+    // Igual que en /results (results.ejs "Modo OCURRENCIA"): si el mismo
+    // carril se corre en varias mangas (race.passes>1 || race.lane_repeat>1),
+    // cada manga es su propia columna ("Pista N · 1ª", "Pista N · 2ª") en vez
+    // de sumarse en una sola celda "Pista N". Sin repetición no cambia nada.
+    const perOccurrence = (race.passes > 1) || (race.lane_repeat > 1);
+    let occColumns = null;
+    if (perOccurrence) {
+      const occCountByLane = new Map();
+      entityData.forEach(r => {
+        const rows = Lap.perLaneMangaByEntity(race.id, r.entity_id, r.entity_type);
+        const byLane = new Map();
+        rows.forEach(row => {
+          if (!byLane.has(row.lane)) byLane.set(row.lane, []);
+          byLane.get(row.lane).push(row);
+        });
+        r.occByKey = {};              // `${lane}-${occ}` -> fila (lane, manga_id, manga_number, laps, best_ms...)
+        byLane.forEach((laneRows, lane) => {
+          const K = laneRows.length;
+          if (K > (occCountByLane.get(lane) || 0)) occCountByLane.set(lane, K);
+          laneRows.forEach((row, i) => { r.occByKey[`${lane}-${i + 1}`] = row; });
+        });
+      });
+      const seqLanes = [];
+      const seen = new Set();
+      laneSeq.forEach(l => { if (!seen.has(l) && occCountByLane.has(l)) { seen.add(l); seqLanes.push(l); } });
+      [...occCountByLane.keys()].sort((a,b) => a - b).forEach(l => { if (!seen.has(l)) { seen.add(l); seqLanes.push(l); } });
+      const ordinal = ['1ª','2ª','3ª','4ª','5ª','6ª','7ª','8ª'];
+      occColumns = [];
+      seqLanes.forEach(lane => {
+        const K = occCountByLane.get(lane) || 1;
+        for (let occ = 1; occ <= K; occ++) {
+          occColumns.push({
+            lane, occ, occCount: K, key: `${lane}-${occ}`,
+            label: K > 1 ? `${isEs ? 'Pista' : 'Lane'} ${lane} · ${ordinal[occ - 1] || (occ + 'ª')}` : `${isEs ? 'Pista' : 'Lane'} ${lane}`,
+          });
+        }
+      });
+    }
+    // Columnas unificadas: en modo ocurrencia son (carril, manga); si no, una
+    // por carril (occ siempre 1 — mismo resultado que antes de este cambio).
+    const columns = perOccurrence ? occColumns : laneSeq.map(l => ({
+      lane: l, occ: 1, occCount: 1, key: l, label: `${isEs ? 'Pista' : 'Lane'} ${l}`,
+    }));
+    function cellFor(r, col) {
+      return perOccurrence ? (r.occByKey && r.occByKey[col.key]) || null
+                            : (r.perLane.find(pl => pl.lane === col.lane) || null);
+    }
+
     // ── Consistencia (misma métrica que en la web, results ~809-874) ──────────
-    // perLaneByEntity no trae consistencia: se calcula aquí sobre las vueltas
-    // elegibles de la carrera (SIN salidas/pits, filtro de incidentes por
-    // defecto), tanto por celda (entidad×carril) como de carrera (por entidad).
+    // perLaneByEntity/perLaneMangaByEntity no traen consistencia: se calcula
+    // aquí sobre las vueltas elegibles de la carrera (SIN salidas/pits, filtro
+    // de incidentes por defecto): por celda (entidad×carril), por celda de
+    // ocurrencia (entidad×carril×manga, solo en modo ocurrencia) y de carrera
+    // (por entidad).
     {
       const dbc = require('../config/database');
       const minLap = race.min_lap_ms || 0;
@@ -1579,6 +1634,7 @@ class SessionController {
         SELECT
           CASE WHEN l.team_id IS NOT NULL THEN 'team_'||l.team_id ELSE 'driver_'||l.driver_id END AS key,
           l.lane AS lane,
+          l.manga_id AS manga_id,
           l.lap_time_ms AS t,
           l.is_exit AS is_exit
         FROM laps l
@@ -1589,7 +1645,8 @@ class SessionController {
           AND l.lap_number > 1 AND l.lap_time_ms >= ${minLap}
       `).all(race.id);
 
-      const cellClean = new Map();   // `${key}|${lane}` -> [t]  (SIN salidas)
+      const cellClean = new Map();       // `${key}|${lane}` -> [t]  (SIN salidas)
+      const cellMangaClean = new Map();  // `${key}|${lane}|${manga_id}` -> [t]  (SIN salidas)
       const raceClean  = new Map();  // key -> [t]  (SIN salidas)
       for (const row of eligibleRows) {
         if (row.is_exit) continue;
@@ -1600,6 +1657,10 @@ class SessionController {
         let cc = cellClean.get(ck);
         if (!cc) { cc = []; cellClean.set(ck, cc); }
         cc.push(row.t);
+        const cmk = `${row.key}|${row.lane}|${row.manga_id}`;
+        let cmc = cellMangaClean.get(cmk);
+        if (!cmc) { cmc = []; cellMangaClean.set(cmk, cmc); }
+        cmc.push(row.t);
       }
 
       entityData.forEach(r => {
@@ -1608,6 +1669,12 @@ class SessionController {
           const c = robustConsistency(cellClean.get(`${key}|${pl.lane}`) || [], MIN_CONSISTENCY_LAPS);
           pl.consistency = c ? c.pct : null;
         });
+        if (perOccurrence && r.occByKey) {
+          Object.values(r.occByKey).forEach(cell => {
+            const c = robustConsistency(cellMangaClean.get(`${key}|${cell.lane}|${cell.manga_id}`) || [], MIN_CONSISTENCY_LAPS);
+            cell.consistency = c ? c.pct : null;
+          });
+        }
         const cs = robustConsistency(raceClean.get(key) || [], MIN_CONSISTENCY_LAPS);
         r.raceConsistency = cs ? cs.pct : null;
       });
@@ -1636,12 +1703,12 @@ class SessionController {
     // la 4ª. El resto conserva su orden (orderNo por defecto es el de creación).
     s4.orderNo = 0;
     wb.views = [{ activeTab: 0, firstSheet: 0 }];
-    const numLaneCols = laneSeq.length;
+    const numLaneCols = columns.length;
     s4.columns = [
       { width: 5 },   // #
       { width: 28 },  // name / label
       { width: 12 },  // total / per-row value
-      ...laneSeq.map(() => ({ width: 12 })),
+      ...columns.map(() => ({ width: 12 })),
     ];
     addRaceHeader(s4, 3 + numLaneCols);
 
@@ -1662,7 +1729,7 @@ class SessionController {
     }
 
     // Header
-    const headerRow = s4.addRow(['#', isEs ? 'Equipo / Piloto' : 'Team / Driver', isEs ? 'Vueltas' : 'Laps', ...laneSeq.map(l => `${isEs ? 'Pista' : 'Lane'} ${l}`)]);
+    const headerRow = s4.addRow(['#', isEs ? 'Equipo / Piloto' : 'Team / Driver', isEs ? 'Vueltas' : 'Laps', ...columns.map(col => col.label)]);
     headerRow.height = 22;
     headerRow.eachCell(c => Object.assign(c, headerStyle));
     s4.views = [{ state: 'frozen', ySplit: headerRow.number }];
@@ -1675,7 +1742,7 @@ class SessionController {
       right:  { style: 'thin',   color: { argb: COL.border } },
     };
 
-    // ── Rank por VUELTAS dentro de cada carril (misma lógica que results.ejs
+    // ── Rank por VUELTAS dentro de cada columna (misma lógica que results.ejs
     // rankByLaps): más vueltas = mejor; empate se rompe por menor media.
     const keyOf = r => `${r.entity_type}_${r.entity_id}`;
     function rankByLaps(entries) {
@@ -1685,30 +1752,30 @@ class SessionController {
       entries.forEach(e => { m[e.key] = 1 + entries.filter(o => better(o, e)).length; });
       return m;
     }
-    const laneLapRank = {};
-    laneSeq.forEach(lane => {
+    const colLapRank = {};
+    columns.forEach(col => {
       const entries = byTotalM
-        .map(r => { const pl = (r.perLane || []).find(p => p.lane === lane);
-                    return pl && pl.laps != null ? { key: keyOf(r), laps: pl.laps, avg: pl.avg_ms } : null; })
+        .map(r => { const c = cellFor(r, col);
+                    return c && c.laps != null ? { key: keyOf(r), laps: c.laps, avg: c.avg_ms } : null; })
         .filter(Boolean);
-      laneLapRank[lane] = rankByLaps(entries);
+      colLapRank[col.key] = rankByLaps(entries);
     });
 
     byTotalM.forEach((r, i) => {
-      const laneMap = new Map(r.perLane.map(pl => [pl.lane, pl]));
       const totalExits = r.perLane.reduce((s,pl)=>s+(pl.exit_count||0),0);
       const totalPits  = r.perLane.reduce((s,pl)=>s+(pl.pit_stop_count||0),0);
       const startLane  = startLaneByEntity[`${r.entity_type}_${r.entity_id}`];
+      const startColIdx = startLane != null ? columns.findIndex(col => col.lane === startLane && col.occ === 1) : -1;
       const pos = i+1;
       const podium = podiumFill(pos);
 
       // Entity header row (light gray on lane cells)
       const nameDisplay = startLane ? `${r.entity_name}   🚦 P${startLane}` : r.entity_name;
-      const rowA = s4.addRow([pos, nameDisplay, r.total_laps, ...laneSeq.map(l => {
-        const pl = laneMap.get(l);
-        if (!pl || pl.laps == null) return '';
-        const rank = laneLapRank[l] ? laneLapRank[l][keyOf(r)] : null;
-        return rank ? `${pl.laps} (${rank})` : `${pl.laps}`;
+      const rowA = s4.addRow([pos, nameDisplay, r.total_laps, ...columns.map(col => {
+        const c = cellFor(r, col);
+        if (!c || c.laps == null) return '';
+        const rank = colLapRank[col.key] ? colLapRank[col.key][keyOf(r)] : null;
+        return rank ? `${c.laps} (${rank})` : `${c.laps}`;
       })]);
       rowA.height = 20;
       rowA.eachCell({ includeEmpty: true }, c => {
@@ -1726,18 +1793,15 @@ class SessionController {
       rowA.getCell(3).font = { bold: true, size: 12, color: { argb: pos === 1 ? 'FF8A6D00' : pos === 2 ? 'FF374151' : pos === 3 ? 'FFFFFFFF' : 'FF0969DA' } };
 
       // Mark the starting-lane cell on the entity header row
-      if (startLane) {
-        const idx = laneSeq.indexOf(startLane);
-        if (idx >= 0) {
-          const cell = rowA.getCell(4 + idx);
-          cell.fill   = startLaneFill;
-          cell.border = startLaneBorder;
-        }
+      if (startColIdx >= 0) {
+        const cell = rowA.getCell(4 + startColIdx);
+        cell.fill   = startLaneFill;
+        cell.border = startLaneBorder;
       }
 
       // Fastest row
-      const fastestVals = laneSeq.map(l => {
-        const pl = laneMap.get(l); return (pl && pl.best_ms != null) ? fmtSec(pl.best_ms) : '';
+      const fastestVals = columns.map(col => {
+        const c = cellFor(r, col); return (c && c.best_ms != null) ? fmtSec(c.best_ms) : '';
       });
       const bestLapPl = r.best_lap_ms != null ? r.perLane.find(pl => pl.best_ms === r.best_lap_ms) : null;
       const bestLapLane = bestLapPl ? bestLapPl.lane : null;
@@ -1753,23 +1817,20 @@ class SessionController {
       rowB.getCell(2).alignment = { horizontal: 'left' };
       rowB.getCell(2).font = { color: { argb: COL.muted }, italic: true };
       // Highlight race-best cell (overrides green row bg)
-      laneSeq.forEach((l, idx) => {
-        const pl = laneMap.get(l);
-        if (pl && pl.best_ms != null && pl.best_ms === raceBestLapMs) {
+      columns.forEach((col, idx) => {
+        const c = cellFor(r, col);
+        if (c && c.best_ms != null && c.best_ms === raceBestLapMs) {
           const cell = rowB.getCell(4 + idx);
           cell.fill = fillSolid(COL.raceBest);
           cell.font = { bold: true, color: { argb: 'FF8A6D00' }, size: 12 };
-          cell.value = `${fmtSec(pl.best_ms)} ★`;
+          cell.value = `${fmtSec(c.best_ms)} ★`;
         }
       });
-      if (startLane) {
-        const idx = laneSeq.indexOf(startLane);
-        if (idx >= 0) rowB.getCell(4 + idx).border = startLaneBorder;
-      }
+      if (startColIdx >= 0) rowB.getCell(4 + startColIdx).border = startLaneBorder;
 
       // Average row
-      const avgVals = laneSeq.map(l => {
-        const pl = laneMap.get(l); return (pl && pl.avg_ms != null) ? fmtSec(Math.round(pl.avg_ms)) : '';
+      const avgVals = columns.map(col => {
+        const c = cellFor(r, col); return (c && c.avg_ms != null) ? fmtSec(Math.round(c.avg_ms)) : '';
       });
       let bestAvgLane = null, bestAvgMs = null;
       r.perLane.forEach(pl => { if (pl.avg_ms != null && (bestAvgMs == null || pl.avg_ms < bestAvgMs)) { bestAvgMs = pl.avg_ms; bestAvgLane = pl.lane; } });
@@ -1785,15 +1846,12 @@ class SessionController {
       });
       rowC.getCell(2).alignment = { horizontal: 'left' };
       rowC.getCell(2).font = { color: { argb: COL.muted }, italic: true };
-      if (startLane) {
-        const idx = laneSeq.indexOf(startLane);
-        if (idx >= 0) rowC.getCell(4 + idx).border = startLaneBorder;
-      }
+      if (startColIdx >= 0) rowC.getCell(4 + startColIdx).border = startLaneBorder;
 
       // Consistency row (SIN salidas/pits, ritmo puro)
-      const consVals = laneSeq.map(l => {
-        const pl = laneMap.get(l);
-        return (pl && pl.consistency != null) ? fmtPct(pl.consistency) : '';
+      const consVals = columns.map(col => {
+        const c = cellFor(r, col);
+        return (c && c.consistency != null) ? fmtPct(c.consistency) : '';
       });
       const rowCons = s4.addRow(['', isEs ? 'Const. sin' : 'Const. clean', fmtPct(r.raceConsistency), ...consVals]);
       rowCons.outlineLevel = 1;
@@ -1805,16 +1863,13 @@ class SessionController {
       });
       rowCons.getCell(2).alignment = { horizontal: 'left' };
       rowCons.getCell(2).font = { color: { argb: COL.muted }, italic: true, size: 10 };
-      if (startLane) {
-        const idx = laneSeq.indexOf(startLane);
-        if (idx >= 0) rowCons.getCell(4 + idx).border = startLaneBorder;
-      }
+      if (startColIdx >= 0) rowCons.getCell(4 + startColIdx).border = startLaneBorder;
 
       // Exits row
-      const exitVals = laneSeq.map(l => {
-        const pl = laneMap.get(l);
-        if (!pl || pl.worst_ms == null) return '';
-        return `(${pl.exit_count||0}) ${fmtSec(pl.worst_ms)}`;
+      const exitVals = columns.map(col => {
+        const c = cellFor(r, col);
+        if (!c || c.worst_ms == null) return '';
+        return `(${c.exit_count||0}) ${fmtSec(c.worst_ms)}`;
       });
       const rowD = s4.addRow(['', `${isEs ? 'Salidas' : 'Exits'} (${totalExits})`, '', ...exitVals]);
       rowD.outlineLevel = 1;
@@ -1827,26 +1882,23 @@ class SessionController {
       rowD.getCell(2).alignment = { horizontal: 'left' };
       rowD.getCell(2).font = { color: { argb: totalExits > 0 ? COL.exit : COL.muted }, italic: true, bold: totalExits > 0 };
       // Highlight cells with exits in red
-      laneSeq.forEach((l, idx) => {
-        const pl = laneMap.get(l);
-        if (pl && pl.exit_count > 0) {
+      columns.forEach((col, idx) => {
+        const c = cellFor(r, col);
+        if (c && c.exit_count > 0) {
           const cell = rowD.getCell(4 + idx);
           cell.font = { size: 10, color: { argb: COL.exit }, bold: true };
         }
       });
-      if (startLane) {
-        const idx = laneSeq.indexOf(startLane);
-        if (idx >= 0) rowD.getCell(4 + idx).border = startLaneBorder;
-      }
+      if (startColIdx >= 0) rowD.getCell(4 + startColIdx).border = startLaneBorder;
 
       // Pit-stops row
-      const pitVals = laneSeq.map(l => {
-        const pl = laneMap.get(l);
-        if (!pl || !pl.pit_stop_count) return '';
-        const laps = pl.pit_stop_laps
-          ? pl.pit_stop_laps.split(',').filter(Boolean).map(n => 'V' + n).join(', ')
+      const pitVals = columns.map(col => {
+        const c = cellFor(r, col);
+        if (!c || !c.pit_stop_count) return '';
+        const laps = c.pit_stop_laps
+          ? c.pit_stop_laps.split(',').filter(Boolean).map(n => 'V' + n).join(', ')
           : '';
-        return `(${pl.pit_stop_count}) ${laps}`;
+        return `(${c.pit_stop_count}) ${laps}`;
       });
       const rowE = s4.addRow(['', `🔧 ${isEs ? 'Pit-stops' : 'Pit-stops'} (${totalPits})`, '', ...pitVals]);
       rowE.outlineLevel = 1;
@@ -1858,17 +1910,14 @@ class SessionController {
       });
       rowE.getCell(2).alignment = { horizontal: 'left' };
       rowE.getCell(2).font = { color: { argb: totalPits > 0 ? 'FFFF9800' : COL.muted }, italic: true, bold: totalPits > 0 };
-      laneSeq.forEach((l, idx) => {
-        const pl = laneMap.get(l);
-        if (pl && pl.pit_stop_count > 0) {
+      columns.forEach((col, idx) => {
+        const c = cellFor(r, col);
+        if (c && c.pit_stop_count > 0) {
           const cell = rowE.getCell(4 + idx);
           cell.font = { size: 10, color: { argb: 'FFFF9800' }, bold: true };
         }
       });
-      if (startLane) {
-        const idx = laneSeq.indexOf(startLane);
-        if (idx >= 0) rowE.getCell(4 + idx).border = startLaneBorder;
-      }
+      if (startColIdx >= 0) rowE.getCell(4 + startColIdx).border = startLaneBorder;
 
       // Spacer
       s4.addRow([]);

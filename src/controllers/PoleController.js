@@ -414,7 +414,7 @@ class PoleController {
       });
     }
 
-    const schedule = Manga.buildSchedule(laneSeq, entities);
+    const schedule = Manga.buildSchedule(laneSeq, entities, race.passes, race.lane_repeat);
     Manga.persistSchedule(tandaId, race.id, schedule);
     return tandaId;
   }
