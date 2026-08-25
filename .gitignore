@@ -12,6 +12,8 @@ out/
 logs/
 public/uploads/
 src/data/slotime.license
+database/slotime.license
+*.license
 
 # Backups locales del portátil (no se suben a git)
 bkp_portatil/
@@ -19,8 +21,13 @@ database/_backup_pre_portatil/
 database/_backup_pre_delete/
 
 # Datos generados / de entrada (no son código)
-database/sim/
+database/sim/*
+!database/sim/tramas_20_junio.txt
 info para proyecto infolap slot/
+
+# Capturas de pantalla y logs de depuración sueltos
+Xnip*.*
+logswin.txt
 
 # Certificados TLS locales (incluyen la clave privada de la CA) — se generan
 # solos en cada instalación, NUNCA se suben.

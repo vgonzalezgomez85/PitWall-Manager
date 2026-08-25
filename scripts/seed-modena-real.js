@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 // Alta de la carrera real "24h Modena" con el VUELTA A VUELTA REAL extraído de las
-// tramas DS-300 (info para proyecto infolap slot/tramas_20_junio.txt).
+// tramas DS-300 (database/sim/tramas_20_junio.txt).
 //
 // Sustituye la reconstrucción sintética (seed-modena-24h.js) por los cruces reales:
 //   · Rotación r (1..22) = ventana entre GO#(38+r) y GO#(39+r) de DS1 (mangas de 57 min).
@@ -39,7 +39,7 @@ const Race = require('../src/models/Race');
 const Tanda = require('../src/models/Tanda');
 const Team = require('../src/models/Team');
 
-const TRAMAS = path.join(__dirname, '../info para proyecto infolap slot/tramas_20_junio.txt');
+const TRAMAS = path.join(__dirname, '../database/sim/tramas_20_junio.txt');
 const modena = require('./modena.json');
 
 const RACE_NAME = '24h Modena';
