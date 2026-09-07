@@ -368,6 +368,12 @@ const migrations = [
   `CREATE INDEX IF NOT EXISTS idx_laps_manga             ON laps(manga_id)`,
   `CREATE INDEX IF NOT EXISTS idx_laps_race_flags        ON laps(race_id, is_ghost, is_exit, lap_number)`,
   `CREATE INDEX IF NOT EXISTS idx_laps_race_team_driver  ON laps(race_id, team_id, driver_id)`,
+  // Los agregados race-wide por entidad (startSettledByEntity, _priorAggregates,
+  // progreso manga a manga de live-stats) filtraban por (race_id, is_ghost) con
+  // `idx_laps_race_flags` y luego LEÍAN cada fila de la tabla + temp b-tree. Este
+  // índice los cubre (COVERING): sobre las 160.000 vueltas de Modena, 43→13 ms y
+  // 78→35 ms. Los corre el worker de stats y el pre-calentado del GO.
+  `CREATE INDEX IF NOT EXISTS idx_laps_race_ghost_entity_manga ON laps(race_id, is_ghost, team_id, driver_id, manga_id, lap_time_ms)`,
   // ORDER BY elapsed_ms es la consulta de "última vuelta por carril en manga"
   `CREATE INDEX IF NOT EXISTS idx_laps_manga_lane_elapsed ON laps(manga_id, lane, elapsed_ms)`,
   // source_lap_id usado para vincular vueltas reasignadas / restore

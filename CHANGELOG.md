@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.34.2] — 2026-09-07
+
+### Mejorado
+- **Nuevo índice en la base de datos para los cálculos de estadísticas de toda la carrera.** Las consultas que recorren todas las vueltas para sacar el ritmo medio, la consistencia y el progreso manga a manga de cada equipo tenían que leer fila por fila la tabla completa. Con un índice que ya las cubre, sobre una carrera de 24 h con 160.000 vueltas bajan a la mitad o menos (p. ej. la del progreso, de 78 ms a 35 ms). Ayuda sobre todo en PCs poco potentes: el hilo auxiliar recalcula más rápido y los datos van más frescos. El índice se crea solo al arrancar (ocupa ~1/3 de lo que ocupa la tabla de vueltas).
+
 ## [1.34.1] — 2026-09-07
 
 ### Mejorado
