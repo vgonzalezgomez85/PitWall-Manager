@@ -690,6 +690,15 @@ class LiveStatsController {
     return bundle;
   }
 
+  /**
+   * Pre-calienta `_rwCache` desde el worker (lo llama TimingService al arrancar
+   * una manga y en cada `invalidateStandingsCaches`, para que el primer cruce no
+   * pague el escaneo race-wide en frío en el event loop).
+   */
+  static _prewarmRaceWide(raceId, minLapMs) {
+    LiveStatsController._kickRaceWideRefresh({ id: raceId, min_lap_ms: minLapMs || 0 });
+  }
+
   /** Pide al worker el paquete race-wide y lo guarda al llegar. Deduplica y no bloquea. */
   static _kickRaceWideRefresh(race) {
     if (!StatsWorkerClient.available || _rwInFlight.has(race.id)) return;

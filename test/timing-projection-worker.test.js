@@ -79,6 +79,24 @@ test('sin worker: _cachedProjection calcula en el hilo (comportamiento de siempr
   assert.ok(TimingService._projCache.get(raceId), 'la caché queda poblada');
 });
 
+test('_warmStatsCaches (pre-calentado en el GO): deja listas las cachés síncronas', () => {
+  const raceId = seedActiveRace();
+  const manga = db.prepare("SELECT id FROM mangas WHERE race_id=? AND status='active'").get(raceId);
+  TimingService.invalidateStandingsCaches();           // deja _priorCache vacío
+  TimingService.session = { race: { id: raceId, min_lap_ms: 0 }, manga: { id: manga.id } };
+  const mutBefore = Lap.mutationCount;
+
+  TimingService._warmStatsCaches();
+
+  assert.ok(TimingService._priorCache.get(raceId), '_priorAggregates queda cacheado');
+  const settled1 = Lap.startSettledByEntity(raceId);
+  // 1er cruce de la manga activa tras el warm: NO re-invalida (noteMangaSeen)
+  Lap.create({ race_id: raceId, manga_id: manga.id, team_id: db.prepare('SELECT id FROM teams WHERE race_id=? LIMIT 1').get(raceId).id, driver_id: null, lane: 2, lap_number: 9999, lap_time_ms: 9000, elapsed_ms: 999999 });
+  assert.strictEqual(Lap.startSettledByEntity(raceId), settled1, 'la caché de settled aguanta el 1er cruce');
+  assert.equal(Lap.mutationCount, mutBefore + 1, 'solo el Lap.create cuenta como mutación (noteMangaSeen no)');
+  TimingService.session = null;
+});
+
 test('con worker: sirve la caché y el refresco del worker la actualiza con el mismo resultado', async () => {
   const raceId = seedActiveRace();
   const esperado = raceProjection.buildRaceProjection(raceId, { db, Lap });

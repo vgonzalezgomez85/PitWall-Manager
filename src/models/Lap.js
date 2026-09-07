@@ -76,6 +76,16 @@ class Lap {
   /** Nº de mangas distintas que han recibido alguna mutación en este proceso. */
   static get mutatedMangaCount() { return _mutByManga.size; }
 
+  /**
+   * Registra una manga como "vista" (cuenta para `mutatedMangaCount`) SIN contar
+   * una mutación. Lo llama el pre-calentado de cachés al arrancar una manga: así
+   * el primer cruce de esa manga —que sí es una mutación— no cambia
+   * `mutatedMangaCount` y no invalida de más la caché de `startSettledByEntity`.
+   */
+  static noteMangaSeen(mangaId) {
+    if (mangaId != null && !_mutByManga.has(mangaId)) _mutByManga.set(mangaId, 0);
+  }
+
   /** Total de mutaciones sobre `laps` en este proceso. */
   static get mutationCount() { return _mutTotal; }
 

@@ -67,6 +67,11 @@ class StatsWorkerClient {
     return !this._disabled && !this._gaveUp && !!this._worker && this._ready;
   }
 
+  /** El worker existe pero aún no ha mandado `ready` (arrancando / reiniciando). */
+  get starting() {
+    return !this._disabled && !this._gaveUp && !!this._worker && !this._ready;
+  }
+
   /** Arranca el worker si procede. Idempotente. */
   start() {
     if (this._disabled || this._gaveUp || this._worker) return;

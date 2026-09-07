@@ -175,6 +175,12 @@ function limpiar() {
     TimingService._lapHandler = (d) => TimingService._onCrossing(d.lane, d.timestamp, d.lapTimeMs, d.missed);
     SerialService.on('lane_crossing', TimingService._lapHandler);
   }
+  // En producción esto lo hace TimingService.startManga (durante el GO): tira y
+  // vuelve a llenar las cachés del camino caliente para que el primer cruce no
+  // pague el cálculo en frío. El banco monta la sesión a mano, así que se llama
+  // aquí para reproducir el mismo pre-calentado.
+  TimingService.invalidateStandingsCaches();
+  await new Promise(r => setTimeout(r, 500));   // deja que el worker responda al pre-warm
 
   // ── Vigilante del bucle de eventos ────────────────────────────────────────
   // Un timer de 20 ms: lo que se retrase de más es tiempo que el proceso estuvo

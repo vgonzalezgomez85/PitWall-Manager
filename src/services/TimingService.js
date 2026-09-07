@@ -1945,6 +1945,42 @@ class TimingServiceClass {
     this._projCache.clear();
     this._projRefresh.clear();
     StatsWorkerClient.invalidate();   // el worker tira sus cachés internas de Lap
+    this._warmStatsCaches();          // y las vuelve a llenar antes del próximo cruce
+  }
+
+  /**
+   * Pre-calienta las cachés del camino caliente. Se llama en cada
+   * `invalidateStandingsCaches` (arranque de manga, fin de circuito, corrección…),
+   * momentos SIN cruces pendientes, para que el primer cruce que llegue no pague
+   * el cálculo en frío en el event loop:
+   *   · `_priorAggregates` — síncrono, pero aquí hay holgura (semáforo / fin de manga)
+   *   · proyección + agregados race-wide de live-stats — al worker, sin bloquear
+   * En una máquina lenta el frío de estos tres puede sumar >1 s; así nunca cae en carrera.
+   */
+  _warmStatsCaches() {
+    const s = this.session;
+    if (!s || !s.race || !s.manga) return;
+    // Warm SÍNCRONO (no necesita worker): las cachés que se pagan en el 1er cruce
+    // — `_priorAggregates` (getStandings) y `raceAggregate` (que arrastra
+    // `startSettledByEntity`, ~85 ms en frío; lo pide `_raceBundle` de Lap web y
+    // el snapshot de móvil).
+    try { this._priorAggregates(s.race.id, s.manga.id); } catch {}
+    // Registra esta manga antes de calcular: así el 1er cruce (que sí muta) no
+    // dispara el guard de `mutatedMangaCount` y no re-invalida `startSettledByEntity`.
+    try { Lap.noteMangaSeen(s.manga.id); } catch {}
+    try { this.raceAggregate(s.race.id); } catch {}
+    // Warm al worker (no-op si no está disponible; en producción arranca en el
+    // boot, mucho antes de cualquier GO). Si justo estuviera reiniciándose, un
+    // único reintento cuando vuelva — el warm síncrono de arriba ya cubre lo peor.
+    if (!StatsWorkerClient.available && StatsWorkerClient.starting) {
+      StatsWorkerClient.whenReady(3000).then(ok => {
+        if (ok && this.session === s) this._warmStatsCaches();
+      }).catch(() => {});
+    }
+    this._kickProjectionRefresh(s.race.id);
+    try {
+      require('../controllers/LiveStatsController')._prewarmRaceWide(s.race.id, s.race.min_lap_ms || 0);
+    } catch {}
   }
 
   /**

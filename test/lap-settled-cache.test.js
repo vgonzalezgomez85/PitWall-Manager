@@ -131,3 +131,15 @@ test('markExternalMutation (transferencia/restore) invalida', () => {
   Lap.markExternalMutation();
   assert.notStrictEqual(Lap.startSettledByEntity(raceId), before);
 });
+
+test('noteMangaSeen: registra la manga sin contar mutación, y el 1er cruce ya no invalida', () => {
+  const { raceId, m2, A } = seed();
+  const mutBefore = Lap.mutationCount;
+  Lap.noteMangaSeen(m2);
+  assert.equal(Lap.mutationCount, mutBefore, 'no cuenta como mutación');
+
+  const first = Lap.startSettledByEntity(raceId);   // se cachea con m2 ya "vista"
+  // El primer cruce de m2 (una mutación real) NO debe re-invalidar la caché.
+  Lap.create({ race_id: raceId, manga_id: m2, team_id: A, driver_id: null, lane: 2, lap_number: 700, lap_time_ms: 9000, elapsed_ms: 0 });
+  assert.strictEqual(Lap.startSettledByEntity(raceId), first, 'cache hit: el 1er cruce de una manga ya vista no invalida');
+});

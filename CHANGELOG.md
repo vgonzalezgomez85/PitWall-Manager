@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.34.1] — 2026-09-07
+
+### Mejorado
+- **En equipos poco potentes, el arranque de cada manga tampoco da un tirón.** Los tres cálculos que solo se hacen una vez por manga (la corrección de la vuelta de salida, la clasificación proyectada y los agregados de toda la carrera) se preparaban en el primer cruce; en un PC lento eso podía ser un parón de más de un segundo justo al empezar. Ahora se preparan durante la cuenta atrás del semáforo —cuando no hay ningún coche cruzando— y el hilo auxiliar tiene los datos listos antes de la primera vuelta. En la prueba de estrés simulando una máquina a media potencia (24 h, 160.000 vueltas, ~140 dispositivos) no queda **ningún** parón capaz de perder un cruce (antes quedaba 1, el del arranque).
+
 ## [1.34.0] — 2026-09-07
 
 ### Mejorado
