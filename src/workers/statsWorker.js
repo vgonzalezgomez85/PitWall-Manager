@@ -32,12 +32,13 @@
 //  el hilo principal, con un test de equivalencia (test/race-projection-engine).
 //
 //  Protocolo (mensajes con el hilo principal):
-//    → { type: 'projection', reqId, raceId }   pide la proyección de una carrera
-//    → { type: 'invalidate' }                  alguien tocó `laps` (corrección):
-//                                              tira las cachés internas del worker
-//    → { type: 'ping', reqId }                 latido
-//    ← { type: 'ready' }                       emitido una vez, al cargar
-//    ← { type: 'projection', reqId, raceId, value, computedAt, ms }
+//    → { type: 'projection', reqId, raceId }          proyección de una carrera
+//    → { type: 'raceWide', reqId, raceId, minLapMs }  agregados race-wide de live-stats
+//    → { type: 'invalidate' }                         alguien tocó `laps` (corrección):
+//                                                     tira las cachés internas del worker
+//    → { type: 'ping', reqId }                        latido
+//    ← { type: 'ready' }                              emitido una vez, al cargar
+//    ← { type: 'projection'|'raceWide', reqId, raceId, value, computedAt, ms }
 //    ← { type: 'pong', reqId }
 //    ← { type: 'error', reqId, raceId, error }
 // ════════════════════════════════════════════════════════════════════════════
@@ -50,6 +51,7 @@ process.env.PITWALL_DB_READONLY = '1';
 
 const { parentPort } = require('node:worker_threads');
 const raceProjection = require('../engine/raceProjection');
+const raceWideStats  = require('../engine/raceWideStats');
 
 if (!parentPort) {
   throw new Error('statsWorker.js solo se ejecuta como worker_thread');
@@ -67,6 +69,10 @@ function deps() {
 
 function handleProjection(raceId) {
   return raceProjection.buildRaceProjection(raceId, deps());
+}
+
+function handleRaceWide(raceId, minLapMs) {
+  return raceWideStats.build(raceId, { db: deps().db, minLapMs });
 }
 
 // Una corrección de vueltas en el hilo principal no llega sola hasta aquí: la
@@ -89,6 +95,14 @@ parentPort.on('message', (msg) => {
         const value = handleProjection(raceId);
         parentPort.postMessage({
           type: 'projection', reqId, raceId, value,
+          computedAt: Date.now(), ms: +(performance.now() - t0).toFixed(2),
+        });
+        return;
+      }
+      case 'raceWide': {
+        const value = handleRaceWide(raceId, msg.minLapMs);
+        parentPort.postMessage({
+          type: 'raceWide', reqId, raceId, value,
           computedAt: Date.now(), ms: +(performance.now() - t0).toFixed(2),
         });
         return;

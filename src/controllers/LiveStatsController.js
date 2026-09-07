@@ -23,6 +23,8 @@ const TireChange    = require('../models/TireChange');
 const PoleSession   = require('../models/PoleSession');
 const DriverShift   = require('../models/DriverShift');
 const TimingService = require('../services/TimingService');
+const StatsWorkerClient = require('../services/StatsWorkerClient');
+const raceWideStats = require('../engine/raceWideStats');
 const db            = require('../config/database');
 const {
   CONSISTENCY_LEVELS,
@@ -69,6 +71,17 @@ function jsonTtlFor(mangaNumber) {
   return JSON_TTL_MS;
 }
 const _jsonCache = new Map();   // `${raceId}:${mangaId}` → { ts, mut, payload }
+
+// ── Caché del paquete race-wide (pace/consistencia/progreso de TODA la carrera) ─
+//
+// Es la parte cara de `json` (~250 ms sobre 150.000 vueltas). Con el worker de
+// stats disponible se calcula ALLÍ (fuera del event loop) y aquí solo se guarda
+// el último resultado; cada petición de `json` dispara un refresco en segundo
+// plano si el que hay ya tiene cierta edad. Sin worker, `json` lo calcula en el
+// hilo la primera vez y luego reusa la caché hasta el mismo TTL de la respuesta.
+const _rwCache    = new Map();   // raceId → { ts, mut, bundle }
+const _rwInFlight = new Set();   // raceId con una petición al worker en vuelo
+const RW_MIN_REFRESH_MS = 800;   // no pedir otro refresco antes de esto
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -528,78 +541,17 @@ class LiveStatsController {
     const remainingMs = isActive && elapsedMs != null
       ? Math.max(0, mangaDurationMs - elapsedMs) : null;
 
-    // ── Datos race-wide para predicción ─────────────────────────────────────
-    // Total de vueltas de cada entidad en TODA la carrera, y su pace medio.
-    const raceWide = db.prepare(`
-      SELECT
-        CASE WHEN l.team_id IS NOT NULL THEN 'team_' || l.team_id ELSE 'driver_' || l.driver_id END AS key,
-        COALESCE(tm.name, dr.name) AS entity_name,
-        SUM(CASE WHEN l.is_ghost = 0 THEN 1 ELSE 0 END) AS total_laps,
-        -- Media SIMPLE sin warmup (= TicTac) para la predicción.
-        AVG(CASE WHEN l.is_ghost = 0 AND l.is_warmup = 0 THEN l.lap_time_ms END) AS pace_all_ms,
-        AVG(CASE WHEN l.is_ghost = 0 AND l.is_exit = 0 THEN l.lap_time_ms END) AS pace_clean_ms,
-        MIN(CASE WHEN l.is_ghost = 0 AND l.is_exit = 0 AND l.is_warmup = 0 AND l.lap_number > 1 AND l.lap_time_ms >= ${race.min_lap_ms || 0} THEN l.lap_time_ms END) AS best_ms,
-        SUM(CASE WHEN l.is_ghost = 0 AND l.is_exit = 1 AND l.is_pit_stop = 0 THEN 1 ELSE 0 END) AS exits,
-        SUM(CASE WHEN l.is_ghost = 0 AND l.is_pit_stop = 1 THEN 1 ELSE 0 END) AS pits,
-        COUNT(DISTINCT l.manga_id) AS mangas_raced
-      FROM laps l
-      JOIN mangas m ON m.id = l.manga_id
-      JOIN tandas tn ON tn.id = m.tanda_id
-      LEFT JOIN teams   tm ON tm.id = l.team_id
-      LEFT JOIN drivers dr ON dr.id = l.driver_id
-      WHERE tn.race_id = ?
-      GROUP BY key
-    `).all(race.id);
-    const raceByKey = new Map();
-    raceWide.forEach(r => raceByKey.set(r.key, r));
-
-    // Consistencia race-wide ROBUSTA: el CV clásico necesita mediana/MAD, que no
-    // se obtienen de sum/sumsq en SQL. Traemos las vueltas limpias elegibles de
-    // TODA la carrera por entidad (mismo filtro que el pace) y calculamos el CV
-    // filtrado en JS, igual que en manga. Una sola query agrupada; agregamos las
-    // vueltas por key en memoria (24h ≈ 150k filas: es un render de página, no
-    // tiempo real). Mínimo 5 vueltas tras filtrar (en carrera siempre hay).
-    // Una sola query trae las vueltas elegibles CON su flag is_exit (racing,
-    // !warmup, lap>1, ≥minLap, incluyendo salidas/pits). En memoria se parte en
-    // dos muestras por entidad: SIN (is_exit=0 + filtro incidentes → ritmo puro)
-    // y CON (todas, incluye is_exit, sin filtro → regularidad real del stint).
-    const eligibleLapRows = db.prepare(`
-      SELECT
-        CASE WHEN l.team_id IS NOT NULL THEN 'team_' || l.team_id ELSE 'driver_' || l.driver_id END AS key,
-        l.lap_time_ms AS t,
-        l.is_exit AS is_exit
-      FROM laps l
-      JOIN mangas m ON m.id = l.manga_id
-      JOIN tandas t ON t.id = m.tanda_id
-      WHERE t.race_id = ?
-        AND l.is_ghost = 0 AND l.is_warmup = 0
-        AND l.lap_number > 1 AND l.lap_time_ms >= ${race.min_lap_ms || 0}
-    `).all(race.id);
-    const raceCleanByKey = new Map();  // SIN salidas/pits
-    const raceAllByKey   = new Map();  // CON salidas/pits
-    const raceExitTimesByKey = new Map();  // solo los tiempos de las salidas/pits (para el perdido total)
-    for (const r of eligibleLapRows) {
-      let all = raceAllByKey.get(r.key);
-      if (!all) { all = []; raceAllByKey.set(r.key, all); }
-      all.push(r.t);
-      if (!r.is_exit) {
-        let cln = raceCleanByKey.get(r.key);
-        if (!cln) { cln = []; raceCleanByKey.set(r.key, cln); }
-        cln.push(r.t);
-      } else {
-        let ex = raceExitTimesByKey.get(r.key);
-        if (!ex) { ex = []; raceExitTimesByKey.set(r.key, ex); }
-        ex.push(r.t);
-      }
-    }
-    const raceConsByKey    = new Map();  // SIN
-    const raceConsAllByKey = new Map();  // CON
-    for (const [key, times] of raceCleanByKey) {
-      raceConsByKey.set(key, robustConsistency(times, MIN_CONSISTENCY_LAPS));
-    }
-    for (const [key, times] of raceAllByKey) {
-      raceConsAllByKey.set(key, robustConsistency(times, MIN_CONSISTENCY_LAPS, { filterIncidents: false }));
-    }
+    // ── Datos race-wide (pace / consistencia / progreso de TODA la carrera) ──
+    // Es la parte CARA de esta vista: tres escaneos de todas las vueltas de la
+    // carrera (~250 ms sobre 150.000) más la consistencia robusta en JS. Ahora
+    // lo calcula el worker de stats (`src/engine/raceWideStats.js`) y el hilo
+    // principal solo sirve el último resultado y pide un refresco en segundo
+    // plano. Si el worker no está, se calcula aquí mismo (comportamiento previo).
+    const rw = LiveStatsController._raceWideBundle(race, manga.number, isActive);
+    const raceByKey          = rw.raceByKey;
+    const raceConsByKey      = rw.raceConsByKey;
+    const raceConsAllByKey   = rw.raceConsAllByKey;
+    const raceExitTimesByKey = rw.raceExitTimesByKey;
 
     // Mangas restantes en la carrera (pending) y duración media (para proyectar futuro).
     const remainingMangas = db.prepare(`
@@ -654,38 +606,10 @@ class LiveStatsController {
       e.raceConsistencyAllMeanMs = rcA ? rcA.meanMs : null;
     });
 
-    // Progreso de carrera: vueltas ACUMULADAS de cada equipo manga a manga
-    // (agrupado por NOMBRE para soportar equipos duplicados por tanda). Lo usa
-    // la gráfica "Gap de vueltas" para mostrar el gap entre equipos a lo largo
-    // de la carrera y su tendencia (se acercan / se alejan).
-    const progressRows = db.prepare(`
-      SELECT m.number AS manga, COALESCE(t.name, d.name) AS ename, COUNT(l.id) AS laps,
-             AVG(CASE WHEN l.is_exit = 0 AND l.is_warmup = 0 AND l.lap_number > 1 THEN l.lap_time_ms END) AS avg_ms
-      FROM laps l
-      JOIN mangas m ON m.id = l.manga_id
-      LEFT JOIN teams   t ON t.id = l.team_id
-      LEFT JOIN drivers d ON d.id = l.driver_id
-      WHERE l.race_id = ? AND l.is_ghost = 0
-      GROUP BY m.number, ename
-      ORDER BY m.number ASC
-    `).all(race.id);
-    const progMangas = [...new Set(progressRows.map(r => r.manga))].sort((a, b) => a - b);
-    const lapsByNameManga = {}, avgByNameManga = {};
-    progressRows.forEach(r => {
-      (lapsByNameManga[r.ename] = lapsByNameManga[r.ename] || {})[r.manga] = r.laps;
-      (avgByNameManga[r.ename]  = avgByNameManga[r.ename]  || {})[r.manga] = r.avg_ms;
-    });
-    // byName = vueltas acumuladas por manga; avgByName = media de vuelta (limpia)
-    // de cada manga. Lo usan las gráficas de la pestaña Proyectada (datos de
-    // carrera, X = manga).
-    const raceProgress = { mangas: progMangas, byName: {}, avgByName: {} };
-    Object.keys(lapsByNameManga).forEach(name => {
-      let cum = 0;
-      raceProgress.byName[name]    = progMangas.map(mn => { cum += (lapsByNameManga[name][mn] || 0); return cum; });
-      raceProgress.avgByName[name] = progMangas.map(mn => {
-        const a = avgByNameManga[name][mn]; return a != null ? Math.round(a) : null;
-      });
-    });
+    // Progreso de carrera (vueltas acumuladas + media limpia manga a manga, para
+    // la gráfica "Gap de vueltas" de la pestaña Proyectada) — viene en el mismo
+    // paquete race-wide del worker.
+    const raceProgress = rw.raceProgress;
 
     // Clasificación PROYECTADA de TODA la carrera: la MISMA proyección ÚNICA que
     // el directo, Le Mans y el panel (TimingService.buildRaceProjection, desde
@@ -738,7 +662,50 @@ class LiveStatsController {
   }
 
   /** Tira la caché de la respuesta. Para los tests; en producción caduca sola. */
-  static _resetCache() { _jsonCache.clear(); }
+  static _resetCache() { _jsonCache.clear(); _rwCache.clear(); _rwInFlight.clear(); }
+
+  /**
+   * Paquete race-wide (raceByKey / consistencia / raceProgress). Devuelve la
+   * última copia buena y, si procede, pide al worker una nueva en segundo plano.
+   * Solo calcula en el hilo si no hay worker o es la primera vez (caché vacía).
+   */
+  static _raceWideBundle(race, mangaNumber, isActive) {
+    const now = Date.now();
+    const c   = _rwCache.get(race.id);
+    const fresh = c && (isActive
+      ? (now - c.ts) < jsonTtlFor(mangaNumber)
+      : c.mut === Lap.mutationCount);
+
+    if (fresh) return c.bundle;
+
+    if (StatsWorkerClient.available) {
+      LiveStatsController._kickRaceWideRefresh(race);
+      if (c) return c.bundle;   // rancio mientras llega la nueva (estimación, no cambia lo que se ve)
+    }
+
+    // Sin worker, o primera vez: se calcula aquí (comportamiento previo a v1.34).
+    const bundle = raceWideStats.build(race.id, { db, minLapMs: race.min_lap_ms || 0 });
+    _rwCache.set(race.id, { ts: now, mut: Lap.mutationCount, bundle });
+    while (_rwCache.size > JSON_MAX_KEYS) _rwCache.delete(_rwCache.keys().next().value);
+    return bundle;
+  }
+
+  /** Pide al worker el paquete race-wide y lo guarda al llegar. Deduplica y no bloquea. */
+  static _kickRaceWideRefresh(race) {
+    if (!StatsWorkerClient.available || _rwInFlight.has(race.id)) return;
+    const c = _rwCache.get(race.id);
+    if (c && (Date.now() - c.ts) < RW_MIN_REFRESH_MS) return;
+    _rwInFlight.add(race.id);
+    StatsWorkerClient.requestRaceWide(race.id, { db, minLapMs: race.min_lap_ms || 0 })
+      .then(bundle => {
+        if (bundle && bundle.raceByKey) {
+          _rwCache.set(race.id, { ts: Date.now(), mut: Lap.mutationCount, bundle });
+          while (_rwCache.size > JSON_MAX_KEYS) _rwCache.delete(_rwCache.keys().next().value);
+        }
+      })
+      .catch(() => {})
+      .finally(() => _rwInFlight.delete(race.id));
+  }
 }
 
 module.exports = LiveStatsController;

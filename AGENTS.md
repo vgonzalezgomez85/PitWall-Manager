@@ -37,8 +37,9 @@ src/
   models/                 — Acceso a SQLite, un archivo por tabla
   engine/
     raceProjection.js     — buildRaceProjection PURO (sin `this`, deps inyectables {db, Lap, now, activeMangaOf, raceAggregate}). Mismo cálculo en el hilo principal y en el worker
+    raceWideStats.js      — agregados race-wide de live-stats PUROS (pace/consistencia/progreso de TODA la carrera). Lo caro de LiveStatsController.json, extraído para el worker
   workers/
-    statsWorker.js        — worker_thread: proyección/agregados caros. Abre su propia conexión SQLite `readonly` al mismo pitwall.db (PITWALL_DB_READONLY=1). Protocolo ready/projection/invalidate/ping/error
+    statsWorker.js        — worker_thread: proyección/agregados caros. Abre su propia conexión SQLite `readonly` al mismo pitwall.db (PITWALL_DB_READONLY=1). Protocolo ready/projection/raceWide/invalidate/ping/error
   services/
     SerialService.js      — Lectura del DS-300 / simulación. Emite eventos internos
     TimingService.js      — Gestiona la sesión activa de manga (laps, standings, ticks)
@@ -137,6 +138,7 @@ Siguiente manga pendiente se activa automáticamente
 - **Proyección (clasificación estimada)**: `proyección = vueltas_reales + (tiempo restante de su manga / media) + (mangas futuras × duración / media)`. Anclada en lo real → converge al final; quien terminó sus mangas proyecta su total real. Se calcula en cliente (`live.js renderProjected`, `live-panel.ejs`).
 - **`buildRaceProjection` / `raceAggregate` / `activeMangaOf` viven en `src/engine/raceProjection.js`** (módulo puro); `TimingService` delega en él. El cálculo caro corre en un **worker_thread** (`src/workers/statsWorker.js`) vía `StatsWorkerClient`: `_cachedProjection` sigue siendo síncrono, pero con worker disponible sirve la caché y pide el refresco al worker sin bloquear el event loop (el tick de 1 s refresca la caché mientras hay manga viva). El worker lee de una conexión SQLite `readonly` propia (WAL permite lectores concurrentes). Se puede desactivar con `PITWALL_NO_WORKER=1` (entonces todo se calcula en el hilo principal, comportamiento idéntico pero bloqueante).
 - **Caché de `Lap.startSettledByEntity`** (corrección de la vuelta de salida): solo depende de la 1ª manga de cada entidad, así que solo se invalida si la mutación puede afectarla de verdad (`Lap.mutationsInvolving(mangaIds)`, `Lap.mutatedMangaCount`). No invalidar con cualquier escritura en `laps`: su escaneo de toda la carrera se repetiría en cada cruce.
+- **`LiveStatsController.json`**: los agregados race-wide (pace/consistencia/progreso de toda la carrera) viven en `src/engine/raceWideStats.js` y los calcula el mismo worker (`requestRaceWide`). El controlador guarda el último paquete en `_rwCache` y pide un refresco en segundo plano (`_kickRaceWideRefresh`); solo calcula en el hilo si no hay worker o es la primera vez. `json` sigue siendo síncrono.
 
 ### TrainingService
 - También escucha `race_go` y `race_started`.

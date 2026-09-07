@@ -135,6 +135,22 @@ class StatsWorkerClient {
       .catch(() => this._inline(raceId, deps));   // fallo puntual → esta vez, en hilo
   }
 
+  /**
+   * Agregados race-wide de live-stats (pace/consistencia/progreso de TODA la
+   * carrera). Resuelve SIEMPRE: si el worker no está o falla, cae a calcular en
+   * el hilo con `deps` (`{ db, minLapMs, consistency }`).
+   */
+  requestRaceWide(raceId, deps = {}) {
+    const minLapMs = deps.minLapMs || 0;
+    if (!this.available) {
+      if (!this._disabled && !this._gaveUp) this.start();
+      return this._inlineRaceWide(raceId, deps);
+    }
+    return this._rpc({ type: 'raceWide', raceId, minLapMs })
+      .then(m => m.value)
+      .catch(() => this._inlineRaceWide(raceId, deps));
+  }
+
   /** Avisa al worker de que `laps` cambió (corrección de vueltas). Fire-and-forget. */
   invalidate() {
     if (this._worker && this._ready) {
@@ -146,6 +162,11 @@ class StatsWorkerClient {
 
   _inline(raceId, deps) {
     try { return Promise.resolve(raceProjection.buildRaceProjection(raceId, deps || {})); }
+    catch (err) { return Promise.reject(err); }
+  }
+
+  _inlineRaceWide(raceId, deps) {
+    try { return Promise.resolve(require('../engine/raceWideStats').build(raceId, deps || {})); }
     catch (err) { return Promise.reject(err); }
   }
 

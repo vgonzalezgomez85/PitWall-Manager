@@ -29,7 +29,7 @@ pitwall/
 │   ├── routes/         # Rutas HTTP
 │   ├── controllers/    # Lógica de cada sección
 │   ├── models/         # Acceso a base de datos (SQLite)
-│   ├── engine/         # Cálculo puro de la proyección de carrera (raceProjection.js)
+│   ├── engine/         # Cálculo puro para el worker (raceProjection.js, raceWideStats.js)
 │   ├── workers/        # worker_threads (statsWorker.js: proyección/agregados fuera del hilo principal)
 │   ├── services/       # SerialService, TimingService, StatsWorkerClient, SocketService...
 │   ├── middleware/      # i18n, control de acceso (accessControl)

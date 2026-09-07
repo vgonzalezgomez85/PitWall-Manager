@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.34.0] — 2026-09-07
+
+### Mejorado
+- **La página de estadísticas en vivo tampoco frena ya el cronometraje.** Siguiendo lo que se empezó en la v1.33.0 con la clasificación proyectada: los cálculos que recorren toda la carrera para las estadísticas en vivo (ritmo medio, consistencia y progreso manga a manga de cada equipo) —la otra operación pesada, ~250 ms sobre una carrera de 24 h— pasan también al hilo aparte. El hilo principal sirve el último resultado y pide uno nuevo en segundo plano, sin quedarse bloqueado aunque haya muchas pantallas de estadísticas abiertas a la vez. En la misma prueba de estrés (24 h, 160.000 vueltas, ~140 dispositivos) los parones capaces de perder un cruce bajan de 5 a 1 (y ese único parón es el arranque, no ocurre en carrera). El resultado que ve el espectador es idéntico al de antes. Si el hilo auxiliar no está disponible, todo se calcula como hasta ahora.
+
 ## [1.33.1] — 2026-09-07
 
 ### Corregido
