@@ -13,6 +13,17 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.33.1] — 2026-09-07
+
+### Corregido
+- **El filtro «Completada» de la lista de carreras ya cuenta bien.** La lista comparaba el estado de la carrera con `completed`, pero PitWall guarda las carreras terminadas como `finished`: el contador de la pestaña salía siempre en 0, el filtro no mostraba ninguna carrera y la etiqueta de la tarjeta enseñaba el texto crudo «finished» en vez de «Completada». Ahora los tres puntos usan el estado real.
+
+## [1.33.0] — 2026-09-07
+
+### Mejorado
+- **El cálculo de la clasificación proyectada ya no frena el cronometraje cuando hay muchas pantallas conectadas.** La estimación de "dónde va a acabar cada equipo" (que suma vueltas reales más el tiempo restante dividido por la media) es la operación más pesada de PitWall en una carrera larga, y hasta ahora se hacía en el mismo hilo que atiende al DS-300: con decenas de móviles, paneles de Lap web y pantallas de estadísticas pidiéndola a la vez, esos cálculos podían durar lo bastante como para partir una trama del cronómetro y perder algún cruce. Ahora ese cálculo corre en un hilo aparte y el hilo principal solo sirve el último resultado ya calculado, así que el cronometraje sigue fino aunque toda la sala esté mirando la clasificación. En una prueba de estrés equivalente a una carrera de 24 h con 160.000 vueltas y ~140 dispositivos conectados, los parones capaces de perder un cruce bajaron de 44 a 5.
+- **Menos trabajo repetido al registrar cada vuelta.** La corrección de la vuelta de salida repasaba toda la carrera en cada cruce aunque el dato no hubiera cambiado; ahora ese repaso solo se rehace cuando de verdad puede haber cambiado algo, lo que aligera aún más el proceso en carreras con muchas vueltas.
+
 ## [1.32.0] — 2026-09-07
 
 ### Añadido

@@ -31,13 +31,18 @@ por puerto serie a 56000 baudios con tramas de ~19 bytes codificadas en BCD.
 
 ```
 src/
-  app.js                  — Entry point: Express + Socket.io + SerialService init
+  app.js                  — Entry point: Express + Socket.io + SerialService init + arranca el worker de stats
   routes/index.js         — Todas las rutas HTTP
   controllers/            — Un controller por dominio (thin, delegan en models/services)
   models/                 — Acceso a SQLite, un archivo por tabla
+  engine/
+    raceProjection.js     — buildRaceProjection PURO (sin `this`, deps inyectables {db, Lap, now, activeMangaOf, raceAggregate}). Mismo cálculo en el hilo principal y en el worker
+  workers/
+    statsWorker.js        — worker_thread: proyección/agregados caros. Abre su propia conexión SQLite `readonly` al mismo pitwall.db (PITWALL_DB_READONLY=1). Protocolo ready/projection/invalidate/ping/error
   services/
     SerialService.js      — Lectura del DS-300 / simulación. Emite eventos internos
     TimingService.js      — Gestiona la sesión activa de manga (laps, standings, ticks)
+    StatsWorkerClient.js  — Cliente del worker de stats en el hilo principal. requestProjection() SIEMPRE resuelve: si el worker no está / falló / PITWALL_NO_WORKER=1, calcula en el hilo con raceProjection
     TrainingService.js    — Modo entrenamiento libre (sin carrera)
     SocketService.js      — Wrapper de Socket.io (emit global)
     PoleTimingService.js  — Cronometraje para sesión de pole position
@@ -130,6 +135,8 @@ Siguiente manga pendiente se activa automáticamente
 - **1ª vuelta = warmup**: la primera vuelta real de cada carril se marca `is_warmup=1` y NO compite por mejor vuelta (ni en vivo ni en `Lap.raceBestByLane`, que filtra `lap_number > 1`). Evita que una salida desde parado / primer cruce sea "vuelta rápida".
 - **Duración de manga del DS**: `startManga` persiste la duración real del GO en `mangas.actual_duration_ms`. La clasificación estimada (`_getEffectiveMangaDurationMs`) la usa para no caer al placeholder `manga_duration_minutes`.
 - **Proyección (clasificación estimada)**: `proyección = vueltas_reales + (tiempo restante de su manga / media) + (mangas futuras × duración / media)`. Anclada en lo real → converge al final; quien terminó sus mangas proyecta su total real. Se calcula en cliente (`live.js renderProjected`, `live-panel.ejs`).
+- **`buildRaceProjection` / `raceAggregate` / `activeMangaOf` viven en `src/engine/raceProjection.js`** (módulo puro); `TimingService` delega en él. El cálculo caro corre en un **worker_thread** (`src/workers/statsWorker.js`) vía `StatsWorkerClient`: `_cachedProjection` sigue siendo síncrono, pero con worker disponible sirve la caché y pide el refresco al worker sin bloquear el event loop (el tick de 1 s refresca la caché mientras hay manga viva). El worker lee de una conexión SQLite `readonly` propia (WAL permite lectores concurrentes). Se puede desactivar con `PITWALL_NO_WORKER=1` (entonces todo se calcula en el hilo principal, comportamiento idéntico pero bloqueante).
+- **Caché de `Lap.startSettledByEntity`** (corrección de la vuelta de salida): solo depende de la 1ª manga de cada entidad, así que solo se invalida si la mutación puede afectarla de verdad (`Lap.mutationsInvolving(mangaIds)`, `Lap.mutatedMangaCount`). No invalidar con cualquier escritura en `laps`: su escaneo de toda la carrera se repetiría en cada cruce.
 
 ### TrainingService
 - También escucha `race_go` y `race_started`.
@@ -156,9 +163,15 @@ Siguiente manga pendiente se activa automáticamente
 
 - **Models**: métodos estáticos sobre `better-sqlite3`, síncronos. Sin ORM. Nombres: `findById`, `findAll`, `create`, `update`, `updateStatus`.
 - **Controllers**: funciones exportadas `module.exports = { action }`. Leen `req.params/body/session`, llaman a models/services, renderizan EJS o redirigen.
-- **Tests**: `npm test` (`node --test`, sin dependencias nuevas). Cubren turnos de piloto, informe, pre-arme, el parser de tramas DS-300 y los endpoints peligrosos. El motor de vueltas, la rotación de carriles y las estadísticas **siguen sin cobertura**.
+- **Tests**: `npm test` (`node --test`, sin dependencias nuevas). Cubren turnos de piloto, informe, pre-arme, el parser de tramas DS-300, los endpoints peligrosos, el motor puro de proyección (`race-projection-engine`) y el worker de stats (`stats-worker*`, `timing-projection-worker`, `lap-settled-cache`). La rotación de carriles y el resto de estadísticas **siguen sin cobertura**.
 - **Banco de pruebas**: emulador DS-300 (`/Users/victor/ds300-emulator/emulator.js`) y `node scripts/rehearsal-shifts.js` (ensayo E2E sobre 3 cajas, 24 carriles).
   Las rutas `/api/test/*` y `/api/rawlog` simulan las señales del DS, pero **solo se montan con `PITWALL_TEST_ENDPOINTS=1`**: `/api/test/stop` borra todas las vueltas de la manga activa, así que no puede existir en la máquina de una carrera.
+
+## Variables de entorno (además de las del README)
+
+- `PITWALL_TEST_ENDPOINTS=1` — monta las rutas `/api/test/*` y `/api/rawlog` (solo banco de pruebas).
+- `PITWALL_NO_WORKER=1` — desactiva el worker_thread de stats; la proyección/agregados se calculan en el hilo principal (idéntico resultado, pero bloqueante).
+- `PITWALL_DB_READONLY=1` — abre la BD en solo lectura, sin migraciones ni `ANALYZE`. Lo usa el worker de stats internamente; no ponerlo en el proceso principal.
 - **i18n**: usar `req.t('key')` en controllers/vistas. Añadir ambas claves (es + en) en `src/locales/*.json` siempre que se añada texto visible.
 - **Sin comentarios redundantes** en el código. Solo WHY si no es obvio.
 

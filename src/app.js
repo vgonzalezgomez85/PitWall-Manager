@@ -102,6 +102,14 @@ if (SettingsModel.get('infolap_enabled', '0') === '1') {
 const TimingService  = require('./services/TimingService');
 const TrainingService = require('./services/TrainingService');
 
+// ── Worker de stats (proyección de carrera en un hilo aparte) ──────────────────
+// Saca del event loop el cálculo caro de la proyección (~100 ms) para que no
+// compita con el procesado de tramas del DS-300 ni con el tick. Best-effort: si
+// no arranca o muere, TimingService cae a calcular en el hilo principal.
+// PITWALL_NO_WORKER=1 lo desactiva del todo (tests, máquinas de un solo núcleo).
+try { require('./services/StatsWorkerClient').start(); }
+catch (e) { console.error('[StatsWorker] no se pudo arrancar:', e.message); }
+
 // ── Race Link (maestro↔esclavo) ────────────────────────────────────────────────
 // Solo el MAESTRO necesita init: empuja el estado deseado por LAN. El esclavo
 // reacciona a POST /link/state, no arranca nada. Detrás del flag link_role:

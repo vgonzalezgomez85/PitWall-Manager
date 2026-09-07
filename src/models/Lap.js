@@ -45,10 +45,10 @@ function _mangaOf(lapId) {
   return row ? row.manga_id : null;
 }
 
-// Caché de la corrección de salida por carrera, invalidada por el contador de
-// mutaciones (ver startSettledByEntity). Acotada a unas pocas carreras: solo
-// conviven la viva y alguna abierta en un móvil/Le Mans.
-const _settledCache = new Map();   // raceId → { mut, map }
+// Caché de la corrección de salida por carrera (ver startSettledByEntity).
+// Acotada a unas pocas carreras: solo conviven la viva y alguna abierta en un
+// móvil/Le Mans.
+const _settledCache = new Map();   // raceId → { token, mangaCount, firstMangaIds, map }
 const _SETTLED_MAX = 8;
 
 class Lap {
@@ -56,6 +56,25 @@ class Lap {
   static mutationsOutside(mangaId) {
     return _mutTotal - (mangaId != null ? (_mutByManga.get(mangaId) || 0) : 0);
   }
+
+  /**
+   * Nº de mutaciones que tocaron alguna de las mangas de `mangaIds`, MÁS las
+   * mutaciones externas (SQL crudo, transferencias, restore — atribuidas a
+   * `null` por markExternalMutation). Si este número no cambia, ninguna
+   * escritura ha podido afectar a un cálculo que solo depende de esas mangas.
+   */
+  static mutationsInvolving(mangaIds) {
+    const set = mangaIds instanceof Set ? mangaIds : new Set(mangaIds);
+    let inside = 0, attributed = 0;
+    for (const [m, n] of _mutByManga) {
+      attributed += n;
+      if (set.has(m)) inside += n;
+    }
+    return inside + (_mutTotal - attributed);   // + mutaciones externas (null)
+  }
+
+  /** Nº de mangas distintas que han recibido alguna mutación en este proceso. */
+  static get mutatedMangaCount() { return _mutByManga.size; }
 
   /** Total de mutaciones sobre `laps` en este proceso. */
   static get mutationCount() { return _mutTotal; }
@@ -280,9 +299,22 @@ class Lap {
    *   { firstMangaId, warmupMs, settledAvg, delta }  (delta = settledAvg − warmupMs).
    */
   static startSettledByEntity(raceId) {
-    const mut = _mutTotal;
+    // La corrección de salida SOLO depende de las vueltas de la 1ª manga de cada
+    // entidad (y de su duración, ya en disco al cerrarse). Un cruce en una manga
+    // POSTERIOR no la cambia. Antes se invalidaba con `_mutTotal` (cualquier
+    // escritura en `laps`) → se recalculaba (~57 ms de escaneo de toda la 24 h)
+    // en CADA cruce, vía LapController._raceBundle / raceAggregate. Ahora la
+    // caché sigue válida mientras:
+    //   · el nº de mangas distintas mutadas no cambie (ninguna manga nueva ha
+    //     recibido su 1ª vuelta — cubre la rotación y una entidad que aún no
+    //     había corrido), y
+    //   · ninguna mutación toque una de esas primeras mangas ni sea externa
+    //     (corrección, transferencia, restore).
     const c = _settledCache.get(raceId);
-    if (c && c.mut === mut) return c.map;
+    if (c && c.mangaCount === Lap.mutatedMangaCount
+         && Lap.mutationsInvolving(c.firstMangaIds) === c.token) {
+      return c.map;
+    }
 
     const rows = db.prepare(`
       WITH firsts AS (
@@ -310,7 +342,9 @@ class Lap {
     `).all(raceId, raceId);
 
     const map = new Map();
+    const firstMangaIds = new Set();
     for (const r of rows) {
+      firstMangaIds.add(r.first_manga);
       const delta = (r.settled_avg != null && r.warmup_ms > 0) ? (r.settled_avg - r.warmup_ms) : 0;
       map.set(`${r.etype}:${r.eid}`, {
         firstMangaId: r.first_manga, warmupMs: r.warmup_ms,
@@ -318,7 +352,11 @@ class Lap {
       });
     }
 
-    _settledCache.set(raceId, { mut, map });
+    _settledCache.set(raceId, {
+      token:      Lap.mutationsInvolving(firstMangaIds),
+      mangaCount: Lap.mutatedMangaCount,
+      firstMangaIds, map,
+    });
     while (_settledCache.size > _SETTLED_MAX) _settledCache.delete(_settledCache.keys().next().value);
     return map;
   }

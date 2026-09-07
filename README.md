@@ -29,7 +29,9 @@ pitwall/
 │   ├── routes/         # Rutas HTTP
 │   ├── controllers/    # Lógica de cada sección
 │   ├── models/         # Acceso a base de datos (SQLite)
-│   ├── services/       # SerialService, TimingService, SocketService...
+│   ├── engine/         # Cálculo puro de la proyección de carrera (raceProjection.js)
+│   ├── workers/        # worker_threads (statsWorker.js: proyección/agregados fuera del hilo principal)
+│   ├── services/       # SerialService, TimingService, StatsWorkerClient, SocketService...
 │   ├── middleware/      # i18n, control de acceso (accessControl)
 │   ├── views/          # Plantillas EJS
 │   ├── locales/        # Traducciones ES / EN (JSON)
@@ -73,6 +75,7 @@ Acceder en el navegador: `http://localhost:3000`
 | `PORT` | Puerto HTTP del servidor | `3000` |
 | `PITWALL_DATA` | Ruta a la carpeta de datos (BD) | `./database` |
 | `SESSION_SECRET` | Secreto para las sesiones Express | `pitwall-dev-secret` |
+| `PITWALL_NO_WORKER` | Si vale `1`, desactiva el worker_thread que calcula la clasificación proyectada y los agregados de `laps` en un hilo aparte. Con el worker activo el cálculo pesado no bloquea el cronometraje cuando hay muchas pantallas conectadas | (sin definir) |
 
 > En producción cambiar siempre `SESSION_SECRET` por un valor aleatorio largo.
 

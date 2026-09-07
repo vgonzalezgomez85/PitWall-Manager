@@ -24,6 +24,24 @@ const DATA_DIR = process.env.PITWALL_DATA || path.join(__dirname, '../../databas
 const DB_PATH  = path.join(DATA_DIR, 'pitwall.db');
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
+// ── Conexión de SOLO LECTURA (worker_threads: motor de proyección / stats) ────
+//
+// Un worker que solo LEE (agregados de `laps`, proyección de carrera) abre el
+// MISMO fichero con su propia conexión. WAL permite lectores concurrentes junto
+// al escritor del hilo principal, y cada conexión ve el último commit al iniciar
+// una consulta. Aquí NO se crea esquema, NI se migra, NI se hace ANALYZE: de eso
+// ya se encargó el hilo principal antes de arrancar el worker. `fileMustExist`
+// evita que un PITWALL_DATA mal apuntado cree una BD vacía en silencio.
+if (process.env.PITWALL_DB_READONLY === '1') {
+  const roDb = new Database(DB_PATH, { readonly: true, fileMustExist: true });
+  roDb.pragma('temp_store = MEMORY');
+  roDb.pragma('cache_size = -65536');   // 64 MB (igual que el principal)
+  roDb.pragma('mmap_size  = 268435456');
+  roDb.pragma('busy_timeout = 5000');
+  module.exports = roDb;
+  return;   // CommonJS admite return en el top-level del módulo
+}
+
 // Renombrado slotime.db → pitwall.db: si esta carpeta trae la BD con el
 // nombre antiguo y todavía no hay una pitwall.db, se renombra en sitio (junto
 // con -wal/-shm) para no perder datos. Solo pasa una vez, al primer arranque
