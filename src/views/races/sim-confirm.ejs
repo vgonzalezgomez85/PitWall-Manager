@@ -47,6 +47,32 @@
     </div>
 
     <div class="form-group">
+      <label class="form-label">Pasadas y repetición de carril</label>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem">
+        <div>
+          <label class="form-label" for="passes" style="font-size:.85rem;color:var(--vt-mute,#9aa0a6)">Pasadas</label>
+          <input class="form-input form-input--sm" type="number" id="passes" name="passes" min="1" step="1" value="1">
+          <p class="form-hint" style="margin-top:.35rem">
+            Nº de veces que se repite la secuencia de carriles entera. Déjalo en 1 salvo que las tramas grabadas
+            recorran la rotación completa más de una vez.
+          </p>
+        </div>
+        <div>
+          <label class="form-label" for="lane_repeat" style="font-size:.85rem;color:var(--vt-mute,#9aa0a6)">Repetir carril</label>
+          <input class="form-input form-input--sm" type="number" id="lane_repeat" name="lane_repeat" min="1" step="1" value="1">
+          <p class="form-hint" style="margin-top:.35rem">
+            Cada carril se corre este nº de mangas seguidas (mismo carril) antes de rotar.
+          </p>
+        </div>
+      </div>
+      <p class="form-hint">
+        El total de mangas generadas (carriles + descansos) × pasadas × repetir carril debe cubrir, como mínimo, las
+        <b><%= a.mangas %></b> manga<%= a.mangas === 1 ? '' : 's' %> detectadas en las tramas. Si sobran (p. ej. una
+        carrera de 24h que termina a mitad de un ciclo de rotación), se recortan las últimas automáticamente.
+      </p>
+    </div>
+
+    <div class="form-group">
       <label class="form-label" for="lane_order">Orden de carril de los equipos</label>
       <p class="form-hint">Un equipo por línea, en orden de carril (carril 1 = primera línea). O sube un CSV abajo.</p>
       <textarea class="form-input" id="lane_order" name="lane_order" rows="8" style="font-family:ui-monospace,Menlo,monospace" placeholder="EQUIPO CARRIL 1&#10;EQUIPO CARRIL 2&#10;EQUIPO CARRIL 3&#10;…"></textarea>

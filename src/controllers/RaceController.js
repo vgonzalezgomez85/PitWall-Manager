@@ -678,4 +678,8 @@ class RaceController {
   }
 }
 
+// Reutilizado por el asistente de carrera simulada (mismo orden de rotación
+// "impares suben, pares bajan" que usa por defecto una carrera normal).
+RaceController.defaultSequence = defaultSequence;
+
 module.exports = RaceController;

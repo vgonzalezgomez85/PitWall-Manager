@@ -34,6 +34,8 @@
 // se recalcula solo, con la caída incluida — que es justo lo que queremos: los
 // coches han seguido rodando y el DS ha seguido contando.
 
+const fs            = require('fs');
+const path          = require('path');
 const Manga         = require('../models/Manga');
 const Race          = require('../models/Race');
 const Team          = require('../models/Team');
@@ -43,6 +45,7 @@ const SerialService = require('./SerialService');
 const TimingService = require('./TimingService');
 const SocketService = require('./SocketService');
 const DebugLogger   = require('./DebugLogger');
+const { SIM_DIR }   = require('../lib/simPaths');
 
 // Cuánto esperamos a que la caja confirme que la carrera sigue viva. El latido
 // llega cada 60 s; los cruces, mucho antes si hay coches en pista.
@@ -89,6 +92,20 @@ class SessionRecoveryClass {
     const manga = Manga.findById(row.manga_id);
     const race  = Race.findById(row.race_id);
     if (!manga || !race) return null;
+
+    // Carrera simulada: los cruces los genera el reproductor de tramas, no una
+    // caja física — no son prueba de que "la caja siga corriendo". Escucharlos
+    // aquí haría que, al reiniciar el reproductor tras un crash, sus primeros
+    // cruces confirmasen esta manga VIEJA y la rehidratasen por encima de la
+    // sesión recién montada por SimPlayer para la MISMA manga, perdiendo casi
+    // todas las vueltas silenciosamente. Una sim interrumpida se retoma sin más
+    // dándole a "Arrancar" en su panel — no necesita (ni admite) esta recuperación.
+    const simFramesPath = path.join(SIM_DIR, `${race.id}.frames`);
+    if (fs.existsSync(simFramesPath)) {
+      console.warn(`[SessionRecovery] Manga ${manga.id} (carrera simulada "${race.name}") quedó a medias. No se recupera por hardware: reinícala desde el panel de simulación.`);
+      this.ultimoResultado = { estado: 'carrera-simulada', mangaId: manga.id };
+      return null;
+    }
 
     const outageMs = MangaCircuit.outageMs(row.manga_id) || 0;
     this._pendiente = {

@@ -29,6 +29,7 @@ const Race = require('../models/Race');
 const Tanda = require('../models/Tanda');
 const Team = require('../models/Team');
 const Manga = require('../models/Manga');
+const RaceController = require('./RaceController');
 const { SIM_DIR, ensureSimDir } = require('../lib/simPaths');
 
 // Carpeta escribible (userData en empaquetado, database/ en dev). ensureSimDir
@@ -101,27 +102,67 @@ const SimController = {
     const rests = Math.max(0, parseInt(req.body.rests, 10) || 0);
     const mangaMin = Math.max(1, parseInt(req.body.manga_minutes, 10) || parsed.analysis.durationMin || 5);
     const minLapMs = Math.max(0, parseInt(req.body.min_lap_ms, 10) || 8500);
+    // Pasadas / repetir carril: mismos campos que la carrera manual (Race.passes /
+    // Race.lane_repeat). Una carrera real no siempre termina en un múltiplo exacto
+    // de la rotación (p.ej. 24h que se corta a mitad del último ciclo), así que el
+    // horario generado puede ser más largo que las mangas reales: se recorta a las
+    // detectadas en las tramas (ver más abajo).
+    const passes     = Math.max(1, parseInt(req.body.passes, 10)      || 1);
+    const laneRepeat = Math.max(1, parseInt(req.body.lane_repeat, 10) || 1);
 
     // circuitos: los detectados (8/8/6…) o, si no, todo en uno.
     const circuits = (parsed.analysis.circuits && parsed.analysis.circuits.length)
       ? parsed.analysis.circuits.map(c => c.lanes)
       : [lanes];
 
-    // lane_sequence = carriles activos (1..lanes) + descansos (0).
-    const laneSeq = [...Array.from({ length: lanes }, (_, i) => i + 1), ...Array(rests).fill(0)];
+    // lane_sequence: mismo orden "impares suben, pares bajan" que usa por
+    // defecto una carrera normal (RaceController.defaultSequence), + descansos (0).
+    const laneSeq = [...RaceController.defaultSequence(lanes), ...Array(rests).fill(0)];
+
+    // El usuario escribe los equipos en orden de carril REAL (línea 1 = carril 1…),
+    // para reproducir la asignación histórica exacta de la manga 1. Pero
+    // buildSchedule coloca la entidad de la posición k en laneSeq[k], no
+    // directamente en el carril k — hay que reordenar los equipos con la MISMA
+    // permutación de laneSeq para que cada uno acabe en el carril que el usuario
+    // indicó. Los equipos que sobren de carriles (más equipos que carriles) van
+    // detrás, sin carril fijo en manga 1 (entran por turnos de descanso).
+    const byLane      = teamNames.slice(0, lanes);
+    const extraTeams  = teamNames.slice(lanes);
+    const orderedNames = laneSeq
+      .map(lane => lane > 0 ? byLane[lane - 1] : undefined)
+      .filter(n => n !== undefined)
+      .concat(extraTeams);
+
+    // Comprobación previa (sin tocar la BD): el horario (carriles+descansos ×
+    // pasadas × repetir carril) tiene que cubrir, como mínimo, las mangas
+    // detectadas en las tramas; si se queda corto, el reproductor perdería la
+    // correspondencia rotación↔manga (SimPlayerService indexa mangaIds[] por
+    // rotación, en el mismo orden que los GO de las tramas). Si sobra (la carrera
+    // real terminó a mitad de un ciclo de rotación), se recorta más abajo.
+    const dryEntities = orderedNames.map(tn => ({ type: 'team', name: tn }));
+    const fullSchedule = Manga.buildSchedule(laneSeq, dryEntities, passes, laneRepeat);
+    if (fullSchedule.length < parsed.analysis.mangas) {
+      return res.redirect('/races/sim/new?error=' + encodeURIComponent(
+        `Con ${teamNames.length} equipos, ${lanes} carriles, ${rests} descansos, ${passes} pasada(s) y repetir carril ${laneRepeat} `
+        + `se generarían ${fullSchedule.length} manga(s), pero las tramas contienen ${parsed.analysis.mangas}. Ajusta los valores para que cubran al menos esas.`));
+    }
 
     // Crear carrera + tanda + equipos + mangas (rotación de PitWall).
     const raceId = Race.create({
       name, type: 'club', format: 'team', lanes_count: lanes,
       lane_sequence: laneSeq, manga_duration_minutes: mangaMin, circuits, has_pole: 0, min_lap_ms: minLapMs,
+      passes, lane_repeat: laneRepeat,
     });
     const tandaId = Tanda.create(raceId);
     const colors = COLORS(teamNames.length);
-    const entities = teamNames.map((tn, i) => ({
+    const entities = orderedNames.map((tn, i) => ({
       id: Team.create({ race_id: raceId, tanda_id: tandaId, name: tn, lane: 0, color: colors[i] }),
       type: 'team', name: tn,
     }));
-    const schedule = Manga.buildSchedule(laneSeq, entities);
+    // Mismo horario que la comprobación previa, pero con los equipos reales;
+    // recortado a las mangas que de verdad hay en las tramas (ver comprobación
+    // previa: la carrera real puede terminar a mitad de un ciclo de rotación).
+    const schedule = Manga.buildSchedule(laneSeq, entities, passes, laneRepeat).slice(0, parsed.analysis.mangas);
     Manga.persistSchedule(tandaId, raceId, schedule);
     db.prepare("UPDATE mangas SET status='pending' WHERE race_id=?").run(raceId);
     Race.updateStatus(raceId, 'active');

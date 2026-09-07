@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.31.0] — 2026-08-25
+
+### Añadido
+- **El asistente de carrera simulada admite repetición de carril y varias pasadas**, igual que el flujo normal de creación de carreras. Al confirmar el análisis de las tramas se pueden indicar "Pasadas" y "Repetir carril" (mismos campos `race.passes`/`race.lane_repeat` de siempre), de modo que resultados, live-stats y la exportación a Excel desglosan las vueltas por manga/pasada sin ningún cambio adicional. El asistente valida que el nº de mangas resultante (carriles + descansos × pasadas × repetir carril) coincida con el nº de GO detectados en las tramas antes de crear nada, porque el reproductor indexa cada manga por su turno de rotación y una descuadre le haría perder la correspondencia.
+
 ## [1.30.3] — 2026-08-24
 
 ### Corregido
