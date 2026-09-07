@@ -430,6 +430,20 @@ const c = typeof counts !== 'undefined' ? counts : { drivers: 0, teams: 0, cars:
           <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
         </a>
 
+        <a class="vh-card" href="/catalog-sync" style="--a:#f472b6;--a-bg:rgba(244,114,182,.12)">
+          <div class="vh-ico">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 6h10M4 12h10M4 18h7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+              <path d="M16 15l3 3 3-3M19 18V9a3 3 0 0 0-3-3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="vh-body">
+            <div class="vh-t"><%= lang === 'es' ? 'Sincronizar catálogo' : 'Sync catalog' %></div>
+            <div class="vh-d"><%= lang === 'es' ? 'Vuelca cambios del catálogo de equipos a las carreras aún sin arrancar.' : 'Push team-catalog changes into races that have not started yet.' %></div>
+          </div>
+          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </a>
+
         <a class="vh-card" href="/diagnostico" style="--a:#facc15;--a-bg:rgba(250,204,21,.12)">
           <div class="vh-ico">
             <svg viewBox="0 0 24 24" aria-hidden="true">

@@ -127,6 +127,7 @@ const RaceTransfer = {
         driver_max_runs: race.driver_max_runs,
         passes: race.passes,
         lane_repeat: race.lane_repeat,
+        lap_pin_required: race.lap_pin_required,
       },
       tandas: tandas.map(t => ({ number: t.number })),
       teams,
@@ -156,11 +157,11 @@ const RaceTransfer = {
         INSERT INTO races (name, type, format, lanes_count, lane_sequence, manga_duration_minutes,
                            circuits_config, has_pole, circuit_id, min_lap_ms,
                            driver_min_total_ms, driver_max_total_ms, driver_change_lockout_ms,
-                           driver_max_runs, passes, lane_repeat, race_key, status)
+                           driver_max_runs, passes, lane_repeat, lap_pin_required, race_key, status)
         VALUES (@name, @type, @format, @lanes_count, @lane_sequence, @manga_duration_minutes,
                 @circuits_config, @has_pole, NULL, @min_lap_ms,
                 @driver_min_total_ms, @driver_max_total_ms, @driver_change_lockout_ms,
-                @driver_max_runs, @passes, @lane_repeat, @race_key, 'pending')
+                @driver_max_runs, @passes, @lane_repeat, @lap_pin_required, @race_key, 'pending')
       `).run({
         name: r.name, type: r.type, format: r.format,
         lanes_count: r.lanes_count ?? 6,
@@ -175,6 +176,7 @@ const RaceTransfer = {
         driver_max_runs: r.driver_max_runs || 0,
         passes: Math.max(1, parseInt(r.passes, 10) || 1),
         lane_repeat: Math.max(1, parseInt(r.lane_repeat, 10) || 1),
+        lap_pin_required: r.lap_pin_required === 0 ? 0 : 1,
         race_key: payload.raceKey,
       });
 

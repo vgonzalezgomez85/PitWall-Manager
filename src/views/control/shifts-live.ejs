@@ -573,7 +573,7 @@ function bigFeedback(kind, title, sub) {
   fbTimer = setTimeout(() => {
     fb.classList.add('is-out');
     setTimeout(() => { fb.hidden = true; fb.classList.remove('is-out'); }, 300);
-  }, kind === 'ok' ? 4000 : 5000);
+  }, kind === 'ok' ? 7000 : 5000);
 }
 
 // ── Envío de un código (lo comparten el lector USB y la webcam) ───
@@ -596,6 +596,9 @@ async function submitCode(code) {
       }[data.mode] || (LANG === 'es' ? 'Asignado' : 'Assigned');
       toast('ok', `${modeLabel}: ${data.driverName} → ${LANG === 'es' ? 'Carril' : 'Lane'} ${data.lane}`);
       bigFeedback('ok', data.driverName, `${LANG === 'es' ? 'Carril' : 'Lane'} ${data.lane} · ${modeLabel}`);
+      // Marca de que el fichaje salió de ESTA estación: el eco por socket no
+      // debe recargar la página hasta que el check verde termine (ver abajo).
+      window._lastLocalCheckin = Date.now();
     } else {
       const errMap = {
         unknown_qr:                LANG === 'es' ? 'QR desconocido' : 'Unknown QR',
@@ -923,15 +926,28 @@ socket.on('tick', data => {
   }
 });
 
+// Una sola recarga en cola: si llegan varios ecos seguidos, el primero ya
+// recogerá todos los cambios al recargar. Evita además que recargas
+// encadenadas pisen el check verde una y otra vez.
+let _reloadTimer = null;
+function scheduleReload(delay) {
+  if (_reloadTimer) return;
+  _reloadTimer = setTimeout(() => location.reload(), delay);
+}
+
 socket.on('driver_checkin', data => {
   if (!data || data.mangaId !== MANGA_ID) return;
-  // Para mantener simple, recargamos tras un cambio. Si quieres hot-update,
-  // se puede sustituir por mutación directa del DOM.
-  setTimeout(() => location.reload(), 300);
+  // Para mantener simple, recargamos tras un cambio (no hay hot-update del
+  // panel). PERO si el fichaje lo acabamos de hacer en esta misma estación,
+  // esperamos a que el check verde grande termine (bigFeedback dura 4 s) —
+  // antes se recargaba a los 300 ms y el ✓ apenas se veía. Desde otra
+  // pantalla el fichaje no es local, así que se recarga enseguida.
+  const sinceLocal = Date.now() - (window._lastLocalCheckin || 0);
+  scheduleReload(sinceLocal < 9000 ? 7500 : 2500);
 });
 
 ['manga:started', 'manga:paused', 'manga:cancelled', 'manga:stopped'].forEach(ev => {
-  socket.on(ev, () => setTimeout(() => location.reload(), 500));
+  socket.on(ev, () => scheduleReload(500));
 });
 
 </script>

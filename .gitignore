@@ -35,3 +35,5 @@ database/tls/
 
 # Datos locales de pruebas de carrera (no son código)
 carrera test vicos/
+bkp_portatil_SAVED_*/
+notas usuarios/

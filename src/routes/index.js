@@ -43,6 +43,7 @@ const TireController               = require('../controllers/TireController');
 const EcosystemController          = require('../controllers/EcosystemController');
 const VerificationController       = require('../controllers/VerificationController');
 const RaceEventController          = require('../controllers/RaceEventController');
+const CatalogSyncController        = require('../controllers/CatalogSyncController');
 
 router.get('/', (req, res) => {
   const Race          = require('../models/Race');
@@ -288,6 +289,10 @@ router.post(  '/teams/:id/delete', TeamCatalogController.delete);
 
 router.post('/api/teams-catalog/quick', TeamCatalogController.quickCreate);
 
+// Volcar el catálogo del club a las carreras que aún no han arrancado.
+router.get( '/catalog-sync',       CatalogSyncController.index);
+router.post('/catalog-sync/apply', CatalogSyncController.apply);
+
 // ── Training ──────────────────────────────────────────────────────────────────
 router.get( '/training',                      TrainingController.index);
 router.get( '/training/free',                 TrainingController.free);
@@ -432,6 +437,7 @@ router.get( '/lap/:raceId/team/:teamId',         LapController.teamView);
 // /races) para que sea accesible desde la red del evento aunque el modo
 // restringido esté activo. Ver accessControl.isPublicPath.
 router.get( '/lap/:raceId/pins',                 LapController.pinsPage);
+router.post('/lap/:raceId/pins/toggle',          LapController.togglePin);
 router.post('/lap/:raceId/pins/:teamId/regenerate', LapController.regeneratePin);
 router.get( '/lap/:raceId',                      LapController.selectRace);
 router.get( '/api/lap/:raceId/team/:teamId',     LapController.teamSnapshot);

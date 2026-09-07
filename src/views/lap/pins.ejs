@@ -13,7 +13,28 @@
   <% if (!isEndurance) { %>
     <div class="err">Esta carrera no es por equipos: el cliente Lap solo aplica a carreras de resistencia.</div>
   <% } else { %>
-    <div class="pins-grid" id="pinsGrid">
+    <div class="pin-gate">
+      <div class="pin-gate__txt">
+        <strong>PIN de acceso</strong>
+        <span class="pin-gate__state pin-gate__state--<%= pinRequired ? 'on' : 'off' %>">
+          <%= pinRequired ? 'Activado' : 'Desactivado' %>
+        </span>
+        <p>
+          <% if (pinRequired) { %>
+            Cada equipo necesita su PIN para abrir su panel.
+          <% } else { %>
+            Cualquiera en la red del evento abre el panel de cualquier equipo solo eligiéndolo. Los PINs se conservan por si lo reactivas.
+          <% } %>
+        </p>
+      </div>
+      <form method="POST" action="/lap/<%= race.id %>/pins/toggle">
+        <button class="pin-gate__btn" type="submit">
+          <%= pinRequired ? 'Desactivar PIN' : 'Activar PIN' %>
+        </button>
+      </form>
+    </div>
+
+    <div class="pins-grid <%= pinRequired ? '' : 'pins-grid--muted' %>" id="pinsGrid">
       <% teams.forEach(t => { %>
         <div class="pin-row">
           <span class="swatch" style="background:<%= t.color || '#8b949e' %>"></span>
@@ -65,6 +86,28 @@
     border-radius: 8px; padding: 4px 8px; font-size: .95rem; cursor: pointer; line-height: 1;
   }
   .pin-regen:active { filter: brightness(1.3); }
+
+  .pin-gate {
+    display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap;
+    padding: 12px 14px; margin: 10px 0 4px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  }
+  .pin-gate__txt { flex: 1; min-width: 220px; }
+  .pin-gate__txt p { margin: 4px 0 0; color: var(--muted); font-size: .88rem; line-height: 1.45; }
+  .pin-gate__state {
+    display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 1rem;
+    font-size: .78rem; font-weight: 700; letter-spacing: .04em; vertical-align: 1px;
+  }
+  .pin-gate__state--on  { background: rgba(52,211,153,.16); color: #34d399; }
+  .pin-gate__state--off { background: rgba(148,163,184,.16); color: var(--muted); }
+  .pin-gate__btn {
+    background: transparent; color: var(--accent);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 14px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  }
+  .pin-gate__btn:active { filter: brightness(1.3); }
+  .pins-grid--muted { opacity: .5; }
+
   @media (max-width: 640px) {
     .wrap--pins { padding: 16px; }
     .pins-grid { column-width: 100%; height: auto !important; overflow: visible; }

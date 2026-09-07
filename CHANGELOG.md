@@ -13,6 +13,18 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.32.0] — 2026-09-07
+
+### Añadido
+- **Sincronizar catálogo con carreras pendientes.** Nueva página `Sistema → Sincronizar catálogo` (y atajo «Actualizar desde catálogo» en el menú de la ficha de carrera) que vuelca los cambios del catálogo de equipos —pilotos y país— a las carreras que **aún no han arrancado ninguna manga**, sin tener que pasar por «Editar tanda». Empareja equipos por nombre, deja la plantilla de la carrera idéntica al catálogo (añade y quita pilotos) y muestra un diff antes de aplicar. No toca la parrilla ni añade/elimina equipos, y solo actúa sobre carreras en formato equipos. La categoría no se sincroniza porque ya se lee siempre del catálogo.
+- **El PIN de acceso de Lap web se puede desactivar por carrera.** Interruptor en la hoja de PINs (`/lap/:raceId/pins`): con el PIN desactivado, cada equipo abre su panel de timing solo eligiéndose en la lista, sin teclear PIN (útil en eventos internos). Los PINs se conservan por si se reactiva. El ajuste viaja también al esclavo BART al sincronizar la carrera.
+
+### Mejorado
+- **La ficha de una carrera es accesible mientras hay una manga en curso.** Antes redirigía siempre al directo; ahora muestra el estado de la carrera con un enlace «Manga N» para entrar al directo cuando se quiera. Se mantienen los demás candados (no se puede arrancar una segunda manga con otra corriendo, y al dar GO desde la ficha sigue saltando sola al directo).
+
+### Corregido
+- **En el control de pilotos, el check verde tras escanear un QR desaparecía al instante.** La propia estación se recargaba ~300 ms después de escanear (por el eco del fichaje vía socket), cortando la confirmación grande. Ahora ese ✓ dura 7 s y la recarga de la estación que ha escaneado se aplaza hasta que termina; las demás pantallas se refrescan a los 2,5 s.
+
 ## [1.31.0] — 2026-08-25
 
 ### Añadido

@@ -1,0 +1,118 @@
+<%- include('../partials/header', { pageTitle }) %>
+
+<div class="vt-page">
+  <div class="vt-wrap">
+
+    <a href="/" class="vt-back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      <%= lang === 'es' ? 'Inicio' : 'Home' %>
+    </a>
+
+    <% if (flash) { %>
+      <div class="flash flash--<%= flash.type %>" style="margin-bottom:1rem"><%- flash.text %></div>
+    <% } %>
+
+    <div class="vt-head">
+      <div class="vt-head__title">
+        <h1><%= lang === 'es' ? 'Sincronizar catálogo' : 'Sync catalog' %></h1>
+        <span class="vt-cnt"><%= diffs.length %></span>
+      </div>
+    </div>
+
+    <p class="vt-hint" style="margin:.4rem 0 1.2rem;line-height:1.55;max-width:60ch">
+      <%- lang === 'es'
+        ? 'Vuelca los cambios del <a href="/teams">catálogo de equipos</a> (pilotos y país) a las carreras que <b>todavía no han arrancado ninguna manga</b>, sin pasar por «Editar tanda». Empareja equipos por nombre; deja la plantilla de la carrera <b>idéntica al catálogo</b> (añade y quita pilotos). No toca la parrilla ni añade/elimina equipos. La categoría ya se lee siempre del catálogo, no hace falta sincronizarla.'
+        : 'Pushes <a href="/teams">team-catalog</a> changes (drivers and country) into races that <b>have not started any heat yet</b>, without going through “Edit heat group”. Matches teams by name; makes the race roster <b>identical to the catalog</b> (adds and removes drivers). Does not touch the grid or add/remove teams. Category is always read from the catalog, no need to sync it.' %>
+    </p>
+
+    <% if (diffs.length === 0) { %>
+      <div class="vt-card" style="padding:1.4rem;text-align:center;opacity:.75">
+        <%= lang === 'es'
+          ? 'No hay carreras en formato equipos pendientes de arrancar.'
+          : 'No team-format races waiting to start.' %>
+      </div>
+    <% } else { %>
+      <form method="post" action="/catalog-sync/apply">
+        <% if (focus) { %><input type="hidden" name="return" value="/races/<%= focus %>"><% } %>
+
+        <% diffs.forEach(d => { %>
+          <%
+            const isFocus = focus && d.raceId === focus;
+            const checked = d.hasChanges; // solo se marcan por defecto las que cambian
+          %>
+          <div class="vt-card" id="race-<%= d.raceId %>"
+               style="padding:1rem 1.1rem;margin-bottom:.9rem<%= isFocus ? ';outline:2px solid var(--vt-accent,#58a6ff);outline-offset:2px' : '' %>">
+            <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer">
+              <input type="checkbox" name="race_ids[]" value="<%= d.raceId %>"
+                     <%= checked ? 'checked' : '' %> <%= d.hasChanges ? '' : 'disabled' %>>
+              <span style="font-weight:600;font-size:1.05rem"><%= d.raceName %></span>
+              <a href="/races/<%= d.raceId %>" class="vt-hint" style="font-size:.85rem;text-decoration:underline">
+                #<%= d.raceId %>
+              </a>
+              <% if (!d.hasChanges) { %>
+                <span class="vt-hint" style="margin-left:auto;font-size:.85rem">
+                  <%= lang === 'es' ? 'Ya está al día' : 'Already up to date' %>
+                </span>
+              <% } %>
+            </label>
+
+            <% if (d.hasChanges || d.unmatched.length) { %>
+              <div style="margin-top:.75rem;display:flex;flex-direction:column;gap:.45rem">
+                <% d.teams.filter(tm => !tm.unchanged).forEach(tm => { %>
+                  <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:.4rem .6rem">
+                    <span style="font-weight:600;min-width:9rem"><%= tm.name %></span>
+                    <% tm.add.forEach(n => { %>
+                      <span class="cs-chip cs-chip--add">+ <%= n %></span>
+                    <% }) %>
+                    <% tm.remove.forEach(n => { %>
+                      <span class="cs-chip cs-chip--del">− <%= n %></span>
+                    <% }) %>
+                    <% if (tm.country) { %>
+                      <span class="cs-chip cs-chip--meta">
+                        <%= lang === 'es' ? 'país' : 'country' %>:
+                        <%= tm.country.from.map(c => String(c).split('|')[0]).join(' / ') %>
+                        →
+                        <%= String(tm.country.to).split('|')[0] %>
+                      </span>
+                    <% } %>
+                  </div>
+                <% }) %>
+
+                <% if (d.unmatched.length) { %>
+                  <div class="vt-hint" style="font-size:.85rem;color:#e0a458">
+                    <%= lang === 'es' ? 'Sin emparejar (nombre distinto, se ignoran): ' : 'Unmatched (different name, skipped): ' %>
+                    <%= d.unmatched.join(', ') %>
+                  </div>
+                <% } %>
+              </div>
+            <% } %>
+          </div>
+        <% }) %>
+
+        <% if (diffs.some(d => d.hasChanges)) { %>
+          <div style="display:flex;gap:.6rem;margin-top:1rem">
+            <button type="submit" class="vt-btn vt-btn--primary">
+              <%= lang === 'es' ? 'Aplicar a las seleccionadas' : 'Apply to selected' %>
+            </button>
+          </div>
+        <% } %>
+      </form>
+    <% } %>
+
+  </div>
+</div>
+
+<style>
+  .cs-chip { font-size:.82rem;padding:.12rem .5rem;border-radius:1rem;white-space:nowrap;line-height:1.5 }
+  .cs-chip--add  { background:rgba(52,211,153,.16);color:#34d399 }
+  .cs-chip--del  { background:rgba(248,113,113,.16);color:#f87171 }
+  .cs-chip--meta { background:rgba(148,163,184,.16);color:#94a3b8 }
+</style>
+
+<% if (focus) { %>
+<script>
+  document.getElementById('race-<%= focus %>')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+</script>
+<% } %>
+
+<%- include('../partials/footer') %>

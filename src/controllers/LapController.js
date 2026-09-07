@@ -124,6 +124,7 @@ const LapController = {
     res.render('lap/race', {
       race: { id: race.id, name: race.name, status: race.status },
       teams,
+      pinRequired: race.lap_pin_required !== 0,
       error: req.query.error === '1' ? 'PIN incorrecto. Inténtalo de nuevo.' : null,
       layout: false,
     });
@@ -138,6 +139,17 @@ const LapController = {
     if (!race || !isEnduranceRace(race)) {
       return res.status(404).render('lap/error', { message: 'Carrera no encontrada.', layout: false });
     }
+
+    // Sin PIN: basta con que el equipo sea de esta carrera.
+    if (race.lap_pin_required === 0) {
+      const team = Team.findById(teamId);
+      if (!team || team.race_id !== raceId) {
+        return res.redirect(`/lap/${raceId}?error=1`);
+      }
+      req.session.lap = { raceId, teamId };
+      return res.redirect(`/lap/${raceId}/team/${teamId}`);
+    }
+
     const team = Team.verifyLapPin(raceId, teamId, pin);
     if (!team) {
       return res.redirect(`/lap/${raceId}?error=1`);
@@ -411,9 +423,19 @@ const LapController = {
     res.render('lap/pins', {
       race: { id: race.id, name: race.name, format: race.format, status: race.status },
       teams,
+      pinRequired: race.lap_pin_required !== 0,
       isEndurance: isEnduranceRace(race),
       layout: false,
     });
+  },
+
+  // POST /lap/:raceId/pins/toggle — activa/desactiva el PIN de acceso
+  togglePin(req, res) {
+    const raceId = Number(req.params.raceId);
+    const race = Race.findById(raceId);
+    if (!race) return res.status(404).render('lap/error', { message: 'Carrera no encontrada.', layout: false });
+    Race.setLapPinRequired(raceId, race.lap_pin_required === 0);
+    res.redirect(`/lap/${raceId}/pins`);
   },
 
   // POST /lap/:raceId/pins/:teamId/regenerate — nuevo PIN para un equipo

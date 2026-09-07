@@ -9,7 +9,13 @@
 
   <div class="brand"><span class="dot"></span> PitWall <small>Lap</small></div>
   <h1><%= race.name %></h1>
-  <p class="sub">Entra con tu equipo y el PIN que te dio la organización.</p>
+  <p class="sub">
+    <% if (pinRequired) { %>
+      Entra con tu equipo y el PIN que te dio la organización.
+    <% } else { %>
+      Elige tu equipo para ver su timing en vivo.
+    <% } %>
+  </p>
 
   <form class="card" method="POST" action="/lap/<%= race.id %>/login">
     <% if (error) { %><div class="err"><%= error %></div><% } %>
@@ -21,9 +27,11 @@
       <% }) %>
     </select>
 
-    <label for="pin">PIN (4 dígitos)</label>
-    <input class="pin" id="pin" name="pin" inputmode="numeric" pattern="[0-9]*"
-           maxlength="4" autocomplete="off" placeholder="••••" required>
+    <% if (pinRequired) { %>
+      <label for="pin">PIN (4 dígitos)</label>
+      <input class="pin" id="pin" name="pin" inputmode="numeric" pattern="[0-9]*"
+             maxlength="4" autocomplete="off" placeholder="••••" required>
+    <% } %>
 
     <button class="btn" type="submit">Entrar</button>
   </form>

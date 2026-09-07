@@ -381,9 +381,9 @@ class RaceController {
     const race = Race.findById(req.params.id);
     if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
 
-    // If a manga is currently active, go straight to live
-    const activeManga = Manga.findActive(race.id);
-    if (activeManga) return res.redirect(`/races/${race.id}/mangas/${activeManga.id}/live`);
+    // Con una manga en curso la ficha SÍ es accesible: muestra el estado y un
+    // enlace «Manga N» al directo. (El auto-salto al directo sigue ocurriendo al
+    // dar GO desde aquí, vía el evento manga:started del cliente.)
 
     const laneSequence = Race.getLaneSequence(race);
     const tandas = Tanda.findByRace(race.id);
@@ -435,9 +435,13 @@ class RaceController {
     const isSim = require('fs').existsSync(
       require('path').join(require('../lib/simPaths').SIM_DIR, `${race.id}.json`));
     const verificationsCount = require('../models/Verification').countByRace(race.id);
+    // Botón «Actualizar desde catálogo»: solo si esta carrera es candidata a
+    // sincronizar (formato equipos, ninguna manga arrancada). Ver CatalogSync.
+    const catalogSyncEligible = require('../models/CatalogSync').isEligible(race.id);
     res.render('races/show', {
       t: req.t, race, laneSequence, tandas: tandasWithMangas,
       virtualStandings, LANE_COLORS, poleSession, isSim, verificationsCount,
+      catalogSyncEligible,
     });
   }
 

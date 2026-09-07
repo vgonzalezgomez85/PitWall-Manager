@@ -101,6 +101,11 @@ function stepState(idx) {
           <button onclick="location.href='/races/<%= race.id %>/edit'" type="button">
             <span>✏️</span> <%= lang === 'es' ? 'Editar carrera' : 'Edit race' %>
           </button>
+          <% if (typeof catalogSyncEligible !== 'undefined' && catalogSyncEligible) { %>
+            <button onclick="location.href='/catalog-sync?race=<%= race.id %>'" type="button">
+              <span>🔄</span> <%= lang === 'es' ? 'Actualizar desde catálogo' : 'Update from catalog' %>
+            </button>
+          <% } %>
           <div class="rs-menu__sep"></div>
           <form action="/races/<%= race.id %>?_method=DELETE" method="POST"
                 onsubmit="return confirm('<%= t('race.delete_confirm') %>')" style="margin:0">

@@ -583,6 +583,11 @@ const migrations = [
   // hubo corte — se distingue en el corrector de vueltas y en el registro de
   // sucesos para no confundirla con una reposición por caída.
   `ALTER TABLE laps ADD COLUMN is_flag_lap INTEGER NOT NULL DEFAULT 0`,
+
+  // Lap web: si 0, el panel del equipo se abre solo eligiendo equipo, sin PIN
+  // (útil en eventos internos donde el PIN estorba). Default 1 = comportamiento
+  // de siempre. Se cambia desde la hoja de PINs (/lap/:raceId/pins).
+  `ALTER TABLE races ADD COLUMN lap_pin_required INTEGER NOT NULL DEFAULT 1`,
 ];
 for (const sql of migrations) {
   try {

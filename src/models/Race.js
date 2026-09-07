@@ -107,6 +107,11 @@ class Race {
     db.prepare('UPDATE races SET min_lap_ms=? WHERE circuit_id=?').run(minLapMs, circuitId);
   }
 
+  // Lap web: pedir PIN (1) o entrar solo eligiendo equipo (0). Ver migración.
+  static setLapPinRequired(id, required) {
+    db.prepare('UPDATE races SET lap_pin_required=? WHERE id=?').run(required ? 1 : 0, id);
+  }
+
   static updateStatus(id, status) {
     const now = new Date().toISOString();
     if (status === 'active') {
