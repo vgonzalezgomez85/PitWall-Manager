@@ -117,7 +117,8 @@ class Race {
     if (status === 'active') {
       db.prepare('UPDATE races SET status=?, started_at=? WHERE id=?').run(status, now, id);
     } else if (status === 'finished' || status === 'completed') {
-      db.prepare('UPDATE races SET status=?, finished_at=? WHERE id=?').run(status, now, id);
+      // El resto de la app (filtros de la lista, badges) espera 'finished'.
+      db.prepare('UPDATE races SET status=?, finished_at=? WHERE id=?').run('finished', now, id);
     } else {
       db.prepare('UPDATE races SET status=? WHERE id=?').run(status, id);
     }

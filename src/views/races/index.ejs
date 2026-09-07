@@ -4,14 +4,14 @@
 const ST = {
   'pending':    { color: 'var(--vt-amber)', live: false, label: t('races.status.pending') },
   'active':     { color: 'var(--vt-green)', live: true,  label: t('races.status.active') },
-  'completed':  { color: 'var(--vt-blue)',  live: false, label: t('races.status.completed') },
+  'finished':   { color: 'var(--vt-blue)',  live: false, label: t('races.status.completed') },
 };
 const fmtDate = (s) => new Date(s).toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-GB');
 const counts = {
   todas: races.length,
   pending: races.filter(r => r.status === 'pending').length,
   active: races.filter(r => r.status === 'active').length,
-  completed: races.filter(r => r.status === 'completed').length,
+  finished: races.filter(r => r.status === 'finished').length,
 };
 %>
 
@@ -55,7 +55,7 @@ const counts = {
           <button class="vt-tab is-active" data-f="todas"><%= lang === 'es' ? 'Todas' : 'All' %> <span class="vt-tab__b"><%= counts.todas %></span></button>
           <button class="vt-tab" data-f="active"><%= t('races.status.active') %> <span class="vt-tab__b"><%= counts.active %></span></button>
           <button class="vt-tab" data-f="pending"><%= t('races.status.pending') %> <span class="vt-tab__b"><%= counts.pending %></span></button>
-          <button class="vt-tab" data-f="completed"><%= t('races.status.completed') %> <span class="vt-tab__b"><%= counts.completed %></span></button>
+          <button class="vt-tab" data-f="finished"><%= t('races.status.completed') %> <span class="vt-tab__b"><%= counts.finished %></span></button>
         </div>
         <div class="vt-sort">
           <%= lang === 'es' ? 'Ordenar' : 'Sort' %>
