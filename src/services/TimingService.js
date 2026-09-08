@@ -131,6 +131,10 @@ class TimingServiceClass {
   startManga(manga, race, lanes, teams, drivers, durationMs = null, startCircuitIndex = 0) {
     if (this.session) this.stopManga(false);
 
+    // Una manga arranca: corta cualquier exportación a Excel en curso para
+    // dejar el event loop libre para las tramas del DS-300.
+    try { require('./ExportGuard').abortAll(); } catch {}
+
     // Si TrainingService se había auto-activado por el mismo GO (su listener
     // de race_started corre antes que el de app.js que llama aquí), hay que
     // pararlo: ese GO pertenece a la manga oficial, no al training libre.
@@ -2057,6 +2061,10 @@ class TimingServiceClass {
   // está "en pausa" si ninguno corre pero alguno está pausado.
   get isRunning()     { return !!this.session && Object.values(this.session.circuits).some(c => c.status === 'running'); }
   get isPaused()      { return !!this.session && !this.isRunning && Object.values(this.session.circuits).some(c => c.status === 'paused'); }
+  // True mientras una manga está VIVA: algún circuito corriendo o en pausa (la
+  // pausa cuenta porque el DS sigue conectado y puede reanudar en cualquier
+  // momento). Lo usa ExportGuard para bloquear las exportaciones a Excel.
+  get isMangaLive()   { return this.isRunning || this.isPaused; }
   // True si hay una manga armada esperando el GO del DS-300, o una manga
   // en curso. Útil para que TrainingService no enganche cruces durante una
   // carrera oficial, ya que el listener de race_started del training puede

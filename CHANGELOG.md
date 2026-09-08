@@ -13,6 +13,13 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.35.0] — 2026-09-08
+
+### Mejorado
+- **La exportación a Excel ya no puede frenar el cronometraje.** Generar el Excel de resultados de una carrera larga es la operación más pesada de la app (decenas de miles de filas con formato más la compresión del fichero), y hasta ahora corría en el mismo hilo que atiende al cronómetro: hacerlo con una manga en marcha podía partir una trama y perder un cruce. Ahora:
+  - **No se deja exportar a Excel mientras hay una manga viva** (corriendo o en pausa). Los tres botones de Excel —resultados, puntos de clasificación e informe de turnos— avisan de que hay que detener la manga o esperar a que termine la carrera. Con la manga parada o la carrera finalizada funcionan igual que siempre.
+  - **Si una exportación estaba en curso y arranca una manga** (por ejemplo se lanzó entre mangas y llega el GO del cronómetro), esa exportación se cancela automáticamente para dejar el hilo libre para las vueltas. Quien la pidió recibe el aviso y puede repetirla al acabar.
+
 ## [1.34.2] — 2026-09-07
 
 ### Mejorado

@@ -141,6 +141,10 @@ function emitSemaphoreOnce(reason) {
 
 SerialService.on('race_go', ({ durationMs }) => {
   console.log(`[DS-300] race_go received (duration=${durationMs}ms) — emit race:semaphore @ ${Date.now()}`);
+  // GO del DS-300: aborta ya cualquier exportación a Excel en curso (quedan
+  // ~3s de cuenta atrás antes de que se abra la pista → el event loop se
+  // libera antes del primer cruce).
+  try { require('./services/ExportGuard').abortAll(); } catch {}
   if (TimingService._tandaBoundary) {
     console.log('[DS-300] GO ignored — tanda boundary, waiting for user to start next tanda');
     return;

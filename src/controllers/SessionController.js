@@ -26,6 +26,7 @@ const SocketService  = require('../services/SocketService');
 const SerialService  = require('../services/SerialService');
 const TimingService  = require('../services/TimingService');
 const RaceEventLog   = require('../services/RaceEventLog');
+const ExportGuard    = require('../services/ExportGuard');
 const ExcelJS        = require('exceljs');
 const { robustConsistency, MIN_CONSISTENCY_LAPS } = require('../lib/consistency');
 
@@ -1365,6 +1366,24 @@ class SessionController {
     const race = Race.findById(req.params.id);
     if (!race) return res.status(404).send('Not found');
 
+    // No se exporta con una manga viva (bloquearía el cronometraje).
+    if (ExportGuard.isMangaLive()) return ExportGuard.deny(req, res);
+
+    const _exp = ExportGuard.begin();
+    try {
+      return await SessionController._excelBuild(req, res, race, _exp);
+    } catch (err) {
+      if (err instanceof ExportGuard.ExportAbortedError) {
+        console.log('[SessionController.excel] exportación abortada — arrancó una manga');
+        return ExportGuard.deny(req, res);
+      }
+      throw err;
+    } finally {
+      ExportGuard.finish(_exp);
+    }
+  }
+
+  static async _excelBuild(req, res, race, _exp) {
     const aggregate = Lap.aggregateByRace(race.id);
     const isEs      = (req.query.lang || 'es') === 'es';
 
@@ -1416,6 +1435,10 @@ class SessionController {
     const applyBorder = (ws, range) => {
       ws.getCell(range).border = thinBorder;
     };
+
+    // Terminada la fase de consultas y consistencia (bloqueante, una sola vez):
+    // cede el event loop y aborta si entretanto ha arrancado una manga.
+    await ExportGuard.tick(_exp);
 
     const wb = new ExcelJS.Workbook();
     wb.creator       = 'PitWall';
@@ -1960,6 +1983,10 @@ class SessionController {
     }
     const usedNames = new Set();
     for (let idx = 0; idx < byTotalM.length; idx++) {
+      // Una hoja por equipo con la carrera vuelta a vuelta: es el grueso del
+      // coste. Cede el event loop entre hojas y aborta si arranca una manga.
+      await ExportGuard.tick(_exp);
+
       const entity = byTotalM[idx];
       const key = `${entity.entity_type}_${entity.entity_id}`;
       const prog = progByEntity[key];
@@ -1999,6 +2026,7 @@ class SessionController {
       const maxLapCount = Math.max(...lanes.map(l => prog.lanes[l].length));
       const absStartRow = sE.lastRow.number + 1;
       for (let li = 0; li < maxLapCount; li++) {
+        if ((li & 255) === 0) await ExportGuard.tick(_exp);
         const values = [li + 1, ...lanes.map(l => {
           const lap = prog.lanes[l][li];
           return lap != null ? Number((lap.ms / 1000).toFixed(3)) : '';
@@ -2054,6 +2082,7 @@ class SessionController {
       dHeader.eachCell({ includeEmpty: true }, c => Object.assign(c, headerStyle));
 
       for (let li = 0; li < maxLapCount; li++) {
+        if ((li & 255) === 0) await ExportGuard.tick(_exp);
         const values = [li + 1, ...lanes.map(l => {
           const lap = prog.lanes[l][li];
           if (lap == null) return '';
@@ -2103,6 +2132,9 @@ class SessionController {
       ws.headerFooter.evenFooter = `&C&"Calibri"&8${copyrightText}`;
     });
 
+    // Última comprobación antes de comprimir el ZIP (lo único que ya no se
+    // puede cortar a la mitad).
+    ExportGuard.throwIfAborted(_exp);
     const buf = await wb.xlsx.writeBuffer();
     const filename = `${race.name.replace(/[^a-zA-Z0-9_-]/g, '_')}_resultados.xlsx`;
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -2122,6 +2154,8 @@ class SessionController {
   static async pointsExcel(req, res) {
     const race = Race.findById(req.params.id);
     if (!race) return res.status(404).send('Not found');
+
+    if (ExportGuard.isMangaLive()) return ExportGuard.deny(req, res);
 
     const isEs = (req.query.lang || 'es') === 'es';
     const rows = SessionController._buildPointsRanking(race.id);

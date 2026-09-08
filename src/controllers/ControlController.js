@@ -28,6 +28,7 @@ const Race          = require('../models/Race');
 const Manga         = require('../models/Manga');
 const DriverShift   = require('../models/DriverShift');
 const TimingService = require('../services/TimingService');
+const ExportGuard   = require('../services/ExportGuard');
 const db            = require('../config/database');
 const { evaluate }  = require('../utils/shiftCompliance');
 const { fmtHmsFijo } = require('../utils/duration');
@@ -337,6 +338,9 @@ class ControlController {
   static async shiftsReportExcel(req, res) {
     const data = ControlController._reportData(req.params.id);
     if (!data) return res.status(404).send('Not found');
+
+    if (ExportGuard.isMangaLive()) return ExportGuard.deny(req, res);
+
     const { race, reglas, summary } = data;
 
     const ExcelJS = require('exceljs');
