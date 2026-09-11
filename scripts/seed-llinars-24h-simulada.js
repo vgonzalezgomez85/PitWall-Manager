@@ -73,7 +73,13 @@ const CIRCUITS = [8, 8, 8];
 const LANE_SEQUENCE = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 24, 22, 20, 18, 16, 14, 12, 10, 8, 6, 4, 2];
 const PASSES = 1;
 const LANE_REPEAT = 2;
-const MIN_LAP_MS = 11500;          // igual que id 43 (mismo circuito físico)
+// TICTAC filtraba fantasmas por debajo de 13.5s (RegistroSucesos), pero eso deja
+// pasar ruido de rebote entre 13.5-14.3s que solo el operador corregía a mano
+// (836 "Ajuste de vueltas" que no podemos reconstruir 1 a 1). Anclado a la vuelta
+// rápida REAL de toda la carrera (DZERO, 14,3482 en la clasificación final de
+// TICTAC = 14348ms exactos en nuestra reconstrucción, manga 48): nada en 24h
+// bajó de eso, así que cualquier cruce por debajo es fantasma con certeza.
+const MIN_LAP_MS = 14340;
 const EXIT_MARGIN_MS = 1700;       // igual que TimingService/seed-modena-real
 const PIT_STOP_MULTIPLIER = 2;
 

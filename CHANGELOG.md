@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.36.1] — 2026-09-11
+
+### Corregido
+- **Vuelta rápida de la carrera de prueba «Llinars 24h simulada».** Aparecía una vuelta imposible de 11,670s que en realidad era ruido del sensor (vuelta fantasma), no una vuelta real. Ajustado el umbral que descarta estas vueltas al reconstruir la carrera a partir de las tramas originales; ahora la vuelta rápida sale correcta (14,348s, coincide exacto con el registro oficial de la carrera real). No afecta a la clasificación general.
+
 ## [1.36.0] — 2026-09-11
 
 ### Añadido
