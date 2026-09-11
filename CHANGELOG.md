@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.35.1] — 2026-09-11
+
+### Corregido
+- **«Exportar para GitHub» ya dibuja las gráficas.** La exportación de resultados a un HTML autocontenido (para publicarlo en GitHub Pages u otro sitio sin depender del servidor de PitWall) buscaba una versión antigua de Chart.js que ya no se usa, así que nunca la encontraba y el gráfico se quedaba con una referencia a un fichero que solo existe dentro de la app —resultado: ninguna gráfica se dibujaba (gap al líder, progresión, posiciones). Ahora se inserta el Chart.js correcto y también se retira una referencia a las fuentes del servidor que tampoco existía en el export, así que el HTML exportado ya no depende de nada externo.
+
 ## [1.35.0] — 2026-09-08
 
 ### Mejorado

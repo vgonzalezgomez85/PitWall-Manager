@@ -1316,15 +1316,19 @@ class SessionController {
     const path = require('path');
     let css = '', chartJs = '';
     try { css     = fs.readFileSync(path.join(__dirname, '../../public/css/style.css'), 'utf8'); } catch {}
-    try { chartJs = fs.readFileSync(path.join(__dirname, '../../node_modules/chart.js/dist/chart.umd.min.js'), 'utf8'); } catch {}
+    try { chartJs = fs.readFileSync(path.join(__dirname, '../../public/js/chart.umd.min.js'), 'utf8'); } catch {}
     let out = html;
     out = out.replace(/<link[^>]*href="\/css\/style\.css"[^>]*>/i, '<style>\n' + css + '\n</style>');
     out = out.replace(/<script[^>]*src="\/js\/app\.js"[^>]*><\/script>/i, '');
     out = out.replace(/<link[^>]*rel="(?:icon|apple-touch-icon)"[^>]*>\s*/gi, '');
-    // SIN internet: Chart.js inline (CDN → local) y fuera las fuentes de Google
-    // (se usan las del sistema). Así el HTML funciona 100% offline.
+    // /css/fonts.css sirve los .woff2 autoalojados de PitWall (ruta absoluta del
+    // servidor): en el export no existen, se queda en la tipografía del sistema.
+    out = out.replace(/<link[^>]*href="\/css\/fonts\.css"[^>]*>\s*/i, '');
+    // Chart.js está autoalojado (public/js/chart.umd.min.js, no CDN) desde que
+    // se quitó la dependencia de internet en circuito: inline de ese script tal
+    // cual, no del patrón CDN antiguo (jsdelivr) que ya no se usa en la vista.
     if (chartJs) {
-      out = out.replace(/<script[^>]*src="https:\/\/cdn\.jsdelivr\.net\/npm\/chart\.js@[^"]*"[^>]*><\/script>/i,
+      out = out.replace(/<script[^>]*src="\/js\/chart\.umd\.min\.js"[^>]*><\/script>/i,
         '<script>\n' + chartJs + '\n</script>');
     }
     out = out.replace(/<link[^>]*fonts\.(?:googleapis|gstatic)\.com[^>]*>\s*/gi, '');
