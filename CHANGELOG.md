@@ -13,6 +13,14 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.36.0] — 2026-09-11
+
+### Añadido
+- **La rejilla de gap ya muestra la hora real de cada manga.** En Resultados → *Gap (rejilla)*, debajo de cada cabecera «M1», «M2»... ahora aparece la hora a la que arrancó esa manga (en tu hora local; al pasar el ratón se ve la fecha y hora completas). En carreras largas (24h) que cruzan la medianoche, la cabecera de la manga donde cambia el día se resalta en **dorado** para verlo de un vistazo. Pensado para poder cruzar la rejilla con sucesos reales conocidos por hora.
+
+### Corregido
+- **Zona horaria de la carrera de prueba «Llinars 24h simulada».** El script que la genera guardaba la hora local de Llinars (verano, UTC+2) como si ya fuera UTC, así que las horas se veían 2h adelantadas. Ya guarda la hora correcta.
+
 ## [1.35.1] — 2026-09-11
 
 ### Corregido

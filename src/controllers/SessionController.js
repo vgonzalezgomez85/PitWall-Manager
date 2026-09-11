@@ -1081,7 +1081,7 @@ class SessionController {
     // media de vuelta hasta ese momento). Así un coche de la tanda 2 se compara
     // por dónde va a ACABAR, no por las pocas vueltas que lleva → pelea real.
     const mangaSeq = db.prepare(`
-      SELECT m.id, m.number AS manga_number, t.number AS tanda_number, m.actual_duration_ms
+      SELECT m.id, m.number AS manga_number, t.number AS tanda_number, m.actual_duration_ms, m.started_at
       FROM mangas m
       JOIN tandas t ON t.id = m.tanda_id
       WHERE t.race_id = ?
@@ -1127,11 +1127,13 @@ class SessionController {
     entityKeys.forEach(k => { positionPoints[k] = []; gapPoints[k] = []; });
     let cumTimeMs = 0;
     let mangaOrd  = 0;   // ordinal de manga disputada (M1, M2, … para el eje X del gap)
+    const mangaTimes = {};   // mangaOrd → started_at real (hora de la rejilla de gap)
 
     mangaSeq.forEach(m => {
       const mLaps = lapsIdx.get(m.id);
       if (!mLaps || mLaps.length === 0) return;   // manga sin disputar
       mangaOrd++;
+      if (m.started_at) mangaTimes[mangaOrd] = m.started_at;
       const durMs = m.actual_duration_ms || durDefault;
       const tStartMin = +(cumTimeMs / 60000).toFixed(2);   // inicio de esta manga
       cumTimeMs += durMs;
@@ -1285,7 +1287,7 @@ class SessionController {
     return SessionController._sendResults(req, res, {
       t: req.t, race, results, laneSequence, tandas, LANE_COLORS,
       raceBestLapMs, raceBestEntity, raceBestLane, startLaneByEntity,
-      progressionByEntity, positionData, gapData,
+      progressionByEntity, positionData, gapData, mangaTimes,
       advancedStats,
       perOccurrence, occColumns,
       pole,

@@ -101,6 +101,11 @@ const lapMs = f => {
 const rawLines = fs.readFileSync(TRAMAS_PATH, 'utf8').replace(/^﻿/, '').replace(/\r/g, '').split('\n');
 
 const BASE_DATE = Date.UTC(2026, 7, 22, 0, 0, 0); // 22-ago-2026 00:00 UTC (la captura cruza medianoche)
+// Las horas del fichero son hora local de Llinars (Europe/Madrid, CEST = UTC+2
+// en agosto): se restan aquí para que started_at quede en UTC de verdad y la
+// "hora real" de la rejilla de gap muestre 10:50 y no 12:50 en un navegador
+// también en CEST.
+const TZ_OFFSET_MS = 2 * 3600000;
 let day = 0, prevSecs = null;
 let badLines = 0, dataLines = 0;
 const goEvents = [];       // { ts, ds }
@@ -118,7 +123,7 @@ for (let i = 0; i < rawLines.length; i++) {
   const secs = (+hh) * 3600 + (+mm) * 60 + (+ss);
   if (prevSecs != null && secs < prevSecs - 1) day++;   // cruce de medianoche (captura de 24h)
   prevSecs = secs;
-  const ts = BASE_DATE + day * 86400000 + secs * 1000 + (+mmm);
+  const ts = BASE_DATE + day * 86400000 + secs * 1000 + (+mmm) - TZ_OFFSET_MS;
   const b = bytes;
   if (b[7] === 0x3e && b[8] === 0xa1) { goEvents.push({ ts, ds: m[2] }); continue; }
   if (b[7] === 0x00 && b[8] === 0xa4) { finishEvents.push({ ts, ds: m[2] }); continue; }

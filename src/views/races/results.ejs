@@ -833,6 +833,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
       </p>
     </div>
     <script id="gapData" type="application/json"><%- JSON.stringify(gapData || {}) %></script>
+    <script id="mangaTimes" type="application/json"><%- JSON.stringify(mangaTimes || {}) %></script>
 
     <!-- ── Gap to leader (grid / matrix) ── -->
     <div class="results-panel" id="tab-gapgrid">
@@ -857,6 +858,8 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
       .gapgrid thead th { position: sticky; top: 0; background: #1f3a5f; color: #fff; font-weight: 700; z-index: 2; }
       .gapgrid__name { text-align: left !important; position: sticky; left: 0; background: #0d1117; z-index: 1; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
       .gapgrid thead .gapgrid__name { z-index: 3; background: #1f3a5f; }
+      .gapgrid__time { display: block; font-size: .7rem; font-weight: 400; opacity: .75; }
+      .gapgrid__time--newday { opacity: 1; color: #f0b72f; }
       .gapgrid tbody tr:hover td { background: rgba(255,255,255,.03); }
       .gapgrid__dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: .4rem; vertical-align: middle; }
       .gapgrid td { color: #c9d1d9; position: relative; }
@@ -1615,11 +1618,24 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
 
   // ── Gap GRID (rejilla) — filtro entre 2-4 equipos + resaltado de pit-stops ──
   (function() {
-    const data     = JSON.parse(document.getElementById('gapData').textContent || '{}');
+    const data       = JSON.parse(document.getElementById('gapData').textContent || '{}');
+    const mangaTimes = JSON.parse(document.getElementById('mangaTimes')?.textContent || '{}');
     const table    = document.getElementById('gapgridTable');
     const chipsBox = document.getElementById('gapgridEntities');
     if (!table) return;
     const LBL_TEAM = '<%= lang === "es" ? "Equipo" : "Team" %>';
+    let prevDay = null;
+    function timeHeader(m) {
+      const iso = mangaTimes[m];
+      if (!iso) return '';
+      const d = new Date(iso);
+      if (isNaN(d)) return '';
+      const hhmm = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const day  = d.toLocaleDateString();
+      const changed = prevDay !== null && day !== prevDay;
+      prevDay = day;
+      return '<br><span class="gapgrid__time' + (changed ? ' gapgrid__time--newday' : '') + '" title="' + esc(d.toLocaleString()) + '">' + hhmm + '</span>';
+    }
     const entries  = Object.entries(data);   // [key, {name,color,points:[{x,y,pit}]}]
     let maxM = 0;
     const byM = {};
@@ -1640,6 +1656,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
     function esc(s) { return String(s).replace(/"/g, '&quot;'); }
 
     function build() {
+      prevDay = null;
       const useSel = selected.size >= 2 && selected.size <= 4;
       const rows = entries.filter(([k]) => !useSel || selected.has(k));
       // Referencia por manga = el que MÁS vueltas lleva (y más alto) entre los mostrados.
@@ -1653,7 +1670,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
       rows.forEach(([k]) => { for (let m = 1; m <= maxM; m++) { const p = byM[k][m]; if (p && refByM[m] !== undefined) { const g = p.y - refByM[m]; if (g < minGap) minGap = g; } } });
 
       let html = '<thead><tr><th class="gapgrid__name">' + LBL_TEAM + '</th>';
-      for (let m = 1; m <= maxM; m++) html += '<th>M' + m + '</th>';
+      for (let m = 1; m <= maxM; m++) html += '<th>M' + m + timeHeader(m) + '</th>';
       html += '</tr></thead><tbody>';
       rows.forEach(([k, e]) => {
         html += '<tr><td class="gapgrid__name" title="' + esc(e.name) + '"><span class="gapgrid__dot" style="background:' + (e.color || '#8b949e') + '"></span>' + e.name + '</td>';
