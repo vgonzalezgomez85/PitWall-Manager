@@ -1511,7 +1511,7 @@ class TimingServiceClass {
       // La certificación+asignación vive en el flujo de vuelta normal, más abajo
       // (ver _matchGhostForDouble).
       if (!this._recentGhosts) this._recentGhosts = [];
-      this._recentGhosts.push({ ts: timestamp, lane, ghostId, elapsedMs });
+      this._recentGhosts.push({ ts: timestamp, lane, ghostId, elapsedMs, ci });
       if (this._recentGhosts.length > 64) this._recentGhosts.shift();
 
       SocketService.emit('lap:ghost', {
@@ -1535,7 +1535,7 @@ class TimingServiceClass {
     {
       const _refAvg = ld.cleanAvgMs > 0 ? ld.cleanAvgMs : ld.lapAvgMs;
       const _ghost = (_refAvg > 0 && lapTimeMs >= _refAvg * 1.5 && lapTimeMs <= _refAvg * 2.8)
-        ? this._matchGhostForDouble(lane, timestamp, _refAvg)
+        ? this._matchGhostForDouble(lane, timestamp, _refAvg, ci)
         : null;
       if (_ghost) {
         const _origMs = lapTimeMs;
@@ -1702,17 +1702,24 @@ class TimingServiceClass {
   // Sustituye a la vieja adivinación "asigna al carril más en deuda al vuelo":
   // esa no distinguía un cruce perdido de un carril simplemente lento/parado.
   // Aquí solo se asigna cuando el propio cruce 2× del carril lo confirma.
-  _matchGhostForDouble(lane, timestamp, refAvg) {
+  //
+  // Con varios circuitos (agrupador DS-300 o multi-Master BART) los carriles
+  // de cada uno son físicamente independientes: un cruce perdido en un
+  // circuito no lo puede certificar un fantasma de OTRO circuito, aunque el
+  // número de carril "cuadre" por casualidad. `ci` (circuito del carril
+  // candidato) filtra el emparejamiento a fantasmas de ese mismo circuito.
+  _matchGhostForDouble(lane, timestamp, refAvg, ci) {
     if (!this._recentGhosts || !this._recentGhosts.length) return null;
     // Poda con ventana FIJA generosa (30s) — no depende del carril, para no
     // descartar fantasmas que aún valen para otros carriles más lentos.
     this._recentGhosts = this._recentGhosts.filter(g => (timestamp - g.ts) <= 30000 && (timestamp - g.ts) >= 0);
-    // El fantasma más reciente en OTRO carril dentro de la ventana de este carril
-    // (~2.5× su media = como mucho el tiempo de la vuelta que se saltó).
+    // El fantasma más reciente en OTRO carril del MISMO circuito, dentro de la
+    // ventana de este carril (~2.5× su media = como mucho el tiempo de la
+    // vuelta que se saltó).
     const windowMs = Math.max(3000, refAvg * 2.5);
     for (let i = this._recentGhosts.length - 1; i >= 0; i--) {
       const g = this._recentGhosts[i];
-      if (g.lane !== lane && (timestamp - g.ts) <= windowMs) {
+      if (g.lane !== lane && g.ci === ci && (timestamp - g.ts) <= windowMs) {
         this._recentGhosts.splice(i, 1);   // consumir: un fantasma = un cruce
         return g;
       }

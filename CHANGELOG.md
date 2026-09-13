@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.36.2] — 2026-09-13
+
+### Corregido
+- **Vuelta fantasma asignada al carril equivocado con varios circuitos.** Con el agrupador DS-300 o varios Masters BART (varias pistas físicamente independientes en la misma carrera), la asignación automática de un cruce "vuelta fantasma" podía certificarse con el fantasma de OTRO circuito, algo físicamente imposible (los carriles de cada pista no se cruzan entre sí). Ahora solo se emparejan fantasma y cruce si son del mismo circuito.
+
 ## [1.36.1] — 2026-09-11
 
 ### Corregido
