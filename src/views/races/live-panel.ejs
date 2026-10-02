@@ -623,6 +623,13 @@
       if (data && data.mangaId != null && data.mangaId !== MANGA_ID) return;
       _timerRunning = false; _remainMs = 0; renderTimer();
       setPanelStatus('finished');
+      // Los 'standings' llevan la proyección cacheada (sin el último cruce) y
+      // tras el cierre ya no llega ninguno más; además el servidor repone a
+      // los 1,5 s las vueltas de bandera. Recargar trae el total real de BD.
+      setTimeout(() => location.reload(), 2500);
+    });
+    socket.on('manga:reconciled', (data) => {
+      if (data && data.raceId === RACE_ID) location.reload();
     });
     // Con la manga en pausa el reloj real está congelado en el servidor;
     // sin esto el contador local seguía bajando cada segundo aunque no se

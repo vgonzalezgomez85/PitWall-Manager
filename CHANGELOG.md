@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.37.1] — 2026-10-02
+
+### Corregido
+- **La ventana «Clasificación General» se quedaba atrasada al acabar la manga.** Mostraba hasta 4 vueltas menos que el directo y que los resultados para quien corría la última manga: le faltaba la última vuelta y las vueltas de bandera que PitWall repone al cerrar (las que el DS-300 contó con el circuito ya cerrado). Ahora la ventana se recarga sola al terminar la manga y también cuando se reponen vueltas, así que muestra el total real. Los resultados guardados siempre fueron correctos.
+
 ## [1.37.0] — 2026-10-02
 
 ### Añadido
