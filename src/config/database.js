@@ -612,6 +612,18 @@ const migrations = [
   // (útil en eventos internos donde el PIN estorba). Default 1 = comportamiento
   // de siempre. Se cambia desde la hoja de PINs (/lap/:raceId/pins).
   `ALTER TABLE races ADD COLUMN lap_pin_required INTEGER NOT NULL DEFAULT 1`,
+
+  // Lap web: rivales que cada equipo sigue (máx. 5). Por NOMBRE, no por id:
+  // un mismo equipo puede tener varias filas en `teams` (maestra + una por
+  // tanda) y Lap ya agrupa todo por nombre. Compartido por todos los móviles
+  // del box.
+  `CREATE TABLE IF NOT EXISTS lap_tracking (
+     race_id      INTEGER NOT NULL REFERENCES races(id) ON DELETE CASCADE,
+     team_name    TEXT NOT NULL,
+     tracked_name TEXT NOT NULL,
+     position     INTEGER NOT NULL,
+     PRIMARY KEY (race_id, team_name, tracked_name)
+   )`,
 ];
 for (const sql of migrations) {
   try {

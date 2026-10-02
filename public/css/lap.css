@@ -121,3 +121,26 @@ input.pin{letter-spacing:.4em;text-align:center;font-size:1.6rem;font-weight:700
 
 /* hoja de PINs (admin): rejilla multi-columna en pins.ejs, ver su <style> */
 .url{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:ui-monospace,Menlo,monospace;font-size:.85rem;word-break:break-all;margin:6px 0 0}
+
+/* Seguimiento de rivales */
+.trk-note{color:var(--muted);font-size:.72rem;text-transform:none;letter-spacing:0}
+.trk-hint{text-align:center;margin:4px 0 10px}
+.trk-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:10px}
+.trk-card.me{border-color:var(--accent)}
+.trk-head{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-weight:700}
+.trk-name{flex:1;min-width:0;overflow-wrap:anywhere}
+.trk-me{font-size:.68rem;font-weight:700;color:#000;background:var(--accent);border-radius:999px;padding:2px 8px}
+.trk-tbl{width:100%;border-collapse:collapse;font-size:.85rem;font-variant-numeric:tabular-nums}
+.trk-tbl th{font-size:.66rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.3px;text-align:right;padding:4px 2px}
+.trk-tbl td{text-align:right;padding:4px 2px;border-top:1px solid var(--border)}
+.trk-tbl th:first-child,.trk-tbl td:first-child{text-align:left}
+.trk-tbl tfoot td{font-weight:700;color:var(--accent)}
+.trk-empty{text-align:center!important;color:var(--muted)}
+.trk-pick{margin-top:4px;color:var(--muted)}
+.trk-pick summary{cursor:pointer;font-size:.8rem;text-transform:uppercase;letter-spacing:.4px;padding:6px 0}
+.trk-cands{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.trk-cand{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin:0;color:var(--text);font-size:.95rem;cursor:pointer}
+.trk-cand.off{opacity:.45}
+.trk-cand input{width:20px;height:20px;margin:0;flex:0 0 auto}
+.trk-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px}
+.trk-actions .audiobtn{flex:0 0 auto;padding:10px 22px}

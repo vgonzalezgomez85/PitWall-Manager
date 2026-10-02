@@ -374,6 +374,8 @@ router.get('/api/mobile/races/active',       MobileController.racesActive);
 router.get('/api/mobile/races',              MobileController.racesList);
 router.get('/api/mobile/races/:id/results',  MobileController.racesResults);
 router.get('/api/mobile/races/:id/tires',    MobileController.racesTires);
+router.get('/api/mobile/races/:id/tracking', MobileController.racesTracking);
+router.post('/api/mobile/races/:id/tracking', MobileController.racesTracking);
 router.get('/api/mobile/races/:id',          MobileController.racesShow);
 router.get('/api/mobile/races/:id/pole',     MobileController.racesPole);
 
@@ -441,5 +443,7 @@ router.post('/lap/:raceId/pins/toggle',          LapController.togglePin);
 router.post('/lap/:raceId/pins/:teamId/regenerate', LapController.regeneratePin);
 router.get( '/lap/:raceId',                      LapController.selectRace);
 router.get( '/api/lap/:raceId/team/:teamId',     LapController.teamSnapshot);
+router.get( '/api/lap/:raceId/team/:teamId/tracking', LapController.tracking);
+router.post('/api/lap/:raceId/team/:teamId/tracking', LapController.tracking);
 
 module.exports = router;

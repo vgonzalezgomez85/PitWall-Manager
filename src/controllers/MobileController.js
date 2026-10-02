@@ -22,6 +22,8 @@ const PoleSession       = require('../models/PoleSession');
 const Race       = require('../models/Race');
 const Lap        = require('../models/Lap');
 const TireChange = require('../models/TireChange');
+const Team       = require('../models/Team');
+const LapTracking = require('../models/LapTracking');
 const db = require('../config/database');
 
 // Caché del dossier de resultados (ver buildStatsSnapshot).
@@ -395,6 +397,33 @@ const MobileController = {
     });
 
     return res.json({ raceId: race.id, allowance: summary.allowance, teams });
+  },
+
+  // GET  /api/mobile/races/:id/tracking?team=<teamId>
+  // POST /api/mobile/races/:id/tracking  { team, names, pin }
+  // Seguimiento de rivales del Lap web, para la app. Leer es libre como el
+  // resto de la API móvil; cambiar la lista pide el PIN del equipo (el de la
+  // hoja de PINs) si la carrera lo exige, porque aquí no hay sesión de Lap.
+  racesTracking(req, res) {
+    const LapController = require('./LapController');
+    const race = Race.findById(req.params.id);
+    if (!race || race.format !== 'team') return res.status(404).json({ error: 'race_not_found' });
+    const teamId = Number(req.method === 'POST' ? (req.body && req.body.team) : req.query.team);
+    const team = Team.findById(teamId);
+    if (!team || team.race_id !== race.id) return res.status(404).json({ error: 'team_not_found' });
+
+    if (req.method === 'POST') {
+      if (race.lap_pin_required !== 0) {
+        Team.ensureLapPins(race.id);
+        const canon = db.prepare('SELECT MIN(id) AS id FROM teams WHERE race_id = ? AND name = ?').get(race.id, team.name);
+        if (!Team.verifyLapPin(race.id, canon.id, (req.body && req.body.pin) || '')) {
+          return res.status(403).json({ error: 'pin' });
+        }
+      }
+      LapTracking.setFor(race.id, team.name, (req.body && req.body.names) || []);
+      try { require('../services/SocketService').emit('lap:tracking', { raceId: race.id, teamName: team.name }); } catch (_) {}
+    }
+    return res.json({ ...LapController._buildTracking(race, team), pinRequired: race.lap_pin_required !== 0 });
   },
 
   // GET /api/mobile/training

@@ -13,6 +13,13 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.37.0] — 2026-10-02
+
+### Añadido
+- **Seguimiento de rivales en PitWall Lap.** En el panel del equipo hay una sección nueva, **«Seguimiento · mangas terminadas»**, con una tarjeta para tu equipo (marcada **Tú**) y otra por cada rival que sigas (hasta **5**). Cada tarjeta muestra, carril a carril y en total: **vueltas**, vuelta **rápida**, **media** (con salidas) y media **limpia** (sin salidas). Solo cuentan las mangas ya terminadas: la que está en curso no entra hasta que se cierra.
+- Los rivales se eligen en **«Elegir equipos a seguir (hasta 5)»** y se guardan **para todo el equipo**: todos los móviles del mismo box ven la misma lista y se actualizan solos cuando alguien la cambia.
+- La **app móvil PitWall Lap** también puede leer el seguimiento y cambiar la lista (`/api/mobile/races/:id/tracking`). Para cambiarla pide el **PIN del equipo** de la hoja de PINs, salvo que la carrera tenga el PIN desactivado.
+
 ## [1.36.2] — 2026-09-13
 
 ### Corregido

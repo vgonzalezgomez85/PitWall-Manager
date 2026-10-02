@@ -106,6 +106,19 @@
       </details>
     </div>
 
+    <div id="trackWrap">
+      <div class="section-title">Seguimiento <span class="trk-note">· mangas terminadas</span></div>
+      <div id="trackList"></div>
+      <details id="trackPick" class="trk-pick">
+        <summary>Elegir equipos a seguir (hasta <span id="trackMax">5</span>)</summary>
+        <div id="trackCands" class="trk-cands"></div>
+        <div class="trk-actions">
+          <span id="trackCount" class="trk-note"></span>
+          <button id="trackSave" type="button" class="audiobtn">Guardar</button>
+        </div>
+      </details>
+    </div>
+
     <div class="footnote" id="foot">—</div>
   </div>
 
@@ -743,6 +756,65 @@
       poleMyTurnStart(lastSnap.poleLive.myTurnRunning);
     }
 
+
+    // ── Seguimiento de rivales: compartido por todo el equipo (BD) ───────
+    var TRK = { max: 5, tracked: [], candidates: [], teams: [] }, trkDraft = null, trkPending = false;
+    function esc(t){ return String(t == null ? '' : t).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+    function trkCard(t){
+      var lanes = t.lanes.map(function(l){
+        return '<tr><td>C' + l.lane + '</td><td>' + l.laps + '</td><td>' + fmtLap(l.bestMs) + '</td><td>' + fmtLap(l.avgAllMs) + '</td><td>' + fmtLap(l.avgCleanMs) + '</td></tr>';
+      }).join('');
+      return '<div class="trk-card' + (t.isMe ? ' me' : '') + '">'
+        + '<div class="trk-head"><span class="swatch" style="background:' + esc(t.color || 'var(--muted)') + '"></span>'
+        + '<span class="trk-name">' + esc(t.name) + '</span>' + (t.isMe ? '<span class="trk-me">Tú</span>' : '') + '</div>'
+        + '<table class="trk-tbl"><thead><tr><th>Carril</th><th>Vueltas</th><th>Rápida</th><th>Media</th><th>Limpia</th></tr></thead><tbody>'
+        + (lanes || '<tr><td colspan="5" class="trk-empty">Sin mangas terminadas</td></tr>')
+        + '</tbody>' + (t.lanes.length ? '<tfoot><tr><td>Total</td><td>' + t.laps + '</td><td>' + fmtLap(t.bestMs) + '</td><td>' + fmtLap(t.avgAllMs) + '</td><td>' + fmtLap(t.avgCleanMs) + '</td></tr></tfoot>' : '')
+        + '</table></div>';
+    }
+    function trkPaintCands(){
+      var sel = trkDraft || TRK.tracked;
+      document.getElementById('trackCands').innerHTML = TRK.candidates.map(function(c){
+        var on = sel.indexOf(c.name) >= 0, full = !on && sel.length >= TRK.max;
+        return '<label class="trk-cand' + (full ? ' off' : '') + '"><input type="checkbox" value="' + esc(c.name) + '"' + (on ? ' checked' : '') + (full ? ' disabled' : '') + '>'
+          + '<span class="swatch" style="background:' + esc(c.color || 'var(--muted)') + '"></span><span>' + esc(c.name) + '</span></label>';
+      }).join('');
+      set('trackCount', sel.length + ' / ' + TRK.max);
+      set('trackMax', TRK.max);
+    }
+    function trkRender(j){
+      TRK = j;
+      document.getElementById('trackList').innerHTML = j.teams.map(trkCard).join('')
+        + (j.tracked.length ? '' : '<div class="trk-note trk-hint">Aún no sigues a ningún equipo.</div>');
+      if (!document.getElementById('trackPick').open) trkDraft = null;
+      trkPaintCands();
+    }
+    function trkLoad(){
+      if (trkPending) return; trkPending = true;
+      fetch('/api/lap/' + RACE_ID + '/team/' + TEAM_ID + '/tracking', { headers: { 'Accept':'application/json' } })
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(j){ trkPending = false; if (j) trkRender(j); })
+        .catch(function(){ trkPending = false; });
+    }
+    document.getElementById('trackCands').addEventListener('change', function(e){
+      if (!e.target || e.target.type !== 'checkbox') return;
+      var sel = (trkDraft || TRK.tracked).slice(), n = e.target.value, i = sel.indexOf(n);
+      if (e.target.checked && i < 0 && sel.length < TRK.max) sel.push(n);
+      if (!e.target.checked && i >= 0) sel.splice(i, 1);
+      trkDraft = sel; trkPaintCands();
+    });
+    document.getElementById('trackSave').addEventListener('click', function(){
+      var btn = this; btn.disabled = true;
+      fetch('/api/lap/' + RACE_ID + '/team/' + TEAM_ID + '/tracking', {
+        method: 'POST', headers: { 'Content-Type':'application/json', 'Accept':'application/json' },
+        body: JSON.stringify({ names: trkDraft || TRK.tracked }),
+      })
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(j){ btn.disabled = false; if (j){ trkDraft = null; document.getElementById('trackPick').open = false; trkRender(j); } })
+        .catch(function(){ btn.disabled = false; });
+    });
+    trkLoad();
+
     var pending = false, timer = null;
     function refresh(){
       if (pending) return; pending = true;
@@ -903,6 +975,10 @@
         scheduleRefresh();
       });
       socket.on('manga:cancelled', scheduleRefresh);
+      // El estado 'finished' se escribe al cerrar la manga: se pide un poco después, con
+      // margen aleatorio para que no lleguen todos los móviles a la vez.
+      socket.on('manga:stopped', function(){ setTimeout(trkLoad, 1500 + Math.random() * 3000); });
+      socket.on('lap:tracking', function(d){ if (d && d.raceId === RACE_ID && d.teamName === TEAM_NAME) trkLoad(); });
       socket.on('tires:changed', scheduleRefresh);
     } catch(e){}
 
@@ -910,6 +986,7 @@
     // avisos por socket ya disparan scheduleRefresh() al instante, así que
     // este intervalo no necesita ser corto.
     setInterval(refresh, 10000);
+    setInterval(trkLoad, 60000);
   })();
   </script>
 </body>

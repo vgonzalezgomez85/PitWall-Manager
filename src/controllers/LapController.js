@@ -29,6 +29,7 @@ const Race          = require('../models/Race');
 const Team          = require('../models/Team');
 const Lap           = require('../models/Lap');
 const TireChange        = require('../models/TireChange');
+const LapTracking       = require('../models/LapTracking');
 const PoleSession       = require('../models/PoleSession');
 const PoleTimingService = require('../services/PoleTimingService');
 const db            = require('../config/database');
@@ -198,6 +199,51 @@ const LapController = {
       return res.status(404).json({ error: 'not_found' });
     }
     res.json(LapController._buildTeamSnapshot(race, team));
+  },
+
+  // ── Seguimiento de rivales (solo mangas terminadas) ─────────────────────────
+  // GET  /api/lap/:raceId/team/:teamId/tracking
+  // POST /api/lap/:raceId/team/:teamId/tracking  { names: [...] }  (máx. 5)
+  tracking(req, res) {
+    const raceId = Number(req.params.raceId);
+    const teamId = Number(req.params.teamId);
+    if (!LapController._hasAccess(req, raceId, teamId)) {
+      return res.status(403).json({ error: 'forbidden' });
+    }
+    const race = Race.findById(raceId);
+    const team = Team.findById(teamId);
+    if (!race || !team || team.race_id !== raceId) {
+      return res.status(404).json({ error: 'not_found' });
+    }
+    if (req.method === 'POST') {
+      LapTracking.setFor(raceId, team.name, (req.body && req.body.names) || []);
+      try { require('../services/SocketService').emit('lap:tracking', { raceId, teamName: team.name }); } catch (_) {}
+    }
+    res.json(LapController._buildTracking(race, team));
+  },
+
+  _buildTracking(race, team) {
+    const stats   = LapTracking.laneStatsByName(race.id);
+    const tracked = LapTracking.listFor(race.id, team.name);
+    const colors  = {};
+    Team.withLapPins(race.id).forEach(t => { colors[t.name] = t.color; });
+    const entry = (name, isMe) => {
+      const s = stats[name];
+      return {
+        name, isMe, color: (s && s.color) || colors[name] || null,
+        laps: s ? s.laps : 0, bestMs: s ? s.bestMs : null,
+        avgAllMs: s ? s.avgAllMs : null, avgCleanMs: s ? s.avgCleanMs : null,
+        lanes: s ? s.lanes : [],
+      };
+    };
+    return {
+      ok: true,
+      max: LapTracking.MAX,
+      tracked,
+      candidates: LapTracking.teamNames(race.id).filter(n => n !== team.name)
+        .map(n => ({ name: n, color: colors[n] || null })),
+      teams: [entry(team.name, true), ...tracked.map(n => entry(n, false))],
+    };
   },
 
   // ── Paquete por carrera: lo que es igual para todos los equipos ────────────
