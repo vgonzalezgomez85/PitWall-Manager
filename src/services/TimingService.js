@@ -52,6 +52,16 @@ const DEBOUNCE_MS    = 3000;
 const EXIT_MARGIN_MS     = 1700;
 const PIT_STOP_MULTIPLIER = 2;
 
+// Salida que se CUENTA (is_exit): la regla de TicTac, «vuelta lenta» = más de
+// 1,5 s por encima de la vuelta rápida de ese carril en la manga (incluida la
+// 1ª vuelta). Comparada con su columna «Vuelta lenta (n)» en RESISLEMANS 1
+// coincide en 194/210 piloto-pista (las otras son arranques mal leídos).
+// Como la rápida baja durante la manga, la marca es provisional: cada vez que
+// mejora se revisan las vueltas anteriores, y al cerrar se hace la pasada final.
+// EXIT_MARGIN_MS (media limpia + 1,7 s) queda SOLO para la media limpia interna
+// (coma y reposición de bandera), que se calcula igual que antes.
+const SLOW_LAP_MARGIN_MS = 1500;
+
 class TimingServiceClass {
   constructor() {
     this.session         = null;
@@ -441,14 +451,33 @@ class TimingServiceClass {
              MIN(CASE WHEN is_exit = 0 AND is_warmup = 0 AND lap_number > 1 THEN lap_time_ms END) AS best,
              SUM(CASE WHEN is_warmup = 0 THEN lap_time_ms ELSE 0 END) AS sumMs,
              SUM(CASE WHEN is_warmup = 0 THEN 1 ELSE 0 END) AS cnt,
-             SUM(CASE WHEN is_warmup = 0 AND is_exit = 0 THEN lap_time_ms ELSE 0 END) AS cleanSum,
-             SUM(CASE WHEN is_warmup = 0 AND is_exit = 0 THEN 1 ELSE 0 END) AS cleanCnt,
+             SUM(is_exit) AS exits,
+             SUM(is_pit_stop) AS pits,
              MAX(elapsed_ms) AS maxElapsed,
              MAX(lap_number) AS maxLap
       FROM laps INDEXED BY idx_laps_manga
       WHERE manga_id = ? AND is_ghost = 0
       GROUP BY lane
     `).all(mangaId);
+
+    // La media limpia ya no sale de is_exit (ahora es la regla de TicTac): se
+    // rehace vuelta a vuelta con el criterio de siempre, como en el directo.
+    const limpiaPorCarril = new Map();
+    const acc = new Map();
+    for (const v of db.prepare(`
+      SELECT lane, lap_time_ms AS t, is_warmup AS w
+        FROM laps INDEXED BY idx_laps_manga
+       WHERE manga_id = ? AND is_ghost = 0
+       ORDER BY elapsed_ms, id
+    `).all(mangaId)) {
+      const a = acc.get(v.lane) || { sum: 0, cnt: 0, cSum: 0, cCnt: 0 };
+      const ref = a.cCnt ? a.cSum / a.cCnt : (a.cnt ? a.sum / a.cnt : 0);
+      if (v.w) continue;                  // el cruce de salida nunca entra en la media
+      if (!(ref > 0 && v.t - ref >= EXIT_MARGIN_MS)) { a.cSum += v.t; a.cCnt++; }
+      a.sum += v.t; a.cnt++;
+      acc.set(v.lane, a);
+    }
+    for (const [lane, a] of acc) limpiaPorCarril.set(lane, { cnt: a.cCnt, sum: a.cSum });
 
     let totalLaps = 0;
     for (const f of filas) {
@@ -462,9 +491,12 @@ class TimingServiceClass {
       ld.avgLapCount   = f.cnt || 0;
       ld.lapsMsSum     = f.sumMs || 0;
       ld.lapAvgMs      = ld.avgLapCount ? ld.lapsMsSum / ld.avgLapCount : 0;
-      ld.cleanAvgCount = f.cleanCnt || 0;
-      ld.cleanLapsSum  = f.cleanSum || 0;
+      const limpia = limpiaPorCarril.get(f.lane) || { cnt: 0, sum: 0 };
+      ld.cleanAvgCount = limpia.cnt;
+      ld.cleanLapsSum  = limpia.sum;
       ld.cleanAvgMs    = ld.cleanAvgCount ? ld.cleanLapsSum / ld.cleanAvgCount : 0;
+      ld.exitCount     = f.exits || 0;
+      ld.pitStopCount  = f.pits || 0;
       ld.refAvgMs      = ld.cleanAvgMs || ld.lapAvgMs;
       // El nombre correcto que lee la lógica de warmup es firstRealLapDone: si
       // el carril ya cruzó (hay vueltas en disco), el cruce de salida ya se
@@ -892,6 +924,9 @@ class TimingServiceClass {
           }),
         };
       }
+
+      // Pasada final de salidas con la vuelta rápida definitiva de cada carril.
+      for (const ld of Object.values(this.session.laneMap)) this._reflagSlowLaps(ld, this.session.manga.id);
 
       Manga.updateStatus(this.session.manga.id, 'finished');
       const next = Manga.nextPending(this.session.manga.tanda_id);
@@ -1588,19 +1623,11 @@ class TimingServiceClass {
     // that the projected total laps for the race reflects reality.
     if (ld.lapCount === 1 && ld.avgLapCount === 1 &&
         ld.lastLapMs - lapTimeMs >= EXIT_MARGIN_MS && ld.lastLapId) {
-      const prevId = ld.lastLapId;
       const prevMs = ld.lastLapMs;
       const wasPit = lapTimeMs > 0 && prevMs >= lapTimeMs * PIT_STOP_MULTIPLIER;
       console.log(`[TimingService] Retro-exit on lane ${lane}: lap1 ${prevMs}ms was a ${wasPit ? 'pit-stop' : 'crash'} (lap2 ${lapTimeMs}ms)`);
-      setImmediate(() => {
-        try {
-          require('../config/database')
-            .prepare('UPDATE laps SET is_exit = 1, is_pit_stop = ? WHERE id = ?')
-            .run(wasPit ? 1 : 0, prevId);
-        } catch (err) { console.error('[TimingService] DB error (retro exit):', err.message); }
-      });
-      ld.exitCount++;
-      if (wasPit) ld.pitStopCount++;
+      // La marca is_exit de la vuelta 1 la pone _reflagSlowLaps al fijarse la
+      // vuelta rápida con esta vuelta 2 (lap1 − lap2 ≥ 1,7 s ⇒ supera rápida + 1,5 s).
       // Lap 1 fue añadida a la "media limpia" en su procesamiento normal
       // (no era exit en ese momento). Ahora que la reclasificamos como exit
       // retroactivamente, la sacamos de las cuentas limpias para que el
@@ -1623,9 +1650,11 @@ class TimingServiceClass {
     // salidas previas). Si aún no hay vueltas limpias (primeras vueltas o
     // piloto que solo ha salido), caemos a la media total como fallback.
     const refAvg = ld.cleanAvgMs > 0 ? ld.cleanAvgMs : ld.lapAvgMs;
-    const isExit    = refAvg > 0 && lapTimeMs - refAvg >= EXIT_MARGIN_MS;
+    // Fuera de la media limpia (criterio de siempre, ver SLOW_LAP_MARGIN_MS).
+    const isOutlier = refAvg > 0 && lapTimeMs - refAvg >= EXIT_MARGIN_MS;
+    const isExit    = !missed && ld.bestLapMs != null && lapTimeMs > ld.bestLapMs + SLOW_LAP_MARGIN_MS;
     // A pit-stop is a *very* long outlier: at least 2× la media limpia.
-    const isPitStop = isExit && lapTimeMs >= refAvg * PIT_STOP_MULTIPLIER;
+    const isPitStop = isExit && refAvg > 0 && lapTimeMs >= refAvg * PIT_STOP_MULTIPLIER;
 
     ld.lapCount++;
     ld.lastLapMs    = lapTimeMs;
@@ -1639,8 +1668,9 @@ class TimingServiceClass {
     const isWarmup = !ld.firstRealLapDone || ld.resumeWarmup;
     ld.firstRealLapDone = true;
     ld.resumeWarmup = false;
+    let bestImproved = false;
     if (!isWarmup) {
-      if (!ld.bestLapMs || lapTimeMs < ld.bestLapMs) ld.bestLapMs = lapTimeMs;
+      if (!ld.bestLapMs || lapTimeMs < ld.bestLapMs) { ld.bestLapMs = lapTimeMs; bestImproved = true; }
       if (!ld.raceBestLapMs || lapTimeMs < ld.raceBestLapMs) {
         ld.raceBestLapMs  = lapTimeMs;
         ld.raceBestEntity = ld.name;
@@ -1648,10 +1678,6 @@ class TimingServiceClass {
       }
     }
 
-    if (isExit) {
-      ld.exitCount++;
-      if (isPitStop) ld.pitStopCount++;
-    }
     // Every racing lap (including exits and pit-stops, EXCLUDING warmup)
     // contributes a la media. La warmup tiene artefactos (countdown del
     // semáforo, cruce inicial) que no representan el ritmo real, así que
@@ -1662,8 +1688,8 @@ class TimingServiceClass {
       ld.lapsMsSum += lapTimeMs;
       ld.lapAvgMs   = ld.lapsMsSum / ld.avgLapCount;
     }
-    // Media limpia: solo vueltas no-exit. Usada para detectar salidas futuras.
-    if (!isExit) {
+    // Media limpia: sin las vueltas muy lentas (criterio de siempre).
+    if (!isOutlier) {
       ld.cleanAvgCount++;
       ld.cleanLapsSum += lapTimeMs;
       ld.cleanAvgMs    = ld.cleanLapsSum / ld.cleanAvgCount;
@@ -1693,6 +1719,13 @@ class TimingServiceClass {
       });
     } catch (err) { console.error('[TimingService] DB error:', err.message); }
 
+    if (bestImproved) {
+      this._reflagSlowLaps(ld, manga.id);
+    } else if (isExit) {
+      ld.exitCount++;
+      if (isPitStop) ld.pitStopCount++;
+    }
+
     SocketService.emitLap({
       lane, color: ld.color, name: ld.name, categoria: ld.categoria,
       lapNumber: ld.lapCount, lapTimeMs, bestLapMs: ld.bestLapMs,
@@ -1701,6 +1734,34 @@ class TimingServiceClass {
       exitCount: ld.exitCount,
     });
     SocketService.emitStandings(this.getStandings());
+  }
+
+  /**
+   * Marca como salida toda vuelta del carril en esta manga que supere la vuelta
+   * rápida + SLOW_LAP_MARGIN_MS y recuenta salidas/paradas desde la BD. Se llama
+   * cuando mejora la vuelta rápida (el límite baja y vueltas ya guardadas pasan
+   * a ser lentas) y al cerrar la manga. Solo marca: con la rápida bajando, una
+   * vuelta lenta nunca deja de serlo. Las estimadas (bandera, caída) no cuentan.
+   */
+  _reflagSlowLaps(ld, mangaId) {
+    if (!ld.bestLapMs) return;
+    const db = require('../config/database');
+    const refAvg = ld.cleanAvgMs > 0 ? ld.cleanAvgMs : ld.lapAvgMs;
+    const pitMinMs = refAvg > 0 ? refAvg * PIT_STOP_MULTIPLIER : Number.MAX_SAFE_INTEGER;
+    try {
+      db.prepare(`
+        UPDATE laps SET is_exit = 1,
+               is_pit_stop = CASE WHEN lap_time_ms >= ? THEN 1 ELSE 0 END
+         WHERE manga_id = ? AND lane = ? AND is_ghost = 0 AND is_estimated = 0
+           AND is_exit = 0 AND lap_time_ms > ?
+      `).run(pitMinMs, mangaId, ld.lane, ld.bestLapMs + SLOW_LAP_MARGIN_MS);
+      const c = db.prepare(`
+        SELECT COALESCE(SUM(is_exit), 0) AS exits, COALESCE(SUM(is_pit_stop), 0) AS pits
+          FROM laps WHERE manga_id = ? AND lane = ? AND is_ghost = 0
+      `).get(mangaId, ld.lane);
+      ld.exitCount    = c.exits;
+      ld.pitStopCount = c.pits;
+    } catch (err) { console.error('[TimingService] DB error (salidas):', err.message); }
   }
 
   // Certificación del fantasma: ¿la vuelta larga (candidata a 2×) de `lane`

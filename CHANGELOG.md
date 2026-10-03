@@ -13,6 +13,13 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.38.0] — 2026-10-03
+
+### Mejorado
+- **Las salidas de pista ahora cuentan igual que las «vueltas lentas» de TicTac.** Es **salida** toda vuelta que tarde **más que la vuelta rápida de ese piloto en ese carril durante la manga + 1,5 s**, incluida la primera vuelta (antes se comparaba con la media limpia + 1,7 s). Si además tarda el doble de su media limpia o más, sigue siendo **parada en boxes (🔧)**. Las vueltas que repone PitWall (bandera, caída de conexión) nunca cuentan como salida. Comparado con TicTac en **RESISLEMANS 1**, las salidas pasan a coincidir casi pista a pista.
+- **En directo, las salidas pueden aparecer en vueltas ya pasadas.** Como la vuelta rápida va bajando durante la manga, cuando un piloto la mejora PitWall revisa sus vueltas anteriores en ese carril y marca como salida las que ahora quedan por encima del límite (p. ej. con mejor 10,20 s una vuelta de 11,50 s no es salida; si luego hace 9,80 s, sí lo es). Al cerrar la manga se repasa todo con la vuelta rápida definitiva. Esto cambia el número de salidas en el directo, en Resultados y en PitWall Lap, y las cifras «limpias / sin salidas» (media limpia, ritmo limpio, consistencia).
+- **La coma y el desempate no cambian**, y **las carreras ya corridas se quedan como estaban**: la regla nueva vale para las próximas.
+
 ## [1.37.3] — 2026-10-03
 
 ### Corregido
