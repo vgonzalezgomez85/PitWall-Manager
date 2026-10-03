@@ -13,6 +13,13 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.37.3] — 2026-10-03
+
+### Corregido
+- **Vueltas de más en algunos arranques de manga con el DS-300.** Cuando todos los coches cruzan a la vez al empezar, el DS-300 manda una ráfaga de avisos que a veces llegaba partida a PitWall. En esos casos PitWall podía **contar una vuelta de más** (incluso anotar cruces en carriles que no existen) o **perder cruces** que luego reponía al final como vueltas de bandera. Ahora PitWall recompone bien esas ráfagas, descarta los trozos sueltos y no cuenta dos veces un mismo aviso repetido.
+- **Una vuelta fantasma pasada a otro carril podía acabar contando para los dos.** Al cerrar la manga (o tras una caída de conexión), PitWall reponía en el carril de origen una vuelta de bandera que en realidad ya se había asignado al otro carril. Ahora esa vuelta cuenta solo para el piloto al que se asignó.
+- Se detectó comparando con **TicTac** los resultados de **RESISLEMANS 1** (PitWall daba 9 vueltas más). Las carreras ya corridas no cambian: el arreglo vale para las próximas.
+
 ## [1.37.2] — 2026-10-03
 
 ### Corregido

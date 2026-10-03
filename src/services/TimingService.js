@@ -111,6 +111,29 @@ class TimingServiceClass {
     return abs;
   }
 
+  /**
+   * Vueltas de un carril que el contador del DS (byte12) ya tiene contadas, para
+   * compararlas con él al reponer: las válidas, más las fantasma que PitWall
+   * certificó y pasó a otro carril. El DS cuenta ese cruce en SU carril; sin
+   * sumarlo, faltaba "1 vuelta" y se reponía otra falsa — la misma vuelta para
+   * los dos (ORIOL, RESISLEMANS 1). `maxNum` = último lap_number válido.
+   */
+  static dsCountedLaps(mangaId, lane) {
+    const db = require('../config/database');
+    const row = db.prepare(`
+      SELECT COUNT(*) AS n, MAX(lap_number) AS maxNum
+        FROM laps
+       WHERE manga_id = ? AND lane = ? AND is_ghost = 0 AND lap_number > 0
+    `).get(mangaId, lane);
+    const { n: reassigned } = db.prepare(`
+      SELECT COUNT(*) AS n
+        FROM laps g
+       WHERE g.manga_id = ? AND g.lane = ? AND g.is_ghost = 1
+         AND EXISTS (SELECT 1 FROM laps r WHERE r.manga_id = g.manga_id AND r.source_lap_id = g.id)
+    `).get(mangaId, lane);
+    return { n: (row?.n || 0) + reassigned, maxNum: row?.maxNum || 0 };
+  }
+
   // Allow controllers (e.g. SessionController.repeat) to clear the boundary
   // when the user explicitly reactivates the last manga of a finished tanda.
   clearTandaBoundary() {
@@ -493,18 +516,12 @@ class TimingServiceClass {
       return;
     }
 
-    const db = require('../config/database');
-    const countStmt = db.prepare(
-      `SELECT COUNT(*) AS n, MAX(lap_number) AS maxNum
-         FROM laps WHERE manga_id = ? AND lane = ? AND is_ghost = 0 AND lap_number > 0`,
-    );
-
     let repuestas = 0;
     for (const ld of Object.values(this.session.laneMap)) {
       const dsCount = counters[ld.lane];
       if (dsCount == null) continue;
-      const row = countStmt.get(mangaId, ld.lane);
-      const registered = row?.n || 0;
+      const row = TimingServiceClass.dsCountedLaps(mangaId, ld.lane);
+      const registered = row.n;
       let missing = TimingServiceClass.absoluteDsCount(dsCount, registered) - registered;
       if (missing <= 0) continue;
 
@@ -1033,19 +1050,12 @@ class TimingServiceClass {
     const counters = SerialService.getDsLapCounters();   // { globalLane: byte12 }
     if (!counters || Object.keys(counters).length === 0) return;
 
-    const db = require('../config/database');
-    const countStmt = db.prepare(
-      `SELECT COUNT(*) AS n, MAX(lap_number) AS maxNum
-         FROM laps
-        WHERE manga_id = ? AND lane = ? AND is_ghost = 0 AND lap_number > 0`
-    );
-
     let inserted = 0;
     for (const ld of data.lanes) {
       const dsCount = counters[ld.lane];
       if (dsCount == null) continue;                 // el DS no reportó este carril
-      const row = countStmt.get(data.mangaId, ld.lane);
-      const registered = row?.n || 0;
+      const row = TimingServiceClass.dsCountedLaps(data.mangaId, ld.lane);
+      const registered = row.n;
       // byte12 es BCD de un byte: cuenta vueltas MÓDULO 100. Comparar el crudo
       // con las vueltas persistidas daba negativo en cuanto un carril pasaba de
       // 100 vueltas (130 → byte12=30 → 30-129 = -99 → `continue`), así que la

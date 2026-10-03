@@ -40,6 +40,21 @@ const REPLAY_FILE = path.join(__dirname, '../data/RegistroCarrera.txt');
 const FRAME_GAP_MS_DEFAULT = 75;
 let   FRAME_GAP_MS         = FRAME_GAP_MS_DEFAULT;
 const DS_FRAME_LEN = 21;       // un frame DS-300 = 21 bytes fijos (0xe0 … 0xeb)
+
+// Posiciones de las tramas completas (0xe0 … 0xeb a 21 bytes) dentro de un
+// buffer, saltando los fragmentos que no encajan.
+function ds300FrameOffsets(buf) {
+  const offsets = [];
+  for (let i = 0; i + DS_FRAME_LEN <= buf.length; ) {
+    if (buf[i] === 0xe0 && buf[i + DS_FRAME_LEN - 1] === 0xeb) {
+      offsets.push(i);
+      i += DS_FRAME_LEN;
+    } else {
+      i++;
+    }
+  }
+  return offsets;
+}
 const MIN_CROSSING_MS = 500;   // minimum ms between two crossings on the same lane
 const MAX_LAP_MS      = 240000; // elapsed > 240s → car stopped; reset ref, skip recording
 
@@ -146,6 +161,9 @@ class CircuitConnection {
     // vueltas cabían en el hueco y desempatar el módulo.
     this._lastLapAbsByLane = new Map();
     this._lastCrossTsByLane = new Map();
+    // Última trama de cruce por carril (byte12 + bytes de tiempo), para
+    // reconocer una retransmisión que llega en otro bloque.
+    this._lastSigByLane = new Map();
     // Running stats of REAL lap times per lane (sum + count), used to estimate
     // phantom lap times. Phantom laps never feed back into these stats.
     this._lapStatsByLane = new Map();
@@ -327,6 +345,7 @@ class CircuitConnection {
       lastLap:   new Map(this._lastLapByLane),
       lastAbs:   new Map(this._lastLapAbsByLane),
       lastTs:    new Map(this._lastCrossTsByLane),
+      lastSig:   new Map(this._lastSigByLane),
       lapStats:  new Map(this._lapStatsByLane),
       raceState: this._raceState,
     };
@@ -337,6 +356,7 @@ class CircuitConnection {
     this._lastLapByLane     = new Map(s.lastLap);
     this._lastLapAbsByLane  = new Map(s.lastAbs);
     this._lastCrossTsByLane = new Map(s.lastTs);
+    this._lastSigByLane     = new Map(s.lastSig || []);
     this._lapStatsByLane    = new Map(s.lapStats);
     // La trama de GO (0x3e/0xa1) vuelve a poner `_raceState` a null antes de
     // arrancar la manga siguiente, así que heredarlo no bloquea ningún GO futuro.
@@ -498,6 +518,14 @@ class CircuitConnection {
     else if (newState === 'finished') this._onFinish();
   }
 
+  _logResync(frame, frames) {
+    const discarded = frame.length - frames * DS_FRAME_LEN;
+    console.warn(`[DS-300 C${this._circuitIndex + 1}] Bloque desalineado (${frame.length} bytes): ${frames} trama(s) rescatada(s), ${discarded} byte(s) descartado(s)`);
+    if (!DebugLogger.isEnabled()) return;
+    const hex = Array.from(frame).map(b => b.toString(16).padStart(2, '0')).join(' ');
+    DebugLogger.log('frame_resync', { circuit: this._circuitIndex + 1, bytes: frame.length, frames, discarded, hex });
+  }
+
   _processFrame(frame, ts) {
     if (frame.length < 2) return;
 
@@ -507,41 +535,52 @@ class CircuitConnection {
     // llegan a < FRAME_GAP_MS unos de otros, _onData los concatena en un solo
     // buffer. Antes solo se leía el PRIMER cruce y se perdía el resto (root
     // cause de la pérdida de vueltas). Aquí re-separamos el buffer en frames de
-    // 21 bytes y procesamos cada uno. Solo si divide limpio en frames bien
-    // formados; si no, lo tratamos como antes para no romper fragmentación.
-    if (frame.length > DS_FRAME_LEN && frame.length % DS_FRAME_LEN === 0) {
-      const n = frame.length / DS_FRAME_LEN;
-      let wellFormed = true;
-      for (let i = 0; i < n && wellFormed; i++) {
-        const off = i * DS_FRAME_LEN;
-        if (frame[off] !== 0xe0 || frame[off + DS_FRAME_LEN - 1] !== 0xeb) wellFormed = false;
+    // 21 bytes y procesamos cada uno.
+    if (frame.length > DS_FRAME_LEN) {
+      const offsets = ds300FrameOffsets(frame);
+      if (offsets.length * DS_FRAME_LEN !== frame.length) {
+        // Bloque DESALINEADO: el corte por silencio partió una trama y el buffer
+        // empieza por la cola de la anterior (ráfagas del arranque, RESISLEMANS 1).
+        // Leerlo entero como UNA trama tomaba el carril y el byte12 de bytes
+        // cualquiera (0xAA de relleno → carriles 1,3,5,7): cruces inventados, las
+        // tramas reales de dentro perdidas y, por el contador falso, una ráfaga
+        // de ~97 cruces de relleno. Se rescatan las tramas completas de dentro.
+        this._logResync(frame, offsets.length);
+        if (offsets.length === 0) return;
       }
-      if (wellFormed) {
-        let collapsed = 0;
-        for (let i = 0; i < n; i++) {
-          const off = i * DS_FRAME_LEN;
-          // Colapsa RETRANSMISIONES: algunos DS/adaptadores entregan la MISMA
-          // trama repetida dentro de una ráfaga (bytes idénticos). Un cruce real
-          // cambia el carril (laneByte) o el contador de vuelta (byte12), así que
-          // dos sub-tramas byte-idénticas CONSECUTIVAS son la misma vuelta
-          // duplicada → se procesa una sola vez. Los cruces simultáneos de
-          // carriles DISTINTOS tienen laneByte distinto: NO se colapsan (que es
-          // justo lo que el de-merge está para recuperar).
-          if (i > 0) {
-            let same = true;
-            for (let k = 0; k < DS_FRAME_LEN; k++) {
-              if (frame[off + k] !== frame[off - DS_FRAME_LEN + k]) { same = false; break; }
-            }
-            if (same) { collapsed++; continue; }
+      let collapsed = 0;
+      for (let i = 0; i < offsets.length; i++) {
+        const off = offsets[i];
+        // Colapsa RETRANSMISIONES: algunos DS/adaptadores entregan la MISMA
+        // trama repetida dentro de una ráfaga (bytes idénticos). Un cruce real
+        // cambia el carril (laneByte) o el contador de vuelta (byte12), así que
+        // dos sub-tramas byte-idénticas CONSECUTIVAS son la misma vuelta
+        // duplicada → se procesa una sola vez. Los cruces simultáneos de
+        // carriles DISTINTOS tienen laneByte distinto: NO se colapsan (que es
+        // justo lo que el de-merge está para recuperar).
+        if (i > 0) {
+          const prev = offsets[i - 1];
+          let same = true;
+          for (let k = 0; k < DS_FRAME_LEN; k++) {
+            if (frame[off + k] !== frame[prev + k]) { same = false; break; }
           }
-          this._processFrame(frame.slice(off, off + DS_FRAME_LEN), ts);
+          if (same) { collapsed++; continue; }
         }
-        if (collapsed > 0) {
-          console.log(`[DS-300 C${this._circuitIndex + 1}] De-merge: ${collapsed}/${n} sub-tramas duplicadas descartadas (retransmisión)`);
-          DebugLogger.log('frame_dedup', { circuit: this._circuitIndex + 1, total: n, collapsed });
-        }
-        return;
+        this._processFrame(frame.slice(off, off + DS_FRAME_LEN), ts);
       }
+      if (collapsed > 0) {
+        const n = offsets.length;
+        console.log(`[DS-300 C${this._circuitIndex + 1}] De-merge: ${collapsed}/${n} sub-tramas duplicadas descartadas (retransmisión)`);
+        DebugLogger.log('frame_dedup', { circuit: this._circuitIndex + 1, total: n, collapsed });
+      }
+      return;
+    }
+
+    // Un fragmento suelto (la cola de una trama partida) no empieza por 0xE0: su
+    // byte 10 no es el carril. Parsearlo inventaba cruces.
+    if (frame[0] !== 0xe0) {
+      this._logResync(frame, 0);
+      return;
     }
 
     if (DebugLogger.isEnabled()) {
@@ -579,6 +618,7 @@ class CircuitConnection {
       this._lastLapByLane.clear();
       this._lastLapAbsByLane.clear();
       this._lastCrossTsByLane.clear();
+      this._lastSigByLane.clear();
       this._lapStatsByLane.clear();
       // Reset cached race state so the next transition to 'running' actually
       // fires the callback. Some DS-300 units don't emit 0xA4/0xA7 between
@@ -699,6 +739,17 @@ class CircuitConnection {
       // del circuito (multi-puerto). Con 1 caja, laneKey === localLane.
       const laneKey    = boxOffset + localLane;
       const globalLane = laneKey + this._laneOffset;
+
+      // Retransmisión partida entre dos bloques: el colapso de duplicados del
+      // de-merge solo ve las copias dentro del MISMO bloque. Un cruce nuevo
+      // siempre sube el byte12, así que mismo byte12 y mismo tiempo que la
+      // última trama de este carril es la misma vuelta otra vez.
+      const sig = `${frame[12]}:${frame[14]}:${frame[15]}:${frame[16]}:${frame[17]}`;
+      if (this._lastSigByLane.get(laneKey) === sig) {
+        DebugLogger.log('frame_repeat', { circuit: this._circuitIndex + 1, lane: globalLane, lapCounter, lapTimeMs });
+        continue;
+      }
+      this._lastSigByLane.set(laneKey, sig);
 
       // Reconciliation: if B12 jumped by more than 1 since the previous frame
       // for this lane (link was down, we missed crossings), emit the missing
