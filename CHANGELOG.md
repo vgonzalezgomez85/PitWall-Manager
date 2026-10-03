@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.38.2] — 2026-10-03
+
+### Corregido
+- **En Windows, los campos de texto dejaban de admitir escritura** al azar en cualquier pantalla y había que cerrar y volver a abrir la ventana. Lo provocaba un fallo de Electron: después de cualquier ventana de confirmación («¿Seguro que…?»), la ventana se quedaba sin foco de teclado, y se notaba más tarde, a menudo ya en otra página. Ahora PitWall devuelve el foco a la ventana en cuanto se cierra la confirmación. En macOS no pasaba y no cambia nada.
+
 ## [1.38.1] — 2026-10-03
 
 ### Mejorado

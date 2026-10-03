@@ -15,7 +15,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-const { app, BrowserWindow, Tray, Menu, shell, nativeImage, dialog } = require('electron');
+const { app, BrowserWindow, Tray, Menu, shell, nativeImage, dialog, ipcMain } = require('electron');
 const path   = require('path');
 const zlib   = require('zlib');
 const crypto = require('crypto');
@@ -161,6 +161,7 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js'),
       // Permite que el AudioContext / <audio>.play() arranquen sin gesto del
       // usuario. Combinado con app.commandLine.appendSwitch arriba garantiza
       // que los pitidos del semáforo suenen al primer GO de la sesión.
@@ -211,6 +212,17 @@ function createTray() {
   ]));
   tray.on('double-click', () => mainWindow ? (mainWindow.show(), mainWindow.focus()) : createWindow());
 }
+
+// Ver preload.js: devuelve el foco de teclado tras un diálogo nativo (fallo de
+// Electron en Windows). En macOS no pasa y el blur/focus haría parpadear.
+ipcMain.on('pitwall:refocus', (e) => {
+  if (process.platform === 'darwin') return;
+  const win = BrowserWindow.fromWebContents(e.sender);
+  if (!win || win.isDestroyed()) return;
+  win.blur();
+  win.focus();
+  e.sender.focus();
+});
 
 // ── App lifecycle ─────────────────────────────────────────────────────────────
 app.whenReady().then(async () => {
