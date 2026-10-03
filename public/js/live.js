@@ -122,7 +122,7 @@ function closeViewPicker() {
   const ov = document.getElementById('viewPickerOverlay');
   if (ov) ov.hidden = true;
 }
-function selectView(mode) {
+function selectView(mode, persist = true) {
   const grid = document.getElementById('lanesGrid');
   if (!grid) return;
   const m = String(mode);
@@ -130,11 +130,64 @@ function selectView(mode) {
   grid.classList.toggle('live-lanes--detailed', m === '3');
   // V3 también activa el layout de cuadrícula compacta como base.
   if (m === '3') grid.classList.add('live-lanes--vertical');
-  localStorage.setItem(_viewStorageKey(), m);
+  if (persist) { try { localStorage.setItem(_viewStorageKey(), m); } catch {} }
   closeViewPicker();
   if (typeof fitLaneCards === 'function') requestAnimationFrame(() => fitLaneCards());
   // Re-evaluar paginación de V1 al cambiar de vista
   requestAnimationFrame(_v1ApplyPaging);
+  // La clasificación acoplada solo aplica en V1: al volver, reajustarla.
+  if (typeof _refitSideStandings === 'function') requestAnimationFrame(_refitSideStandings);
+}
+
+// ── Clasificación estimada acoplada a la derecha (solo V1) ───────────────
+// Conmutador #sideBtn. Estado por carrera en localStorage; el parámetro de
+// URL ?side=standings (o ?side=none) lo fuerza SIN guardarlo: sirve para
+// enlaces directos (pantalla de sala) y para capturas.
+function _sideStorageKey() {
+  return `pitwall.liveSide.race-${RACE_DATA.raceId}`;
+}
+function _setSideStandings(on) {
+  document.body.classList.toggle('side-standings', !!on);
+  const btn = document.getElementById('sideBtn');
+  if (btn) {
+    btn.classList.toggle('is-on', !!on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
+  requestAnimationFrame(() => {
+    if (typeof fitLaneCards === 'function') fitLaneCards();
+    _refitSideStandings();
+    _v1SchedulePaging();
+  });
+}
+function _refitSideStandings() {
+  if (typeof fitSidebarTable !== 'function' || !projectedBody) return;
+  fitSidebarTable();
+  paintStandingsPage();
+}
+function toggleSideStandings() {
+  const on = !document.body.classList.contains('side-standings');
+  try { localStorage.setItem(_sideStorageKey(), on ? '1' : '0'); } catch {}
+  _setSideStandings(on);
+}
+function _initSideStandings() {
+  let on = false;
+  const q = new URLSearchParams(location.search).get('side');
+  if (q === 'standings') on = true;
+  else if (q === 'none') on = false;
+  else { try { on = localStorage.getItem(_sideStorageKey()) === '1'; } catch {} }
+  _setSideStandings(on);
+  const sb = document.getElementById('liveSidebar');
+  if (sb && 'ResizeObserver' in window) {
+    // Solo si cambia el tamaño de verdad (evita bucles de re-ajuste).
+    let raf = 0, lastW = -1, lastH = -1;
+    new ResizeObserver(entries => {
+      const r = entries[0].contentRect;
+      if (Math.round(r.width) === lastW && Math.round(r.height) === lastH) return;
+      lastW = Math.round(r.width); lastH = Math.round(r.height);
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => { raf = 0; _refitSideStandings(); });
+    }).observe(sb);
+  }
 }
 
 // ── Paginación rotatoria de V1 (filas) cuando hay overflow ───────────────
@@ -175,7 +228,10 @@ function _v1ApplyPaging() {
   const cs = getComputedStyle(grid);
   const gap = parseFloat(cs.rowGap || cs.gap) || 0;
   const padding = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
-  const available = containerH - padding;
+  // La cabecera de columnas (PILOTO, VLT…) también ocupa sitio en el contenedor.
+  const lh = document.getElementById('lanesHeader');
+  const headerH = lh && lh.offsetParent ? lh.offsetHeight + gap : 0;
+  const available = containerH - padding - headerH;
   const pages = [];
   let page = [];
   let usedH = 0;
@@ -251,9 +307,14 @@ function _startDriverFlip() {
 // Restaurar la vista guardada. El botón siempre se muestra.
 function _initViewPicker() {
   const nonRest = (RACE_DATA.lanes || []).filter(l => !l.isRest).length;
-  const saved = localStorage.getItem(_viewStorageKey());
-  if (saved) selectView(saved);
+  // ?view=1|2|3 fuerza la vista sin guardarla (enlaces directos/capturas).
+  const qv = new URLSearchParams(location.search).get('view');
+  let saved = null;
+  try { saved = localStorage.getItem(_viewStorageKey()); } catch {}
+  if (['1', '2', '3'].includes(qv)) selectView(qv, false);
+  else if (saved) selectView(saved);
   else if (nonRest > 8) selectView('2');  // default sensato para muchos carriles
+  _initSideStandings();
   // Cerrar con Escape
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') closeViewPicker();
@@ -595,6 +656,19 @@ function flashCard(lane, isExit) {
   el.classList.add(isExit ? 'exit-flash' : 'flash');
 }
 
+// Un aviso junto al nombre (⚠ 🔧 🛞) que aparece o gana una cifra a media
+// manga le quita sitio al nombre: hay que recalcular las filas (V1), si no el
+// nombre se queda cortado con «…» hasta el siguiente ajuste.
+let _badgeRefitRaf = 0;
+function _badgeSig(wrap, num) { return (wrap.hidden ? '0' : '1') + num.textContent.length; }
+function _refitIfBadgeChanged(before, wrap, num) {
+  if (before === _badgeSig(wrap, num) || _badgeRefitRaf) return;
+  _badgeRefitRaf = requestAnimationFrame(() => {
+    _badgeRefitRaf = 0;
+    if (typeof fitLaneCards === 'function') fitLaneCards();
+  });
+}
+
 // Show 🔧 next to the lane name once a pit-stop happens. The icon stays
 // visible for the rest of the manga; if more than one pit-stop occurs, an
 // "+N" suffix is appended where N = total pit-stops − 1.
@@ -602,13 +676,16 @@ function updatePitIndicator(lane, count) {
   const wrap = document.getElementById(`card-pit-${lane}`);
   const num  = document.getElementById(`card-pit-count-${lane}`);
   if (!wrap || !num) return;
+  const _sig = _badgeSig(wrap, num);
   if (!count || count <= 0) {
     wrap.hidden = true;
     num.textContent = '';
+    _refitIfBadgeChanged(_sig, wrap, num);
     return;
   }
   wrap.hidden = false;
   num.textContent = count > 1 ? `+${count - 1}` : '';
+  _refitIfBadgeChanged(_sig, wrap, num);
 }
 
 // Badge ⚠️ pequeño junto al nombre con el nº de salidas de la manga — mismo
@@ -617,13 +694,16 @@ function updateExitIndicator(lane, count) {
   const wrap = document.getElementById(`card-exit-${lane}`);
   const num  = document.getElementById(`card-exit-count-${lane}`);
   if (!wrap || !num) return;
+  const _sig = _badgeSig(wrap, num);
   if (!count || count <= 0) {
     wrap.hidden = true;
     num.textContent = '';
+    _refitIfBadgeChanged(_sig, wrap, num);
     return;
   }
   wrap.hidden = false;
   num.textContent = count;
+  _refitIfBadgeChanged(_sig, wrap, num);
 }
 
 // Badge 🛞 con el nº de cambios de neumático del equipo en la carrera. A
@@ -634,10 +714,12 @@ function updateTireIndicator(lane, used) {
   const wrap = document.getElementById(`card-tire-${lane}`);
   const num  = document.getElementById(`card-tire-count-${lane}`);
   if (!wrap || !num) return;
+  const _sig = _badgeSig(wrap, num);
   if (!used || used <= 0) {
     wrap.hidden = true;
     num.textContent = '';
     _tireUsedByLane[lane] = 0;
+    _refitIfBadgeChanged(_sig, wrap, num);
     return;
   }
   wrap.hidden = false;
@@ -648,6 +730,7 @@ function updateTireIndicator(lane, used) {
     wrap.classList.add('tire-flash');
   }
   _tireUsedByLane[lane] = used;
+  _refitIfBadgeChanged(_sig, wrap, num);
 }
 
 // Refetchea el estado de neumáticos y repinta los badges. El cruce tarjeta↔
@@ -688,12 +771,12 @@ function computeStandingsPageSize() {
   rows.forEach(r => { r.style.display = ''; });
   if (rows.length === 0) return null;
   if (container.scrollHeight <= container.clientHeight + 1) return null;
-  const rowH = rows[0]?.offsetHeight || 0;
-  const thead = projectedBody.parentElement.querySelector('thead');
-  const headerH = thead ? thead.offsetHeight : 0;
-  const usableH = Math.max(0, container.clientHeight - headerH);
-  const pageSize = rowH > 0 ? Math.max(1, Math.floor(usableH / rowH)) : 0;
-  return pageSize > 0 && pageSize < rows.length ? pageSize : null;
+  // Filas que caben ENTERAS (medidas una a una: no todas miden igual).
+  const bottom = container.getBoundingClientRect().bottom + 0.5;
+  let pageSize = 0;
+  while (pageSize < rows.length && rows[pageSize].getBoundingClientRect().bottom <= bottom) pageSize++;
+  pageSize = Math.max(1, pageSize);
+  return pageSize < rows.length ? pageSize : null;
 }
 
 function paintStandingsPage() {
@@ -754,8 +837,6 @@ function fitLaneCards() {
   const H = lanesGrid.clientHeight;
   if (W <= 0 || H <= 0) return;
 
-  // Carriles activos (los que tienen tarjeta visible)
-  const nLanes = Math.max(1, RACE_DATA.lanes.filter(l => !l.isRest).length);
   // Modo vertical (>8 carriles): el grid es una rejilla de columnas. Calculamos
   // el nº de columnas y el alto de fila para que TODAS las tarjetas llenen la
   // pantalla (sin franja negra ni scroll) y escalamos la fuente al tamaño real
@@ -777,41 +858,220 @@ function fitLaneCards() {
   root.style.removeProperty('--lv-scale');
   clearRowDividers();
 
-  // Modo horizontal: una tarjeta por carril, una fila por carril.
-  // Card height ≈ H / nLanes  (descontando pequeño gap), pero NUNCA por
-  // debajo del min-height CSS (clamp(60px, 10vh, 120px)). Si la suma de
-  // mínimos supera el viewport, el contenedor scrollea verticalmente.
-  const cssMinH = Math.max(60, Math.min(120, window.innerHeight * 0.10));
-  const cardH = Math.max(cssMinH, (H / nLanes) - 8);
-  // En la tarjeta hay 2 filas (label arriba + valor abajo). El número grande
-  // toma ~64% de la altura de la card (aprovecha el alto libre tras quitar
-  // la columna de salidas).
-  const fontByHeight = cardH * 0.64;
+  // Modo horizontal (V1): una fila por carril. Todo se mide en el DOM real
+  // (ancho de fila, chips, nombres, fuente computada) y con canvas.measureText
+  // (ancho del texto más largo posible por columna), así ninguna cifra pisa a
+  // su vecina a ningún tamaño. Prioridad TicTac: el nombre primero; las cifras
+  // llevan un techo de tamaño para no comerse el ancho.
+  _fitV1Rows(root, W, H);
+}
 
-  // Ancho de tarjeta = W - paddings
-  const cardW = Math.max(200, W - 24);
-  // grid: name(1.4fr) + laps(.8fr) + 5 × num(1fr) → unidades = 1.4 + .8 + 5 = 7.2
-  // (la columna "salidas" se eliminó; ahora son 5 columnas numéricas, por eso
-  //  cada una es más ancha y los valores pueden crecer para llenar el hueco).
-  // Una columna numérica = cardW / 7.2 - gap(~6px)
-  const colW = (cardW / 7.2) - 6;
-  // Tipos: el contenido más ancho suele ser "+11.06" o "12345" → ~5 chars.
-  // En Share Tech Mono (monospace), char ≈ 0.6 * fontSize. Margen interno ~6px.
-  const fontByWidth = (colW - 6) / (5 * 0.6);
+// Columnas numéricas de V1: data-col (compartido por cabecera y celdas) y la
+// plantilla mínima a reservar ('8' = dígito más ancho). Si un valor real crece
+// (p. ej. TOTAL pasa de 999 a 1000) se re-ajusta (ver _v1CheckGrowth).
+const V1_NUM_COLS = [
+  { col: 'vlt',    tpl: '888'   },
+  { col: 'total',  tpl: '888'   },
+  { col: 'ultima', tpl: '88.88' },
+  { col: 'mejor',  tpl: '88.88' },
+  { col: 'media',  tpl: '88.88' },
+  { col: 'delta',  tpl: '-8.88' },
+];
+const V1_NUM_MAX_PX  = 56;   // techo de las cifras (antes ~58px fijos por vh)
+const V1_NUM_MIN_PX  = 14;
+const V1_NAME_MAX_PX = 44;
+const V1_NAME_MIN_PX = 15;
+// Fila muy estrecha (media pantalla + clasificación al lado): si ni con las
+// cifras al mínimo le queda sitio al nombre, se ocultan columnas en este
+// orden (Gap V también está en la clasificación; VLT queda dentro de TOTAL).
+const V1_AUTO_HIDE = ['delta', 'vlt', 'ultima'];
+let _v1TplLen = {};          // longitud de plantilla usada en el último ajuste
+let _v1Canvas = null;
 
-  let fontPx  = Math.min(fontByHeight, fontByWidth);
-  fontPx      = Math.max(14, Math.min(92, fontPx));   // clamp 14..92px
+function _v1Tpl(text) { return String(text || '').trim().replace(/\d/g, '8'); }
 
-  const labelPx   = Math.max(9,  Math.min(20, fontPx * 0.32));
-  const namePx    = Math.max(12, Math.min(34, fontPx * 0.55));
-  const lanenumPx = Math.max(14, Math.min(46, fontPx * 0.75));
-  const trackPx   = Math.max(9,  Math.min(22, fontPx * 0.42));
+// Ancho en px por cada px de font-size de `text` con la fuente real de `el`
+// (incluye letter-spacing, que canvas no aplica por defecto).
+function _v1TextWPerPx(el, text) {
+  const cs = getComputedStyle(el);
+  if (!_v1Canvas) _v1Canvas = document.createElement('canvas');
+  const ctx = _v1Canvas.getContext('2d');
+  ctx.font = `${cs.fontStyle} ${cs.fontWeight} 100px ${cs.fontFamily}`;
+  const fs = parseFloat(cs.fontSize) || 16;
+  const lsEm = (parseFloat(cs.letterSpacing) || 0) / fs;
+  return ctx.measureText(text).width / 100 + lsEm * text.length;
+}
 
-  root.style.setProperty('--ln-font-num',     fontPx.toFixed(1)  + 'px');
-  root.style.setProperty('--ln-font-label',   labelPx.toFixed(1) + 'px');
-  root.style.setProperty('--ln-font-name',    namePx.toFixed(1)  + 'px');
-  root.style.setProperty('--ln-font-lanenum', lanenumPx.toFixed(1) + 'px');
-  root.style.setProperty('--ln-font-track',   trackPx.toFixed(1)   + 'px');
+// Ancho del contenido de un elemento, independiente del ancho de su caja.
+function _v1ContentW(el) {
+  const r = document.createRange();
+  r.selectNodeContents(el);
+  return r.getBoundingClientRect().width;
+}
+
+function _fitV1Rows(root, W, H, pass = 0, autoHide = 0) {
+  ['--ln-font-num', '--ln-font-label', '--ln-font-name', '--ln-font-lanenum', '--ln-font-track']
+    .forEach(p => root.style.removeProperty(p));
+  V1_AUTO_HIDE.forEach((c, i) => lanesGrid.classList.toggle('v1-hide-' + c, i < autoHide));
+  const cards = Array.from(lanesGrid.querySelectorAll('.lane-card'));
+  const racing = cards.filter(c => !c.classList.contains('is-rest'));
+  // Referencia = una fila visible (la paginación oculta las de otras páginas).
+  const ref = racing.find(c => c.offsetParent) || null;
+  if (!ref) return;
+
+  const gcs = getComputedStyle(lanesGrid);
+  const rowGap = parseFloat(gcs.rowGap) || 0;
+  const header = document.getElementById('lanesHeader');
+  const headerH = header && header.offsetParent ? header.offsetHeight : 0;
+  const availH = H - (parseFloat(gcs.paddingTop) || 0) - (parseFloat(gcs.paddingBottom) || 0) - headerH;
+
+  // Alto de fila: si no caben todas respetando el min-height CSS, la
+  // paginación de V1 mostrará solo las que caben → se dimensiona para esas.
+  const ccs = getComputedStyle(ref);
+  const minH = parseFloat(ccs.minHeight) || 46;
+  const fitRows = Math.max(1, Math.floor((availH + rowGap) / (minH + rowGap)));
+  const shown = Math.min(Math.max(1, cards.length), fitRows);
+  const cardH = Math.max(minH, (availH - rowGap * (shown - 1)) / shown);
+  const padV = (parseFloat(ccs.paddingTop) || 0) + (parseFloat(ccs.paddingBottom) || 0)
+             + (parseFloat(ccs.borderTopWidth) || 0) + (parseFloat(ccs.borderBottomWidth) || 0);
+  const fontByHeight = ((cardH - padV) / 1.1) * 0.82;
+
+  // Ancho útil de la fila (sin padding ni bordes).
+  const rowW = ref.clientWidth - (parseFloat(ccs.paddingLeft) || 0) - (parseFloat(ccs.paddingRight) || 0);
+  if (rowW <= 0) return;
+
+  // Columnas visibles (el usuario puede ocultar algunas): ancho por px de
+  // fuente de su texto más ancho posible + ancho mínimo de su rótulo.
+  const cols = [];
+  V1_NUM_COLS.forEach(def => {
+    const cell = ref.querySelector(`.lane-card__col[data-col="${def.col}"]`);
+    if (!cell || getComputedStyle(cell).display === 'none') return;
+    const valEl = cell.querySelector('.lane-card__laps, .lane-card__col-val');
+    if (!valEl) return;
+    const tpls = new Set([def.tpl]);
+    racing.forEach(c => {
+      const v = c.querySelector(`.lane-card__col[data-col="${def.col}"] .lane-card__laps, .lane-card__col[data-col="${def.col}"] .lane-card__col-val`);
+      if (v) tpls.add(_v1Tpl(v.textContent));
+    });
+    let wpp = 0, len = 0;
+    tpls.forEach(t => { wpp = Math.max(wpp, _v1TextWPerPx(valEl, t)); len = Math.max(len, t.length); });
+    _v1TplLen[def.col] = len;
+    // Rótulo de la cabecera: su fuente escala con la cifra (--v1-lh-font).
+    const lh = header && header.querySelector(`.lh-col[data-col="${def.col}"]`);
+    const lhFs = lh ? (parseFloat(getComputedStyle(lh).fontSize) || 12) : 12;
+    const labelWpp = lh && lh.offsetParent ? _v1ContentW(lh) / lhFs : 0;
+    // +12%: margen para cifras tabulares (canvas mide las proporcionales) y aire.
+    cols.push({ col: def.col, wpp: wpp * 1.12 + 0.16, labelWpp });
+  });
+  const lhFontOf = f => Math.max(10, Math.min(13.6, f * 0.4));
+  const colW = (c, f) => Math.max(Math.ceil(c.wpp * f), c.labelWpp ? Math.ceil(c.labelWpp * lhFontOf(f)) + 6 : 0);
+
+  // Columna PRÓX./FINAL (manga terminada): contenido del badge más ancho.
+  let nextW = 0;
+  if (document.body.classList.contains('manga-finished')) {
+    nextW = 80;
+    cards.forEach(c => {
+      const b = c.querySelector('.next-lane-badge');
+      if (!b) return;
+      const bcs = getComputedStyle(b);
+      const extra = (parseFloat(bcs.paddingLeft) || 0) + (parseFloat(bcs.paddingRight) || 0)
+                  + (parseFloat(bcs.borderLeftWidth) || 0) + (parseFloat(bcs.borderRightWidth) || 0);
+      nextW = Math.max(nextW, Math.ceil(_v1ContentW(b) + extra) + 4);
+    });
+  }
+
+  // Lo que necesita el nombre: chips (P.x, flechas, carril) + avisos + texto.
+  // Chips medidos en las filas visibles; el texto, con canvas en TODAS (las
+  // de otras páginas también, aunque estén ocultas).
+  let prefixW = 0, refPrefixW = 0, nameWpp = 0;
+  const refName = ref.querySelector('.lane-card__name');
+  racing.forEach(c => {
+    const nameCol = c.querySelector('.lane-card__col--name');
+    if (!nameCol) return;
+    if (c.offsetParent) {
+      const ngap = parseFloat(getComputedStyle(nameCol).columnGap) || 0;
+      let fixed = 0, n = 0;
+      nameCol.querySelectorAll('.lane-card__pos, .lane-card__trend, .lane-card__label, .lane-card__pit, .lane-card__exit, .lane-card__tire')
+        .forEach(e => { if (e.offsetParent && !e.hidden) { fixed += e.getBoundingClientRect().width; n++; } });
+      prefixW = Math.max(prefixW, fixed + ngap * n);
+      if (c === ref) refPrefixW = fixed + ngap * n;
+    }
+    const scroll = c.querySelector('.lane-card__name-scroll');
+    if (scroll && refName) {
+      const flagEm = scroll.querySelector('.lane-flag') ? 1.6 : 0;
+      nameWpp = Math.max(nameWpp, _v1TextWPerPx(refName, scroll.textContent.trim()) + flagEm);
+    }
+  });
+
+  // Mayor tamaño de cifra f que deja sitio al nombre (entero, hasta el 55% de
+  // la fila; nunca menos del 30%). Todo crece con f → búsqueda binaria.
+  const nameMinW = Math.max(rowW * 0.30, prefixW + V1_NAME_MIN_PX * 6);
+  const nameMaxW = rowW * 0.55;
+  const nameFontOf = f => Math.max(V1_NAME_MIN_PX, Math.min(V1_NAME_MAX_PX, f * 0.8, cardH * 0.42));
+  const gapOf = f => Math.round(Math.max(5, Math.min(18, f * 0.25)));
+  const nGaps = cols.length + (nextW ? 1 : 0);
+  const nameNeedOf = f => prefixW + nameWpp * nameFontOf(f) * 1.04 + 16;
+  const numsWOf = f => cols.reduce((s, c) => s + colW(c, f), 0);
+  const fits = f => numsWOf(f) + nextW + gapOf(f) * nGaps
+                  + Math.min(nameMaxW, Math.max(nameMinW, nameNeedOf(f))) <= rowW;
+  let lo = V1_NUM_MIN_PX, hi = Math.max(V1_NUM_MIN_PX, Math.min(fontByHeight, V1_NUM_MAX_PX));
+  if (!fits(V1_NUM_MIN_PX) && autoHide < V1_AUTO_HIDE.length && pass === 0) {
+    return _fitV1Rows(root, W, H, 0, autoHide + 1);
+  }
+  if (fits(hi)) lo = hi;
+  else for (let i = 0; i < 18; i++) { const mid = (lo + hi) / 2; if (fits(mid)) lo = mid; else hi = mid; }
+  const fontPx = lo;
+  const gapPx = gapOf(fontPx);
+
+  // El nombre se queda con el resto; si no cabe entero se reduce hasta un 20%
+  // y, por debajo, la marquesina lo muestra completo.
+  let namePx = nameFontOf(fontPx);
+  const nameLeft = rowW - numsWOf(fontPx) - nextW - gapPx * nGaps;
+  if (nameWpp > 0 && nameNeedOf(fontPx) > nameLeft) {
+    const fitPx = (nameLeft - prefixW - 16) / (nameWpp * 1.04);
+    namePx = Math.max(V1_NAME_MIN_PX, Math.min(namePx, Math.max(fitPx, namePx * 0.8)));
+  }
+
+  const set = (k, v) => lanesGrid.style.setProperty(k, v);
+  set('--v1-num-font', fontPx.toFixed(1) + 'px');
+  set('--v1-name-font', namePx.toFixed(1) + 'px');
+  set('--v1-gap', gapPx + 'px');
+  set('--v1-lh-font', lhFontOf(fontPx).toFixed(1) + 'px');
+  cols.forEach(c => set(`--v1-w-${c.col}`, colW(c, fontPx) + 'px'));
+  set('--v1-w-next', (nextW || 80) + 'px');
+
+  // Los chips escalan con la fuente del nombre: si cambian de ancho, una
+  // segunda pasada con la medida nueva.
+  if (pass === 0) {
+    let fixed2 = 0, n2 = 0;
+    const nameCol = ref.querySelector('.lane-card__col--name');
+    const ngap = nameCol ? (parseFloat(getComputedStyle(nameCol).columnGap) || 0) : 0;
+    ref.querySelectorAll('.lane-card__pos, .lane-card__trend, .lane-card__label, .lane-card__pit, .lane-card__exit, .lane-card__tire')
+      .forEach(e => { if (e.offsetParent && !e.hidden) { fixed2 += e.getBoundingClientRect().width; n2++; } });
+    if (Math.abs(fixed2 + ngap * n2 - refPrefixW) > 6) return _fitV1Rows(root, W, H, 1, autoHide);
+  }
+  setTimeout(() => window.refreshLaneMarquees?.(), 0);
+  // El alto de las filas depende de la fuente: recalcular páginas de V1 ya.
+  _v1ApplyPaging();
+}
+
+// Tras cada actualización: si algún valor de V1 tiene más caracteres que la
+// plantilla con la que se ajustó (TOTAL 999→1000, Gap V «—»→«-12.34»…), reajusta.
+function _v1CheckGrowth() {
+  if (!lanesGrid || lanesGrid.classList.contains('live-lanes--vertical')) return;
+  const grow = V1_NUM_COLS.some(def => {
+    const max = _v1TplLen[def.col];
+    if (max == null) return false;
+    return Array.from(lanesGrid.querySelectorAll(
+      `.lane-card__col[data-col="${def.col}"] .lane-card__laps, .lane-card__col[data-col="${def.col}"] .lane-card__col-val`))
+      .some(v => _v1Tpl(v.textContent).length > max);
+  });
+  if (grow) requestAnimationFrame(() => fitLaneCards());
+}
+
+// Las medidas con canvas dependen de que Inter ya esté cargada.
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(() => requestAnimationFrame(() => fitLaneCards()));
 }
 
 // ── Autofit rejilla vertical (>8 carriles) ──────────────────────────────────
@@ -935,11 +1195,17 @@ function armFullscreenRestore() {
   try { wanted = sessionStorage.getItem(FS_KEY) === '1'; } catch { wanted = false; }
   if (!wanted) return;
   _fsRestoreArmed = true;
-  const restore = () => {
+  const restore = (e) => {
     _fsRestoreArmed = false;
     document.removeEventListener('pointerdown', restore, true);
     document.removeEventListener('keydown', restore, true);
     if (document.fullscreenElement) return;
+    // «Volver» sale de la vista: reentrar en pantalla completa se comía el
+    // clic (el cambio de modo llega antes que la navegación) y no salía nunca.
+    if (e && e.target && e.target.closest && e.target.closest('[data-no-fs-restore]')) {
+      try { sessionStorage.removeItem(FS_KEY); } catch {}
+      return;
+    }
     const el = document.documentElement;
     const req = el.requestFullscreen || el.webkitRequestFullscreen;
     if (req) { const p = req.call(el); if (p && p.catch) p.catch(() => {}); }
@@ -962,8 +1228,9 @@ document.addEventListener('fullscreenchange', () => {
   if (btn) {
     const open  = btn.querySelector('.fs-ico-open');
     const close = btn.querySelector('.fs-ico-close');
-    if (open)  open.hidden  = on;
-    if (close) close.hidden = !on;
+    // En un <svg> la propiedad .hidden no existe: hay que tocar el atributo.
+    if (open)  open.toggleAttribute('hidden', on);
+    if (close) close.toggleAttribute('hidden', !on);
     btn.title = on ? (btn.title.includes('Salir') ? btn.title : 'Salir de pantalla completa')
                    : 'Pantalla completa';
   }
@@ -976,8 +1243,12 @@ armFullscreenRestore();
 // Reaplica fitLaneCards cuando el contenedor cambia (p. ej. arrastrar el
 // resizer del sidebar). El window resize no se dispara en ese caso.
 if (lanesGrid && 'ResizeObserver' in window) {
-  let _rafId = 0;
-  const ro = new ResizeObserver(() => {
+  let _rafId = 0, _roW = -1, _roH = -1;
+  const ro = new ResizeObserver(entries => {
+    // Solo si cambia el tamaño de verdad (evita bucles de re-ajuste).
+    const r = entries[0].contentRect;
+    if (Math.round(r.width) === _roW && Math.round(r.height) === _roH) return;
+    _roW = Math.round(r.width); _roH = Math.round(r.height);
     if (_rafId) cancelAnimationFrame(_rafId);
     _rafId = requestAnimationFrame(() => { _rafId = 0; fitLaneCards(); });
   });
@@ -985,40 +1256,69 @@ if (lanesGrid && 'ResizeObserver' in window) {
 }
 
 // ── Autofit sidebar standings table ──────────────────────────────────────────
-// Calcula el tamaño de fuente y padding óptimos para que las N filas quepan
-// vertical Y horizontalmente sin scroll/overflow. Toma el mínimo entre el
-// factor de altura (filas vs alto disponible) y el factor de ancho (suma de
-// columnas vs ancho del contenedor).
+// Clasificación estimada acoplada (V1). Fuente por ALTO: que quepan todas las
+// filas sin bajar de un mínimo legible a distancia (si no caben, la
+// paginación de paintStandingsPage rota páginas). Por ANCHO: el nombre manda;
+// si no le cabe el nombre más largo (hasta ~12 caracteres) se ocultan columnas secundarias en este
+// orden: ↕, Total, Gap V, V. Proy. Siempre quedan #, nombre, Media y Gap V.T.
+// (vueltas al líder, como el «a X,Xv» de TicTac).
+// Columnas: 1 #, 2 nombre, 3 V. Proy., 4 Total, 5 Media, 6 ↕, 7 Gap V, 8 Gap V.T.
+// Total y vueltas estimadas no se ocultan nunca (lo que mira el usuario).
+const SB_HIDE_ORDER = [6, 8, 7, 5];
+const SB_FONT_MIN = 11, SB_FONT_MAX = 15;
+// Ancho automático (sin ancho manual): solo #, nombre, V. Proy., Total y Media.
+const SB_AUTO_HIDE = [6, 8, 7];
 function fitSidebarTable() {
   if (!projectedBody) return;
+  const sidebar = document.getElementById('liveSidebar');
+  if (!sidebar || !sidebar.offsetParent) return;   // oculta: nada que ajustar
   const container = projectedBody.closest('.live-panel__body') || projectedBody.parentElement;
-  const root = document.documentElement;
+  const table = projectedBody.parentElement;
   const rows = projectedBody.querySelectorAll('tr.srow');
-  if (!container || rows.length === 0) return;
-  const thead = projectedBody.parentElement.querySelector('thead');
+  if (!container || !table || rows.length === 0) return;
+
+  const thead = table.querySelector('thead');
   const headerH = thead ? thead.offsetHeight : 28;
-  // Altura disponible para el cuerpo, descontando cabecera
   const usableH = Math.max(60, container.clientHeight - headerH);
-  // Altura objetivo por fila
-  const targetRowH = usableH / rows.length;
-  // Factor por altura: font ≈ rowH / 38 (empírico).
-  const fontByHeight = targetRowH / 38;
-  // Factor por ancho: la tabla tiene ~8 columnas y necesita ~440px a 1rem.
-  // Se descuentan ~24px de paddings/borders del contenedor.
-  const nCols = (projectedBody.parentElement.querySelector('thead tr')?.children.length) || 8;
-  const minWidthPerColAt1rem = 440 / 8;        // ≈55px por columna a 1rem
-  const fontByWidth = Math.max(0, (container.clientWidth - 24)) / (nCols * minWidthPerColAt1rem);
+  // Alto de fila ≈ 1.15 líneas + 2 × padding (0.28em) + borde ≈ 1.75 × fuente.
+  let fontPx = Math.max(SB_FONT_MIN, Math.min(SB_FONT_MAX, usableH / rows.length / 1.75));
 
-  let fontRem = Math.min(fontByHeight, fontByWidth) * 0.85;
-  fontRem     = Math.min(1.1, Math.max(0.5, fontRem));   // clamp 0.5..1.1rem
-  const subRem = Math.max(0.5, fontRem * 0.92);
-  const padRem = Math.max(0.05, fontRem * 0.30);
-  const thRem  = Math.max(0.55, fontRem * 0.55);
+  const apply = f => {
+    sidebar.style.setProperty('--sb-font', f.toFixed(1) + 'px');
+    sidebar.style.setProperty('--sb-sub-font', f.toFixed(1) + 'px');
+    sidebar.style.setProperty('--sb-pad', (f * 0.28).toFixed(1) + 'px');
+    sidebar.style.setProperty('--sb-th-font', Math.max(10, Math.min(14, f * 0.55)).toFixed(1) + 'px');
+  };
+  // Mostrar todas las filas para medir (la paginación las vuelve a ocultar).
+  rows.forEach(r => { r.style.display = ''; });
+  SB_HIDE_ORDER.forEach(n => table.classList.remove('sb-hide-' + n));
+  apply(fontPx);
 
-  root.style.setProperty('--sb-font',     fontRem.toFixed(3) + 'rem');
-  root.style.setProperty('--sb-sub-font', subRem.toFixed(3)  + 'rem');
-  root.style.setProperty('--sb-pad',      padRem.toFixed(3)  + 'rem');
-  root.style.setProperty('--sb-th-font',  thRem.toFixed(3)   + 'rem');
+  // Sin ancho manual (resizer), el panel mide lo que su tabla: la letra la
+  // decide el alto y el ancho sale solo, con los nombres enteros.
+  const auto = !document.documentElement.style.getPropertyValue('--sidebar-w');
+  sidebar.classList.toggle('sb-auto', auto);
+  if (auto) {
+    SB_AUTO_HIDE.forEach(n => table.classList.add('sb-hide-' + n));
+    return;
+  }
+
+  const nameCell = () => rows[0].children[1];
+  // Objetivo: el nombre más largo entero, sin pedir más de ~12 caracteres.
+  const nameMin = () => {
+    let longest = 0;
+    projectedBody.querySelectorAll('.sr-name').forEach(e => { longest = Math.max(longest, e.scrollWidth); });
+    return Math.max(fontPx * 6, Math.min(longest + 2, fontPx * 12));
+  };
+  for (const n of SB_HIDE_ORDER) {
+    if (nameCell().clientWidth >= nameMin() && table.scrollWidth <= container.clientWidth + 1) break;
+    table.classList.add('sb-hide-' + n);
+  }
+  // Panel muy estrecho: reducir fuente hasta que el nombre respire.
+  while (fontPx > SB_FONT_MIN && (nameCell().clientWidth < nameMin() || table.scrollWidth > container.clientWidth + 1)) {
+    fontPx = Math.max(SB_FONT_MIN, fontPx - 1);
+    apply(fontPx);
+  }
 }
 
 function posClass(pos) {
@@ -1254,6 +1554,7 @@ function renderStandings(data) {
   // sortCards calcula y vuelca el "Gap V" real de cada tarjeta (sobre los
   // vecinos del orden proyectado que fija aquí mismo, ver realGapAbove).
   sortCards(data.standings);
+  _v1CheckGrowth();
   // Re-evaluar paginación tras reordenar cards en V1
   _v1SchedulePaging();
 }

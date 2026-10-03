@@ -13,6 +13,23 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.39.0] — 2026-10-03
+
+### Añadido
+- **Clasificación estimada al lado de las filas, como en TicTac.** En el directo de la manga, un botón nuevo en la barra (junto a «Vista», con icono de panel lateral) abre y cierra la clasificación estimada acoplada a la derecha. Funciona en la vista **«Filas horizontales»** y PitWall recuerda si la dejaste abierta en cada carrera.
+- **El panel se ajusta solo.** De entrada usa el **ancho justo** para que se lean los nombres enteros (como mucho el 40% de la pantalla), con las columnas **#, participante, V. Proy.** (vueltas estimadas), **Total** (vueltas reales) y **Media**. La letra se adapta al alto para que quepan todos; si aun así no caben, pasa de página cada 20 s. Si **arrastras el borde** eliges tú el ancho (y, si sobra sitio, aparecen también **Gap V** y la tendencia); con **doble clic en el borde** vuelve al ancho automático.
+- **Enlaces para pantallas fijas de sala o TV:** añadiendo `?side=standings` (panel abierto) o `?side=none` (cerrado) y `?view=1`, `?view=2` o `?view=3` (vista) a la dirección del directo, esa pantalla arranca siempre así, sin cambiar lo que tengas guardado.
+
+### Mejorado
+- **«Filas horizontales» se ve bien a cualquier tamaño de ventana.** El tamaño de letra se calcula según el espacio real de cada columna: las cifras ya no se pisan entre sí (antes, a media pantalla, se solapaban) y el **nombre del piloto tiene prioridad** y se ve entero (antes se cortaba aunque sobrara sitio). En ventanas muy estrechas se ocultan primero **Gap V**, luego **VLT** y luego **ÚLTIMA**.
+- **Barra de botones más compacta en pantallas de menos de 1400 px de ancho:** Repetir, voz, Vista y Volver se quedan solo con su icono para que la barra no se desborde.
+
+### Corregido
+- **«Volver» activaba la pantalla completa en vez de volver** cuando se había salido de pantalla completa con Esc o con el botón de la ventana.
+- El botón de **pantalla completa mostraba sus dos iconos a la vez**.
+- Con muchos carriles en filas, **la última fila de cada página salía cortada**.
+- Los **nombres se cortaban con «…» en plena carrera** al aparecer el aviso ⚠ de salidas (o 🔧 / 🛞).
+
 ## [1.38.3] — 2026-10-03
 
 ### Corregido
