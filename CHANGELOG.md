@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.38.1] — 2026-10-03
+
+### Mejorado
+- **«Editar tanda» muestra los participantes ordenados por carril** (1, 2, 3…), con los **descansos al final**. Antes salían en el orden de la rotación de carriles (p. ej. 1, 3, 5, 6, 4, 2), lo que hacía difícil encontrar a cada uno. Solo cambia cómo se ven: al guardar, cada participante sigue en el mismo carril que tenía.
+
 ## [1.38.0] — 2026-10-03
 
 ### Mejorado

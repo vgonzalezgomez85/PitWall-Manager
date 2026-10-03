@@ -75,8 +75,19 @@
           <% } %>
         </p>
 
+<%
+  // Orden de PANTALLA: carriles de menor a mayor y los descansos al final. La
+  // posición en la secuencia (i) es la que decide el carril al guardar, así que
+  // cada fila lleva su `i` real en el nombre del campo y no cambia nada.
+  const slotOrder = (n) => [...Array(n).keys()].sort((a, b) => {
+    const k = (i) => (i < laneSequence.length && laneSequence[i] > 0) ? [0, laneSequence[i]] : [i < laneSequence.length ? 1 : 2, i];
+    const x = k(a), y = k(b);
+    return x[0] - y[0] || x[1] - y[1];
+  });
+%>
         <div id="driversGrid" class="drivers-grid">
-          <% drivers.forEach((d, i) => {
+          <% slotOrder(drivers.length).forEach((i, pos) => {
+               const d = drivers[i];
                const slotLane = i < laneSequence.length ? laneSequence[i] : 0;
                const slotColor = slotLane > 0 ? LANE_COLORS[(slotLane - 1) % LANE_COLORS.length] : '#30363d';
                // DSC1 = first to start racing (rests least at start)
@@ -85,7 +96,7 @@
                  ? slotLane
                  : ((lang === 'es' ? 'DSC' : 'REST') + (restIdx > 0 ? restIdx : ''));
           %>
-            <div class="driver-row participant-row" data-row="<%= i %>">
+            <div class="driver-row participant-row" data-row="<%= pos %>">
               <span class="lane-badge participant-badge" style="background:<%= slotColor %>;<%= slotLane === 0 ? 'color:#8b949e;font-size:.65rem' : '' %>" data-index="<%= i %>"><%= slotLabel %></span>
               <div class="driver-field participant-fields">
                 <% if (canRestructure) { %><span class="drag-handle" draggable="true" title="<%= lang === 'es' ? 'Arrastrar para reordenar' : 'Drag to reorder' %>">⠿</span><% } %>
@@ -96,7 +107,7 @@
                          autocomplete="off" required>
                 <% } else { %>
                   <input class="form-input participant-name" type="text"
-                         name="drivers[]" value="<%= d.name %>"
+                         name="drivers[<%= i %>]" value="<%= d.name %>"
                          autocomplete="off"
                          <%= i < laneSequence.length ? 'required' : '' %>>
                 <% } %>
@@ -126,8 +137,19 @@
           <% } %>
         </p>
 
+<%
+  // Orden de PANTALLA: carriles de menor a mayor y los descansos al final. La
+  // posición en la secuencia (i) es la que decide el carril al guardar, así que
+  // cada fila lleva su `i` real en el nombre del campo y no cambia nada.
+  const slotOrder = (n) => [...Array(n).keys()].sort((a, b) => {
+    const k = (i) => (i < laneSequence.length && laneSequence[i] > 0) ? [0, laneSequence[i]] : [i < laneSequence.length ? 1 : 2, i];
+    const x = k(a), y = k(b);
+    return x[0] - y[0] || x[1] - y[1];
+  });
+%>
         <div id="teamsContainer" class="teams-container">
-          <% teams.forEach((team, i) => {
+          <% slotOrder(teams.length).forEach((i, pos) => {
+               const team = teams[i];
                const slotLane = i < laneSequence.length ? laneSequence[i] : 0;
                const slotColor = slotLane > 0 ? LANE_COLORS[(slotLane - 1) % LANE_COLORS.length] : '#30363d';
                const restIdx = slotLane === 0 ? (teams.length - i) : 0;
@@ -135,7 +157,7 @@
                  ? slotLane
                  : ((lang === 'es' ? 'DSC' : 'REST') + (restIdx > 0 ? restIdx : ''));
           %>
-            <div class="team-block participant-row" data-row="<%= i %>">
+            <div class="team-block participant-row" data-row="<%= pos %>">
               <div class="team-block__header" style="border-left-color:<%= slotColor %>">
                 <span class="lane-badge participant-badge" style="background:<%= slotColor %>;<%= slotLane === 0 ? 'color:#8b949e;font-size:.65rem' : '' %>" data-index="<%= i %>"><%= slotLabel %></span>
                 <% if (canRestructure) { %><span class="drag-handle" draggable="true" title="<%= lang === 'es' ? 'Arrastrar para reordenar' : 'Drag to reorder' %>">⠿</span><% } %>
@@ -217,6 +239,11 @@ function slotLabel(i, total){
   return (LANG==='es'?'DSC':'REST') + (restIdx > 0 ? restIdx : '');
 }
 function slotColor(i){ const l = i < LANE_SEQ.length ? LANE_SEQ[i] : 0; return l > 0 ? COLORS[(l-1) % COLORS.length] : '#30363d'; }
+// Igual que slotOrder() de la plantilla: posición en pantalla → posición en la secuencia.
+function slotOrder(n){
+  const k = i => (i < LANE_SEQ.length && LANE_SEQ[i] > 0) ? [0, LANE_SEQ[i]] : [i < LANE_SEQ.length ? 1 : 2, i];
+  return [...Array(n).keys()].sort((a, b) => { const x = k(a), y = k(b); return x[0] - y[0] || x[1] - y[1]; });
+}
 const DRIVER_PH = "<%= t('wizard.driver_name_ph') %>";
 const TEAM_PH   = "<%= t('wizard.team_name_ph') %>";
 const MEMBER_PH = "<%= t('wizard.member_ph') %>";
@@ -278,11 +305,17 @@ function renumber(containerId) {
   const container = document.getElementById(containerId);
   if (!container) return;
   const isTeams = containerId === 'teamsContainer';
-  container.querySelectorAll('.participant-row').forEach((row, i) => {
-    row.dataset.row = i;
+  const rows  = container.querySelectorAll('.participant-row');
+  const order = slotOrder(rows.length);
+  rows.forEach((row, pos) => {
+    const i = order[pos];
+    row.dataset.row = pos;
     const badge = row.querySelector('.participant-badge');
-    if (badge) { badge.dataset.index = i; badge.textContent = slotLabel(i); const color = slotColor(i); badge.style.background = color; if (isTeams) { const hdr = row.querySelector('.team-block__header'); if (hdr) hdr.style.borderLeftColor = color; } }
-    if (isTeams) {
+    if (badge) { badge.dataset.index = i; badge.textContent = slotLabel(i, rows.length); const color = slotColor(i); badge.style.background = color; if (isTeams) { const hdr = row.querySelector('.team-block__header'); if (hdr) hdr.style.borderLeftColor = color; } }
+    if (!isTeams) {
+      const nameInp = row.querySelector('.participant-name');
+      if (nameInp) nameInp.name = `drivers[${i}]`;
+    } else {
       const nameInp = row.querySelector('.team-name-input');
       if (nameInp) nameInp.name = `teams[${i}][name]`;
       row.querySelectorAll('.team-members input').forEach(inp => { inp.name = `teams[${i}][members][]`; });
