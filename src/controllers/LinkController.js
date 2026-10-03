@@ -166,10 +166,11 @@ class LinkController {
     }
   }
 
-  // GET /link/races/:id/results.json — resultados por TANDA para PitWall Control
-  // (contrato pitwall.resultados/v1). Cada tanda de Manager = una manga de
-  // Control; la posición es DENTRO de la tanda (Control aplica posición→puntos
-  // con su tabla). Matching por NOMBRE de equipo (mismo criterio que controlCsv).
+  // GET /link/races/:id/results.json — resultados para PitWall Control
+  // (contrato pitwall.resultados/v1), agrupados por TANDA (= manga de Control).
+  // La posición es la de la CLASIFICACIÓN FINAL de la carrera, no la de dentro
+  // de la tanda: Control la guarda como posición de la prueba (igual que su
+  // import CSV) y le aplica su tabla de puntos. Matching por NOMBRE de equipo.
   // Vueltas/coma/mejor vuelta van solo como referencia para la vista previa.
   static resultsRace(req, res) {
     try {
@@ -185,7 +186,7 @@ class LinkController {
 
       const Lap = require('../models/Lap');
       // Ya ordenado con el criterio oficial (vueltas DESC, coma media DESC,
-      // tiempo ASC) — al trocearlo por tanda, el orden relativo se conserva.
+      // tiempo ASC): su índice es la posición final de la carrera.
       const aggregate = Lap.aggregateByRace(race.id).filter(r => r.entity_id != null);
 
       // entidad → nº de tanda (teams y drivers sueltos llevan tanda_id).
@@ -199,18 +200,17 @@ class LinkController {
       `).all(race.id, race.id).map(r => [`${r.entity_type}:${r.entity_id}`, r.tanda_number]));
 
       const buckets = new Map(); // nº tanda → equipos ordenados
-      for (const r of aggregate) {
+      aggregate.forEach((r, i) => {
         const tanda = tandaOf.get(`${r.entity_type}:${r.entity_id}`) ?? 0;
         if (!buckets.has(tanda)) buckets.set(tanda, []);
-        const eqs = buckets.get(tanda);
-        eqs.push({
+        buckets.get(tanda).push({
           nombre: r.entity_name,
-          posicion: eqs.length + 1,
+          posicion: i + 1,
           vueltas: r.total_laps,
           coma: r.coma_total != null ? Number(Number(r.coma_total).toFixed(3)) : null,
           mejor_vuelta_ms: r.best_lap_ms ?? null,
         });
-      }
+      });
 
       res.json({
         schema: 'pitwall.resultados/v1',

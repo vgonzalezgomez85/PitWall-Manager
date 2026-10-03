@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.37.2] — 2026-10-03
+
+### Corregido
+- **Al traer los resultados a PitWall Control, llegaban las posiciones de cada tanda en vez de la clasificación final.** Cada tanda empezaba otra vez desde el 1, así que Control daba los puntos del ganador (y del segundo, del tercero…) a un piloto de cada tanda. Ahora «Traer resultados de PitWall» recibe la **posición en la clasificación final de la carrera**, la misma que ves en Resultados (con el desempate oficial), y Control reparte los puntos correctamente. La vista previa sigue mostrando en qué tanda corrió cada uno.
+
 ## [1.37.1] — 2026-10-02
 
 ### Corregido
