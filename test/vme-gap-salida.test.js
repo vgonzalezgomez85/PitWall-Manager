@@ -295,3 +295,52 @@ test('la estimada es PROVISIONAL antes del 60 % de la 1ª manga y firme después
   p = TimingService.buildRaceProjection(raceId).find(x => x.entityId === driverId);
   assert.equal(p.provisional, false, 'pasado el 60 %, settledAvg queda bloqueado → firme');
 });
+
+// ── Salida larga = atasco real: no se sustituye ──────────────────────────────
+
+/** 1ª manga con salida de `warmupMs` y 5 completas a 10000; `minLapMs` en la carrera. */
+function primeraMangaSalida(warmupMs, minLapMs, { resumeWarmupMs = null } = {}) {
+  const { raceId, tandaId } = nuevaCarrera('individual', 5);
+  db.prepare('UPDATE races SET min_lap_ms = ? WHERE id = ?').run(minLapMs, raceId);
+  const mangaId = db.prepare('INSERT INTO mangas (tanda_id, race_id, number, status, actual_duration_ms) VALUES (?,?,1,?,?)')
+    .run(tandaId, raceId, 'finished', 300000).lastInsertRowid;
+  const driverId = db.prepare('INSERT INTO drivers (race_id, tanda_id, name) VALUES (?, ?, ?)')
+    .run(raceId, tandaId, 'ATASCO').lastInsertRowid;
+  db.prepare('INSERT INTO manga_lanes (manga_id, lane, driver_id, is_rest, coma) VALUES (?,1,?,0,0.1)').run(mangaId, driverId);
+  let ln = 0, el = 0;
+  const mk = (ms, extra = {}) => Lap.create({
+    race_id: raceId, manga_id: mangaId, team_id: null, driver_id: driverId,
+    lane: 1, lap_number: ++ln, lap_time_ms: ms, elapsed_ms: (el += ms), ...extra });
+  mk(warmupMs, { is_warmup: 1 });
+  for (let k = 0; k < 5; k++) mk(10000);
+  if (resumeWarmupMs != null) mk(resumeWarmupMs, { is_warmup: 1 });
+  return { raceId, driverId };
+}
+
+test('salida por debajo de la vuelta mínima → parcial de parrilla, se sustituye', () => {
+  const { raceId, driverId } = primeraMangaSalida(4000, 7500);
+  const c = Lap.startSettledByEntity(raceId).get('driver:' + driverId);
+  assert.ok(Math.abs(c.delta - (10000 - 4000)) < 1e-6, `delta=${c.delta}`);
+});
+
+test('salida por encima de la vuelta mínima (atasco en parrilla) → se respeta', () => {
+  const { raceId, driverId } = primeraMangaSalida(468000, 7500);
+  const c = Lap.startSettledByEntity(raceId).get('driver:' + driverId);
+  assert.equal(c.delta, 0, 'los 468 s perdidos en la salida son tiempo real');
+  const row = Lap.aggregateByRace(raceId).find(r => r.entity_id === driverId);
+  assert.equal(row.total_time_ms, 468000 + 5 * 10000);
+});
+
+test('sin vuelta mínima configurada, el umbral es el ritmo asentado', () => {
+  assert.ok(Math.abs(Lap.startSettledByEntity(primeraMangaSalida(1196, 0).raceId)
+    .values().next().value.delta - (10000 - 1196)) < 1e-6, 'salida corta → se sustituye');
+  assert.equal(Lap.startSettledByEntity(primeraMangaSalida(60000, 0).raceId)
+    .values().next().value.delta, 0, 'salida más larga que una vuelta → se respeta');
+});
+
+test('la warmup tras un resume en la 1ª manga no entra en la corrección', () => {
+  const { raceId, driverId } = primeraMangaSalida(1196, 7500, { resumeWarmupMs: 11000 });
+  const c = Lap.startSettledByEntity(raceId).get('driver:' + driverId);
+  assert.equal(c.warmupMs, 1196, 'solo el cruce de salida (lap_number 1)');
+  assert.ok(Math.abs(c.delta - (10000 - 1196)) < 1e-6, `delta=${c.delta}`);
+});

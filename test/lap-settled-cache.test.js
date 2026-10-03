@@ -55,8 +55,8 @@ function seed() {
     [A, B].forEach((tid, i) => db.prepare('INSERT INTO manga_lanes (manga_id, lane, team_id, is_rest) VALUES (?,?,?,0)').run(mid, ln[i], tid));
   });
   // Manga 1: warmup (cruce de salida, inflado) + vueltas normales en el 1er 60%.
-  let n = 0;
   [A, B].forEach((tid, i) => {
+    let n = 0;
     Lap.create({ race_id: raceId, manga_id: m1, team_id: tid, driver_id: null, lane: i + 1, lap_number: ++n, lap_time_ms: 1500, elapsed_ms: 1500, is_warmup: 1 });
     for (let k = 0; k < 5; k++) Lap.create({ race_id: raceId, manga_id: m1, team_id: tid, driver_id: null, lane: i + 1, lap_number: ++n, lap_time_ms: 9000 + i * 300, elapsed_ms: 20000 + k * 9000 });
   });

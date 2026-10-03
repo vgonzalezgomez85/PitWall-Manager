@@ -305,7 +305,9 @@ class Lap {
    * determinista (sale de las vueltas y de la duración ya en disco) y restart-safe.
    *
    * Solo la 1ª manga de la entidad (la de menor manga_id con vueltas). Mangas 2+
-   * sin cambios. Devuelve Map key `team:ID` | `driver:ID` →
+   * sin cambios. Y solo si la salida es parcial (< races.min_lap_ms, o < settledAvg
+   * sin vuelta mínima): una salida larga es un atasco real y se respeta (delta 0).
+   * Devuelve Map key `team:ID` | `driver:ID` →
    *   { firstMangaId, warmupMs, settledAvg, delta }  (delta = settledAvg − warmupMs).
    */
   static startSettledByEntity(raceId) {
@@ -337,9 +339,13 @@ class Lap {
         GROUP BY eid, etype
       )
       SELECT f.eid AS eid, f.etype AS etype, f.first_manga AS first_manga,
+        (SELECT COALESCE(min_lap_ms, 0) FROM races WHERE id = ?) AS min_lap_ms,
+        -- Solo el cruce de SALIDA (lap_number = 1): la warmup tras un resume es
+        -- una vuelta completa real y no se sustituye.
         (SELECT COALESCE(SUM(w.lap_time_ms), 0)
            FROM laps w
           WHERE w.manga_id = f.first_manga AND w.is_ghost = 0 AND w.is_warmup = 1
+            AND w.lap_number = 1
             AND COALESCE(w.team_id, w.driver_id) = f.eid) AS warmup_ms,
         (SELECT AVG(cp.lap_time_ms)
            FROM laps cp JOIN mangas m ON m.id = cp.manga_id
@@ -349,13 +355,19 @@ class Lap {
                   (SELECT manga_duration_minutes FROM races WHERE id = ?) * 60000)
         ) AS settled_avg
       FROM firsts f
-    `).all(raceId, raceId);
+    `).all(raceId, raceId, raceId);
 
     const map = new Map();
     const firstMangaIds = new Set();
     for (const r of rows) {
       firstMangaIds.add(r.first_manga);
-      const delta = (r.settled_avg != null && r.warmup_ms > 0) ? (r.settled_avg - r.warmup_ms) : 0;
+      // Solo se sustituye una salida PARCIAL (rejilla→línea): más corta que la
+      // vuelta mínima de pista, imposible como vuelta completa. Una salida más
+      // larga (coche que no arranca, avería en parrilla) es tiempo perdido de
+      // verdad y se respeta. Sin vuelta mínima, el umbral es el propio ritmo.
+      const umbral = r.min_lap_ms > 0 ? r.min_lap_ms : r.settled_avg;
+      const delta = (r.settled_avg != null && r.warmup_ms > 0 && r.warmup_ms < umbral)
+        ? (r.settled_avg - r.warmup_ms) : 0;
       map.set(`${r.etype}:${r.eid}`, {
         firstMangaId: r.first_manga, warmupMs: r.warmup_ms,
         settledAvg: r.settled_avg, delta,

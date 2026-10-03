@@ -13,6 +13,12 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.38.3] — 2026-10-03
+
+### Corregido
+- **El tiempo total de la 1ª manga ya respeta los atascos en la salida.** Para que el tiempo total sea justo, PitWall cambia el primer cruce (el tramo desde la parrilla hasta la línea) por la media normal del piloto. Lo hacía siempre, también cuando el coche se había quedado atascado en parrilla: en Modena llegó a convertir **468 s perdidos de verdad en unos 10 s**. Ahora solo hace ese cambio si la salida es **más corta que la vuelta mínima de la pista** (o, si la pista no tiene vuelta mínima, que la media del piloto); una salida más larga es tiempo perdido de verdad y se cuenta tal cual.
+- Solo afecta al cruce de salida de la 1ª manga (no a la primera vuelta tras una pausa) y se nota en el **tiempo total** y en los **desempates a igualdad de vueltas**.
+
 ## [1.38.2] — 2026-10-03
 
 ### Corregido
