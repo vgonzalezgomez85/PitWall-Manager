@@ -33,7 +33,7 @@ class RaceEventController {
       t: req.t,
       race,
       log: RaceEvent.groupedByRace(race.id),
-      activeMangaNumber: activeManga ? activeManga.number : null,
+      activeMangaId: activeManga ? activeManga.id : null,
     });
   }
 
@@ -43,7 +43,7 @@ class RaceEventController {
     if (!race) return res.status(404).json({ ok: false });
     const activeManga = Manga.findActive(raceId);
     res.json(Object.assign(
-      { ok: true, raceId, activeMangaNumber: activeManga ? activeManga.number : null },
+      { ok: true, raceId, activeMangaId: activeManga ? activeManga.id : null },
       RaceEvent.groupedByRace(raceId)
     ));
   }

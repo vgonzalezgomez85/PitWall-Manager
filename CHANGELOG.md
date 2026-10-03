@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.39.1] — 2026-10-03
+
+### Corregido
+- **El Registro de sucesos mezclaba las mangas de tandas distintas.** En carreras con varias tandas, la caja «Manga 1» juntaba las mangas 1 de todas las tandas (y así con cada número), así que parecía que solo salían las de la primera tanda y la hora no decía de qué día era. Ahora hay **una caja por manga real**, titulada **«Tanda N · Manga M»** cuando la carrera tiene más de una tanda, con el **día y la hora de arranque** (p. ej. «vie 2/10 · 21:07»), ordenadas de la más reciente a la más antigua; se abre desplegada la manga que está en marcha.
+
 ## [1.39.0] — 2026-10-03
 
 ### Añadido

@@ -62,33 +62,46 @@ class RaceEvent {
     };
   }
 
-  // Historial GLOBAL de la carrera, agrupado por manga (más reciente arriba
-  // dentro de cada grupo). Incluye las mangas de la carrera aunque no tengan
-  // sucesos, para ver el recorrido completo — mismo patrón que
-  // TireChange.fullHistoryByRace. Los sucesos sin manga van a un grupo aparte.
+  // Historial GLOBAL de la carrera, un grupo por manga (más reciente arriba,
+  // también dentro de cada grupo). Agrupa por manga_id, NO por número: cada
+  // tanda vuelve a numerar sus mangas desde 1, y agrupar por número mezclaba
+  // en «Manga 1» las mangas 1 de todas las tandas. Los sucesos sin manga (o
+  // cuya manga se borró) van a un grupo aparte, al final.
   static groupedByRace(raceId) {
     const rows = db.prepare(`
       SELECT * FROM race_events WHERE race_id = ? ORDER BY created_at_ms DESC, id DESC
     `).all(raceId).map(RaceEvent._parse);
 
+    const mangas = db.prepare(`
+      SELECT m.id, m.number, m.started_at, t.number AS tanda_number
+      FROM mangas m JOIN tandas t ON t.id = m.tanda_id
+      WHERE m.race_id = ?
+    `).all(raceId);
+    const tandaCount = new Set(mangas.map(m => m.tanda_number)).size;
+
     const byManga = new Map();
-    db.prepare('SELECT DISTINCT number FROM mangas WHERE race_id = ? ORDER BY number ASC')
-      .all(raceId).forEach(m => byManga.set(m.number, []));
+    mangas.forEach(m => byManga.set(m.id, {
+      mangaId: m.id,
+      mangaNumber: m.number,
+      tandaNumber: m.tanda_number,
+      startedAtMs: m.started_at ? Date.parse(m.started_at) || null : null,
+      items: [],
+    }));
 
     const orphan = [];
     rows.forEach(r => {
-      if (r.mangaNumber == null) { orphan.push(r); return; }
-      if (!byManga.has(r.mangaNumber)) byManga.set(r.mangaNumber, []);
-      byManga.get(r.mangaNumber).push(r);
+      const g = r.mangaId != null ? byManga.get(r.mangaId) : null;
+      if (g) g.items.push(r); else orphan.push(r);
     });
 
-    const groups = [...byManga.entries()]
-      .filter(([, items]) => items.length > 0)
-      .sort((a, b) => b[0] - a[0])
-      .map(([mangaNumber, items]) => ({ mangaNumber, items }));
-    if (orphan.length) groups.push({ mangaNumber: null, items: orphan });
+    // Orden por arranque real de la manga; si no consta, por su último suceso.
+    const sortKey = g => g.startedAtMs ?? g.items[0].createdAtMs;
+    const groups = [...byManga.values()]
+      .filter(g => g.items.length > 0)
+      .sort((a, b) => sortKey(b) - sortKey(a) || b.mangaId - a.mangaId);
+    if (orphan.length) groups.push({ mangaId: null, mangaNumber: null, tandaNumber: null, startedAtMs: null, items: orphan });
 
-    return { totalEvents: rows.length, groups };
+    return { totalEvents: rows.length, multiTanda: tandaCount > 1, groups };
   }
 
   // Últimos N sucesos de una manga (para el pintado inicial del panel en
