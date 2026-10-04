@@ -88,6 +88,27 @@ function homeLiveState(allRaces) {
   };
 }
 
+// Diseños del inicio que puede elegir el usuario (botón «Personalizar»).
+const HOME_LAYOUTS = [
+  { id: 'ac', es: 'A + C · Mando con lanzador', en: 'A + C · Command + launcher',
+    dEs: 'Buscador, franja de la carrera, mosaicos y barra de ventanas.', dEn: 'Search, race strip, tiles and windows bar.' },
+  { id: 'a',  es: 'A · Centro de mando', en: 'A · Command centre',
+    dEs: 'Franja grande, tarjetas de competición, catálogo en lista y sistema.', dEn: 'Big race strip, competition cards, catalog list and system.' },
+  { id: 'b',  es: 'B · Menú lateral + panel', en: 'B · Sidebar + dashboard',
+    dEs: 'Menú a la izquierda, tarjetas de estado y tabla de carreras.', dEn: 'Left menu, status cards and races table.' },
+  { id: 'c',  es: 'C · Lanzador compacto', en: 'C · Compact launcher',
+    dEs: 'Buscador, franja fina y mosaicos; barra de ventanas abajo.', dEn: 'Search, thin strip and tiles; windows bar below.' },
+  { id: 'd',  es: 'D · Mando con menú lateral', en: 'D · Command with sidebar',
+    dEs: 'Menú a la izquierda con la franja grande y accesos rápidos.', dEn: 'Left menu with the big race strip and quick access.' },
+];
+
+router.post('/home/layout', (req, res) => {
+  const Settings = require('../models/Settings');
+  const id = String(req.body.layout || '');
+  if (HOME_LAYOUTS.some(l => l.id === id)) Settings.set('home_layout', id);
+  res.redirect('/');
+});
+
 // Firma barata del estado que pinta el inicio: si cambia, el inicio se recarga
 // (arranque de una carrera, cambio de manga, pausa, pole…). Los eventos de
 // socket no cubren todos los casos — p. ej. pasar una carrera a «en curso».
@@ -153,8 +174,9 @@ router.get('/', (req, res) => {
     ...allRaces.filter(r => r.status !== 'active'),
   ].slice(0, 6).map(r => ({ ...r, progress: progressOf(r.id) }));
 
+  const homeLayout = Settings.get('home_layout', 'ac') || 'ac';
   res.render('home', { t: req.t, counts, activeRaceCount, activePoleRaces, serial, serverIps, serverPort,
-                       live, recentRaces, totalRaces: allRaces.length });
+                       live, recentRaces, totalRaces: allRaces.length, homeLayout, homeLayouts: HOME_LAYOUTS });
 });
 
 // ── EULA ──────────────────────────────────────────────────────────────────────
