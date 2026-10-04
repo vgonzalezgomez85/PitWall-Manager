@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.44.1] — 2026-10-04
+
+### Corregido
+- **Directo de entrenamiento:** con 6 o más carriles, Mejor / Media / Récord ya no se cortan («12....»); el gráfico de ritmo ocupa todo el alto libre de la tarjeta y la vista compacta mete 6 carriles por fila en una pantalla de 1440 px.
+
 ## [1.44.0] — 2026-10-04
 
 ### Añadido

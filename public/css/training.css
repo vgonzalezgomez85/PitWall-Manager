@@ -179,7 +179,7 @@
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
   border-top: 1px solid var(--tr-line); border-bottom: 1px solid var(--tr-line);
 }
-.tr-stat { display: flex; flex-direction: column; gap: .1rem; padding: .4rem .55rem; min-width: 0; }
+.tr-stat { display: flex; flex-direction: column; gap: .1rem; padding: .4rem .45rem; min-width: 0; }
 .tr-stat + .tr-stat { border-left: 1px solid var(--tr-line); }
 .tr-stat__lbl {
   font-size: clamp(.6rem, .75vw, .75rem); letter-spacing: .1em; text-transform: uppercase;
@@ -187,8 +187,8 @@
 }
 .tr-stat__val {
   font-family: 'Inter', system-ui, sans-serif; font-variant-numeric: tabular-nums;
-  font-weight: 800; letter-spacing: -.02em; font-size: clamp(.9rem, 1.35vw, 1.45rem);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff;
+  font-weight: 800; letter-spacing: -.03em; font-size: clamp(.78rem, 1.05vw, 1.35rem);
+  white-space: nowrap; overflow: hidden; text-overflow: clip; color: #fff;
 }
 .tr-stat--best .tr-stat__val { color: var(--tr-green); }
 .tr-stat--avg  .tr-stat__val { color: #9ca3af; }
@@ -217,7 +217,7 @@
 /* Mini gráfico de ritmo */
 .tr-pace {
   position: relative; flex: 1 1 64px;
-  min-height: 56px; max-height: 260px;
+  min-height: 56px;
   margin: .1rem .5rem .5rem;
   border: 1px solid var(--tr-line); border-radius: 8px;
   background: rgba(255,255,255,.015);
@@ -252,7 +252,7 @@
 
 /* ── Vista compacta: muchas tarjetas, solo lo esencial ────────────────── */
 .training-grid--compact {
-  grid-template-columns: repeat(auto-fill, minmax(clamp(200px, 18vw, 300px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(clamp(190px, 15vw, 300px), 1fr));
   grid-auto-rows: max-content;
   align-content: start;
   overflow-y: auto;
