@@ -11,6 +11,7 @@ const inProgressRaces = typeof activeRaceCount !== 'undefined' ? activeRaceCount
 const c = typeof counts !== 'undefined' ? counts : { drivers: 0, teams: 0, cars: 0, categories: 0, circuits: 0 };
 %>
 
+<% if (isGuestAccess) { %>
 <div class="vol-home">
   <div class="vol-home__wrap">
 
@@ -57,7 +58,6 @@ const c = typeof counts !== 'undefined' ? counts : { drivers: 0, teams: 0, cars:
       <% } %>
     </div>
 
-    <% if (isGuestAccess) { %>
       <!-- Visitante externo (IP no permitida): acceso público a estadísticas en
            vivo y resultados, con el mismo estilo de tarjeta que la vista admin,
            agrupado por "carreras activas" (en curso) y "carreras pasadas" (finalizadas). -->
@@ -152,344 +152,6 @@ const c = typeof counts !== 'undefined' ? counts : { drivers: 0, teams: 0, cars:
           </a>
         </div>
       </section>
-    <% } else { %>
-
-    <!-- ── COMPETICIÓN ─────────────────────────────────────────────── -->
-    <section class="vh-section">
-      <button type="button" class="vh-sec-h" aria-expanded="true">
-        <span class="vh-sec-chev" aria-hidden="true">▸</span>
-        <span class="vh-sec-lbl"><%= lang === 'es' ? 'Competición' : 'Competition' %></span>
-        <span class="vh-sec-line"></span>
-      </button>
-      <div class="vh-grid">
-
-        <a class="vh-card" href="/training" style="--a:#38bdf8;--a-bg:rgba(56,189,248,.12)">
-          <div class="vh-ico">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="13" r="8" fill="none" stroke="currentColor" stroke-width="1.7"/>
-              <path d="M12 9v4l2.5 1.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
-              <path d="M9 2h6M12 2v3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <div class="vh-body">
-            <div class="vh-t"><%= lang === 'es' ? 'Entrenamientos' : 'Training' %></div>
-            <div class="vh-d"><%= lang === 'es' ? 'Sesiones de entrenamiento libre o de competición.' : 'Free or competition training sessions.' %></div>
-          </div>
-          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        </a>
-
-        <a class="vh-card" href="/training/competition/results" style="--a:#38bdf8;--a-bg:rgba(56,189,248,.12)">
-          <div class="vh-ico">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M7 4h10v4a5 5 0 0 1-10 0z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
-              <path d="M7 5H4.5A1.5 1.5 0 0 0 3 6.5 3.5 3.5 0 0 0 6.5 10M17 5h2.5A1.5 1.5 0 0 1 21 6.5 3.5 3.5 0 0 1 17.5 10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
-              <path d="M12 13v3M9 20h6M9.5 20l.4-4h4.2l.4 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </div>
-          <div class="vh-body">
-            <div class="vh-t"><%= lang === 'es' ? 'Resultados de entrenos' : 'Training results' %></div>
-            <div class="vh-d"><%= lang === 'es' ? 'Heats guardados de los entrenos de competición.' : 'Saved heats from competition training.' %></div>
-          </div>
-          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        </a>
-
-        <a class="vh-card vh-card--feature" href="/races" style="--a:#ef4651;--a-bg:rgba(239,70,81,.13)">
-          <div class="vh-ico">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M5 21V4M5 4h12l-2.2 3.5L17 11H5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </div>
-          <div class="vh-body">
-            <div class="vh-t">
-              <%= lang === 'es' ? 'Carreras' : 'Races' %>
-              <% if (inProgressRaces > 0) { %>
-                <span class="vh-live">
-                  <span class="vh-live__d"></span>
-                  <%= inProgressRaces %> <%= lang === 'es' ? (inProgressRaces === 1 ? 'en curso' : 'en curso') : (inProgressRaces === 1 ? 'in progress' : 'in progress') %>
-                </span>
-              <% } %>
-            </div>
-            <div class="vh-d"><%= lang === 'es' ? 'Gestiona y controla tus carreras en tiempo real.' : 'Manage and control your races in real time.' %></div>
-          </div>
-          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        </a>
-
-        <a class="vh-card" href="/race-stats" style="--a:#22c55e;--a-bg:rgba(34,197,94,.12)">
-          <div class="vh-ico">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M3 21h18M6 21v-6M11 21V8M16 21v-9M21 21V5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </div>
-          <div class="vh-body">
-            <div class="vh-t"><%= lang === 'es' ? 'Estadísticas en vivo' : 'Live stats' %></div>
-            <div class="vh-d"><%= lang === 'es' ? 'Sigue tu carrera y compárate con tus rivales en tiempo real.' : 'Follow your race and compare with rivals in real time.' %></div>
-          </div>
-          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        </a>
-
-        <a class="vh-card" href="/results" style="--a:#f6c90e;--a-bg:rgba(246,201,14,.12)">
-          <div class="vh-ico">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M8 21h8M12 17v4M7 4h10v6a5 5 0 0 1-10 0z M7 5H4.5A1.5 1.5 0 0 0 3 6.5 3.5 3.5 0 0 0 6.5 10 M17 5h2.5A1.5 1.5 0 0 1 21 6.5 3.5 3.5 0 0 1 17.5 10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </div>
-          <div class="vh-body">
-            <div class="vh-t"><%= lang === 'es' ? 'Resultados' : 'Results' %></div>
-            <div class="vh-d"><%= lang === 'es' ? 'Consulta resultados y estadísticas de carreras finalizadas.' : 'Browse results and stats of finished races.' %></div>
-          </div>
-          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        </a>
-
-        <a class="vh-card" href="/lap" style="--a:#58a6ff;--a-bg:rgba(88,166,255,.12)">
-          <div class="vh-ico">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <rect x="7" y="2" width="10" height="20" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/>
-              <path d="M11 18.5h2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <div class="vh-body">
-            <div class="vh-t">Lap</div>
-            <div class="vh-d"><%= lang === 'es' ? 'Timing del equipo en directo desde el móvil (resistencia).' : 'Live team timing from the phone (endurance).' %></div>
-          </div>
-          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        </a>
-
-        <a class="vh-card" href="/control/shifts" style="--a:#a855f7;--a-bg:rgba(168,85,247,.12)">
-          <div class="vh-ico">
-            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="3" width="7" height="7"/>
-              <rect x="14" y="3" width="7" height="7"/>
-              <rect x="3" y="14" width="7" height="7"/>
-              <path d="M14 14h3v3M20 14v3M14 20h3v1M20 17v4"/>
-            </svg>
-          </div>
-          <div class="vh-body">
-            <div class="vh-t"><%= lang === 'es' ? 'Control de pilotos' : 'Driver shifts' %></div>
-            <div class="vh-d"><%= lang === 'es' ? 'Escanea el QR del piloto activo en cada carril durante las mangas de campeonato.' : 'Scan the active driver QR on each lane during championship heats.' %></div>
-          </div>
-          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        </a>
-
-        <a class="vh-card" href="/control/tires" style="--a:#facc15;--a-bg:rgba(250,204,21,.12)">
-          <div class="vh-ico">
-            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="9"/>
-              <circle cx="12" cy="12" r="3.4"/>
-              <path d="M12 3v3.6M12 17.4V21M3 12h3.6M17.4 12H21"/>
-            </svg>
-          </div>
-          <div class="vh-body">
-            <div class="vh-t"><%= lang === 'es' ? 'Control de neumáticos' : 'Tyre control' %></div>
-            <div class="vh-d"><%= lang === 'es' ? 'Reparte y controla los juegos de neumáticos de cada equipo durante la carrera de resistencia.' : 'Hand out and track each team\'s tyre sets during the endurance race.' %></div>
-          </div>
-          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        </a>
-
-      </div>
-    </section>
-
-    <!-- ── CATÁLOGO ───────────────────────────────────────────────── -->
-    <section class="vh-section">
-      <button type="button" class="vh-sec-h" aria-expanded="true">
-        <span class="vh-sec-chev" aria-hidden="true">▸</span>
-        <span class="vh-sec-lbl"><%= lang === 'es' ? 'Catálogo' : 'Catalog' %></span>
-        <span class="vh-sec-line"></span>
-      </button>
-      <div class="vh-grid">
-
-        <a class="vh-card" href="/drivers" style="--a:#f59e0b;--a-bg:rgba(245,158,11,.12)">
-          <div class="vh-ico">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="1.7"/>
-              <path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </div>
-          <div class="vh-body">
-            <div class="vh-t">
-              <%= lang === 'es' ? 'Pilotos' : 'Drivers' %>
-              <% if (c.drivers > 0) { %><span class="vh-count"><%= c.drivers %></span><% } %>
-            </div>
-            <div class="vh-d"><%= lang === 'es' ? 'Registra y gestiona los pilotos.' : 'Register and manage drivers.' %></div>
-          </div>
-          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        </a>
-
-        <a class="vh-card" href="/teams" style="--a:#a855f7;--a-bg:rgba(168,85,247,.13)">
-          <div class="vh-ico">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="9" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.7"/>
-              <circle cx="17" cy="9.5" r="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/>
-              <path d="M3 20v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M16 14a4 4 0 0 1 5 4v1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </div>
-          <div class="vh-body">
-            <div class="vh-t">
-              <%= lang === 'es' ? 'Equipos' : 'Teams' %>
-              <% if (c.teams > 0) { %><span class="vh-count"><%= c.teams %></span><% } %>
-            </div>
-            <div class="vh-d"><%= lang === 'es' ? 'Crea y gestiona el catálogo de equipos con sus pilotos.' : 'Create and manage the team catalog with their drivers.' %></div>
-          </div>
-          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        </a>
-
-        <a class="vh-card" href="/cars" style="--a:#fb7185;--a-bg:rgba(251,113,133,.12)">
-          <div class="vh-ico">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M5 13l1.6-4.6A2 2 0 0 1 8.5 7h7a2 2 0 0 1 1.9 1.4L19 13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M3 13h18v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-              <circle cx="7.5" cy="18" r="1.6" fill="none" stroke="currentColor" stroke-width="1.7"/>
-              <circle cx="16.5" cy="18" r="1.6" fill="none" stroke="currentColor" stroke-width="1.7"/>
-            </svg>
-          </div>
-          <div class="vh-body">
-            <div class="vh-t">
-              <%= lang === 'es' ? 'Coches' : 'Cars' %>
-              <% if (c.cars > 0) { %><span class="vh-count"><%= c.cars %></span><% } %>
-            </div>
-            <div class="vh-d"><%= lang === 'es' ? 'Gestiona el catálogo de coches y su categoría.' : 'Manage your car catalog and their category.' %></div>
-          </div>
-          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        </a>
-
-        <a class="vh-card" href="/categories" style="--a:#2dd4bf;--a-bg:rgba(45,212,191,.12)">
-          <div class="vh-ico">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M3 8.5V4.5A1.5 1.5 0 0 1 4.5 3h4a2 2 0 0 1 1.4.6l9.5 9.5a1.5 1.5 0 0 1 0 2.1l-4.8 4.8a1.5 1.5 0 0 1-2.1 0L3 10.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-              <circle cx="7.5" cy="7.5" r="1.3" fill="none" stroke="currentColor" stroke-width="1.7"/>
-            </svg>
-          </div>
-          <div class="vh-body">
-            <div class="vh-t">
-              <%= lang === 'es' ? 'Categorías' : 'Categories' %>
-              <% if (c.categories > 0) { %><span class="vh-count"><%= c.categories %></span><% } %>
-            </div>
-            <div class="vh-d"><%= lang === 'es' ? 'Gestiona las categorías de carreras y tiempos mínimos.' : 'Manage race categories and minimum times.' %></div>
-          </div>
-          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        </a>
-
-        <a class="vh-card" href="/circuits" style="--a:#fb923c;--a-bg:rgba(251,146,60,.12)">
-          <div class="vh-ico">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M6 18a3 3 0 0 1 0-6h9a3 3 0 0 0 0-6H7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-              <circle cx="6" cy="18" r="1.4" fill="currentColor"/>
-              <circle cx="6" cy="6" r="1.4" fill="currentColor"/>
-            </svg>
-          </div>
-          <div class="vh-body">
-            <div class="vh-t">
-              <%= lang === 'es' ? 'Escenarios' : 'Scenarios' %>
-              <% if (c.circuits > 0) { %><span class="vh-count"><%= c.circuits %></span><% } %>
-            </div>
-            <div class="vh-d"><%= lang === 'es' ? 'Define los escenarios y su configuración de circuitos y carriles.' : 'Define scenarios and their circuit and lane configuration.' %></div>
-          </div>
-          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        </a>
-
-      </div>
-    </section>
-
-    <!-- ── SISTEMA ────────────────────────────────────────────────── -->
-    <section class="vh-section">
-      <button type="button" class="vh-sec-h" aria-expanded="true">
-        <span class="vh-sec-chev" aria-hidden="true">▸</span>
-        <span class="vh-sec-lbl"><%= lang === 'es' ? 'Sistema' : 'System' %></span>
-        <span class="vh-sec-line"></span>
-      </button>
-      <div class="vh-grid">
-
-        <a class="vh-card" href="/settings" style="--a:#94a3b8;--a-bg:rgba(148,163,184,.12)">
-          <div class="vh-ico">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
-              <circle cx="9" cy="7" r="2.2" fill="#000" stroke="currentColor" stroke-width="1.7"/>
-              <circle cx="15" cy="12" r="2.2" fill="#000" stroke="currentColor" stroke-width="1.7"/>
-              <circle cx="8" cy="17" r="2.2" fill="#000" stroke="currentColor" stroke-width="1.7"/>
-            </svg>
-          </div>
-          <div class="vh-body">
-            <div class="vh-t"><%= lang === 'es' ? 'Ajustes' : 'Settings' %></div>
-            <div class="vh-d"><%= lang === 'es' ? 'Configura el puerto serie, simulación y preferencias.' : 'Configure serial port, simulation and preferences.' %></div>
-          </div>
-          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        </a>
-
-        <a class="vh-card" href="/database" style="--a:#34d399;--a-bg:rgba(52,211,153,.12)">
-          <div class="vh-ico">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <ellipse cx="12" cy="5" rx="7" ry="3" fill="none" stroke="currentColor" stroke-width="1.7"/>
-              <path d="M5 5v6c0 1.66 3.13 3 7 3s7-1.34 7-3V5" fill="none" stroke="currentColor" stroke-width="1.7"/>
-              <path d="M5 11v6c0 1.66 3.13 3 7 3s7-1.34 7-3v-6" fill="none" stroke="currentColor" stroke-width="1.7"/>
-            </svg>
-          </div>
-          <div class="vh-body">
-            <div class="vh-t"><%= lang === 'es' ? 'Gestión base de datos' : 'Database management' %></div>
-            <div class="vh-d"><%= lang === 'es' ? 'Copia de seguridad de tus datos para moverlos entre PCs.' : 'Back up your data to move it between PCs.' %></div>
-          </div>
-          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        </a>
-
-        <a class="vh-card" href="/catalog-sync" style="--a:#f472b6;--a-bg:rgba(244,114,182,.12)">
-          <div class="vh-ico">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 6h10M4 12h10M4 18h7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
-              <path d="M16 15l3 3 3-3M19 18V9a3 3 0 0 0-3-3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </div>
-          <div class="vh-body">
-            <div class="vh-t"><%= lang === 'es' ? 'Sincronizar catálogo' : 'Sync catalog' %></div>
-            <div class="vh-d"><%= lang === 'es' ? 'Vuelca cambios del catálogo de equipos a las carreras aún sin arrancar.' : 'Push team-catalog changes into races that have not started yet.' %></div>
-          </div>
-          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        </a>
-
-        <a class="vh-card" href="/diagnostico" style="--a:#facc15;--a-bg:rgba(250,204,21,.12)">
-          <div class="vh-ico">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M14.5 6.5a3.5 3.5 0 0 0-4.8 4.4l-5.4 5.4a1.6 1.6 0 0 0 2.3 2.3l5.4-5.4a3.5 3.5 0 0 0 4.4-4.8l-2.3 2.3-2-2z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </div>
-          <div class="vh-body">
-            <div class="vh-t"><%= lang === 'es' ? 'Solución de problemas' : 'Troubleshooting' %></div>
-            <div class="vh-d"><%= lang === 'es' ? 'Estado del sistema y acciones de recuperación.' : 'System state and recovery actions.' %></div>
-          </div>
-          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        </a>
-
-        <a class="vh-card" href="/link" style="--a:#38bdf8;--a-bg:rgba(56,189,248,.12)">
-          <div class="vh-ico">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M9 12a3 3 0 0 1 3-3h3a3 3 0 0 1 0 6h-1.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M15 12a3 3 0 0 1-3 3H9a3 3 0 0 1 0-6h1.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </div>
-          <div class="vh-body">
-            <div class="vh-t"><%= lang === 'es' ? 'Sincronizar carrera' : 'Sync race' %></div>
-            <div class="vh-d"><%= lang === 'es' ? 'Descarga una carrera del maestro (DS) en este esclavo (BART) por red.' : 'Download a race from the master (DS) onto this slave (BART) over the network.' %></div>
-          </div>
-          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        </a>
-
-        <a class="vh-card" href="/ecosystem" style="--a:#a78bfa;--a-bg:rgba(167,139,250,.12)">
-          <div class="vh-ico">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="18" r="1.5" fill="currentColor"/>
-              <path d="M8.5 14.5a5 5 0 0 1 7 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
-              <path d="M5.5 11.5a9 9 0 0 1 13 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <div class="vh-body">
-            <div class="vh-t"><%= lang === 'es' ? 'Conexión ecosistema' : 'Ecosystem connection' %></div>
-            <div class="vh-d"><%= lang === 'es' ? 'Permite o bloquea que PitWall Control se conecte a este equipo.' : 'Allow or block PitWall Control from connecting to this machine.' %></div>
-          </div>
-          <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        </a>
-
-      </div>
-    </section>
-    <% } %>
-
   </div>
 </div>
 
@@ -519,5 +181,236 @@ const c = typeof counts !== 'undefined' ? counts : { drivers: 0, teams: 0, cars:
     });
   })();
 </script>
+<% } else { %>
+<%
+const es = lang === 'es';
+const ext = '<svg class="hm-ext" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>';
+const fmtClock = (ms) => { if (ms == null) return '--:--'; const s = Math.ceil(ms / 1000); return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
+const typeLabel = (r) => (r.type === 'championship' ? (es ? 'Campeonato' : 'Championship') : 'Club') + ' · ' + (r.format === 'team' ? (es ? 'equipos' : 'teams') : (es ? 'individual' : 'individual'));
+const statusOf = (s) => s === 'active' ? ['live', es ? 'En curso' : 'In progress'] : s === 'finished' ? ['done', es ? 'Finalizada' : 'Finished'] : ['pend', es ? 'Pendiente' : 'Pending'];
+const navItems = [
+  { group: es ? 'Competición' : 'Competition', items: [
+    { href: '/races', label: es ? 'Carreras' : 'Races', dot: '#ef4651', badge: inProgressRaces > 0 ? inProgressRaces : null },
+    { href: '/training', label: es ? 'Entrenamientos' : 'Training', dot: '#38bdf8' },
+    { href: '/training/competition/results', label: es ? 'Resultados de entrenos' : 'Training results', dot: '#38bdf8' },
+    { href: '/race-stats', label: es ? 'Estadísticas en vivo' : 'Live stats', dot: '#22c55e' },
+    { href: '/results', label: es ? 'Resultados' : 'Results', dot: '#f6c90e' },
+    { href: '/lap', label: 'Lap', dot: '#58a6ff' },
+    { href: '/control/shifts', label: es ? 'Control de pilotos' : 'Driver shifts', dot: '#a855f7' },
+    { href: '/control/tires', label: es ? 'Control de neumáticos' : 'Tyre control', dot: '#facc15' },
+  ]},
+  { group: es ? 'Catálogo' : 'Catalog', items: [
+    { href: '/drivers', label: es ? 'Pilotos' : 'Drivers', count: c.drivers },
+    { href: '/teams', label: es ? 'Equipos' : 'Teams', count: c.teams },
+    { href: '/cars', label: es ? 'Coches' : 'Cars', count: c.cars },
+    { href: '/categories', label: es ? 'Categorías' : 'Categories', count: c.categories },
+    { href: '/circuits', label: es ? 'Escenarios' : 'Scenarios', count: c.circuits },
+  ]},
+  { group: es ? 'Sistema' : 'System', items: [
+    { href: '/settings', label: es ? 'Ajustes' : 'Settings' },
+    { href: '/database', label: es ? 'Base de datos' : 'Database' },
+    { href: '/catalog-sync', label: es ? 'Sincronizar catálogo' : 'Sync catalog' },
+    { href: '/link', label: es ? 'Sincronizar carrera' : 'Sync race' },
+    { href: '/ecosystem', label: es ? 'Conexión ecosistema' : 'Ecosystem connection' },
+    { href: '/diagnostico', label: es ? 'Solución de problemas' : 'Troubleshooting' },
+  ]},
+];
+const lv = typeof live !== 'undefined' ? live : null;
+const races = typeof recentRaces !== 'undefined' ? recentRaces : [];
+%>
+<link rel="stylesheet" href="/css/home.css">
+
+<div class="hm">
+  <nav class="hm-side" aria-label="<%= es ? 'Secciones' : 'Sections' %>">
+    <a href="/" class="hm-brand" aria-label="PitWall">
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <rect x="6" y="6" width="88" height="88" rx="22" ry="22" fill="none" stroke="currentColor" stroke-width="7"/>
+        <polyline points="30,34 51,50 30,66" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="56" y="58" width="17" height="11" rx="3" fill="#F0404C"/>
+      </svg>
+      <span class="hm-brand__nm">PIT<span>W</span>ALL</span>
+    </a>
+    <a href="/" class="hm-nav is-current" aria-current="page"><%= es ? 'Inicio' : 'Home' %></a>
+    <% navItems.forEach(function (g) { %>
+      <div class="hm-grp"><%= g.group %></div>
+      <% g.items.forEach(function (it) { %>
+        <a href="<%= it.href %>" class="hm-nav" data-win>
+          <% if (it.dot) { %><span class="hm-dot" style="background:<%= it.dot %>"></span><% } %>
+          <span class="hm-nav__lbl"><%= it.label %></span>
+          <% if (it.badge) { %><span class="hm-nav__badge"><%= it.badge %></span><% } %>
+          <% if (it.count) { %><span class="hm-nav__count"><%= it.count %></span><% } %>
+          <%- ext %>
+        </a>
+      <% }) %>
+    <% }) %>
+    <div class="hm-mode">
+      <span id="hmModeLbl"><%= es ? 'Abrir enlaces en' : 'Open links in' %></span>
+      <div class="hm-seg" role="group" aria-labelledby="hmModeLbl">
+        <button type="button" data-mode="new" aria-pressed="true"><%= es ? 'Ventana nueva' : 'New window' %></button>
+        <button type="button" data-mode="same" aria-pressed="false"><%= es ? 'Esta ventana' : 'This window' %></button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="hm-main">
+    <header class="hm-head">
+      <h1><%= es ? 'Inicio' : 'Home' %></h1>
+      <div class="hm-pills">
+        <% if (ss.simulating) { %>
+          <a href="/settings" class="hm-pill hm-pill--sim" data-win><span class="hm-dot"></span><%= es ? 'Modo simulación' : 'Simulation mode' %></a>
+        <% } else if (serialConnected) { %>
+          <a href="/settings" class="hm-pill hm-pill--ok" data-win><span class="hm-dot"></span>DS-300 ×<%= portCount %> <span class="hm-mono hm-mute">· <%= portLabels %></span></a>
+        <% } else { %>
+          <a href="/settings" class="hm-pill hm-pill--off" data-win><span class="hm-dot"></span><%= es ? 'Sin conexión' : 'Disconnected' %></a>
+        <% } %>
+        <% if (typeof serverIps !== 'undefined' && serverIps && serverIps.length) { %>
+          <span class="hm-pill hm-pill--ip"
+                title="<%= (es ? 'Dirección(es) del servidor: ' : 'Server address(es): ') + serverIps.map(function(i){ return i.ip + ':' + serverPort + ' (' + i.name + ')'; }).join('  ·  ') %>">
+            <span class="hm-dot"></span><span class="hm-mono"><%= serverIps[0].ip %>:<%= serverPort %><% if (serverIps.length > 1) { %> +<%= serverIps.length - 1 %><% } %></span>
+          </span>
+        <% } %>
+        <span class="hm-pill" id="hmWinPill" hidden></span>
+      </div>
+    </header>
+
+    <% if (lv) { %>
+      <section class="hm-hero" aria-label="<%= es ? 'Carrera en curso' : 'Race in progress' %>"
+               data-race-id="<%= lv.race.id %>" data-running="<%= lv.running ? 1 : 0 %>">
+        <div class="hm-hero__top">
+          <div class="hm-hero__id">
+            <div class="hm-kicker"><span class="hm-dot hm-dot--live"></span>
+              <%= lv.paused ? (es ? 'Carrera en pausa' : 'Race paused') : lv.running ? (es ? 'Carrera en curso' : 'Race in progress') : (es ? 'Carrera en curso · entre mangas' : 'Race in progress · between heats') %>
+            </div>
+            <div class="hm-hero__name"><%= lv.race.name %></div>
+            <div class="hm-hero__sub">
+              <% if (lv.manga) { %><%= es ? 'Manga' : 'Heat' %> <%= lv.position %> <%= es ? 'de' : 'of' %> <%= lv.total %> · <%= es ? 'Tanda' : 'Round' %> <%= lv.manga.tanda_number %> · <% } %><%= typeLabel(lv.race) %>
+            </div>
+            <div class="hm-bar"><div style="width:<%= lv.total ? Math.round(lv.done / lv.total * 100) : 0 %>%"></div></div>
+          </div>
+          <div class="hm-hero__stats">
+            <div><span class="hm-lbl"><%= es ? 'Queda' : 'Remaining' %></span>
+              <span class="hm-clock" id="hmClock" data-remaining="<%= lv.remainingMs != null ? lv.remainingMs : '' %>"><%= lv.running ? fmtClock(lv.remainingMs) : '--:--' %></span></div>
+            <% if (lv.leader) { %>
+              <div><span class="hm-lbl"><%= es ? 'Líder estimado' : 'Projected leader' %></span><span class="hm-big"><%= lv.leader %></span></div>
+            <% } %>
+            <div><span class="hm-lbl"><%= es ? 'Mangas hechas' : 'Heats done' %></span><span class="hm-big hm-mono"><%= lv.done %> / <%= lv.total %></span></div>
+          </div>
+        </div>
+        <div class="hm-hero__acts">
+          <% if (lv.manga) { %>
+            <a href="/races/<%= lv.race.id %>/mangas/<%= lv.manga.id %>/live" class="hm-btn hm-btn--primary" data-win="pw-live-<%= lv.race.id %>"><%= es ? 'Directo de la manga' : 'Heat live' %><%- ext %></a>
+            <a href="/races/<%= lv.race.id %>/mangas/<%= lv.manga.id %>/tv" class="hm-btn" data-win="pw-tv-<%= lv.race.id %>"><%= es ? 'Pantalla TV' : 'TV screen' %><%- ext %></a>
+          <% } %>
+          <a href="/race-stats" class="hm-btn" data-win><%= es ? 'Estadísticas en vivo' : 'Live stats' %><%- ext %></a>
+          <% if (lv.race.type === 'championship') { %>
+            <a href="/control/shifts" class="hm-btn" data-win><%= es ? 'Control de pilotos' : 'Driver shifts' %><%- ext %></a>
+          <% } %>
+          <% if (lv.race.tire_pairs_per_team) { %>
+            <a href="/races/<%= lv.race.id %>/tires" class="hm-btn" data-win><%= es ? 'Neumáticos' : 'Tyres' %><%- ext %></a>
+          <% } %>
+          <a href="/races/<%= lv.race.id %>/events" class="hm-btn" data-win><%= es ? 'Registro de sucesos' : 'Event log' %><%- ext %></a>
+          <a href="/races/<%= lv.race.id %>" class="hm-btn hm-btn--ghost" data-win><%= es ? 'Gestionar carrera' : 'Manage race' %><%- ext %></a>
+        </div>
+      </section>
+    <% } else if (typeof activePoleRaces !== 'undefined' && activePoleRaces.length > 0) { %>
+      <section class="hm-hero" aria-label="<%= es ? 'Pole en curso' : 'Pole in progress' %>">
+        <div class="hm-hero__id">
+          <div class="hm-kicker"><span class="hm-dot hm-dot--live"></span><%= es ? 'Pole en curso' : 'Pole in progress' %></div>
+          <div class="hm-hero__name"><%= activePoleRaces[0].name %></div>
+        </div>
+        <div class="hm-hero__acts">
+          <a href="/races/<%= activePoleRaces[0].id %>/pole/timing" class="hm-btn hm-btn--primary" data-win="pw-pole-<%= activePoleRaces[0].id %>"><%= es ? 'Pole en directo' : 'Pole live' %><%- ext %></a>
+          <a href="/races/<%= activePoleRaces[0].id %>" class="hm-btn hm-btn--ghost" data-win><%= es ? 'Gestionar carrera' : 'Manage race' %><%- ext %></a>
+        </div>
+      </section>
+    <% } else { %>
+      <section class="hm-hero hm-hero--idle">
+        <div class="hm-hero__id">
+          <div class="hm-kicker"><%= es ? 'Sin carrera en curso' : 'No race in progress' %></div>
+          <div class="hm-hero__sub"><%= es ? 'Crea una carrera o arranca una pendiente desde la lista.' : 'Create a race or start a pending one from the list.' %></div>
+        </div>
+        <div class="hm-hero__acts">
+          <a href="/races/new" class="hm-btn hm-btn--primary" data-win><%= es ? 'Nueva carrera' : 'New race' %><%- ext %></a>
+          <a href="/training" class="hm-btn" data-win><%= es ? 'Entreno libre' : 'Free practice' %><%- ext %></a>
+        </div>
+      </section>
+    <% } %>
+
+    <section>
+      <h2 class="hm-sec"><%= es ? 'Accesos rápidos' : 'Quick access' %></h2>
+      <div class="hm-tiles">
+        <a href="/races/new" class="hm-tile" data-win style="--a:#ef4651;--a-bg:rgba(239,70,81,.13)">
+          <%- ext %>
+          <span class="hm-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4M5 4h12l-2.2 3.5L17 11H5"/></svg></span>
+          <span class="hm-tile__t"><%= es ? 'Nueva carrera' : 'New race' %></span>
+          <span class="hm-tile__d"><%= es ? 'Asistente paso a paso.' : 'Step-by-step wizard.' %></span>
+        </a>
+        <a href="/training" class="hm-tile" data-win style="--a:#38bdf8;--a-bg:rgba(56,189,248,.12)">
+          <%- ext %>
+          <span class="hm-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5M9 2h6M12 2v3"/></svg></span>
+          <span class="hm-tile__t"><%= es ? 'Entrenamientos' : 'Training' %></span>
+          <span class="hm-tile__d"><%= es ? 'Libres o de competición.' : 'Free or competition.' %></span>
+        </a>
+        <a href="/results" class="hm-tile" data-win style="--a:#f6c90e;--a-bg:rgba(246,201,14,.12)">
+          <%- ext %>
+          <span class="hm-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v6a5 5 0 0 1-10 0z"/></svg></span>
+          <span class="hm-tile__t"><%= es ? 'Resultados' : 'Results' %></span>
+          <span class="hm-tile__d"><%= es ? 'Carreras finalizadas.' : 'Finished races.' %></span>
+        </a>
+        <a href="/lap" class="hm-tile" data-win style="--a:#58a6ff;--a-bg:rgba(88,166,255,.12)">
+          <%- ext %>
+          <span class="hm-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18.5h2"/></svg></span>
+          <span class="hm-tile__t">Lap</span>
+          <span class="hm-tile__d"><%= es ? 'PINs y timing del equipo en el móvil.' : 'PINs and team timing on the phone.' %></span>
+        </a>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="hm-sec"><%= es ? 'Carreras' : 'Races' %></h2>
+      <% if (races.length === 0) { %>
+        <p class="hm-empty"><%= es ? 'Aún no hay carreras.' : 'No races yet.' %> <a href="/races/new" data-win><%= es ? 'Crear la primera' : 'Create the first one' %></a></p>
+      <% } else { %>
+        <div class="hm-table-wrap">
+          <table class="hm-table">
+            <thead><tr>
+              <th><%= es ? 'Carrera' : 'Race' %></th>
+              <th><%= es ? 'Tipo' : 'Type' %></th>
+              <th><%= es ? 'Estado' : 'Status' %></th>
+              <th><%= es ? 'Mangas' : 'Heats' %></th>
+              <th class="hm-r"><%= es ? 'Acciones' : 'Actions' %></th>
+            </tr></thead>
+            <tbody>
+              <% races.forEach(function (r) { const st = statusOf(r.status); %>
+                <tr>
+                  <td class="hm-strong"><a href="/races/<%= r.id %>" data-win><%= r.name %></a></td>
+                  <td><%= typeLabel(r) %></td>
+                  <td><span class="hm-badge hm-badge--<%= st[0] %>"><%= st[1] %></span></td>
+                  <td class="hm-mono"><%= r.progress.done || 0 %> / <%= r.progress.total %></td>
+                  <td class="hm-r">
+                    <% if (r.status === 'active' && lv && lv.race.id === r.id && lv.manga) { %>
+                      <a href="/races/<%= r.id %>/mangas/<%= lv.manga.id %>/live" class="hm-act" data-win="pw-live-<%= r.id %>"><%= es ? 'Directo' : 'Live' %><%- ext %></a>
+                    <% } else if (r.status === 'finished') { %>
+                      <a href="/races/<%= r.id %>/results" class="hm-act" data-win><%= es ? 'Resultados' : 'Results' %><%- ext %></a>
+                    <% } else { %>
+                      <a href="/races/<%= r.id %>" class="hm-act" data-win><%= es ? 'Abrir' : 'Open' %><%- ext %></a>
+                    <% } %>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+        <% if (typeof totalRaces !== 'undefined' && totalRaces > races.length) { %>
+          <a href="/races" class="hm-more" data-win><%= es ? 'Ver todas las carreras' : 'See all races' %> (<%= totalRaces %>) ›</a>
+        <% } %>
+      <% } %>
+    </section>
+  </main>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/home.js"></script>
+<% } %>
 
 <%- include('partials/footer') %>

@@ -152,12 +152,11 @@ function loadAppIcon() {
 }
 
 // ── Main window ───────────────────────────────────────────────────────────────
-function createWindow() {
-  mainWindow = new BrowserWindow({
-    width: 1400, height: 900, minWidth: 900, minHeight: 600,
-    title: 'PitWall',
+function windowOptions() {
+  return {
     backgroundColor: '#0a0d13',
     icon: loadAppIcon(),
+    autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -167,6 +166,14 @@ function createWindow() {
       // que los pitidos del semáforo suenen al primer GO de la sesión.
       autoplayPolicy: 'no-user-gesture-required',
     },
+  };
+}
+
+function createWindow() {
+  mainWindow = new BrowserWindow({
+    ...windowOptions(),
+    width: 1400, height: 900, minWidth: 900, minHeight: 600,
+    title: 'PitWall',
   });
   mainWindow.setMenuBarVisibility(false);
   mainWindow.loadURL(`http://127.0.0.1:${PORT}`);
@@ -223,6 +230,32 @@ ipcMain.on('pitwall:refocus', (e) => {
   win.focus();
   e.sender.focus();
 });
+
+// ── Ventanas secundarias ──────────────────────────────────────────────────────
+// La home abre cada sección en su propia ventana (window.open con nombre fijo)
+// para poder seguir trabajando con una manga en marcha. Sin este handler
+// Electron las crearía con la barra de menú y sin el preload. Lo que no es del
+// servidor local (GitHub, manuales…) va al navegador del sistema.
+const isAppUrl = (url) => url === 'about:blank' || url.startsWith(`http://127.0.0.1:${PORT}/`) || url === `http://127.0.0.1:${PORT}`;
+
+app.on('web-contents-created', (_e, contents) => {
+  contents.setWindowOpenHandler(({ url }) => {
+    if (!isAppUrl(url)) {
+      if (/^https?:/i.test(url)) shell.openExternal(url);
+      return { action: 'deny' };
+    }
+    return {
+      action: 'allow',
+      overrideBrowserWindowOptions: { ...windowOptions(), width: 1280, height: 860, minWidth: 700, minHeight: 500 },
+    };
+  });
+  contents.on('did-create-window', (win) => win.setMenuBarVisibility(false));
+});
+
+ipcMain.handle('pitwall:windows', () =>
+  BrowserWindow.getAllWindows()
+    .filter(w => w !== mainWindow && !w.isDestroyed())
+    .map(w => w.getTitle()));
 
 // ── App lifecycle ─────────────────────────────────────────────────────────────
 app.whenReady().then(async () => {
