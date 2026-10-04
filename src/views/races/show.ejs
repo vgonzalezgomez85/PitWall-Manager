@@ -35,6 +35,10 @@ function stepState(idx) {
     <%= t('race.back_to_list') %>
   </a>
 
+  <% if (typeof flash !== 'undefined' && flash) { %>
+    <div class="flash flash--<%= flash.type %>" style="margin:0 0 1rem"><%= flash.text %></div>
+  <% } %>
+
   <!-- ── Cabecera ──────────────────────────────────────────────────── -->
   <div class="rs-head">
     <div>
@@ -43,6 +47,22 @@ function stepState(idx) {
         <span class="rs-state rs-state--<%= race.status %>">
           <span class="rs-state__d"></span> <%= statusLabel %>
         </span>
+        <details class="rs-stmenu">
+          <summary class="rs-stmenu__btn" title="<%= lang === 'es' ? 'Cambiar el estado de la carrera' : 'Change the race status' %>">
+            <%= lang === 'es' ? 'Cambiar estado' : 'Change status' %>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+          </summary>
+          <form class="rs-stmenu__pop" action="/races/<%= race.id %>/status" method="POST">
+            <% [['pending', lang === 'es' ? 'Pendiente' : 'Pending', lang === 'es' ? 'Aún no ha empezado' : 'Not started yet'],
+                ['active', lang === 'es' ? 'En curso' : 'Active', lang === 'es' ? 'Sale en el inicio y recibe el GO' : 'Shown on home, receives the GO'],
+                ['finished', lang === 'es' ? 'Completada' : 'Completed', lang === 'es' ? 'Pasa a resultados' : 'Moves to results']].forEach(function (o) { %>
+              <button type="submit" name="status" value="<%= o[0] %>" class="rs-stmenu__opt<%= race.status === o[0] ? ' is-current' : '' %>" <%= race.status === o[0] ? 'disabled' : '' %>>
+                <span class="rs-state rs-state--<%= o[0] %>"><span class="rs-state__d"></span> <%= o[1] %></span>
+                <span class="rs-stmenu__d"><%= o[2] %></span>
+              </button>
+            <% }) %>
+          </form>
+        </details>
       </div>
       <div class="rs-meta">
         <span><span class="rs-ic">🏁</span> <%= t('races.type.' + race.type) %></span>
@@ -358,6 +378,11 @@ function stepState(idx) {
 </div>
 </div>
 
+<script>
+  document.addEventListener('click', (e) => {
+    document.querySelectorAll('details.rs-stmenu[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; });
+  });
+</script>
 <%- include('../partials/footer') %>
 <script src="/socket.io/socket.io.js"></script>
 <script>

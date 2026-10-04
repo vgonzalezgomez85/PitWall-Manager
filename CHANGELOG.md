@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.43.1] — 2026-10-04
+
+### Añadido
+- **Cambiar el estado de una carrera a mano.** En la ficha de la carrera, junto a la etiqueta de estado, el botón **«Cambiar estado»** permite pasarla a **Pendiente**, **En curso** o **Completada**. No deja cambiarlo mientras una manga de esa carrera está en marcha, y avisa si ya hay otra carrera en curso (el GO del DS va a la primera manga pendiente de cualquier carrera en curso).
+
 ## [1.43.0] — 2026-10-04
 
 ### Añadido
