@@ -1298,20 +1298,41 @@ function fitVerticalGrid(root, W, H) {
 // dé el director en la página nueva, sin que tenga que buscar el botón.
 const FS_KEY = 'pw_live_fullscreen';
 
-function toggleFullscreen() {
+// En la app de escritorio se usa la pantalla completa de la VENTANA
+// (preload → pitwallWindow), que sí sobrevive a las recargas: no hace falta
+// ningún toque para recuperarla. La del documento queda para el navegador.
+const nativeFs = window.pitwallWindow || null;
+let _nativeFsOn = false;
+let _nativeFsExitForPanel = false;
+
+function isFullscreenOn() {
+  return nativeFs ? _nativeFsOn : !!document.fullscreenElement;
+}
+function enterFullscreen() {
+  if (nativeFs) return nativeFs.setFullScreen(true);
   const el = document.documentElement;
-  if (!document.fullscreenElement) {
-    (el.requestFullscreen || el.webkitRequestFullscreen || (() => {})).call(el);
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (req) { const p = req.call(el); if (p && p.catch) p.catch(() => {}); }
+}
+function exitFullscreen() {
+  if (nativeFs) return nativeFs.setFullScreen(false);
+  return (document.exitFullscreen || document.webkitExitFullscreen || (() => {})).call(document);
+}
+
+function toggleFullscreen() {
+  if (!isFullscreenOn()) {
+    enterFullscreen();
   } else {
     try { sessionStorage.removeItem(FS_KEY); } catch {}
-    (document.exitFullscreen || document.webkitExitFullscreen || (() => {})).call(document);
+    exitFullscreen();
   }
 }
-// Salir con Esc no pasa por toggleFullscreen(): también hay que olvidar la preferencia.
+// Salir con Esc no pasa por toggleFullscreen(): también hay que olvidar la
+// preferencia. La pantalla completa de la ventana no sale sola con Esc.
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && document.fullscreenElement) {
-    try { sessionStorage.removeItem(FS_KEY); } catch {}
-  }
+  if (e.key !== 'Escape' || !isFullscreenOn()) return;
+  try { sessionStorage.removeItem(FS_KEY); } catch {}
+  if (nativeFs) exitFullscreen();
 });
 
 // Abre una página auxiliar (clasificación, minimapa, sucesos...) en ventana
@@ -1324,8 +1345,13 @@ document.addEventListener('keydown', (e) => {
 // No borramos FS_KEY: al volver a esta pestaña, el primer toque restaura la
 // pantalla completa sola (ver armFullscreenRestore).
 function openPanel(url, features) {
-  if (!document.fullscreenElement) {
+  if (!isFullscreenOn()) {
     window.open(url, '_blank', features);
+    return;
+  }
+  if (nativeFs) {
+    _nativeFsExitForPanel = true;
+    Promise.resolve(exitFullscreen()).finally(() => window.open(url, '_blank', features));
     return;
   }
   let opened = false;
@@ -1337,7 +1363,7 @@ function openPanel(url, features) {
   };
   const onExit = () => { if (!document.fullscreenElement) doOpen(); };
   document.addEventListener('fullscreenchange', onExit);
-  (document.exitFullscreen || document.webkitExitFullscreen || (() => {})).call(document);
+  exitFullscreen();
   setTimeout(doOpen, 600); // red de seguridad si el evento no llega a tiempo
 }
 
@@ -1369,10 +1395,8 @@ function armFullscreenRestore() {
       return;
     }
     disarm();
-    if (document.fullscreenElement) return;
-    const el = document.documentElement;
-    const req = el.requestFullscreen || el.webkitRequestFullscreen;
-    if (req) { const p = req.call(el); if (p && p.catch) p.catch(() => {}); }
+    if (isFullscreenOn()) return;
+    enterFullscreen();
   };
   const disarm = () => {
     _fsRestoreArmed = false;
@@ -1384,15 +1408,7 @@ function armFullscreenRestore() {
 }
 
 // Refleja el estado en el icono del botón (expandir ↔ contraer) y reajusta.
-document.addEventListener('fullscreenchange', () => {
-  const on = !!document.fullscreenElement;
-  if (on) {
-    try { sessionStorage.setItem(FS_KEY, '1'); } catch {}
-  } else {
-    // Si seguimos "queriendo" pantalla completa (FS_KEY no se borró explícitamente
-    // desde toggleFullscreen/Esc), es que ha salido por sí sola: arma la reentrada.
-    armFullscreenRestore();
-  }
+function paintFullscreen(on) {
   const btn = document.getElementById('fsBtn');
   if (btn) {
     const open  = btn.querySelector('.fs-ico-open');
@@ -1404,10 +1420,51 @@ document.addEventListener('fullscreenchange', () => {
                    : 'Pantalla completa';
   }
   if (typeof fitLaneCards === 'function') requestAnimationFrame(() => fitLaneCards());
-});
-// Tras una recarga, si veníamos de pantalla completa, reentra en el primer
-// gesto del usuario en la página nueva (clic/toque/tecla cualquiera).
-armFullscreenRestore();
+}
+
+if (nativeFs) {
+  nativeFs.onFullScreenChange((on) => {
+    _nativeFsOn = on;
+    if (on) {
+      try { sessionStorage.setItem(FS_KEY, '1'); } catch {}
+    } else if (_nativeFsExitForPanel) {
+      _nativeFsExitForPanel = false;
+      armFullscreenRestore();
+    } else {
+      // Salida desde el botón verde / ⌃⌘F de macOS: es una decisión del usuario.
+      try { sessionStorage.removeItem(FS_KEY); } catch {}
+    }
+    paintFullscreen(on);
+  });
+  Promise.resolve(nativeFs.isFullScreen()).then((on) => {
+    _nativeFsOn = !!on;
+    paintFullscreen(_nativeFsOn);
+    if (!_nativeFsOn) armFullscreenRestore();
+  });
+  // «Volver» sale del directo: la ventana no debe quedarse en pantalla completa
+  // en el resto de páginas.
+  document.addEventListener('click', (e) => {
+    const t = e.target && e.target.closest ? e.target.closest('[data-no-fs-restore]') : null;
+    if (!t || !_nativeFsOn) return;
+    try { sessionStorage.removeItem(FS_KEY); } catch {}
+    exitFullscreen();
+  }, true);
+} else {
+  document.addEventListener('fullscreenchange', () => {
+    const on = !!document.fullscreenElement;
+    if (on) {
+      try { sessionStorage.setItem(FS_KEY, '1'); } catch {}
+    } else {
+      // Si seguimos "queriendo" pantalla completa (FS_KEY no se borró explícitamente
+      // desde toggleFullscreen/Esc), es que ha salido por sí sola: arma la reentrada.
+      armFullscreenRestore();
+    }
+    paintFullscreen(on);
+  });
+  // Tras una recarga, si veníamos de pantalla completa, reentra en el primer
+  // gesto del usuario en la página nueva (clic/toque/tecla cualquiera).
+  armFullscreenRestore();
+}
 
 // Reaplica fitLaneCards cuando el contenedor cambia (p. ej. arrastrar el
 // resizer del sidebar). El window resize no se dispara en ese caso.

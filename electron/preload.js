@@ -26,6 +26,13 @@ contextBridge.exposeInMainWorld('__pitwallRefocus', () => ipcRenderer.send('pitw
 // Ventanas abiertas desde la app (las lista la home).
 contextBridge.exposeInMainWorld('pitwallWindows', { list: () => ipcRenderer.invoke('pitwall:windows') });
 
+// Pantalla completa de la ventana (ver main.js: sobrevive a las recargas).
+contextBridge.exposeInMainWorld('pitwallWindow', {
+  setFullScreen: (on) => ipcRenderer.invoke('pitwall:fullscreen', !!on),
+  isFullScreen:  () => ipcRenderer.invoke('pitwall:fullscreen'),
+  onFullScreenChange: (cb) => ipcRenderer.on('pitwall:fullscreen-changed', (_e, on) => cb(!!on)),
+});
+
 webFrame.executeJavaScript(`(() => {
   for (const name of ['alert', 'confirm', 'prompt']) {
     const native = window[name];

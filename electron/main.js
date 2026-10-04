@@ -176,6 +176,7 @@ function createWindow() {
     title: 'PitWall',
   });
   mainWindow.setMenuBarVisibility(false);
+  trackFullScreen(mainWindow);
   mainWindow.loadURL(`http://127.0.0.1:${PORT}`);
   mainWindow.on('close', e => { if (!app.isQuiting) { e.preventDefault(); mainWindow.hide(); } });
   mainWindow.on('closed', () => { mainWindow = null; });
@@ -249,7 +250,30 @@ app.on('web-contents-created', (_e, contents) => {
       overrideBrowserWindowOptions: { ...windowOptions(), width: 1280, height: 860, minWidth: 700, minHeight: 500 },
     };
   });
-  contents.on('did-create-window', (win) => win.setMenuBarVisibility(false));
+  contents.on('did-create-window', (win) => { win.setMenuBarVisibility(false); trackFullScreen(win); });
+});
+
+// Pantalla completa de la VENTANA, no la del documento: la del documento
+// (Fullscreen API) se pierde en cada recarga y el directo se recarga tras el
+// semáforo, al acabar la manga, en pausa… La de la ventana sobrevive.
+function trackFullScreen(win) {
+  const notify = () => { if (!win.isDestroyed()) win.webContents.send('pitwall:fullscreen-changed', win.isFullScreen()); };
+  win.on('enter-full-screen', notify);
+  win.on('leave-full-screen', notify);
+}
+
+ipcMain.handle('pitwall:fullscreen', (e, on) => {
+  const win = BrowserWindow.fromWebContents(e.sender);
+  if (!win || win.isDestroyed()) return false;
+  if (typeof on !== 'boolean' || win.isFullScreen() === on) return win.isFullScreen();
+  // Resuelve al terminar la transición (en macOS es una animación de cambio de
+  // Space): quien abre una ventana justo después necesita que haya acabado.
+  return new Promise((resolve) => {
+    const done = () => { clearTimeout(t); resolve(!win.isDestroyed() && win.isFullScreen()); };
+    const t = setTimeout(done, 1500);
+    win.once(on ? 'enter-full-screen' : 'leave-full-screen', done);
+    win.setFullScreen(on);
+  });
 });
 
 ipcMain.handle('pitwall:windows', () =>

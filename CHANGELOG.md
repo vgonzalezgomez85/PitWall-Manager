@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.42.2] — 2026-10-04
+
+### Corregido
+- **La pantalla completa del directo se perdía en cada actualización** (al acabar el semáforo, al terminar o pausar la manga…) y había que volver a pulsar. En la app de escritorio, el botón de pantalla completa pone ahora **la ventana** en pantalla completa, que se mantiene aunque el directo se recargue. Esc y «Volver» siguen saliendo de ella. En el navegador no cambia: ahí la recarga siempre la quita y el primer toque la recupera.
+
 ## [1.42.1] — 2026-10-04
 
 ### Corregido
