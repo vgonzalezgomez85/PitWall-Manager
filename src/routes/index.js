@@ -45,6 +45,65 @@ const VerificationController       = require('../controllers/VerificationControl
 const RaceEventController          = require('../controllers/RaceEventController');
 const CatalogSyncController        = require('../controllers/CatalogSyncController');
 
+// Franja «carrera en curso» del inicio. Entre mangas no hay ninguna 'active':
+// se muestra la siguiente pendiente para que «Directo» siga a mano.
+function homeLiveState(allRaces) {
+  const db            = require('../config/database');
+  const TimingService = require('../services/TimingService');
+  const liveRace = allRaces.find(r => r.status === 'active');
+  if (!liveRace) return null;
+  const ordered = db.prepare(`
+    SELECT m.id, m.status, m.number, t.number AS tanda_number
+    FROM mangas m JOIN tandas t ON t.id = m.tanda_id
+    WHERE m.race_id = ? ORDER BY t.number, m.number, m.id
+  `).all(liveRace.id);
+  const current  = ordered.find(m => m.status === 'active') || ordered.find(m => m.status === 'pending') || null;
+  const lastDone = [...ordered].reverse().find(m => m.status === 'finished') || null;
+  const running  = TimingService.activeRaceId === liveRace.id;
+  const done     = ordered.filter(m => m.status === 'finished').length;
+  // Mismo cálculo que la «Clasificación estimada» del directo (getStandings →
+  // _cachedProjection). Con manga viva el tick la mantiene fresca; entre mangas
+  // solo se usa lo que ya haya en caché para no disparar el cálculo en frío.
+  let proj = null;
+  if (running) {
+    try { proj = TimingService._cachedProjection(liveRace.id); } catch (_) {}
+  } else {
+    const c = TimingService._projCache.get(liveRace.id);
+    proj = c ? c.value : null;
+  }
+  const leader = Array.isArray(proj) && proj[0] ? proj[0].name : null;
+  return {
+    race: liveRace,
+    manga: current,
+    correctionsManga: (current && current.status === 'active') ? current : (lastDone || null),
+    position: current ? ordered.indexOf(current) + 1 : null,
+    total: ordered.length,
+    done,
+    // La manga que se está corriendo cuenta: «1 / 10» desde que arranca la 1.
+    heatsShown: current && current.status === 'active' ? ordered.indexOf(current) + 1 : done,
+    running,
+    paused: running && TimingService.isPaused,
+    remainingMs: running ? TimingService.getRemainingMs() : null,
+    leader,
+  };
+}
+
+// Firma barata del estado que pinta el inicio: si cambia, el inicio se recarga
+// (arranque de una carrera, cambio de manga, pausa, pole…). Los eventos de
+// socket no cubren todos los casos — p. ej. pasar una carrera a «en curso».
+router.get('/api/home/state', (req, res) => {
+  const db = require('../config/database');
+  const TimingService = require('../services/TimingService');
+  const races = db.prepare('SELECT id, status FROM races ORDER BY id').all();
+  const mangas = db.prepare("SELECT id, status FROM mangas WHERE status = 'active'").all();
+  let pole = '';
+  try { pole = db.prepare("SELECT race_id, status FROM pole_sessions WHERE status = 'in_progress'").all().map(p => p.race_id).join(','); } catch (_) {}
+  const sig = races.map(r => r.id + ':' + r.status).join(',') + '|' +
+              mangas.map(m => m.id).join(',') + '|' +
+              (TimingService.isPaused ? 'p' : '') + '|' + pole;
+  res.json({ sig });
+});
+
 router.get('/', (req, res) => {
   const Race          = require('../models/Race');
   const DriverProfile = require('../models/DriverProfile');
@@ -80,41 +139,14 @@ router.get('/', (req, res) => {
   const serverIps  = net.serverIPs(Settings.get('server_bind_iface', ''));
   const serverPort = parseInt(process.env.PORT || '3000', 10);
 
-  const db            = require('../config/database');
-  const TimingService = require('../services/TimingService');
+  const db = require('../config/database');
   const mangaCounts = new Map(db.prepare(`
     SELECT race_id, COUNT(*) AS total, SUM(status = 'finished') AS done
     FROM mangas GROUP BY race_id
   `).all().map(r => [r.race_id, r]));
   const progressOf = (id) => mangaCounts.get(id) || { total: 0, done: 0 };
 
-  // Carrera en curso para la franja de cabecera. Entre mangas no hay ninguna
-  // 'active': se muestra la siguiente pendiente para que «Directo» siga a mano.
-  let live = null;
-  const liveRace = allRaces.find(r => r.status === 'active');
-  if (liveRace) {
-    const ordered = db.prepare(`
-      SELECT m.id, m.status, m.number, t.number AS tanda_number
-      FROM mangas m JOIN tandas t ON t.id = m.tanda_id
-      WHERE m.race_id = ? ORDER BY t.number, m.number, m.id
-    `).all(liveRace.id);
-    const current = ordered.find(m => m.status === 'active') || ordered.find(m => m.status === 'pending') || null;
-    const running = TimingService.activeRaceId === liveRace.id;
-    // Solo lo que ya esté en caché: la home no debe disparar el cálculo de la proyección.
-    const proj = TimingService._projCache.get(liveRace.id);
-    const leader = proj && Array.isArray(proj.value) && proj.value[0] ? proj.value[0].name : null;
-    live = {
-      race: liveRace,
-      manga: current,
-      position: current ? ordered.indexOf(current) + 1 : null,
-      total: ordered.length,
-      done: ordered.filter(m => m.status === 'finished').length,
-      running,
-      paused: running && TimingService.isPaused,
-      remainingMs: running ? TimingService.getRemainingMs() : null,
-      leader,
-    };
-  }
+  const live = homeLiveState(allRaces);
 
   const recentRaces = [
     ...allRaces.filter(r => r.status === 'active'),

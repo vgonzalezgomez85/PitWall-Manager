@@ -24,7 +24,12 @@ const { contextBridge, ipcRenderer, webFrame } = require('electron');
 contextBridge.exposeInMainWorld('__pitwallRefocus', () => ipcRenderer.send('pitwall:refocus'));
 
 // Ventanas abiertas desde la app (las lista la home).
-contextBridge.exposeInMainWorld('pitwallWindows', { list: () => ipcRenderer.invoke('pitwall:windows') });
+contextBridge.exposeInMainWorld('pitwallWindows', {
+  list:  () => ipcRenderer.invoke('pitwall:windows'),
+  open:  (url, name) => ipcRenderer.invoke('pitwall:open-window', String(url), String(name)),
+  focus: (id) => ipcRenderer.invoke('pitwall:window-focus', id),
+  close: (id) => ipcRenderer.invoke('pitwall:window-close', id),
+});
 
 // Pantalla completa de la ventana (ver main.js: sobrevive a las recargas).
 contextBridge.exposeInMainWorld('pitwallWindow', {
