@@ -23,6 +23,9 @@ const { contextBridge, ipcRenderer, webFrame } = require('electron');
 // al cerrarse, el proceso principal haga ese blur+focus.
 contextBridge.exposeInMainWorld('__pitwallRefocus', () => ipcRenderer.send('pitwall:refocus'));
 
+// Ventanas abiertas desde la app (las lista la home).
+contextBridge.exposeInMainWorld('pitwallWindows', { list: () => ipcRenderer.invoke('pitwall:windows') });
+
 webFrame.executeJavaScript(`(() => {
   for (const name of ['alert', 'confirm', 'prompt']) {
     const native = window[name];

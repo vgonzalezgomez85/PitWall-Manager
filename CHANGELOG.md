@@ -13,6 +13,15 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.42.0] — 2026-10-04
+
+### Añadido
+- **Inicio rediseñado para el operador.** Menú lateral siempre visible con todas las secciones (Competición, Catálogo y Sistema, con sus contadores) y, arriba del todo, una **franja con la carrera en curso**: manga X de Y, tanda, **reloj de la manga en vivo**, mangas hechas, líder estimado y botones directos a **Directo, Pantalla TV, Estadísticas en vivo, Control de pilotos, Neumáticos, Registro de sucesos** y Gestionar carrera. Debajo, cuatro accesos rápidos (Nueva carrera, Entrenamientos, Resultados, Lap) y una **tabla con las últimas carreras** y su acción directa (Directo, Abrir o Resultados).
+  - Sin carrera en marcha, la franja muestra la pole en curso o, si no hay, «Nueva carrera» y «Entreno libre».
+  - Al empezar, terminar o pausar una manga, la página se actualiza sola.
+- **Las secciones se abren en ventanas aparte**, para seguir trabajando con una manga en marcha. Cada destino tiene su propia ventana: si ya está abierta, se trae al frente sin recargarla. Un interruptor en el menú («Ventana nueva / Esta ventana») elige el comportamiento, y en la cabecera se ve cuántas ventanas hay abiertas.
+  - En la app de escritorio, las ventanas nuevas se abren como la principal (sin barra de menú y con el sonido del semáforo), y los enlaces externos (GitHub, manuales) van al navegador del sistema.
+
 ## [1.41.0] — 2026-10-04
 
 ### Añadido
