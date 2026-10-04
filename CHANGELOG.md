@@ -13,6 +13,26 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.41.0] — 2026-10-04
+
+### Añadido
+- **Exportar e importar una sola carrera** (Base de datos → «Exp. / Imp. carrera»). Para llevarte a tu PC la carrera que has corrido en otro club sin mover la base de datos entera. Se descarga un archivo **.pwrace** con todo: equipos, pilotos, tandas, mangas, vueltas, turnos de piloto, neumáticos, sucesos, verificaciones con fotos, pole y categorías. Al importarlo entra como **carrera nueva, al momento y sin reiniciar**, sin tocar el resto de carreras; si su circuito no existe en el PC, se crea. Una 24 h de 150.000 vueltas ocupa unos 3 MB y se importa en menos de un segundo.
+  - No se puede importar dos veces la misma carrera: avisa y enlaza a la que ya tienes.
+  - No se exporta una carrera con una manga sin cerrar (ciérrala o cancélala en Solución de problemas), y una carrera que venía «en curso» entra como pendiente, para que nunca se quede con el GO del DS-300 de este PC.
+  - Exportar e importar esperan a que no haya una manga en marcha, como la exportación a Excel.
+- **Resumen de la base de datos:** cuántas carreras, equipos, pilotos, circuitos y vueltas hay, además del tamaño del fichero.
+
+### Mejorado
+- **Configuración rediseñada con menú lateral:** Fuente de datos, Preferencias, Red local, Seguimiento online, Integraciones y Diagnóstico. Cada sección en su pantalla, con puntos de estado en el menú (cronómetro, túnel, modo debug), y vuelve a la última sección tras guardar.
+  - **Barra fija de guardado** que avisa de **cambios sin guardar** y de cuáles **necesitan reiniciar** PitWall (solo la interfaz de red y HTTPS; el resto se aplica al guardar).
+  - Infolap ya no dice que requiere reiniciar: se activa y desactiva al momento.
+- **Mismo estilo en Base de datos** (menú: Resumen, Exp. / Imp. carrera, Copia de seguridad, Restaurar copia), **Solución de problemas** (menú: Estado, Cronometraje, Cronómetro, Mangas atascadas, Conexiones; «Estado» lista las incidencias con un botón para ir a cada una), **Sincronizar carrera** (menú: Enlace maestro/esclavo, Desde el maestro, Desde fichero, Comparar DS↔BART), **Conexión ecosistema** y **Sincronizar catálogo** (con barra fija «Se aplicará a N carreras»).
+- Subir una copia de la base de datos completa usa ahora el botón rojo de peligro, para no confundirlo con descargarla.
+
+### Corregido
+- **Los avisos de Solución de problemas no se veían** («Boundary de tanda limpiado», «Manga reseteada»…).
+- **Los avisos salían repetidos** en Configuración, Base de datos, Sincronizar carrera, Conexión ecosistema y Sincronizar catálogo.
+
 ## [1.40.0] — 2026-10-04
 
 ### Añadido

@@ -1,152 +1,168 @@
 <%- include('../partials/header', { pageTitle: lang === 'es' ? 'Sincronizar carrera' : 'Sync race' }) %>
 
-<div class="vt-page">
-  <div class="vt-wrap vt-wrap--narrow">
-
+<% var _cfg = (typeof linkCfg !== 'undefined' && linkCfg) ? linkCfg : { role:'off', slaveUrl:'', token:'' };
+   var _st  = (typeof linkState !== 'undefined' && linkState) ? linkState : { activeMangaId:null, isRunning:false, isPaused:false };
+   var es = lang === 'es';
+   var navItems = [
+     { key: 'link',   label: es ? 'Enlace maestro / esclavo' : 'Master / slave link', dot: _cfg.role === 'off' ? 'off' : 'ok',
+       icon: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>' },
+     { key: 'master', label: es ? 'Desde el maestro' : 'From the master', dot: '',
+       icon: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>' },
+     { key: 'file',   label: es ? 'Desde fichero' : 'From a file', dot: '',
+       icon: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>' },
+   ]; %>
+<div class="vt-page st-page">
+  <div class="st-top">
     <a href="/" class="vt-back-link">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      <%= lang === 'es' ? 'Inicio' : 'Home' %>
+      <%= es ? 'Inicio' : 'Home' %>
     </a>
-
-    <% if (typeof flash !== 'undefined' && flash) { %>
-      <div class="flash flash--<%= flash.type %>" style="margin-bottom:1rem"><%- flash.text %></div>
-    <% } %>
-
-    <div class="vt-head">
-      <div class="vt-head__title">
-        <h1><%= lang === 'es' ? 'Sincronizar carrera desde el maestro' : 'Sync race from master' %></h1>
-      </div>
-      <div class="vt-head__actions">
-        <a href="/link/compare" class="vt-btn vt-btn--ghost">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v18M16 3v18M4 8h4M4 16h4M16 8h4M16 16h4"/></svg>
-          <%= lang === 'es' ? 'Comparar DS↔BART' : 'Compare DS↔BART' %>
-        </a>
-      </div>
+    <span class="st-top__sep"></span>
+    <h1 class="st-top__h"><%= es ? 'Sincronizar carrera' : 'Sync race' %></h1>
+    <span class="st-top__fill"></span>
+    <div class="vt-port-pill <%= _cfg.role === 'off' ? 'is-sim' : '' %>">
+      <span class="dot"></span>
+      <%= _cfg.role === 'master' ? (es ? 'Este PC es maestro (DS)' : 'This PC is master (DS)')
+        : _cfg.role === 'slave' ? (es ? 'Este PC es esclavo (BART)' : 'This PC is slave (BART)')
+        : (es ? 'Enlace desactivado' : 'Link disabled') %>
     </div>
+  </div>
 
-    <p class="vt-sub" style="margin:-6px 0 20px;color:var(--vt-mute);max-width:60ch;line-height:1.5">
-      <%= lang === 'es'
-        ? 'El esclavo (BART) descarga la carrera del maestro (DS) para que ambos tengan el mismo calendario.'
-        : 'The slave (BART) downloads the race from the master (DS) so both share the same schedule.' %>
-    </p>
-
-    <!-- ── Configuración del enlace (rol / URL / token) ──────────── -->
-    <% var _cfg = (typeof linkCfg !== 'undefined' && linkCfg) ? linkCfg : { role:'off', slaveUrl:'', token:'' };
-       var _st  = (typeof linkState !== 'undefined' && linkState) ? linkState : { activeMangaId:null, isRunning:false, isPaused:false }; %>
-    <div class="vt-panel" style="margin-bottom:18px">
-      <div class="vt-sec-lbl"><%= lang === 'es' ? 'Enlace maestro / esclavo' : 'Master / slave link' %></div>
-
-      <p style="color:var(--vt-mute);margin:2px 0 14px;line-height:1.5;max-width:62ch">
-        <%= lang === 'es'
-          ? 'El MAESTRO (DS) reenvía el estado de carrera al ESCLAVO (BART), que replica GO/pausa/stop sin operador. Con el rol en "off", PitWall funciona como siempre.'
-          : 'The MASTER (DS) forwards the race state to the SLAVE (BART), which replays GO/pause/stop with no operator. With role "off", PitWall behaves as usual.' %>
-      </p>
-
-      <form id="linkCfgForm" onsubmit="return false">
-        <div class="vt-field" style="margin-bottom:12px">
-          <label for="linkRole"><%= lang === 'es' ? 'Rol de esta instancia' : 'This instance role' %></label>
-          <select id="linkRole" class="vt-inp" style="max-width:260px">
-            <option value="off"    <%= _cfg.role === 'off'    ? 'selected' : '' %>><%= lang === 'es' ? 'Off (desactivado)' : 'Off (disabled)' %></option>
-            <option value="master" <%= _cfg.role === 'master' ? 'selected' : '' %>>Master (DS)</option>
-            <option value="slave"  <%= _cfg.role === 'slave'  ? 'selected' : '' %>>Slave (BART)</option>
-          </select>
-        </div>
-
-        <div class="vt-field" id="linkSlaveUrlField" style="margin-bottom:12px;<%= _cfg.role === 'master' ? '' : 'display:none' %>">
-          <label for="linkSlaveUrl"><%= lang === 'es' ? 'URL del esclavo (solo maestro)' : 'Slave URL (master only)' %></label>
-          <input type="text" id="linkSlaveUrl" class="vt-inp is-mono" style="max-width:320px"
-                 placeholder="192.168.10.108:3000" autocomplete="off" spellcheck="false"
-                 value="<%= _cfg.slaveUrl %>">
-        </div>
-
-        <div class="vt-field" style="margin-bottom:14px">
-          <label for="linkToken"><%= lang === 'es' ? 'Token compartido' : 'Shared token' %></label>
-          <input type="text" id="linkToken" class="vt-inp is-mono" style="max-width:320px"
-                 placeholder="secreto" autocomplete="off" spellcheck="false"
-                 value="<%= _cfg.token %>">
-        </div>
-
-        <div style="display:flex;align-items:center;gap:12px">
-          <button type="button" id="btnSaveCfg" class="vt-btn vt-btn--primary">
-            <%= lang === 'es' ? 'Guardar enlace' : 'Save link' %>
-          </button>
-          <span id="cfgMsg" class="link-msg" style="display:none"></span>
-        </div>
-      </form>
-
-      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--vt-line, rgba(255,255,255,.08));color:var(--vt-mute);font-size:13px">
-        <strong style="color:var(--vt-text)"><%= lang === 'es' ? 'Estado local del cronómetro:' : 'Local timing state:' %></strong>
-        <span id="linkLiveState" class="is-mono">
-          <%= _st.activeMangaId != null
-              ? ('manga ' + _st.activeMangaId + ' · ' + (_st.isRunning ? 'running' : _st.isPaused ? 'paused' : 'idle'))
-              : (lang === 'es' ? 'sin manga activa' : 'no active heat') %>
-        </span>
-      </div>
-    </div>
-
-    <!-- ── Buscar carreras en el maestro ─────────────────────────── -->
-    <div class="vt-panel">
-      <div class="vt-sec-lbl"><%= lang === 'es' ? 'Dirección del maestro' : 'Master address' %></div>
-
-      <div class="vt-field" style="margin-bottom:14px">
-        <label for="masterHost"><%= lang === 'es' ? 'Host o IP:puerto' : 'Host or IP:port' %></label>
-        <div style="display:flex;gap:10px;flex-wrap:wrap">
-          <input type="text" id="masterHost" class="vt-inp is-mono" placeholder="192.168.1.50:3000"
-                 style="flex:1;min-width:220px" autocomplete="off" spellcheck="false">
-          <button type="button" id="btnSearch" class="vt-btn vt-btn--primary">
-            <%= lang === 'es' ? 'Buscar carreras' : 'Search races' %>
-          </button>
-        </div>
-      </div>
-
-      <div id="searchMsg" class="link-msg" style="display:none"></div>
-
-      <div id="racesWrap" style="display:none;margin-top:8px">
-        <div class="vt-table-card">
-          <table class="vt-table">
-            <thead>
-              <tr>
-                <th><%= lang === 'es' ? 'Carrera' : 'Race' %></th>
-                <th class="is-num"><%= lang === 'es' ? 'Tandas' : 'Rounds' %></th>
-                <th class="is-num"><%= lang === 'es' ? 'Pilotos' : 'Drivers' %></th>
-                <th><%= lang === 'es' ? 'Clave' : 'Key' %></th>
-                <th class="is-actions"></th>
-              </tr>
-            </thead>
-            <tbody id="racesBody"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── Importar desde fichero (plan B) ───────────────────────── -->
-    <details class="vt-panel" style="margin-top:18px">
-      <summary style="cursor:pointer;font-weight:600;color:var(--vt-text);list-style:none;display:flex;align-items:center;gap:8px">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M9 6l6 6-6 6"/></svg>
-        <%= lang === 'es' ? 'Importar desde fichero' : 'Import from file' %>
-      </summary>
-
-      <p style="color:var(--vt-mute);margin:12px 0 12px;line-height:1.5">
-        <%= lang === 'es'
-          ? 'Pega el JSON exportado del maestro (ruta /link/races/ID/export.json) si no hay red disponible.'
-          : 'Paste the JSON exported from the master (/link/races/ID/export.json) when there is no network.' %>
-      </p>
-
-      <div class="vt-field">
-        <label for="importJson"><%= lang === 'es' ? 'Contenido JSON' : 'JSON payload' %></label>
-        <textarea id="importJson" class="vt-inp is-mono" rows="8"
-                  style="resize:vertical;min-height:140px;line-height:1.4"
-                  placeholder='{"raceKey":"…","race":{…}}' spellcheck="false"></textarea>
-      </div>
-
-      <div style="display:flex;align-items:center;gap:12px;margin-top:12px">
-        <button type="button" id="btnImport" class="vt-btn vt-btn--ghost">
-          <%= lang === 'es' ? 'Importar' : 'Import' %>
+  <div class="st-layout">
+    <nav class="st-nav" aria-label="<%= es ? 'Secciones' : 'Sections' %>">
+      <% navItems.forEach(function (it) { %>
+        <button type="button" class="st-nav__item <%= it.key === 'link' ? 'is-active' : '' %>" data-sec="<%= it.key %>">
+          <svg viewBox="0 0 24 24"><%- it.icon %></svg>
+          <span class="st-nav__lbl"><%= it.label %></span>
+          <span class="st-dot <%= it.dot ? 'st-dot--' + it.dot : '' %>"></span>
         </button>
-        <span id="importMsg" class="link-msg" style="display:none"></span>
+      <% }) %>
+      <a class="st-nav__item" href="/link/compare">
+        <svg viewBox="0 0 24 24"><path d="M8 3v18M16 3v18M4 8h4M4 16h4M16 8h4M16 16h4"/></svg>
+        <span class="st-nav__lbl"><%= es ? 'Comparar DS↔BART' : 'Compare DS↔BART' %></span>
+        <svg class="st-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+      </a>
+      <div class="st-nav__note">
+        <span><%= es
+          ? 'El esclavo (BART) descarga la carrera del maestro (DS) para que ambos tengan el mismo calendario.'
+          : 'The slave (BART) downloads the race from the master (DS) so both share the same schedule.' %></span>
       </div>
-    </details>
+    </nav>
 
+    <div class="st-main">
+
+      <!-- ══ Enlace maestro / esclavo ═════════════════════════════════════ -->
+      <section class="st-sec is-active" data-sec="link">
+        <header class="st-sec__h">
+          <h2><%= es ? 'Enlace maestro / esclavo' : 'Master / slave link' %></h2>
+          <p><%= es
+            ? 'El maestro (DS) reenvía el estado de carrera al esclavo (BART), que replica GO, pausa y stop sin operador. Con el rol en «Off», PitWall funciona como siempre.'
+            : 'The master (DS) forwards the race state to the slave (BART), which replays GO, pause and stop with no operator. With role "Off", PitWall behaves as usual.' %></p>
+        </header>
+
+        <form id="linkCfgForm" class="st-card" onsubmit="return false">
+          <div class="st-row st-row--wrap">
+            <div class="st-row__txt">
+              <label class="st-row__t" for="linkRole"><%= es ? 'Rol de este PC' : 'This PC role' %></label>
+            </div>
+            <div class="vt-selw st-row__ctl st-row__ctl--wide">
+              <select id="linkRole">
+                <option value="off"    <%= _cfg.role === 'off'    ? 'selected' : '' %>><%= es ? 'Off (desactivado)' : 'Off (disabled)' %></option>
+                <option value="master" <%= _cfg.role === 'master' ? 'selected' : '' %>>Master (DS)</option>
+                <option value="slave"  <%= _cfg.role === 'slave'  ? 'selected' : '' %>>Slave (BART)</option>
+              </select>
+            </div>
+          </div>
+          <div class="st-row st-row--wrap" id="linkSlaveUrlField" style="<%= _cfg.role === 'master' ? '' : 'display:none' %>">
+            <div class="st-row__txt">
+              <label class="st-row__t" for="linkSlaveUrl"><%= es ? 'Dirección del esclavo' : 'Slave address' %></label>
+              <div class="st-row__d"><%= es ? 'Solo en el maestro.' : 'Master only.' %></div>
+            </div>
+            <input type="text" id="linkSlaveUrl" class="vt-inp is-mono st-row__ctl st-row__ctl--wide"
+                   placeholder="192.168.10.108:3000" autocomplete="off" spellcheck="false" value="<%= _cfg.slaveUrl %>">
+          </div>
+          <div class="st-row st-row--wrap">
+            <div class="st-row__txt">
+              <label class="st-row__t" for="linkToken"><%= es ? 'Token compartido' : 'Shared token' %></label>
+              <div class="st-row__d"><%= es ? 'El mismo en los dos PCs.' : 'The same on both PCs.' %></div>
+            </div>
+            <input type="text" id="linkToken" class="vt-inp is-mono st-row__ctl st-row__ctl--wide"
+                   placeholder="secreto" autocomplete="off" spellcheck="false" value="<%= _cfg.token %>">
+          </div>
+          <div class="st-row st-row--wrap">
+            <div class="st-row__txt">
+              <div class="st-row__t st-row__t--sm"><%= es ? 'Cronómetro de este PC' : 'This PC timing' %></div>
+              <div class="st-row__d is-mono" id="linkLiveState">
+                <%= _st.activeMangaId != null
+                    ? ('manga ' + _st.activeMangaId + ' · ' + (_st.isRunning ? 'running' : _st.isPaused ? 'paused' : 'idle'))
+                    : (es ? 'sin manga activa' : 'no active heat') %>
+              </div>
+            </div>
+            <span id="cfgMsg" class="link-msg" style="display:none"></span>
+            <button type="button" id="btnSaveCfg" class="vt-btn vt-btn--primary"><%= es ? 'Guardar enlace' : 'Save link' %></button>
+          </div>
+        </form>
+      </section>
+
+      <!-- ══ Desde el maestro ═════════════════════════════════════════════ -->
+      <section class="st-sec" data-sec="master">
+        <header class="st-sec__h">
+          <h2><%= es ? 'Desde el maestro' : 'From the master' %></h2>
+          <p><%= es ? 'Busca las carreras del PC maestro por la red y crea aquí la que vayas a correr.' : 'Find the master PC races over the network and create here the one you will run.' %></p>
+        </header>
+        <div class="st-card">
+          <div class="st-row st-row--wrap">
+            <div class="st-row__txt">
+              <label class="st-row__t" for="masterHost"><%= es ? 'Dirección del maestro' : 'Master address' %></label>
+              <div class="st-row__d"><%= es ? 'Host o IP:puerto.' : 'Host or IP:port.' %></div>
+            </div>
+            <div class="lk-search">
+              <input type="text" id="masterHost" class="vt-inp is-mono" placeholder="192.168.1.50:3000" autocomplete="off" spellcheck="false">
+              <button type="button" id="btnSearch" class="vt-btn vt-btn--primary"><%= es ? 'Buscar carreras' : 'Search races' %></button>
+            </div>
+          </div>
+          <div class="st-row st-row--hint lk-msg-row"><div id="searchMsg" class="link-msg" style="display:none"></div></div>
+        </div>
+
+        <div id="racesWrap" style="display:none">
+          <div class="vt-table-card lk-table">
+            <table class="vt-table">
+              <thead>
+                <tr>
+                  <th><%= es ? 'Carrera' : 'Race' %></th>
+                  <th class="is-num"><%= es ? 'Tandas' : 'Rounds' %></th>
+                  <th class="is-num"><%= es ? 'Pilotos' : 'Drivers' %></th>
+                  <th><%= es ? 'Clave' : 'Key' %></th>
+                  <th class="is-actions"></th>
+                </tr>
+              </thead>
+              <tbody id="racesBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══ Desde fichero ════════════════════════════════════════════════ -->
+      <section class="st-sec" data-sec="file">
+        <header class="st-sec__h">
+          <h2><%= es ? 'Desde fichero' : 'From a file' %></h2>
+          <p><%= es
+            ? 'Plan B sin red: pega el JSON exportado del maestro (ruta /link/races/ID/export.json).'
+            : 'Plan B without network: paste the JSON exported from the master (/link/races/ID/export.json).' %></p>
+        </header>
+        <div class="st-card">
+          <div class="st-row st-row--wrap st-row--top lk-json">
+            <label class="st-row__t st-row__t--sm" for="importJson"><%= es ? 'Contenido JSON' : 'JSON payload' %></label>
+            <textarea id="importJson" class="vt-inp is-mono" rows="9" placeholder='{"raceKey":"…","race":{…}}' spellcheck="false"></textarea>
+          </div>
+          <div class="st-row st-row--wrap">
+            <span class="st-top__fill"></span>
+            <span id="importMsg" class="link-msg" style="display:none"></span>
+            <button type="button" id="btnImport" class="vt-btn vt-btn--primary"><%= es ? 'Importar' : 'Import' %></button>
+          </div>
+        </div>
+      </section>
+    </div>
   </div>
 </div>
 
@@ -364,6 +380,27 @@
   var btnImport  = document.getElementById('btnImport');
   var importJson = document.getElementById('importJson');
   var importMsg  = document.getElementById('importMsg');
+
+  // ── Secciones (menú lateral) ──────────────────────────────────
+  var SECS = Array.prototype.map.call(document.querySelectorAll('.st-sec'), function (s) { return s.dataset.sec; });
+  function showSection(sec) {
+    if (SECS.indexOf(sec) < 0) sec = SECS[0];
+    document.querySelectorAll('.st-sec').forEach(function (s) { s.classList.toggle('is-active', s.dataset.sec === sec); });
+    document.querySelectorAll('.st-nav__item[data-sec]').forEach(function (b) {
+      var on = b.dataset.sec === sec;
+      b.classList.toggle('is-active', on);
+      if (on) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
+    });
+    try { sessionStorage.setItem('pw.link.sec', sec); } catch (e) {}
+  }
+  document.querySelectorAll('.st-nav__item[data-sec]').forEach(function (b) {
+    b.addEventListener('click', function () { showSection(b.dataset.sec); history.replaceState(null, '', '#' + b.dataset.sec); });
+  });
+  (function () {
+    var saved = null;
+    try { saved = sessionStorage.getItem('pw.link.sec'); } catch (e) {}
+    showSection(location.hash.slice(1) || saved || SECS[0]);
+  })();
 
   btnImport.addEventListener('click', function () {
     var raw = (importJson.value || '').trim();

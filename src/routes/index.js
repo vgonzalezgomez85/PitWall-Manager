@@ -80,7 +80,49 @@ router.get('/', (req, res) => {
   const serverIps  = net.serverIPs(Settings.get('server_bind_iface', ''));
   const serverPort = parseInt(process.env.PORT || '3000', 10);
 
-  res.render('home', { t: req.t, counts, activeRaceCount, activePoleRaces, serial, serverIps, serverPort });
+  const db            = require('../config/database');
+  const TimingService = require('../services/TimingService');
+  const mangaCounts = new Map(db.prepare(`
+    SELECT race_id, COUNT(*) AS total, SUM(status = 'finished') AS done
+    FROM mangas GROUP BY race_id
+  `).all().map(r => [r.race_id, r]));
+  const progressOf = (id) => mangaCounts.get(id) || { total: 0, done: 0 };
+
+  // Carrera en curso para la franja de cabecera. Entre mangas no hay ninguna
+  // 'active': se muestra la siguiente pendiente para que «Directo» siga a mano.
+  let live = null;
+  const liveRace = allRaces.find(r => r.status === 'active');
+  if (liveRace) {
+    const ordered = db.prepare(`
+      SELECT m.id, m.status, m.number, t.number AS tanda_number
+      FROM mangas m JOIN tandas t ON t.id = m.tanda_id
+      WHERE m.race_id = ? ORDER BY t.number, m.number, m.id
+    `).all(liveRace.id);
+    const current = ordered.find(m => m.status === 'active') || ordered.find(m => m.status === 'pending') || null;
+    const running = TimingService.activeRaceId === liveRace.id;
+    // Solo lo que ya esté en caché: la home no debe disparar el cálculo de la proyección.
+    const proj = TimingService._projCache.get(liveRace.id);
+    const leader = proj && Array.isArray(proj.value) && proj.value[0] ? proj.value[0].name : null;
+    live = {
+      race: liveRace,
+      manga: current,
+      position: current ? ordered.indexOf(current) + 1 : null,
+      total: ordered.length,
+      done: ordered.filter(m => m.status === 'finished').length,
+      running,
+      paused: running && TimingService.isPaused,
+      remainingMs: running ? TimingService.getRemainingMs() : null,
+      leader,
+    };
+  }
+
+  const recentRaces = [
+    ...allRaces.filter(r => r.status === 'active'),
+    ...allRaces.filter(r => r.status !== 'active'),
+  ].slice(0, 6).map(r => ({ ...r, progress: progressOf(r.id) }));
+
+  res.render('home', { t: req.t, counts, activeRaceCount, activePoleRaces, serial, serverIps, serverPort,
+                       live, recentRaces, totalRaces: allRaces.length });
 });
 
 // ── EULA ──────────────────────────────────────────────────────────────────────
@@ -355,6 +397,8 @@ router.get( '/database',               DatabaseController.index);
 router.get( '/database/backup',        DatabaseController.backup);
 router.post('/database/restore',       DatabaseController.restore);
 router.post('/database/restore/cancel', DatabaseController.cancelRestore);
+router.get( '/database/race-export',   DatabaseController.raceExport);
+router.post('/database/race-import',   DatabaseController.raceImport);
 router.get( '/api/serial/status', (req, res) => {
   const SerialService = require('../services/SerialService');
   res.json(SerialService.getLinkStatus());

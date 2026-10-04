@@ -1,41 +1,72 @@
 <%- include('../partials/header', { pageTitle: lang === 'es' ? 'Configuración' : 'Settings' }) %>
 
 <%
+const es = lang === 'es';
 const portsList = (connectedPorts || []).map(p => String(p).split('/').pop()).join(' · ');
 const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.length > 0 ? 'ok' : 'off');
+const restartChip = '<span class="st-chip st-chip--warn">' + (es ? 'Reinicio' : 'Restart') + '</span>';
+const navItems = [
+  { key: 'timing', label: es ? 'Fuente de datos' : 'Data source', dot: portState === 'ok' ? 'ok' : (portState === 'sim' ? 'warn' : 'bad'),
+    icon: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M10 2h4M12 2v3"/>' },
+  { key: 'live', label: es ? 'Preferencias' : 'Preferences', dot: '',
+    icon: '<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>' },
+  { key: 'net', label: es ? 'Red local' : 'Local network', dot: '',
+    icon: '<path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5h.01M2 9a15 15 0 0 1 20 0"/>' },
+  { key: 'web', label: es ? 'Seguimiento online' : 'Online tracking', dot: 'off',
+    icon: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.9 5.7 3.9 9S14.5 18.4 12 21c-2.5-2.6-3.9-5.7-3.9-9S9.5 5.6 12 3z"/>' },
+  { key: 'int', label: es ? 'Integraciones' : 'Integrations', dot: '',
+    icon: '<path d="M3 12h4l3-7 4 14 3-7h4"/>' },
+  { key: 'diag', label: es ? 'Diagnóstico' : 'Diagnostics', dot: cfg.debug_mode === '1' ? 'warn' : '',
+    icon: '<rect x="8" y="8" width="8" height="10" rx="4"/><path d="M12 8V5M8 11H4M16 11h4M8 15H4M16 15h4"/>' },
+];
 %>
 
-<div class="vt-page">
-  <div class="vt-wrap vt-wrap--narrow">
-
+<div class="vt-page st-page">
+  <div class="st-top">
     <a href="/" class="vt-back-link">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      <%= lang === 'es' ? 'Inicio' : 'Home' %>
+      <%= es ? 'Inicio' : 'Home' %>
     </a>
-
-    <% if (flash) { %>
-      <div class="flash flash--<%= flash.type %>" style="margin-bottom:1rem"><%- flash.text %></div>
-    <% } %>
-
-    <h1><%= lang === 'es' ? 'Configuración' : 'Settings' %></h1>
-
+    <span class="st-top__sep"></span>
+    <h1 class="st-top__h"><%= es ? 'Configuración' : 'Settings' %></h1>
+    <span class="st-top__fill"></span>
     <% if (portState === 'sim') { %>
-      <div class="vt-port-pill is-sim">
-        <span class="dot"></span> <%= lang === 'es' ? 'Modo simulación activo' : 'Simulation mode active' %>
-      </div>
+      <div class="vt-port-pill is-sim"><span class="dot"></span> <%= es ? 'Modo simulación activo' : 'Simulation mode active' %></div>
     <% } else if (portState === 'ok') { %>
-      <% connectedPorts.forEach((p, i) => { %>
-        <div class="vt-port-pill" style="margin-right:8px">
-          <span class="dot"></span> C<%= i+1 %>: <span class="vt-mono"><%= p %></span>
-        </div>
-      <% }) %>
-    <% } else { %>
-      <div class="vt-port-pill is-off">
-        <span class="dot"></span> <%= lang === 'es' ? 'Sin conexión' : 'Not connected' %>
+      <div class="vt-port-pill" title="<%= connectedPorts.join('  ·  ') %>">
+        <span class="dot"></span>
+        <%= es ? 'Conectado' : 'Connected' %>
+        <span class="vt-mono"><%= connectedPorts.length > 1 ? connectedPorts.length + (es ? ' circuitos · ' : ' circuits · ') : '' %><%= portsList %></span>
       </div>
+    <% } else { %>
+      <div class="vt-port-pill is-off"><span class="dot"></span> <%= es ? 'Sin conexión' : 'Not connected' %></div>
     <% } %>
+  </div>
 
-    <form action="/settings" method="POST" class="vt-panel" novalidate>
+  <form action="/settings" method="POST" class="st-form" id="settingsForm" novalidate>
+    <div class="st-layout">
+
+      <nav class="st-nav" aria-label="<%= es ? 'Secciones' : 'Sections' %>">
+        <% navItems.forEach(it => { %>
+          <button type="button" class="st-nav__item <%= it.key === 'timing' ? 'is-active' : '' %>" data-sec="<%= it.key %>" <%= it.key === 'timing' ? 'aria-current=true' : '' %>>
+            <svg viewBox="0 0 24 24"><%- it.icon %></svg>
+            <span class="st-nav__lbl"><%= it.label %></span>
+            <span class="st-dot <%= it.dot ? 'st-dot--' + it.dot : '' %>" id="navDot-<%= it.key %>"></span>
+          </button>
+        <% }) %>
+        <div class="st-nav__note">
+          <span><%= es ? 'Los cambios se aplican al pulsar «Guardar y aplicar».' : 'Changes apply when you press “Save & apply”.' %></span>
+          <span><%= es ? 'Los marcados con' : 'Those marked' %> <%- restartChip %> <%= es ? 'necesitan además reiniciar PitWall.' : 'also need a PitWall restart.' %></span>
+        </div>
+      </nav>
+
+      <div class="st-main">
+        <!-- ══ Fuente de datos ═══════════════════════════════════════════ -->
+        <section class="st-sec is-active" data-sec="timing">
+          <header class="st-sec__h">
+            <h2><%= es ? 'Fuente de datos' : 'Data source' %></h2>
+            <p><%= es ? 'De dónde llegan las vueltas.' : 'Where laps come from.' %></p>
+          </header>
 
       <datalist id="baud-options">
         <option value="9600"></option>
@@ -48,8 +79,6 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
         <option value="460800"></option>
         <option value="921600"></option>
       </datalist>
-
-      <div class="vt-sec-lbl"><%= lang === 'es' ? 'Fuente de datos' : 'Data source' %></div>
 
       <div class="vt-opts">
         <label class="vt-opt <%= (cfg.serial_mode || 'simulation') === 'simulation' ? 'is-sel' : '' %>" id="optSim">
@@ -455,256 +484,265 @@ const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.lengt
             </div>
           </div>
         </details>
-
-        <% if (rawLog.length > 0) { %>
-          <details>
-            <summary>
-              <span class="ar"></span>
-              <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 9l3 3-3 3M13 15h4"/></svg>
-              <%= lang === 'es' ? 'Ver bytes recibidos (debug)' : 'View received bytes (debug)' %>
-            </summary>
-            <div class="vt-disc-body">
-              <div class="vt-bytes"><% rawLog.forEach(({ byte }) => { %><%= '0x' + byte.toString(16).padStart(2,'0').toUpperCase() + ' ' %><% }) %></div>
-            </div>
-          </details>
-        <% } %>
       </div>
+        </section>
 
-      <!-- ── Ajustes generales (siempre visibles, no dependen del modo) ── -->
-        <!-- ── Debug mode ─────────────────────────────────────────────────── -->
-        <div class="vt-debug">
-          <button type="button" class="vt-switch <%= cfg.debug_mode === '1' ? 'is-on' : '' %>" id="dbgSwitch" aria-label="Toggle debug"></button>
-          <input type="hidden" name="debug_mode" id="dbgInput" value="<%= cfg.debug_mode === '1' ? '1' : '' %>">
-          <div>
-            <div class="vt-debug__t">
-              <svg viewBox="0 0 24 24"><rect x="8" y="8" width="8" height="10" rx="4"/><path d="M12 8V5M9 5L8 3M15 5l1-2M8 11H4M16 11h4M8 15H4M16 15h4M8 18l-2 2M16 18l2 2"/></svg>
-              <%= lang === 'es' ? 'Modo debug' : 'Debug mode' %>
-            </div>
-            <div class="vt-debug__d">
-              <%= lang === 'es'
-                ? 'Registra tramas DS-300 crudas, cruces de carril, eventos de manga y errores en ficheros (.jsonl + .log) bajo logs/debug/. Un par de ficheros por manga.'
-                : 'Logs raw DS-300 frames, lane crossings, manga events and errors to files (.jsonl + .log) under logs/debug/. One pair per manga.' %>
-            </div>
-          </div>
-        </div>
-
-        <!-- ── Compatibilidad Infolap (Tic Tac Slot) ──────────────────────── -->
-        <div class="vt-debug">
-          <button type="button" class="vt-switch <%= cfg.infolap_enabled === '1' ? 'is-on' : '' %>" id="infolapSwitch" aria-label="Toggle Infolap server"></button>
-          <input type="hidden" name="infolap_enabled" id="infolapInput" value="<%= cfg.infolap_enabled === '1' ? '1' : '' %>">
-          <div>
-            <div class="vt-debug__t">
-              <svg viewBox="0 0 24 24"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>
-              <%= lang === 'es' ? 'Compatibilidad Infolap' : 'Infolap compatibility' %>
-            </div>
-            <div class="vt-debug__d">
-              <%= lang === 'es'
-                ? 'Permite que la app móvil legacy de Tic Tac Slot Infolap se conecte a PitWall y reciba vueltas en vivo. Abre UDP :4441. Cambios al toggle requieren reiniciar el servidor.'
-                : 'Lets the legacy Tic Tac Slot Infolap mobile app connect to PitWall and receive live laps. Opens UDP :4441. Restart server after toggling.' %>
-            </div>
-          </div>
-        </div>
-
-        <!-- ── Control de acceso web ──────────────────────────────────── -->
-        <div class="vt-debug">
-          <button type="button" class="vt-switch <%= cfg.access_restrict_enabled !== '0' ? 'is-on' : '' %>" id="accessSwitch" aria-label="Toggle access restriction"></button>
-          <input type="hidden" name="access_restrict_enabled" id="accessInput" value="<%= cfg.access_restrict_enabled !== '0' ? '1' : '' %>">
-          <div style="flex:1">
-            <div class="vt-debug__t">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-              <%= lang === 'es' ? 'Restringir acceso web' : 'Restrict web access' %>
-            </div>
-            <div class="vt-debug__d">
-              <%= lang === 'es'
-                ? 'Bloquea el acceso web desde cualquier IP salvo este equipo (localhost) y las IPs/rangos de la lista. No afecta a la app móvil ni a Infolap (siguen recibiendo el vuelta a vuelta).'
-                : 'Blocks web access from any IP except this machine (localhost) and the listed IPs/ranges. Does not affect the mobile app or Infolap (they keep receiving live laps).' %>
-            </div>
-            <span class="vt-debug__d" style="display:block;margin:.6rem 0 .25rem">
-              <%= lang === 'es' ? 'IPs/rangos permitidos (uno por línea; admite CIDR, p.ej. 192.168.1.50 o 192.168.1.0/24):' : 'Allowed IPs/ranges (one per line; CIDR ok, e.g. 192.168.1.50 or 192.168.1.0/24):' %>
-            </span>
-            <textarea name="access_allowlist" id="accessAllowlist" class="vt-inp" rows="4" style="width:100%;font-family:monospace"
-              placeholder="192.168.1.50&#10;192.168.1.0/24"><%= (function(){ try { return JSON.parse(cfg.access_allowlist || '[]').join('\n'); } catch (e) { return ''; } })() %></textarea>
-          </div>
-        </div>
-
-        <!-- ── Orden del directo ──────────────────────────────────────── -->
-        <div class="vt-debug">
-          <div style="flex:1">
-            <div class="vt-debug__t">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M4 12h7M4 18h4M17 4v16M14 17l3 3 3-3"/></svg>
-              <%= lang === 'es' ? 'Orden del directo' : 'Live view order' %>
-            </div>
-            <div class="vt-debug__d">
-              <%= lang === 'es'
-                ? 'Cómo se ordenan las tarjetas y las filas en la pantalla del directo, y qué posición (P.x) muestra cada equipo o piloto. La clasificación estimada del panel lateral no cambia.'
-                : 'How cards and rows are ordered on the live screen, and which position (P.x) each team or driver shows. The projected standings side panel does not change.' %>
-            </div>
-            <div class="vt-field" style="max-width:440px;margin-top:.6rem">
-              <label><%= lang === 'es' ? 'Ordenar por' : 'Order by' %></label>
-              <select name="live_order" class="vt-inp">
-                <option value="projected" <%= cfg.live_order !== 'laps' ? 'selected' : '' %>><%= lang === 'es' ? 'Clasificación estimada (recomendado)' : 'Projected standings (recommended)' %></option>
-                <option value="laps" <%= cfg.live_order === 'laps' ? 'selected' : '' %>><%= lang === 'es' ? 'Vueltas reales (a igualdad, menos tiempo total)' : 'Actual laps (ties: lower total time)' %></option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- ── Red del servidor ──────────────────────────────────────── -->
-        <div class="vt-debug">
-          <div style="flex:1">
-            <div class="vt-debug__t">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-              <%= lang === 'es' ? 'Red del servidor' : 'Server network' %>
-            </div>
-            <div class="vt-debug__d">
-              <%= lang === 'es'
-                ? 'Elige por qué interfaz de red sirve el servidor. "Todas" lo hace accesible por LAN y WiFi a la vez; elige una para limitarlo a esa red. Requiere reiniciar el servidor.'
-                : 'Choose which network interface the server uses. "All" makes it reachable on LAN and WiFi at once; pick one to limit it. Requires a server restart.' %>
-            </div>
-            <div class="vt-field" style="max-width:440px;margin-top:.6rem">
-              <label><%= lang === 'es' ? 'Interfaz (requiere reiniciar)' : 'Interface (requires restart)' %></label>
-              <select name="server_bind_iface" class="vt-inp">
-                <option value="" <%= !bindIface ? 'selected' : '' %>><%= lang === 'es' ? 'Todas las interfaces (recomendado)' : 'All interfaces (recommended)' %></option>
-                <% (netInterfaces || []).forEach(function (i) { %>
-                  <option value="<%= i.name %>" <%= bindIface === i.name ? 'selected' : '' %>><%= i.name %> — <%= i.ip %></option>
-                <% }); %>
-              </select>
-            </div>
-            <span class="vt-debug__d" style="display:block;margin-top:.7rem">
-              <%= lang === 'es' ? 'Dirección(es) del servidor ahora mismo:' : 'Server address(es) right now:' %>
-            </span>
-            <div style="margin-top:.25rem;font-family:monospace;font-size:.9rem">
-              <% if (!serverIps || serverIps.length === 0) { %>
-                <span class="vt-debug__d"><%= lang === 'es' ? 'Sin interfaces de red detectadas.' : 'No network interfaces detected.' %></span>
-              <% } else { %>
-                <% serverIps.forEach(function (i) { %>
-                  <div>http://<%= i.ip %>:<%= serverPort %> <span class="vt-debug__d">(<%= i.name %>)</span></div>
-                <% }); %>
-              <% } %>
-            </div>
-          </div>
-        </div>
-
-        <!-- ── HTTPS local (cámara del escáner QR del control de pilotos) ── -->
-        <div class="vt-debug">
-          <button type="button" class="vt-switch <%= httpsEnabled ? 'is-on' : '' %>" id="httpsSwitch" aria-label="Toggle HTTPS"></button>
-          <input type="hidden" name="https_enabled" id="httpsInput" value="<%= httpsEnabled ? '1' : '' %>">
-          <div style="flex:1">
-            <div class="vt-debug__t">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V8a5 5 0 0 1 10 0v3"/></svg>
-              <%= lang === 'es' ? 'HTTPS local (cámara del escáner QR)' : 'Local HTTPS (QR scanner camera)' %>
-            </div>
-            <div class="vt-debug__d">
-              <%= lang === 'es'
-                ? 'El escáner QR del control de pilotos usa la cámara, y el navegador solo la permite en «localhost» o por HTTPS. En los móviles/tablets que entran por la IP de la red hace falta esto. PitWall sirve HTTPS con un certificado propio, en paralelo al HTTP normal. Abre un puerto nuevo, así que requiere reiniciar el servidor.'
-                : 'The driver-control QR scanner uses the camera, and browsers only allow it on “localhost” or over HTTPS. Phones/tablets connecting by network IP need this. PitWall serves HTTPS with its own certificate, alongside normal HTTP. It opens a new port, so it requires a server restart.' %>
-            </div>
-
-            <div class="vt-field" style="max-width:220px;margin-top:.7rem">
-              <label><%= lang === 'es' ? 'Puerto HTTPS (requiere reiniciar)' : 'HTTPS port (requires restart)' %></label>
-              <input type="number" name="https_port" class="vt-inp is-mono" min="1" max="65535" value="<%= httpsPort %>">
-            </div>
-
-            <% if (httpsEnabled && serverIps && serverIps.length) { %>
-              <span class="vt-debug__d" style="display:block;margin-top:.7rem">
-                <%= lang === 'es' ? 'Abre el control de pilotos en el dispositivo por:' : 'Open driver control on the device at:' %>
-              </span>
-              <div style="margin-top:.25rem;font-family:monospace;font-size:.9rem">
-                <% serverIps.forEach(function (i) { %>
-                  <div>https://<%= i.ip %>:<%= httpsPort %>/control/shifts <span class="vt-debug__d">(<%= i.name %>)</span></div>
-                <% }); %>
+        <!-- ══ Preferencias ══════════════════════════════════════════════ -->
+        <section class="st-sec" data-sec="live">
+          <header class="st-sec__h">
+            <h2><%= es ? 'Preferencias' : 'Preferences' %></h2>
+            <p><%= es ? 'Cómo prefieres ver la información de la carrera.' : 'How you prefer to see race information.' %></p>
+          </header>
+          <div class="st-card">
+            <div class="st-row st-row--wrap">
+              <div class="st-row__txt">
+                <div class="st-row__t"><%= es ? 'Orden del directo' : 'Live view order' %></div>
+                <div class="st-row__d"><%= es ? 'Cómo se ordenan tarjetas y filas, y qué posición (P.x) muestra cada equipo o piloto. La clasificación estimada del panel lateral no cambia.' : 'How cards and rows are ordered, and which position (P.x) each team or driver shows. The projected standings side panel does not change.' %></div>
               </div>
-            <% } %>
-
-            <div class="vt-debug__d" style="margin-top:.8rem">
-              <%= lang === 'es'
-                ? 'Al abrirlo, el navegador avisará una vez («conexión no privada → continuar»). Para quitar ese aviso, instala la CA de PitWall en el dispositivo:'
-                : 'On first open the browser warns once (“not private → proceed”). To remove that warning, install the PitWall CA on the device:' %>
-            </div>
-            <div style="margin-top:.5rem;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
-              <a class="vt-btn vt-btn--ghost vt-btn--sm" href="/cert" target="_blank">🔒 <%= lang === 'es' ? 'Instalar certificado (guía)' : 'Install certificate (guide)' %></a>
-              <a class="vt-btn vt-btn--ghost vt-btn--sm" href="/cert/ca" download>⬇ <%= lang === 'es' ? 'Descargar CA' : 'Download CA' %></a>
-            </div>
-            <% if (caFingerprint) { %>
-              <div class="vt-debug__d" style="margin-top:.6rem;font-family:monospace;font-size:.72rem;word-break:break-all">
-                <%= lang === 'es' ? 'Huella SHA-256 de la CA:' : 'CA SHA-256 fingerprint:' %> <%= caFingerprint %>
+              <div class="vt-selw st-row__ctl st-row__ctl--wide">
+                <select name="live_order" aria-label="<%= es ? 'Ordenar por' : 'Order by' %>">
+                  <option value="projected" <%= cfg.live_order !== 'laps' ? 'selected' : '' %>><%= es ? 'Clasificación estimada (recomendado)' : 'Projected standings (recommended)' %></option>
+                  <option value="laps" <%= cfg.live_order === 'laps' ? 'selected' : '' %>><%= es ? 'Vueltas reales (a igualdad, menos tiempo total)' : 'Actual laps (ties: lower total time)' %></option>
+                </select>
               </div>
-            <% } %>
+            </div>
           </div>
-        </div>
+        </section>
 
-        <!-- ── Seguimiento público por internet (túnel del propio club) ── -->
-        <div class="vt-debug">
-          <div style="flex:1">
-            <div class="vt-debug__t">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.9 5.7 3.9 9S14.5 18.4 12 21c-2.5-2.6-3.9-5.7-3.9-9S9.5 5.6 12 3z"/></svg>
-              <%= lang === 'es' ? 'Seguimiento público por internet' : 'Public internet access' %>
-              <span id="tunnelDot" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#6b7280;margin-left:.4rem"></span>
-            </div>
-            <div class="vt-debug__d">
-              <%= lang === 'es'
-                ? 'Publica las vistas públicas (directo, resultados, Lap) en internet mediante un túnel de Cloudflare PROPIO de tu club. El control de la app queda bloqueado desde fuera. Requiere tener instalado cloudflared.'
-                : 'Publishes the public views (live, results, Lap) on the internet via your club\'s OWN Cloudflare tunnel. App control stays blocked from outside. Requires cloudflared installed.' %>
-            </div>
+        <!-- ══ Red local ═════════════════════════════════════════════════ -->
+        <section class="st-sec" data-sec="net">
+          <header class="st-sec__h">
+            <h2><%= es ? 'Red local' : 'Local network' %></h2>
+            <p><%= es ? 'Quién puede entrar a PitWall desde la red del circuito.' : 'Who can reach PitWall from the venue network.' %></p>
+          </header>
 
-            <div class="vt-field" style="max-width:440px;margin-top:.6rem">
-              <label><%= lang === 'es' ? 'Modo' : 'Mode' %></label>
-              <select name="tunnel_mode" id="tunnelMode" class="vt-inp" onchange="tunnelModeUi()">
-                <option value="off"   <%= (cfg.tunnel_mode || 'off') === 'off'   ? 'selected' : '' %>><%= lang === 'es' ? 'Desactivado' : 'Disabled' %></option>
-                <option value="quick" <%= cfg.tunnel_mode === 'quick' ? 'selected' : '' %>><%= lang === 'es' ? 'Rápido — URL temporal (sin cuenta ni dominio)' : 'Quick — temporary URL (no account/domain)' %></option>
-                <option value="token" <%= cfg.tunnel_mode === 'token' ? 'selected' : '' %>><%= lang === 'es' ? 'Cloudflare propio — token del club (dominio propio)' : 'Own Cloudflare — club token (own domain)' %></option>
-              </select>
+          <div class="st-card">
+            <div class="st-row st-row--wrap">
+              <div class="st-row__txt">
+                <div class="st-row__t"><%= es ? 'Interfaz de red' : 'Network interface' %> <%- restartChip %></div>
+                <div class="st-row__d"><%= es ? '«Todas» lo hace accesible por cable y WiFi a la vez; elige una para limitarlo a esa red.' : '"All" makes it reachable on LAN and WiFi at once; pick one to limit it.' %></div>
+              </div>
+              <div class="vt-selw st-row__ctl st-row__ctl--wide">
+                <select name="server_bind_iface" data-restart aria-label="<%= es ? 'Interfaz de red' : 'Network interface' %>">
+                  <option value="" <%= !bindIface ? 'selected' : '' %>><%= es ? 'Todas las interfaces (recomendado)' : 'All interfaces (recommended)' %></option>
+                  <% (netInterfaces || []).forEach(function (i) { %>
+                    <option value="<%= i.name %>" <%= bindIface === i.name ? 'selected' : '' %>><%= i.name %> — <%= i.ip %></option>
+                  <% }); %>
+                </select>
+              </div>
             </div>
-
-            <div id="tunnelQuickHelp" class="vt-debug__d" style="display:none;margin-top:.5rem">
-              <%= lang === 'es'
-                ? 'Genera una URL aleatoria *.trycloudflare.com al arrancar (cambia en cada arranque). Ideal para probar o para un evento puntual.'
-                : 'Generates a random *.trycloudflare.com URL on start (changes every start). Great for testing or one-off events.' %>
+            <div class="st-row st-row--wrap st-row--top">
+              <div class="st-row__txt"><div class="st-row__t st-row__t--sm"><%= es ? 'Direcciones ahora' : 'Addresses now' %></div></div>
+              <div class="st-addrs">
+                <% if (!serverIps || serverIps.length === 0) { %>
+                  <span class="st-row__d"><%= es ? 'Sin interfaces de red detectadas.' : 'No network interfaces detected.' %></span>
+                <% } else { %>
+                  <% serverIps.forEach(function (i) { %>
+                    <div>http://<%= i.ip %>:<%= serverPort %> <span>(<%= i.name %>)</span></div>
+                  <% }); %>
+                <% } %>
+              </div>
             </div>
+          </div>
 
+          <div class="st-card">
+            <div class="st-row">
+              <div class="st-row__txt">
+                <div class="st-row__t"><%= es ? 'Restringir acceso web' : 'Restrict web access' %></div>
+                <div class="st-row__d"><%= es ? 'Solo este equipo (localhost) y las IPs de la lista. La app móvil e Infolap siguen recibiendo el vuelta a vuelta.' : 'Only this machine (localhost) and the listed IPs. The mobile app and Infolap keep receiving live laps.' %></div>
+              </div>
+              <button type="button" class="vt-switch <%= cfg.access_restrict_enabled !== '0' ? 'is-on' : '' %>" id="accessSwitch" data-switch="accessInput" role="switch" aria-checked="<%= cfg.access_restrict_enabled !== '0' %>" aria-label="<%= es ? 'Restringir acceso web' : 'Restrict web access' %>"></button>
+              <input type="hidden" name="access_restrict_enabled" id="accessInput" value="<%= cfg.access_restrict_enabled !== '0' ? '1' : '' %>">
+            </div>
+            <div class="st-row st-row--wrap st-row--top" data-show-when="accessInput" <%= cfg.access_restrict_enabled !== '0' ? '' : 'hidden' %>>
+              <div class="st-row__txt">
+                <label class="st-row__t st-row__t--sm" for="accessAllowlist"><%= es ? 'IPs o rangos permitidos' : 'Allowed IPs or ranges' %></label>
+                <div class="st-row__d"><%= es ? 'Uno por línea. Admite CIDR, p. ej. 192.168.1.50 o 192.168.1.0/24.' : 'One per line. CIDR ok, e.g. 192.168.1.50 or 192.168.1.0/24.' %></div>
+              </div>
+              <textarea name="access_allowlist" id="accessAllowlist" class="vt-inp is-mono st-row__ctl st-row__ctl--wide" rows="4"
+                placeholder="192.168.1.50&#10;192.168.1.0/24"><%= (function(){ try { return JSON.parse(cfg.access_allowlist || '[]').join('\n'); } catch (e) { return ''; } })() %></textarea>
+            </div>
+          </div>
+
+          <div class="st-card">
+            <div class="st-row">
+              <div class="st-row__txt">
+                <div class="st-row__t"><%= es ? 'HTTPS local' : 'Local HTTPS' %> <%- restartChip %></div>
+                <div class="st-row__d"><%= es ? 'El escáner QR del control de pilotos usa la cámara, y el navegador solo la deja usar por HTTPS en los móviles y tablets que entran por la IP. PitWall sirve HTTPS con un certificado propio, en paralelo al HTTP normal.' : 'The driver-control QR scanner uses the camera, which browsers only allow over HTTPS on phones/tablets connecting by IP. PitWall serves HTTPS with its own certificate, alongside normal HTTP.' %></div>
+              </div>
+              <button type="button" class="vt-switch <%= httpsEnabled ? 'is-on' : '' %>" id="httpsSwitch" data-switch="httpsInput" role="switch" aria-checked="<%= !!httpsEnabled %>" aria-label="<%= es ? 'HTTPS local' : 'Local HTTPS' %>"></button>
+              <input type="hidden" name="https_enabled" id="httpsInput" data-restart value="<%= httpsEnabled ? '1' : '' %>">
+            </div>
+            <div data-show-when="httpsInput" <%= httpsEnabled ? '' : 'hidden' %>>
+              <div class="st-row st-row--wrap">
+                <div class="st-row__txt">
+                  <label class="st-row__t st-row__t--sm" for="httpsPort"><%= es ? 'Puerto HTTPS' : 'HTTPS port' %></label>
+                  <% if (httpsEnabled && serverIps && serverIps.length) { %>
+                    <div class="st-addrs">
+                      <% serverIps.forEach(function (i) { %>
+                        <div>https://<%= i.ip %>:<%= httpsPort %>/control/shifts <span>(<%= i.name %>)</span></div>
+                      <% }); %>
+                    </div>
+                  <% } %>
+                </div>
+                <input type="number" name="https_port" id="httpsPort" data-restart class="vt-inp is-mono st-row__ctl" min="1" max="65535" value="<%= httpsPort %>">
+              </div>
+              <div class="st-row st-row--wrap">
+                <div class="st-row__txt">
+                  <div class="st-row__t st-row__t--sm"><%= es ? 'Certificado en los dispositivos' : 'Certificate on devices' %></div>
+                  <div class="st-row__d"><%= es ? 'Sin él, el navegador avisa una vez («conexión no privada → continuar»).' : 'Without it the browser warns once (“not private → proceed”).' %></div>
+                  <% if (caFingerprint) { %>
+                    <div class="st-row__d st-fp"><%= es ? 'Huella SHA-256 de la CA:' : 'CA SHA-256 fingerprint:' %> <%= caFingerprint %></div>
+                  <% } %>
+                </div>
+                <div class="st-btns">
+                  <a class="vt-btn vt-btn--ghost vt-btn--sm" href="/cert" target="_blank"><%= es ? 'Instalar certificado (guía)' : 'Install certificate (guide)' %></a>
+                  <a class="vt-btn vt-btn--ghost vt-btn--sm" href="/cert/ca" download><%= es ? 'Descargar CA' : 'Download CA' %></a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ══ Seguimiento online ═══════════════════════════════════════ -->
+        <section class="st-sec" data-sec="web">
+          <header class="st-sec__h">
+            <h2><%= es ? 'Seguimiento online' : 'Online tracking' %></h2>
+            <p><%= es ? 'Publica el directo, los resultados y Lap con un túnel de Cloudflare propio del club. El control de la app queda bloqueado desde fuera.' : 'Publishes live, results and Lap via your club\'s own Cloudflare tunnel. App control stays blocked from outside.' %></p>
+          </header>
+          <div class="st-card">
+            <div class="st-row st-row--wrap">
+              <span class="st-dot st-dot--lg" id="tunnelDot"></span>
+              <div class="st-row__txt">
+                <div class="st-row__t" id="tunnelState"><%= es ? 'Comprobando…' : 'Checking…' %></div>
+                <div id="tunnelUrl" class="st-addrs"></div>
+              </div>
+              <div class="st-btns">
+                <button type="button" class="vt-btn vt-btn--primary" id="tunnelStartBtn" onclick="tunnelAction('start')"><%= es ? 'Arrancar túnel' : 'Start tunnel' %></button>
+                <button type="button" class="vt-btn vt-btn--ghost" id="tunnelStopBtn" onclick="tunnelAction('stop')"><%= es ? 'Parar' : 'Stop' %></button>
+                <button type="button" class="vt-btn vt-btn--primary" id="tunnelInstallBtn" style="display:none" onclick="tunnelInstall()"><%= es ? 'Instalar cloudflared' : 'Install cloudflared' %></button>
+              </div>
+            </div>
+            <div class="st-row st-row--hint" id="tunnelHintRow"><div class="st-row__d" id="tunnelHint"></div></div>
+            <div class="st-row st-row--wrap">
+              <div class="st-row__txt">
+                <div class="st-row__t st-row__t--sm"><%= es ? 'Modo' : 'Mode' %></div>
+                <div id="tunnelQuickHelp" class="st-row__d" style="display:none">
+                  <%= es ? 'Genera una URL aleatoria *.trycloudflare.com al arrancar (cambia en cada arranque). Ideal para probar o para un evento puntual.' : 'Generates a random *.trycloudflare.com URL on start (changes every start). Great for testing or one-off events.' %>
+                </div>
+              </div>
+              <div class="vt-selw st-row__ctl st-row__ctl--wide">
+                <select name="tunnel_mode" id="tunnelMode" onchange="tunnelModeUi()" aria-label="<%= es ? 'Modo' : 'Mode' %>">
+                  <option value="off"   <%= (cfg.tunnel_mode || 'off') === 'off'   ? 'selected' : '' %>><%= es ? 'Desactivado' : 'Disabled' %></option>
+                  <option value="quick" <%= cfg.tunnel_mode === 'quick' ? 'selected' : '' %>><%= es ? 'Rápido — URL temporal (sin cuenta ni dominio)' : 'Quick — temporary URL (no account/domain)' %></option>
+                  <option value="token" <%= cfg.tunnel_mode === 'token' ? 'selected' : '' %>><%= es ? 'Cloudflare propio — token del club' : 'Own Cloudflare — club token' %></option>
+                </select>
+              </div>
+            </div>
             <div id="tunnelTokenFields" style="display:none">
-              <div class="vt-field" style="max-width:640px;margin-top:.6rem">
-                <label><%= lang === 'es' ? 'Token del túnel (Cloudflare → Zero Trust → Networks → Tunnels)' : 'Tunnel token (Cloudflare → Zero Trust → Networks → Tunnels)' %></label>
-                <input type="password" name="tunnel_token" class="vt-inp" style="font-family:monospace"
+              <div class="st-row st-row--wrap">
+                <div class="st-row__txt">
+                  <label class="st-row__t st-row__t--sm" for="tunnelToken"><%= es ? 'Token del túnel' : 'Tunnel token' %></label>
+                  <div class="st-row__d">Cloudflare → Zero Trust → Networks → Tunnels</div>
+                </div>
+                <input type="password" name="tunnel_token" id="tunnelToken" class="vt-inp is-mono st-row__ctl st-row__ctl--wide"
                        placeholder="eyJhIjoi…" value="<%= cfg.tunnel_token || '' %>" autocomplete="off">
               </div>
-              <div class="vt-field" style="max-width:440px;margin-top:.6rem">
-                <label><%= lang === 'es' ? 'Dominio público (informativo, p.ej. directo.miclub.com)' : 'Public hostname (informational, e.g. live.myclub.com)' %></label>
-                <input type="text" name="tunnel_hostname" class="vt-inp" style="font-family:monospace"
+              <div class="st-row st-row--wrap">
+                <div class="st-row__txt">
+                  <label class="st-row__t st-row__t--sm" for="tunnelHost"><%= es ? 'Dominio público' : 'Public hostname' %></label>
+                  <div class="st-row__d"><%= es ? 'Informativo, p. ej. directo.miclub.com' : 'Informational, e.g. live.myclub.com' %></div>
+                </div>
+                <input type="text" name="tunnel_hostname" id="tunnelHost" class="vt-inp is-mono st-row__ctl st-row__ctl--wide"
                        placeholder="directo.miclub.com" value="<%= cfg.tunnel_hostname || '' %>" autocomplete="off">
               </div>
-              <div class="vt-debug__d" style="margin-top:.6rem;line-height:1.75">
-                <b><%= lang === 'es' ? 'Cómo configurarlo (una sola vez):' : 'How to set it up (one time):' %></b><br>
-                1. <%= lang === 'es' ? 'Entra en el' : 'Open the' %> <a href="https://one.dash.cloudflare.com/" target="_blank" rel="noopener" style="color:#58a6ff">Cloudflare Zero Trust dashboard</a> <%= lang === 'es' ? '(cuenta gratuita) con tu dominio ya añadido a Cloudflare.' : '(free account) with your domain already added to Cloudflare.' %><br>
-                2. <b>Networks → Tunnels → Create a tunnel</b> (Cloudflared) · <%= lang === 'es' ? 'dale un nombre (p.ej. el del club).' : 'give it a name (e.g. your club).' %><br>
-                3. <%= lang === 'es' ? 'Copia el' : 'Copy the' %> <b>token</b> <%= lang === 'es' ? 'del conector (la cadena larga que empieza por «eyJ…») y pégalo arriba.' : 'from the connector (the long string starting with “eyJ…”) and paste it above.' %><br>
-                4. <%= lang === 'es' ? 'En' : 'Under' %> <b>Public Hostnames</b>, <%= lang === 'es' ? 'añade el subdominio (p.ej. directo.miclub.com) apuntando a' : 'add the subdomain (e.g. live.myclub.com) pointing at' %> <code>http://localhost:3000</code>.<br>
-                📖 <a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/get-started/create-remote-tunnel/" target="_blank" rel="noopener" style="color:#58a6ff"><%= lang === 'es' ? 'Guía oficial de Cloudflare (crear un túnel remoto)' : 'Official Cloudflare guide (create a remote tunnel)' %></a>
-              </div>
+              <details class="st-row st-howto">
+                <summary><span class="ar"></span><%= es ? 'Cómo configurarlo (una sola vez)' : 'How to set it up (one time)' %></summary>
+                <ol>
+                  <li><%= es ? 'Entra en el' : 'Open the' %> <a href="https://one.dash.cloudflare.com/" target="_blank" rel="noopener">Cloudflare Zero Trust dashboard</a> <%= es ? '(cuenta gratuita) con tu dominio ya añadido a Cloudflare.' : '(free account) with your domain already added to Cloudflare.' %></li>
+                  <li><b>Networks → Tunnels → Create a tunnel</b> (Cloudflared) · <%= es ? 'dale un nombre (p. ej. el del club).' : 'give it a name (e.g. your club).' %></li>
+                  <li><%= es ? 'Copia el' : 'Copy the' %> <b>token</b> <%= es ? 'del conector (la cadena larga que empieza por «eyJ…») y pégalo arriba.' : 'from the connector (the long string starting with “eyJ…”) and paste it above.' %></li>
+                  <li><%= es ? 'En' : 'Under' %> <b>Public Hostnames</b>, <%= es ? 'añade el subdominio (p. ej. directo.miclub.com) apuntando a' : 'add the subdomain (e.g. live.myclub.com) pointing at' %> <code>http://localhost:3000</code>.</li>
+                </ol>
+                <a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/get-started/create-remote-tunnel/" target="_blank" rel="noopener"><%= es ? 'Guía oficial de Cloudflare (crear un túnel remoto)' : 'Official Cloudflare guide (create a remote tunnel)' %></a>
+              </details>
             </div>
-
-            <label style="display:flex;align-items:center;gap:.5rem;margin-top:.7rem;cursor:pointer">
+            <label class="st-row st-check">
               <input type="checkbox" name="tunnel_autostart" value="1" <%= cfg.tunnel_autostart === '1' ? 'checked' : '' %>>
-              <span class="vt-debug__d" style="margin:0"><%= lang === 'es' ? 'Arrancar el túnel automáticamente con PitWall' : 'Start the tunnel automatically with PitWall' %></span>
+              <span><%= es ? 'Arrancar el túnel automáticamente con PitWall' : 'Start the tunnel automatically with PitWall' %></span>
             </label>
-
-            <div style="display:flex;align-items:center;gap:.6rem;margin-top:.8rem;flex-wrap:wrap">
-              <button type="button" class="vt-btn vt-btn--ghost" id="tunnelStartBtn" onclick="tunnelAction('start')">▶ <%= lang === 'es' ? 'Arrancar túnel' : 'Start tunnel' %></button>
-              <button type="button" class="vt-btn vt-btn--ghost" id="tunnelStopBtn" onclick="tunnelAction('stop')">■ <%= lang === 'es' ? 'Parar' : 'Stop' %></button>
-              <button type="button" class="vt-btn vt-btn--primary" id="tunnelInstallBtn" style="display:none" onclick="tunnelInstall()">⬇ <%= lang === 'es' ? 'Instalar cloudflared' : 'Install cloudflared' %></button>
-              <span class="vt-debug__d" id="tunnelState" style="margin:0"></span>
-            </div>
-            <div id="tunnelUrl" style="margin-top:.4rem;font-family:monospace;font-size:.92rem"></div>
-            <div class="vt-debug__d" id="tunnelHint" style="margin-top:.35rem"></div>
           </div>
-        </div>
+        </section>
 
-      <div class="vt-form-foot">
-        <a href="/" class="vt-btn vt-btn--ghost vt-btn--lg"><%= lang === 'es' ? 'Cancelar' : 'Cancel' %></a>
-        <button type="submit" class="vt-btn vt-btn--primary vt-btn--lg"><%= lang === 'es' ? 'Guardar y aplicar' : 'Save & apply' %></button>
+        <!-- ══ Integraciones ═════════════════════════════════════════════ -->
+        <section class="st-sec" data-sec="int">
+          <header class="st-sec__h">
+            <h2><%= es ? 'Integraciones' : 'Integrations' %></h2>
+            <p><%= es ? 'Conexión con apps de terceros.' : 'Connection with third-party apps.' %></p>
+          </header>
+          <div class="st-card">
+            <div class="st-row">
+              <div class="st-row__txt">
+                <div class="st-row__t"><%= es ? 'Compatibilidad Infolap' : 'Infolap compatibility' %></div>
+                <div class="st-row__d"><%= es ? 'La app móvil de Tic Tac Slot Infolap se conecta a PitWall y recibe vueltas en directo. Abre UDP :4441.' : 'The Tic Tac Slot Infolap mobile app connects to PitWall and receives live laps. Opens UDP :4441.' %></div>
+              </div>
+              <button type="button" class="vt-switch <%= cfg.infolap_enabled === '1' ? 'is-on' : '' %>" id="infolapSwitch" data-switch="infolapInput" role="switch" aria-checked="<%= cfg.infolap_enabled === '1' %>" aria-label="<%= es ? 'Compatibilidad Infolap' : 'Infolap compatibility' %>"></button>
+              <input type="hidden" name="infolap_enabled" id="infolapInput" value="<%= cfg.infolap_enabled === '1' ? '1' : '' %>">
+            </div>
+          </div>
+        </section>
+
+        <!-- ══ Diagnóstico ═══════════════════════════════════════════════ -->
+        <section class="st-sec" data-sec="diag">
+          <header class="st-sec__h">
+            <h2><%= es ? 'Diagnóstico' : 'Diagnostics' %></h2>
+            <p><%= es ? 'Herramientas para investigar un problema.' : 'Tools to investigate a problem.' %></p>
+          </header>
+          <div class="st-card">
+            <div class="st-row">
+              <div class="st-row__txt">
+                <div class="st-row__t"><%= es ? 'Modo debug' : 'Debug mode' %></div>
+                <div class="st-row__d"><%= es ? 'Registra tramas DS-300 crudas, cruces de carril, eventos de manga y errores en logs/debug/ (.jsonl + .log). Un par de ficheros por manga.' : 'Logs raw DS-300 frames, lane crossings, manga events and errors under logs/debug/ (.jsonl + .log). One pair per manga.' %></div>
+              </div>
+              <button type="button" class="vt-switch <%= cfg.debug_mode === '1' ? 'is-on' : '' %>" id="dbgSwitch" data-switch="dbgInput" role="switch" aria-checked="<%= cfg.debug_mode === '1' %>" aria-label="<%= es ? 'Modo debug' : 'Debug mode' %>"></button>
+              <input type="hidden" name="debug_mode" id="dbgInput" value="<%= cfg.debug_mode === '1' ? '1' : '' %>">
+            </div>
+            <a class="st-row st-row--link" href="/diagnostico/tramas">
+              <div class="st-row__txt">
+                <div class="st-row__t"><%= es ? 'Visor de tramas en vivo' : 'Live frame viewer' %></div>
+                <div class="st-row__d"><%= es ? 'Las tramas del cronómetro según llegan.' : 'Timer frames as they arrive.' %></div>
+              </div>
+              <svg class="st-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+            </a>
+            <a class="st-row st-row--link" href="/diagnostico">
+              <div class="st-row__txt">
+                <div class="st-row__t"><%= es ? 'Diagnóstico de mangas' : 'Manga diagnostics' %></div>
+                <div class="st-row__d"><%= es ? 'Mangas atascadas, activas o pendientes.' : 'Stuck, active or pending mangas.' %></div>
+              </div>
+              <svg class="st-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+            </a>
+            <% if (rawLog.length > 0) { %>
+              <details class="st-row st-howto">
+                <summary><span class="ar"></span><%= es ? 'Últimos bytes recibidos' : 'Last received bytes' %></summary>
+                <div class="vt-bytes"><% rawLog.forEach(({ byte }) => { %><%= '0x' + byte.toString(16).padStart(2,'0').toUpperCase() + ' ' %><% }) %></div>
+              </details>
+            <% } %>
+          </div>
+        </section>
       </div>
-    </form>
-  </div>
+    </div>
+
+    <div class="st-bar" id="stBar">
+      <div class="st-bar__in">
+        <span class="st-dot" id="stBarDot"></span>
+        <span class="st-bar__msg" id="stBarMsg"><%= es ? 'Sin cambios' : 'No changes' %></span>
+        <span id="stBarRestart" hidden><%- restartChip %></span>
+        <span class="st-top__fill"></span>
+        <a href="/settings" class="vt-btn vt-btn--ghost" id="stDiscard" hidden><%= es ? 'Descartar' : 'Discard' %></a>
+        <button type="submit" class="vt-btn vt-btn--primary"><%= es ? 'Guardar y aplicar' : 'Save & apply' %></button>
+      </div>
+    </div>
+  </form>
 </div>
 
 <script>
@@ -808,42 +846,70 @@ document.getElementById('bartList')?.addEventListener('input', e => {
 });
 updateBartBadges();
 
-/* ── debug switch ── */
-const sw = document.getElementById('dbgSwitch');
-const swInput = document.getElementById('dbgInput');
-sw.addEventListener('click', () => {
-  sw.classList.toggle('is-on');
-  swInput.value = sw.classList.contains('is-on') ? '1' : '';
+/* ── interruptores: botón visual + input oculto que viaja en el formulario ── */
+document.querySelectorAll('[data-switch]').forEach(btn => {
+  const input = document.getElementById(btn.dataset.switch);
+  btn.addEventListener('click', () => {
+    const on = btn.classList.toggle('is-on');
+    btn.setAttribute('aria-checked', on ? 'true' : 'false');
+    input.value = on ? '1' : '';
+    document.querySelectorAll(`[data-show-when="${input.id}"]`).forEach(el => { el.hidden = !on; });
+    if (input.id === 'dbgInput') setNavDot('diag', on ? 'warn' : '');
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
 });
 
-/* ── infolap switch ── */
-const ifSw = document.getElementById('infolapSwitch');
-const ifInput = document.getElementById('infolapInput');
-if (ifSw && ifInput) {
-  ifSw.addEventListener('click', () => {
-    ifSw.classList.toggle('is-on');
-    ifInput.value = ifSw.classList.contains('is-on') ? '1' : '';
-  });
+function setNavDot(sec, kind){
+  const dot = document.getElementById('navDot-' + sec);
+  if (dot) dot.className = 'st-dot' + (kind ? ' st-dot--' + kind : '');
 }
 
-/* ── access restriction switch ── */
-const acSw = document.getElementById('accessSwitch');
-const acInput = document.getElementById('accessInput');
-if (acSw && acInput) {
-  acSw.addEventListener('click', () => {
-    acSw.classList.toggle('is-on');
-    acInput.value = acSw.classList.contains('is-on') ? '1' : '';
+/* ── secciones: menú lateral. Se recuerda la última para volver a ella tras guardar ── */
+const SECS = Array.from(document.querySelectorAll('.st-sec')).map(s => s.dataset.sec);
+function showSection(sec){
+  if (!SECS.includes(sec)) sec = SECS[0];
+  document.querySelectorAll('.st-sec').forEach(s => s.classList.toggle('is-active', s.dataset.sec === sec));
+  document.querySelectorAll('.st-nav__item').forEach(b => {
+    const on = b.dataset.sec === sec;
+    b.classList.toggle('is-active', on);
+    if (on) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
   });
+  try { sessionStorage.setItem('pw.settings.sec', sec); } catch {}
 }
+document.querySelectorAll('.st-nav__item').forEach(b => b.addEventListener('click', () => {
+  showSection(b.dataset.sec);
+  history.replaceState(null, '', '#' + b.dataset.sec);
+  if (window.matchMedia('(max-width: 900px)').matches) window.scrollTo({ top: 0 });
+}));
+(function initSection(){
+  let saved = null;
+  try { saved = sessionStorage.getItem('pw.settings.sec'); } catch {}
+  showSection(location.hash.slice(1) || saved || SECS[0]);
+})();
 
-const hsSw = document.getElementById('httpsSwitch');
-const hsInput = document.getElementById('httpsInput');
-if (hsSw && hsInput) {
-  hsSw.addEventListener('click', () => {
-    hsSw.classList.toggle('is-on');
-    hsInput.value = hsSw.classList.contains('is-on') ? '1' : '';
-  });
+/* ── barra de cambios sin guardar ── */
+const settingsForm = document.getElementById('settingsForm');
+const formSnapshot = f => new URLSearchParams(new FormData(f)).toString();
+const restartSnapshot = f => Array.from(f.querySelectorAll('[data-restart]')).map(el => el.value).join('|');
+let initialForm = null, initialRestart = null;
+function updateSaveBar(){
+  const changed = formSnapshot(settingsForm) !== initialForm;
+  const restart = changed && restartSnapshot(settingsForm) !== initialRestart;
+  document.getElementById('stBar').classList.toggle('is-dirty', changed);
+  document.getElementById('stBarDot').className = 'st-dot' + (changed ? ' st-dot--warn' : '');
+  document.getElementById('stBarMsg').textContent = changed
+    ? (LANG === 'es' ? 'Cambios sin guardar' : 'Unsaved changes')
+    : (LANG === 'es' ? 'Sin cambios' : 'No changes');
+  document.getElementById('stBarRestart').hidden = !restart;
+  document.getElementById('stDiscard').hidden = !changed;
 }
+let saveBarQueued = false;
+function queueSaveBar(){
+  if (saveBarQueued) return;
+  saveBarQueued = true;
+  setTimeout(() => { saveBarQueued = false; updateSaveBar(); }, 0);
+}
+['input', 'change', 'click'].forEach(ev => settingsForm.addEventListener(ev, queueSaveBar));
 
 /* ── lane badge labels ── */
 function updateLaneBadges(){
@@ -1088,14 +1154,16 @@ function tunnelRender(s) {
   const url   = document.getElementById('tunnelUrl');
   const hint  = document.getElementById('tunnelHint');
   const inst  = document.getElementById('tunnelInstallBtn');
-  dot.style.background = s.running ? '#3fb950' : (s.lastError ? '#f85149' : '#6b7280');
+  const dotKind = s.running ? 'ok' : (s.lastError ? 'bad' : 'off');
+  dot.className = 'st-dot st-dot--lg st-dot--' + dotKind;
+  setNavDot('web', dotKind);
   state.textContent = s.installing
     ? (LANG === 'es' ? 'Descargando cloudflared…' : 'Downloading cloudflared…')
     : s.running
       ? (LANG === 'es' ? 'Túnel en marcha' : 'Tunnel running')
       : (LANG === 'es' ? 'Túnel parado' : 'Tunnel stopped');
   url.innerHTML = s.publicUrl
-    ? `🌍 <a href="${s.publicUrl}" target="_blank" rel="noopener" style="color:#58a6ff">${s.publicUrl}</a>`
+    ? `<a href="${s.publicUrl}" target="_blank" rel="noopener">${s.publicUrl}</a>`
     : (s.running && s.mode === 'quick' ? (LANG === 'es' ? 'Esperando URL… (tarda unos segundos)' : 'Waiting for URL… (takes a few seconds)') : '');
   inst.style.display = (!s.binaryFound && !s.installing) ? '' : 'none';
   document.getElementById('tunnelStartBtn').style.display = s.binaryFound ? '' : 'none';
@@ -1107,6 +1175,7 @@ function tunnelRender(s) {
     : 'cloudflared is not installed. Click “Install cloudflared” (downloaded from Cloudflare into PitWall\'s data folder, no admin rights) or install it yourself: brew install cloudflared.';
   else if (s.lastError) h = '⚠️ ' + s.lastError;
   hint.textContent = h;
+  document.getElementById('tunnelHintRow').hidden = !h;
 }
 async function tunnelAction(op) {
   try {
@@ -1145,6 +1214,10 @@ async function tunnelRefresh() {
 tunnelModeUi();
 tunnelRefresh();
 setInterval(tunnelRefresh, 5000);
+
+initialForm = formSnapshot(settingsForm);
+initialRestart = restartSnapshot(settingsForm);
+updateSaveBar();
 </script>
 
 <%- include('../partials/footer') %>

@@ -59,8 +59,7 @@ class DiagnosticsController {
 
     const connections = SocketService.getConnectionCounts();
 
-    res.render('diagnostico/index', { lang, t, timing, link, stuck, connections, flash: req.session?.flash });
-    if (req.session) req.session.flash = null;
+    res.render('diagnostico/index', { lang, t, timing, link, stuck, connections });
   }
 
   // Visor de tramas en vivo. La página no precarga tramas: el historial llega

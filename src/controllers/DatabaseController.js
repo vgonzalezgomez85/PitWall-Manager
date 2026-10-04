@@ -20,6 +20,10 @@ const fs     = require('fs');
 const os     = require('os');
 const multer = require('multer');
 const db     = require('../config/database');
+const RaceArchive = require('../services/RaceArchive');
+const ExportGuard = require('../services/ExportGuard');
+
+const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 // Nombre fijo: una nueva subida siempre reemplaza a la pendiente anterior, sin
 // dejar restos sueltos en la carpeta de datos.
@@ -31,6 +35,11 @@ const restoreUpload = multer({
     filename:    (req, file, cb) => cb(null, RESTORE_FILENAME),
   }),
   limits: { fileSize: 1024 * 1024 * 1024 }, // 1 GB — de sobra para años de carreras
+});
+
+const raceUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 500 * 1024 * 1024 },
 });
 
 // Gestión de la base de datos: copia de seguridad (descarga un snapshot del
@@ -55,7 +64,19 @@ class DatabaseController {
       pendingRestore = { sizeBytes: stat.size, uploadedAt: stat.mtime };
     } catch { /* no hay ninguna copia pendiente */ }
 
-    res.render('database/index', { t: req.t, sizeBytes, dbPath, pendingRestore });
+    const races = db.prepare(`
+      SELECT r.id, r.name, r.status, COALESCE(r.finished_at, r.started_at, r.created_at) AS at,
+             (SELECT COUNT(*) FROM mangas m WHERE m.race_id = r.id AND m.status = 'active') AS open_mangas
+      FROM races r ORDER BY COALESCE(r.finished_at, r.started_at, r.created_at) DESC, r.id DESC
+    `).all();
+
+    const counts = {};
+    for (const table of ['races', 'teams', 'drivers', 'circuits', 'laps']) {
+      try { counts[table] = db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get().n; }
+      catch { counts[table] = null; }
+    }
+
+    res.render('database/index', { t: req.t, sizeBytes, dbPath, pendingRestore, counts, races });
   }
 
   // GET /database/backup — descarga un snapshot consistente de la BD.
@@ -121,6 +142,77 @@ class DatabaseController {
           : 'Backup uploaded. Fully close PitWall and reopen it to apply it — until then you still see the current data. The current data is backed up automatically before applying it.',
       };
       res.redirect('/database');
+    });
+  }
+
+  // GET /database/race-export?race=ID — descarga UNA carrera completa (.pwrace).
+  static raceExport(req, res) {
+    const es = (req.session?.lang || 'es') === 'es';
+    const fail = text => { req.session.flash = { type: 'error', text }; res.redirect('/database'); };
+    if (ExportGuard.isMangaLive()) {
+      return fail(es ? 'Hay una manga en marcha: exporta la carrera cuando termine.' : 'A heat is running: export the race when it ends.');
+    }
+    try {
+      const { archive, buffer } = RaceArchive.exportRaceFile(parseInt(req.query.race, 10));
+      const slug = String(archive.race.name || 'carrera')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'carrera';
+      const day = String(archive.race.finished_at || archive.race.started_at || archive.race.created_at || '').slice(0, 10);
+      res.attachment(`${slug}${day ? '-' + day : ''}.pwrace`);
+      res.type('application/gzip');
+      res.send(buffer);
+    } catch (e) {
+      if (e.code === 'not_found') return fail(es ? 'Esa carrera no existe.' : 'That race does not exist.');
+      if (e.code === 'open_manga') {
+        return fail(es
+          ? 'La carrera tiene una manga sin cerrar. Ciérrala (o cancélala en Diagnóstico) antes de exportarla.'
+          : 'The race has an unclosed heat. Close it (or cancel it in Diagnostics) before exporting.');
+      }
+      console.error('[DatabaseController] race export failed:', e.message);
+      fail(es ? 'No se pudo exportar la carrera.' : 'Could not export the race.');
+    }
+  }
+
+  // POST /database/race-import — crea la carrera del archivo como carrera NUEVA.
+  static raceImport(req, res) {
+    raceUpload.single('race_file')(req, res, (err) => {
+      const es = (req.session?.lang || 'es') === 'es';
+      const fail = text => { req.session.flash = { type: 'error', text }; res.redirect('/database'); };
+      if (err) return fail((es ? 'No se pudo subir el archivo: ' : 'Could not upload the file: ') + err.message);
+      if (!req.file) return fail(es ? 'Selecciona un archivo .pwrace.' : 'Select a .pwrace file.');
+      // Miles de inserciones en una transacción: con una manga viva bloquearía
+      // el hilo lo bastante como para partir una trama del DS-300.
+      if (ExportGuard.isMangaLive()) {
+        return fail(es ? 'Hay una manga en marcha: importa la carrera cuando termine.' : 'A heat is running: import the race when it ends.');
+      }
+      try {
+        const result = RaceArchive.importRace(RaceArchive.parseFile(req.file.buffer));
+        const name = escapeHtml(result.name);
+        const circuitNote = result.circuitCreated
+          ? (es ? ` Se ha creado el circuito «${escapeHtml(result.circuitName)}».` : ` Circuit "${escapeHtml(result.circuitName)}" was created.`)
+          : '';
+        req.session.flash = {
+          type: 'success',
+          text: (es
+            ? `Carrera «<a href="/races/${result.raceId}">${name}</a>» importada (${result.laps.toLocaleString('es-ES')} vueltas).`
+            : `Race "<a href="/races/${result.raceId}">${name}</a>" imported (${result.laps.toLocaleString('en-US')} laps).`) + circuitNote,
+        };
+        res.redirect('/database');
+      } catch (e) {
+        if (e.code === 'exists') {
+          req.session.flash = {
+            type: 'error',
+            text: es
+              ? `Esta carrera ya está en este PC: <a href="/races/${e.existingId}">${escapeHtml(e.existingName)}</a>.`
+              : `This race is already on this PC: <a href="/races/${e.existingId}">${escapeHtml(e.existingName)}</a>.`,
+          };
+          return res.redirect('/database');
+        }
+        if (e.code === 'bad_file') return fail(es ? 'El archivo no es una carrera exportada de PitWall, o está dañado.' : 'The file is not an exported PitWall race, or it is damaged.');
+        if (e.code === 'newer_version') return fail(es ? 'El archivo viene de una versión más nueva de PitWall. Actualiza este PC e inténtalo de nuevo.' : 'The file comes from a newer PitWall version. Update this PC and try again.');
+        console.error('[DatabaseController] race import failed:', e);
+        fail(es ? 'No se pudo importar la carrera: ' + escapeHtml(e.message) : 'Could not import the race: ' + escapeHtml(e.message));
+      }
     });
   }
 
