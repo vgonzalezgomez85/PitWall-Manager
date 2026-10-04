@@ -1,7 +1,7 @@
 {
   "name": "pitwall-manager",
   "productName": "PitWall",
-  "version": "1.39.2",
+  "version": "1.40.0",
   "description": "PitWall — Slot car race management and timing system",
   "author": "Víctor González Gómez <vgonzalezgomez@outlook.es>",
   "license": "AGPL-3.0-or-later",
@@ -12,7 +12,7 @@
   "main": "electron/main.js",
   "scripts": {
     "start": "node src/app.js",
-    "dev": "nodemon src/app.js",
+    "dev": "nodemon --ignore public/ src/app.js",
     "electron": "node electron/launcher.js",
     "dist": "electron-builder --mac --win --linux",
     "dist:mac": "electron-builder --mac",

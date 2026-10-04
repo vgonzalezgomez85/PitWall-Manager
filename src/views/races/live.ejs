@@ -135,7 +135,7 @@
         </svg>
         <span><%= lang === 'es' ? 'Vista' : 'View' %></span>
       </button>
-      <%# Clasificación estimada acoplada a la derecha de las filas (solo V1).
+      <%# Clasificación estimada acoplada a la derecha (filas y tarjetas).
           Estado por carrera en localStorage; ?side=standings|none lo fuerza. %>
       <button id="sideBtn" class="lbtn lbtn--back lbtn--icon lbtn--toggle" type="button" aria-pressed="false"
         title="<%= lang === 'es' ? 'Mostrar/ocultar la clasificación estimada al lado' : 'Show/hide projected standings alongside' %>"
@@ -232,8 +232,8 @@
       </div>
     </div>
 
-    <!-- Resizer + clasificación estimada acoplada a la derecha: ocultos salvo en
-         V1 con el conmutador #sideBtn encendido (body.side-standings, ver
+    <!-- Resizer + clasificación estimada acoplada a la derecha: ocultos salvo
+         con el conmutador #sideBtn encendido (body.side-standings, ver
          live.css/live.js). También se puede abrir en ventana aparte (📊). -->
     <div id="sidebarResizer" class="sidebar-resizer" title="<%= lang === 'es' ? 'Arrastra para redimensionar' : 'Drag to resize' %>"></div>
 
@@ -241,6 +241,7 @@
       <div class="live-panel">
         <div class="live-panel__title">
           <%= lang === 'es' ? 'CLASIFICACIÓN ESTIMADA' : 'PROJECTED STANDINGS' %>
+          <span class="live-panel__subtitle"><%= lang === 'es' ? 'al final de la carrera' : 'at the end of the race' %></span>
           <a href="/races/<%= race.id %>/mangas/<%= manga.id %>/panel/standings" target="_blank" class="panel-expand" title="<%= lang === 'es' ? 'Abrir en ventana' : 'Open in window' %>">⤢</a>
         </div>
         <div class="live-panel__body">
@@ -357,6 +358,11 @@
       isPaused:       typeof isPaused !== 'undefined' && isPaused,
       isTeam:         race.format === 'team',
       tireControl:    (race.tire_pairs_per_team || 0) > 0,
+      // Ajustes → Orden del directo: 'projected' (estimada) o 'laps' (vueltas reales).
+      liveOrder:      liveOrder,
+      // Control de pilotos: resistencia por equipos con pilotos inscritos.
+      driverControl:  race.type === 'championship' && race.format === 'team'
+                        && Object.values(teamMembersByLane).some(m => m.length > 0),
       durationMs:     null,
       mangaDurationMs: race.manga_duration_minutes * 60000,
       standings:      standings,
@@ -386,15 +392,6 @@
           <div class="vp-label"><%= lang === 'es' ? 'Filas horizontales' : 'Horizontal rows' %></div>
           <div class="vp-desc"><%= lang === 'es' ? 'Una fila por carril. Recomendado para pocos carriles.' : 'One row per lane. Recommended for few lanes.' %></div>
         </button>
-        <button class="vp-opt" data-mode="2" onclick="selectView('2')">
-          <div class="vp-thumb vp-thumb--2" aria-hidden="true">
-            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-          </div>
-          <div class="vp-label"><%= lang === 'es' ? 'Cuadrícula compacta' : 'Compact grid' %></div>
-          <div class="vp-desc"><%= lang === 'es' ? 'Todas las pistas a la vez. Ideal para muchos carriles.' : 'All lanes at once. Ideal for many lanes.' %></div>
-        </button>
         <button class="vp-opt" data-mode="3" onclick="selectView('3')">
           <div class="vp-thumb vp-thumb--3" aria-hidden="true">
             <span><i></i><i></i><i></i><i></i></span>
@@ -403,7 +400,7 @@
             <span><i></i><i></i><i></i><i></i></span>
           </div>
           <div class="vp-label"><%= lang === 'es' ? 'Tarjetas con detalles' : 'Detailed cards' %></div>
-          <div class="vp-desc"><%= lang === 'es' ? 'Como la compacta pero con VLT, SAL, PIT y Δ visibles en cada tarjeta.' : 'Like compact but with VLT, SAL, PIT and Δ visible on each card.' %></div>
+          <div class="vp-desc"><%= lang === 'es' ? 'Todas las pistas a la vez, con la última vuelta en grande. Ideal para muchos carriles.' : 'All lanes at once, with the last lap in large type. Ideal for many lanes.' %></div>
         </button>
       </div>
     </div>

@@ -420,7 +420,9 @@ class SessionController {
     const isSimulating = SerialService.isSimulating;
     const isBart       = SerialService.isBart;
     const isPaused     = TimingService.isPaused && isActive;
-    res.render('races/live', { t: req.t, race, manga, tanda, lanes, laps, isActive, standings, projection, prevLapsByLane, totalMangas, totalTandas, totalRaceMs, effectiveMangaDurationMs, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, allParticipants, nextLaneByLane, nextMangaInfo, nextPendingMangaId, raceOver, isSimulating, isBart, isPaused });
+    const liveOrder = require('../models/Settings').get('live_order', 'projected') === 'laps' ? 'laps' : 'projected';
+
+    res.render('races/live', { t: req.t, liveOrder, race, manga, tanda, lanes, laps, isActive, standings, projection, prevLapsByLane, totalMangas, totalTandas, totalRaceMs, effectiveMangaDurationMs, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, allParticipants, nextLaneByLane, nextMangaInfo, nextPendingMangaId, raceOver, isSimulating, isBart, isPaused });
   }
 
   // GET /races/:id/mangas/:mangaId/panel/:type  (standalone popup)
@@ -2306,6 +2308,21 @@ class SessionController {
       position: i + 1,
       points:   SessionController._pointsFor(i + 1),
     }));
+  }
+
+  // GET /races/:id/mangas/:mangaId/driver-times.json
+  // Tiempo total conducido en la carrera por el piloto actual de cada carril,
+  // para la barra de las tarjetas del directo. Lo pide live.js cada pocos
+  // segundos solo en carreras con control de pilotos.
+  static driverTimes(req, res) {
+    const race  = Race.findById(req.params.id);
+    const manga = Manga.findById(req.params.mangaId);
+    if (!race || !manga) return res.status(404).json({ error: 'not_found' });
+    const lanes = {};
+    DriverShift.drivingTotalsByLane(manga.id).forEach(r => {
+      lanes[r.lane] = { driverName: r.driver_name, totalMs: r.total_ms };
+    });
+    res.json({ maxMs: race.driver_max_total_ms || 0, lanes });
   }
 
   // POST /races/:id/mangas/:mangaId/checkin

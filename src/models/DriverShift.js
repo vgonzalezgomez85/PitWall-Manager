@@ -52,6 +52,25 @@ class DriverShift {
     `).all(mangaId);
   }
 
+  // Piloto actual de cada carril de la manga con su tiempo total conducido en
+  // TODA la carrera (driving_ms del turno abierto se vuelca a BD en cada tick).
+  // Agrupa por equipo + nombre, no por perfil del catálogo: es para el directo,
+  // y así sale también para equipos que no vienen del catálogo.
+  static drivingTotalsByLane(mangaId) {
+    return db.prepare(`
+      SELECT cur.lane, cur.driver_name,
+             (SELECT COALESCE(SUM(x.driving_ms), 0) FROM driver_shifts x
+               WHERE x.race_id = cur.race_id AND x.team_id IS cur.team_id
+                 AND x.driver_name = cur.driver_name) AS total_ms
+      FROM driver_shifts cur
+      INNER JOIN (
+        SELECT lane, MAX(id) AS max_id
+        FROM driver_shifts WHERE manga_id = ?
+        GROUP BY lane
+      ) latest ON cur.id = latest.max_id
+    `).all(mangaId);
+  }
+
   // Histórico completo de shifts de una manga.
   static historyByManga(mangaId) {
     return db.prepare(`

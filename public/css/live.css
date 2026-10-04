@@ -208,6 +208,49 @@
   .live-timer { font-size: 3rem; }
 }
 
+/* ── Cabecera compacta (2026-10-04, opción «B» del boceto) ───────────────
+   Una barra de 46 px — relojes en línea · Tanda · Manga · estado · carrera
+   en una sola fila · botones — y debajo la franja fina de vueltas rápidas
+   (~30 px). Antes eran 96 + 47 px: ese alto pasa a tarjetas y filas.
+   Solo PAUSE/STOP/GO/REANUDAR y «Tanda N» conservan el texto; el resto,
+   icono con su nombre en el title. */
+.live-header { height: 46px; gap: 1.1rem; padding: 0 1rem; border-bottom: 1px solid #161b22; }
+.live-timer { font-size: 2.1rem; }
+.live-timer-label { display: none; }
+.circuit-timers { gap: .9rem; align-items: center; }
+.circuit-timer { flex-direction: row; align-items: baseline; gap: .3rem; }
+.circuit-timer__lbl { font-size: .68rem; }
+.circuit-timer__val { font-size: 2rem; }
+.live-header__info {
+  display: flex; align-items: center; gap: .6rem;
+  padding-left: .9rem; border-left: 1px solid #21262d;
+  white-space: nowrap;
+}
+.live-manga-id { margin: 0; white-space: nowrap; }
+.live-tanda-tag { font-size: .8rem; padding: .1rem .45rem; border-radius: 4px; }
+.live-manga-tag { font-size: 1.5rem; line-height: 1; }
+.live-status { margin: 0; flex-shrink: 0; }
+.status-text { font-size: .75rem; }
+.live-race-subtitle { font-size: .8rem; min-width: 0; }
+.live-header__actions { gap: .35rem; }
+.live-header .lbtn { min-height: 34px; padding: 0 12px; font-size: 14px; border-radius: 9px; }
+.live-header .lbtn svg { width: 16px; height: 16px; }
+.live-header .lbtn--icon,
+.live-header__actions #voiceBtn,
+.live-header__actions #viewBtn,
+.live-header__actions .lbtn--repeat,
+.live-header__actions a.lbtn--back { width: 34px; padding: 0; }
+.live-header__actions #voiceBtn > span,
+.live-header__actions #viewBtn > span,
+.live-header__actions .lbtn--repeat > span,
+.live-header__actions a.lbtn--back > span { display: none; }
+.live-header .live-dur__inp { height: 34px; }
+
+.live-toolbar { padding: 0 1rem; min-height: 30px; }
+.live-toolbar__label--fast { font-size: .66rem; }
+.live-toolbar .bl-pill { padding: .1rem .55rem .1rem .15rem; font-size: .78rem; gap: .4rem; }
+.live-toolbar .bl-pill__lane { width: 1.6em; height: 1.6em; }
+
 /* ── Main layout ─────────────────────────────────────────────────────────── */
 .live-layout {
   flex: 1; display: flex; min-height: 0; overflow: hidden;
@@ -511,12 +554,11 @@ body:not(:has(.live-lanes--vertical)) .lane-card.is-rest .lane-card__rest-label 
   overflow: hidden;
 }
 
-/* Acoplado al directo: oculto salvo en V1 con el conmutador #sideBtn
-   encendido (body.side-standings). En V2/V3 no aplica: botón oculto. */
+/* Acoplado al directo (filas y tarjetas): oculto salvo con el conmutador
+   #sideBtn encendido (body.side-standings). */
 #liveSidebar, #sidebarResizer { display: none; }
-body.side-standings:not(:has(.live-lanes--vertical)) #liveSidebar   { display: flex; }
-body.side-standings:not(:has(.live-lanes--vertical)) #sidebarResizer { display: block; }
-body:has(.live-lanes--vertical) #sideBtn { display: none; }
+body.side-standings #liveSidebar   { display: flex; }
+body.side-standings #sidebarResizer { display: block; }
 #sidebarResizer { touch-action: none; }
 
 /* Clasificación estimada acoplada (estilo TicTac con el lenguaje de PitWall):
@@ -562,6 +604,53 @@ body:has(.live-lanes--vertical) #sideBtn { display: none; }
 #liveSidebar .sr-avg     { color: #9ca3af; }
 #liveSidebar .sr-arrows  { font-size: .6em; }
 #liveSidebar .srow:first-child { background: rgba(246,201,14,.06); }
+/* Aspecto del boceto aprobado (2026-10-04): título amarillo con subtítulo,
+   nombre en Saira Condensed con bandera, cifras en Barlow Condensed, podio
+   oro/plata/bronce, filas alternas y atenuados los que no corren esta manga. */
+#liveSidebar { background: #0b0f14; }
+#liveSidebar .live-panel__title {
+  display: flex; align-items: baseline; gap: .6rem; white-space: nowrap;
+  color: #f6c90e; font-family: 'Inter', system-ui, sans-serif;
+  font-size: .8rem; font-weight: 800; letter-spacing: .1em;
+}
+#liveSidebar .live-panel__subtitle {
+  flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; text-align: right;
+  font-size: .7rem; font-weight: 500; letter-spacing: 0; color: #6e7681;
+}
+#liveSidebar .sidebar-table thead th {
+  font-family: 'Inter', system-ui, sans-serif; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase;
+}
+#liveSidebar .sidebar-table td { border-bottom: 0; }
+#liveSidebar .srow:nth-child(even) { background: #0d1218; }
+#liveSidebar .srow:first-child { background: rgba(246,201,14,.07); }
+#liveSidebar .srow--off { opacity: .7; }
+#liveSidebar .srow--off .sr-name { color: #8b949e; }
+#liveSidebar .sr-name {
+  font-family: 'Saira Condensed', sans-serif; font-weight: 700;
+  font-size: 1.05em; line-height: 1.1; text-transform: uppercase;
+}
+#liveSidebar .sr-name .lane-flag :is(svg, img) { width: 1em; height: auto; }
+#liveSidebar .sr-pos {
+  width: auto; min-width: 1.7em; height: 1.15em; padding: 0 .3em;
+  border-radius: 4px; font-family: 'Barlow Condensed', sans-serif;
+  font-size: .95em; font-weight: 800; vertical-align: middle;
+}
+#liveSidebar .sr-name .lane-flag { vertical-align: middle; line-height: 1; }
+#liveSidebar .sr-pos.p2 { background: #c0c0c0; color: #000; }
+#liveSidebar .sr-pos.p3 { background: #cd7f32; color: #000; }
+#liveSidebar .sr-pos.pn { color: #c9d1d9; }
+#liveSidebar .sr-move {
+  display: inline-block; width: .9em; margin-left: .35em;
+  font-size: .6em; vertical-align: middle; text-align: center;
+}
+#liveSidebar .sr-move--up   { color: #3fb950; }
+#liveSidebar .sr-move--down { color: #f85149; }
+#liveSidebar :is(.sr-proj, .sr-ontrack, .sr-avg, .sr-delta) {
+  font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
+  letter-spacing: 0;
+}
+#liveSidebar .sr-proj { color: #fff; font-size: 1.15em; line-height: 1; }
 #liveSidebar .sidebar-table.sb-hide-5 :is(th, td):nth-child(5),
 #liveSidebar .sidebar-table.sb-hide-6 :is(th, td):nth-child(6),
 #liveSidebar .sidebar-table.sb-hide-7 :is(th, td):nth-child(7),
@@ -821,35 +910,6 @@ body.resizing-sidebar * { cursor: col-resize !important; }
   padding: .5rem;
   overflow: auto;
 }
-.live-lanes--vertical .lane-card {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: auto 1fr 1fr;
-  grid-template-areas:
-    "head head"
-    "tot  ult"
-    "med  mej";
-  gap: .3rem;
-  padding: .4rem;
-  min-height: 0;
-  align-items: stretch;
-  overflow: hidden;
-  background: #0a0a0a;
-  border: 2px solid var(--card-color, #21262d);
-  border-radius: 10px;
-  position: relative; /* contenedor para la insignia del carril absoluta */
-}
-/* Insignia del carril (badge rojo "1"): posicionada en la esquina superior
-   derecha de la TARJETA. P.1 se queda donde estaba. */
-.live-lanes--vertical .lane-card__label {
-  position: absolute !important;
-  top: .3rem;
-  right: .3rem;
-  grid-column: auto !important;
-  grid-row: auto !important;
-  z-index: 2;
-}
-
 /* Línea separadora entre filas de tarjetas (V2/V3): un div suelto por cada
    hueco entre filas, hermano de las tarjetas dentro de #lanesGrid (ver
    renderRowDividers en live.js). NO va pegada al borde de una tarjeta —
@@ -868,180 +928,366 @@ body.resizing-sidebar * { cursor: col-resize !important; }
   z-index: 1;
 }
 
-/* ── Header de tarjeta V2 (grid 3 cols × 2 filas):
-   Fila 1: pos (col 1) · espacio (col 2 = 1fr) · lane (col 3)
-   Fila 2: nombre ocupa las 3 columnas (full width) */
-.live-lanes--vertical .lane-card__col--name {
+/* ── V2/V3 · Tarjetas ────────────────────────────────────────────────────
+   Cabecera: P.x · equipo · carril, debajo el piloto con su tiempo conducido
+   y los avisos (salidas, paradas, neumáticos). En el centro la ÚLTIMA vuelta
+   en grande con el TOTAL al lado y, abajo, la fila de datos: mejor, media,
+   Gap V y vueltas de la manga.
+   Tamaños en unidades de contenedor, sin cálculos en JS: la cabecera usa em
+   sobre una base relativa a la tarjeta, y la última vuelta y el total se
+   miden contra SU celda (ancho y alto), que es el hueco que deja la cabecera
+   según lleve piloto y avisos o no. Así nunca se montan encima. */
+.live-lanes--vertical .lane-card:not(.is-rest) {
+  container-type: size;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "head head head head"
+    "ult  ult  tot  tot"
+    "mej  med  dlt  vlt";
+  gap: .15rem .5rem;
+  padding: .45rem .6rem .5rem;
+  min-height: 0;
+  overflow: hidden;
+  background: #0a0a0a;
+  border: 2px solid var(--card-color, #21262d);
+  border-radius: 9px;
+  position: relative;
+}
+
+/* Orden del directo por vueltas reales (Ajustes): sin Gap V en tarjetas ni
+   filas, porque mide la distancia en la clasificación ESTIMADA. */
+body.live-order-laps #lanesGrid :is(.lane-card, .lanes-header) > [data-col="delta"] { display: none !important; }
+body.live-order-laps:not(.side-standings) .live-lanes--vertical .lane-card:not(.is-rest) {
+  grid-template-areas:
+    "head head head head"
+    "ult  ult  tot  tot"
+    "mej  med  vlt  vlt";
+}
+
+/* Con la clasificación estimada al lado, las tarjetas son más estrechas y
+   la fila de datos se quita (mejor, media y Gap V ya están en la
+   clasificación): ese alto pasa a la última vuelta, el total y los nombres.
+   Las vueltas de la manga se quedan, en pequeño bajo el total. */
+body.side-standings .live-lanes--vertical .lane-card:not(.is-rest) {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "head head head head"
+    "ult  ult  tot  tot"
+    "ult  ult  vlt  vlt";
+}
+body.side-standings .live-lanes--vertical .lane-card:not(.is-rest) > :is(.lane-card__col--best, .lane-card__col--avg, .lane-card__col--delta) {
+  display: none;
+}
+body.side-standings .live-lanes--vertical .lane-card:not(.is-rest) > .lane-card__col--laps {
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: .35em;
+  padding: 0;
+  border-top: 0;
+}
+body.side-standings .live-lanes--vertical .lane-card:not(.is-rest) > .lane-card__col--laps .lane-card__laps {
+  font-size: min(12cqw, 16cqh);
+}
+
+/* Cabecera */
+.live-lanes--vertical .lane-card:not(.is-rest) > .lane-card__col--name {
   grid-area: head;
   display: grid !important;
-  grid-template-columns: auto auto auto 1fr !important;
-  grid-template-rows: auto auto !important;
-  flex-direction: row !important;
-  flex-wrap: nowrap !important;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "pos  name lane"
+    "drv  drv  drv"
+    "bar  bar  bar"
+    "chip chip chip";
+  gap: 0 .45em;
   align-items: center;
-  column-gap: .3rem;
-  row-gap: .15rem;
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
   padding: 0;
-  border-bottom: none;
-  min-width: 0;
-  width: 100%;
+  border: 0;
+  font-size: min(6.2cqw, 9cqh);
 }
-.live-lanes--vertical .lane-card__label {
-  grid-column: 3 !important;
-  grid-row: 1 !important;
-  justify-self: end !important;
-  background: var(--card-color, #21262d) !important;
-  color: #fff !important;
-  border-radius: 6px;
-  min-width: 1.7rem; height: 1.7rem;
-  padding: 0 .35rem;
-  display: inline-flex; align-items: center; justify-content: center;
-  font-family: 'Inter', system-ui, sans-serif;
+.live-lanes--vertical .lane-card__name-row { display: contents !important; }
+.live-lanes--vertical .lane-card__trend { display: none !important; }
+.live-lanes--vertical .lane-card:not(.is-rest) .lane-card__pos {
+  grid-area: pos;
+  margin: 0;
+  padding: .12em .3em .06em;
+  border-radius: 5px;
+  background: #f6c90e !important;
+  color: #000 !important;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.15em;
   font-weight: 800;
-  letter-spacing: 0;
-  text-transform: none;
+  line-height: 1;
+}
+.live-lanes--vertical .lane-card:not(.is-rest) .lane-card__name {
+  grid-area: name;
+  min-width: 0;
+  font-family: 'Saira Condensed', sans-serif;
+  font-size: 1.3em;
+  font-weight: 700;
+  line-height: 1.1;
+  text-transform: uppercase;
+  color: #f0f3f6;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.live-lanes--vertical .lane-card:not(.is-rest) .lane-card__label {
+  grid-area: lane;
+  justify-self: end;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.6em;
+  height: 1.6em;
+  padding: 0 .3em;
+  border-radius: 6px;
+  background: var(--card-color, #21262d);
 }
 .live-lanes--vertical .lane-card__track-text { display: none !important; }
-.live-lanes--vertical .lane-card__lane-num {
-  font-family: 'Inter', system-ui, sans-serif !important;
-  font-size: calc(1rem * var(--lv-scale, 1)) !important;
-  font-weight: 800 !important;
-  color: #fff !important;
-  margin: 0 !important;
-  line-height: 1 !important;
+.live-lanes--vertical .lane-card:not(.is-rest) .lane-flag :is(svg, img) { width: 1.05em; height: auto; }
+.live-lanes--vertical .lane-card:not(.is-rest) .lane-card__lane-num {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.15em;
+  font-weight: 800;
+  line-height: 1;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .6);
 }
-/* name-row vuelve transparente: pos, trend, name, pit pasan a ser hijos
-   directos del flex container col--name → los order:1/2/3 sí aplican. */
-.live-lanes--vertical .lane-card__name-row {
-  display: contents !important;
-}
-/* Ocultar elementos que solo molestan en V2 */
-.live-lanes--vertical .lane-card__trend { display: none !important; }
-/* En V2 (tarjetas) sí mostramos el piloto activo bajo el nombre del equipo
-   como bloque dedicado. Si está vacío (sin check-in), se colapsa. */
-.live-lanes--vertical .lane-card__driver-row {
-  grid-column: 1 / -1 !important;
-  grid-row: auto;
+
+/* Piloto al volante + tiempo conducido en la carrera frente al máximo */
+.live-lanes--vertical .lane-card:not(.is-rest) .lane-card__driver-row {
+  grid-area: drv;
   min-height: 0;
-  margin-top: 1px;
-  padding: 0 .15rem;
-  font-size: calc(.7rem * var(--lv-scale, 1));
+  margin: .15em 0 0;
+  font-family: 'Saira Condensed', sans-serif;
+  font-size: .95em;
   font-weight: 600;
-  color: #58a6ff;
-  letter-spacing: .01em;
-  text-align: center;
+  line-height: 1.1;
+  text-transform: uppercase;
+  color: #7dd3fc;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .live-lanes--vertical .lane-card__driver-row:empty { display: none !important; }
-.live-lanes--vertical .lane-card__driver-name { color: inherit; font-size: inherit; }
-/* pit/exit pegados a la posición (col 2 y 3). Antes caían en la columna
-   central (1fr) y bajo el nº de carril absoluto → se solapaban. Se excluye
-   --detailed, que tiene su propio grid de header. */
-.live-lanes--vertical:not(.live-lanes--detailed) .lane-card__pit  {
-  grid-column: 2 !important; grid-row: 1 !important; justify-self: start !important; align-self: center; margin: 0 !important;
+.live-lanes--vertical.live-lanes--drivers .lane-card:not(.is-rest) .lane-card__driver-row:empty {
+  display: block !important;
+  min-height: 1.1em;
 }
-.live-lanes--vertical:not(.live-lanes--detailed) .lane-card__exit {
-  grid-column: 3 !important; grid-row: 1 !important; justify-self: start !important; align-self: center; margin: 0 !important;
+.live-lanes--vertical.live-lanes--drivers .lane-card:not(.is-rest) .lane-card__drive[hidden] {
+  display: flex;
+  visibility: hidden;
 }
-.live-lanes--vertical:not(.live-lanes--detailed) .lane-card__tire {
-  grid-column: 4 !important; grid-row: 1 !important; justify-self: start !important; align-self: center; margin: 0 !important;
+.live-lanes--vertical .lane-card__driver-name { font-size: inherit; color: inherit; }
+.live-lanes--vertical .lane-card__driver-inline { display: none; }
+.live-lanes--vertical .lane-card__drive {
+  grid-area: bar;
+  display: flex;
+  align-items: center;
+  gap: .4em;
+  min-height: 1.2em;
+  margin-top: .15em;
+  font-size: .62em;
 }
-.live-lanes--vertical .lane-card__name {
-  grid-column: 1 / -1 !important;
-  grid-row: 2 !important;
-  min-width: 0;
-  width: 100%;
+.live-lanes--vertical .lane-card__drive[hidden] { display: none; }
+.lane-card__drive-bar {
+  flex: 1 1 auto;
+  height: .45em;
+  background: #1f2630;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.lane-card__drive-fill {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: #38bdf8;
+  border-radius: 3px;
+  transition: width .6s ease;
+}
+.lane-card__drive-time {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 600;
+  font-size: 1.15em;
+  line-height: 1;
+  color: #8b949e;
+  white-space: nowrap;
+}
+.lane-card__drive.no-max .lane-card__drive-bar { visibility: hidden; }
+.lane-card__drive.is-near .lane-card__drive-fill { background: #f59e0b; }
+.lane-card__drive.is-near .lane-card__drive-time { color: #f59e0b; }
+.lane-card__drive.is-over .lane-card__drive-fill { background: #f85149; }
+.lane-card__drive.is-over .lane-card__drive-time { color: #f85149; }
+
+/* Avisos: salidas, paradas (PIT n) y juegos de neumáticos (usados/total).
+   Una parada o un cambio de neumáticos recién hechos se resaltan un rato
+   (.is-recent, ver flashChip en live.js). La fila se reserva aunque esté
+   vacía, igual que la del piloto en carreras con control de pilotos: si no,
+   cada tarjeta dejaría un hueco distinto a las cifras y saldrían de tamaños
+   distintos en la misma pantalla. */
+.live-lanes--vertical .lane-card:not(.is-rest) .lane-card__chips {
+  grid-area: chip;
+  display: flex;
+  align-items: center;
+  gap: .3em;
+  min-height: 1.6em;
+  margin-top: .2em;
+  overflow: hidden;
+  font-size: .64em;
+}
+.live-lanes--vertical .lane-card:not(.is-rest) :is(.lane-card__exit, .lane-card__pit, .lane-card__tire, .lane-card__no-driver) {
+  display: inline-flex;
+  align-items: center;
+  gap: .25em;
+  height: 1.6em;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0 .45em;
+  border-radius: 4px;
+  background: #10161e;
+  border: 1px solid #253041;
   font-family: 'Inter', system-ui, sans-serif;
-  font-size: calc(.95rem * var(--lv-scale, 1));
-  font-weight: 700;
-  color: #fff;
-  text-align: left;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  /* Anula el marquee de V1 que hace flotar el nombre por encima */
-  animation: none !important;
-  transform: none !important;
-  position: static !important;
-}
-.live-lanes--vertical .lane-card__name--overflow {
-  animation: none !important;
-  transform: none !important;
-}
-.live-lanes--vertical .lane-card__pos {
-  grid-column: 1 !important;
-  grid-row: 1 !important;
-  justify-self: start !important;
-  min-width: 2.1rem; height: 1.7rem;
-  border-radius: 6px;
-  background: #f6c90e !important;
-  color: #000 !important;
-  margin: 0; padding: 0 .35rem;
-  font-family: 'Inter', system-ui, sans-serif;
-  font-size: calc(.95rem * var(--lv-scale, 1));
+  font-size: 1em;
   font-weight: 800;
-  display: inline-flex; align-items: center; justify-content: center;
+  line-height: 1;
+  white-space: nowrap;
 }
-.live-lanes--vertical .lane-card__pos--1,
-.live-lanes--vertical .lane-card__pos--2,
-.live-lanes--vertical .lane-card__pos--3 { background: #f6c90e !important; color: #000 !important; }
+.live-lanes--vertical .lane-card:not(.is-rest) :is(.lane-card__exit, .lane-card__pit, .lane-card__tire)[hidden] { display: none; }
+.live-lanes--vertical .lane-card:not(.is-rest) :is(.lane-card__exit-count, .lane-card__tire-count, .lane-card__pit-total, .lane-card__tire-max) {
+  font-family: inherit;
+  font-size: 1em;
+  font-weight: 800;
+  color: inherit;
+}
+.live-lanes--vertical .lane-card__pit-count { display: none; }
+.live-lanes--vertical .lane-card__tire-max { margin-left: -.25em; }   /* «4/12», sin el gap del chip */
+.live-lanes--vertical .lane-card:not(.is-rest) .lane-card__exit { color: #f85149; background: #1a1416; border-color: #3b2326; }
+.live-lanes--vertical .lane-card:not(.is-rest) .lane-card__pit  { color: #7dd3fc; }
+.live-lanes--vertical .lane-card:not(.is-rest) .lane-card__tire { color: #c9d1d9; }
+.live-lanes--vertical .lane-card:not(.is-rest) .lane-card__pit.is-recent  { color: #e0f2fe; background: #0c4a6e; border-color: #38bdf8; }
+.live-lanes--vertical .lane-card:not(.is-rest) .lane-card__tire.is-recent { color: #fde68a; background: #3b2f05; border-color: #f6c90e; }
+.live-lanes--vertical .lane-card:not(.is-rest) .lane-card__no-driver {
+  display: none;
+  color: #f6c90e;
+  background: transparent;
+  border: 1px dashed #f6c90e;
+  letter-spacing: .05em;
+}
+body:not(.manga-finished) .live-lanes--vertical .lane-card.no-driver .lane-card__no-driver { display: inline-flex; }
 
-/* ── Stats 2×2: TOT (ámbar), ÚLT (blanco), MED (gris), MEJ (verde) ──────── */
-.live-lanes--vertical .lane-card__col--total { grid-area: tot; }
-.live-lanes--vertical .lane-card__col--last  { grid-area: ult; }
-.live-lanes--vertical .lane-card__col--avg   { grid-area: med; }
-.live-lanes--vertical .lane-card__col--best  { grid-area: mej; }
-.live-lanes--vertical .lane-card__col--laps,
-.live-lanes--vertical .lane-card__col--exits,
-.live-lanes--vertical .lane-card__col--delta { display: none !important; }
+/* Última vuelta (grande) y total */
+.live-lanes--vertical .lane-card:not(.is-rest) > :is(.lane-card__col--last, .lane-card__col--total) {
+  container-type: size;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: 0;
+  overflow: visible;
+  background: none;
+  white-space: nowrap;
+}
+.live-lanes--vertical .lane-card:not(.is-rest) > .lane-card__col--last  { grid-area: ult; align-items: flex-start; }
+.live-lanes--vertical .lane-card:not(.is-rest) > .lane-card__col--total { grid-area: tot; align-items: flex-end; }
+.live-lanes--vertical .lane-card:not(.is-rest) > .lane-card__col--last .lane-card__col-label { display: none; }
+.live-lanes--vertical .lane-card:not(.is-rest) > .lane-card__col--total .lane-card__col-label {
+  font-size: min(6.2cqw, 14cqh) !important;
+}
+.live-lanes--vertical .lane-card:not(.is-rest) > :is(.lane-card__col--last, .lane-card__col--total) .lane-card__col-val {
+  margin: 0;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.01em;
+  text-align: left;
+  overflow: visible;
+}
+.live-lanes--vertical .lane-card:not(.is-rest) > .lane-card__col--last .lane-card__col-val {
+  font-size: min(50cqw, 105cqh);   /* ≈ 1,07 × ancho de celda: invade un poco la del total, que va a la derecha */
+  line-height: .88;
+  color: #fff;
+}
+.live-lanes--vertical .lane-card:not(.is-rest) > .lane-card__col--last.has-tag .lane-card__col-val {
+  font-size: min(50cqw, 78cqh);
+}
+.live-lanes--vertical .lane-card:not(.is-rest) > .lane-card__col--total .lane-card__col-val {
+  font-size: min(32cqw, 72cqh);
+  line-height: .92;
+  color: #f59e0b;
+}
+.lane-card__last-tag[hidden] { display: none; }
+.live-lanes--vertical .lane-card__last-tag {
+  margin-top: .3em;
+  padding: .15em .45em;
+  border-radius: 4px;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: min(6cqw, 15cqh);
+  font-weight: 800;
+  letter-spacing: .08em;
+  line-height: 1;
+  color: #fff;
+  background: #15803d;
+}
+.live-lanes--vertical .lane-card__last-tag--purple { background: #7e22ce; }
+.live-lanes--vertical .lane-card__last-tag--pit    { background: #0369a1; }
 
-.live-lanes--vertical .lane-card__col--total,
-.live-lanes--vertical .lane-card__col--last,
-.live-lanes--vertical .lane-card__col--avg,
-.live-lanes--vertical .lane-card__col--best {
-  background: #161b22;
-  border-radius: 6px;
-  padding: .1rem .45rem;
+/* Fila de datos */
+.live-lanes--vertical .lane-card:not(.is-rest) > .lane-card__col--best  { grid-area: mej; }
+.live-lanes--vertical .lane-card:not(.is-rest) > .lane-card__col--avg   { grid-area: med; }
+.live-lanes--vertical .lane-card:not(.is-rest) > .lane-card__col--delta { grid-area: dlt; }
+.live-lanes--vertical .lane-card:not(.is-rest) > .lane-card__col--laps  { grid-area: vlt; }
+.live-lanes--vertical .lane-card:not(.is-rest) > .lane-card__col--exits { display: none; }
+.live-lanes--vertical .lane-card:not(.is-rest) > :is(.lane-card__col--best, .lane-card__col--avg, .lane-card__col--delta, .lane-card__col--laps) {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  justify-content: center;
-  gap: 0;
-  min-width: 0; min-height: 0;
-  overflow: hidden;
-  flex: none;
+  gap: .1em;
+  min-width: 0;
+  padding: .3em 0 0;
+  background: none;
+  border-top: 1px solid #1f2630;
+  border-radius: 0;
 }
-.live-lanes--vertical .lane-card__col-label {
-  font-family: 'Inter', system-ui, sans-serif !important;
-  font-size: calc(.58rem * var(--lv-scale, 1)) !important;   /* !important: si no, la regla general .live-body lo agranda y se monta sobre el valor */
+.live-lanes--vertical .lane-card:not(.is-rest) > .lane-card__col--laps { align-items: flex-end; }
+.live-lanes--vertical .lane-card:not(.is-rest) > .lane-card__col:not(.lane-card__col--name) .lane-card__col-label {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: min(3.1cqw, 4.6cqh);
   font-weight: 700;
-  color: #8b949e;
-  letter-spacing: .06em;
+  letter-spacing: .08em;
+  line-height: 1.1;
   text-transform: uppercase;
-  line-height: 1 !important;
-  width: auto;
-  text-align: left;
+  color: #8b949e;
 }
-.live-lanes--vertical .lane-card__col-val {
-  font-family: 'Inter', system-ui, sans-serif !important;
-  font-size: calc(clamp(.9rem, 2vh, 1.2rem) * var(--lv-scale, 1)) !important;
-  font-weight: 800 !important;
-  letter-spacing: -.02em;
-  line-height: 1.1 !important;
-  color: #c9d1d9;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-align: left !important;
-  flex: none !important;
+.live-lanes--vertical .lane-card:not(.is-rest) > :is(.lane-card__col--best, .lane-card__col--avg, .lane-card__col--delta, .lane-card__col--laps) :is(.lane-card__col-val, .lane-card__laps) {
+  margin: 0;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: min(7.5cqw, 11cqh);
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
-  width: 100%;
-  margin: 0 !important;
+  line-height: 1;
+  white-space: nowrap;
 }
-.live-lanes--vertical .lane-card__col--total .lane-card__col-val { color: #f59e0b; }
-.live-lanes--vertical .lane-card__col--last  .lane-card__col-val { color: #ffffff; }
-.live-lanes--vertical .lane-card__col--avg   .lane-card__col-val { color: #9ca3af; }
-.live-lanes--vertical .lane-card__col--best  .lane-card__col-val { color: #22c55e; }
+.live-lanes--vertical .lane-card:not(.is-rest) > .lane-card__col--best  .lane-card__col-val { color: #22c55e; }
+.live-lanes--vertical .lane-card:not(.is-rest) > .lane-card__col--avg   .lane-card__col-val { color: #b1bac4; }
+.live-lanes--vertical .lane-card:not(.is-rest) > .lane-card__col--delta .lane-card__col-val { color: #fb923c; }
+.live-lanes--vertical .lane-card:not(.is-rest) > .lane-card__col--laps  .lane-card__laps    { color: #f6c90e; }
+
+/* Líder de vueltas de la MANGA actual: VLT en verde. */
+body:not(:has(.live-lanes--vertical)) .lane-card__laps.is-manga-leader,
+body:not(:has(.live-lanes--vertical)) .lane-card__col--laps .lane-card__laps.is-manga-leader,
+.live-lanes--vertical .lane-card:not(.is-rest) > .lane-card__col--laps .lane-card__laps.is-manga-leader {
+  color: #3fb950 !important;
+}
 
 /* (.lbtn--view redefinido en la sección superior con estilo nuevo) */
 
@@ -1398,25 +1644,6 @@ body.resizing-sidebar * { cursor: col-resize !important; }
 .vp-thumb--1 > span:nth-child(5) { background: linear-gradient(90deg, #9c27b0 0%, #9c27b0 18%, #2a2a2a 18%, #2a2a2a 100%); }
 .vp-thumb--1 > span:nth-child(6) { background: linear-gradient(90deg, #00bcd4 0%, #00bcd4 18%, #2a2a2a 18%, #2a2a2a 100%); }
 
-/* V2: cuadrícula 8x3 de tarjetas pequeñas */
-.vp-thumb--2 {
-  grid-template-columns: repeat(8, 1fr);
-  grid-template-rows: repeat(3, 1fr);
-}
-.vp-thumb--2 > span {
-  background: #21262d;
-  border-top: 2px solid var(--bc, #58a6ff);
-  border-radius: 3px;
-}
-.vp-thumb--2 > span:nth-child(8n+1) { --bc: #e63946; }
-.vp-thumb--2 > span:nth-child(8n+2) { --bc: #2196f3; }
-.vp-thumb--2 > span:nth-child(8n+3) { --bc: #4caf50; }
-.vp-thumb--2 > span:nth-child(8n+4) { --bc: #ff9800; }
-.vp-thumb--2 > span:nth-child(8n+5) { --bc: #9c27b0; }
-.vp-thumb--2 > span:nth-child(8n+6) { --bc: #00bcd4; }
-.vp-thumb--2 > span:nth-child(8n+7) { --bc: #ff5722; }
-.vp-thumb--2 > span:nth-child(8n)   { --bc: #cddc39; }
-
 /* V3: tarjetas con detalles (4x4 con sub-grid) */
 .vp-thumb--3 {
   grid-template-columns: repeat(4, 1fr);
@@ -1493,6 +1720,14 @@ body:not(:has(.live-lanes--vertical)) .lane-card__col--exits .lane-card__col-val
 .lv-color-white  { color: #ffffff !important; }
 .lv-color-amber  { color: #f59e0b !important; }
 .lv-color-red    { color: #ef4444 !important; }
+.lv-color-purple { color: #c084fc !important; }   /* récord de la carrera */
+.lv-color-pit    { color: #7dd3fc !important; }   /* vuelta con parada en boxes */
+
+/* Piezas que solo usan las tarjetas (V2/V3). En V1 los avisos siguen siendo
+   hijos directos de la fila del nombre (el envoltorio no cuenta). */
+.lane-card__chips { display: contents; }
+body:not(:has(.live-lanes--vertical)) :is(.lane-card__drive, .lane-card__no-driver, .lane-card__last-tag,
+  .lane-card__pit-total, .lane-card__tire-max) { display: none !important; }
 
 /* SAL activa (>0) sigue siendo roja, sobreescribe el muted */
 body:not(:has(.live-lanes--vertical)) .lane-card__col-val--exits-active { color: #ef4444 !important; font-weight: 800; }
@@ -1701,6 +1936,94 @@ body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__pit { or
 body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__exit { order: 6; }
 body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__tire { order: 7; }
 
+/* ── V1 a dos columnas (v1-cols2, ver _v1UseTwoCols en live.js) ───────────
+   Cuando los equipos no caben en una columna de filas, se reparten en dos,
+   cada una con su cabecera: de arriba abajo la primera y luego la segunda
+   (grid-auto-flow: column respeta el `order` que pone la clasificación).
+   --v1-rows = filas por columna de la página visible. */
+.lanes-header--2 { display: none !important; }
+body:not(:has(.live-lanes--vertical)) .live-lanes.v1-cols2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: auto repeat(var(--v1-rows, 10), minmax(0, 1fr));
+  grid-auto-flow: column;
+  column-gap: clamp(.8rem, 1.2vw, 1.4rem);
+}
+body:not(:has(.live-lanes--vertical)) .live-lanes.v1-cols2 > .lanes-header   { grid-column: 1; grid-row: 1; }
+body:not(:has(.live-lanes--vertical)) .live-lanes.v1-cols2 > .lanes-header--2 { display: flex !important; grid-column: 2; grid-row: 1; }
+/* Filas bajas para que quepan todos: por debajo de 24 px ya pagina. Los
+   chips P.x / carril siguen al nombre en vez de imponer su alto mínimo. */
+body:not(:has(.live-lanes--vertical)) .live-lanes.v1-cols2 > .lane-card {
+  min-height: 24px;
+  padding-top: 1px;
+  padding-bottom: 1px;
+}
+body:not(:has(.live-lanes--vertical)) .live-lanes.v1-cols2 .lane-card__col--name :is(.lane-card__pos, .lane-card__label) {
+  height: clamp(1rem, calc(var(--v1-name-font, 1.6rem) * 1.15), 2.1rem);
+}
+body:not(:has(.live-lanes--vertical)) .live-lanes.v1-cols2 .lane-card__col--name .lane-card__pos {
+  font-size: clamp(.6rem, calc(var(--v1-name-font, 1.6rem) * .6), 1.1rem) !important;
+  padding: 0 .45rem;
+}
+body:not(:has(.live-lanes--vertical)) .live-lanes.v1-cols2 .lane-card__col--name .lane-card__lane-num {
+  font-size: clamp(.65rem, calc(var(--v1-name-font, 1.6rem) * .7), 1.35rem) !important;
+}
+
+/* ── Piloto fijo bajo el equipo (V1, carreras con control de pilotos) ──────
+   Fila en dos líneas: P.x · flechas · carril ocupan las dos, a su derecha el
+   equipo con sus avisos y debajo el piloto al volante (o «SIN PILOTO»). */
+body:not(:has(.live-lanes--vertical)) .live-lanes--drivers .lane-card:not(.is-rest) .lane-card__col--name {
+  display: grid !important;
+  grid-template-columns: auto auto auto minmax(0, max-content) auto 1fr;
+  grid-template-areas:
+    "pos trend lane name chips ."
+    "pos trend lane drv  drv   drv";
+  column-gap: .55rem;
+  row-gap: 0;
+  align-items: center;
+  align-content: center;
+}
+body:not(:has(.live-lanes--vertical)) .live-lanes--drivers .lane-card__col--name .lane-card__pos   { grid-area: pos; }
+body:not(:has(.live-lanes--vertical)) .live-lanes--drivers .lane-card__col--name .lane-card__trend { grid-area: trend; }
+body:not(:has(.live-lanes--vertical)) .live-lanes--drivers .lane-card__col--name .lane-card__label { grid-area: lane; }
+body:not(:has(.live-lanes--vertical)) .live-lanes--drivers .lane-card__col--name .lane-card__name  { grid-area: name; }
+body:not(:has(.live-lanes--vertical)) .live-lanes--drivers .lane-card__col--name .lane-card__chips {
+  grid-area: chips;
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+}
+body:not(:has(.live-lanes--vertical)) .live-lanes--drivers .lane-card__col--name .lane-card__driver-row {
+  grid-area: drv;
+  display: block !important;
+  min-height: 0;
+  margin: 0;
+  font-family: 'Saira Condensed', sans-serif;
+  font-size: calc(var(--v1-name-font, 1.6rem) * .7);
+  font-weight: 600;
+  line-height: 1.1;
+  text-transform: uppercase;
+  color: #7dd3fc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body:not(:has(.live-lanes--vertical)) .live-lanes--drivers .lane-card__driver-row .lane-card__driver-name { font-size: inherit; color: inherit; }
+body:not(:has(.live-lanes--vertical)) .live-lanes--drivers .lane-card__driver-inline { display: none !important; }
+body:not(.manga-finished):not(:has(.live-lanes--vertical)) .live-lanes--drivers .lane-card.no-driver .lane-card__no-driver {
+  display: inline-flex !important;
+  align-items: center;
+  padding: 0 .4em;
+  border: 1px dashed #f6c90e;
+  border-radius: 4px;
+  font-size: calc(var(--v1-name-font, 1.6rem) * .45);
+  font-weight: 800;
+  letter-spacing: .05em;
+  line-height: 1.4;
+  color: #f6c90e;
+  white-space: nowrap;
+}
+
 /* ── Flip nombre de equipo ↔ piloto activo (V1) ────────────────────────────
    Con piloto asignado se ve el EQUIPO casi siempre; durante la ventana
    body.show-driver (10s de cada 40s) se ve el PILOTO superpuesto. */
@@ -1806,348 +2129,133 @@ body.manga-finished:not(:has(.live-lanes--vertical)) .lane-card:not(:has(.next-l
 .live-toolbar:has(.live-toolbar__fastest) { overflow: hidden !important; }
 
 
-/* ── V3 · Tarjetas con detalles (mockup D) ──────────────────────────────
-   Construye sobre V2 (.live-lanes--vertical) reorganizando el grid de la
-   tarjeta a 4 columnas × 4 filas. La fila inferior aloja VLT · SAL · PIT · Δ
-   como chips pequeños bajo los stats principales. */
-.live-lanes--detailed .lane-card {
-  grid-template-columns: 1fr 1fr 1fr 1fr !important;
-  grid-template-rows: auto 1fr 1fr auto !important;
-  grid-template-areas:
-    "head head head head"
-    "tot  tot  ult  ult"
-    "med  med  mej  mej"
-    "vlt  sal  dlt  dlt" !important;
-}
-/* Mostrar las columnas extra que en V2 estaban ocultas */
-.live-lanes--detailed .lane-card__col--laps,
-.live-lanes--detailed .lane-card__col--exits,
-.live-lanes--detailed .lane-card__col--delta {
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  justify-content: center !important;
-  background: transparent !important;
-  border-top: 1px solid #161b22;
-  padding: .25rem .15rem 0 .15rem !important;
-  gap: 0 !important;
-  min-height: 0;
-  border-radius: 0 !important;
-}
-.live-lanes--detailed .lane-card__col--laps  { grid-area: vlt !important; }
-.live-lanes--detailed .lane-card__col--exits { grid-area: sal !important; }
-.live-lanes--detailed .lane-card__col--delta { grid-area: dlt !important; }
-
-/* Labels y valores de la fila meta más pequeños */
-.live-lanes--detailed .lane-card__col--laps  .lane-card__col-label,
-.live-lanes--detailed .lane-card__col--exits .lane-card__col-label,
-.live-lanes--detailed .lane-card__col--delta .lane-card__col-label {
-  font-size: .5rem !important;
-  color: #6b7280 !important;
-  letter-spacing: .05em !important;
-  width: auto !important;
-  text-align: center !important;
-}
-.live-lanes--detailed .lane-card__col--laps  .lane-card__col-val,
-.live-lanes--detailed .lane-card__col--laps  .lane-card__laps,
-.live-lanes--detailed .lane-card__col--exits .lane-card__col-val,
-.live-lanes--detailed .lane-card__col--delta .lane-card__col-val {
-  font-size: .9rem !important;
-  font-weight: 800 !important;
-  text-align: center !important;
-  letter-spacing: -.01em !important;
-  font-family: 'Inter', system-ui, sans-serif !important;
-  width: 100% !important;
-  line-height: 1.1 !important;
-}
-.live-lanes--detailed .lane-card__col--laps  .lane-card__col-val,
-.live-lanes--detailed .lane-card__col--laps  .lane-card__laps { color: #f6c90e !important; }
-
-/* Líder de vueltas de la MANGA actual: VLT en verde. Solo en V1 (horizontal,
-   body sin .live-lanes--vertical) y V3 (.live-lanes--detailed). El .is-manga-
-   leader añade especificidad para ganar al blanco (V1) y al amarillo (V3), que
-   ya llevan !important. V2 (vertical sin detailed) se queda sin resaltar. */
-body:not(:has(.live-lanes--vertical)) .lane-card__laps.is-manga-leader,
-body:not(:has(.live-lanes--vertical)) .lane-card__col--laps .lane-card__laps.is-manga-leader,
-.live-lanes--detailed .lane-card__laps.is-manga-leader,
-.live-lanes--detailed .lane-card__col--laps .lane-card__laps.is-manga-leader {
-  color: #3fb950 !important;
-}
-.live-lanes--detailed .lane-card__col-val--exits        { color: #c9d1d9 !important; }
-.live-lanes--detailed .lane-card__col-val--exits-active { color: #ef4444 !important; }
-.live-lanes--detailed .lane-card__col--delta .lane-card__col-val { color: #ff6b35 !important; }
-
-/* La celda PIT placeholder se eliminó: no contaba nada y le quitaba sitio a la
-   Δ (que se cortaba). El pit-stop ya se muestra con 🔧 en el header, y la Δ
-   ahora ocupa esa columna (área "vlt sal dlt dlt"). */
-.live-lanes--detailed .lane-card::after { content: none; }
-
-/* Pequeño aumento del tope de tamaño de tarjeta en V3 — necesitan más alto
-   para alojar la fila extra. */
-.live-lanes--detailed.live-lanes--vertical {
-  grid-auto-rows: minmax(140px, 240px);
-}
-
-/* ── V3 overrides sobre V2 para volver al header de 1 fila (mockup D) ──── */
-.live-lanes--detailed .lane-card__col--name {
+/* Tarjetas de DESCANSO (V2/V3): siempre la misma disposición — 💤 P.x
+   arriba, el equipo, su total de vueltas en grande a la derecha y la
+   etiqueta «DESCANSO x/y» abajo —, atenuadas respecto a las de pista y con
+   los tamaños relativos a la tarjeta, como ellas. */
+.live-lanes--vertical .lane-card.is-rest {
+  container-type: size;
   display: grid !important;
-  grid-template-columns: auto 1fr auto !important;
-  grid-template-rows: auto !important;
-  grid-template-areas: "pos name lane" !important;
-  column-gap: .4rem !important;
-  row-gap: 0 !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "head  head"
+    "name  laps"
+    "label label";
+  gap: .2rem .5rem;
   align-items: center;
-}
-.live-lanes--detailed .lane-card__pos {
-  grid-column: 1 !important;
-  grid-row: 1 !important;
-  justify-self: start !important;
-}
-.live-lanes--detailed .lane-card__name {
-  grid-column: 2 !important;
-  grid-row: 1 !important;
-  font-size: .9rem !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-}
-/* Anulamos el position: absolute del label que heredamos de V2 — en V3 el
-   chip de pista vuelve al header inline a la derecha. */
-.live-lanes--detailed .lane-card__label {
-  position: static !important;
-  top: auto !important;
-  right: auto !important;
-  grid-column: 3 !important;
-  grid-row: 1 !important;
-  justify-self: end !important;
-}
-/* El contenedor de tarjeta no necesita position:relative aquí, pero
-   tampoco daña dejarlo. */
-
-/* Damos un poco más de aire a los stats reduciendo padding y dejando que
-   label + valor respiren sin cortarse. */
-.live-lanes--detailed .lane-card__col--total,
-.live-lanes--detailed .lane-card__col--last,
-.live-lanes--detailed .lane-card__col--avg,
-.live-lanes--detailed .lane-card__col--best {
-  padding: .25rem .45rem !important;
-  gap: .1rem !important;
-}
-.live-lanes--detailed .lane-card__col--total .lane-card__col-label,
-.live-lanes--detailed .lane-card__col--last  .lane-card__col-label,
-.live-lanes--detailed .lane-card__col--avg   .lane-card__col-label,
-.live-lanes--detailed .lane-card__col--best  .lane-card__col-label {
-  font-size: .6rem !important;
-}
-.live-lanes--detailed .lane-card__col--total .lane-card__col-val,
-.live-lanes--detailed .lane-card__col--last  .lane-card__col-val,
-.live-lanes--detailed .lane-card__col--avg   .lane-card__col-val,
-.live-lanes--detailed .lane-card__col--best  .lane-card__col-val {
-  font-size: clamp(1rem, 2vh, 1.4rem) !important;
-}
-
-/* ── V3: forzar visibilidad del nombre y rest cards compactos ───────── */
-/* (1) Garantizar que __name se vea en el header de V3 */
-.live-lanes--detailed .lane-card__name {
-  display: block !important;
-  visibility: visible !important;
-  color: #fff !important;
-  min-width: 0 !important;
-  flex: 1 1 auto !important;
-  line-height: 1.2 !important;
-}
-
-/* (2) Rest cards (descanso) compactos: mismo grid cell pero contenido
-       reorganizado en horizontal con el total de vueltas en grande. */
-.live-lanes--detailed .lane-card.is-rest,
-.live-lanes--vertical  .lane-card.is-rest {
-  display: flex !important;
-  flex-direction: row !important;
-  flex-wrap: wrap !important;          /* permite que "DESCANSO x/y" baje a 2ª línea */
-  justify-content: flex-start;
-  align-content: center;
-  align-items: center;
-  gap: .25rem .4rem;
-  padding: .3rem .55rem !important;
+  padding: .45rem .6rem .5rem !important;
   min-height: 0 !important;
-  align-self: stretch;
   background: #0a0a0a;
-  opacity: .85;
+  opacity: .8;
   position: relative;
 }
-.live-lanes--detailed .lane-card.is-rest::after,
-.live-lanes--vertical  .lane-card.is-rest::after { content: none !important; }
-.live-lanes--detailed .lane-card.is-rest .lane-card__rest-head,
-.live-lanes--vertical  .lane-card.is-rest .lane-card__rest-head {
-  position: static; display: flex; align-items: center; gap: .3rem; flex-shrink: 0;
+.live-lanes--vertical .lane-card.is-rest::after { content: none !important; }
+.live-lanes--vertical .lane-card.is-rest .lane-card__rest-head {
+  grid-area: head;
+  position: static;
+  display: flex;
+  align-items: center;
+  gap: .35em;
+  font-size: min(6.2cqw, 9cqh);
 }
-.live-lanes--detailed .lane-card.is-rest .lane-card__rest-icon,
-.live-lanes--vertical  .lane-card.is-rest .lane-card__rest-icon {
-  font-size: 1.1rem !important;
-  flex-shrink: 0;
-  opacity: .6;
+.live-lanes--vertical .lane-card.is-rest .lane-card__rest-icon { font-size: 1em; opacity: .6; }
+.live-lanes--vertical .lane-card.is-rest .lane-card__pos {
+  margin: 0;
+  padding: .12em .3em .06em;
+  border-radius: 5px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.15em;
+  font-weight: 800;
+  line-height: 1;
 }
-.live-lanes--detailed .lane-card.is-rest .lane-card__rest-name,
-.live-lanes--vertical  .lane-card.is-rest .lane-card__rest-name {
-  font-size: .8rem !important;
-  font-weight: 700 !important;
-  text-align: left !important;
-  padding: 0 !important;
-  color: var(--card-color, #c9d1d9) !important;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  flex: 1 1 auto;
+.live-lanes--vertical .lane-card.is-rest .lane-card__rest-name {
+  grid-area: name;
   min-width: 0;
-}
-.live-lanes--detailed .lane-card.is-rest .lane-card__rest-laps,
-.live-lanes--vertical  .lane-card.is-rest .lane-card__rest-laps {
-  font-family: 'Inter', system-ui, sans-serif !important;
-  font-size: 1.5rem !important;
-  font-weight: 800 !important;
-  color: #f6c90e !important;
-  letter-spacing: -.02em !important;
-  flex-shrink: 0;
-}
-.live-lanes--detailed .lane-card.is-rest .lane-card__rest-label,
-.live-lanes--vertical  .lane-card.is-rest .lane-card__rest-label {
-  font-size: .55rem !important;
-  font-weight: 700 !important;
-  letter-spacing: .08em !important;
-  padding: .1rem .35rem !important;
-  flex: 0 0 100%;      /* línea propia (debajo de zzz/P.x + vueltas) */
-  order: 9;            /* siempre el último → segunda línea */
-  margin-top: .1rem;
-}
-
-/* DEBUG V3: forzar el nombre a verse pase lo que pase */
-.live-lanes--detailed .lane-card:not(.is-rest) .lane-card__name {
-  display: inline-block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  color: #fff !important;
-  background: transparent;
-  font-size: .85rem !important;
-  font-weight: 700 !important;
-  line-height: 1.2 !important;
-  min-width: 30px !important;
-  max-width: none !important;
-  padding: 0 .2rem !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  grid-column: 2 / 3 !important;
-  grid-row: 1 / 2 !important;
-  justify-self: stretch !important;
-  align-self: center !important;
-  width: auto !important;
-  position: static !important;
-  transform: none !important;
-  animation: none !important;
-  z-index: 3;
-}
-
-/* En V2/V3 la columna del nombre debe ocupar TODO el ancho del header,
-   no el 22% que impone la regla base de V1. */
-.live-lanes--vertical .lane-card > .lane-card__col--name {
-  max-width: none !important;
-  min-width: 0 !important;
-  width: 100% !important;
-}
-
-
-/* ── Swap meta/stats ↔ next-lane cada 10s en V2 y V3 ────────────────────
-   Solo activo cuando body.manga-finished. Toggle body.swap-show-next
-   alterna qué se ve. */
-
-/* === V2/tarjetas: VOLTEO de la tarjeta al finalizar manga ===
-   Cara A (swap-show-stats): los 4 stats. Cara B (swap-show-next): el cambio
-   de carril ocupando TODA el área de stats. El header (pos/nombre/carril) se
-   mantiene en ambas caras. Así no se solapa nada (idea: dar la vuelta a la
-   tarjeta — por una cara los datos, por la otra el cambio de carril). */
-body.manga-finished .live-lanes--vertical:not(.live-lanes--detailed) .lane-card .next-lane-badge {
-  /* Absoluta (fuera del grid): un elemento de grid oculto con visibility:hidden
-     SIGUE ocupando su pista y, con texto nowrap, imponía un ancho mínimo que
-     estrechaba las celdas de stats (ÚLTIMA/MEJOR se recortaban). Al sacarla del
-     flujo, las celdas conservan su tamaño y los valores se ven completos. */
-  position: absolute; inset: 0; margin: 0; min-width: 0;
-  grid-area: auto;
-  padding: .25rem .5rem;
-  font-family: 'Inter', system-ui, sans-serif;
+  padding: 0;
+  font-family: 'Saira Condensed', sans-serif;
+  font-size: min(7.6cqw, 13cqh);
   font-weight: 700;
-  font-size: 1.05rem;
+  line-height: 1.1;
+  text-align: left;
+  text-transform: uppercase;
+  color: #c9d1d9;
   white-space: nowrap;
-  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.live-lanes--vertical .lane-card.is-rest .lane-flag :is(svg, img) { width: 1.05em; height: auto; }
+.live-lanes--vertical .lane-card.is-rest .lane-card__rest-laps {
+  grid-area: laps;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: min(16cqw, 30cqh);
+  font-weight: 700;
+  line-height: .9;
+  font-variant-numeric: tabular-nums;
+  color: #8b949e;
+}
+.live-lanes--vertical .lane-card.is-final .lane-card__rest-laps { color: #7ee787; }
+.live-lanes--vertical .lane-card.is-rest .lane-card__rest-label {
+  grid-area: label;
+  justify-self: start;
+  padding: .2em .5em;
+  font-size: min(3.4cqw, 6cqh);
+  font-weight: 700;
+  letter-spacing: .08em;
+  color: #8b949e;
+}
+
+/* ── V2/V3: VOLTEO de la tarjeta al finalizar manga ─────────────────────
+   Solo con body.manga-finished; body.swap-show-next alterna la cara.
+   Cara A: las cifras. Cara B: el cambio de carril ocupando todo lo que hay
+   bajo la cabecera (pos/equipo/carril se ve en las dos caras). La insignia
+   se superpone en la rejilla, sin sacarla del flujo con position:absolute;
+   min-width:0 evita que su texto nowrap ensanche las columnas. */
+body.manga-finished .live-lanes--vertical .lane-card:not(.is-rest) .next-lane-badge {
+  grid-area: 2 / 1 / -1 / -1;
+  align-self: stretch;
+  justify-self: stretch;
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .4em;
+  overflow: hidden;
+  font-family: 'Saira Condensed', sans-serif;
+  font-size: min(10cqw, 16cqh);
+  font-weight: 700;
+  white-space: nowrap;
   opacity: 0; visibility: hidden; pointer-events: none;
   transition: opacity .3s ease;
   z-index: 3;
 }
-body.manga-finished.swap-show-next .live-lanes--vertical:not(.live-lanes--detailed) .lane-card .next-lane-badge {
+body.manga-finished.swap-show-next .live-lanes--vertical .lane-card:not(.is-rest) .next-lane-badge {
   opacity: 1; visibility: visible; pointer-events: auto;
 }
-/* Cara A: los 4 stats. Se ocultan al mostrar la cara B (cambio de carril). */
-.live-lanes--vertical:not(.live-lanes--detailed) .lane-card__col--total,
-.live-lanes--vertical:not(.live-lanes--detailed) .lane-card__col--last,
-.live-lanes--vertical:not(.live-lanes--detailed) .lane-card__col--avg,
-.live-lanes--vertical:not(.live-lanes--detailed) .lane-card__col--best {
+.live-lanes--vertical .lane-card:not(.is-rest) .next-lane-badge :is(strong, .next-lane-arrow) { font-size: 1em; }
+.live-lanes--vertical .lane-card:not(.is-rest) > .lane-card__col:not(.lane-card__col--name) {
   transition: opacity .3s ease;
 }
-body.manga-finished.swap-show-next .live-lanes--vertical:not(.live-lanes--detailed) .lane-card__col--total,
-body.manga-finished.swap-show-next .live-lanes--vertical:not(.live-lanes--detailed) .lane-card__col--last,
-body.manga-finished.swap-show-next .live-lanes--vertical:not(.live-lanes--detailed) .lane-card__col--avg,
-body.manga-finished.swap-show-next .live-lanes--vertical:not(.live-lanes--detailed) .lane-card__col--best {
+body.manga-finished.swap-show-next .live-lanes--vertical .lane-card:not(.is-rest) > .lane-card__col:not(.lane-card__col--name) {
   opacity: 0; visibility: hidden; pointer-events: none;
 }
 
-/* === Tarjetas de DESCANSO: también voltean al finalizar manga (vertical) ===
+/* === Tarjetas de DESCANSO: también voltean al finalizar manga ===
    Cara A: info de descanso (vueltas + "DESCANSO x/y"). Cara B: su próximo
-   destino (badge --rest) cubriendo toda la tarjeta. La regla .is-rest es más
-   específica que la de tarjetas activas, así que anula su grid-row. */
-body.manga-finished .live-lanes--vertical:not(.live-lanes--detailed) .lane-card.is-rest .next-lane-badge {
+   destino (badge --rest) cubriendo toda la tarjeta. */
+body.manga-finished .live-lanes--vertical .lane-card.is-rest .next-lane-badge {
   position: absolute; inset: 0; margin: 0; min-width: 0;
   display: flex; align-items: center; justify-content: center;
   opacity: 0; visibility: hidden; pointer-events: none;
   transition: opacity .3s ease; z-index: 3;
 }
-body.manga-finished.swap-show-next .live-lanes--vertical:not(.live-lanes--detailed) .lane-card.is-rest .next-lane-badge {
+body.manga-finished.swap-show-next .live-lanes--vertical .lane-card.is-rest .next-lane-badge {
   opacity: 1; visibility: visible; pointer-events: auto;
 }
-body.manga-finished.swap-show-next .live-lanes--vertical:not(.live-lanes--detailed) .lane-card.is-rest .lane-card__rest-head,
-body.manga-finished.swap-show-next .live-lanes--vertical:not(.live-lanes--detailed) .lane-card.is-rest .lane-card__rest-name,
-body.manga-finished.swap-show-next .live-lanes--vertical:not(.live-lanes--detailed) .lane-card.is-rest .lane-card__rest-laps,
-body.manga-finished.swap-show-next .live-lanes--vertical:not(.live-lanes--detailed) .lane-card.is-rest .lane-card__rest-label {
+body.manga-finished.swap-show-next .live-lanes--vertical .lane-card.is-rest .lane-card__rest-head,
+body.manga-finished.swap-show-next .live-lanes--vertical .lane-card.is-rest .lane-card__rest-name,
+body.manga-finished.swap-show-next .live-lanes--vertical .lane-card.is-rest .lane-card__rest-laps,
+body.manga-finished.swap-show-next .live-lanes--vertical .lane-card.is-rest .lane-card__rest-label {
   opacity: 0; visibility: hidden;
 }
-
-/* === V3 (tarjetas con detalles) === */
-/* Posiciona la badge en la fila meta del grid (vlt/sal/pit/dlt) */
-body.manga-finished .live-lanes--detailed .lane-card .next-lane-badge {
-  /* Absoluta (fuera del grid): si es un item de grid oculto, su texto nowrap
-     impone un ancho mínimo que deforma las columnas y recorta los valores. */
-  position: absolute; inset: 0; margin: 0; min-width: 0;
-  grid-area: auto;
-  padding: .25rem .5rem;
-  font-family: 'Inter', system-ui, sans-serif;
-  font-weight: 600;
-  white-space: nowrap;
-  display: flex; align-items: center; justify-content: center;
-  opacity: 0; visibility: hidden; pointer-events: none;
-  transition: opacity .35s ease;
-  z-index: 3;
-}
-body.manga-finished.swap-show-next .live-lanes--detailed .lane-card .next-lane-badge {
-  opacity: 1; visibility: visible; pointer-events: auto;
-}
-.live-lanes--detailed .lane-card__col--laps,
-.live-lanes--detailed .lane-card__col--exits,
-.live-lanes--detailed .lane-card__col--delta {
-  transition: opacity .35s ease;
-}
-body.manga-finished.swap-show-next .live-lanes--detailed .lane-card__col--laps,
-body.manga-finished.swap-show-next .live-lanes--detailed .lane-card__col--exits,
-body.manga-finished.swap-show-next .live-lanes--detailed .lane-card__col--delta {
-  opacity: 0; visibility: hidden; pointer-events: none;
-}
-/* También el placeholder PIT ::after que añadí en V3 */
-body.manga-finished.swap-show-next .live-lanes--detailed .lane-card::after {
-  opacity: 0; visibility: hidden;
-}
-.live-lanes--detailed .lane-card::after { transition: opacity .35s ease; }
