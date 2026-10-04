@@ -58,8 +58,12 @@
                                     : (lang === 'es' ? 'Parar simulación'      : 'Stop simulation'); %>
         <%# Duración por defecto: el 99 es el placeholder → ofrecer 10 min. %>
         <% const defaultDur = (race.manga_duration_minutes && race.manga_duration_minutes !== 99) ? race.manga_duration_minutes : 10; %>
-        <% if (manga.status === 'pending' && !isActive) { %>
-          <form id="goForm" action="/races/<%= race.id %>/mangas/<%= manga.id %>/start" method="POST" style="display:inline-flex;align-items:center;gap:8px">
+        <%# Manga terminada: no hay caja que dé el siguiente GO, así que se ofrece
+            aquí para la siguiente pendiente (manga:started navega a ella). %>
+        <% const goMangaId = (manga.status === 'pending' && !isActive) ? manga.id
+                           : (manga.status === 'finished' && nextPendingMangaId) ? nextPendingMangaId : null; %>
+        <% if (goMangaId) { %>
+          <form id="goForm" action="/races/<%= race.id %>/mangas/<%= goMangaId %>/start" method="POST" style="display:inline-flex;align-items:center;gap:8px">
             <label class="live-dur" title="<%= lang === 'es' ? 'Duración de la manga (minutos)' : 'Heat duration (minutes)' %>">
               <input class="vt-inp is-mono live-dur__inp" type="number" name="duration_minutes"
                      min="1" max="600" step="1" value="<%= defaultDur %>"

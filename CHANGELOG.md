@@ -13,6 +13,12 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.39.2] — 2026-10-04
+
+### Corregido
+- **En modo simulación la manga no terminaba nunca.** Al acabar el tiempo seguía en carrera indefinidamente. Ahora se cierra **justo al agotarse el tiempo**, como en una carrera real. Con la caja DS-300 y con la carrera simulada a partir de una grabación no cambia nada.
+- **En simulación y con BART no aparecía el botón GO al terminar una manga**, así que no había forma de arrancar la siguiente desde el directo. Ahora la manga terminada muestra el **GO (con su duración)** para la **siguiente manga pendiente**, también si es la primera de la tanda siguiente, y al ponerse verde el semáforo la pantalla salta sola a ella.
+
 ## [1.39.1] — 2026-10-03
 
 ### Corregido
