@@ -279,7 +279,63 @@ ipcMain.handle('pitwall:fullscreen', (e, on) => {
 ipcMain.handle('pitwall:windows', () =>
   BrowserWindow.getAllWindows()
     .filter(w => w !== mainWindow && !w.isDestroyed())
-    .map(w => w.getTitle()));
+    .map(w => ({ id: w.id, title: w.getTitle(), name: windowNames.get(w.id) || null })));
+
+// Ventanas de la home por nombre. Se gestionan aquí y no con window.open(url,
+// nombre): con el nombre, Electron devolvía la ventana vieja aunque el usuario
+// hubiera navegado en ella (p. ej. «Volver» al inicio) y solo la enfocaba, así
+// que la sección parecía no abrirse hasta cerrar esa ventana a mano.
+const namedWindows = new Map();   // nombre → BrowserWindow
+const windowNames  = new Map();   // id → nombre
+
+function sameSection(currentUrl, target) {
+  try {
+    const cur = new URL(currentUrl).pathname.replace(/\/+$/, '') || '/';
+    const tgt = new URL(target).pathname.replace(/\/+$/, '') || '/';
+    return tgt !== '/' && (cur === tgt || cur.startsWith(tgt + '/'));
+  } catch { return false; }
+}
+
+function bringToFront(win) {
+  if (win.isMinimized()) win.restore();
+  if (!win.isVisible()) win.show();
+  win.focus();
+}
+
+ipcMain.handle('pitwall:open-window', (_e, url, name) => {
+  if (typeof url !== 'string' || typeof name !== 'string') return false;
+  const target = new URL(url, `http://127.0.0.1:${PORT}`).href;
+  if (!isAppUrl(target)) return false;
+  let win = namedWindows.get(name);
+  if (win && !win.isDestroyed()) {
+    if (!sameSection(win.webContents.getURL(), target)) win.loadURL(target);
+    bringToFront(win);
+    return true;
+  }
+  win = new BrowserWindow({ ...windowOptions(), width: 1280, height: 860, minWidth: 700, minHeight: 500 });
+  win.setMenuBarVisibility(false);
+  trackFullScreen(win);
+  namedWindows.set(name, win);
+  windowNames.set(win.id, name);
+  const id = win.id;
+  win.on('closed', () => { namedWindows.delete(name); windowNames.delete(id); });
+  win.loadURL(target);
+  return true;
+});
+
+ipcMain.handle('pitwall:window-focus', (_e, id) => {
+  const win = BrowserWindow.fromId(Number(id));
+  if (!win || win.isDestroyed() || win === mainWindow) return false;
+  bringToFront(win);
+  return true;
+});
+
+ipcMain.handle('pitwall:window-close', (_e, id) => {
+  const win = BrowserWindow.fromId(Number(id));
+  if (!win || win.isDestroyed() || win === mainWindow) return false;
+  win.close();
+  return true;
+});
 
 // ── App lifecycle ─────────────────────────────────────────────────────────────
 app.whenReady().then(async () => {

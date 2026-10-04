@@ -15,9 +15,17 @@
     <div class="vt-head">
       <div class="vt-head__title">
         <h1><%= lang === 'es' ? 'Coches' : 'Cars' %></h1>
-        <span class="vt-cnt"><%= cars.length %></span>
+        <span class="vt-cnt" data-list-search-count><%= cars.length %></span>
       </div>
       <div class="vt-head__actions">
+        <% if (cars.length) { %>
+        <label class="vt-search" title="<%= lang === 'es' ? 'Atajo: /' : 'Shortcut: /' %>">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4" stroke-linecap="round"/></svg>
+          <input type="search" data-list-search="#catList" autocomplete="off"
+                 placeholder="<%= lang === 'es' ? 'Buscar marca, modelo, categoría…' : 'Search brand, model, category…' %>"
+                 aria-label="<%= lang === 'es' ? 'Buscar marca, modelo, categoría…' : 'Search brand, model, category…' %>">
+        </label>
+        <% } %>
         <a href="/plantilla_coches.csv" download class="vt-btn vt-btn--ghost vt-btn--sm">
           <svg viewBox="0 0 24 24"><path d="M12 4v12M6 11l6 6 6-6M5 21h14"/></svg>
           <%= lang === 'es' ? 'Plantilla CSV' : 'CSV Template' %>
@@ -64,6 +72,7 @@
         <a href="/cars/new" class="vt-btn vt-btn--primary"><%= lang === 'es' ? 'Crear primer coche' : 'Create first car' %></a>
       </div>
     <% } else { %>
+      <div id="catList">
 
       <div class="vt-table-card">
         <table class="vt-table">
@@ -111,6 +120,8 @@
           </tbody>
         </table>
       </div>
+    </div>
+    <p class="vt-hint" data-list-search-empty hidden style="margin-top:18px;text-align:center"><%= lang === 'es' ? 'Nada coincide con la búsqueda.' : 'Nothing matches your search.' %></p>
     <% } %>
 
   </div>
@@ -134,4 +145,5 @@ document.getElementById('csv-file-picker')?.addEventListener('change', function(
 });
 </script>
 
+<script src="/js/list-search.js"></script>
 <%- include('../partials/footer') %>

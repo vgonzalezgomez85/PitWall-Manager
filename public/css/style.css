@@ -2306,6 +2306,30 @@ body:has(.pole-timing-fit) { overflow: hidden; }
   font-size: 12.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
 }
 .rs-state__d { width: 7px; height: 7px; border-radius: 50%; }
+/* Menú «Cambiar estado» de la ficha de carrera */
+.rs-stmenu { position: relative; display: inline-block; }
+.rs-stmenu__btn {
+  list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 11px; border-radius: 99px; border: 1px solid rgba(255,255,255,.14);
+  font-size: 12.5px; font-weight: 600; color: #c9d1d9; background: rgba(255,255,255,.03);
+}
+.rs-stmenu__btn::-webkit-details-marker { display: none; }
+.rs-stmenu__btn:hover { border-color: rgba(255,255,255,.3); color: #fff; }
+.rs-stmenu__btn svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .15s; }
+.rs-stmenu[open] .rs-stmenu__btn svg { transform: rotate(180deg); }
+.rs-stmenu__pop {
+  position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; min-width: 250px;
+  display: flex; flex-direction: column; gap: 4px; padding: 6px;
+  background: #0d1117; border: 1px solid #30363d; border-radius: 12px; box-shadow: 0 16px 40px rgba(0,0,0,.6);
+}
+.rs-stmenu__opt {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+  padding: 9px 10px; border: 0; border-radius: 8px; background: none; cursor: pointer; text-align: left; font: inherit;
+}
+.rs-stmenu__opt:hover:not(:disabled) { background: rgba(255,255,255,.06); }
+.rs-stmenu__opt:disabled { opacity: .5; cursor: default; }
+.rs-stmenu__d { font-size: 12.5px; color: #8b949e; }
+
 .rs-state--pending,
 .rs-state--setup {
   color: var(--rs-gold);
@@ -3060,6 +3084,9 @@ body:has(.vt-page) { background: #000; }
   font-family: 'Saira', sans-serif; font-size: 14.5px; width: 200px;
 }
 .vt-search input::placeholder { color: var(--vt-mute-2); }
+.vt-search input[type="search"]::-webkit-search-cancel-button { filter: invert(.6); cursor: pointer; }
+/* Filas y secciones ocultadas por el buscador (list-search.js) */
+.vt-list-row[hidden], .vt-list-section[hidden], .vt-table tr[hidden] { display: none !important; }
 
 /* Tabs */
 .vt-tabs {

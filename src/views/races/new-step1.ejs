@@ -4,6 +4,7 @@
   <%- include('../partials/wizard-progress', { current: 'type' }) %>
 
   <h1 class="page-title"><%= t('wizard.step1_title') %></h1>
+  <p class="page-subtitle"><%= lang === 'es' ? 'Lo básico de la carrera. Los participantes y la secuencia de carriles vienen en los pasos siguientes.' : 'The race basics. Participants and the lane sequence come in the next steps.' %></p>
 
   <% if (errors.length > 0) { %>
     <div class="alert alert--error">
@@ -11,8 +12,14 @@
     </div>
   <% } %>
 
-  <form action="/races/new/step1" method="POST" class="form-card">
+  <form action="/races/new/step1" method="POST" class="nr-form" id="nrForm" novalidate>
 
+    <section class="nr-sec" style="order:1">
+      <header class="nr-sec__h">
+        <span class="nr-sec__n">1</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4M5 4h12l-2.2 3.5L17 11H5"/></svg>
+        <h2><%= lang === 'es' ? 'Datos de la carrera' : 'Race details' %></h2>
+      </header>
     <!-- Name -->
     <div class="form-group">
       <label class="form-label" for="name"><%= t('wizard.race_name') %></label>
@@ -31,7 +38,7 @@
         <label class="option-card">
           <input type="radio" name="type" value="club" <%= body.type === 'club' ? 'checked' : '' %> required>
           <div class="option-card__body">
-            <span class="option-card__icon">🏎️</span>
+            <span class="option-card__icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 16v-3l2-5h14l2 5v3z"/><circle cx="7.5" cy="16.5" r="1.8"/><circle cx="16.5" cy="16.5" r="1.8"/></svg></span>
             <span class="option-card__title"><%= t('wizard.club_race') %></span>
             <span class="option-card__desc"><%= t('wizard.club_race_desc') %></span>
           </div>
@@ -39,13 +46,15 @@
         <label class="option-card">
           <input type="radio" name="type" value="championship" <%= body.type === 'championship' ? 'checked' : '' %> required>
           <div class="option-card__body">
-            <span class="option-card__icon">🏆</span>
+            <span class="option-card__icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v6a5 5 0 0 1-10 0z"/><path d="M7 5H4.5A1.5 1.5 0 0 0 3 6.5 3.5 3.5 0 0 0 6.5 10M17 5h2.5A1.5 1.5 0 0 1 21 6.5 3.5 3.5 0 0 1 17.5 10"/></svg></span>
             <span class="option-card__title"><%= t('wizard.championship_race') %></span>
             <span class="option-card__desc"><%= t('wizard.championship_race_desc') %></span>
           </div>
         </label>
       </div>
     </div>
+
+    </section>
 
     <!-- Reglas de turnos por piloto (solo championship) -->
     <%
@@ -55,7 +64,13 @@
       const lockS  = body.driver_change_lockout_s != null ? body.driver_change_lockout_s : 120;
       const maxRuns = body.driver_max_runs != null ? body.driver_max_runs : '';
     %>
-    <div class="form-group" id="champRulesGroup" style="display:<%= body.type === 'championship' ? 'block' : 'none' %>">
+    <section class="nr-sec" id="champSection" style="order:4;display:<%= body.type === 'championship' ? 'block' : 'none' %>">
+      <header class="nr-sec__h">
+        <span class="nr-sec__n">4</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5M9 2h6M12 2v3"/></svg>
+        <h2><%= lang === 'es' ? 'Reglas de resistencia' : 'Endurance rules' %></h2>
+      </header>
+    <div class="form-group" id="champRulesGroup">
       <label class="form-label">
         <%= lang === 'es' ? 'Reglas de turnos por piloto' : 'Driver shift rules' %>
       </label>
@@ -103,7 +118,7 @@
 
     <!-- Neumáticos por equipo (solo resistencia) -->
     <% const tirePairs = body.tire_pairs_per_team != null ? body.tire_pairs_per_team : ''; %>
-    <div class="form-group" id="tireGroup" style="display:<%= body.type === 'championship' ? 'block' : 'none' %>">
+    <div class="form-group" id="tireGroup">
       <label class="form-label" for="tirePairs">
         <%= lang === 'es' ? 'Neumáticos por equipo' : 'Tyres per team' %>
       </label>
@@ -120,6 +135,14 @@
       </div>
     </div>
 
+    </section>
+
+    <section class="nr-sec" style="order:2">
+      <header class="nr-sec__h">
+        <span class="nr-sec__n">2</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19a4 4 0 0 1 0-8h12a4 4 0 0 0 0-8"/><path d="M6 15h12"/></svg>
+        <h2><%= lang === 'es' ? 'Pista' : 'Track' %></h2>
+      </header>
     <!-- Circuit selector -->
     <div class="form-group">
       <label class="form-label">
@@ -222,6 +245,14 @@
       </div>
     </div>
 
+    </section>
+
+    <section class="nr-sec" style="order:3">
+      <header class="nr-sec__h">
+        <span class="nr-sec__n">3</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h11M4 12h16M4 17h8"/><path d="M17 5l3 2-3 2M14 15l3 2-3 2"/></svg>
+        <h2><%= lang === 'es' ? 'Formato' : 'Format' %></h2>
+      </header>
     <!-- Pasadas y repetir carril (válido para sprint y resistencia) -->
     <div class="form-group">
       <label class="form-label">
@@ -264,7 +295,7 @@
         <label class="option-card">
           <input type="radio" name="has_pole" value="0" <%= (body.has_pole || '0') !== '1' ? 'checked' : '' %> required>
           <div class="option-card__body">
-            <span class="option-card__icon">🏎️</span>
+            <span class="option-card__icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg></span>
             <span class="option-card__title"><%= lang === 'es' ? 'Sin pole' : 'No pole' %></span>
             <span class="option-card__desc">
               <%= lang === 'es' ? 'Los carriles de salida se asignan al crear la tanda.' : 'Starting lanes are assigned when creating the heat group.' %>
@@ -274,7 +305,7 @@
         <label class="option-card">
           <input type="radio" name="has_pole" value="1" <%= body.has_pole === '1' ? 'checked' : '' %>>
           <div class="option-card__body">
-            <span class="option-card__icon">🏁</span>
+            <span class="option-card__icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4h14v9H5"/><path d="M5 4h3.5v3H12V4h3.5v3H19M8.5 7v3H5M12 7v3h3.5V7M15.5 10v3H19M8.5 10H12v3"/></svg></span>
             <span class="option-card__title"><%= lang === 'es' ? 'Con pole position' : 'With pole position' %></span>
             <span class="option-card__desc">
               <%= lang === 'es' ? 'Sesión de clasificación: el más rápido elige carril primero.' : 'Qualifying session: fastest picks their starting lane first.' %>
@@ -284,8 +315,11 @@
       </div>
     </div>
 
-    <div class="form-actions">
+    </section>
+
+    <div class="nr-bar">
       <a href="/races" class="btn btn--ghost"><%= t('wizard.back') %></a>
+      <div class="nr-bar__sum" id="nrSummary" aria-live="polite"></div>
       <button type="submit" class="btn btn--primary"><%= t('wizard.next') %> →</button>
     </div>
 
@@ -425,7 +459,7 @@ function applyCategoryFromSelect() {
 categorySelect.addEventListener('change', applyCategoryFromSelect);
 
 // Toggle de los bloques solo-resistencia (turnos por piloto + neumáticos) según tipo
-const champOnlyGroups = ['champRulesGroup', 'tireGroup']
+const champOnlyGroups = ['champSection']
   .map(id => document.getElementById(id)).filter(Boolean);
 document.querySelectorAll('input[name="type"]').forEach(r => {
   r.addEventListener('change', () => {
@@ -441,6 +475,57 @@ circPills.addEventListener('click', e => {
 
 circGrid.addEventListener('input', updateTotal);
 
+// ── Resumen de la barra inferior + validación antes de enviar ───────────────
+const ES = '<%= lang %>' === 'es';
+function refreshSummary() {
+  const name  = document.getElementById('name').value.trim();
+  const type  = document.querySelector('input[name="type"]:checked')?.value;
+  const pole  = document.querySelector('input[name="has_pole"]:checked')?.value === '1';
+  const lanes = parseInt(totalDisplay.textContent, 10) || 0;
+  const circs = getActiveCount();
+  const passes = parseInt(document.getElementById('passes').value, 10) || 1;
+  const rep    = parseInt(document.getElementById('laneRepeat').value, 10) || 1;
+  const parts = [];
+  parts.push(name ? `<b>${name.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}</b>` : (ES ? '<i>sin nombre</i>' : '<i>no name</i>'));
+  if (type) parts.push(type === 'championship' ? (ES ? 'Resistencia' : 'Endurance') : 'Club');
+  parts.push(`${lanes} ${ES ? 'carriles' : 'lanes'}` + (circs > 1 ? ` · ${circs} ${ES ? 'circuitos' : 'circuits'}` : ''));
+  if (passes > 1) parts.push(`${passes} ${ES ? 'pasadas' : 'passes'}`);
+  if (rep > 1) parts.push(`${ES ? 'carril ×' : 'lane ×'}${rep}`);
+  parts.push(pole ? (ES ? 'con pole' : 'with pole') : (ES ? 'sin pole' : 'no pole'));
+  document.getElementById('nrSummary').innerHTML = parts.join(' · ');
+}
+document.getElementById('nrForm').addEventListener('input', refreshSummary);
+document.getElementById('nrForm').addEventListener('change', refreshSummary);
+circPills.addEventListener('click', () => setTimeout(refreshSummary));
+
+document.getElementById('nrForm').addEventListener('submit', (e) => {
+  const problems = [];
+  const nameEl = document.getElementById('name');
+  if (!nameEl.value.trim()) problems.push([nameEl, ES ? 'Ponle un nombre a la carrera.' : 'Give the race a name.']);
+  if (!document.querySelector('input[name="type"]:checked')) {
+    problems.push([document.querySelector('input[name="type"]'), ES ? 'Elige el tipo de carrera.' : 'Choose the race type.']);
+  }
+  for (let i = 1; i <= getActiveCount(); i++) {
+    const inp = document.getElementById('circLanes_' + i);
+    const v = parseInt(inp.value, 10);
+    if (!(v >= 2 && v <= 8)) { problems.push([inp, ES ? `El circuito ${i} debe tener entre 2 y 8 carriles.` : `Circuit ${i} must have 2 to 8 lanes.`]); break; }
+  }
+  document.querySelectorAll('.nr-err').forEach(el => el.remove());
+  document.querySelectorAll('.form-input--error').forEach(el => el.classList.remove('form-input--error'));
+  if (!problems.length) return;
+  e.preventDefault();
+  problems.forEach(([el, msg]) => {
+    if (el.classList.contains('form-input')) el.classList.add('form-input--error');
+    const p = document.createElement('p');
+    p.className = 'nr-err';
+    p.textContent = msg;
+    (el.closest('.form-group') || el.parentElement).appendChild(p);
+  });
+  const first = problems[0][0];
+  first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (first.focus) first.focus({ preventScroll: true });
+});
+
 // Init: restore circuit selection if coming back from error
 const initId = circuitIdEl.value;
 if (initId) {
@@ -449,6 +534,35 @@ if (initId) {
 } else {
   updateTotal();
 }
+refreshSummary();
 </script>
+
+<style>
+  .nr-form { display: flex; flex-direction: column; gap: 16px; margin-top: 18px; }
+  .nr-sec {
+    border: 1px solid var(--border, #30363d); border-radius: 14px;
+    background: var(--bg-card, #0d1117); padding: 18px 20px 6px;
+  }
+  .nr-sec__h { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .nr-sec__h svg { width: 18px; height: 18px; fill: none; stroke: var(--text-muted, #8b949e); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .nr-sec__h h2 {
+    margin: 0; font-family: 'Saira Condensed', sans-serif; font-weight: 700;
+    font-size: 15px; letter-spacing: .16em; text-transform: uppercase; color: var(--text, #e6edf3);
+  }
+  .nr-sec__n {
+    display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+    background: rgba(230,57,70,.14); color: #ff8a92;
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 700;
+  }
+  .nr-sec .option-card__icon svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .nr-err { margin: .4rem 0 0; font-size: .82rem; color: #ff8a92; }
+  .nr-bar {
+    order: 9; position: sticky; bottom: 0; z-index: 5;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 22px 0 12px; background: linear-gradient(180deg, rgba(0,0,0,0), var(--bg, #000) 14px);
+  }
+  .nr-bar__sum { flex: 1; min-width: 200px; font-size: 14px; color: var(--text-muted, #8b949e); }
+  .nr-bar__sum b { color: var(--text, #e6edf3); font-weight: 600; }
+</style>
 
 <%- include('../partials/footer') %>

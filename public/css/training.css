@@ -1,641 +1,355 @@
-/* ── Reset + base ────────────────────────────────────────────────────────── */
+/* Directo de entrenamiento (libre y de competición).
+   Cabecera y botones con el mismo lenguaje que el directo de carrera (.lbtn,
+   ver live.css); tarjetas por carril con última vuelta, mejor/media/récord,
+   las 10 últimas vueltas numeradas y un mini gráfico de ritmo. */
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 .training-body {
+  --tr-bg: #000;
+  --tr-card: #0a0b0e;
+  --tr-line: rgba(255,255,255,.07);
+  --tr-text: #e6edf3;
+  --tr-mute: #8b949e;
+  --tr-green: #22c55e;
+  --tr-amber: #f59e0b;
+  --tr-red: #ef4444;
   display: flex; flex-direction: column;
   height: 100vh; overflow: hidden;
-  background: #000000;
-  font-family: 'Inter', system-ui, sans-serif;
-  color: #e6edf3;
+  background: var(--tr-bg); color: var(--tr-text);
+  font-family: 'Saira', 'Inter', system-ui, sans-serif;
 }
+.tr-num { font-family: 'Inter', system-ui, sans-serif; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
 
-/* ── Header ──────────────────────────────────────────────────────────────── */
+/* ── Cabecera (misma estructura que .live-header) ────────────────────── */
 .training-header {
-  display: flex; align-items: center; gap: 1.5rem;
-  padding: .6rem 1.4rem;
-  background: #000000;
-  border-bottom: 2px solid #161b22;
-  flex-shrink: 0; height: 96px;
+  display: flex; align-items: center; gap: 1.1rem;
+  min-height: 52px; padding: .35rem 1rem;
+  border-bottom: 1px solid #161b22;
+  flex-shrink: 0;
 }
-
-.training-header__timer { flex-shrink: 0; }
-
+.training-header__timer { display: flex; align-items: baseline; gap: .5rem; flex-shrink: 0; }
 .tr-timer {
-  font-family: 'Share Tech Mono', 'Courier New', monospace;
-  font-size: 4rem; color: #ff6b35; letter-spacing: .04em; line-height: 1;
+  font-family: 'Share Tech Mono', 'IBM Plex Mono', monospace;
+  font-size: 2.4rem; line-height: 1; color: #fff; letter-spacing: .03em;
 }
-.tr-timer-label {
-  font-size: .85rem; color: #6e7681; letter-spacing: .1em;
-  text-transform: lowercase; margin-top: 2px;
+.tr-timer-label { display: none; }
+.training-header__info {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center; gap: .7rem;
+  padding-left: .9rem; border-left: 1px solid #21262d;
+  white-space: nowrap;
 }
-
-.training-header__info { flex: 1; min-width: 0; }
 .tr-title {
-  font-family: 'Rajdhani', sans-serif; font-size: 1.5rem; font-weight: 700;
-  color: #e6edf3; letter-spacing: .06em;
+  font-family: 'Saira Condensed', sans-serif; font-weight: 700;
+  font-size: 1.35rem; letter-spacing: .08em; color: #fff; text-transform: uppercase;
 }
-.tr-subtitle { font-size: .95rem; color: #6e7681; margin-top: .1rem; }
+.tr-subtitle { font-size: .85rem; color: var(--tr-mute); overflow: hidden; text-overflow: ellipsis; }
+.tr-standby-badge { color: var(--tr-amber); font-weight: 600; letter-spacing: .04em; animation: tr-pulse 1.5s ease-in-out infinite; }
+@keyframes tr-pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
 
-.training-header__actions { display: flex; gap: .5rem; align-items: center; flex-shrink: 0; }
+.training-header__actions { display: flex; gap: .35rem; align-items: center; flex-shrink: 0; }
+.training-header__actions form { display: inline-flex; align-items: center; gap: .35rem; }
 
-.tr-btn {
-  padding: .5rem 1.1rem; border-radius: 5px; border: none; cursor: pointer;
-  font-family: 'Rajdhani', sans-serif; font-size: 1rem; font-weight: 700;
-  letter-spacing: .06em; text-decoration: none;
-  display: inline-flex; align-items: center; gap: .3rem;
-  transition: filter .15s;
+/* Botones: copia de .lbtn del directo de carrera */
+.lbtn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
+  min-height: 36px; padding: 0 12px;
+  border: 1px solid rgba(255,255,255,.10); border-radius: 9px;
+  background: rgba(255,255,255,.03); color: #c9d1d9;
+  font-family: 'Saira Condensed', 'Saira', sans-serif; font-weight: 700; font-size: 14px; letter-spacing: .06em;
+  cursor: pointer; text-decoration: none; white-space: nowrap;
+  transition: background .15s, border-color .15s, color .15s, transform .15s, box-shadow .15s;
 }
-.tr-btn:hover { filter: brightness(1.15); text-decoration: none; }
-.tr-btn--stop  { background: #e63946; color: #fff; }
-.tr-btn--voice { background: #21262d; color: #8b949e; font-size: .95rem; }
-.tr-btn--view  { background: #21262d; color: #8b949e; font-size: 1.1rem; }
-.tr-btn--view.active { background: #1f6feb; color: #fff; }
-.tr-btn--reset { background: #21262d; color: #e63946; border: 1px solid #e6394655; }
-.tr-btn--back  { background: #21262d; color: #8b949e; font-size: .85rem; }
+.lbtn:hover { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.22); color: #fff; }
+.lbtn:active { transform: translateY(1px); }
+.lbtn:focus-visible { outline: 2px solid #58a6ff; outline-offset: 2px; }
+.lbtn:disabled { opacity: .5; cursor: default; }
+.lbtn svg { width: 16px; height: 16px; flex: none; }
+.lbtn--icon { width: 36px; padding: 0; }
+.lbtn--icon svg { width: 19px; height: 19px; }
+.lbtn--go {
+  background: linear-gradient(180deg, rgba(250,204,21,.18), rgba(250,204,21,.08));
+  border-color: rgba(250,204,21,.5); color: #facc15;
+  box-shadow: 0 0 0 1px rgba(250,204,21,.18), 0 8px 20px -8px rgba(250,204,21,.4);
+}
+.lbtn--go:hover { background: linear-gradient(180deg, rgba(250,204,21,.28), rgba(250,204,21,.12)); color: #fde047; border-color: rgba(250,204,21,.7); }
+.lbtn--fin {
+  background: linear-gradient(180deg, rgba(239,70,81,.22), rgba(239,70,81,.10));
+  border-color: rgba(239,70,81,.5); color: #ff8e95;
+  box-shadow: 0 0 0 1px rgba(239,70,81,.2), 0 8px 20px -8px rgba(239,70,81,.5);
+}
+.lbtn--fin:hover { color: #fff; background: linear-gradient(180deg, #ef4651, #d8323d); border-color: transparent; }
+.lbtn--repeat { background: rgba(240,136,62,.10); border-color: rgba(240,136,62,.4); color: #f0883e; }
+.lbtn--repeat:hover { background: rgba(240,136,62,.18); color: #ffb87a; border-color: rgba(240,136,62,.6); }
+.lbtn--view { background: rgba(59,158,255,.10); border-color: rgba(59,158,255,.35); color: #7cc4ff; }
+.lbtn--view:hover { background: rgba(59,158,255,.18); color: #fff; border-color: rgba(59,158,255,.55); }
+.lbtn--back { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.12); color: #c9d1d9; }
+.lbtn--voice-off { color: #6e7681; }
+.lbtn--voice-best { color: #facc15; border-color: rgba(250,204,21,.35); }
+.tr-dur { display: inline-flex; align-items: center; gap: .3rem; color: var(--tr-mute); font-size: 12px; }
+.tr-dur input {
+  width: 58px; height: 36px; text-align: center;
+  background: #0d1117; color: #fff; border: 1px solid #30363d; border-radius: 8px;
+  font-family: 'Inter', system-ui, sans-serif; font-size: 15px; font-weight: 700;
+}
+.tr-dur input:focus { outline: none; border-color: #facc15; }
 
-/* ── Cards grid ──────────────────────────────────────────────────────────── */
-/* Hasta 8 columnas por fila. Si --lanes ≤ 8, tantas columnas como carriles.
-   Si > 8, fuerza 8 columnas y deja que los excedentes envuelvan abajo. */
+/* Pantallas medianas: los botones secundarios pasan a solo icono (llevan title). */
+@media (max-width: 1280px) {
+  .training-header__actions .lbtn--back > span,
+  .training-header__actions .lbtn--view > span,
+  .training-header__actions .lbtn--repeat > span,
+  .training-header__actions #voiceBtn > span { display: none; }
+  .training-header__actions .lbtn--back,
+  .training-header__actions .lbtn--view,
+  .training-header__actions .lbtn--repeat,
+  .training-header__actions #voiceBtn { width: 36px; padding: 0; }
+}
+
+/* ── Rejilla de tarjetas ──────────────────────────────────────────────── */
 .training-grid {
   display: grid;
   grid-template-columns: repeat(var(--cols, 6), minmax(0, 1fr));
-  grid-auto-rows: 1fr;
-  gap: clamp(.4rem, .8vw, .8rem);
-  padding: clamp(.4rem, .8vw, .9rem);
-  flex: 1;
-  min-height: 0;
-  box-sizing: border-box;
-  overflow: hidden;
+  grid-auto-rows: minmax(0, 1fr);
+  gap: clamp(.4rem, .7vw, .75rem);
+  padding: clamp(.4rem, .7vw, .8rem);
+  flex: 1; min-height: 0; overflow: hidden;
 }
 
-/* ── Lane card ───────────────────────────────────────────────────────────── */
 .tr-card {
-  background: #0a0a0a;
-  border: 2px solid var(--card-color, #21262d);
-  border-radius: 10px;
-  display: flex; flex-direction: column;
-  overflow: hidden;
-  transition: border-color .3s;
-}
-
-/* Carril en pausa (pausa por circuito, multi-DS) */
-.tr-card--paused {
   position: relative;
-  opacity: .5;
-  filter: grayscale(.4);
-  border-color: #ef4444;
+  display: flex; flex-direction: column; min-height: 0;
+  background: var(--tr-card);
+  border: 1px solid rgba(255,255,255,.08);
+  border-top: 4px solid var(--card-color, #30363d);
+  border-radius: 12px;
+  overflow: hidden;
 }
+.tr-card--paused { opacity: .5; filter: grayscale(.4); border-color: var(--tr-red); }
 .tr-pause-badge {
-  position: absolute;
-  top: 6px; right: 6px; z-index: 6;
-  background: #ef4444; color: #fff;
-  font-weight: 800; font-size: clamp(.6rem, 1.4vh, .8rem);
-  padding: .12rem .45rem; border-radius: 6px;
-  letter-spacing: .03em; pointer-events: none;
-  box-shadow: 0 1px 4px rgba(0,0,0,.4);
+  position: absolute; top: 8px; right: 8px; z-index: 6;
+  background: var(--tr-red); color: #fff; border-radius: 6px;
+  font-weight: 800; font-size: .75rem; padding: .12rem .45rem; letter-spacing: .03em;
+  pointer-events: none;
 }
 
 .tr-card__header {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: .8rem 1rem .4rem;
+  display: flex; align-items: center; gap: .55rem;
+  padding: .55rem .75rem .2rem;
 }
-.tr-card__label {
-  font-size: clamp(.85rem, 1.8vw, 2rem); font-weight: 700; letter-spacing: .1em;
-  text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  color: var(--card-color, #6e7681);
+.tr-card__lane-num {
+  flex-shrink: 0; min-width: 2em; text-align: center;
+  background: var(--card-color, #30363d); color: #000;
+  border-radius: 6px; padding: .05rem .45rem;
+  font-family: 'Saira Condensed', sans-serif; font-weight: 900; font-size: clamp(1rem, 1.4vw, 1.4rem); line-height: 1.3;
+}
+.tr-card__name {
+  flex: 1; min-width: 0;
+  font-family: 'Saira Condensed', sans-serif; font-weight: 700;
+  font-size: clamp(1rem, 1.4vw, 1.5rem); color: #fff;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .tr-card__count {
-  font-family: 'Share Tech Mono', monospace;
-  font-size: clamp(.8rem, 1.4vw, 1.7rem);
-  color: #8b949e; font-weight: 700; white-space: nowrap; flex-shrink: 0;
+  margin-left: auto; flex-shrink: 0;
+  font-family: 'Inter', system-ui, sans-serif; font-variant-numeric: tabular-nums;
+  font-weight: 700; font-size: clamp(.75rem, 1vw, 1rem); color: #c9d1d9;
 }
 
+/* Última vuelta: el número grande, coloreado como en el directo de carrera */
+.tr-card__last { padding: .1rem .75rem .35rem; }
 .tr-card__best {
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 3rem; font-weight: 700; color: #f6c90e;
-  line-height: 1; padding: .1rem .9rem .15rem;
+  font-family: 'Inter', system-ui, sans-serif; font-variant-numeric: tabular-nums;
+  font-weight: 800; letter-spacing: -.03em; line-height: 1;
+  font-size: clamp(2rem, 3.6vw, 4.2rem); color: #fff;
 }
+.tr-card__best.lv-color-green { color: var(--tr-green); }
+.tr-card__best.lv-color-white { color: #fff; }
+.tr-card__best.lv-color-amber { color: var(--tr-amber); }
+.tr-card__best.lv-color-red   { color: var(--tr-red); }
+.tr-card__delta {
+  margin-top: .15rem; min-height: 1.1em;
+  font-family: 'Inter', system-ui, sans-serif; font-variant-numeric: tabular-nums;
+  font-size: clamp(.7rem, .9vw, .9rem); font-weight: 600; color: var(--tr-mute);
+}
+.tr-card__delta.is-best { color: var(--tr-green); }
 
-.tr-card__avg-row {
-  display: flex; flex-direction: column; gap: .15rem;
-  padding: .1rem .9rem .5rem;
+/* Mejor · Media · Récord del carril en una fila */
+.tr-card__stats {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--tr-line); border-bottom: 1px solid var(--tr-line);
 }
-.tr-card__avg-cell {
-  display: flex; justify-content: space-between; align-items: baseline;
-  gap: .5rem;
+.tr-stat { display: flex; flex-direction: column; gap: .1rem; padding: .4rem .55rem; min-width: 0; }
+.tr-stat + .tr-stat { border-left: 1px solid var(--tr-line); }
+.tr-stat__lbl {
+  font-size: clamp(.6rem, .75vw, .75rem); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--tr-mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.tr-card__avg-label { font-size: .9rem; color: #6e7681; flex-shrink: 0; }
-.tr-card__avg-val {
-  font-family: 'Share Tech Mono', monospace; font-size: 1.15rem;
-  color: #e6a817; font-weight: 600;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  text-align: right;
+.tr-stat__val {
+  font-family: 'Inter', system-ui, sans-serif; font-variant-numeric: tabular-nums;
+  font-weight: 800; letter-spacing: -.02em; font-size: clamp(.9rem, 1.35vw, 1.45rem);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff;
 }
+.tr-stat--best .tr-stat__val { color: var(--tr-green); }
+.tr-stat--avg  .tr-stat__val { color: #9ca3af; }
+.tr-stat--rec  .tr-stat__val { color: var(--tr-amber); }
 
-/* ── V1 (history): Media + Mejor a la misma escala que la "vuelta actual"
-   Apilados verticalmente (cada valor ocupa el ancho completo) para que el
-   número pueda crecer al mismo tamaño que el current. La actual usa
-   clamp(2.5rem, 6vw, 8rem); aplicamos lo mismo a Media y Mejor. */
-.training-grid:not(.training-grid--compact) .tr-card__avg-row {
-  display: flex; flex-direction: column; gap: .15rem;
-  padding: .25rem clamp(.6rem, 1vw, 1rem) .45rem;
-}
-.training-grid:not(.training-grid--compact) .tr-card__avg-cell {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 0;
-  text-align: left;
-  border-top: 1px solid rgba(255,255,255,.04);
-  padding-top: .15rem;
-}
-.training-grid:not(.training-grid--compact) .tr-card__avg-cell:first-child {
-  border-top: none; padding-top: 0;
-}
-.training-grid:not(.training-grid--compact) .tr-card__avg-label {
-  font-size: clamp(.7rem, 1vw, 1rem); letter-spacing: .08em;
-  text-transform: uppercase; color: #6e7681; line-height: 1;
-}
-.training-grid:not(.training-grid--compact) .tr-card__avg-val {
-  /* Igual fórmula que .tr-card__best (línea 598) — current vs Media vs Mejor
-     se ven exactamente al mismo tamaño. */
-  font-size: clamp(1.6rem, 3vw, 3rem) !important;
-  line-height: 1; text-align: left; white-space: nowrap;
-  width: 100%; padding-top: .05rem;
-}
-/* Historial de vueltas: cada item también al tamaño de la vuelta actual */
-.training-grid:not(.training-grid--compact) .tr-card__laps {
-  gap: .25rem !important;
-}
-.training-grid:not(.training-grid--compact) .tr-lap-item {
-  font-size: clamp(1.6rem, 3vw, 3rem) !important;
-  line-height: 1.1; padding: .1rem 0;
-}
-.training-grid:not(.training-grid--compact) .tr-lap-item--best {
-  font-size: clamp(1.6rem, 3vw, 3rem) !important;
-}
-
-.tr-card__divider {
-  height: 1px; background: #161b22; margin: 0 .9rem;
-}
-
-/* Scrollable lap times list — fills the remaining column height */
+/* Últimas 10 vueltas, numeradas */
 .tr-card__laps {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  padding: .4rem .9rem .6rem;
-  display: flex; flex-direction: column; gap: .06rem;
+  flex: 0 1 auto; min-height: 0; overflow: hidden;
+  padding: .3rem .75rem .2rem;
+  display: flex; flex-direction: column;
 }
-
 .tr-lap-item {
-  font-family: 'Share Tech Mono', monospace; font-size: .95rem;
-  color: #8b949e; padding: .1rem 0;
-  border-bottom: 1px solid rgba(255,255,255,.04);
+  display: flex; align-items: baseline; gap: .6rem;
+  padding: .08rem 0;
+  font-family: 'Inter', system-ui, sans-serif; font-variant-numeric: tabular-nums;
+  font-weight: 700; font-size: clamp(.85rem, 1.15vw, 1.25rem); color: #c9d1d9;
+  border-bottom: 1px solid rgba(255,255,255,.035);
 }
-.tr-lap-item--best {
-  color: #58a6ff; font-weight: 700; font-size: 1rem;
-}
-.tr-lap-empty {
-  font-size: .9rem; color: #4e555e; text-align: center; padding: .4rem 0;
-}
+.tr-lap-item:first-child { color: #fff; }
+.tr-lap-n { min-width: 2.6em; font-size: .78em; font-weight: 600; color: #6e7681; }
+.tr-lap-t { flex: 1; }
+.tr-lap-item--best { color: var(--tr-green) !important; }
+.tr-lap-item--best .tr-lap-n { color: var(--tr-green); }
+.tr-lap-empty { font-size: .9rem; color: #4e555e; text-align: center; padding: .4rem 0; }
 
-/* Flash on new lap */
-@keyframes trFlash {
-  0%   { background: rgba(246,201,14,.18); border-color: #f6c90e; }
-  100% { background: #0a0a0a; }
+/* Mini gráfico de ritmo */
+.tr-pace {
+  position: relative; flex: 1 1 64px;
+  min-height: 56px; max-height: 260px;
+  margin: .1rem .5rem .5rem;
+  border: 1px solid var(--tr-line); border-radius: 8px;
+  background: rgba(255,255,255,.015);
+  touch-action: none;
 }
-.tr-card.tr-flash { animation: trFlash .7s ease-out forwards; }
+.tr-pace svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.tr-pace__lbl {
+  position: absolute; left: 6px; top: 3px; z-index: 1;
+  font-size: .62rem; letter-spacing: .12em; text-transform: uppercase; color: #6e7681;
+  pointer-events: none;
+}
+.tr-pace__empty { position: absolute; inset: 0; display: grid; place-items: center; font-size: .75rem; color: #4e555e; }
+.tr-pace__tip {
+  position: absolute; z-index: 2; top: 4px; transform: translateX(-50%);
+  padding: .15rem .45rem; border-radius: 6px; white-space: nowrap; pointer-events: none;
+  background: #161b22; border: 1px solid #30363d; color: #fff;
+  font-family: 'Inter', system-ui, sans-serif; font-variant-numeric: tabular-nums; font-size: .72rem; font-weight: 700;
+}
+.tr-pace__tip[hidden] { display: none; }
+.tr-pace__line { fill: none; stroke: var(--card-color, #58a6ff); stroke-width: 1.8; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.tr-pace__area { fill: var(--card-color, #58a6ff); opacity: .08; }
+.tr-pace__best { stroke: var(--tr-green); stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; opacity: .7; }
+.tr-pace__avg  { stroke: #9ca3af; stroke-width: 1; stroke-dasharray: 2 4; vector-effect: non-scaling-stroke; opacity: .5; }
+.tr-pace__cursor { stroke: rgba(255,255,255,.45); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.tr-pace__dot { fill: #fff; stroke: var(--card-color, #58a6ff); stroke-width: 2; vector-effect: non-scaling-stroke; }
 
-/* ── Responsive ──────────────────────────────────────────────────────────── */
-@media (max-width: 640px) {
-  .training-header { height: auto; flex-wrap: wrap; gap: .75rem; padding: .6rem 1rem; }
-  .training-grid {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    grid-auto-rows: auto;
-    height: auto;
-    overflow: visible;
-  }
-  .tr-card__best { font-size: 1.9rem; }
-  .tr-card__laps { flex: 0 0 auto; max-height: 160px; }
-}
+/* Destellos */
+@keyframes trFlash { 0% { box-shadow: inset 0 0 0 2px rgba(246,201,14,.7); background: rgba(246,201,14,.10); } 100% { box-shadow: inset 0 0 0 2px transparent; background: var(--tr-card); } }
+.tr-card.tr-flash { animation: trFlash .7s ease-out; }
+@keyframes trRecordFlash { 0% { background: rgba(245,158,11,.22); } 100% { background: var(--tr-card); } }
+.tr-card.tr-record-flash { animation: trRecordFlash 1.5s ease-out; }
 
-/* ── Semaphore overlay ─────────────────────────────────────────────────────
-   Estilos en /css/semaphore.css (compartido). La vista debe cargarlo. */
-
-.tr-standby-badge {
-  color: #f59e0b;
-  font-weight: 600;
-  letter-spacing: .05em;
-  animation: standby-pulse 1.5s ease-in-out infinite;
-}
-@keyframes standby-pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: .4; }
-}
-
-/* ── Vista expandida — responsive con viewport ───────────────────────────── */
-.training-grid--expanded {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
-  gap: clamp(.5rem, 1vw, 1.2rem);
-  padding: clamp(.5rem, 1vw, 1rem);
-  height: calc(100vh - 96px);
-  align-content: stretch;
-  box-sizing: border-box;
-}
-.training-grid--expanded .tr-card {
-  overflow: hidden;
-}
-.training-grid--expanded .tr-card__header {
-  padding: clamp(.4rem, 1vh, .8rem) clamp(.6rem, 1vw, 1rem);
-}
-.training-grid--expanded .tr-card__label {
-  font-size: clamp(.85rem, 1.8vw, 2rem);
-}
-.training-grid--expanded .tr-card__count {
-  font-size: clamp(.8rem, 1.4vw, 1.7rem);
-}
-.training-grid--expanded .tr-card__best {
-  font-size: clamp(2rem, 5vw, 6rem);
-  padding: clamp(.1rem, .5vh, .4rem) clamp(.6rem, 1vw, 1.1rem);
-}
-.training-grid--expanded .tr-card__avg-label {
-  font-size: clamp(.7rem, 1.1vw, 1.1rem);
-}
-.training-grid--expanded .tr-card__avg-val {
-  font-size: clamp(.9rem, 1.4vw, 1.4rem);
-}
-.training-grid--expanded .tr-srec-label {
-  font-size: clamp(.7rem, 1.1vw, 1rem);
-}
-.training-grid--expanded .tr-srec-time {
-  font-size: clamp(.9rem, 1.4vw, 1.3rem);
-}
-.training-grid--expanded .tr-card__laps {
-  max-height: none;
-  flex: 1;
+/* ── Vista compacta: muchas tarjetas, solo lo esencial ────────────────── */
+.training-grid--compact {
+  grid-template-columns: repeat(auto-fill, minmax(clamp(200px, 18vw, 300px), 1fr));
+  grid-auto-rows: max-content;
+  align-content: start;
   overflow-y: auto;
 }
-.training-grid--expanded .tr-lap-item {
-  font-size: clamp(.7rem, 1.1vw, 1rem);
+.training-grid--compact .tr-card { border-top-width: 3px; }
+.training-grid--compact .tr-card__header { padding: .45rem .6rem .1rem; }
+.training-grid--compact .tr-card__last {
+  display: flex; align-items: baseline; justify-content: space-between; gap: .5rem;
+  padding: .05rem .6rem .3rem;
 }
+.training-grid--compact .tr-card__best { font-size: clamp(1.8rem, 2.6vw, 2.8rem); }
+.training-grid--compact .tr-card__delta { margin: 0; text-align: right; }
+.training-grid--compact .tr-card__stats { border-bottom: 0; }
+.training-grid--compact .tr-stat { padding: .3rem .5rem .4rem; }
+.training-grid--compact .tr-stat__val { font-size: clamp(.85rem, 1.05vw, 1.1rem); }
+.training-grid--compact .tr-card__laps { display: none; }
+.training-grid--compact .tr-pace { flex: 0 0 34px; min-height: 34px; height: 34px; margin: 0; border: 0; border-top: 1px solid var(--tr-line); border-radius: 0; background: none; }
+.training-grid--compact .tr-pace__lbl,
+.training-grid--compact .tr-pace__best,
+.training-grid--compact .tr-pace__avg { display: none; }
 
-.tr-card__name {
-  font-family: 'Rajdhani', sans-serif;
-  font-size: clamp(1rem, 1.8vw, 2rem); font-weight: 700;
-  color: var(--card-color);
-  padding: 0 clamp(.6rem, 1vw, 1rem) .1rem;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-
-/* ── Session records bar ─────────────────────────────────────────────────── */
-.tr-records-bar {
-  display: flex; align-items: center; gap: 1rem;
-  padding: .5rem 1rem;
-  background: #000000;
-  border-bottom: 1px solid #161b22;
-  flex-wrap: wrap;
-}
-.tr-records-label {
-  font-size: .78rem; font-weight: 700; color: #6e7681;
-  letter-spacing: .08em; text-transform: uppercase;
-  white-space: nowrap;
-}
-.tr-records-list {
-  display: flex; flex-wrap: wrap; gap: .4rem;
-}
-.tr-record-item {
-  display: inline-flex; align-items: center; gap: .3rem;
-  background: #0a0a0a;
-  border: 1px solid var(--card-color, #21262d);
-  border-radius: 6px;
-  padding: .2rem .55rem;
-  transition: background .3s;
-}
-.tr-record-lane {
-  font-size: .7rem; font-weight: 700;
-  color: var(--card-color, #6e7681);
-  letter-spacing: .06em;
-}
-.tr-record-time {
-  font-family: 'Share Tech Mono', monospace;
-  font-size: .85rem; font-weight: 700; color: #f6c90e;
-}
-.tr-record-item.tr-record-new {
-  background: rgba(246,201,14,.15);
-}
-
-/* ── Lane record (inside card) ───────────────────────────────────────────── */
-.tr-card__session-record {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: .15rem .9rem .1rem;
-  background: rgba(246,201,14,.06);
-  border-top: 1px solid rgba(246,201,14,.12);
-  border-bottom: 1px solid rgba(246,201,14,.12);
-}
-.tr-srec-label {
-  font-size: 1rem; color: #6e7681; letter-spacing: .06em;
-}
-.tr-srec-time {
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 1.25rem; font-weight: 700; color: #f6c90e;
-}
-
-@keyframes trRecordFlash {
-  0%   { background: rgba(246,201,14,.25); }
-  100% { background: #0a0a0a; }
-}
-.tr-card.tr-record-flash { animation: trRecordFlash 1.5s ease-out forwards; }
-
-.tr-card__lane-num {
-  background: var(--card-color, #21262d);
-  color: #000000;
-  border-radius: 6px;
-  padding: .1rem .5rem;
-  font-weight: 900;
-}
-
-/* ── Resting participants bar (competition mode, P > N) ──────────────────── */
+/* ── Descansos (competición, P > N) ───────────────────────────────────── */
 .resting-bar {
-  background: #000000;
-  border-top: 1px solid #21262d;
-  padding: .6rem 1rem .75rem;
-  display: flex; flex-direction: column; gap: .4rem;
+  border-top: 1px solid #21262d; padding: .5rem 1rem .65rem;
+  display: flex; flex-direction: column; gap: .35rem; flex-shrink: 0;
 }
 .resting-bar__title {
-  font-family: 'Rajdhani', sans-serif;
-  font-size: .85rem; font-weight: 700; letter-spacing: .08em;
-  color: #8b949e; text-transform: uppercase;
+  font-family: 'Saira Condensed', sans-serif; font-size: .85rem; font-weight: 700;
+  letter-spacing: .1em; color: var(--tr-mute); text-transform: uppercase;
 }
-.resting-bar__items {
-  display: flex; flex-wrap: wrap; gap: .5rem;
-}
+.resting-bar__items { display: flex; flex-wrap: wrap; gap: .5rem; }
 .resting-chip {
   display: inline-flex; align-items: center; gap: .45rem;
-  background: #161b22; border: 1px solid #21262d;
-  padding: .35rem .75rem; border-radius: 18px;
-  font-size: .85rem; color: #c9d1d9;
+  background: #161b22; border: 1px solid #21262d; border-radius: 18px;
+  padding: .3rem .7rem; font-size: .85rem; color: #c9d1d9;
 }
-.resting-chip__num {
-  font-family: 'Rajdhani', sans-serif; font-size: .75rem; font-weight: 700;
-  color: #6e7681; letter-spacing: .04em;
-}
-.resting-chip__dot {
-  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
-}
+.resting-chip__num { font-family: 'Saira Condensed', sans-serif; font-size: .75rem; font-weight: 700; color: #6e7681; }
+.resting-chip__dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .resting-chip__name { font-weight: 600; }
-/* Bandera del país del equipo (tarjetas y chips de descanso) */
 .lane-flag { display: inline-flex; align-items: center; margin-right: .35em; vertical-align: middle; }
 .lane-flag span { line-height: 1; }
 
+.flash { padding: .6rem 1rem; border-radius: 8px; font-size: .9rem; margin: .5rem 1rem; }
+.flash--error { background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.4); color: #fca5a5; }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   REDISEÑO MINIMAL
-   - Paleta reducida: fondo oscuro neutro, blanco para texto, gold (#fbbf24)
-     como único acento, el color del carril para borde/nombre.
-   - Jerarquía visual: NOMBRE + ÚLTIMA VUELTA dominan. Lo accesorio se demota.
-   - Labels con alto contraste (no más gris-sobre-gris).
-   ───────────────────────────────────────────────────────────────────────── */
-
-.training-body { background: #000000; }
-
-/* Header: timer en blanco (no naranja), más limpio */
-.training-header { background: #000000; border-bottom: 1px solid #2a2f3a; }
-.tr-timer        { color: #ffffff; }
-.tr-timer-label  { color: #c9d1d9; }
-.tr-title        { color: #ffffff; }
-.tr-subtitle     { color: #c9d1d9; }
-
-/* Card: fondo plano, borde color carril más visible */
-.tr-card {
-  background: #0a0a0a;
-  border-width: 3px;
-}
-
-/* Header de tarjeta: número de carril prominente, contador sutil */
-.tr-card__lane-num {
-  background: var(--card-color, #2a2f3a);
-  color: #000000;
-  font-size: 1.4em;
-  padding: .15rem .7rem;
-}
-.tr-card__count { color: #c9d1d9; }
-
-/* NOMBRE del piloto: dato dominante */
-.tr-card__name {
-  color: #ffffff;
-  font-size: clamp(1.4rem, 2.5vw, 3rem);
-  font-weight: 700;
-  padding: .3rem clamp(.6rem, 1vw, 1rem) .4rem;
-  letter-spacing: .02em;
-}
-
-/* ÚLTIMA VUELTA (el número gigante): gold sobre fondo plano */
-.tr-card__best {
-  color: #fbbf24;
-  font-size: clamp(2.5rem, 6vw, 8rem);
-  line-height: 1;
-  font-weight: 700;
-  padding: .2rem clamp(.6rem, 1vw, 1rem);
-}
-
-/* Avg/Best secundarios: visibles pero pequeños, sin amarillo (resta jerarquía) */
-.tr-card__avg-label { color: #c9d1d9; font-size: .95rem; }
-.tr-card__avg-val   { color: #ffffff; font-size: 1.1rem; font-weight: 600; }
-
-/* Session record bar: muy sutil, sin marco amarillo que compite con el grande */
-.tr-card__session-record {
-  background: transparent;
-  border-top: none;
-  border-bottom: 1px solid rgba(255,255,255,.06);
-  padding: .15rem clamp(.6rem, 1vw, 1rem);
-}
-.tr-srec-label { color: #c9d1d9; }
-.tr-srec-time  { color: #fbbf24; font-size: 1.15rem; }
-
-/* Lista de vueltas: compacta, sólo las más recientes son legibles */
-.tr-card__laps { gap: 0; padding: .3rem clamp(.6rem, 1vw, 1rem) .5rem; }
-.tr-lap-item {
-  color: #8b949e;
-  font-size: .95rem;
-  padding: .15rem 0;
-  border-bottom: none;
-}
-.tr-lap-item--best { color: #fbbf24; font-weight: 700; }
-.tr-lap-empty      { color: #6e7681; }
-.tr-card__divider  { background: rgba(255,255,255,.06); }
-
-/* Botones del header con mejor contraste */
-.tr-btn--voice, .tr-btn--view, .tr-btn--back, .tr-btn--reset {
-  color: #ffffff;
-}
-.tr-btn--voice, .tr-btn--view, .tr-btn--back {
-  background: #2a2f3a;
-}
-.tr-btn--reset { background: #2a2f3a; border-color: #e63946aa; }
-.tr-btn--view.active { background: #2563eb; }
-
-/* ─────────────────────────────────────────────────────────────────────────
-   Lenguaje visual nuevo (alineado con la vista live de carreras):
-   - Todas las cifras en Inter 800 con letter-spacing tight y tabular-nums.
-   - Paleta: ÚLTIMA condicional (verde/blanco/ámbar/rojo), MEDIA gris,
-     MEJOR verde, RÉCORD CARRIL ámbar.
-   ───────────────────────────────────────────────────────────────────── */
-.tr-card__count,
-.tr-card__best,
-.tr-card__avg-val,
-.tr-srec-time,
-.tr-lap-item {
-  font-family: 'Inter', system-ui, sans-serif !important;
-  letter-spacing: -.02em !important;
-  font-variant-numeric: tabular-nums;
-}
-.tr-card__best,
-.tr-card__avg-val,
-.tr-srec-time {
-  font-weight: 800 !important;
-}
-.tr-card__count { font-weight: 700 !important; color: #ffffff !important; }
-
-/* ÚLTIMA vuelta (el número grande). Color base blanco; JS aplica la clase
-   lv-color-* según comparación con mejor/media. */
-.tr-card__best { color: #ffffff !important; }
-.tr-card__best.lv-color-green { color: #22c55e !important; }
-.tr-card__best.lv-color-white { color: #ffffff !important; }
-.tr-card__best.lv-color-amber { color: #f59e0b !important; }
-.tr-card__best.lv-color-red   { color: #ef4444 !important; }
-
-/* MEDIA → gris (igual que MED en races) */
-[id^="tr-avg-"] { color: #9ca3af !important; }
-
-/* MEJOR → verde (igual que MEJ en races) */
-[id^="tr-record-"] { color: #22c55e !important; }
-
-/* Récord del carril (chip ámbar arriba) */
-.tr-srec-time { color: #f59e0b !important; }
-
-/* Lista de vueltas: Inter 700, mejor vuelta en verde */
-.tr-lap-item { font-weight: 700 !important; }
-.tr-lap-item--best { color: #22c55e !important; }
-
-/* ── Modo Compacta — sin historial ni media. Récord carril sí se mantiene. */
-.training-grid--compact .tr-card__divider,
-.training-grid--compact .tr-card__laps,
-.training-grid--compact .tr-card__avg-cell:first-child {
-  display: none !important;
-}
-/* En compacta la celda Mejor se centra ocupando todo el avg-row */
-.training-grid--compact .tr-card__avg-row {
-  justify-content: center;
-}
-/* La última vuelta (número grande) ocupa más protagonismo en compacta */
-.training-grid--compact .tr-card__best {
-  font-size: clamp(2.8rem, 6vw, 5rem);
-}
-
-/* ── View picker modal (training) ─────────────────────────────────────── */
+/* ── Selector de vista (modal) ────────────────────────────────────────── */
 .vp-overlay {
-  position: fixed; inset: 0;
-  background: rgba(0, 0, 0, .82);
-  backdrop-filter: blur(4px);
-  z-index: 9999;
-  display: flex; align-items: center; justify-content: center;
-  padding: 1.5rem;
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,.82); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center; padding: 1.5rem;
 }
 .vp-overlay[hidden] { display: none; }
 .vp-modal {
-  background: #0a0a0a;
-  border: 1px solid #21262d;
-  border-radius: 14px;
-  max-width: 720px; width: 100%;
-  max-height: 90vh; overflow: auto;
-  padding: 1.4rem 1.4rem 1.6rem;
-  box-shadow: 0 24px 70px rgba(0, 0, 0, .8);
+  background: #0a0a0a; border: 1px solid #21262d; border-radius: 14px;
+  max-width: 720px; width: 100%; max-height: 90vh; overflow: auto;
+  padding: 1.4rem 1.4rem 1.6rem; box-shadow: 0 24px 70px rgba(0,0,0,.8);
 }
 .vp-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.2rem; }
-.vp-title { font-family: 'Rajdhani', sans-serif; font-size: 1.5rem; font-weight: 700; color: #fff; letter-spacing: .03em; }
+.vp-title { font-family: 'Saira Condensed', sans-serif; font-size: 1.5rem; font-weight: 700; color: #fff; letter-spacing: .03em; }
 .vp-x { background: #21262d; color: #c9d1d9; border: none; border-radius: 8px; width: 2.2rem; height: 2.2rem; font-size: 1rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
 .vp-x:hover { background: #30363d; color: #fff; }
 .vp-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .9rem; }
 .vp-opt {
   background: #161b22; border: 2px solid #21262d; border-radius: 12px;
-  padding: 1rem; text-align: left; cursor: pointer; color: #c9d1d9;
+  padding: 1rem; text-align: left; cursor: pointer; color: #c9d1d9; font-family: inherit;
   display: flex; flex-direction: column; gap: .55rem;
   transition: border-color .15s, transform .15s, background .15s;
-  font-family: inherit;
 }
 .vp-opt:hover { border-color: #58a6ff; transform: translateY(-2px); background: #1c2128; }
 .vp-opt.is-active { border-color: #f6c90e; background: #1c1a10; }
 .vp-label { font-weight: 700; font-size: 1.1rem; color: #fff; }
-.vp-desc { font-size: .82rem; color: #8b949e; line-height: 1.35; }
-
-/* Thumbnails para training */
-.vp-thumb {
-  background: #0a0a0a; border-radius: 8px; border: 1px solid #21262d;
-  height: 110px; padding: .5rem; display: grid; gap: .35rem;
-}
-/* Historial: 4 tarjetas con líneas debajo simulando lap list */
-.vp-thumb--tr-history {
-  grid-template-columns: repeat(2, 1fr);
-  grid-template-rows: 1fr 1fr;
-}
+.vp-desc { font-size: .82rem; color: var(--tr-mute); line-height: 1.35; }
+.vp-thumb { background: #0a0a0a; border-radius: 8px; border: 1px solid #21262d; height: 110px; padding: .5rem; display: grid; gap: .35rem; }
+.vp-thumb--tr-history { grid-template-columns: repeat(2, 1fr); grid-template-rows: 1fr 1fr; }
 .vp-thumb--tr-history > span {
-  background: linear-gradient(180deg,
-    #2196f3 0 22%,
-    transparent 22% 30%,
-    #1f6feb22 30% 36%,
-    transparent 36% 42%,
-    #1f6feb22 42% 48%,
-    transparent 48% 54%,
-    #1f6feb22 54% 60%,
-    transparent 60% 66%,
-    #1f6feb22 66% 72%,
-    transparent 72% 100%
-  );
-  border-radius: 3px;
-  border-top: 2px solid var(--bc, #58a6ff);
+  border-radius: 3px; border-top: 2px solid var(--bc, #58a6ff);
+  background: linear-gradient(180deg, #ffffff22 0 18%, transparent 18% 30%, #ffffff10 30% 36%, transparent 36% 42%, #ffffff10 42% 48%, transparent 48% 70%, color-mix(in srgb, var(--bc) 30%, transparent) 70% 100%);
 }
-.vp-thumb--tr-history > span:nth-child(1) { --bc: #e63946; }
-.vp-thumb--tr-history > span:nth-child(2) { --bc: #2196f3; }
-.vp-thumb--tr-history > span:nth-child(3) { --bc: #4caf50; }
-.vp-thumb--tr-history > span:nth-child(4) { --bc: #ff9800; }
-/* Compacta: 6 tarjetas pequeñas sin contenido */
-.vp-thumb--tr-compact {
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: 1fr 1fr;
-}
-.vp-thumb--tr-compact > span {
-  background: #21262d;
-  border-top: 2px solid var(--bc, #58a6ff);
-  border-radius: 3px;
-}
-.vp-thumb--tr-compact > span:nth-child(1) { --bc: #e63946; }
-.vp-thumb--tr-compact > span:nth-child(2) { --bc: #2196f3; }
-.vp-thumb--tr-compact > span:nth-child(3) { --bc: #4caf50; }
-.vp-thumb--tr-compact > span:nth-child(4) { --bc: #ff9800; }
-.vp-thumb--tr-compact > span:nth-child(5) { --bc: #9c27b0; }
-.vp-thumb--tr-compact > span:nth-child(6) { --bc: #00bcd4; }
+.vp-thumb--tr-compact { grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr 1fr; }
+.vp-thumb--tr-compact > span { background: #21262d; border-top: 2px solid var(--bc, #58a6ff); border-radius: 3px; }
+.vp-thumb > span:nth-child(1) { --bc: #e63946; }
+.vp-thumb > span:nth-child(2) { --bc: #2196f3; }
+.vp-thumb > span:nth-child(3) { --bc: #4caf50; }
+.vp-thumb > span:nth-child(4) { --bc: #ff9800; }
+.vp-thumb > span:nth-child(5) { --bc: #9c27b0; }
+.vp-thumb > span:nth-child(6) { --bc: #00bcd4; }
 
-/* ── Ajustes finos de tamaño (más compacto, sobre todo cuando son 8 cards
-   en una fila las dimensiones de FullHD se quedan justas) ─────────────── */
-.tr-card__label       { font-size: clamp(.75rem, 1.3vw, 1.4rem); }
-.tr-card__lane-num    { font-size: 1.15em; padding: .1rem .55rem; }
-.tr-card__count       { font-size: clamp(.7rem, 1.1vw, 1.2rem); }
-.tr-card__name        { font-size: clamp(1rem, 1.6vw, 1.8rem); }
-.tr-card__best        { font-size: clamp(2rem, 4vw, 4.5rem); }
-.tr-card__avg-label   { font-size: clamp(.7rem, 1vw, 1rem); }
-.tr-card__avg-val     { font-size: clamp(.85rem, 1.2vw, 1.3rem); }
-.tr-srec-label        { font-size: clamp(.7rem, 1vw, 1rem); }
-.tr-srec-time         { font-size: clamp(.85rem, 1.2vw, 1.2rem); }
-.tr-lap-item          { font-size: clamp(.75rem, 1vw, 1rem); }
-.tr-lap-item--best    { font-size: clamp(.8rem, 1.1vw, 1.05rem); }
-
-/* ── Ajustes para muchas cards (≥16): tipografía algo menor ────────────── */
-.tr-card__best        { font-size: clamp(1.6rem, 3vw, 3rem) !important; padding: .05rem .55rem !important; }
-.tr-card__name        { font-size: clamp(.9rem, 1.3vw, 1.4rem) !important; padding: .15rem .55rem !important; }
-.tr-card__avg-label   { font-size: clamp(.65rem, .9vw, .95rem) !important; }
-.tr-card__avg-val     { font-size: clamp(.8rem, 1.1vw, 1.15rem) !important; }
-.tr-srec-label        { font-size: clamp(.65rem, .9vw, .9rem) !important; }
-.tr-srec-time         { font-size: clamp(.8rem, 1vw, 1.1rem) !important; }
-.tr-card__label       { font-size: clamp(.7rem, 1.1vw, 1.2rem) !important; }
-.tr-card__count       { font-size: clamp(.65rem, .95vw, 1rem) !important; }
-.tr-card__header      { padding: .35rem .65rem .25rem !important; }
-.tr-card__session-record { padding: .1rem .65rem !important; }
-.tr-card__avg-row     { padding: .1rem .65rem .35rem !important; }
+/* ── Móvil ────────────────────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  .training-body { height: auto; min-height: 100vh; overflow: auto; }
+  .training-header { flex-wrap: wrap; gap: .6rem; }
+  .training-header__info { order: 3; flex-basis: 100%; border-left: 0; padding-left: 0; }
+  .training-header__actions { flex-wrap: wrap; }
+  .training-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); grid-auto-rows: auto; overflow: visible; }
+  .tr-card__laps { flex: 0 0 auto; }
+  .tr-pace { flex: 0 0 90px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tr-standby-badge, .tr-card.tr-flash, .tr-card.tr-record-flash { animation: none; }
+}

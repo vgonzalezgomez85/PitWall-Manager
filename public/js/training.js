@@ -142,7 +142,7 @@ function setStandby(isStandby) {
   const statusEl = document.getElementById('tr-status');
   if (statusEl) {
     statusEl.innerHTML = isStandby
-      ? `<span class="tr-standby-badge">${LANG === 'es' ? '⏳ Esperando GO…' : '⏳ Waiting for GO…'}</span>`
+      ? `<span class="tr-standby-badge">${LANG === 'es' ? 'Esperando GO…' : 'Waiting for GO…'}</span>`
       : `${TRAINING_DATA.lanes.length} ${LANG === 'es' ? 'carriles activos' : 'active lanes'}`;
   }
   updateTimer();
@@ -150,7 +150,12 @@ function setStandby(isStandby) {
 
 // ── Lane cards ────────────────────────────────────────────────────────────────
 const grid  = document.getElementById('trainingGrid');
-const laneLabel = '';
+const TXT = LANG === 'es'
+  ? { laps: 'vlt', best: 'Mejor', avg: 'Media', rec: 'Récord', pace: 'Ritmo', noPace: 'Sin vueltas aún', lap: 'Vuelta', isBest: 'Mejor vuelta' }
+  : { laps: 'lps', best: 'Best',  avg: 'Avg',   rec: 'Record', pace: 'Pace',  noPace: 'No laps yet',     lap: 'Lap',    isBest: 'Best lap' };
+
+// Último estado recibido por carril (para repintar el gráfico al redimensionar).
+const laneState = new Map();
 
 function buildCard(lane) {
   const card = document.createElement('div');
@@ -159,44 +164,125 @@ function buildCard(lane) {
   card.style.setProperty('--card-color', lane.color);
   card.innerHTML = `
     <div class="tr-card__header">
-      <span class="tr-card__label"><span class="tr-card__lane-num">${lane.lane}</span></span>
-      <span class="tr-card__count" id="tr-count-${lane.lane}">
-        ${lane.count} ${LANG === 'es' ? 'vlt' : 'lps'}
-      </span>
+      <span class="tr-card__lane-num">${lane.lane}</span>
+      <span class="tr-card__name" id="tr-name-${lane.lane}">${lane.participantName ? flagHtml(lane.country) + lane.participantName : ''}</span>
+      <span class="tr-card__count" id="tr-count-${lane.lane}">${lane.count} ${TXT.laps}</span>
     </div>
-    ${lane.participantName ? `<div class="tr-card__name" id="tr-name-${lane.lane}">${flagHtml(lane.country)}${lane.participantName}</div>` : ''}
-    <div class="tr-card__session-record" id="tr-srec-${lane.lane}">
-      <span class="tr-srec-label">🏆 ${LANG === 'es' ? 'Récord carril' : 'Lane record'}</span>
-      <span class="tr-srec-time" id="tr-srec-time-${lane.lane}">${sessionRecords[lane.lane] ? formatMs(sessionRecords[lane.lane]) : '—'}</span>
+    <div class="tr-card__last">
+      <div class="tr-card__best" id="tr-best-${lane.lane}">${formatMs(lane.lastMs)}</div>
+      <div class="tr-card__delta" id="tr-delta-${lane.lane}"></div>
     </div>
-    <div class="tr-card__best" id="tr-best-${lane.lane}">${formatMs(lane.lastMs)}</div>
-    <div class="tr-card__avg-row">
-      <div class="tr-card__avg-cell">
-        <span class="tr-card__avg-label">${LANG === 'es' ? 'Media' : 'Avg'}</span>
-        <span class="tr-card__avg-val" id="tr-avg-${lane.lane}">${formatMs(lane.avgMs)}</span>
-      </div>
-      <div class="tr-card__avg-cell">
-        <span class="tr-card__avg-label">${LANG === 'es' ? 'Mejor' : 'Best'}</span>
-        <span class="tr-card__avg-val" id="tr-record-${lane.lane}" style="color:var(--card-color)">${formatMs(lane.bestMs)}</span>
-      </div>
+    <div class="tr-card__stats">
+      <div class="tr-stat tr-stat--best"><span class="tr-stat__lbl">${TXT.best}</span><span class="tr-stat__val" id="tr-record-${lane.lane}">${formatMs(lane.bestMs)}</span></div>
+      <div class="tr-stat tr-stat--avg"><span class="tr-stat__lbl">${TXT.avg}</span><span class="tr-stat__val" id="tr-avg-${lane.lane}">${formatMs(lane.avgMs)}</span></div>
+      <div class="tr-stat tr-stat--rec" id="tr-srec-${lane.lane}"><span class="tr-stat__lbl">${TXT.rec}</span><span class="tr-stat__val" id="tr-srec-time-${lane.lane}">${sessionRecords[lane.lane] ? formatMs(sessionRecords[lane.lane]) : '—'}</span></div>
     </div>
-    <div class="tr-card__divider"></div>
-    <div class="tr-card__laps" id="tr-laps-${lane.lane}">
-      ${renderLapList(lane.laps)}
+    <div class="tr-card__laps" id="tr-laps-${lane.lane}"></div>
+    <div class="tr-pace" id="tr-pace-${lane.lane}" aria-label="${TXT.pace}">
+      <span class="tr-pace__lbl">${TXT.pace}</span>
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
+      <div class="tr-pace__tip" hidden></div>
     </div>`;
+  wirePace(card.querySelector('.tr-pace'), lane.lane);
   return card;
 }
 
-const TR_HISTORY_MAX = 20;
-function renderLapList(laps) {
+// Solo las 10 últimas, la más reciente arriba, con su número de vuelta delante.
+// `laps` llega de más nueva a más vieja; `count` es el total del carril.
+const TR_HISTORY_MAX = 10;
+function renderLapList(laps, count, bestMs) {
   if (!laps || laps.length === 0) return `<div class="tr-lap-empty">—</div>`;
-  const best = Math.min(...laps);
-  // Solo las últimas TR_HISTORY_MAX vueltas (la mejor sigue resaltada si
-  // entra en la ventana visible).
-  const recent = laps.slice(-TR_HISTORY_MAX);
-  return recent.map(ms =>
-    `<div class="tr-lap-item${ms === best ? ' tr-lap-item--best' : ''}">${formatMs(ms)}</div>`
-  ).join('');
+  const total = count || laps.length;
+  return laps.slice(0, TR_HISTORY_MAX).map((ms, i) => {
+    const isBest = bestMs != null && ms === bestMs;
+    return `<div class="tr-lap-item${isBest ? ' tr-lap-item--best' : ''}"${isBest ? ` title="${TXT.isBest}"` : ''}>`
+      + `<span class="tr-lap-n">${total - i}</span><span class="tr-lap-t">${formatMs(ms)}</span></div>`;
+  }).join('');
+}
+
+// ── Gráfico de ritmo ─────────────────────────────────────────────────────────
+// Línea de tiempos de vuelta (arriba = más rápido), con la mejor y la media de
+// referencia. El eje se recorta a mediana × 1,6 para que una salida de pista
+// no aplaste el resto de la línea.
+function paceSeries(st) {
+  const pace = (st && Array.isArray(st.pace) && st.pace.length) ? st.pace
+             : (st && Array.isArray(st.laps) ? [...st.laps].reverse() : []);
+  return pace;
+}
+function paceScale(pace) {
+  const sorted = [...pace].sort((a, b) => a - b);
+  const med = sorted[Math.floor(sorted.length / 2)];
+  const lo = sorted[0];
+  const hi = Math.min(sorted[sorted.length - 1], med * 1.6);
+  const pad = Math.max((hi - lo) * 0.12, 30);
+  return { lo: lo - pad, hi: hi + pad };
+}
+function drawPace(laneNum) {
+  const box = document.getElementById(`tr-pace-${laneNum}`);
+  if (!box) return;
+  const svg = box.querySelector('svg');
+  const st = laneState.get(laneNum);
+  const pace = paceSeries(st);
+  box._series = pace;
+  const empty = box.querySelector('.tr-pace__empty');
+  if (pace.length < 2) {
+    svg.innerHTML = '';
+    if (!empty) box.insertAdjacentHTML('beforeend', `<div class="tr-pace__empty">${TXT.noPace}</div>`);
+    return;
+  }
+  if (empty) empty.remove();
+  const { lo, hi } = paceScale(pace);
+  box._scale = { lo, hi };
+  const n = pace.length;
+  const x = (i) => (n === 1 ? 50 : (i / (n - 1)) * 100);
+  const y = (ms) => {
+    const v = Math.min(Math.max(ms, lo), hi);
+    return 6 + ((v - lo) / (hi - lo)) * 88;   // más lento = más abajo
+  };
+  const pts = pace.map((ms, i) => `${x(i).toFixed(2)},${y(ms).toFixed(2)}`).join(' ');
+  const best = st.bestMs, avg = st.avgMs;
+  let h = `<polygon class="tr-pace__area" points="0,100 ${pts} 100,100"></polygon>`;
+  if (avg != null) h += `<line class="tr-pace__avg" x1="0" x2="100" y1="${y(avg)}" y2="${y(avg)}"></line>`;
+  if (best != null) h += `<line class="tr-pace__best" x1="0" x2="100" y1="${y(best)}" y2="${y(best)}"></line>`;
+  h += `<polyline class="tr-pace__line" points="${pts}"></polyline>`;
+  h += `<line class="tr-pace__cursor" x1="0" x2="0" y1="0" y2="100" visibility="hidden"></line>`;
+  svg.innerHTML = h;
+  if (box._hoverIdx != null) showPaceAt(box, laneNum, box._hoverIdx);
+}
+function showPaceAt(box, laneNum, idx) {
+  const pace = box._series || [];
+  const tip = box.querySelector('.tr-pace__tip');
+  const cur = box.querySelector('.tr-pace__cursor');
+  if (!pace.length || idx == null || !cur) { tip.hidden = true; return; }
+  idx = Math.max(0, Math.min(pace.length - 1, idx));
+  box._hoverIdx = idx;
+  const st = laneState.get(laneNum) || {};
+  const xPct = pace.length === 1 ? 50 : (idx / (pace.length - 1)) * 100;
+  cur.setAttribute('x1', xPct); cur.setAttribute('x2', xPct);
+  cur.setAttribute('visibility', 'visible');
+  const lapNo = (st.count || pace.length) - (pace.length - 1 - idx);
+  const ms = pace[idx];
+  const diff = st.bestMs != null ? ms - st.bestMs : null;
+  tip.textContent = `${TXT.lap} ${lapNo} · ${formatMs(ms)}` + (diff != null && diff > 0 ? ` (+${(diff / 1000).toFixed(3)})` : '');
+  tip.style.left = `clamp(40px, ${xPct}%, calc(100% - 40px))`;
+  tip.hidden = false;
+}
+function wirePace(box, laneNum) {
+  const at = (e) => {
+    const pace = box._series || [];
+    if (pace.length < 2) return null;
+    const r = box.getBoundingClientRect();
+    const f = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+    return Math.round(f * (pace.length - 1));
+  };
+  box.addEventListener('pointermove', (e) => showPaceAt(box, laneNum, at(e)));
+  box.addEventListener('pointerdown', (e) => showPaceAt(box, laneNum, at(e)));
+  box.addEventListener('pointerleave', () => {
+    box._hoverIdx = null;
+    box.querySelector('.tr-pace__tip').hidden = true;
+    const cur = box.querySelector('.tr-pace__cursor');
+    if (cur) cur.setAttribute('visibility', 'hidden');
+  });
 }
 
 // Color condicional para la última vuelta (mismo criterio que en carreras):
@@ -215,20 +301,30 @@ function applyLvColor(el, color) {
 }
 
 function updateCard(data) {
-  const countEl = document.getElementById(`tr-count-${data.lane}`);
-  const bestEl  = document.getElementById(`tr-best-${data.lane}`);
-  const avgEl   = document.getElementById(`tr-avg-${data.lane}`);
-  const lapsEl  = document.getElementById(`tr-laps-${data.lane}`);
+  const prev = laneState.get(data.lane) || {};
+  const st = { ...prev, ...data };
+  laneState.set(data.lane, st);
+  const countEl  = document.getElementById(`tr-count-${data.lane}`);
+  const bestEl   = document.getElementById(`tr-best-${data.lane}`);
+  const deltaEl  = document.getElementById(`tr-delta-${data.lane}`);
+  const avgEl    = document.getElementById(`tr-avg-${data.lane}`);
+  const lapsEl   = document.getElementById(`tr-laps-${data.lane}`);
   const recordEl = document.getElementById(`tr-record-${data.lane}`);
-  if (countEl)  countEl.textContent  = `${data.count} ${LANG === 'es' ? 'vlt' : 'lps'}`;
-  const lastMs = data.lastMs ?? data.lapTimeMs;
+  if (countEl) countEl.textContent = `${st.count || 0} ${TXT.laps}`;
+  const lastMs = st.lastMs ?? st.lapTimeMs;
   if (bestEl) {
     bestEl.textContent = formatMs(lastMs);
-    applyLvColor(bestEl, ultColorMs(lastMs, data.bestMs, data.avgMs));
+    applyLvColor(bestEl, ultColorMs(lastMs, st.bestMs, st.avgMs));
   }
-  if (avgEl)    avgEl.textContent    = formatMs(data.avgMs);
-  if (recordEl) recordEl.textContent = formatMs(data.bestMs);
-  if (lapsEl)   lapsEl.innerHTML     = renderLapList(data.laps);
+  if (deltaEl) {
+    const d = (lastMs != null && st.bestMs != null) ? lastMs - st.bestMs : null;
+    deltaEl.classList.toggle('is-best', d != null && d <= 1);
+    deltaEl.textContent = d == null ? '' : (d <= 1 ? TXT.isBest : `+${(d / 1000).toFixed(3)}`);
+  }
+  if (avgEl)    avgEl.textContent    = formatMs(st.avgMs);
+  if (recordEl) recordEl.textContent = formatMs(st.bestMs);
+  if (lapsEl)   lapsEl.innerHTML     = renderLapList(st.laps, st.count, st.bestMs);
+  drawPace(data.lane);
 }
 
 // Renombrado slotime.* → pitwall.* de las claves de localStorage: si el
@@ -294,10 +390,30 @@ function flashCard(laneNum) {
 let sessionRecords = { ...TRAINING_DATA.sessionRecords };
 
 // ── Initialize cards ──────────────────────────────────────────────────────────
-TRAINING_DATA.lanes.forEach(lane => grid.appendChild(buildCard(lane)));
+TRAINING_DATA.lanes.forEach(lane => { grid.appendChild(buildCard(lane)); updateCard(lane); });
 
 // Vista por defecto: ahora la maneja el picker (historial / compacta). No
 // añadimos clases extra en init.
+
+let _paceResizeT = null;
+window.addEventListener('resize', () => {
+  clearTimeout(_paceResizeT);
+  _paceResizeT = setTimeout(() => laneState.forEach((_, lane) => drawPace(lane)), 150);
+});
+
+// ── Pantalla completa (igual que el directo: en la app de escritorio, la de
+//    la ventana, que sobrevive a las recargas del semáforo y del fin) ─────────
+function toggleTrFullscreen() {
+  const nativeFs = window.pitwallWindow;
+  if (nativeFs) {
+    nativeFs.isFullScreen().then(on => nativeFs.setFullScreen(!on)).catch(() => {});
+    return;
+  }
+  if (document.fullscreenElement) { document.exitFullscreen?.(); return; }
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (req) { const p = req.call(el); if (p && p.catch) p.catch(() => {}); }
+}
 
 // ── Voice announcements ───────────────────────────────────────────────────────
 const speechQueue = [];
@@ -315,9 +431,9 @@ let voiceMode = localStorage.getItem(VOICE_KEY) || (_isCompetition ? 'off' : 'al
 
 function voiceLabel() {
   const isES = LANG === 'es';
-  if (voiceMode === 'off')  return isES ? '🔇 Sin voz'      : '🔇 No voice';
-  if (voiceMode === 'best') return isES ? '⚡ Sólo rápidas'  : '⚡ Fast only';
-  return                              isES ? '🔊 Todas'        : '🔊 All';
+  if (voiceMode === 'off')  return isES ? 'Sin voz'  : 'No voice';
+  if (voiceMode === 'best') return isES ? 'Rápidas'  : 'Fast';
+  return                              isES ? 'Todas'    : 'All';
 }
 function voiceTitle() {
   if (LANG === 'es') {
@@ -332,11 +448,11 @@ function voiceTitle() {
 function refreshVoiceBtn() {
   const btn = document.getElementById('voiceBtn');
   if (!btn) return;
-  btn.textContent = voiceLabel();
-  btn.title       = voiceTitle();
-  btn.classList.toggle('tr-btn--voice-off',  voiceMode === 'off');
-  btn.classList.toggle('tr-btn--voice-best', voiceMode === 'best');
-  btn.classList.toggle('tr-btn--voice-all',  voiceMode === 'all');
+  const lbl = document.getElementById('voiceLbl');
+  if (lbl) lbl.textContent = voiceLabel(); else btn.textContent = voiceLabel();
+  btn.title = voiceTitle();
+  btn.classList.toggle('lbtn--voice-off',  voiceMode === 'off');
+  btn.classList.toggle('lbtn--voice-best', voiceMode === 'best');
 }
 function toggleVoice() {
   const idx = VOICE_MODES.indexOf(voiceMode);
@@ -405,7 +521,7 @@ socket.on('training:circuit_state', ({ status, lanes }) => {
     if (paused && !badge) {
       badge = document.createElement('div');
       badge.className = 'tr-pause-badge';
-      badge.textContent = LANG === 'es' ? '⏸ PAUSA' : '⏸ PAUSED';
+      badge.textContent = LANG === 'es' ? 'PAUSA' : 'PAUSED';
       card.appendChild(badge);
     } else if (!paused && badge) {
       badge.remove();
@@ -490,7 +606,7 @@ socket.on('competition:heat', ({ heat, resting }) => {
   if (statusEl && heat) {
     const heatLabel = LANG === 'es' ? `Tanda ${heat}` : `Heat ${heat}`;
     const sub = statusEl.querySelector('.tr-standby-badge');
-    if (sub) sub.textContent = `⏳ ${heatLabel} — ${LANG === 'es' ? 'Esperando GO…' : 'Waiting for GO…'}`;
+    if (sub) sub.textContent = `${heatLabel} — ${LANG === 'es' ? 'Esperando GO…' : 'Waiting for GO…'}`;
   }
   renderRestingBar(resting || []);
 });

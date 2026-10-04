@@ -27,6 +27,10 @@ const LANE_COLORS = [
   '#006064','#827717'
 ];
 
+// Vueltas que se guardan por carril para el gráfico de ritmo del directo de
+// entrenamiento (en orden cronológico). `laps` sigue con las 20 de siempre.
+const PACE_MAX = 120;
+
 class CompetitionTrainingServiceClass {
   constructor() {
     this._participants = []; // [{name, color}]
@@ -230,6 +234,8 @@ class CompetitionTrainingServiceClass {
       ld.laps.sort((a, b) => a - b);
       ld.chronoLaps.push(lapTimeMs);
       if (ld.chronoLaps.length > 20) ld.chronoLaps.shift();
+      (ld.pace = ld.pace || []).push(lapTimeMs);
+      if (ld.pace.length > PACE_MAX) ld.pace.shift();
 
       const participant = ld.participantIdx !== null ? this._participants[ld.participantIdx] : null;
       SocketService.emit('training:lap', {
@@ -242,6 +248,7 @@ class CompetitionTrainingServiceClass {
         bestMs: ld.laps[0],
         lastMs: lapTimeMs,
         laps:   [...ld.chronoLaps].reverse(),
+        pace:   ld.pace ? [...ld.pace] : [],
       });
     };
 
@@ -316,7 +323,7 @@ class CompetitionTrainingServiceClass {
       this._durationMs = null;
       for (const ld of this._laneMap.values()) {
         ld.count = 0; ld.sum = 0; ld.lastMs = null;
-        ld.laps = []; ld.chronoLaps = [];
+        ld.laps = []; ld.chronoLaps = []; ld.pace = [];
       }
       SocketService.emit('training:standby', this.getLanes());
       console.log(`[CompetitionTraining] Heat ${this._heatNumber} force-stopped — same heat`);
@@ -363,6 +370,7 @@ class CompetitionTrainingServiceClass {
         bestMs: ld.laps.length > 0 ? ld.laps[0] : null,
         lastMs: ld.lastMs,
         laps:   [...ld.chronoLaps].reverse(),
+        pace:   ld.pace ? [...ld.pace] : [],
       });
     }
     return lanes.sort((a, b) => a.lane - b.lane);

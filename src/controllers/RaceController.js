@@ -660,6 +660,44 @@ class RaceController {
     res.redirect('/races');
   }
 
+  // ─── POST /races/:id/status ───────────────────────────────────────────────
+  // Cambio manual del estado (pendiente / en curso / completada) desde la ficha.
+  // Con una manga de esta carrera corriendo no se toca: el cronometraje manda.
+
+  static setStatus(req, res) {
+    const es = (res.locals.lang || 'es') === 'es';
+    const race = Race.findById(req.params.id);
+    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
+    const status = String(req.body.status || '');
+    const back = `/races/${race.id}`;
+    if (!['pending', 'active', 'finished'].includes(status)) return res.redirect(back);
+    if (status === race.status) return res.redirect(back);
+
+    const TimingService = require('../services/TimingService');
+    if (TimingService.isRunning && String(TimingService.activeRaceId) === String(race.id)) {
+      req.session.flash = { type: 'error', text: es
+        ? 'Hay una manga de esta carrera en marcha. Párala antes de cambiar el estado.'
+        : 'A heat of this race is running. Stop it before changing the status.' };
+      return res.redirect(back);
+    }
+
+    Race.updateStatus(race.id, status);
+    const label = es
+      ? { pending: 'Pendiente', active: 'En curso', finished: 'Completada' }[status]
+      : { pending: 'Pending', active: 'Active', finished: 'Completed' }[status];
+    let text = es ? `Estado cambiado a «${label}».` : `Status changed to “${label}”.`;
+    if (status === 'active') {
+      const others = Race.findAll().filter(r => r.status === 'active' && String(r.id) !== String(race.id));
+      if (others.length) {
+        text += es
+          ? ` Ojo: también está en curso «${others.map(r => r.name).join('», «')}». El siguiente GO del DS va a la primera manga pendiente de cualquier carrera en curso.`
+          : ` Note: “${others.map(r => r.name).join('”, “')}” is also active. The next DS GO goes to the first pending heat of any active race.`;
+      }
+    }
+    req.session.flash = { type: 'success', text };
+    res.redirect(back);
+  }
+
   // ─── POST /races/:id/complete ─────────────────────────────────────────────
 
   static complete(req, res) {
