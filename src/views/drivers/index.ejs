@@ -29,9 +29,17 @@ const CAT_ICONS = {
     <div class="vt-head">
       <div class="vt-head__title">
         <h1><%= lang === 'es' ? 'Pilotos' : 'Drivers' %></h1>
-        <span class="vt-cnt"><%= profiles.length %></span>
+        <span class="vt-cnt" data-list-search-count><%= profiles.length %></span>
       </div>
       <div class="vt-head__actions">
+        <% if (profiles.length) { %>
+        <label class="vt-search" title="<%= lang === 'es' ? 'Atajo: /' : 'Shortcut: /' %>">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4" stroke-linecap="round"/></svg>
+          <input type="search" data-list-search="#catList" autocomplete="off"
+                 placeholder="<%= lang === 'es' ? 'Buscar piloto o categoría…' : 'Search driver or category…' %>"
+                 aria-label="<%= lang === 'es' ? 'Buscar piloto o categoría…' : 'Search driver or category…' %>">
+        </label>
+        <% } %>
         <a href="/plantilla_pilotos.csv" download class="vt-btn vt-btn--ghost vt-btn--sm">
           <svg viewBox="0 0 24 24"><path d="M12 4v12M6 11l6 6 6-6M5 21h14"/></svg>
           <%= lang === 'es' ? 'Plantilla CSV' : 'CSV Template' %>
@@ -82,6 +90,7 @@ const CAT_ICONS = {
         <a href="/drivers/new" class="vt-btn vt-btn--primary">+ <%= lang === 'es' ? 'Añadir piloto' : 'Add driver' %></a>
       </div>
     <% } else { %>
+      <div id="catList">
 
       <% CATEGORIES.forEach(cat => { %>
         <% const group = profiles.filter(p => p.category === cat); %>
@@ -96,7 +105,7 @@ const CAT_ICONS = {
             </div>
             <div class="vt-list">
               <% group.forEach(p => { %>
-                <div class="vt-list-row">
+                <div class="vt-list-row" data-search-extra="<%= CAT_LABELS[lang][cat] %>">
                   <div class="vt-list-row__main">
                     <span class="vt-cat-dot vt-cat--<%= p.category %>"></span>
                     <span class="vt-list-row__name"><%= p.name %></span>
@@ -122,6 +131,8 @@ const CAT_ICONS = {
         <% } %>
       <% }) %>
 
+    </div>
+    <p class="vt-hint" data-list-search-empty hidden style="margin-top:18px;text-align:center"><%= lang === 'es' ? 'Nada coincide con la búsqueda.' : 'Nothing matches your search.' %></p>
     <% } %>
   </div>
 </div>
@@ -144,4 +155,5 @@ document.getElementById('csv-file-picker')?.addEventListener('change', function(
 });
 </script>
 
+<script src="/js/list-search.js"></script>
 <%- include('../partials/footer') %>

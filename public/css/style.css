@@ -3060,6 +3060,9 @@ body:has(.vt-page) { background: #000; }
   font-family: 'Saira', sans-serif; font-size: 14.5px; width: 200px;
 }
 .vt-search input::placeholder { color: var(--vt-mute-2); }
+.vt-search input[type="search"]::-webkit-search-cancel-button { filter: invert(.6); cursor: pointer; }
+/* Filas y secciones ocultadas por el buscador (list-search.js) */
+.vt-list-row[hidden], .vt-list-section[hidden], .vt-table tr[hidden] { display: none !important; }
 
 /* Tabs */
 .vt-tabs {
