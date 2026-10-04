@@ -13,6 +13,23 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.43.0] — 2026-10-04
+
+### Añadido
+- **Buscador en los catálogos de pilotos, equipos y coches.** Escribe para filtrar al momento (en pilotos también por categoría), con el contador de resultados a la vista. La tecla `/` lleva al buscador y Esc lo limpia; al volver de editar una ficha, el filtro sigue puesto.
+- **Gráfico de ritmo en el directo de entrenamiento.** Cada carril muestra su ritmo vuelta a vuelta, con líneas de mejor vuelta y media; al pasar por encima ves el número de vuelta, el tiempo y lo que le falta a la mejor.
+
+### Mejorado
+- **Inicio más claro y sin menú lateral.** Cabecera con un buscador **«Ir a…»** (`⌘K` / `Ctrl K`; Intro abre el primer resultado, Esc lo limpia) y el estado del DS y la IP del servidor; debajo, la franja de la carrera en curso y los accesos en mosaicos de **Competición**, **Catálogo** (con cuántos tienes de cada) y **Sistema**, el interruptor **«Abrir enlaces en»** y la tabla de **Carreras recientes**. Una barra fija abajo lista las **ventanas abiertas** para traerlas al frente o cerrarlas. Mayús + clic abre en la misma ventana.
+  - La franja de la carrera en curso añade el botón **Corrección de vueltas** (de la manga en curso o la última terminada); el **líder estimado** es el mismo que el de la Clasificación estimada del directo y se actualiza en vivo; **Mangas** cuenta ya la manga que se está corriendo (1/10 desde que arranca la primera).
+  - El inicio se actualiza solo cuando arranca una carrera o cambia su estado, sin recargar a mano.
+- **Directo de entrenamiento renovado.** Los botones de arriba son los mismos que en el directo de carrera (GO, pausa, STOP, voz, Vista, reiniciar, pantalla completa, Volver). Cada tarjeta muestra la última vuelta y su diferencia con la mejor, la fila Mejor / Media / Récord y solo las **10 últimas vueltas**, cada una con su número. La vista compacta también enseña la última vuelta con su diferencia, Mejor / Media / Récord y el ritmo en miniatura.
+- **Formulario del entreno de competición más cómodo.** Pasos numerados, buscador en el catálogo de equipos (Intro añade el primero), subir o bajar un participante de carril, **Sortear carriles**, **Vaciar todo**, aviso de nombres repetidos, botón **Orden natural** en la secuencia y una barra fija con el resumen (carriles · en pista · reserva) y **Preparar sesión**.
+- **Nueva carrera más guiada.** El primer paso del asistente se ordena en bloques numerados (Datos, Pista, Formato y, solo en resistencia, Reglas de resistencia), con iconos claros. Antes de enviar avisa si falta el nombre o el tipo, o si algún circuito no tiene entre 2 y 8 carriles, y una barra fija abajo resume la carrera con el botón **Siguiente**.
+
+### Corregido
+- **En la app de escritorio, algunas secciones no se abrían desde el inicio** (por ejemplo Entrenamientos o Ajustes) si su ventana ya existía pero se había vuelto al inicio desde ella: había que cerrarla o reiniciar la app. Ahora esa ventana vuelve a la sección pedida y se trae al frente, aunque esté minimizada.
+
 ## [1.42.2] — 2026-10-04
 
 ### Corregido
