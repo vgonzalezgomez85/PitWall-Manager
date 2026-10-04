@@ -19,11 +19,23 @@
 // Bandera del país del equipo. country viene como "Nombre|🇪🇸" o "Nombre|__SVG__"
 // (senyera). Devuelve el HTML de la bandera (+ espacio) o '' si no hay.
 const SENYERA_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 6" width="16" height="11" style="border-radius:2px;flex-shrink:0;vertical-align:middle"><rect width="9" height="6" fill="#FCDD09"/><rect y="0.667" width="9" height="0.889" fill="#DA121A"/><rect y="2.222" width="9" height="0.889" fill="#DA121A"/><rect y="3.778" width="9" height="0.889" fill="#DA121A"/><rect y="5.333" width="9" height="0.667" fill="#DA121A"/></svg>';
+const IKURRINA_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 6" width="16" height="11" style="border-radius:2px;flex-shrink:0;vertical-align:middle"><rect width="9" height="6" fill="#DC0A2D"/><line x1="0" y1="0" x2="9" y2="6" stroke="#00933C" stroke-width="1.8"/><line x1="0" y1="6" x2="9" y2="0" stroke="#00933C" stroke-width="1.8"/><rect x="0" y="2.4" width="9" height="1.2" fill="#FFFFFF"/><rect x="3.9" y="0" width="1.2" height="6" fill="#FFFFFF"/></svg>';
+// Windows no pinta banderas emoji: se sirve el SVG de public/flags/4x3/ por
+// código ISO (mismo cálculo que countries.js#flagEmojiToIso).
+function flagEmojiToIso(flag) {
+  const codePoints = [...flag].map(c => c.codePointAt(0));
+  if (codePoints.length !== 2) return null;
+  return codePoints.map(cp => String.fromCharCode(cp - 0x1F1E6 + 65)).join('').toLowerCase();
+}
 function flagHtml(country) {
   if (!country) return '';
   const flag = String(country).split('|')[1];
   if (!flag) return '';
-  const inner = flag === '__SVG__' ? SENYERA_SVG : `<span style="line-height:1">${flag}</span>`;
+  const iso = flagEmojiToIso(flag);
+  const inner = flag === '__SVG__'     ? SENYERA_SVG
+              : flag === '__SVG_EUS__' ? IKURRINA_SVG
+              : iso ? `<img src="/flags/4x3/${iso}.svg" alt="" width="16" height="11" style="object-fit:cover;border-radius:2px;vertical-align:middle">`
+              : `<span style="line-height:1">${flag}</span>`;
   return `<span class="lane-flag">${inner}</span>`;
 }
 // Color determinista por categoría (mismo string → mismo color, sin
@@ -71,7 +83,8 @@ function formatDelta(bestMs, avgMs) {
 // de distancia respecto al que tiene delante (projGapAhead de
 // renderProjected), mismo formato en los dos sitios.
 function formatProjGapV(g) {
-  return (g && Math.abs(g) >= 0.01) ? `-${g.toFixed(2)}` : '—';
+  // Sin ceros de relleno: «-6» y «-0.5», no «-6.00» y «-0.50».
+  return (g && Math.abs(g) >= 0.01) ? `-${parseFloat(g.toFixed(2))}` : '—';
 }
 
 // Color para ÚLTIMA: verde si ≤ mejor, blanco si ≤ media, ámbar si ≤ mejor*1.05, rojo si peor.
@@ -93,7 +106,7 @@ function deltaColor(bestMs, avgMs) {
 }
 function _setLvColor(el, color) {
   if (!el) return;
-  el.classList.remove('lv-color-green', 'lv-color-white', 'lv-color-amber', 'lv-color-red');
+  el.classList.remove('lv-color-green', 'lv-color-white', 'lv-color-amber', 'lv-color-red', 'lv-color-purple', 'lv-color-pit');
   if (color) el.classList.add('lv-color-' + color);
 }
 
@@ -104,7 +117,9 @@ function formatRemaining(ms) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-// ── View picker: modal con 4 layouts (V1 horizontal, V2 compacta, V3/V4 soon) ─
+// ── View picker: filas (1) o tarjetas con detalles (3) ──────────────────────
+// La antigua «cuadrícula compacta» (2) se quitó al rediseñar las tarjetas: era
+// la 3 con dos datos menos. Un '2' guardado o en ?view=2 abre las tarjetas.
 function _viewStorageKey() {
   return `pitwall.liveView.race-${RACE_DATA.raceId}`;
 }
@@ -112,8 +127,9 @@ function openViewPicker() {
   const ov = document.getElementById('viewPickerOverlay');
   if (!ov) return;
   ov.hidden = false;
-  // Marcar la opción activa
-  const current = localStorage.getItem(_viewStorageKey()) || '1';
+  // Marcar la opción activa (la que se ve, guardada o por defecto)
+  const grid = document.getElementById('lanesGrid');
+  const current = grid && grid.classList.contains('live-lanes--vertical') ? '3' : '1';
   ov.querySelectorAll('.vp-opt').forEach(b => {
     b.classList.toggle('is-active', b.dataset.mode === current);
   });
@@ -125,21 +141,18 @@ function closeViewPicker() {
 function selectView(mode, persist = true) {
   const grid = document.getElementById('lanesGrid');
   if (!grid) return;
-  const m = String(mode);
-  grid.classList.toggle('live-lanes--vertical', m === '2');
-  grid.classList.toggle('live-lanes--detailed', m === '3');
-  // V3 también activa el layout de cuadrícula compacta como base.
-  if (m === '3') grid.classList.add('live-lanes--vertical');
+  const m = String(mode) === '1' ? '1' : '3';
+  grid.classList.toggle('live-lanes--vertical', m === '3');
   if (persist) { try { localStorage.setItem(_viewStorageKey(), m); } catch {} }
   closeViewPicker();
   if (typeof fitLaneCards === 'function') requestAnimationFrame(() => fitLaneCards());
   // Re-evaluar paginación de V1 al cambiar de vista
   requestAnimationFrame(_v1ApplyPaging);
-  // La clasificación acoplada solo aplica en V1: al volver, reajustarla.
+  // La clasificación acoplada cambia de alto/ancho con la vista: reajustarla.
   if (typeof _refitSideStandings === 'function') requestAnimationFrame(_refitSideStandings);
 }
 
-// ── Clasificación estimada acoplada a la derecha (solo V1) ───────────────
+// ── Clasificación estimada acoplada a la derecha (filas y tarjetas) ──────
 // Conmutador #sideBtn. Estado por carrera en localStorage; el parámetro de
 // URL ?side=standings (o ?side=none) lo fuerza SIN guardarlo: sirve para
 // enlaces directos (pantalla de sala) y para capturas.
@@ -204,6 +217,63 @@ function _v1ResetPaging(grid) {
   }
 }
 
+// Dos columnas (ver _v1UseTwoCols): caben `perCol` filas por columna; si no
+// caben todas, páginas de 2×perCol que rotan igual que en una columna. Las
+// filas se reparten de arriba abajo y luego a la segunda columna.
+function _v1ApplyPagingCols2(grid, cards) {
+  cards.forEach(c => { c.style.display = ''; });
+  const ordered = cards.slice().sort((a, b) =>
+    (parseInt(a.style.order || '0', 10)) - (parseInt(b.style.order || '0', 10)));
+  const perCol = _v1RowsPerColumn(grid);
+  const perPage = perCol * 2;
+  if (ordered.length <= perPage) {
+    grid.style.setProperty('--v1-rows', Math.ceil(ordered.length / 2));
+    return _v1ResetPaging(grid);
+  }
+  const pages = [];
+  for (let i = 0; i < ordered.length; i += perPage) pages.push(ordered.slice(i, i + perPage));
+  _v1Page = _v1Page % pages.length;
+  cards.forEach(c => { c.style.display = 'none'; });
+  pages[_v1Page].forEach(c => { c.style.display = ''; });
+  // Mismo alto de fila en todas las páginas: la última, más corta, no estira.
+  grid.style.setProperty('--v1-rows', perCol);
+  if (!_v1PageTimer) {
+    _v1PageTimer = setInterval(() => { _v1Page = _v1Page + 1; _v1ApplyPaging(); }, V1_PAGE_MS);
+  }
+}
+
+// Filas que caben en una columna de V1 con el alto mínimo de fila del CSS.
+function _v1RowsPerColumn(grid) {
+  const cs = getComputedStyle(grid);
+  const gap = parseFloat(cs.rowGap) || 0;
+  const pad = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+  const lh = document.getElementById('lanesHeader');
+  const headerH = lh && lh.offsetParent ? lh.offsetHeight + gap : 0;
+  const ref = grid.querySelector('.lane-card:not(.is-rest)') || grid.querySelector('.lane-card');
+  const minH = ref ? (parseFloat(getComputedStyle(ref).minHeight) || 40) : 40;
+  return Math.max(1, Math.floor((grid.clientHeight - pad - headerH + gap) / (minH + gap)));
+}
+
+// V1 con muchos equipos: si no caben todos en una columna de filas, se
+// reparten en DOS columnas (cada una con su cabecera) para verlos todos a la
+// vez, como WinSlot. Solo si cada columna conserva un ancho legible.
+const V1_COLS2_MIN_COL_W = 520;
+function _v1UseTwoCols(W, H) {
+  const cards = lanesGrid.querySelectorAll('.lane-card').length;
+  const gap = parseFloat(getComputedStyle(lanesGrid).rowGap) || 0;
+  const lh = document.getElementById('lanesHeader');
+  const headerH = lh ? lh.offsetHeight + gap : 0;
+  // min-height de una fila en UNA columna: clamp(46px, 5.5vh, 75px) (live.css).
+  const minH1 = Math.min(75, Math.max(46, window.innerHeight * 0.055));
+  const fitRows1 = Math.max(1, Math.floor((H - headerH + gap) / (minH1 + gap)));
+  const two = cards > fitRows1 && W / 2 >= V1_COLS2_MIN_COL_W;
+  lanesGrid.classList.toggle('v1-cols2', two);
+  if (!two) lanesGrid.style.removeProperty('--v1-rows');
+  else if (!lanesGrid.style.getPropertyValue('--v1-rows')) {
+    lanesGrid.style.setProperty('--v1-rows', Math.ceil(cards / 2));
+  }
+}
+
 function _v1ApplyPaging() {
   const grid = document.getElementById('lanesGrid');
   if (!grid) return;
@@ -213,6 +283,7 @@ function _v1ApplyPaging() {
   }
   const cards = Array.from(grid.querySelectorAll('.lane-card'));
   if (cards.length === 0) return _v1ResetPaging(grid);
+  if (grid.classList.contains('v1-cols2')) return _v1ApplyPagingCols2(grid, cards);
   // Mostrar todo para medir
   cards.forEach(c => { c.style.display = ''; });
   // ¿Cabe sin scroll? Si sí, no paginar.
@@ -313,7 +384,7 @@ function _initViewPicker() {
   try { saved = localStorage.getItem(_viewStorageKey()); } catch {}
   if (['1', '2', '3'].includes(qv)) selectView(qv, false);
   else if (saved) selectView(saved);
-  else if (nonRest > 8) selectView('2');  // default sensato para muchos carriles
+  else if (nonRest > 8) selectView('3');  // default sensato para muchos carriles
   _initSideStandings();
   // Cerrar con Escape
   document.addEventListener('keydown', e => {
@@ -500,17 +571,24 @@ function buildCard(lane) {
           <span class="lane-card__trend-down"></span>
         </span>
         <span class="lane-card__name"><span class="lane-card__name-scroll">${flagHtml(lane.country)}${teamHtml(lane.name, lane.categoria)}</span></span>
-        <span class="lane-card__pit" id="card-pit-${lane.lane}" hidden title="Pit-stop">
-          🔧<span class="lane-card__pit-count" id="card-pit-count-${lane.lane}"></span>
-        </span>
-        <span class="lane-card__exit" id="card-exit-${lane.lane}" hidden title="${LANG === 'es' ? 'Salidas' : 'Exits'}">
-          ⚠️<span class="lane-card__exit-count" id="card-exit-count-${lane.lane}"></span>
-        </span>
-        <span class="lane-card__tire" id="card-tire-${lane.lane}" hidden title="${LANG === 'es' ? 'Cambios de neumático' : 'Tyre changes'}">
-          🛞<span class="lane-card__tire-count" id="card-tire-count-${lane.lane}"></span>
+        <span class="lane-card__chips">
+          <span class="lane-card__exit" id="card-exit-${lane.lane}" hidden title="${LANG === 'es' ? 'Salidas' : 'Exits'}">
+            ⚠️<span class="lane-card__exit-count" id="card-exit-count-${lane.lane}"></span>
+          </span>
+          <span class="lane-card__pit" id="card-pit-${lane.lane}" hidden title="Pit-stop">
+            🔧<span class="lane-card__pit-count" id="card-pit-count-${lane.lane}"></span><span class="lane-card__pit-total" id="card-pit-total-${lane.lane}"></span>
+          </span>
+          <span class="lane-card__tire" id="card-tire-${lane.lane}" hidden title="${LANG === 'es' ? 'Cambios de neumático' : 'Tyre changes'}">
+            🛞<span class="lane-card__tire-count" id="card-tire-count-${lane.lane}"></span><span class="lane-card__tire-max" id="card-tire-max-${lane.lane}"></span>
+          </span>
+          <span class="lane-card__no-driver">${LANG === 'es' ? 'SIN PILOTO' : 'NO DRIVER'}</span>
         </span>
       </div>
       <div class="lane-card__driver-row" id="card-driver-${lane.lane}"></div>
+      <div class="lane-card__drive" id="card-drive-${lane.lane}" hidden>
+        <span class="lane-card__drive-bar"><span class="lane-card__drive-fill" id="card-drive-fill-${lane.lane}"></span></span>
+        <span class="lane-card__drive-time" id="card-drive-time-${lane.lane}"></span>
+      </div>
     </div>
 
     <div class="lane-card__col lane-card__col--laps" data-col="vlt">
@@ -526,6 +604,7 @@ function buildCard(lane) {
     <div class="lane-card__col lane-card__col--last" data-col="ultima">
       <div class="lane-card__col-label">${LANG === 'es' ? 'Última' : 'Last'}</div>
       <div class="lane-card__col-val" id="card-last-${lane.lane}">${formatMs(lane.lastLapMs)}</div>
+      <span class="lane-card__last-tag" id="card-last-tag-${lane.lane}" hidden></span>
     </div>
 
     <div class="lane-card__col lane-card__col--best" data-col="mejor">
@@ -599,18 +678,33 @@ function appendNextLaneBadge(card, info) {
 function initCards() {
   const activeLaneCount = RACE_DATA.lanes.filter(l => !l.isRest).length;
   // Por defecto: hasta 8 carriles → vista horizontal (filas anchas).
-  //              más de 8         → vista compacta (cuadrícula).
+  //              más de 8         → tarjetas.
   // El botón "🖼 Vista" del header abre el picker para cambiarlo.
   if (activeLaneCount > 8) {
     lanesGrid.classList.add('live-lanes--vertical');
   }
   lanesGrid.style.setProperty('--lanes', activeLaneCount);
+  // Ajustes → «Orden del directo» por vueltas reales: el Gap V (distancia en
+  // la clasificación ESTIMADA) no cuadra con ese orden y se oculta.
+  document.body.classList.toggle('live-order-laps', RACE_DATA.liveOrder === 'laps');
+  // Reservar la línea del piloto aunque algún carril no haya fichado.
+  lanesGrid.classList.toggle('live-lanes--drivers', !!RACE_DATA.driverControl);
+  // Segunda cabecera de columnas para V1 a dos columnas (v1-cols2).
+  const lh = document.getElementById('lanesHeader');
+  if (lh && !document.getElementById('lanesHeader2')) {
+    const lh2 = lh.cloneNode(true);
+    lh2.id = 'lanesHeader2';
+    lh2.classList.add('lanes-header--2');
+    lh.after(lh2);
+  }
 
   RACE_DATA.lanes.forEach(lane => {
     lanesGrid.appendChild(buildCard(lane));
-    if (lane.activeDriver) setActiveDriver(lane.lane, lane.activeDriver);
+    if (!lane.isRest) setActiveDriver(lane.lane, lane.activeDriver);
   });
-  _startDriverFlip();   // flip nombre↔piloto en tarjetas con piloto asignado
+  // Flip nombre↔piloto en filas con piloto asignado; con control de pilotos
+  // el piloto ya va fijo en su propia línea (live-lanes--drivers).
+  if (!RACE_DATA.driverControl) _startDriverFlip();
   // Mide los nombres una vez montadas las tarjetas (marquesina si no caben)
   setTimeout(() => window.refreshLaneMarquees?.(), 50);
   if (RACE_DATA.mangaStatus === 'finished') {
@@ -643,8 +737,44 @@ function updateCard(lane, lapCount, lastLapMs, bestLapMs, avgLapMs, exitCount) {
   // "Gap V" REAL (vueltas ya corridas de distancia respecto al que va delante
   // ahora mismo, entre vecinos del orden PROYECTADO). Lo rellena sortCards()
   // tras renderProjected, que es quien fija ese orden y las P.x.
-  // Colores condicionales (V1 los muestra; en V2 se imponen los del mockup B vía CSS)
-  _setLvColor(lastEl,  ultColor(lastLapMs, bestLapMs, avgLapMs));
+  _lastLapState[lane] = { lastLapMs, bestLapMs, avgLapMs };
+  paintLastLap(lane);
+}
+
+// Color y etiqueta de la ÚLTIMA vuelta. Además de los colores de ultColor
+// (verde = su mejor vuelta, sin etiqueta): morado con «RÉCORD CARRERA» si es
+// el récord de la carrera, y azul con «BOXES» si fue una parada (si no, la
+// parada saldría en rojo como una vuelta lenta). La etiqueta solo se ve en
+// las tarjetas.
+const _lastLapState = {};   // lane → { lastLapMs, bestLapMs, avgLapMs }
+const _pitLapMs     = {};   // lane → tiempo de la última vuelta que fue parada
+function paintLastLap(lane) {
+  const s = _lastLapState[lane];
+  const lastEl = document.getElementById(`card-last-${lane}`);
+  const tagEl  = document.getElementById(`card-last-tag-${lane}`);
+  if (!s || !lastEl) return;
+  const ms = s.lastLapMs;
+  let color = ultColor(ms, s.bestLapMs, s.avgLapMs);
+  let tag = null;
+  if (ms != null && _pitLapMs[lane] === ms) {
+    color = 'pit'; tag = LANG === 'es' ? 'BOXES' : 'PIT';
+  } else if (ms != null && ms === _raceRecordMs() && _raceBestLaps[lane]?.bestLapMs === ms) {
+    color = 'purple'; tag = LANG === 'es' ? 'RÉCORD CARRERA' : 'RACE RECORD';
+  }
+  _setLvColor(lastEl, color);
+  lastEl.parentElement.classList.toggle('has-tag', !!tag);
+  if (tagEl) {
+    tagEl.hidden = !tag;
+    tagEl.textContent = tag || '';
+    tagEl.className = 'lane-card__last-tag' + (tag ? ' lane-card__last-tag--' + color : '');
+  }
+}
+function _raceRecordMs() {
+  let min = null;
+  Object.values(_raceBestLaps).forEach(b => {
+    if (b && b.bestLapMs != null && (min == null || b.bestLapMs < min)) min = b.bestLapMs;
+  });
+  return min;
 }
 
 
@@ -685,7 +815,22 @@ function updatePitIndicator(lane, count) {
   }
   wrap.hidden = false;
   num.textContent = count > 1 ? `+${count - 1}` : '';
+  const total = document.getElementById(`card-pit-total-${lane}`);
+  if (total) total.textContent = `PIT ${count}`;
   _refitIfBadgeChanged(_sig, wrap, num);
+}
+
+// Resalta un aviso de la tarjeta (parada recién hecha, neumáticos recién
+// cambiados) durante CHIP_RECENT_MS: en una pantalla de 24 carriles, el
+// número solo no dice qué ha pasado ahora mismo.
+const CHIP_RECENT_MS = 45000;
+const _chipTimers = {};
+function flashChip(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.add('is-recent');
+  clearTimeout(_chipTimers[id]);
+  _chipTimers[id] = setTimeout(() => el.classList.remove('is-recent'), CHIP_RECENT_MS);
 }
 
 // Badge ⚠️ pequeño junto al nombre con el nº de salidas de la manga — mismo
@@ -710,10 +855,12 @@ function updateExitIndicator(lane, count) {
 // diferencia de pit/salidas (que vienen del cronometraje), se alimenta del
 // control de neumáticos vía `refreshTireIndicators()`. Destella al aumentar.
 let _tireUsedByLane = {};
-function updateTireIndicator(lane, used) {
+function updateTireIndicator(lane, used, allowance) {
   const wrap = document.getElementById(`card-tire-${lane}`);
   const num  = document.getElementById(`card-tire-count-${lane}`);
   if (!wrap || !num) return;
+  const max = document.getElementById(`card-tire-max-${lane}`);
+  if (max) max.textContent = allowance ? `/${allowance}` : '';
   const _sig = _badgeSig(wrap, num);
   if (!used || used <= 0) {
     wrap.hidden = true;
@@ -728,6 +875,8 @@ function updateTireIndicator(lane, used) {
     wrap.classList.remove('tire-flash');
     void wrap.offsetWidth;               // reinicia la animación
     wrap.classList.add('tire-flash');
+    // En la carga inicial no hay «cambio reciente», solo el estado.
+    if (_tireUsedByLane[lane] != null) flashChip(`card-tire-${lane}`);
   }
   _tireUsedByLane[lane] = used;
   _refitIfBadgeChanged(_sig, wrap, num);
@@ -746,7 +895,7 @@ function refreshTireIndicators() {
       d.summary.teams.forEach(t => { usedByName[t.name] = t.used; });
       (RACE_DATA.lanes || []).forEach(l => {
         if (l.isRest) return;
-        updateTireIndicator(l.lane, usedByName[l.name] || 0);
+        updateTireIndicator(l.lane, usedByName[l.name] || 0, d.summary.allowance || 0);
       });
     })
     .catch(() => {});
@@ -857,6 +1006,7 @@ function fitLaneCards() {
   lanesGrid.style.removeProperty('overflow-y');
   root.style.removeProperty('--lv-scale');
   clearRowDividers();
+  _v1UseTwoCols(W, H);
 
   // Modo horizontal (V1): una fila por carril. Todo se mide en el DOM real
   // (ancho de fila, chips, nombres, fuente computada) y con canvas.measureText
@@ -881,6 +1031,7 @@ const V1_NUM_MAX_PX  = 56;   // techo de las cifras (antes ~58px fijos por vh)
 const V1_NUM_MIN_PX  = 14;
 const V1_NAME_MAX_PX = 44;
 const V1_NAME_MIN_PX = 15;
+const V1_NAME_MIN_PX_COLS2 = 10;
 // Fila muy estrecha (media pantalla + clasificación al lado): si ni con las
 // cifras al mínimo le queda sitio al nombre, se ocultan columnas en este
 // orden (Gap V también está en la clasificación; VLT queda dentro de TOTAL).
@@ -930,7 +1081,8 @@ function _fitV1Rows(root, W, H, pass = 0, autoHide = 0) {
   const ccs = getComputedStyle(ref);
   const minH = parseFloat(ccs.minHeight) || 46;
   const fitRows = Math.max(1, Math.floor((availH + rowGap) / (minH + rowGap)));
-  const shown = Math.min(Math.max(1, cards.length), fitRows);
+  const nRows = lanesGrid.classList.contains('v1-cols2') ? Math.ceil(cards.length / 2) : cards.length;
+  const shown = Math.min(Math.max(1, nRows), fitRows);
   const cardH = Math.max(minH, (availH - rowGap * (shown - 1)) / shown);
   const padV = (parseFloat(ccs.paddingTop) || 0) + (parseFloat(ccs.paddingBottom) || 0)
              + (parseFloat(ccs.borderTopWidth) || 0) + (parseFloat(ccs.borderBottomWidth) || 0);
@@ -1005,9 +1157,14 @@ function _fitV1Rows(root, W, H, pass = 0, autoHide = 0) {
 
   // Mayor tamaño de cifra f que deja sitio al nombre (entero, hasta el 55% de
   // la fila; nunca menos del 30%). Todo crece con f → búsqueda binaria.
-  const nameMinW = Math.max(rowW * 0.30, prefixW + V1_NAME_MIN_PX * 6);
+  // A dos columnas caben TODOS los equipos a la vez: filas más bajas, así que
+  // el nombre puede bajar más; con el piloto en 2ª línea, el nombre cede alto.
+  const cols2 = lanesGrid.classList.contains('v1-cols2');
+  const nameMinPx = cols2 ? V1_NAME_MIN_PX_COLS2 : V1_NAME_MIN_PX;
+  const nameHFrac = lanesGrid.classList.contains('live-lanes--drivers') ? 0.42 : 0.46;
+  const nameMinW = Math.max(rowW * 0.30, prefixW + nameMinPx * 6);
   const nameMaxW = rowW * 0.55;
-  const nameFontOf = f => Math.max(V1_NAME_MIN_PX, Math.min(V1_NAME_MAX_PX, f * 0.8, cardH * 0.42));
+  const nameFontOf = f => Math.max(nameMinPx, Math.min(V1_NAME_MAX_PX, f * 0.8, cardH * nameHFrac));
   const gapOf = f => Math.round(Math.max(5, Math.min(18, f * 0.25)));
   const nGaps = cols.length + (nextW ? 1 : 0);
   const nameNeedOf = f => prefixW + nameWpp * nameFontOf(f) * 1.04 + 16;
@@ -1029,7 +1186,7 @@ function _fitV1Rows(root, W, H, pass = 0, autoHide = 0) {
   const nameLeft = rowW - numsWOf(fontPx) - nextW - gapPx * nGaps;
   if (nameWpp > 0 && nameNeedOf(fontPx) > nameLeft) {
     const fitPx = (nameLeft - prefixW - 16) / (nameWpp * 1.04);
-    namePx = Math.max(V1_NAME_MIN_PX, Math.min(namePx, Math.max(fitPx, namePx * 0.8)));
+    namePx = Math.max(nameMinPx, Math.min(namePx, Math.max(fitPx, namePx * 0.8)));
   }
 
   const set = (k, v) => lanesGrid.style.setProperty(k, v);
@@ -1086,12 +1243,12 @@ function fitVerticalGrid(root, W, H) {
   const pad = 8;          // .5rem de padding del contenedor
   const availW = W - pad * 2;
   const availH = H - pad * 2;
-  // La vista DETALLES (V3) tiene una fila extra (VLT/SAL/GAP V) → necesita
-  // tarjetas más altas y más cuadradas para que el contenido no se solape.
-  const detailed = lanesGrid.classList.contains('live-lanes--detailed');
-  const MIN_W = detailed ? 170 : 150;   // por debajo el nombre no se lee
-  const MIN_H = detailed ? 140 : 84;    // detalles: header + 3 filas de stats
-  const AR = detailed ? 1.15 : 1.6;     // relación ancho:alto deseada
+  // Las cifras de la tarjeta escalan con su ancho Y su alto (cqw/cqh): una
+  // tarjeta muy apaisada desperdicia ancho, y los 4 datos de abajo piden
+  // algo de anchura para no apretarse.
+  const MIN_W = 180;   // por debajo el nombre no se lee
+  const MIN_H = 110;   // cabecera + cifras + fila de datos
+  const AR = 1.45;     // relación ancho:alto deseada
 
   let best = null;
   for (let cols = 1; cols <= N; cols++) {
@@ -1195,22 +1352,34 @@ function armFullscreenRestore() {
   try { wanted = sessionStorage.getItem(FS_KEY) === '1'; } catch { wanted = false; }
   if (!wanted) return;
   _fsRestoreArmed = true;
+  // Un toque sobre un control (botón, enlace, campo) NO reentra: el cambio de
+  // modo redimensiona la página entre el pointerdown y el click, y el clic se
+  // perdía — había que pulsar dos veces. Ese toque hace su acción normal y la
+  // reentrada queda armada para el siguiente toque en zona libre o tecla.
+  const CONTROL = 'button, a, input, select, textarea, label, [role="button"], [onclick], [data-no-fs-restore]';
   const restore = (e) => {
-    _fsRestoreArmed = false;
-    document.removeEventListener('pointerdown', restore, true);
-    document.removeEventListener('keydown', restore, true);
-    if (document.fullscreenElement) return;
-    // «Volver» sale de la vista: reentrar en pantalla completa se comía el
-    // clic (el cambio de modo llega antes que la navegación) y no salía nunca.
-    if (e && e.target && e.target.closest && e.target.closest('[data-no-fs-restore]')) {
-      try { sessionStorage.removeItem(FS_KEY); } catch {}
+    if (e && e.type === 'keydown' && e.key === 'Escape') return;
+    const t = e && e.target && e.target.closest ? e.target : null;
+    if (t && t.closest(CONTROL)) {
+      // «Volver» sale de la vista: ya no se quiere pantalla completa.
+      if (t.closest('[data-no-fs-restore]')) {
+        try { sessionStorage.removeItem(FS_KEY); } catch {}
+        disarm();
+      }
       return;
     }
+    disarm();
+    if (document.fullscreenElement) return;
     const el = document.documentElement;
     const req = el.requestFullscreen || el.webkitRequestFullscreen;
     if (req) { const p = req.call(el); if (p && p.catch) p.catch(() => {}); }
   };
-  document.addEventListener('pointerdown', restore, true);
+  const disarm = () => {
+    _fsRestoreArmed = false;
+    document.removeEventListener('click', restore, true);
+    document.removeEventListener('keydown', restore, true);
+  };
+  document.addEventListener('click', restore, true);
   document.addEventListener('keydown', restore, true);
 }
 
@@ -1266,6 +1435,9 @@ if (lanesGrid && 'ResizeObserver' in window) {
 // Total y vueltas estimadas no se ocultan nunca (lo que mira el usuario).
 const SB_HIDE_ORDER = [6, 8, 7, 5];
 const SB_FONT_MIN = 11, SB_FONT_MAX = 15;
+// Para que quepan TODOS los equipos (hasta 40) la letra puede bajar hasta
+// aquí antes de paginar; el mínimo de arriba sigue valiendo para el ancho.
+const SB_FONT_MIN_FIT = 8;
 // Ancho automático (sin ancho manual): solo #, nombre, V. Proy., Total y Media.
 const SB_AUTO_HIDE = [6, 8, 7];
 function fitSidebarTable() {
@@ -1280,19 +1452,30 @@ function fitSidebarTable() {
   const thead = table.querySelector('thead');
   const headerH = thead ? thead.offsetHeight : 28;
   const usableH = Math.max(60, container.clientHeight - headerH);
-  // Alto de fila ≈ 1.15 líneas + 2 × padding (0.28em) + borde ≈ 1.75 × fuente.
-  let fontPx = Math.max(SB_FONT_MIN, Math.min(SB_FONT_MAX, usableH / rows.length / 1.75));
+  // Alto de fila ≈ 1.15 líneas + 2 × padding. Con pocas filas el padding es
+  // 0.28em (filas holgadas); con muchas se estrecha hasta 0.1em para que
+  // quepan todas (40 equipos) sin paginar antes de bajar la letra.
+  let fontPx = Math.max(SB_FONT_MIN_FIT, Math.min(SB_FONT_MAX, usableH / rows.length / 1.4));
+  const padOf = f => Math.max(f * 0.04, Math.min(f * 0.28, (usableH / rows.length - f * 1.15) / 2));
 
   const apply = f => {
     sidebar.style.setProperty('--sb-font', f.toFixed(1) + 'px');
     sidebar.style.setProperty('--sb-sub-font', f.toFixed(1) + 'px');
-    sidebar.style.setProperty('--sb-pad', (f * 0.28).toFixed(1) + 'px');
+    sidebar.style.setProperty('--sb-pad', padOf(f).toFixed(1) + 'px');
     sidebar.style.setProperty('--sb-th-font', Math.max(10, Math.min(14, f * 0.55)).toFixed(1) + 'px');
   };
   // Mostrar todas las filas para medir (la paginación las vuelve a ocultar).
   rows.forEach(r => { r.style.display = ''; });
   SB_HIDE_ORDER.forEach(n => table.classList.remove('sb-hide-' + n));
   apply(fontPx);
+  // La fila real puede medir algo más que la estimación (insignias, cifras
+  // grandes): si así no caben todas, se baja la letra con la medida real.
+  for (let i = 0; i < 3; i++) {
+    const realK = rows[0].getBoundingClientRect().height / fontPx;
+    if (!(realK > 0) || realK * fontPx * rows.length <= usableH || fontPx <= SB_FONT_MIN_FIT) break;
+    fontPx = Math.max(SB_FONT_MIN_FIT, usableH / rows.length / realK - 0.1);
+    apply(fontPx);
+  }
 
   // Sin ancho manual (resizer), el panel mide lo que su tabla: la letra la
   // decide el alto y el ancho sale solo, con los nombres enteros.
@@ -1347,7 +1530,9 @@ function sortCards(rows) {
   // Posición GENERAL de carrera (todas las tandas) por vueltas proyectadas,
   // calculada en renderProjected. Si no está disponible, cae al total dentro
   // de la tanda (comportamiento anterior).
-  const hasGlobal = _globalProjPos && _globalProjPos.size > 0;
+  // Ajustes → «Orden del directo»: con 'laps' se ordena por vueltas reales
+  // aunque haya proyección.
+  const hasGlobal = RACE_DATA.liveOrder !== 'laps' && _globalProjPos && _globalProjPos.size > 0;
   const posOf = r => { const g = _globalProjPos.get(r.name); return g ? g.pos : 9999; };
   const rawOf = r => { const g = _globalProjPos.get(r.name); return (g && g.raw != null) ? g.raw : (totalOf(r) || -1); };
 
@@ -1548,6 +1733,8 @@ function renderStandings(data) {
   highlightMangaLeader(data.standings);
 
   updateRaceBestLaps(data.raceBestLaps);
+  // El récord de carrera puede cambiar con esta vuelta: repintar todas.
+  Object.keys(_lastLapState).forEach(paintLastLap);
   // renderProjected ANTES que sortCards: calcula la posición general (todas las
   // tandas) que las tarjetas usan para su orden y su P.x.
   renderProjected(data);
@@ -1737,6 +1924,12 @@ function renderProjected(data) {
     prevProjGap[r.name] = { above: gapAboveNow[r.name], below: gapBelowNow[r.name] };
   });
 
+  // Puesto por vueltas reales: la flecha junto a la posición dice si la
+  // estimada lo deja por delante (▲) o por detrás (▼) de donde va ahora.
+  const realPos = new Map(rows.slice().sort((a, b) => (b.total || 0) - (a.total || 0))
+    .map((r, i) => [r.name, i + 1]));
+  const countryOf = new Map(RACE_DATA.lanes.map(l => [l.name, l.country]));
+
   if (projectedBody) projectedBody.innerHTML = rows.map((r, i) => {
     const gapVDisplay  = formatProjGapV(projGapAhead[r.name]);
     const gapVTDisplay = formatProjGapV(projGapLeader[r.name]);
@@ -1745,11 +1938,15 @@ function renderProjected(data) {
     const downCls = tr.down === 'good' ? ' good' : tr.down === 'bad' ? ' bad' : '';
     const upChar   = i === 0 ? '' : '▲';
     const downChar = i === rows.length - 1 ? '' : '▼';
+    const moved = (realPos.get(r.name) || 0) - (i + 1);
+    const move = moved > 0 ? '<span class="sr-move sr-move--up">▲</span>'
+               : moved < 0 ? '<span class="sr-move sr-move--down">▼</span>'
+               : '<span class="sr-move"></span>';
 
     return `
-    <tr class="srow">
-      <td><span class="sr-pos ${posClass(i+1)}">${i+1}</span></td>
-      <td><span class="sr-name" title="${teamPlain(r.name, r.categoria)}">${teamHtml(r.name, r.categoria)}</span></td>
+    <tr class="srow${activeMap.has(r.name) ? '' : ' srow--off'}">
+      <td><span class="sr-pos ${posClass(i+1)}">${i+1}</span>${move}</td>
+      <td><span class="sr-name" title="${teamPlain(r.name, r.categoria)}">${flagHtml(countryOf.get(r.name))}${teamHtml(r.name, r.categoria)}</span></td>
       <td class="sr-right"><span class="sr-proj">${r.projectedTotalRaw != null ? r.projectedTotalRaw.toFixed(1) : '—'}</span></td>
       <td class="sr-right"><span class="sr-ontrack">${r.total}</span></td>
       <td class="sr-right"><span class="sr-avg">${formatMs(r.avgLapMs)}</span></td>
@@ -2205,6 +2402,8 @@ function announce(text) {
       // "+N" suffix so spectators can tell how many extra pit-stops it had.
       updatePitIndicator(lap.lane, lap.pitStopCount ?? 0);
       updateExitIndicator(lap.lane, lap.exitCount ?? 0);
+      _pitLapMs[lap.lane] = lap.isPitStop ? lap.lapTimeMs : null;
+      if (lap.isPitStop) flashChip(`card-pit-${lap.lane}`);
 
       // The "fastest laps by lane" panel updates via the `standings` event
       // that fires right after this lap (server emits both back-to-back), and
@@ -2417,6 +2616,7 @@ function announce(text) {
   // ── Driver check-in ────────────────────────────────────────────────────────
   socket.on('driver_checkin', ({ lane, driverName }) => {
     setActiveDriver(lane, driverName);
+    refreshDriverTimes();
   });
 
   // Navigate to next manga when DS hardware GO starts it after current finished
@@ -2462,11 +2662,49 @@ function setActiveDriver(lane, driverName) {
     }
   }
 
+  card?.classList.toggle('no-driver', !!RACE_DATA.driverControl && !driverName);
+  if (!driverName) document.getElementById(`card-drive-${lane}`)?.setAttribute('hidden', '');
+
   // 3) Flash en la card al checkin
   if (driverName && card) {
     card.classList.add('card-checkin-flash');
     setTimeout(() => card.classList.remove('card-checkin-flash'), 800);
   }
+}
+
+// Tiempo conducido en la carrera por el piloto de cada carril, frente al
+// máximo por piloto (barra en las tarjetas V2/V3). Ámbar desde el 85 %.
+const DRIVER_TIMES_POLL_MS = 15000;
+function _fmtHM(ms) {
+  const min = Math.floor(Math.max(0, ms) / 60000);
+  return `${Math.floor(min / 60)}:${String(min % 60).padStart(2, '0')}`;
+}
+function updateDriveTime(lane, totalMs, maxMs) {
+  const wrap = document.getElementById(`card-drive-${lane}`);
+  const fill = document.getElementById(`card-drive-fill-${lane}`);
+  const time = document.getElementById(`card-drive-time-${lane}`);
+  if (!wrap || !fill || !time) return;
+  const frac = maxMs ? totalMs / maxMs : 0;
+  wrap.hidden = false;
+  time.textContent = maxMs ? `${_fmtHM(totalMs)} / ${_fmtHM(maxMs)}` : _fmtHM(totalMs);
+  fill.style.width = (Math.min(1, frac) * 100).toFixed(1) + '%';
+  wrap.classList.toggle('no-max', !maxMs);
+  wrap.classList.toggle('is-near', !!maxMs && frac >= 0.85 && frac < 1);
+  wrap.classList.toggle('is-over', !!maxMs && frac >= 1);
+}
+function refreshDriverTimes() {
+  if (!RACE_DATA.driverControl) return;
+  fetch(`/races/${RACE_DATA.raceId}/mangas/${RACE_DATA.mangaId}/driver-times.json`)
+    .then(r => r.json())
+    .then(d => {
+      Object.entries(d.lanes || {}).forEach(([lane, info]) =>
+        updateDriveTime(lane, info.totalMs || 0, d.maxMs || 0));
+    })
+    .catch(() => {});
+}
+if (RACE_DATA.driverControl) {
+  refreshDriverTimes();
+  if (RACE_DATA.isActive) setInterval(refreshDriverTimes, DRIVER_TIMES_POLL_MS);
 }
 
 // ── QR scanner input (USB reader acts as keyboard + Enter) ────────────────────

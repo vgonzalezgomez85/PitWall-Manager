@@ -13,6 +13,28 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.40.0] — 2026-10-04
+
+### Añadido
+- **Tarjetas del directo rediseñadas, legibles de lejos.** La **última vuelta** va en grande con el **total de vueltas** al lado, y debajo mejor vuelta, media, Gap V y vueltas de la manga. Las cifras se ajustan solas al tamaño de cada tarjeta, así que no se pisan con 6, 24 o 40 equipos. La última vuelta sale en **morado con «RÉCORD CARRERA»** si es la vuelta rápida de la carrera y en **azul con «BOXES»** si fue una parada (antes salía en rojo como una vuelta lenta).
+- **Piloto al volante en las tarjetas**, con una **barra del tiempo que lleva conducido en la carrera** frente al máximo por piloto (ámbar desde el 85 %, rojo si lo pasa). Si un carril no ha fichado, aparece **«SIN PILOTO»** mientras la manga está en marcha.
+- **Avisos en cada tarjeta:** salidas, **paradas en boxes («PIT 2»)** y **juegos de neumáticos usados sobre el total («4/12»)**. Una parada o un cambio de neumáticos recién hechos se resaltan durante unos segundos.
+- **Vista por filas a dos columnas** cuando los equipos no caben en una: se ven **todos a la vez** (hasta 40 en una pantalla de 1080p), cada columna con su cabecera, y los que descansan en su posición. En carreras con control de pilotos, cada fila lleva **el piloto fijo debajo del equipo** (ya no se alterna con el nombre del equipo).
+- **Clasificación estimada al lado también en la vista de tarjetas**, con el mismo botón que en filas. Con el panel abierto, las tarjetas quitan mejor, media y Gap V (ya están en la clasificación) y mantienen las **vueltas de la manga** bajo el total.
+- **Ajustes → «Orden del directo»:** ordenar tarjetas y filas por **clasificación estimada** (como hasta ahora) o por **vueltas reales** (a igualdad, menos tiempo total). Con vueltas reales, el Gap V no se muestra en tarjetas ni filas.
+
+### Mejorado
+- **Cabecera del directo más compacta:** relojes, tanda, manga y estado en una sola línea y botones solo con icono (salvo PAUSE, STOP, GO, REANUDAR y «Tanda N»). Pasa de 143 a 80 px de alto, que ganan las tarjetas y las filas.
+- **Nuevo aspecto de la clasificación estimada:** podio oro/plata/bronce, flecha que compara la posición estimada con la de vueltas reales, bandera y nombre en fuente estrecha, y atenuados los que no corren esta manga. **Caben siempre todos los equipos** sin pasar de página.
+- **Se quita la vista «Cuadrícula compacta»:** era igual que «Tarjetas con detalles» con menos datos. Quien la tuviera elegida, o un enlace con `?view=2`, abre las tarjetas.
+- **Tarjetas de descanso** con una disposición fija (posición, equipo, vueltas y «DESCANSO x/y»).
+- **Gap V sin ceros de relleno:** «-6» y «-0.5» en lugar de «-6.00» y «-0.50».
+
+### Corregido
+- **Tras recargar el directo en pantalla completa, los botones necesitaban dos clics:** el primero solo volvía a pantalla completa. Ahora un clic en un botón hace su acción a la primera; la pantalla completa vuelve al tocar una zona sin botones o pulsar una tecla.
+- **La bandera vasca salía como texto («_SVG_EUS_») en el directo**, y las demás banderas no se veían en Windows. Ahora se pintan como imagen.
+- **«Tarjetas con detalles» con pocos carriles** mostraba las cifras diminutas dentro de cajas enormes.
+
 ## [1.39.2] — 2026-10-04
 
 ### Corregido

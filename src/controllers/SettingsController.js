@@ -204,6 +204,8 @@ class SettingsController {
       serial_frame_gap_ms:  String(fgClean),
       debug_mode:           debugOn ? '1' : '0',
       infolap_enabled:      infolapOn ? '1' : '0',
+      // Orden de tarjetas/filas del directo: clasificación estimada o vueltas reales.
+      live_order:           req.body.live_order === 'laps' ? 'laps' : 'projected',
       access_restrict_enabled: accessOn ? '1' : '0',
       access_allowlist:        JSON.stringify(allowlist),
       // Interfaz de red a la que se ata el server (vacío = todas). Solo aplica
