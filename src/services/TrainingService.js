@@ -54,6 +54,10 @@ function lanesFromSettings() {
   return parseInt(Settings.get('sim_lanes', '6'), 10) || 6;
 }
 
+// Vueltas que se guardan por carril para el gráfico de ritmo del directo de
+// entrenamiento (en orden cronológico). `laps` sigue con las 20 de siempre.
+const PACE_MAX = 120;
+
 class TrainingServiceClass {
   constructor() {
     this._standby        = false;
@@ -199,6 +203,8 @@ class TrainingServiceClass {
       ld.laps.sort((a, b) => a - b);
       ld.chronoLaps.push(lapTimeMs);
       if (ld.chronoLaps.length > 20) ld.chronoLaps.shift();
+      (ld.pace = ld.pace || []).push(lapTimeMs);
+      if (ld.pace.length > PACE_MAX) ld.pace.shift();
 
       // Update session record
       const prevRecord = this._sessionRecords.get(lane);
@@ -217,6 +223,7 @@ class TrainingServiceClass {
         bestMs: ld.laps[0],
         lastMs: lapTimeMs,
         laps:   [...ld.chronoLaps].reverse(),
+        pace:   ld.pace ? [...ld.pace] : [],
       });
     };
 
@@ -316,6 +323,7 @@ class TrainingServiceClass {
         bestMs: ld.laps.length > 0 ? ld.laps[0] : null,
         lastMs: ld.lastMs,
         laps:   [...ld.chronoLaps].reverse(),
+        pace:   ld.pace ? [...ld.pace] : [],
       };
     });
   }
