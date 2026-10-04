@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.42.1] — 2026-10-04
+
+### Corregido
+- **Error 500 al recibir verificaciones de PitWall Control.** Con muchas verificaciones con fotos, el envío pasaba del límite de 8 MB y fallaba («request entity too large»). Ahora las importaciones de PitWall Control (`/import/…`) admiten hasta 100 MB.
+
 ## [1.42.0] — 2026-10-04
 
 ### Añadido

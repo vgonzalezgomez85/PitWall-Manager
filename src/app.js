@@ -291,6 +291,11 @@ app.set('views', path.join(__dirname, 'views'));
 // IPC hacia el proceso principal: es trabajo constante a cambio de un log que
 // nadie mira. En desarrollo sí interesa.
 if (process.env.NODE_ENV !== 'production') app.use(morgan('dev'));
+// Las importaciones de PitWall Control (/import/verificaciones lleva las fotos
+// de todas las verificaciones en base64, y se reemplazan en bloque: no se
+// pueden trocear) necesitan bastante más que el resto. Va antes del parser
+// global; body-parser no vuelve a parsear un cuerpo ya leído.
+app.use('/import', express.json({ limit: '100mb' }));
 // Límite elevado para soportar payloads de trazado con imagen base64 del circuito
 app.use(express.urlencoded({ extended: true, limit: '8mb' }));
 app.use(express.json({ limit: '8mb' }));
