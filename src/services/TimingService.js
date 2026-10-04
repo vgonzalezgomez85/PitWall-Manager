@@ -655,7 +655,9 @@ class TimingServiceClass {
     const c = this.session && this.session.circuits[ci];
     if (!c) return;
     if (c.autoStopTimer) { clearTimeout(c.autoStopTimer); c.autoStopTimer = null; }
-    const AUTO_FINISH_GRACE_MS = 30000;
+    // El simulador aleatorio no manda trama de fin: este timer ES el fin de la
+    // manga, así que cierra justo al agotar el tiempo, sin margen.
+    const AUTO_FINISH_GRACE_MS = SerialService.isSimulating ? 0 : 30000;
     const elapsed   = c.startTime ? (Date.now() - c.startTime) : 0;
     const remaining = Math.max(0, c.durationMs - elapsed) + AUTO_FINISH_GRACE_MS;
     c.autoStopTimer = setTimeout(() => {
@@ -1436,7 +1438,9 @@ class TimingServiceClass {
     // congestión del servidor en ese momento — un margen fijo obliga a
     // adivinar el peor caso; esto es inmune a cualquier retraso siempre que
     // sigan llegando cruces, aunque lleguen tarde. Ver _scheduleCircuitAutoFinish.
-    this._scheduleCircuitAutoFinish(ci);
+    // En el simulador aleatorio no: sus cruces no paran nunca y la manga no
+    // se cerraría jamás.
+    if (!SerialService.isSimulating) this._scheduleCircuitAutoFinish(ci);
 
     const ld = this.session.laneMap[lane];
     if (!ld) {

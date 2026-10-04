@@ -291,6 +291,7 @@ class SessionController {
     // falls back to the first manga of the next pending tanda.
     const nextLaneByLane = {};
     let nextMangaInfo = null;
+    let nextPendingMangaId = null;
     {
       const sameTandaMangas = Manga.findByTanda(manga.tanda_id) || [];
       let next = sameTandaMangas.find(m => m.number > manga.number && m.status !== 'finished');
@@ -304,6 +305,7 @@ class SessionController {
       } else if (next) {
         nextMangaInfo = { tandaNumber: tanda.number, mangaNumber: next.number, sameTanda: true };
       }
+      if (next && next.status === 'pending') nextPendingMangaId = next.id;
       if (next) {
         const nextLanes = Manga.getLanes(next.id) || [];
         // Number resting entities in next manga (1..N) so we can show
@@ -418,7 +420,7 @@ class SessionController {
     const isSimulating = SerialService.isSimulating;
     const isBart       = SerialService.isBart;
     const isPaused     = TimingService.isPaused && isActive;
-    res.render('races/live', { t: req.t, race, manga, tanda, lanes, laps, isActive, standings, projection, prevLapsByLane, totalMangas, totalTandas, totalRaceMs, effectiveMangaDurationMs, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, allParticipants, nextLaneByLane, nextMangaInfo, raceOver, isSimulating, isBart, isPaused });
+    res.render('races/live', { t: req.t, race, manga, tanda, lanes, laps, isActive, standings, projection, prevLapsByLane, totalMangas, totalTandas, totalRaceMs, effectiveMangaDurationMs, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, allParticipants, nextLaneByLane, nextMangaInfo, nextPendingMangaId, raceOver, isSimulating, isBart, isPaused });
   }
 
   // GET /races/:id/mangas/:mangaId/panel/:type  (standalone popup)
