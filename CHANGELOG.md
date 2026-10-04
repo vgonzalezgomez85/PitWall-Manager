@@ -13,6 +13,14 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.44.0] — 2026-10-04
+
+### Añadido
+- **Inicio personalizable.** El botón **«Personalizar»** del inicio deja elegir entre los diseños del boceto: **A + C · Mando con lanzador** (el de siempre, por defecto), **A · Centro de mando**, **B · Menú lateral + panel**, **C · Lanzador compacto** y **D · Mando con menú lateral**. La elección se guarda en el PitWall, así que la app de escritorio y cualquier navegador ven el mismo inicio.
+
+### Mejorado
+- **«Abrir enlaces en» (Ventana nueva / Esta ventana) pasa a la cabecera del inicio**, al lado de «Personalizar», en todos los diseños.
+
 ## [1.43.1] — 2026-10-04
 
 ### Añadido

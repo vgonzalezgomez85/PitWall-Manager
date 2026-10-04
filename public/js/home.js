@@ -75,11 +75,26 @@
   const dockList = document.getElementById('hmDockList');
   let lastKey = '';
 
+  // Según el diseño, las ventanas se ven en la barra inferior (A+C, C), en una
+  // píldora de la cabecera (A, D) o en la tarjeta de estado (B).
+  const pill = document.getElementById('hmWinPill');
+  const stat = document.getElementById('hmWinStat');
+  const statList = document.getElementById('hmWinStatList');
+
   function paintWindows(list) {
-    if (!dock || !dockList) return;
     const key = JSON.stringify(list.map(w => [w.id, w.title]));
     if (key === lastKey) return;
     lastKey = key;
+    const n = list.length;
+    const titles = list.map(w => w.title).filter(Boolean).join(' · ');
+    if (pill) {
+      pill.hidden = n === 0;
+      pill.textContent = n + (es ? (n === 1 ? ' ventana abierta' : ' ventanas abiertas') : (n === 1 ? ' open window' : ' open windows'));
+      pill.title = titles;
+    }
+    if (stat) stat.textContent = String(n);
+    if (statList) { statList.textContent = titles || '—'; statList.title = titles; }
+    if (!dock || !dockList) return;
     dock.hidden = list.length === 0;
     dockList.textContent = '';
     list.forEach(w => {
@@ -128,6 +143,19 @@
   }
   refreshWindows();
   setInterval(refreshWindows, 2000);
+
+  // ── Personalizar: elegir el diseño del inicio ─────────────────
+  const dlg = document.getElementById('hmCustomDlg');
+  const customBtn = document.getElementById('hmCustomBtn');
+  if (dlg && customBtn && typeof dlg.showModal === 'function') {
+    customBtn.addEventListener('click', () => {
+      dlg.showModal();
+      const on = dlg.querySelector('.hm-opt.is-on');
+      if (on) on.focus();
+    });
+    dlg.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => dlg.close()));
+    dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
+  }
 
   // ── Buscador «Ir a…» ───────────────────────────────────────────
   const search = document.getElementById('hmSearch');
