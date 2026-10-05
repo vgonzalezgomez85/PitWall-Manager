@@ -28,7 +28,7 @@
            const currentId = lane.team_id || lane.driver_id;
       %>
         <div style="display:grid;grid-template-columns:3rem 1fr;align-items:center;gap:1rem">
-          <span class="lane-dot" style="background:<%= LANE_COLORS[lane.lane - 1] %>;width:2.2rem;height:2.2rem;font-size:1rem;display:flex;align-items:center;justify-content:center;border-radius:8px;font-weight:700;color:#fff">
+          <span class="lane-dot" style="background:<%= LANE_COLORS[lane.lane - 1] %>;width:2.2rem;height:2.2rem;font-size:1rem;display:flex;align-items:center;justify-content:center;border-radius:8px;font-weight:700;color:<%= laneInk(LANE_COLORS[lane.lane - 1]) %>">
             <%= lane.lane %>
           </span>
           <select name="assignment[<%= lane.id %>]" class="form-input" style="margin:0">

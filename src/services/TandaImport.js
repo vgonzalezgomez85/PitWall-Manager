@@ -34,16 +34,9 @@ const Manga = require('../models/Manga');
 
 const SCHEMA = 'pitwall.tanda/v1';
 
-// Misma paleta que RaceController (no exportada allí). El color se asigna por
-// carril para que sea estable entre mangas de la rotación.
-const LANE_COLORS = [
-  '#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4',
-  '#ff5722','#607d8b','#795548','#e91e63','#3f51b5','#009688',
-  '#cddc39','#ffc107','#f44336','#673ab7','#03a9f4','#8bc34a',
-  '#ff6f00','#880e4f','#1a237e','#b71c1c','#004d40','#f57f17',
-  '#311b92','#0d47a1','#1b5e20','#33691e','#bf360c','#4a148c',
-  '#006064','#827717',
-];
+// El color de cada equipo sale de la paleta global de carriles (estable entre
+// mangas de la rotación). La carrera importada no tiene circuito.
+const LaneColors = require('./LaneColors');
 
 // Secuencia de rotación por defecto: impares ascendente, pares descendente.
 // 6 → [1,3,5,6,4,2]. Igual que RaceController.defaultSequence.
@@ -72,7 +65,7 @@ function validate(payload) {
   if (!nombre) throw new TandaImportError('Falta el nombre de la prueba (prueba.nombre).');
 
   const carriles = asInt(payload.carriles);
-  if (!(carriles >= 1 && carriles <= LANE_COLORS.length)) {
+  if (!(carriles >= 1 && carriles <= LaneColors.DEFAULT_LANE_COLORS.length)) {
     throw new TandaImportError(`Nº de carriles inválido: ${payload.carriles}.`);
   }
 
@@ -146,8 +139,9 @@ function createFromPayload(payload) {
 
     let teamCount = 0;
     // Crea el team (+ pilotos) o el driver de un equipo y devuelve su entidad.
+    const palette = LaneColors.global();
     const crear = (tandaId, eq, colorSeed) => {
-      const color = LANE_COLORS[((colorSeed % LANE_COLORS.length) + LANE_COLORS.length) % LANE_COLORS.length];
+      const color = palette[((colorSeed % palette.length) + palette.length) % palette.length];
       if (v.isTeam) {
         const teamId = Team.create({ race_id: raceId, tanda_id: tandaId, name: eq.nombre, lane: 0, color });
         eq.pilotos.forEach((p, i) => Driver.create({

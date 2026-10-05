@@ -20,14 +20,7 @@ const Manga = require('../models/Manga');
 const Tanda = require('../models/Tanda');
 const Lap   = require('../models/Lap');
 
-const LANE_COLORS = [
-  '#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4',
-  '#ff5722','#607d8b','#795548','#e91e63','#3f51b5','#009688',
-  '#cddc39','#ffc107','#f44336','#673ab7','#03a9f4','#8bc34a',
-  '#ff6f00','#880e4f','#1a237e','#b71c1c','#004d40','#f57f17',
-  '#311b92','#0d47a1','#1b5e20','#33691e','#bf360c','#4a148c',
-  '#006064','#827717'
-];
+const LaneColors = require('../services/LaneColors');
 
 class LapCorrectionController {
 
@@ -63,7 +56,7 @@ class LapCorrectionController {
     });
 
     res.render('races/lap-corrections', {
-      t: req.t, race, manga, tanda, laneGroups, activeLanes, LANE_COLORS, mangaOptions
+      t: req.t, race, manga, tanda, laneGroups, activeLanes, LANE_COLORS: LaneColors.forRace(race), mangaOptions
     });
   }
 

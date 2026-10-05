@@ -80,6 +80,15 @@ class SettingsController {
     });
   }
 
+  // POST /settings/lane-colors — solo la paleta global; aparte de save() porque
+  // aquel re-abre los puertos serie y no puede tocarse con una manga en marcha.
+  static saveLaneColors(req, res) {
+    const LaneColors = require('../services/LaneColors');
+    const colors = String(req.body.colors || '').split(',');
+    Settings.set('lane_colors', LaneColors.toStored(colors, LaneColors.DEFAULT_LANE_COLORS) || '');
+    res.json({ ok: true, colors: LaneColors.global() });
+  }
+
   static async listPorts(req, res) {
     res.json({ ports: await SettingsController._scanPorts() });
   }

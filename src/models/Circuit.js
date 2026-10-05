@@ -26,27 +26,27 @@ class Circuit {
     return db.prepare('SELECT * FROM circuits WHERE id = ?').get(id);
   }
 
-  static create({ name, circuits_count, circuits_config, lanes_count, min_lap_ms, description, lane_sequence, track_image_b64, track_outline_json, track_direction }) {
+  static create({ name, circuits_count, circuits_config, lanes_count, min_lap_ms, description, lane_sequence, track_image_b64, track_outline_json, track_direction, lane_colors }) {
     const cfg = Array.isArray(circuits_config) ? JSON.stringify(circuits_config) : (circuits_config || '[]');
     const seq = Array.isArray(lane_sequence) ? JSON.stringify(lane_sequence) : (lane_sequence || '[]');
     const outline = Array.isArray(track_outline_json) ? JSON.stringify(track_outline_json) : (track_outline_json || '[]');
     const dir = (track_direction === 'ccw') ? 'ccw' : 'cw';
     const { lastInsertRowid } = db.prepare(`
-      INSERT INTO circuits (name, circuits_count, circuits_config, lanes_count, min_lap_ms, description, lane_sequence, track_image_b64, track_outline_json, track_direction)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(name, circuits_count || 1, cfg, lanes_count || 6, min_lap_ms || 0, description || null, seq, track_image_b64 || null, outline, dir);
+      INSERT INTO circuits (name, circuits_count, circuits_config, lanes_count, min_lap_ms, description, lane_sequence, track_image_b64, track_outline_json, track_direction, lane_colors)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(name, circuits_count || 1, cfg, lanes_count || 6, min_lap_ms || 0, description || null, seq, track_image_b64 || null, outline, dir, lane_colors || null);
     return lastInsertRowid;
   }
 
-  static update(id, { name, circuits_count, circuits_config, lanes_count, min_lap_ms, description, lane_sequence, track_image_b64, track_outline_json, track_direction }) {
+  static update(id, { name, circuits_count, circuits_config, lanes_count, min_lap_ms, description, lane_sequence, track_image_b64, track_outline_json, track_direction, lane_colors }) {
     const cfg = Array.isArray(circuits_config) ? JSON.stringify(circuits_config) : (circuits_config || '[]');
     const seq = Array.isArray(lane_sequence) ? JSON.stringify(lane_sequence) : (lane_sequence || '[]');
     const outline = Array.isArray(track_outline_json) ? JSON.stringify(track_outline_json) : (track_outline_json || '[]');
     const dir = (track_direction === 'ccw') ? 'ccw' : 'cw';
     db.prepare(`
-      UPDATE circuits SET name=?, circuits_count=?, circuits_config=?, lanes_count=?, min_lap_ms=?, description=?, lane_sequence=?, track_image_b64=?, track_outline_json=?, track_direction=?
+      UPDATE circuits SET name=?, circuits_count=?, circuits_config=?, lanes_count=?, min_lap_ms=?, description=?, lane_sequence=?, track_image_b64=?, track_outline_json=?, track_direction=?, lane_colors=?
       WHERE id=?
-    `).run(name, circuits_count || 1, cfg, lanes_count || 6, min_lap_ms || 0, description || null, seq, track_image_b64 || null, outline, dir, id);
+    `).run(name, circuits_count || 1, cfg, lanes_count || 6, min_lap_ms || 0, description || null, seq, track_image_b64 || null, outline, dir, lane_colors || null, id);
   }
 
   static getTrackOutline(circuit) {

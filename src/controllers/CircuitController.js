@@ -18,6 +18,16 @@
 const Circuit  = require('../models/Circuit');
 const Category = require('../models/Category');
 const Race     = require('../models/Race');
+const LaneColors = require('../services/LaneColors');
+
+// Colores propios del circuito: solo si se marcó «personalizar»; si no, null
+// (hereda los globales). Se guardan solo los que difieren de los globales.
+function parseLaneColors(body, totalLanes) {
+  if (body.lane_colors_custom !== '1') return null;
+  const colors = [];
+  for (let i = 1; i <= totalLanes; i++) colors.push(body[`lane_color_${i}`]);
+  return LaneColors.toStored(colors, LaneColors.global());
+}
 
 function parseCategoryTimes(body, categories) {
   const out = {};
@@ -129,6 +139,7 @@ class CircuitController {
       track_image_b64: trackImageB64,
       track_outline_json: trackOutlineJson,
       track_direction: (req.body.track_direction === 'ccw') ? 'ccw' : 'cw',
+      lane_colors: parseLaneColors(req.body, totalLanes),
     });
     Circuit.setCategoryTimes(newId, parseCategoryTimes(req.body, categories));
     res.redirect('/circuits');
@@ -149,7 +160,9 @@ class CircuitController {
       min_lap_s: circuit.min_lap_ms > 0 ? (circuit.min_lap_ms / 1000).toFixed(2) : '',
       lane_sequence: Circuit.getLaneSequence(circuit).join(','),
       track_direction: circuit.track_direction || 'cw',
+      lane_colors_custom: circuit.lane_colors ? '1' : '',
     };
+    LaneColors.forCircuit(circuit).slice(0, 32).forEach((c, i) => { body[`lane_color_${i + 1}`] = c; });
     for (let i = 0; i < config.length; i++) body[`circuit_lanes_${i + 1}`] = config[i];
     for (const cat of categories) {
       if (categoryTimes[cat.id]) body[`category_min_lap_s_${cat.id}`] = (categoryTimes[cat.id] / 1000).toFixed(2);
@@ -197,6 +210,7 @@ class CircuitController {
       track_image_b64: trackImageB64,
       track_outline_json: trackOutlineJson,
       track_direction: (req.body.track_direction === 'ccw') ? 'ccw' : 'cw',
+      lane_colors: parseLaneColors(req.body, totalLanes),
     });
     Circuit.setCategoryTimes(parseInt(req.params.id, 10), parseCategoryTimes(req.body, categories));
     // Las carreras ya asignadas a este circuito llevan el min_lap_ms copiado

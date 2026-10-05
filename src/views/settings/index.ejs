@@ -507,6 +507,32 @@ const navItems = [
               </div>
             </div>
           </div>
+          <%
+            const gLaneColors = globalLaneColors();
+          %>
+          <div class="st-card">
+            <div class="st-row st-row--wrap">
+              <div class="st-row__txt">
+                <div class="st-row__t"><%= es ? 'Colores de carril' : 'Lane colors' %></div>
+                <div class="st-row__d"><%= es ? 'Los que usan todas las pantallas cuando no hay circuito o el circuito no tiene colores propios (se ponen en la ficha de cada circuito). Se guardan al momento, sin tocar la conexión del cronometraje.' : 'Used on every screen when there is no circuit or the circuit has no colors of its own (set them on each circuit). Saved instantly, without touching the timing connection.' %></div>
+              </div>
+            </div>
+            <div class="st-row st-row--wrap" style="display:block">
+              <div class="lc-grid" id="globalLaneColorsGrid">
+                <% for (let i = 1; i <= gLaneColors.length; i++) { const c = gLaneColors[i - 1]; %>
+                  <label class="lc-swatch" style="background:<%= c %>;color:<%= laneInk(c) %>">
+                    <%= i %>
+                    <input type="color" value="<%= c %>" aria-label="<%= (es ? 'Color del carril ' : 'Lane color ') + i %>">
+                  </label>
+                <% } %>
+              </div>
+              <div class="lc-actions">
+                <button type="button" class="vt-btn vt-btn--primary vt-btn--sm" id="laneColorsSave" disabled><%= es ? 'Guardar colores' : 'Save colors' %></button>
+                <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="laneColorsDefault"><%= es ? 'Colores de fábrica' : 'Factory colors' %></button>
+                <span class="st-row__d" id="laneColorsMsg" role="status"></span>
+              </div>
+            </div>
+          </div>
         </section>
 
         <!-- ══ Red local ═════════════════════════════════════════════════ -->
@@ -745,6 +771,7 @@ const navItems = [
   </form>
 </div>
 
+<script src="/js/laneColors.js"></script>
 <script>
 const LANG = "<%= lang %>";
 
@@ -889,6 +916,35 @@ document.querySelectorAll('.st-nav__item').forEach(b => b.addEventListener('clic
 
 /* ── barra de cambios sin guardar ── */
 const settingsForm = document.getElementById('settingsForm');
+/* ── Colores de carril globales: guardado propio (no reinicia la conexión) ── */
+(function () {
+  const grid = document.getElementById('globalLaneColorsGrid');
+  if (!grid) return;
+  const FACTORY = <%- JSON.stringify(defaultLaneColors) %>;
+  const saveBtn = document.getElementById('laneColorsSave');
+  const msg     = document.getElementById('laneColorsMsg');
+  let saved = PWLaneColors.values(grid).join(',');
+  const refresh = () => { saveBtn.disabled = PWLaneColors.values(grid).join(',') === saved; msg.textContent = ''; };
+  PWLaneColors.bind(grid, refresh);
+  document.getElementById('laneColorsDefault').addEventListener('click', () => { PWLaneColors.setAll(grid, FACTORY); refresh(); });
+  saveBtn.addEventListener('click', async () => {
+    saveBtn.disabled = true;
+    try {
+      const r = await fetch('/settings/lane-colors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+        body: new URLSearchParams({ colors: PWLaneColors.values(grid).join(',') }),
+      });
+      if (!r.ok) throw new Error(r.status);
+      saved = PWLaneColors.values(grid).join(',');
+      msg.textContent = LANG === 'es' ? 'Guardados ✓' : 'Saved ✓';
+    } catch {
+      saveBtn.disabled = false;
+      msg.textContent = LANG === 'es' ? 'No se han podido guardar' : 'Could not save';
+    }
+  });
+})();
+
 const formSnapshot = f => new URLSearchParams(new FormData(f)).toString();
 const restartSnapshot = f => Array.from(f.querySelectorAll('[data-restart]')).map(el => el.value).join('|');
 let initialForm = null, initialRestart = null;

@@ -4373,3 +4373,23 @@ a.st-nav__item:hover { text-decoration: none; }
 .cs-chip--del  { background: rgba(248,113,113,.14); color: #fca5a5; }
 .cs-chip--meta { background: rgba(148,163,184,.14); color: #a3aebf; }
 @media (max-width: 600px) { .cs-team { padding-left: 16px; } }
+
+/* ── Editor de colores de carril (Configuración y circuito) ───────────── */
+.lc-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); gap: 8px;
+}
+.lc-grid.is-disabled { opacity: .45; pointer-events: none; }
+.lc-swatch {
+  position: relative; display: grid; place-items: center;
+  height: 44px; border-radius: 9px; cursor: pointer;
+  font-family: 'Saira Condensed', sans-serif; font-weight: 800; font-size: 19px;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.14);
+  transition: transform .12s;
+}
+.lc-swatch:hover { transform: translateY(-1px); }
+.lc-swatch input[type="color"] {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  opacity: 0; cursor: pointer; border: 0; padding: 0;
+}
+.lc-swatch[hidden] { display: none; }
+.lc-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; align-items: center; }

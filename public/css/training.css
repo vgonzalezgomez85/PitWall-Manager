@@ -141,7 +141,7 @@
 }
 .tr-card__lane-num {
   flex-shrink: 0; min-width: 2em; text-align: center;
-  background: var(--card-color, #30363d); color: #000;
+  background: var(--card-color, #30363d); color: var(--card-ink, #000);
   border-radius: 6px; padding: .05rem .45rem;
   font-family: 'Saira Condensed', sans-serif; font-weight: 900; font-size: clamp(1rem, 1.4vw, 1.4rem); line-height: 1.3;
 }

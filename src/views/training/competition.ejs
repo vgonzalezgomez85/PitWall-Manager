@@ -229,11 +229,7 @@ const FALLBACK_LANES = <%= typeof fallbackLanes !== 'undefined' ? fallbackLanes 
 // Total físico de carriles de los DS conectados (suma de circuits_serial). Si
 // hay DS en modo serial, ESTE es el nº de carriles real, no sim_lanes.
 const SERIAL_TOTAL = <%= typeof serialTotal !== 'undefined' ? serialTotal : 0 %>;
-const COLORS = [
-  '#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4',
-  '#ff5722','#607d8b','#795548','#e91e63','#3f51b5','#009688',
-  '#cddc39','#ffc107','#f44336','#673ab7','#03a9f4','#8bc34a',
-];
+const COLORS = <%- JSON.stringify(trainingLaneColors()) %>;
 
 /* Estado: una entrada por carril; '' significa carril vacío */
 let slots = [];

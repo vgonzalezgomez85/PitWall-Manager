@@ -624,6 +624,10 @@ const migrations = [
      position     INTEGER NOT NULL,
      PRIMARY KEY (race_id, team_name, tracked_name)
    )`,
+
+  // Colores de carril propios del circuito: JSON con un hex por carril (null =
+  // hereda los globales de Configuración). NULL en la columna = todos heredan.
+  `ALTER TABLE circuits ADD COLUMN lane_colors TEXT`,
 ];
 for (const sql of migrations) {
   try {

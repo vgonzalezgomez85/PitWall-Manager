@@ -26,14 +26,7 @@ const Circuit      = require('../models/Circuit');
 const Settings     = require('../models/Settings');
 const TimingService = require('../services/TimingService');
 
-const LANE_COLORS = [
-  '#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4',
-  '#ff5722','#607d8b','#795548','#e91e63','#3f51b5','#009688',
-  '#cddc39','#ffc107','#f44336','#673ab7','#03a9f4','#8bc34a',
-  '#ff6f00','#880e4f','#1a237e','#b71c1c','#004d40','#f57f17',
-  '#311b92','#0d47a1','#1b5e20','#33691e','#bf360c','#4a148c',
-  '#006064','#827717'
-];
+const LaneColors = require('../services/LaneColors');
 
 // Default lane sequence: odd lanes ascending, then even lanes descending
 // e.g. 6 lanes → [1,3,5,6,4,2]
@@ -264,7 +257,7 @@ class RaceController {
     const DriverProfile = require('../models/DriverProfile');
     const TeamCatalog   = require('../models/TeamCatalog');
     res.render('races/new-step4', {
-      t: req.t, wizard: w, LANE_COLORS, profiles: DriverProfile.findAll(),
+      t: req.t, wizard: w, LANE_COLORS: LaneColors.forCircuit(w.circuit_id), profiles: DriverProfile.findAll(),
       teamsCatalog: TeamCatalog.findAll(), errors: [], body: {}
     });
   }
@@ -299,7 +292,7 @@ class RaceController {
     if (errors.length) {
       const TeamCatalog = require('../models/TeamCatalog');
       return res.render('races/new-step4', {
-        t: req.t, wizard: w, LANE_COLORS, profiles: DriverProfile.findAll(),
+        t: req.t, wizard: w, LANE_COLORS: LaneColors.forCircuit(w.circuit_id), profiles: DriverProfile.findAll(),
         teamsCatalog: TeamCatalog.findAll(), errors, body: req.body
       });
     }
@@ -314,7 +307,7 @@ class RaceController {
     const w = req.session.wizard;
     if (!w?.lane_sequence) return res.redirect('/races/new');
     if (w.has_pole && !w.participants) return res.redirect('/races/new/step4');
-    res.render('races/confirm', { t: req.t, wizard: w, LANE_COLORS });
+    res.render('races/confirm', { t: req.t, wizard: w, LANE_COLORS: LaneColors.forCircuit(w.circuit_id) });
   }
 
   // ─── POST /races — persist ────────────────────────────────────────────────
@@ -349,6 +342,7 @@ class RaceController {
     if (wizard.has_pole && wizard.participants?.length) {
       const sessionId = PoleSession.create(raceId);
       const entityType = wizard.format === 'team' ? 'team' : 'driver';
+      const teamPalette = LaneColors.forCircuit(wizard.circuit_id);
       wizard.participants.forEach((p, idx) => {
         PoleSession.addEntry({
           poleSessionId: sessionId,
@@ -364,7 +358,7 @@ class RaceController {
         if (entityType === 'team') {
           Team.create({
             race_id: raceId, tanda_id: null,
-            name: p.name, lane: 0, color: LANE_COLORS[idx % LANE_COLORS.length],
+            name: p.name, lane: 0, color: teamPalette[idx % teamPalette.length],
           });
         }
       });
@@ -440,7 +434,7 @@ class RaceController {
     const catalogSyncEligible = require('../models/CatalogSync').isEligible(race.id);
     res.render('races/show', {
       t: req.t, race, laneSequence, tandas: tandasWithMangas,
-      virtualStandings, LANE_COLORS, poleSession, isSim, verificationsCount,
+      virtualStandings, LANE_COLORS: LaneColors.forRace(race), poleSession, isSim, verificationsCount,
       catalogSyncEligible,
     });
   }
@@ -518,7 +512,7 @@ class RaceController {
       hasLaps: Race.hasRecordedLaps(race.id),
       hasRunManga: Race.hasRunAnyManga(race.id), errors: [],
       laneSequence: RaceController._editorSequence(race, restCount),
-      restCount, LANE_COLORS,
+      restCount, LANE_COLORS: LaneColors.forRace(race),
     });
   }
 
@@ -637,7 +631,7 @@ class RaceController {
       return res.render('races/edit', {
         t: req.t, race: { ...editKeep, name }, savedCircuits, circuitCategoryTimes,
         hasLaps, hasRunManga, errors,
-        laneSequence: RaceController._editorSequence(race, restCount), restCount, LANE_COLORS,
+        laneSequence: RaceController._editorSequence(race, restCount), restCount, LANE_COLORS: LaneColors.forRace(race),
       });
     }
 

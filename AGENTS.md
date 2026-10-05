@@ -48,6 +48,7 @@ src/
     SocketService.js      — Wrapper de Socket.io (emit global)
     PoleTimingService.js  — Cronometraje para sesión de pole position
     LicenseService.js     — Validación de licencia de producto
+    LaneColors.js         — Colores de carril: circuito (`circuits.lane_colors`) → global (`settings.lane_colors`) → fábrica. En vistas: `laneColorsFor(race)`, `laneInk(hex)`
   views/                  — Plantillas EJS
   locales/                — es.json / en.json
   middleware/

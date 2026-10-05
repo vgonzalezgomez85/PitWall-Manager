@@ -23,14 +23,7 @@ const Team               = require('../models/Team');
 const Tanda              = require('../models/Tanda');
 const Manga              = require('../models/Manga');
 
-const LANE_COLORS = [
-  '#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4',
-  '#ff5722','#607d8b','#795548','#e91e63','#3f51b5','#009688',
-  '#cddc39','#ffc107','#f44336','#673ab7','#03a9f4','#8bc34a',
-  '#ff6f00','#880e4f','#1a237e','#b71c1c','#004d40','#f57f17',
-  '#311b92','#0d47a1','#1b5e20','#33691e','#bf360c','#4a148c',
-  '#006064','#827717'
-];
+const LaneColors = require('../services/LaneColors');
 
 // Tamaños de cada circuito (caja) de la carrera: [8,8,8] = 3 cajas de 8. Prefiere
 // la config del circuito asignado; si no, circuits_config; si no, todo en uno.
@@ -86,7 +79,7 @@ class PoleController {
 
     const entries = PoleSession.getEntriesOrdered(session.id);
     res.render('races/pole-setup', {
-      t: req.t, race, session, entries, LANE_COLORS, errors: [], body: {}
+      t: req.t, race, session, entries, LANE_COLORS: LaneColors.forRace(race), errors: [], body: {}
     });
   }
 
@@ -104,7 +97,7 @@ class PoleController {
     if (isNaN(lane) || lane < 1 || lane > race.lanes_count) {
       const entries = PoleSession.getEntriesOrdered(session.id);
       return res.render('races/pole-setup', {
-        t: req.t, race, session, entries, LANE_COLORS, errors: ['pole_lane_invalid'], body: req.body
+        t: req.t, race, session, entries, LANE_COLORS: LaneColors.forRace(race), errors: ['pole_lane_invalid'], body: req.body
       });
     }
 
@@ -163,7 +156,7 @@ class PoleController {
 
     res.render('races/pole-timing', {
       t: req.t, race, session, entries, current, next, done,
-      LANE_COLORS, isTimingRunning, durationMs, poleBestMs, poleHolder,
+      LANE_COLORS: LaneColors.forRace(race), isTimingRunning, durationMs, poleBestMs, poleHolder,
       omitFirstCrossing: PoleTimingService.omitFirstCrossing,
       poleLocked: timedEntries.length > 0,   // ya hay tiempos → no se puede cambiar la regla
     });
@@ -307,7 +300,7 @@ class PoleController {
     const allTimed = entries.every(e => e.lap_time_ms != null);
 
     res.render('races/pole-results', {
-      t: req.t, race, session, entries, allTimed, LANE_COLORS
+      t: req.t, race, session, entries, allTimed, LANE_COLORS: LaneColors.forRace(race)
     });
   }
 
@@ -370,7 +363,7 @@ class PoleController {
     });
 
     res.render('races/pole-lanes', {
-      t: req.t, race, session, entries, laneSequence: laneSeq, activeLanes, LANE_COLORS, circuits
+      t: req.t, race, session, entries, laneSequence: laneSeq, activeLanes, LANE_COLORS: LaneColors.forRace(race), circuits
     });
   }
 
@@ -392,8 +385,9 @@ class PoleController {
         entities.push({ id: driverId, type: 'driver', name: entry.entity_name });
       });
     } else {
+      const teamPalette = LaneColors.forRace(race);
       orderedEntries.forEach((entry, idx) => {
-        const color    = LANE_COLORS[idx % LANE_COLORS.length];
+        const color    = teamPalette[idx % teamPalette.length];
         // Reutiliza el equipo "maestro" creado al confirmar la pole (mismo id
         // → el PIN de Lap ya repartido sigue valiendo). Si no existe (carreras
         // creadas antes de este cambio), se crea aquí como antes.

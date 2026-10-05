@@ -1059,8 +1059,7 @@ body.side-standings .live-lanes--vertical .lane-card:not(.is-rest) > .lane-card_
   font-size: 1.15em;
   font-weight: 800;
   line-height: 1;
-  color: #fff;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, .6);
+  color: var(--card-ink, #fff);
 }
 
 /* Piloto al volante + tiempo conducido en la carrera frente al máximo */
@@ -1886,7 +1885,7 @@ body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__pos--3 {
 body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__label {
   order: 3;                 /* posición → flechas → CARRIL → nombre */
   background: var(--card-color, #21262d) !important;
-  color: #fff !important;
+  color: var(--card-ink, #fff) !important;
   border-radius: 5px !important;
   padding: 0 clamp(.4rem, calc(var(--v1-name-font, 2.5rem) * .25), .7rem) !important;
   height: clamp(1.5rem, calc(var(--v1-name-font, 2.5rem) * .95), 2.1rem);
@@ -1905,7 +1904,7 @@ body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__track-te
 body:not(:has(.live-lanes--vertical)) .lane-card__col--name .lane-card__lane-num {
   font-family: 'Inter', system-ui, sans-serif !important;
   font-size: clamp(.95rem, calc(var(--v1-name-font, 2.5rem) * .6), 1.35rem) !important;
-  color: #fff !important;
+  color: var(--card-ink, #fff) !important;
   font-weight: 800 !important;
   line-height: 1 !important;
 }

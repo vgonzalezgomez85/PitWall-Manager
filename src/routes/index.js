@@ -431,6 +431,7 @@ router.post('/diagnostico/reconnect-serial',      DiagnosticsController.reconnec
 
 router.get( '/settings',           SettingsController.index);
 router.post('/settings',           SettingsController.save);
+router.post('/settings/lane-colors', SettingsController.saveLaneColors);
 router.get( '/api/settings/ports', SettingsController.listPorts);
 
 // ── Certificado de la CA (HTTPS local para la cámara del escáner QR) ─────────

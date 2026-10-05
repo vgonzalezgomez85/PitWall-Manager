@@ -13,6 +13,12 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.45.0] — 2026-10-05
+
+### Añadido
+- **Colores de carril personalizables.** Cada circuito puede tener sus propios colores de carril (ficha del circuito → **«Colores de los carriles»** → «Usar colores propios en este circuito»), para que la pantalla coincida con los colores pintados en la pista. Además hay una **paleta global** en **Configuración → Preferencias → Colores de carril**, que se usa cuando no hay circuito o el circuito no tiene colores propios. Se aplican en todas las pantallas: directo, TV, paneles, entrenos, pole, tandas, resultados y control de pilotos. La paleta global se guarda al momento y no reinicia la conexión del cronometraje.
+- **Número del carril legible en cualquier color:** en las tarjetas del directo y del entreno el número sale en negro o en blanco según lo claro que sea el color.
+
 ## [1.44.2] — 2026-10-05
 
 ### Mejorado

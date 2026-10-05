@@ -23,14 +23,7 @@ const Driver         = require('../models/Driver');
 const DriverProfile  = require('../models/DriverProfile');
 const TeamCatalog    = require('../models/TeamCatalog');
 
-const LANE_COLORS = [
-  '#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4',
-  '#ff5722','#607d8b','#795548','#e91e63','#3f51b5','#009688',
-  '#cddc39','#ffc107','#f44336','#673ab7','#03a9f4','#8bc34a',
-  '#ff6f00','#880e4f','#1a237e','#b71c1c','#004d40','#f57f17',
-  '#311b92','#0d47a1','#1b5e20','#33691e','#bf360c','#4a148c',
-  '#006064','#827717'
-];
+const LaneColors = require('../services/LaneColors');
 
 // Devuelve el array de tamaños de sub-circuitos. Si no hay circuito asignado
 // o la config no es válida, devuelve [lanes_count] (un solo sub-circuito).
@@ -63,7 +56,7 @@ class TandaController {
     const profiles      = DriverProfile.findAll();
     const teamsCatalog  = TeamCatalog.findAll();
     const circuitSizes  = _circuitSizesFor(race);
-    res.render('races/tanda-new', { t: req.t, race, laneSequence, LANE_COLORS, profiles, teamsCatalog, circuitSizes, errors: [], body: {} });
+    res.render('races/tanda-new', { t: req.t, race, laneSequence, LANE_COLORS: LaneColors.forRace(race), profiles, teamsCatalog, circuitSizes, errors: [], body: {} });
   }
 
   // POST /races/:id/tandas
@@ -97,15 +90,16 @@ class TandaController {
       if (errors.length) {
         Tanda.delete(tandaId);
         const teamsCatalog = TeamCatalog.findAll();
-        return res.render('races/tanda-new', { t: req.t, race, laneSequence, LANE_COLORS, profiles: DriverProfile.findAll(), teamsCatalog, circuitSizes: _circuitSizesFor(race), errors, body: req.body });
+        return res.render('races/tanda-new', { t: req.t, race, laneSequence, LANE_COLORS: LaneColors.forRace(race), profiles: DriverProfile.findAll(), teamsCatalog, circuitSizes: _circuitSizesFor(race), errors, body: req.body });
       }
 
+      const teamPalette = LaneColors.forRace(race);
       catalogIds.forEach((catalogId, idx) => {
         const catalogTeam = TeamCatalog.findById(catalogId);
         const teamName = catalogTeam ? catalogTeam.name : `Equipo ${idx + 1}`;
         const teamId = Team.create({
           race_id: race.id, tanda_id: tandaId,
-          name: teamName, lane: 0, color: LANE_COLORS[idx % LANE_COLORS.length],
+          name: teamName, lane: 0, color: teamPalette[idx % teamPalette.length],
           country: catalogTeam ? catalogTeam.country : null,
         });
         if (catalogTeam) {
@@ -130,7 +124,7 @@ class TandaController {
 
       if (errors.length) {
         Tanda.delete(tandaId);
-        return res.render('races/tanda-new', { t: req.t, race, laneSequence, LANE_COLORS, profiles: DriverProfile.findAll(), circuitSizes: _circuitSizesFor(race), errors, body: req.body });
+        return res.render('races/tanda-new', { t: req.t, race, laneSequence, LANE_COLORS: LaneColors.forRace(race), profiles: DriverProfile.findAll(), circuitSizes: _circuitSizesFor(race), errors, body: req.body });
       }
 
       driversArray.forEach((name, idx) => {
@@ -170,7 +164,7 @@ class TandaController {
       : db.prepare('SELECT id, name FROM drivers WHERE tanda_id = ? AND team_id IS NULL ORDER BY name').all(manga.tanda_id);
 
     res.render('races/manga-edit', {
-      t: req.t, race, manga, lanes, participants, LANE_COLORS
+      t: req.t, race, manga, lanes, participants, LANE_COLORS: LaneColors.forRace(race)
     });
   }
 
@@ -261,7 +255,7 @@ class TandaController {
       : [];
 
     res.render('races/tanda-edit', {
-      t: req.t, race, tanda, laneSequence, LANE_COLORS, profiles,
+      t: req.t, race, tanda, laneSequence, LANE_COLORS: LaneColors.forRace(race), profiles,
       drivers, teams, canRestructure, errors: []
     });
   }
@@ -288,7 +282,7 @@ class TandaController {
         if (valid.length < 1) {
           const drivers = Driver.findByTanda(tanda.id).filter(d => !d.team_id);
           return res.render('races/tanda-edit', {
-            t: req.t, race, tanda, laneSequence, LANE_COLORS, profiles: DriverProfile.findAll(),
+            t: req.t, race, tanda, laneSequence, LANE_COLORS: LaneColors.forRace(race), profiles: DriverProfile.findAll(),
             drivers, teams: [], canRestructure, errors: ['no_participants']
           });
         }
@@ -320,7 +314,7 @@ class TandaController {
         if (valid.length < 1) {
           const teams = require('../models/Team').findByTandaWithMembers(tanda.id);
           return res.render('races/tanda-edit', {
-            t: req.t, race, tanda, laneSequence, LANE_COLORS, profiles: DriverProfile.findAll(),
+            t: req.t, race, tanda, laneSequence, LANE_COLORS: LaneColors.forRace(race), profiles: DriverProfile.findAll(),
             drivers: [], teams, canRestructure, errors: ['no_participants']
           });
         }
@@ -330,9 +324,10 @@ class TandaController {
         db.prepare('DELETE FROM drivers WHERE tanda_id = ?').run(tanda.id);
         db.prepare('DELETE FROM teams   WHERE tanda_id = ?').run(tanda.id);
         const entities = [];
+        const teamPalette = LaneColors.forRace(race);
         valid.forEach((team, idx) => {
           const teamName = team.name.trim();
-          const teamId   = Team.create({ race_id: race.id, tanda_id: tanda.id, name: teamName, lane: 0, color: LANE_COLORS[idx] });
+          const teamId   = Team.create({ race_id: race.id, tanda_id: tanda.id, name: teamName, lane: 0, color: teamPalette[idx % teamPalette.length] });
           const members  = Array.isArray(team.members) ? team.members : Object.values(team.members || {});
           members.forEach(m => {
             const mName = (typeof m === 'string' ? m : m?.name)?.trim();

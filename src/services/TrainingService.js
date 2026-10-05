@@ -21,14 +21,7 @@ const Settings      = require('../models/Settings');
 const Circuit       = require('../models/Circuit');
 const TimingService = require('./TimingService');
 
-const LANE_COLORS = [
-  '#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4',
-  '#ff5722','#607d8b','#795548','#e91e63','#3f51b5','#009688',
-  '#cddc39','#ffc107','#f44336','#673ab7','#03a9f4','#8bc34a',
-  '#ff6f00','#880e4f','#1a237e','#b71c1c','#004d40','#f57f17',
-  '#311b92','#0d47a1','#1b5e20','#33691e','#bf360c','#4a148c',
-  '#006064','#827717'
-];
+const LaneColors = require('./LaneColors');
 
 function lanesFromSettings() {
   // 1. Con DS-300 (modo serial) o BART (modo bart), suma los carriles de TODOS
@@ -158,6 +151,7 @@ class TrainingServiceClass {
     this._durationMs = null;
     this._lanes      = [];
     for (let i = 1; i <= lanesCount; i++) this._lanes.push(i);
+    this._laneColors = LaneColors.forTraining();
     this._clearLaneData();
     console.log(`[TrainingService] Standby — ${lanesCount} lanes`);
   }
@@ -224,7 +218,7 @@ class TrainingServiceClass {
 
       SocketService.emit('training:lap', {
         lane,
-        color:    LANE_COLORS[lane - 1] || '#8b949e',
+        color:    this._colorOf(lane),
         lapTimeMs,
         count:  ld.count,
         avgMs:  Math.round(ld.sum / ld.count),
@@ -322,12 +316,18 @@ class TrainingServiceClass {
     this._activate();
   }
 
+  _colorOf(lane) {
+    if (!this._laneColors) this._laneColors = LaneColors.forTraining();
+    return this._laneColors[lane - 1] || '#8b949e';
+  }
+
   getLanes() {
+    this._laneColors = LaneColors.forTraining();
     return this._lanes.map(lane => {
       const ld = this._laneData.get(lane) || { laps: [], chronoLaps: [], sum: 0, count: 0, lastMs: null };
       return {
         lane,
-        color:  LANE_COLORS[lane - 1] || '#8b949e',
+        color:  this._colorOf(lane),
         count:  ld.count,
         avgMs:  ld.count > 0 ? Math.round(ld.sum / ld.count) : null,
         bestMs: ld.laps.length > 0 ? ld.laps[0] : null,

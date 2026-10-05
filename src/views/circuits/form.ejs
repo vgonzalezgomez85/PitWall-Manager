@@ -105,6 +105,39 @@
       </p>
     </div>
 
+    <%
+      const gLaneColors = globalLaneColors();
+      const lcCustom = body.lane_colors_custom === '1';
+    %>
+    <div class="form-group">
+      <label class="form-label">
+        <%= lang === 'es' ? 'Colores de los carriles' : 'Lane colors' %>
+      </label>
+      <label style="display:flex;align-items:center;gap:.55rem;cursor:pointer;margin-bottom:.6rem">
+        <input type="checkbox" id="laneColorsCustom" name="lane_colors_custom" value="1" <%= lcCustom ? 'checked' : '' %>>
+        <span><%= lang === 'es' ? 'Usar colores propios en este circuito' : 'Use this circuit’s own colors' %></span>
+      </label>
+      <div class="lc-grid<%= lcCustom ? '' : ' is-disabled' %>" id="laneColorsGrid">
+        <% for (let i = 1; i <= 32; i++) {
+             const c = (lcCustom && body['lane_color_' + i]) || gLaneColors[i - 1]; %>
+          <label class="lc-swatch" data-lane="<%= i %>" style="background:<%= c %>;color:<%= laneInk(c) %>">
+            <%= i %>
+            <input type="color" name="lane_color_<%= i %>" value="<%= c %>" aria-label="<%= (lang === 'es' ? 'Color del carril ' : 'Lane color ') + i %>">
+          </label>
+        <% } %>
+      </div>
+      <div class="lc-actions">
+        <button type="button" id="btnLaneColorsGlobal" class="btn btn--ghost btn--sm" <%= lcCustom ? '' : 'disabled' %>>
+          ↺ <%= lang === 'es' ? 'Copiar los colores globales' : 'Copy global colors' %>
+        </button>
+      </div>
+      <p class="form-hint" style="margin-top:.4rem">
+        <%= lang === 'es'
+          ? 'Sin marcar, el circuito usa los colores globales de Configuración → Preferencias. Márcalo para que la pantalla coincida con los colores pintados en esta pista.'
+          : 'Unchecked, the circuit uses the global colors from Settings → Preferences. Check it to match the colors painted on this track.' %>
+      </p>
+    </div>
+
     <div class="form-group">
       <label class="form-label" for="minLapS">
         <%= lang === 'es' ? 'Vuelta mínima por defecto (segundos)' : 'Default minimum lap (seconds)' %>
@@ -640,6 +673,7 @@
 })();
 </script>
 
+<script src="/js/laneColors.js"></script>
 <script>
 const circPills    = document.getElementById('circPills');
 const circCount    = document.getElementById('circuitsCount');
@@ -664,6 +698,7 @@ function setCircuitCount(n) {
     row.style.display = parseInt(row.dataset.idx) <= n ? '' : 'none';
   });
   updateTotal();
+  refreshLaneColorGrid();
 }
 
 circPills.addEventListener('click', e => {
@@ -671,11 +706,36 @@ circPills.addEventListener('click', e => {
   if (btn) setCircuitCount(parseInt(btn.dataset.n));
 });
 
-circGrid.addEventListener('input', () => { updateTotal(); rebuildSeqIfMismatch(); });
+circGrid.addEventListener('input', () => { updateTotal(); rebuildSeqIfMismatch(); refreshLaneColorGrid(); });
 updateTotal();
 
+// ── Colores de carril del circuito ─────────────────────────────────────────
+const GLOBAL_LANE_COLORS = <%- JSON.stringify(gLaneColors) %>;
+const lcGrid   = document.getElementById('laneColorsGrid');
+const lcCustom = document.getElementById('laneColorsCustom');
+const lcCopy   = document.getElementById('btnLaneColorsGlobal');
+function laneColorOf(lane) {
+  const cols = lcCustom.checked ? PWLaneColors.values(lcGrid) : GLOBAL_LANE_COLORS;
+  return cols[(lane - 1) % cols.length];
+}
+function refreshLaneColorGrid() {
+  const total = totalLanesNow();
+  lcGrid.querySelectorAll('.lc-swatch').forEach(sw => { sw.hidden = parseInt(sw.dataset.lane, 10) > total; });
+  lcGrid.classList.toggle('is-disabled', !lcCustom.checked);
+  lcCopy.disabled = !lcCustom.checked;
+}
+PWLaneColors.bind(lcGrid, () => renderSeq([...seqEl.children].map(c => parseInt(c.dataset.lane, 10))));
+lcCustom.addEventListener('change', () => {
+  if (!lcCustom.checked) PWLaneColors.setAll(lcGrid, GLOBAL_LANE_COLORS);
+  refreshLaneColorGrid();
+  renderSeq([...seqEl.children].map(c => parseInt(c.dataset.lane, 10)));
+});
+lcCopy.addEventListener('click', () => {
+  PWLaneColors.setAll(lcGrid, GLOBAL_LANE_COLORS);
+  renderSeq([...seqEl.children].map(c => parseInt(c.dataset.lane, 10)));
+});
+
 // ── Lane sequence (drag-to-reorder) ────────────────────────────────────────
-const LANE_COLORS = ['#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4','#ff5722','#607d8b','#795548','#e91e63','#3f51b5','#009688'];
 const seqEl   = document.getElementById('seqLanes');
 const seqHidd = document.getElementById('laneSequenceInput');
 
@@ -728,7 +788,7 @@ function renderSeq(seq) {
       display:inline-flex;align-items:center;justify-content:center;
       min-width:${minW};height:2.4rem;padding:0 .4rem;border-radius:6px;font-weight:700;
       cursor:grab;user-select:none;font-family:'Rajdhani',sans-serif;font-size:${isRest ? '.7rem' : '1rem'};
-      ${isRest ? 'background:#30363d;color:#8b949e' : 'background:'+LANE_COLORS[(lane-1)%LANE_COLORS.length]+';color:#0d1117'}
+      ${isRest ? 'background:#30363d;color:#8b949e' : 'background:'+laneColorOf(lane)+';color:'+PWLaneColors.ink(laneColorOf(lane))}
     `;
     chip.textContent = label;
     seqEl.appendChild(chip);
@@ -858,6 +918,7 @@ seqEl.addEventListener('click', e => {
 
 // Initial render: from saved value or default rotation
 renderSeq(parseSeqFromValue(seqHidd.value, totalLanesNow()));
+refreshLaneColorGrid();
 
 // ── Crear categoría inline (POST /api/categories) ──────────────────────
 (function () {

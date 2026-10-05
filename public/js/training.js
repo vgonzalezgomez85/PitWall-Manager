@@ -157,11 +157,23 @@ const TXT = LANG === 'es'
 // Último estado recibido por carril (para repintar el gráfico al redimensionar).
 const laneState = new Map();
 
+// Texto legible encima del color del carril (los colores son personalizables).
+function laneInk(hex) {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex || '');
+  if (!m) return '#fff';
+  const lin = (i) => {
+    const v = parseInt(m[1].slice(i, i + 2), 16) / 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  };
+  return (0.2126 * lin(0) + 0.7152 * lin(2) + 0.0722 * lin(4)) > 0.4 ? '#000' : '#fff';
+}
+
 function buildCard(lane) {
   const card = document.createElement('div');
   card.className = 'tr-card';
   card.id = `tr-card-${lane.lane}`;
   card.style.setProperty('--card-color', lane.color);
+  card.style.setProperty('--card-ink', laneInk(lane.color));
   card.innerHTML = `
     <div class="tr-card__header">
       <span class="tr-card__lane-num">${lane.lane}</span>

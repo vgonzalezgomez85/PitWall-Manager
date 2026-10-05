@@ -18,14 +18,7 @@
 const SerialService = require('./SerialService');
 const SocketService = require('./SocketService');
 
-const LANE_COLORS = [
-  '#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4',
-  '#ff5722','#607d8b','#795548','#e91e63','#3f51b5','#009688',
-  '#cddc39','#ffc107','#f44336','#673ab7','#03a9f4','#8bc34a',
-  '#ff6f00','#880e4f','#1a237e','#b71c1c','#004d40','#f57f17',
-  '#311b92','#0d47a1','#1b5e20','#33691e','#bf360c','#4a148c',
-  '#006064','#827717'
-];
+const LaneColors = require('./LaneColors');
 
 // Vueltas que se guardan por carril para el gráfico de ritmo del directo de
 // entrenamiento (en orden cronológico). `laps` sigue con las 20 de siempre.
@@ -241,7 +234,7 @@ class CompetitionTrainingServiceClass {
       SocketService.emit('training:lap', {
         lane,
         participantName: participant?.name ?? null,
-        color:    participant?.color ?? LANE_COLORS[lane - 1] ?? '#8b949e',
+        color:    participant?.color ?? LaneColors.forTraining()[lane - 1] ?? '#8b949e',
         lapTimeMs,
         count:  ld.count,
         avgMs:  Math.round(ld.sum / ld.count),
@@ -364,7 +357,7 @@ class CompetitionTrainingServiceClass {
         lane,
         participantName: participant?.name ?? null,
         country: participant?.country ?? null,
-        color:  participant?.color ?? LANE_COLORS[lane - 1] ?? '#8b949e',
+        color:  participant?.color ?? LaneColors.forTraining()[lane - 1] ?? '#8b949e',
         count:  ld.count,
         avgMs:  ld.count > 0 ? Math.round(ld.sum / ld.count) : null,
         bestMs: ld.laps.length > 0 ? ld.laps[0] : null,
