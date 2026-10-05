@@ -1,7 +1,7 @@
 {
   "name": "pitwall-manager",
   "productName": "PitWall",
-  "version": "1.45.0",
+  "version": "1.45.1",
   "description": "PitWall — Slot car race management and timing system",
   "author": "Víctor González Gómez <vgonzalezgomez@outlook.es>",
   "license": "AGPL-3.0-or-later",
@@ -14,10 +14,12 @@
     "start": "node src/app.js",
     "dev": "nodemon --ignore public/ src/app.js",
     "electron": "node electron/launcher.js",
-    "dist": "electron-builder --mac --win --linux",
-    "dist:mac": "electron-builder --mac",
-    "dist:win": "electron-builder --win",
-    "dist:linux": "electron-builder --linux",
+    "dist": "npm run dist:mac && npm run dist:win && npm run dist:linux",
+    "dist:mac": "npm run native:clean && electron-builder --mac && npm run native:dev",
+    "dist:win": "npm run native:clean && electron-builder --win && npm run native:dev",
+    "dist:linux": "npm run native:clean && PATH=/opt/homebrew/opt/binutils/bin:$PATH electron-builder --linux && npm run native:dev",
+    "native:clean": "node -e \"require('fs').rmSync('node_modules/better-sqlite3/build',{recursive:true,force:true})\"",
+    "native:dev": "npm run native:clean && npm rebuild better-sqlite3",
     "test": "node --test \"test/**/*.test.js\""
   },
   "dependencies": {

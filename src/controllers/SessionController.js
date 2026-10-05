@@ -27,7 +27,6 @@ const SerialService  = require('../services/SerialService');
 const TimingService  = require('../services/TimingService');
 const RaceEventLog   = require('../services/RaceEventLog');
 const ExportGuard    = require('../services/ExportGuard');
-const ExcelJS        = require('exceljs');
 const { robustConsistency, MIN_CONSISTENCY_LAPS } = require('../lib/consistency');
 
 const LaneColors = require('../services/LaneColors');
@@ -1443,6 +1442,7 @@ class SessionController {
     // cede el event loop y aborta si entretanto ha arrancado una manga.
     await ExportGuard.tick(_exp);
 
+    const ExcelJS = require('exceljs');
     const wb = new ExcelJS.Workbook();
     wb.creator       = 'PitWall';
     wb.company       = 'PitWall';
@@ -2171,6 +2171,7 @@ class SessionController {
       return (m > 0 ? m + ':' : '') + String(s % 60).padStart(m > 0 ? 2 : 1, '0') + '.' + String(h).padStart(2,'0');
     };
 
+    const ExcelJS = require('exceljs');
     const wb = new ExcelJS.Workbook();
     wb.creator = 'PitWall';
     wb.created = new Date();

@@ -123,10 +123,32 @@ function startServer(userData) {
         PITWALL_DATA:   userData,
         SESSION_SECRET: getOrCreateSecret(userData),
       },
-      silent: false,
+      silent: true,
     });
-    serverProc.on('error', reject);
-    waitForPort(PORT).then(resolve).catch(reject);
+
+    // Sin esto, un fallo al arrancar solo se veía como «Timeout» y sin rastro en Windows.
+    let logStream = null;
+    try {
+      const logDir = path.join(userData, 'logs');
+      fs.mkdirSync(logDir, { recursive: true });
+      logStream = fs.createWriteStream(path.join(logDir, 'server.log'), { flags: 'w' });
+    } catch {}
+    let tail = '';
+    const pipe = (src, dst) => src && src.on('data', (chunk) => {
+      if (!app.isPackaged) { try { dst.write(chunk); } catch {} }
+      if (logStream) logStream.write(chunk);
+      tail = (tail + chunk.toString()).slice(-1500);
+    });
+    pipe(serverProc.stdout, process.stdout);
+    pipe(serverProc.stderr, process.stderr);
+
+    let settled = false;
+    const fail = (err) => { if (!settled) { settled = true; reject(err); } };
+    serverProc.on('error', fail);
+    serverProc.once('exit', (code, signal) => {
+      fail(new Error(`El servidor se cerró al arrancar (código ${code ?? signal}).\n\n${tail.trim()}`));
+    });
+    waitForPort(PORT, 200).then(() => { if (!settled) { settled = true; resolve(); } }).catch(fail);
   });
 }
 

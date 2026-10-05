@@ -13,6 +13,13 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.45.1] — 2026-10-05
+
+### Corregido
+- **PitWall no arrancaba en Windows («No se pudo iniciar el servidor») ni en Linux.** Los instaladores de Windows y Linux se generaban con la base de datos preparada para Mac y el servidor interno no podía abrirla. Ahora cada sistema lleva la suya.
+- **La app de escritorio arranca mucho más rápido.** La librería de exportar a Excel ya no se carga al abrir PitWall, sino la primera vez que exportas. El servidor interno pasa de unos 4 s a menos de medio segundo en estar listo.
+- **Si el servidor no arranca, ahora se ve el motivo.** Antes salía solo «No se pudo iniciar el servidor: Timeout» tras 15 s. Ahora el aviso muestra el error real en cuanto el servidor se cierra, se espera hasta 60 s a un arranque lento y la salida se guarda en `logs/server.log` dentro de la carpeta de datos de PitWall.
+
 ## [1.45.0] — 2026-10-05
 
 ### Añadido
