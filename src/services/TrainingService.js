@@ -71,6 +71,8 @@ class TrainingServiceClass {
     this._pendingDurationMs = null;
     this._autoFinishTimer  = null;
     this._sessionRecords   = new Map(); // lane → bestMs, persists until reset
+    // Fin de tanda: los datos se quedan a la vista hasta el siguiente GO.
+    this._clearOnNextGo    = false;
 
     // Trama 1 del GO: limpia datos de la sesión anterior y guarda la duración.
     // La activación (cronómetro) se difiere hasta race_started (trama 3,
@@ -117,7 +119,7 @@ class TrainingServiceClass {
     });
     // Forced stop: preserve lap data, go back to standby to restart same session
     SerialService.on('race_stopped',  () => { if (this._active) this._pauseToStandby(); });
-    // Normal end: clear data, standby for new session
+    // Normal end: keep data on screen, cleared on next GO
     SerialService.on('race_finished', () => { if (this._active) this._resetToStandby(); });
   }
 
@@ -155,12 +157,17 @@ class TrainingServiceClass {
     this._startedAt  = null;
     this._durationMs = null;
     this._lanes      = [];
-    this._laneData   = new Map();
-    for (let i = 1; i <= lanesCount; i++) {
-      this._lanes.push(i);
-      this._laneData.set(i, { laps: [], chronoLaps: [], sum: 0, count: 0, lastMs: null });
-    }
+    for (let i = 1; i <= lanesCount; i++) this._lanes.push(i);
+    this._clearLaneData();
     console.log(`[TrainingService] Standby — ${lanesCount} lanes`);
+  }
+
+  _clearLaneData() {
+    this._laneData = new Map();
+    for (const lane of this._lanes) {
+      this._laneData.set(lane, { laps: [], chronoLaps: [], sum: 0, count: 0, lastMs: null });
+    }
+    this._clearOnNextGo = false;
   }
 
   // Activación pública desde standby (GO manual en simulación/BART, donde no
@@ -185,6 +192,7 @@ class TrainingServiceClass {
   // ── Activate from standby: start recording laps ───────────────────────────
   _activate() {
     if (this._active) return;
+    if (this._clearOnNextGo) this._clearLaneData();
     this._standby   = false;
     this._active    = true;
     this._pausedCircuits.clear();
@@ -271,13 +279,15 @@ class TrainingServiceClass {
     console.log('[TrainingService] Forced stop — data preserved, back to standby');
   }
 
-  // ── Normal end: reset to standby and clear data ───────────────────────────
+  // ── Normal end: back to standby, data stays until the next GO ─────────────
   _resetToStandby() {
-    const lanes = this._lanes.length;
     this._deactivate();
-    this.prepare(lanes);
+    this._standby       = true;
+    this._startedAt     = null;
+    this._durationMs    = null;
+    this._clearOnNextGo = true;
     SocketService.emit('training:standby', this.getLanes());
-    console.log('[TrainingService] Session finished — data cleared, standby');
+    console.log('[TrainingService] Session finished — data kept until next GO, standby');
   }
 
   // ── Manual reset: clear records + full stop ───────────────────────────────

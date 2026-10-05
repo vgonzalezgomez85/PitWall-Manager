@@ -301,7 +301,8 @@ function applyLvColor(el, color) {
 }
 
 function updateCard(data) {
-  const prev = laneState.get(data.lane) || {};
+  // Carril vaciado (GO tras fin de tanda): no arrastrar la última vuelta vieja.
+  const prev = data.count === 0 ? {} : (laneState.get(data.lane) || {});
   const st = { ...prev, ...data };
   laneState.set(data.lane, st);
   const countEl  = document.getElementById(`tr-count-${data.lane}`);

@@ -13,6 +13,12 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.44.2] — 2026-10-05
+
+### Mejorado
+- **Entrenamiento libre: los datos de la tanda se quedan a la vista al terminar.** Al acabar la tanda (fin del DS-300 o fin automático por tiempo) ya no se borran las vueltas, la media, la mejor ni el gráfico de ritmo de cada carril: se borran al dar el **siguiente GO**. El récord de pista sigue igual (solo se borra con **Reset**).
+- **Vuelta a vuelta del entrenamiento más grande.** Los tiempos de la lista de vueltas de cada tarjeta crecen con el ancho de la tarjeta, así que con 6 carriles se leen casi al tamaño de Mejor / Media / Récord.
+
 ## [1.44.1] — 2026-10-04
 
 ### Corregido
