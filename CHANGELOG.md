@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.45.2] — 2026-10-06
+
+### Corregido
+- **Pantalla completa del directo en Windows:** el botón ponía la ventana en pantalla completa pero luego no salía de ella. Ahora entra y sale con el mismo botón, también en las ventanas abiertas aparte.
+
 ## [1.45.1] — 2026-10-05
 
 ### Corregido
