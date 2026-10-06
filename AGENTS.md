@@ -141,6 +141,7 @@ Siguiente manga pendiente se activa automáticamente
 - **Caché de `Lap.startSettledByEntity`** (corrección de la vuelta de salida): solo depende de la 1ª manga de cada entidad, así que solo se invalida si la mutación puede afectarla de verdad (`Lap.mutationsInvolving(mangaIds)`, `Lap.mutatedMangaCount`). No invalidar con cualquier escritura en `laps`: su escaneo de toda la carrera se repetiría en cada cruce.
 - **`LiveStatsController.json`**: los agregados race-wide (pace/consistencia/progreso de toda la carrera) viven en `src/engine/raceWideStats.js` y los calcula el mismo worker (`requestRaceWide`). El controlador guarda el último paquete en `_rwCache` y pide un refresco en segundo plano (`_kickRaceWideRefresh`); solo calcula en el hilo si no hay worker o es la primera vez. `json` sigue siendo síncrono.
 - **Pre-calentado de cachés (`TimingService._warmStatsCaches`)**: lo llama `invalidateStandingsCaches` (arranque de manga, fin de circuito, corrección). Calienta síncronamente `_priorAggregates` y `raceAggregate` (que arrastra `startSettledByEntity`, ~85 ms en frío) y pide al worker proyección + race-wide, para que el primer cruce no pague nada en frío. `Lap.noteMangaSeen(mangaId)` registra la manga sin contar mutación, para que el 1er cruce no dispare el guard de `mutatedMangaCount`. Estos momentos no tienen cruces (semáforo / fin de manga), así que el coste síncrono no importa.
+- **Correcciones con manga viva (`TimingService.applyLapCorrection(raceId, mangaId)`)**: `LapCorrectionController` la llama tras cada acción. Rehace los contadores en memoria de la manga viva desde la BD (conservando el último cruce físico), numera el siguiente cruce tras la vuelta más alta (`ld.lapNumOffset`), refresca la mejor vuelta, invalida cachés y emite `standings` + `laps:corrected`. Sin esto el directo no cambiaba hasta el siguiente cruce y salían números de vuelta repetidos.
 
 ### TrainingService
 - También escucha `race_go` y `race_started`.
@@ -150,7 +151,7 @@ Siguiente manga pendiente se activa automáticamente
 ### SocketService
 - `SocketService.emit(event, data)` hace broadcast a todos los clientes conectados.
 - Eventos cliente→servidor: `standings:request` (pide standings actuales).
-- Eventos servidor→cliente principales: `standings`, `lap`, `tick`, `manga:started`, `manga:stopped`, `manga:cancelled`, `race:semaphore`, `manga:paused`, `manga:resumed`.
+- Eventos servidor→cliente principales: `standings`, `lap`, `tick`, `manga:started`, `manga:stopped`, `manga:cancelled`, `race:semaphore`, `manga:paused`, `manga:resumed`, `laps:corrected` (tras una corrección de vueltas; sin manga viva, el directo recarga).
 
 ---
 
@@ -167,7 +168,7 @@ Siguiente manga pendiente se activa automáticamente
 
 - **Models**: métodos estáticos sobre `better-sqlite3`, síncronos. Sin ORM. Nombres: `findById`, `findAll`, `create`, `update`, `updateStatus`.
 - **Controllers**: funciones exportadas `module.exports = { action }`. Leen `req.params/body/session`, llaman a models/services, renderizan EJS o redirigen.
-- **Tests**: `npm test` (`node --test`, sin dependencias nuevas). Cubren turnos de piloto, informe, pre-arme, el parser de tramas DS-300, los endpoints peligrosos, el motor puro de proyección (`race-projection-engine`) y el worker de stats (`stats-worker*`, `timing-projection-worker`, `lap-settled-cache`). La rotación de carriles y el resto de estadísticas **siguen sin cobertura**.
+- **Tests**: `npm test` (`node --test`, sin dependencias nuevas). Cubren turnos de piloto, informe, pre-arme, el parser de tramas DS-300, los endpoints peligrosos, el motor puro de proyección (`race-projection-engine`), el worker de stats (`stats-worker*`, `timing-projection-worker`, `lap-settled-cache`), la contraseña de acceso (`access-password`), la corrección de vueltas con manga viva (`lap-correction-live`) y el historial «las 10 mejores» de entrenos (`training-best-laps`). La rotación de carriles y el resto de estadísticas **siguen sin cobertura**.
 - **Banco de pruebas**: emulador DS-300 (`/Users/victor/ds300-emulator/emulator.js`) y `node scripts/rehearsal-shifts.js` (ensayo E2E sobre 3 cajas, 24 carriles).
   Las rutas `/api/test/*` y `/api/rawlog` simulan las señales del DS, pero **solo se montan con `PITWALL_TEST_ENDPOINTS=1`**: `/api/test/stop` borra todas las vueltas de la manga activa, así que no puede existir en la máquina de una carrera.
 
@@ -176,6 +177,7 @@ Siguiente manga pendiente se activa automáticamente
 - `PITWALL_TEST_ENDPOINTS=1` — monta las rutas `/api/test/*` y `/api/rawlog` (solo banco de pruebas).
 - `PITWALL_NO_WORKER=1` — desactiva el worker_thread de stats; la proyección/agregados se calculan en el hilo principal (idéntico resultado, pero bloqueante).
 - `PITWALL_DB_READONLY=1` — abre la BD en solo lectura, sin migraciones ni `ANALYZE`. Lo usa el worker de stats internamente; no ponerlo en el proceso principal.
+- `PITWALL_DISABLE_PASSWORD=1` — ignora la contraseña de acceso (Ajustes → Seguridad) mientras esté puesta. Es la vía de recuperación si se olvida: arrancar con ella, entrar y poner otra (o desactivarla).
 - **i18n**: usar `req.t('key')` en controllers/vistas. Añadir ambas claves (es + en) en `src/locales/*.json` siempre que se añada texto visible.
 - **Sin comentarios redundantes** en el código. Solo WHY si no es obvio.
 

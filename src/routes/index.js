@@ -109,6 +109,13 @@ router.post('/home/layout', (req, res) => {
   res.redirect('/');
 });
 
+router.post('/home/mode', (req, res) => {
+  const Settings = require('../models/Settings');
+  const mode = String(req.body.ui_mode || '');
+  if (mode === 'basic' || mode === 'advanced') Settings.set('ui_mode', mode);
+  res.redirect('/');
+});
+
 // Firma barata del estado que pinta el inicio: si cambia, el inicio se recarga
 // (arranque de una carrera, cambio de manga, pausa, pole…). Los eventos de
 // socket no cubren todos los casos — p. ej. pasar una carrera a «en curso».
@@ -175,9 +182,17 @@ router.get('/', (req, res) => {
   ].slice(0, 6).map(r => ({ ...r, progress: progressOf(r.id) }));
 
   const homeLayout = Settings.get('home_layout', 'ac') || 'ac';
+  const uiMode = Settings.get('ui_mode', 'advanced') === 'basic' ? 'basic' : 'advanced';
   res.render('home', { t: req.t, counts, activeRaceCount, activePoleRaces, serial, serverIps, serverPort,
-                       live, recentRaces, totalRaces: allRaces.length, homeLayout, homeLayouts: HOME_LAYOUTS });
+                       live, recentRaces, totalRaces: allRaces.length, homeLayout, homeLayouts: HOME_LAYOUTS, uiMode,
+                       passwordEnabled: require('../services/AccessPassword').isEnabled() });
 });
+
+// ── Contraseña de organización (Ajustes → Seguridad) ─────────────────────────
+const AuthController = require('../controllers/AuthController');
+router.get( '/login',          AuthController.page);
+router.post('/login',          AuthController.login);
+router.get( '/logout',         AuthController.logout);
 
 // ── EULA ──────────────────────────────────────────────────────────────────────
 router.get( '/eula',           LicenseController.eula);
@@ -432,6 +447,8 @@ router.post('/diagnostico/reconnect-serial',      DiagnosticsController.reconnec
 router.get( '/settings',           SettingsController.index);
 router.post('/settings',           SettingsController.save);
 router.post('/settings/lane-colors', SettingsController.saveLaneColors);
+router.post('/settings/prefs',       SettingsController.savePrefs);
+router.post('/settings/security',    SettingsController.saveSecurity);
 router.get( '/api/settings/ports', SettingsController.listPorts);
 
 // ── Certificado de la CA (HTTPS local para la cámara del escáner QR) ─────────

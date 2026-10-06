@@ -124,7 +124,7 @@
       <% } %>
 
       <div class="form-actions" style="margin-top:1.5rem">
-        <a href="<%= wizard.circuit_id ? '/races/new' : '/races/new/step3' %>" class="btn btn--ghost">← <%= t('wizard.back') %></a>
+        <a href="<%= wizard.circuit_id ? '/races/new?back=1' : '/races/new/step3' %>" class="btn btn--ghost">← <%= t('wizard.back') %></a>
         <button type="submit" class="btn btn--primary"><%= t('wizard.next') %> →</button>
       </div>
 

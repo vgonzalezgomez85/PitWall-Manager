@@ -631,6 +631,10 @@
     socket.on('manga:reconciled', (data) => {
       if (data && data.raceId === RACE_ID) location.reload();
     });
+    // Corrección de vueltas: con manga viva ya llega un 'standings' corregido.
+    socket.on('laps:corrected', (data) => {
+      if (data && data.raceId === RACE_ID && !data.running) location.reload();
+    });
     // Con la manga en pausa el reloj real está congelado en el servidor;
     // sin esto el contador local seguía bajando cada segundo aunque no se
     // corriera ni una vuelta. _paused es lo único que gobierna esa decisión

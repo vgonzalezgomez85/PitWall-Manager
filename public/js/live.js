@@ -2377,6 +2377,12 @@ function announce(text) {
     if (!d || d.raceId === RACE_DATA.raceId) refreshTireIndicators();
   });
 
+  // Corrección de vueltas sin manga viva (la de esta página ya terminó): no
+  // llega ningún 'standings', así que se recarga para traer lo corregido.
+  socket.on('laps:corrected', (d) => {
+    if (d && d.raceId === RACE_DATA.raceId && !d.running && !RACE_DATA.isActive) location.reload();
+  });
+
   // ── DS-300 link status banner ─────────────────────────────────────────────
   const banner      = document.getElementById('serialBanner');
   const bannerText  = document.getElementById('serialBannerText');

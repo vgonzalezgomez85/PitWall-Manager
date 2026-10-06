@@ -26,7 +26,8 @@
 // Config en Settings: `access_restrict_enabled` ('1' por defecto = ON) y
 // `access_allowlist` (JSON array de IPs/CIDR).
 
-const Settings = require('../models/Settings');
+const Settings       = require('../models/Settings');
+const AccessPassword = require('../services/AccessPassword');
 
 // ::ffff:1.2.3.4 → 1.2.3.4
 function normIp(ip) {
@@ -169,9 +170,37 @@ function linkControlAuthorized(req) {
   return got === expected;
 }
 
+// ── Contraseña de organización (Ajustes → Seguridad) ────────────────────────
+// Protege los apartados Sistema y Catálogo del inicio, también en localhost y
+// en la app de escritorio. El inicio y todo lo de Competición (carreras,
+// entrenos, resultados, directo…) siguen sin contraseña.
+function isLoggedIn(req) {
+  return !AccessPassword.isEnabled() || !!(req.session && req.session.pwAuthed);
+}
+
+function isLoginPath(p) {
+  return p === '/login' || p === '/logout';
+}
+
+// Sistema: ajustes, base de datos, sincronizaciones, ecosistema, diagnóstico y
+// túnel. Catálogo: pilotos, equipos, coches, categorías y escenarios (+ el alta
+// de categoría desde la ficha del circuito). /api/teams-catalog/quick NO: lo usa
+// el alta de tanda, que es de Competición.
+const PROTECTED_RE = /^\/(settings|api\/settings|database|catalog-sync|link|ecosystem|diagnostico|tunnel|api\/serial\/close|drivers|teams|cars|categories|api\/categories|circuits)(\/|$)/;
+function isPasswordProtectedPath(p) {
+  return PROTECTED_RE.test(p);
+}
+
+function askForLogin(req, res) {
+  const wantsHtml = req.method === 'GET' && !req.xhr && /html/.test(req.headers.accept || '');
+  if (wantsHtml) return res.redirect('/login?next=' + encodeURIComponent(req.originalUrl));
+  return res.status(401).json({ error: 'auth_required' });
+}
+
 // ── Express middleware ──────────────────────────────────────────────────────
 function restrictAccess(req, res, next) {
-  if (!isRestrictEnabled()) return next();
+  if (isLoginPath(req.path)) return next();
+  const ipOk = !isRestrictEnabled() || ipAllowed(reqIp(req));
   if (req.path.startsWith('/api/mobile/')) return next();   // app móvil (REST)
   if (isPublicPath(req.path)) return next();                // vistas públicas
   // Enlace maestro↔esclavo: exención de IP (el otro extremo está en otra IP).
@@ -181,13 +210,16 @@ function restrictAccess(req, res, next) {
   // Import de tandas por LAN: exención de IP para el POST; el PIN lo valida
   // ImportController. La página (GET) sigue tras la restricción por IP.
   if (isImportPath(req.path, req.method)) return next();
-  if (ipAllowed(reqIp(req))) return next();
-  return res.status(403).render('error', {
-    t: req.t, code: 403,
-    message: (req.session?.lang === 'en')
-      ? 'Access restricted: this device is not authorized.'
-      : 'Acceso restringido: este dispositivo no está autorizado.',
-  });
+  if (!ipOk) {
+    return res.status(403).render('error', {
+      t: req.t, code: 403,
+      message: (req.session?.lang === 'en')
+        ? 'Access restricted: this device is not authorized.'
+        : 'Acceso restringido: este dispositivo no está autorizado.',
+    });
+  }
+  if (isPasswordProtectedPath(req.path) && !isLoggedIn(req)) return askForLogin(req, res);
+  next();
 }
 
 // ── socket.io gate ──────────────────────────────────────────────────────────
@@ -207,17 +239,21 @@ function isSocketAllowed(socket) {
 
 // Admin = acceso completo (localhost o allowlist; o restricción desactivada).
 // Guest = IP externa no permitida → ve la home reducida (solo botón).
+// `pwLocked`: hay contraseña y esta sesión no ha entrado (Sistema y Catálogo
+// la piden; el inicio lo marca con un candado).
 function annotateAccess(req, res, next) {
   const admin = !isRestrictEnabled() || ipAllowed(reqIp(req));
   res.locals.isAdminAccess = admin;
   res.locals.isGuestAccess = !admin;
+  res.locals.passwordEnabled = AccessPassword.isEnabled();
+  res.locals.pwLocked = res.locals.passwordEnabled && !isLoggedIn(req);
   next();
 }
 
 module.exports = {
   normIp, isLocal, ipToInt, ipMatches, isRestrictEnabled, getAllowlist,
   ipAllowed, restrictAccess, isSocketAllowed,
-  annotateAccess,
+  annotateAccess, isLoggedIn, reqIp, isPasswordProtectedPath,
   isLinkReadPath, isLinkControlPath, linkControlAuthorized,
   isImportPath, ecosystemBridgeEnabled,
 };

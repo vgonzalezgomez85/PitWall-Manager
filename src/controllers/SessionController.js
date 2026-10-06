@@ -31,6 +31,29 @@ const { robustConsistency, MIN_CONSISTENCY_LAPS } = require('../lib/consistency'
 
 const LaneColors = require('../services/LaneColors');
 
+// Podio y mejor vuelta de cada carrera finalizada para /results. La página es
+// pública y se abre también con una carrera en marcha: recalcular todas cuesta
+// ~340 ms con las 24 h guardadas, así que se cachea por carrera y solo se rehace
+// si alguna escritura toca sus mangas (corrección de una carrera ya cerrada).
+const _summaryCache = new Map();   // raceId → { token, value }
+function resultsSummary(race, mangaIds) {
+  const token = Lap.mutationsInvolving(mangaIds) + '|' + (race.finished_at || '');
+  const c = _summaryCache.get(race.id);
+  if (c && c.token === token) return c.value;
+  const rows = Lap.aggregateByRace(race.id);
+  let best = null;
+  for (const r of rows) {
+    if (r.best_lap_ms != null && (!best || r.best_lap_ms < best.ms)) best = { ms: r.best_lap_ms, name: r.entity_name };
+  }
+  const value = {
+    participants: rows.length,
+    podium: rows.slice(0, 3).map(r => ({ name: r.entity_name, laps: r.total_laps, color: r.color || null })),
+    bestLap: best,
+  };
+  _summaryCache.set(race.id, { token, value });
+  return value;
+}
+
 class SessionController {
 
   // Devuelve la duración EFECTIVA de una manga en ms:
@@ -1343,8 +1366,21 @@ class SessionController {
     const lang  = req.session?.lang || 'es';
     const races = Race.findAll()
       .filter(r => r.status === 'finished')
-      .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
-    res.render('races/results-index', { t: req.t, lang, races });
+      .sort((a, b) => (b.finished_at || b.created_at || '').localeCompare(a.finished_at || a.created_at || ''));
+    const db = require('../config/database');
+    const mangasByRace = new Map();
+    for (const m of db.prepare('SELECT id, race_id FROM mangas').all()) {
+      if (!mangasByRace.has(m.race_id)) mangasByRace.set(m.race_id, []);
+      mangasByRace.get(m.race_id).push(m.id);
+    }
+    const circuitName = new Map(require('../models/Circuit').findAll().map(c => [c.id, c.name]));
+    const cards = races.map(r => ({
+      ...r,
+      circuitName: circuitName.get(r.circuit_id) || null,
+      mangaCount: (mangasByRace.get(r.id) || []).length,
+      ...resultsSummary(r, mangasByRace.get(r.id) || []),
+    }));
+    res.render('races/results-index', { t: req.t, lang, races: cards });
   }
 
   // GET /results/:id — resultados públicos de una carrera (misma vista que

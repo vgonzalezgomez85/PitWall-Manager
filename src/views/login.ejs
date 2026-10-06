@@ -1,0 +1,40 @@
+<%- include('partials/header', { pageTitle: lang === 'es' ? 'Acceso' : 'Sign in', hideNavbar: true }) %>
+<% const es = lang === 'es'; %>
+<style>
+  .lg-wrap { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; }
+  .lg-card { width: 100%; max-width: 360px; background: var(--vt-surface, #0d1117); border: 1px solid var(--vt-border, #30363d);
+             border-radius: 14px; padding: 28px 24px; display: grid; gap: 16px; }
+  .lg-brand { display: flex; align-items: center; gap: 10px; color: #fff; }
+  .lg-brand svg { width: 34px; height: 34px; }
+  .lg-brand b { font-family: 'Saira Condensed', sans-serif; font-size: 24px; letter-spacing: .04em; }
+  .lg-card p { margin: 0; color: var(--vt-muted, #8b949e); font-size: 14px; }
+  .lg-card form { display: grid; gap: 12px; }
+  .lg-card .vt-inp { width: 100%; font-size: 16px; }
+  .lg-card .vt-btn { width: 100%; justify-content: center; }
+  .lg-err { color: #f85149; font-size: 14px; }
+  .lg-back { font-size: 13px; color: #58a6ff; border-top: 1px solid var(--vt-border, #30363d); padding-top: 14px; }
+</style>
+<div class="vt-page lg-wrap">
+  <div class="lg-card">
+    <div class="lg-brand">
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <rect x="6" y="6" width="88" height="88" rx="22" ry="22" fill="none" stroke="currentColor" stroke-width="6.5"/>
+        <polyline points="30,34 51,50 30,66" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="56" y="58" width="17" height="11" rx="3" fill="#F0404C"/>
+      </svg>
+      <b>PITWALL</b>
+    </div>
+    <p><%= es ? 'Esta parte (Sistema y Catálogo) está protegida. Introduce la contraseña de la organización.' : 'This area (System and Catalog) is protected. Enter the organisers\' password.' %></p>
+    <form method="POST" action="/login">
+      <input type="hidden" name="next" value="<%= next %>">
+      <input type="password" name="password" class="vt-inp" autocomplete="current-password" autofocus required
+             aria-label="<%= es ? 'Contraseña' : 'Password' %>" placeholder="<%= es ? 'Contraseña' : 'Password' %>">
+      <% if (error) { %><div class="lg-err" role="alert"><%= error %></div><% } %>
+      <button type="submit" class="vt-btn vt-btn--primary"><%= es ? 'Entrar' : 'Sign in' %></button>
+    </form>
+    <a class="lg-back" href="/">← <%= es ? 'Volver al inicio' : 'Back to home' %></a>
+  </div>
+</div>
+  </main>
+</body>
+</html>

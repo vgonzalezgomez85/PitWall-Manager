@@ -199,16 +199,21 @@ function buildCard(lane) {
   return card;
 }
 
-// Solo las 10 últimas, la más reciente arriba, con su número de vuelta delante.
-// `laps` llega de más nueva a más vieja; `count` es el total del carril.
+// Historial de cada carril (Ajustes → Preferencias): las 10 últimas con la más
+// reciente arriba, o las 10 mejores de mejor a peor. Siempre con su número de
+// vuelta delante. `laps` llega de más nueva a más vieja; `top` = [{ n, ms }]
+// ya ordenadas; `count` es el total del carril.
 const TR_HISTORY_MAX = 10;
-function renderLapList(laps, count, bestMs) {
-  if (!laps || laps.length === 0) return `<div class="tr-lap-empty">—</div>`;
-  const total = count || laps.length;
-  return laps.slice(0, TR_HISTORY_MAX).map((ms, i) => {
+const TR_HISTORY_BEST = TRAINING_DATA.historyMode === 'best';
+function renderLapList(laps, count, bestMs, top) {
+  const rows = TR_HISTORY_BEST
+    ? (top || []).slice(0, TR_HISTORY_MAX)
+    : (laps || []).slice(0, TR_HISTORY_MAX).map((ms, i) => ({ n: (count || laps.length) - i, ms }));
+  if (rows.length === 0) return `<div class="tr-lap-empty">—</div>`;
+  return rows.map(({ n, ms }) => {
     const isBest = bestMs != null && ms === bestMs;
     return `<div class="tr-lap-item${isBest ? ' tr-lap-item--best' : ''}"${isBest ? ` title="${TXT.isBest}"` : ''}>`
-      + `<span class="tr-lap-n">${total - i}</span><span class="tr-lap-t">${formatMs(ms)}</span></div>`;
+      + `<span class="tr-lap-n">${n}</span><span class="tr-lap-t">${formatMs(ms)}</span></div>`;
   }).join('');
 }
 
@@ -336,7 +341,7 @@ function updateCard(data) {
   }
   if (avgEl)    avgEl.textContent    = formatMs(st.avgMs);
   if (recordEl) recordEl.textContent = formatMs(st.bestMs);
-  if (lapsEl)   lapsEl.innerHTML     = renderLapList(st.laps, st.count, st.bestMs);
+  if (lapsEl)   lapsEl.innerHTML     = renderLapList(st.laps, st.count, st.bestMs, st.top);
   drawPace(data.lane);
 }
 

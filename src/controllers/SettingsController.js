@@ -20,6 +20,12 @@ const SerialService  = require('../services/SerialService');
 const DebugLogger    = require('../services/DebugLogger');
 const Circuit        = require('../models/Circuit');
 
+// Preferencias de guardado inmediato y sus valores válidos (el 1º = por defecto).
+const PREFS = {
+  ui_mode:               ['advanced', 'basic'],
+  training_history_mode: ['recent', 'best'],
+};
+
 class SettingsController {
 
   static async _scanPorts() {
@@ -77,6 +83,10 @@ class SettingsController {
       httpsEnabled:   cfg.https_enabled === '1',
       httpsPort:      parseInt(cfg.https_port || '3443', 10) || 3443,
       caFingerprint:  (() => { try { return require('../services/TlsService').caFingerprint(); } catch { return null; } })(),
+      uiMode:              cfg.ui_mode === 'basic' ? 'basic' : 'advanced',
+      trainingHistoryMode: cfg.training_history_mode === 'best' ? 'best' : 'recent',
+      passwordEnabled:     require('../services/AccessPassword').isEnabled(),
+      passwordOverridden:  process.env.PITWALL_DISABLE_PASSWORD === '1',
     });
   }
 
@@ -87,6 +97,43 @@ class SettingsController {
     const colors = String(req.body.colors || '').split(',');
     Settings.set('lane_colors', LaneColors.toStored(colors, LaneColors.DEFAULT_LANE_COLORS) || '');
     res.json({ ok: true, colors: LaneColors.global() });
+  }
+
+  // POST /settings/prefs — preferencias que se guardan al momento (sin pasar
+  // por save(), que reabre los puertos serie). Solo las claves de PREFS.
+  static savePrefs(req, res) {
+    const key = String(req.body.key || '');
+    const allowed = PREFS[key];
+    const value = String(req.body.value || '');
+    if (!allowed || !allowed.includes(value)) return res.status(400).json({ ok: false });
+    Settings.set(key, value);
+    res.json({ ok: true, key, value });
+  }
+
+  // POST /settings/security — contraseña de acceso de la organización.
+  static saveSecurity(req, res) {
+    const AccessPassword = require('../services/AccessPassword');
+    const es = (req.session && req.session.lang) !== 'en';
+    const enabled  = req.body.enabled === '1';
+    const password = String(req.body.password || '');
+    const confirm  = String(req.body.confirm || '');
+    const fail = (msg) => res.status(400).json({ ok: false, error: msg });
+
+    if (!enabled) {
+      AccessPassword.setEnabled(false);
+      return res.json({ ok: true, enabled: false });
+    }
+    if (password || !AccessPassword.hasPassword()) {
+      if (password.length < AccessPassword.MIN_LENGTH) {
+        return fail(es ? `La contraseña necesita al menos ${AccessPassword.MIN_LENGTH} caracteres.` : `The password needs at least ${AccessPassword.MIN_LENGTH} characters.`);
+      }
+      if (password !== confirm) return fail(es ? 'Las dos contraseñas no coinciden.' : 'The two passwords do not match.');
+      AccessPassword.setPassword(password);
+    }
+    AccessPassword.setEnabled(true);
+    // Quien la activa sigue dentro: si no, le echaría de la página en la que está.
+    req.session.pwAuthed = true;
+    res.json({ ok: true, enabled: true });
   }
 
   static async listPorts(req, res) {

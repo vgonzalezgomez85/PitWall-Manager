@@ -22,6 +22,13 @@ const Lap   = require('../models/Lap');
 
 const LaneColors = require('../services/LaneColors');
 
+// Tras cada cambio: el motor rehace sus contadores y el directo se repinta ya.
+function corrected(res, race, manga) {
+  try { require('../services/TimingService').applyLapCorrection(race.id, manga.id); }
+  catch (err) { console.error('[LapCorrection] refresco del directo:', err.message); }
+  res.redirect(`/races/${race.id}/mangas/${manga.id}/corrections`);
+}
+
 class LapCorrectionController {
 
   // GET /races/:id/mangas/:mangaId/corrections
@@ -67,7 +74,7 @@ class LapCorrectionController {
     if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
 
     Lap.markGhost(parseInt(req.params.lapId));
-    res.redirect(`/races/${race.id}/mangas/${manga.id}/corrections`);
+    corrected(res, race, manga);
   }
 
   // POST /races/:id/mangas/:mangaId/corrections/restore/:lapId
@@ -77,7 +84,7 @@ class LapCorrectionController {
     if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
 
     Lap.restore(parseInt(req.params.lapId));
-    res.redirect(`/races/${race.id}/mangas/${manga.id}/corrections`);
+    corrected(res, race, manga);
   }
 
   // POST /races/:id/mangas/:mangaId/corrections/transfer/:lapId
@@ -90,7 +97,7 @@ class LapCorrectionController {
     if (!toLane) return res.redirect(`/races/${race.id}/mangas/${manga.id}/corrections`);
 
     Lap.transfer(parseInt(req.params.lapId), toLane, manga.id, race.id);
-    res.redirect(`/races/${race.id}/mangas/${manga.id}/corrections`);
+    corrected(res, race, manga);
   }
 
   // POST /races/:id/mangas/:mangaId/corrections/add
@@ -110,7 +117,7 @@ class LapCorrectionController {
     for (let i = 0; i < count; i++) {
       Lap.addManual({ mangaId: manga.id, raceId: race.id, lane, lapTimeMs });
     }
-    res.redirect(`/races/${race.id}/mangas/${manga.id}/corrections`);
+    corrected(res, race, manga);
   }
 
   // POST /races/:id/mangas/:mangaId/corrections/delete/:lapId
@@ -120,7 +127,7 @@ class LapCorrectionController {
     if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
 
     Lap.deleteLap(parseInt(req.params.lapId));
-    res.redirect(`/races/${race.id}/mangas/${manga.id}/corrections`);
+    corrected(res, race, manga);
   }
 
   // POST /races/:id/mangas/:mangaId/corrections/edit/:lapId
@@ -132,6 +139,7 @@ class LapCorrectionController {
     const lapTimeS = parseFloat(req.body.lap_time_s);
     if (!isNaN(lapTimeS) && lapTimeS > 0) {
       Lap.updateTime(parseInt(req.params.lapId), Math.round(lapTimeS * 1000));
+      return corrected(res, race, manga);
     }
     res.redirect(`/races/${race.id}/mangas/${manga.id}/corrections`);
   }

@@ -91,7 +91,7 @@
 
   <form action="/races" method="POST">
     <div class="form-actions">
-      <a href="<%= wizard.has_pole ? '/races/new/step4' : (wizard.circuit_id ? '/races/new' : '/races/new/step3') %>" class="btn btn--ghost">← <%= t('wizard.back') %></a>
+      <a href="<%= wizard.has_pole ? '/races/new/step4' : (wizard.circuit_id ? '/races/new?back=1' : '/races/new/step3') %>" class="btn btn--ghost">← <%= t('wizard.back') %></a>
       <button type="submit" class="btn btn--primary btn--lg">
         🏁 <%= t('wizard.confirm_create') %>
       </button>

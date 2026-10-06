@@ -12,6 +12,8 @@ const navItems = [
     icon: '<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>' },
   { key: 'net', label: es ? 'Red local' : 'Local network', dot: '',
     icon: '<path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5h.01M2 9a15 15 0 0 1 20 0"/>' },
+  { key: 'sec', label: es ? 'Seguridad' : 'Security', dot: passwordEnabled ? 'ok' : '',
+    icon: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>' },
   { key: 'web', label: es ? 'Seguimiento online' : 'Online tracking', dot: 'off',
     icon: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.9 5.7 3.9 9S14.5 18.4 12 21c-2.5-2.6-3.9-5.7-3.9-9S9.5 5.6 12 3z"/>' },
   { key: 'int', label: es ? 'Integraciones' : 'Integrations', dot: '',
@@ -507,6 +509,33 @@ const navItems = [
               </div>
             </div>
           </div>
+          <div class="st-card">
+            <div class="st-row st-row--wrap">
+              <div class="st-row__txt">
+                <div class="st-row__t"><%= es ? 'Modo de la app' : 'App mode' %></div>
+                <div class="st-row__d"><%= es ? 'Básico: el inicio solo muestra entreno libre, carrera sprint, resultados, categorías, escenarios y ajustes. Avanzado: todos los accesos. Se guarda al momento.' : 'Basic: home only shows free practice, sprint race, results, categories, scenarios and settings. Advanced: every shortcut. Saved instantly.' %></div>
+              </div>
+              <div class="vt-selw st-row__ctl st-row__ctl--wide">
+                <select data-pref="ui_mode" aria-label="<%= es ? 'Modo de la app' : 'App mode' %>">
+                  <option value="advanced" <%= uiMode === 'advanced' ? 'selected' : '' %>><%= es ? 'Avanzado (todo)' : 'Advanced (everything)' %></option>
+                  <option value="basic" <%= uiMode === 'basic' ? 'selected' : '' %>><%= es ? 'Básico' : 'Basic' %></option>
+                </select>
+              </div>
+            </div>
+            <div class="st-row st-row--wrap">
+              <div class="st-row__txt">
+                <div class="st-row__t"><%= es ? 'Historial de vueltas en entrenos' : 'Practice lap history' %></div>
+                <div class="st-row__d"><%= es ? 'Las 10 vueltas que muestra cada carril en la vista «Con historial» de los entrenos. Se guarda al momento; en un entreno abierto se aplica al recargar.' : 'The 10 laps each lane shows in the practice "With history" view. Saved instantly; an open practice picks it up on reload.' %></div>
+              </div>
+              <div class="vt-selw st-row__ctl st-row__ctl--wide">
+                <select data-pref="training_history_mode" aria-label="<%= es ? 'Historial de vueltas en entrenos' : 'Practice lap history' %>">
+                  <option value="recent" <%= trainingHistoryMode === 'recent' ? 'selected' : '' %>><%= es ? 'Las 10 últimas (la más reciente arriba)' : 'Last 10 (newest first)' %></option>
+                  <option value="best" <%= trainingHistoryMode === 'best' ? 'selected' : '' %>><%= es ? 'Las 10 mejores (de mejor a peor)' : 'Best 10 (best first)' %></option>
+                </select>
+              </div>
+            </div>
+            <div class="st-row st-row--hint" hidden><div class="st-row__d" id="prefsMsg" role="status"></div></div>
+          </div>
           <%
             const gLaneColors = globalLaneColors();
           %>
@@ -627,6 +656,44 @@ const navItems = [
                 </div>
               </div>
             </div>
+          </div>
+        </section>
+
+        <!-- ══ Seguridad ═════════════════════════════════════════════════ -->
+        <section class="st-sec" data-sec="sec">
+          <header class="st-sec__h">
+            <h2><%= es ? 'Seguridad' : 'Security' %></h2>
+            <p><%= es ? 'Para que quien no conoce el programa no toque lo que no debe: pide contraseña para Sistema (Ajustes, Base de datos, sincronizaciones, ecosistema, solución de problemas) y Catálogo (Pilotos, Equipos, Coches, Categorías, Escenarios), también en este equipo y en la app de escritorio. El inicio, las carreras, los entrenos, los resultados y el directo siguen sin contraseña.' : 'So that people who do not know the program do not touch what they should not: asks for a password for System (Settings, Database, syncs, ecosystem, troubleshooting) and Catalog (Drivers, Teams, Cars, Categories, Scenarios), also on this machine and in the desktop app. Home, races, practice, results and live stay open.' %></p>
+          </header>
+          <div class="st-card">
+            <div class="st-row">
+              <div class="st-row__txt">
+                <div class="st-row__t"><%= es ? 'Pedir contraseña de acceso' : 'Require an access password' %></div>
+                <div class="st-row__d"><%= es ? 'Se guarda al momento, sin tocar la conexión del cronometraje.' : 'Saved instantly, without touching the timing connection.' %></div>
+              </div>
+              <button type="button" class="vt-switch <%= passwordEnabled ? 'is-on' : '' %>" id="pwSwitch" role="switch" aria-checked="<%= passwordEnabled %>" aria-label="<%= es ? 'Pedir contraseña de acceso' : 'Require an access password' %>"></button>
+            </div>
+            <div class="st-row st-row--wrap st-row--top" id="pwFields" <%= passwordEnabled ? 'hidden' : '' %>>
+              <div class="st-row__txt">
+                <label class="st-row__t st-row__t--sm" for="pwNew" id="pwFieldsTitle"><%= passwordEnabled ? (es ? 'Cambiar contraseña' : 'Change password') : (es ? 'Contraseña' : 'Password') %></label>
+                <div class="st-row__d"><%= es ? 'Mínimo 4 caracteres. Si se olvida, arranca PitWall con PITWALL_DISABLE_PASSWORD=1 y ponla de nuevo aquí.' : 'At least 4 characters. If forgotten, start PitWall with PITWALL_DISABLE_PASSWORD=1 and set it again here.' %></div>
+              </div>
+              <div class="st-row__ctl st-row__ctl--wide" style="display:grid;gap:8px">
+                <input type="password" id="pwNew" class="vt-inp" autocomplete="new-password" placeholder="<%= es ? 'Contraseña nueva' : 'New password' %>">
+                <input type="password" id="pwConfirm" class="vt-inp" autocomplete="new-password" placeholder="<%= es ? 'Repítela' : 'Repeat it' %>">
+                <button type="button" class="vt-btn vt-btn--primary vt-btn--sm" id="pwSave"><%= passwordEnabled ? (es ? 'Cambiar contraseña' : 'Change password') : (es ? 'Activar con esta contraseña' : 'Enable with this password') %></button>
+              </div>
+            </div>
+            <div class="st-row st-row--wrap" id="pwActions" <%= passwordEnabled ? '' : 'hidden' %>>
+              <div class="st-btns">
+                <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="pwChange"><%= es ? 'Cambiar contraseña' : 'Change password' %></button>
+                <a class="vt-btn vt-btn--ghost vt-btn--sm" href="/logout"><%= es ? 'Cerrar sesión' : 'Sign out' %></a>
+              </div>
+            </div>
+            <% if (passwordOverridden) { %>
+              <div class="st-row st-row--hint"><div class="st-row__d"><%= es ? 'PITWALL_DISABLE_PASSWORD=1 está puesto: ahora mismo no se pide contraseña.' : 'PITWALL_DISABLE_PASSWORD=1 is set: no password is being asked right now.' %></div></div>
+            <% } %>
+            <div class="st-row st-row--hint" hidden><div class="st-row__d" id="pwMsg" role="status"></div></div>
           </div>
         </section>
 
@@ -942,6 +1009,85 @@ const settingsForm = document.getElementById('settingsForm');
       saveBtn.disabled = false;
       msg.textContent = LANG === 'es' ? 'No se han podido guardar' : 'Could not save';
     }
+  });
+})();
+
+/* ── Preferencias de guardado inmediato (no reinician la conexión) ── */
+(function () {
+  const msgEl = document.getElementById('prefsMsg');
+  const msg = { set textContent(v) { msgEl.textContent = v; msgEl.parentElement.hidden = !v; } };
+  document.querySelectorAll('select[data-pref]').forEach(sel => {
+    let saved = sel.value;
+    sel.addEventListener('change', async () => {
+      try {
+        const r = await fetch('/settings/prefs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+          body: new URLSearchParams({ key: sel.dataset.pref, value: sel.value }),
+        });
+        if (!r.ok) throw new Error(r.status);
+        saved = sel.value;
+        msg.textContent = LANG === 'es' ? 'Guardado ✓' : 'Saved ✓';
+      } catch {
+        sel.value = saved;
+        msg.textContent = LANG === 'es' ? 'No se ha podido guardar' : 'Could not save';
+      }
+    });
+  });
+})();
+
+/* ── Seguridad: contraseña de acceso ── */
+(function () {
+  const sw = document.getElementById('pwSwitch');
+  if (!sw) return;
+  const fields = document.getElementById('pwFields');
+  const actions = document.getElementById('pwActions');
+  const pw = document.getElementById('pwNew'), pw2 = document.getElementById('pwConfirm');
+  const msgEl = document.getElementById('pwMsg');
+  const msg = { set textContent(v) { msgEl.textContent = v; msgEl.parentElement.hidden = !v; } };
+  const ES = LANG === 'es';
+  let enabled = sw.classList.contains('is-on');
+  const paint = () => {
+    sw.classList.toggle('is-on', enabled);
+    sw.setAttribute('aria-checked', enabled ? 'true' : 'false');
+    actions.hidden = !enabled;
+    setNavDot('sec', enabled ? 'ok' : '');
+  };
+  async function send(body) {
+    const r = await fetch('/settings/security', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+      body: new URLSearchParams(body),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.ok) throw new Error(d.error || (ES ? 'No se ha podido guardar' : 'Could not save'));
+    return d;
+  }
+  sw.addEventListener('click', async () => {
+    if (enabled) {
+      try {
+        await send({ enabled: '0' });
+        enabled = false; paint();
+        fields.hidden = false;
+        msg.textContent = ES ? 'Contraseña desactivada ✓' : 'Password disabled ✓';
+      } catch (e) { msg.textContent = e.message; }
+    } else {
+      fields.hidden = false;
+      pw.focus();
+      msg.textContent = ES ? 'Escribe la contraseña y pulsa «Activar».' : 'Type the password and press "Enable".';
+    }
+  });
+  document.getElementById('pwChange').addEventListener('click', () => { fields.hidden = false; pw.focus(); });
+  document.getElementById('pwSave').addEventListener('click', async () => {
+    try {
+      await send({ enabled: '1', password: pw.value, confirm: pw2.value });
+      const changed = enabled;
+      enabled = true; paint();
+      pw.value = pw2.value = '';
+      fields.hidden = true;
+      msg.textContent = changed ? (ES ? 'Contraseña cambiada ✓' : 'Password changed ✓')
+                                : (ES ? 'Contraseña activada ✓ Este navegador sigue dentro hasta que pulses «Bloquear» en el inicio o «Cerrar sesión» aquí; a partir de ahí Sistema y Catálogo piden la contraseña.' : 'Password enabled ✓ This browser stays signed in until you press "Lock" on the home page or "Sign out" here; from then on System and Catalog ask for the password.');
+    } catch (e) { msg.textContent = e.message; }
   });
 })();
 

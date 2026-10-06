@@ -54,6 +54,12 @@ class RaceController {
   // ─── Step 1: name + type + lanes + manga duration ─────────────────────────
 
   static newStep1(req, res) {
+    // «Volver» desde los pasos siguientes: se recupera lo ya rellenado en vez de
+    // empezar de cero (antes se perdía todo, también el tipo elegido).
+    const w = req.session.wizard;
+    if (req.query.back && w && w.type) {
+      return RaceController._renderStep1(req, res, { body: RaceController._bodyFromWizard(w), typeLocked: !!w.type_locked });
+    }
     req.session.wizard = {};
     // Preselect the circuit assigned to the DS-300 in settings (if any).
     // Looks at circuits_serial[].circuit_id; first entry with a circuit wins.
@@ -64,6 +70,14 @@ class RaceController {
       if (found) defaultCircuitId = String(found.circuit_id);
     } catch {}
     const body = defaultCircuitId ? { circuit_id: defaultCircuitId } : {};
+    // Botones «Carrera sprint» / «Carrera resistencia» del inicio: el tipo ya
+    // está decidido y el asistente no lo vuelve a preguntar.
+    const typeLocked = ['club', 'championship'].includes(req.query.type);
+    if (typeLocked) body.type = req.query.type;
+    RaceController._renderStep1(req, res, { body, typeLocked });
+  }
+
+  static _renderStep1(req, res, { body, typeLocked, errors = [] }) {
     const savedCircuits = Circuit.findAll();
     // Map<circuitId, [{ category_id, category_name, min_lap_ms }]> so the
     // wizard can offer a category selector when the chosen circuit has
@@ -73,11 +87,31 @@ class RaceController {
       const times = Circuit.getCategoryTimes(c.id);
       if (times.length) circuitCategoryTimes[c.id] = times;
     }
-    res.render('races/new-step1', { t: req.t, errors: [], body, savedCircuits, circuitCategoryTimes });
+    res.render('races/new-step1', { t: req.t, errors, body, typeLocked, savedCircuits, circuitCategoryTimes });
+  }
+
+  // El asistente guarda ms y listas; el formulario trabaja en min/s y campos sueltos.
+  static _bodyFromWizard(w) {
+    const body = {
+      name: w.name, type: w.type,
+      circuit_id: w.circuit_id || '', category_id: w.category_id || '',
+      circuits_count: (w.circuits || []).length || 1,
+      min_lap_s: w.min_lap_ms ? (w.min_lap_ms / 1000).toFixed(2) : '',
+      passes: w.passes || 1, lane_repeat: w.lane_repeat || 1,
+      has_pole: w.has_pole ? '1' : '0',
+      driver_min_total_min: w.driver_min_total_ms ? w.driver_min_total_ms / 60000 : '',
+      driver_max_total_min: w.driver_max_total_ms ? w.driver_max_total_ms / 60000 : '',
+      driver_change_lockout_s: w.driver_change_lockout_ms != null ? w.driver_change_lockout_ms / 1000 : 120,
+      driver_max_runs: w.driver_max_runs || '',
+      tire_pairs_per_team: w.tire_pairs_per_team || '',
+    };
+    (w.circuits || []).forEach((n, i) => { body['circuit_lanes_' + (i + 1)] = n; });
+    return body;
   }
 
   static postStep1(req, res) {
     const { name, type } = req.body;
+    const typeLocked = req.body.type_locked === '1';
     const errors = [];
 
     const trimmedName = (name || '').trim();
@@ -118,13 +152,7 @@ class RaceController {
     }
 
     if (errors.length) {
-      const savedCircuits = Circuit.findAll();
-      const circuitCategoryTimes = {};
-      for (const c of savedCircuits) {
-        const times = Circuit.getCategoryTimes(c.id);
-        if (times.length) circuitCategoryTimes[c.id] = times;
-      }
-      return res.render('races/new-step1', { t: req.t, errors, body: req.body, savedCircuits, circuitCategoryTimes });
+      return RaceController._renderStep1(req, res, { body: req.body, typeLocked, errors });
     }
 
     // Reglas de turnos por piloto (solo si type === 'championship'; en otros
@@ -155,17 +183,11 @@ class RaceController {
     const format = type === 'championship' ? 'team' : 'individual';
 
     if (errors.length) {
-      const savedCircuits = Circuit.findAll();
-      const circuitCategoryTimes = {};
-      for (const c of savedCircuits) {
-        const times = Circuit.getCategoryTimes(c.id);
-        if (times.length) circuitCategoryTimes[c.id] = times;
-      }
-      return res.render('races/new-step1', { t: req.t, errors, body: req.body, savedCircuits, circuitCategoryTimes });
+      return RaceController._renderStep1(req, res, { body: req.body, typeLocked, errors });
     }
 
     req.session.wizard = {
-      name: trimmedName, type, format,
+      name: trimmedName, type, format, type_locked: typeLocked,
       lanes_count: totalLanes,
       circuits,
       manga_duration_minutes: duration,

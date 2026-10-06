@@ -11,12 +11,12 @@
 
   function paintMode() {
     const mode = getMode();
-    document.querySelectorAll('.hm-seg button').forEach(b => {
+    document.querySelectorAll('.hm-seg button[data-mode]').forEach(b => {
       b.setAttribute('aria-pressed', String(b.dataset.mode === mode));
     });
   }
 
-  document.querySelectorAll('.hm-seg button').forEach(b => {
+  document.querySelectorAll('.hm-seg button[data-mode]').forEach(b => {
     b.addEventListener('click', () => {
       try { localStorage.setItem(MODE_KEY, b.dataset.mode); } catch (_) {}
       paintMode();

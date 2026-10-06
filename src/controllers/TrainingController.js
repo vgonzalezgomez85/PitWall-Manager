@@ -60,6 +60,11 @@ function lanesFromSettings() {
   return parseInt(Settings.get('sim_lanes', '6'), 10) || 6;     // simulación
 }
 
+// Historial de vueltas de cada carril (Ajustes → Preferencias).
+function historyMode() {
+  return require('../models/Settings').get('training_history_mode', 'recent') === 'best' ? 'best' : 'recent';
+}
+
 class TrainingController {
 
   // GET /training — modality selection screen
@@ -166,6 +171,7 @@ class TrainingController {
       isBart:       SerialService.isBart,
       isPaused:     CompetitionService.isPaused,
       raceWillStealGo: raceWillStealGo(),
+      historyMode:     historyMode(),
     });
   }
 
@@ -318,6 +324,7 @@ class TrainingController {
       isBart:         SerialService.isBart,
       isPaused:       TrainingService.isPaused,
       raceWillStealGo: raceWillStealGo(),
+      historyMode:     historyMode(),
     });
   }
 }

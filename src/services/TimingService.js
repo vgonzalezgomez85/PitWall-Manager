@@ -589,7 +589,7 @@ class TimingServiceClass {
           repuestas++;
         } catch (err) { console.error('[TimingService] reponer vuelta de caída:', err.message); }
       }
-      ld.lapCount = lapNum;
+      ld.lapCount = lapNum - (ld.lapNumOffset || 0);
       console.warn(`[TimingService] Caída: carril ${ld.lane} → +${missing} vuelta(s) estimada(s) @ ${refAvg}ms`);
     }
 
@@ -1492,7 +1492,7 @@ class TimingServiceClass {
       const manga   = this.session.manga;
       const teamId  = ld.teamId;
       const driverId = ld.driverId;
-      const lapNum  = ld.lapCount;
+      const lapNum  = ld.lapCount + (ld.lapNumOffset || 0);
       setImmediate(() => {
         try {
           Lap.create({
@@ -1704,7 +1704,7 @@ class TimingServiceClass {
     const manga   = this.session.manga;
     const teamId  = ld.teamId;
     const driverId = ld.driverId;
-    const lapNum  = ld.lapCount;
+    const lapNum  = ld.lapCount + (ld.lapNumOffset || 0);
 
     // Synchronous create so we can remember the new row id on `ld.lastLapId`
     // — needed by the retro-exit check on the *next* lap.
@@ -1732,7 +1732,7 @@ class TimingServiceClass {
 
     SocketService.emitLap({
       lane, color: ld.color, name: ld.name, categoria: ld.categoria,
-      lapNumber: ld.lapCount, lapTimeMs, bestLapMs: ld.bestLapMs,
+      lapNumber: lapNum, lapTimeMs, bestLapMs: ld.bestLapMs,
       elapsedMs, isExit, isPitStop,
       pitStopCount: ld.pitStopCount,
       exitCount: ld.exitCount,
@@ -2023,6 +2023,76 @@ class TimingServiceClass {
         const s = this._projRefresh.get(raceId);
         if (s) s.inFlight = false;
       });
+  }
+
+  /**
+   * Tras una corrección de vueltas (LapCorrectionController). La corrección solo
+   * escribe en `laps`; sin esto el motor seguía con sus contadores en memoria y
+   * el directo no cambiaba hasta el siguiente cruce — que además numeraba su
+   * vuelta con el contador viejo.
+   *
+   * Si la manga corregida es la que corre, los contadores de cada carril se
+   * rehacen desde la BD. Lo que describe el último cruce FÍSICO (cuándo fue, si
+   * ya se consumió la vuelta de salida) no lo cambia una corrección y se
+   * conserva: de él sale el tiempo del cruce siguiente.
+   */
+  applyLapCorrection(raceId, mangaId) {
+    const s = this.session;
+    if (s && s.manga.id === mangaId) {
+      const keep = {};
+      for (const ld of Object.values(s.laneMap)) {
+        keep[ld.lane] = { lastCrossing: ld.lastCrossing, firstRealLapDone: ld.firstRealLapDone,
+                          circuitStartTime: ld.circuitStartTime };
+        Object.assign(ld, {
+          lapCount: 0, bestLapMs: null, lastLapMs: null,
+          avgLapCount: 0, lapsMsSum: 0, lapAvgMs: 0,
+          cleanAvgCount: 0, cleanLapsSum: 0, cleanAvgMs: 0,
+          exitCount: 0, pitStopCount: 0, refAvgMs: 0,
+          raceBestLapMs: null, raceBestEntity: null, raceBestCategoria: null,
+        });
+      }
+      this._restoreLaneStatsFromDb(mangaId, s.circuits, s.laneToCircuit);
+      // Contar ≠ numerar: anular una vuelta del medio deja un hueco en la
+      // numeración. El directo cuenta las válidas (como los resultados) y el
+      // cruce siguiente se numera tras la más alta (como addManual/transfer).
+      const db = require('../config/database');
+      for (const f of db.prepare(`
+        SELECT lane, COUNT(*) AS n, MAX(lap_number) AS maxLap FROM laps
+         WHERE manga_id = ? AND is_ghost = 0 GROUP BY lane
+      `).all(mangaId)) {
+        const ld = s.laneMap[f.lane];
+        if (!ld) continue;
+        ld.lapCount = f.n;
+        ld.lapNumOffset = Math.max(0, (f.maxLap || 0) - f.n);
+      }
+      for (const ld of Object.values(s.laneMap)) if (!ld.lapCount) ld.lapNumOffset = 0;
+      for (const row of db.prepare(`
+        SELECT lane, lap_time_ms FROM laps
+         WHERE manga_id = ? AND is_ghost = 0
+         ORDER BY elapsed_ms, id
+      `).all(mangaId)) { if (s.laneMap[row.lane]) s.laneMap[row.lane].lastLapMs = row.lap_time_ms; }
+      for (const ld of Object.values(s.laneMap)) Object.assign(ld, keep[ld.lane]);
+    } else if (s && s.race.id === raceId) {
+      // Corrección de una manga ya corrida: cambia la mejor vuelta de carrera.
+      for (const ld of Object.values(s.laneMap)) {
+        Object.assign(ld, { raceBestLapMs: null, raceBestEntity: null, raceBestCategoria: null });
+      }
+      try {
+        Lap.raceBestByLane(raceId).forEach(row => {
+          const ld = s.laneMap[row.lane];
+          if (!ld) return;
+          ld.raceBestLapMs = row.bestLapMs;
+          ld.raceBestEntity = row.entityName;
+          ld.raceBestCategoria = row.entityCategoria || null;
+        });
+      } catch { /* sin vueltas */ }
+    }
+    this.invalidateStandingsCaches();
+    // `running`: la carrera tiene manga viva y el 'standings' de aquí ya lleva lo
+    // corregido; si no, las vistas abiertas recargan desde la BD.
+    const running = !!(s && s.race.id === raceId);
+    if (running) SocketService.emitStandings(this.getStandings());
+    SocketService.emit('laps:corrected', { raceId, mangaId, running });
   }
 
   /** Tira las cachés del camino caliente. Las transiciones de manga la llaman. */

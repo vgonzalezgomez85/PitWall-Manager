@@ -1,54 +1,186 @@
 <%- include('../partials/header', { pageTitle: (lang === 'es' ? 'Resultados' : 'Results') }) %>
+<%
+const es = lang === 'es';
+const fmtDate = (s) => s ? new Date(s).toLocaleDateString(es ? 'es-ES' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+const fmtLap = (ms) => {
+  if (ms == null) return '—';
+  const m = Math.floor(ms / 60000), s = ((ms % 60000) / 1000).toFixed(3);
+  return m > 0 ? m + ':' + s.padStart(6, '0') : s;
+};
+const typeLabel = (r) => r.type === 'championship' ? (es ? 'Resistencia' : 'Endurance') : 'Sprint';
+const counts = {
+  all: races.length,
+  club: races.filter(r => r.type !== 'championship').length,
+  championship: races.filter(r => r.type === 'championship').length,
+};
+%>
 
-<div class="container container--narrow">
-  <a href="/" class="vt-back-link" style="margin-top:1rem">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-    <%= lang === 'es' ? 'Inicio' : 'Home' %>
-  </a>
-  <div class="page-header">
-    <h1 class="page-title">🏆 <%= lang === 'es' ? 'Resultados' : 'Results' %></h1>
-    <p style="color:#8b949e; margin-top:.3rem">
-      <%= lang === 'es'
-        ? 'Elige una carrera finalizada para consultar sus resultados y estadísticas.'
-        : 'Pick a finished race to see its results and statistics.' %>
-    </p>
-  </div>
+<div class="vt-page rx-page">
+  <div class="vt-wrap">
 
-  <% if (races.length === 0) { %>
-    <div class="rx-empty">
-      <div class="rx-empty__icon">🏁</div>
-      <p class="rx-empty__title"><%= lang === 'es' ? 'Todavía no hay carreras finalizadas.' : 'No finished races yet.' %></p>
-      <p class="rx-empty__sub"><%= lang === 'es' ? 'Cuando una carrera termine, aparecerá aquí.' : 'When a race finishes, it will show up here.' %></p>
+    <a href="/" class="vt-back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      <%= es ? 'Inicio' : 'Home' %>
+    </a>
+
+    <div class="vt-head">
+      <div class="vt-head__title">
+        <h1><%= es ? 'Resultados' : 'Results' %></h1>
+        <span class="vt-cnt" id="rxCount"><%= races.length %></span>
+      </div>
+      <% if (races.length > 0) { %>
+      <div class="vt-head__actions">
+        <label class="vt-search">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <input type="search" id="rxQuery" placeholder="<%= es ? 'Buscar carrera, equipo o piloto…' : 'Search race, team or driver…' %>" autocomplete="off">
+        </label>
+      </div>
+      <% } %>
     </div>
-  <% } else { %>
-    <div class="rx-race-list">
-      <% races.forEach(r => { %>
-        <a href="/results/<%= r.id %>" class="rx-race-card">
-          <div class="rx-race-card__name"><%= r.name %></div>
-          <div class="rx-race-card__meta">
-            <span class="rx-race-card__status"><%= lang === 'es' ? 'Finalizada' : 'Finished' %></span>
-            <span style="margin-left:.5rem"><%= t('races.type.' + r.type) %> · <%= t('races.format.' + r.format) %></span>
-            <% if (r.created_at) { %>
-              <span style="margin-left:.5rem"><%= new Date(r.created_at).toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-GB') %></span>
+    <p class="rx-sub"><%= es ? 'Carreras finalizadas: clasificación, estadísticas y vueltas de cada una.' : 'Finished races: standings, statistics and laps for each one.' %></p>
+
+    <% if (races.length === 0) { %>
+      <div class="rx-empty">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v6a5 5 0 0 1-10 0z"/><path d="M7 5H4.5A1.5 1.5 0 0 0 3 6.5 3.5 3.5 0 0 0 6.5 10M17 5h2.5A1.5 1.5 0 0 1 21 6.5 3.5 3.5 0 0 1 17.5 10"/></svg>
+        <div class="rx-empty__t"><%= es ? 'Todavía no hay carreras finalizadas' : 'No finished races yet' %></div>
+        <div class="rx-empty__d"><%= es ? 'Cuando una carrera termine, sus resultados aparecerán aquí.' : 'When a race finishes, its results will show up here.' %></div>
+      </div>
+    <% } else { %>
+
+      <div class="vt-filters">
+        <div class="vt-tabs" id="rxTabs">
+          <button type="button" class="vt-tab is-active" data-f="all"><%= es ? 'Todas' : 'All' %> <span class="vt-tab__b"><%= counts.all %></span></button>
+          <button type="button" class="vt-tab" data-f="club">Sprint <span class="vt-tab__b"><%= counts.club %></span></button>
+          <button type="button" class="vt-tab" data-f="championship"><%= es ? 'Resistencia' : 'Endurance' %> <span class="vt-tab__b"><%= counts.championship %></span></button>
+        </div>
+      </div>
+
+      <div class="rx-grid" id="rxGrid">
+        <% races.forEach((r, i) => {
+          const search = [r.name, r.circuitName || ''].concat((r.podium || []).map(p => p.name)).join(' ').toLowerCase();
+        %>
+          <a href="/results/<%= r.id %>" class="rx-card<%= i === 0 ? ' rx-card--latest' : '' %>"
+             data-type="<%= r.type === 'championship' ? 'championship' : 'club' %>" data-search="<%= search %>">
+            <div class="rx-card__top">
+              <span class="rx-badge rx-badge--<%= r.type === 'championship' ? 'end' : 'spr' %>"><%= typeLabel(r) %></span>
+              <% if (i === 0) { %><span class="rx-badge rx-badge--new"><%= es ? 'Última' : 'Latest' %></span><% } %>
+              <span class="rx-date"><%= fmtDate(r.finished_at || r.created_at) %></span>
+            </div>
+            <h2 class="rx-card__name"><%= r.name %></h2>
+            <div class="rx-card__meta">
+              <% if (r.circuitName) { %><span><%= r.circuitName %></span><% } %>
+              <span><%= r.participants %> <%= r.format === 'team' ? (es ? 'equipos' : 'teams') : (es ? 'pilotos' : 'drivers') %></span>
+              <span><%= r.mangaCount %> <%= es ? 'mangas' : 'heats' %></span>
+            </div>
+
+            <% if (r.podium && r.podium.length) { %>
+              <ol class="rx-podium">
+                <% r.podium.forEach((p, k) => { %>
+                  <li class="rx-pos rx-pos--<%= k + 1 %>">
+                    <span class="rx-pos__n"><%= k + 1 %></span>
+                    <span class="rx-pos__name"><%= p.name %></span>
+                    <span class="rx-pos__laps"><%= p.laps %> <%= es ? 'v' : 'laps' %></span>
+                  </li>
+                <% }) %>
+              </ol>
+            <% } else { %>
+              <div class="rx-nolaps"><%= es ? 'Sin vueltas registradas' : 'No laps recorded' %></div>
             <% } %>
-          </div>
-        </a>
-      <% }) %>
-    </div>
-  <% } %>
+
+            <div class="rx-card__foot">
+              <% if (r.bestLap) { %>
+                <span class="rx-best" title="<%= es ? 'Vuelta rápida de la carrera' : 'Fastest lap of the race' %>">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5M9 2h6M12 2v3"/></svg>
+                  <b><%= fmtLap(r.bestLap.ms) %></b> <span><%= r.bestLap.name %></span>
+                </span>
+              <% } else { %><span></span><% } %>
+              <span class="rx-go"><%= es ? 'Ver resultados' : 'View results' %> <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+            </div>
+          </a>
+        <% }) %>
+      </div>
+      <p class="rx-nores" id="rxNoRes" hidden><%= es ? 'Ninguna carrera coincide con la búsqueda.' : 'No race matches your search.' %></p>
+    <% } %>
+  </div>
 </div>
 
 <style>
-  .rx-race-list { display:flex; flex-direction:column; gap:.6rem; margin-top:1.2rem }
-  .rx-race-card { display:block; background:#161b22; border:1px solid #30363d; border-radius:10px; padding:.9rem 1.1rem; color:#c9d1d9; text-decoration:none; transition: border-color .15s }
-  .rx-race-card:hover { border-color:#f6c90e; text-decoration:none }
-  .rx-race-card__name { font-weight:600; font-size:1.05rem }
-  .rx-race-card__meta { font-size:.78rem; color:#6e7681; margin-top:.2rem }
-  .rx-race-card__status { display:inline-block; padding:1px 7px; border-radius:9px; font-size:.7rem; font-weight:700; text-transform:uppercase; background:rgba(88,166,255,.15); color:#58a6ff }
-  .rx-empty { text-align:center; margin-top:2.5rem; color:#8b949e }
-  .rx-empty__icon { font-size:3rem; opacity:.6 }
-  .rx-empty__title { color:#e6edf3; font-size:1.15rem; font-weight:600; margin:.8rem 0 .3rem }
-  .rx-empty__sub { font-size:.9rem }
+  .rx-sub { margin: 6px 0 0; color: var(--vt-mute); font-size: 14px; }
+  .rx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; margin-top: 18px; }
+  .rx-card { display: flex; flex-direction: column; gap: 10px; padding: 16px 16px 14px; border-radius: 14px;
+             background: var(--vt-panel); border: 1px solid var(--vt-border); color: var(--vt-text); text-decoration: none;
+             transition: border-color .15s ease, transform .15s ease, background .15s ease; min-width: 0; }
+  .rx-card:hover { border-color: var(--vt-border-2); background: var(--vt-surface); transform: translateY(-2px); text-decoration: none; }
+  .rx-card:focus-visible { outline: 2px solid var(--vt-blue); outline-offset: 2px; }
+  .rx-card--latest { border-color: rgba(246,201,14,.35); background: linear-gradient(180deg, rgba(246,201,14,.06), transparent 60%), var(--vt-panel); }
+  .rx-card--latest { grid-column: 1 / -1; }
+  .rx-card__top { display: flex; align-items: center; gap: 6px; }
+  .rx-badge { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; }
+  .rx-badge--spr { background: rgba(239,70,81,.14); color: #ff7a83; }
+  .rx-badge--end { background: rgba(249,115,22,.14); color: #fb923c; }
+  .rx-badge--new { background: rgba(246,201,14,.14); color: #f6c90e; }
+  .rx-date { margin-left: auto; font-size: 12.5px; color: var(--vt-mute); white-space: nowrap; }
+  .rx-card__name { margin: 0; font-family: 'Saira Condensed', sans-serif; font-weight: 700; font-size: 21px; line-height: 1.15; color: #fff; overflow-wrap: anywhere; }
+  .rx-card__meta { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; color: var(--vt-mute); }
+  .rx-card__meta span + span::before { content: '·'; margin-right: 12px; color: var(--vt-mute-2); }
+  .rx-podium { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 6px; }
+  .rx-pos { display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 9px; background: var(--vt-panel-2); border: 1px solid var(--vt-border); }
+  .rx-pos__n { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 13px; color: #000; }
+  .rx-pos--1 .rx-pos__n { background: #f6c90e; }
+  .rx-pos--2 .rx-pos__n { background: #c9ced8; }
+  .rx-pos--3 .rx-pos__n { background: #d08a45; }
+  .rx-pos--1 { border-color: rgba(246,201,14,.28); }
+  .rx-pos__name { font-weight: 600; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rx-pos__laps { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--vt-mute); }
+  .rx-card--latest .rx-podium { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  @media (max-width: 759px) { .rx-card--latest .rx-podium { grid-template-columns: 1fr; } }
+  .rx-nolaps { font-size: 13px; color: var(--vt-mute-2); padding: 8px 0; }
+  .rx-card__foot { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--vt-border); display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; }
+  .rx-best { display: inline-flex; align-items: center; gap: 6px; min-width: 0; color: var(--vt-mute); }
+  .rx-best svg { width: 15px; height: 15px; flex: none; fill: none; stroke: #a855f7; stroke-width: 2; stroke-linecap: round; }
+  .rx-best b { color: #c084fc; font-variant-numeric: tabular-nums; }
+  .rx-best span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rx-go { display: inline-flex; align-items: center; gap: 4px; flex: none; color: #f6c90e; font-weight: 600; }
+  .rx-go svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; transition: transform .15s ease; }
+  .rx-card:hover .rx-go svg { transform: translateX(3px); }
+  .rx-card[hidden] { display: none; }
+  .rx-nores { margin-top: 24px; text-align: center; color: var(--vt-mute); }
+  .rx-empty { margin-top: 48px; text-align: center; color: var(--vt-mute); }
+  .rx-empty svg { width: 54px; height: 54px; fill: none; stroke: var(--vt-mute-2); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .rx-empty__t { margin-top: 12px; color: #fff; font-size: 18px; font-weight: 600; }
+  .rx-empty__d { margin-top: 4px; font-size: 14px; }
+  @media (prefers-reduced-motion: reduce) { .rx-card, .rx-go svg { transition: none; } .rx-card:hover { transform: none; } }
 </style>
+
+<script>
+(function () {
+  const grid = document.getElementById('rxGrid');
+  if (!grid) return;
+  const cards = Array.from(grid.querySelectorAll('.rx-card'));
+  const q = document.getElementById('rxQuery');
+  const cnt = document.getElementById('rxCount');
+  const nores = document.getElementById('rxNoRes');
+  let filter = 'all';
+  function apply() {
+    const text = (q.value || '').trim().toLowerCase();
+    let n = 0;
+    cards.forEach(c => {
+      const show = (filter === 'all' || c.dataset.type === filter) && (!text || c.dataset.search.includes(text));
+      c.hidden = !show;
+      if (show) n++;
+    });
+    cnt.textContent = n;
+    nores.hidden = n > 0;
+  }
+  document.getElementById('rxTabs').addEventListener('click', (e) => {
+    const b = e.target.closest('.vt-tab');
+    if (!b) return;
+    document.querySelectorAll('#rxTabs .vt-tab').forEach(t => t.classList.toggle('is-active', t === b));
+    filter = b.dataset.f;
+    apply();
+  });
+  q.addEventListener('input', apply);
+})();
+</script>
 
 <%- include('../partials/footer') %>

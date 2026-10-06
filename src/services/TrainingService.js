@@ -22,6 +22,7 @@ const Circuit       = require('../models/Circuit');
 const TimingService = require('./TimingService');
 
 const LaneColors = require('./LaneColors');
+const { pushBest } = require('../utils/bestLaps');
 
 function lanesFromSettings() {
   // 1. Con DS-300 (modo serial) o BART (modo bart), suma los carriles de TODOS
@@ -159,7 +160,7 @@ class TrainingServiceClass {
   _clearLaneData() {
     this._laneData = new Map();
     for (const lane of this._lanes) {
-      this._laneData.set(lane, { laps: [], chronoLaps: [], sum: 0, count: 0, lastMs: null });
+      this._laneData.set(lane, { laps: [], chronoLaps: [], top: [], sum: 0, count: 0, lastMs: null });
     }
     this._clearOnNextGo = false;
   }
@@ -205,6 +206,7 @@ class TrainingServiceClass {
       ld.laps.sort((a, b) => a - b);
       ld.chronoLaps.push(lapTimeMs);
       if (ld.chronoLaps.length > 20) ld.chronoLaps.shift();
+      const top = pushBest(ld.top = ld.top || [], ld.count, lapTimeMs);
       (ld.pace = ld.pace || []).push(lapTimeMs);
       if (ld.pace.length > PACE_MAX) ld.pace.shift();
 
@@ -225,6 +227,7 @@ class TrainingServiceClass {
         bestMs: ld.laps[0],
         lastMs: lapTimeMs,
         laps:   [...ld.chronoLaps].reverse(),
+        top:    [...top],
         pace:   ld.pace ? [...ld.pace] : [],
       });
     };
@@ -324,7 +327,7 @@ class TrainingServiceClass {
   getLanes() {
     this._laneColors = LaneColors.forTraining();
     return this._lanes.map(lane => {
-      const ld = this._laneData.get(lane) || { laps: [], chronoLaps: [], sum: 0, count: 0, lastMs: null };
+      const ld = this._laneData.get(lane) || { laps: [], chronoLaps: [], top: [], sum: 0, count: 0, lastMs: null };
       return {
         lane,
         color:  this._colorOf(lane),
@@ -333,6 +336,7 @@ class TrainingServiceClass {
         bestMs: ld.laps.length > 0 ? ld.laps[0] : null,
         lastMs: ld.lastMs,
         laps:   [...ld.chronoLaps].reverse(),
+        top:    ld.top ? [...ld.top] : [],
         pace:   ld.pace ? [...ld.pace] : [],
       };
     });

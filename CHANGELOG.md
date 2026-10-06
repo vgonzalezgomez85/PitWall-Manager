@@ -13,6 +13,21 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.46.0] — 2026-10-06
+
+### Añadido
+- **Modo básico / avanzado.** En **Ajustes → Preferencias → «Modo de la app»** (o en **Personalizar** del inicio) puedes dejar el inicio con lo justo para un club: **Entreno libre**, **Carrera sprint** y **Resultados**, más **Categorías**, **Escenarios** y **Ajustes** (para volver al avanzado). En básico las carreras ya creadas se abren desde la tabla de carreras recientes del inicio. El modo avanzado sigue mostrándolo todo. Se guarda al momento y no corta el cronometraje.
+- **Contraseña de acceso** (Ajustes → **Seguridad**), para que quien no conoce el programa no toque lo que no debe. Protege los botones de **Sistema** (Ajustes, Base de datos, Sincronizar catálogo, Sincronizar carrera, Conexión ecosistema, Solución de problemas) y de **Catálogo** (Pilotos, Equipos, Coches, Categorías, Escenarios), también en el propio ordenador y en la app de escritorio. El inicio y todo lo de Competición (carreras, entrenos, resultados, directo, correcciones) siguen sin contraseña. En el inicio, esos botones llevan un candado y la cabecera muestra **Entrar** o **Bloquear** (cerrar la sesión al dejar el ordenador). Tras 5 intentos fallidos, esa IP espera 30 s (el propio ordenador de PitWall nunca se bloquea). La contraseña sigue activa tras reiniciar PitWall; lo que se cierra es la sesión. Si se olvida, arranca PitWall con `PITWALL_DISABLE_PASSWORD=1` y ponla de nuevo.
+- **Entrenos: «Las 10 mejores».** En **Ajustes → Preferencias → «Historial de vueltas en entrenos»** eliges si la vista **Con historial** de cada carril muestra las 10 últimas vueltas (la más reciente arriba) o las 10 mejores, de mejor a peor, siempre con su número de vuelta. Vale para entreno libre y de competición.
+
+### Mejorado
+- **Nueva carrera más sencilla.** Si entras por **Carrera sprint** o **Carrera resistencia**, el asistente ya no pregunta el tipo: el título lo dice y hay un enlace para cambiar al otro. El primer paso queda en nombre, circuito y pole; con un circuito guardado, sus carriles y la vuelta mínima se resumen en una línea. **Pasadas** y **Repetir carril** pasan a **Más opciones** (plegado), y las reglas de resistencia solo salen en resistencia. **Volver** desde los pasos siguientes ya no borra lo que habías rellenado.
+- **Botones separados en el inicio:** **Carrera sprint** y **Carrera resistencia** abren el asistente con el tipo ya marcado, y **Entreno libre** y **Entreno de competición** sustituyen al antiguo «Entrenamientos».
+- **Resultados rediseñados:** buscador (carrera, circuito, equipo o piloto del podio), pestañas **Todas / Sprint / Resistencia** y la última carrera destacada arriba. Cada tarjeta muestra tipo, fecha, circuito, pilotos o equipos, mangas, el podio con sus vueltas y la vuelta rápida. Abre al instante aunque haya carreras de 24 h guardadas.
+
+### Corregido
+- **Corregir vueltas con la manga en marcha se ve al momento en el directo.** Antes el cambio no aparecía hasta el siguiente cruce, y tras añadir una vuelta a mano la siguiente salía con un número de vuelta repetido. Ahora el directo y la clasificación se actualizan en cuanto guardas la corrección y la numeración sigue bien.
+
 ## [1.45.2] — 2026-10-06
 
 ### Corregido

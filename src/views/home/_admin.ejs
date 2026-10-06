@@ -17,6 +17,7 @@ const inProgressRaces = typeof activeRaceCount !== 'undefined' ? activeRaceCount
 const c = typeof counts !== 'undefined' ? counts : { drivers: 0, teams: 0, cars: 0, categories: 0, circuits: 0 };
 const L = (typeof homeLayout !== 'undefined' && ['ac', 'a', 'b', 'c', 'd'].includes(homeLayout)) ? homeLayout : 'ac';
 const LAYOUTS = (typeof homeLayouts !== 'undefined') ? homeLayouts : [];
+const BASIC = typeof uiMode !== 'undefined' && uiMode === 'basic';
 %>
 <%
 const es = lang === 'es';
@@ -43,41 +44,60 @@ const I = {
   sync:   '<path d="M20 11a8 8 0 0 0-14.6-4.5L4 8M4 13a8 8 0 0 0 14.6 4.5L20 16"/><path d="M4 3v5h5M20 21v-5h-5"/>',
   link:   '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
   net:    '<circle cx="12" cy="5" r="2.5"/><circle cx="5" cy="19" r="2.5"/><circle cx="19" cy="19" r="2.5"/><path d="M12 7.5v4M12 11.5l-5.5 5.5M12 11.5l5.5 5.5"/>',
+  bolt:   '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+  hourglass: '<path d="M6 2h12M6 22h12M7 2c0 5 10 6 10 10S7 17 7 22M17 2c0 5-10 6-10 10s10 5 10 10"/>',
   wrench: '<path d="M14.7 6.3a4 4 0 0 0 5 5L21 13l-8 8-3-3 8-8-1.3-1.3a4 4 0 0 1-5-5L13 2z" transform="rotate(0)"/>',
 };
 const ico = (k) => '<svg viewBox="0 0 24 24" aria-hidden="true">' + I[k] + '</svg>';
+// `adv`: solo en el modo avanzado (Ajustes → Preferencias → Modo de la app).
+const RACE_SPRINT    = { href: '/races/new?type=club', label: es ? 'Carrera sprint' : 'Sprint race', icon: 'bolt', a: '#ef4651', desc: es ? 'Nueva carrera corta, formato individual.' : 'New short race, individual format.' };
+const RACE_ENDURANCE = { href: '/races/new?type=championship', label: es ? 'Carrera resistencia' : 'Endurance race', icon: 'hourglass', a: '#f97316', desc: es ? 'Nueva carrera larga por equipos.' : 'New long team race.' };
+const TRAIN_FREE     = { href: '/training/free', label: es ? 'Entreno libre' : 'Free practice', icon: 'clock', a: '#38bdf8', desc: es ? 'Vueltas por carril, sin equipos.' : 'Laps per lane, no teams.' };
+const TRAIN_COMP     = { href: '/training/competition', label: es ? 'Entreno de competición' : 'Competition practice', icon: 'people', a: '#0ea5e9', desc: es ? 'Equipos con rotación por tandas.' : 'Teams rotating by heats.' };
+const RESULTS        = { href: '/results', label: es ? 'Resultados' : 'Results', icon: 'trophy', a: '#f6c90e', desc: es ? 'Carreras finalizadas.' : 'Finished races.' };
+const LAP            = { href: '/lap', label: 'Lap', icon: 'phone', a: '#58a6ff', desc: es ? 'PINs y timing del equipo en el móvil.' : 'PINs and team timing on the phone.', adv: true };
 const groups = [
   { id: 'comp', title: es ? 'Competición' : 'Competition', items: [
-    { href: '/races', label: es ? 'Carreras' : 'Races', icon: 'flag', a: '#ef4651', badge: inProgressRaces > 0 ? inProgressRaces : null },
-    { href: '/training', label: es ? 'Entrenamientos' : 'Training', icon: 'clock', a: '#38bdf8' },
-    { href: '/training/competition/results', label: es ? 'Resultados de entrenos' : 'Training results', icon: 'list', a: '#38bdf8' },
-    { href: '/race-stats', label: es ? 'Estadísticas en vivo' : 'Live stats', icon: 'chart', a: '#22c55e' },
-    { href: '/results', label: es ? 'Resultados' : 'Results', icon: 'trophy', a: '#f6c90e' },
-    { href: '/lap', label: 'Lap', icon: 'phone', a: '#58a6ff' },
-    { href: '/control/shifts', label: es ? 'Control de pilotos' : 'Driver shifts', icon: 'people', a: '#a855f7' },
-    { href: '/control/tires', label: es ? 'Control de neumáticos' : 'Tyre control', icon: 'tire', a: '#facc15' },
+    { href: '/races', label: es ? 'Carreras' : 'Races', icon: 'flag', a: '#ef4651', badge: inProgressRaces > 0 ? inProgressRaces : null, adv: true },
+    RACE_SPRINT, RACE_ENDURANCE, TRAIN_FREE, TRAIN_COMP,
+    { href: '/training/competition/results', label: es ? 'Resultados de entrenos' : 'Training results', icon: 'list', a: '#38bdf8', adv: true },
+    { href: '/race-stats', label: es ? 'Estadísticas en vivo' : 'Live stats', icon: 'chart', a: '#22c55e', adv: true },
+    RESULTS, LAP,
+    { href: '/control/shifts', label: es ? 'Control de pilotos' : 'Driver shifts', icon: 'people', a: '#a855f7', adv: true },
+    { href: '/control/tires', label: es ? 'Control de neumáticos' : 'Tyre control', icon: 'tire', a: '#facc15', adv: true },
   ]},
   { id: 'cat', title: es ? 'Catálogo' : 'Catalog', items: [
-    { href: '/drivers', label: es ? 'Pilotos' : 'Drivers', icon: 'helmet', a: '#f59e0b', count: c.drivers },
-    { href: '/teams', label: es ? 'Equipos' : 'Teams', icon: 'team', a: '#a855f7', count: c.teams },
-    { href: '/cars', label: es ? 'Coches' : 'Cars', icon: 'car', a: '#fb7185', count: c.cars },
+    { href: '/drivers', label: es ? 'Pilotos' : 'Drivers', icon: 'helmet', a: '#f59e0b', count: c.drivers, adv: true },
+    { href: '/teams', label: es ? 'Equipos' : 'Teams', icon: 'team', a: '#a855f7', count: c.teams, adv: true },
+    { href: '/cars', label: es ? 'Coches' : 'Cars', icon: 'car', a: '#fb7185', count: c.cars, adv: true },
     { href: '/categories', label: es ? 'Categorías' : 'Categories', icon: 'tag', a: '#2dd4bf', count: c.categories },
     { href: '/circuits', label: es ? 'Escenarios' : 'Scenarios', icon: 'track', a: '#fb923c', count: c.circuits },
   ]},
   { id: 'sys', title: es ? 'Sistema' : 'System', items: [
+    // Ajustes se queda también en básico: es donde se vuelve al modo avanzado.
     { href: '/settings', label: es ? 'Ajustes' : 'Settings', icon: 'gear', a: '#c9ced8' },
-    { href: '/database', label: es ? 'Base de datos' : 'Database', icon: 'db', a: '#c9ced8' },
-    { href: '/catalog-sync', label: es ? 'Sincronizar catálogo' : 'Sync catalog', icon: 'sync', a: '#c9ced8' },
-    { href: '/link', label: es ? 'Sincronizar carrera' : 'Sync race', icon: 'link', a: '#c9ced8' },
-    { href: '/ecosystem', label: es ? 'Conexión ecosistema' : 'Ecosystem connection', icon: 'net', a: '#c9ced8' },
-    { href: '/diagnostico', label: es ? 'Solución de problemas' : 'Troubleshooting', icon: 'wrench', a: '#c9ced8' },
+    { href: '/database', label: es ? 'Base de datos' : 'Database', icon: 'db', a: '#c9ced8', adv: true },
+    { href: '/catalog-sync', label: es ? 'Sincronizar catálogo' : 'Sync catalog', icon: 'sync', a: '#c9ced8', adv: true },
+    { href: '/link', label: es ? 'Sincronizar carrera' : 'Sync race', icon: 'link', a: '#c9ced8', adv: true },
+    { href: '/ecosystem', label: es ? 'Conexión ecosistema' : 'Ecosystem connection', icon: 'net', a: '#c9ced8', adv: true },
+    { href: '/diagnostico', label: es ? 'Solución de problemas' : 'Troubleshooting', icon: 'wrench', a: '#c9ced8', adv: true },
   ]},
 ];
+const forMode = (items) => BASIC ? items.filter(it => !it.adv) : items;
+groups.forEach(g => { g.items = forMode(g.items); });
+// Básico: Competición con solo tres botones y en este orden (petición del club).
+const BASIC_COMP = [TRAIN_FREE, RACE_SPRINT, RESULTS];
+if (BASIC) groups[0].items = BASIC_COMP;
+// Con contraseña y sin haber entrado: Sistema y Catálogo la piden al pulsarlos.
+const LOCKED = typeof pwLocked !== 'undefined' && pwLocked;
+const lockIco = '<svg class="hm-lock" viewBox="0 0 24 24" aria-label="' + (es ? 'Pide contraseña' : 'Password required') + '"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+if (LOCKED) groups.filter(g => g.id === 'cat' || g.id === 'sys').forEach(g => g.items.forEach(it => { it.locked = true; }));
 const lv = typeof live !== 'undefined' ? live : null;
 const races = typeof recentRaces !== 'undefined' ? recentRaces : [];
 const tile = (it, small) => '<a href="' + it.href + '" class="hm-tile' + (small ? ' hm-tile--sm' : '') + '" data-win data-search="' + it.label.toLowerCase() + '" style="--a:' + it.a + '">'
   + (it.count != null ? '<span class="hm-tile__cnt">' + it.count + '</span>' : '')
   + (it.badge ? '<span class="hm-tile__badge">' + it.badge + '</span>' : '')
+  + (it.locked ? lockIco : '')
   + '<span class="hm-ico">' + ico(it.icon) + '</span><span class="hm-tile__t">' + it.label + '</span></a>';
 %>
 <link rel="stylesheet" href="/css/home.css">
@@ -119,6 +139,7 @@ const tile = (it, small) => '<a href="' + it.href + '" class="hm-tile' + (small 
       </span>
     <% } %>
     <% if (withWin) { %><span class="hm-pill" id="hmWinPill" hidden></span><% } %>
+    <% lockBtn() %>
     <% modeToggle() %>
     <button type="button" class="hm-pill hm-custom" id="hmCustomBtn" aria-haspopup="dialog"
             title="<%= es ? 'Elegir el diseño del inicio' : 'Choose the home layout' %>">
@@ -140,11 +161,27 @@ const tile = (it, small) => '<a href="' + it.href + '" class="hm-tile' + (small 
           <span class="hm-nav__lbl"><%= it.label %></span>
           <% if (it.badge) { %><span class="hm-nav__badge"><%= it.badge %></span><% } %>
           <% if (it.count) { %><span class="hm-nav__count"><%= it.count %></span><% } %>
+          <% if (it.locked) { %><%- lockIco %><% } %>
           <%- ext %>
         </a>
       <% }) %>
     <% }) %>
   </nav>
+<% } %>
+
+<%# Con contraseña activada: cerrar la sesión al dejar el PC. %>
+<% function lockBtn() { if (typeof passwordEnabled === 'undefined' || !passwordEnabled) return; %>
+  <% if (LOCKED) { %>
+  <a href="/login?next=%2F" class="hm-pill hm-custom" title="<%= es ? 'Entrar para usar Sistema y Catálogo' : 'Sign in to use System and Catalog' %>">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+    <%= es ? 'Entrar' : 'Sign in' %>
+  </a>
+  <% } else { %>
+  <a href="/logout" class="hm-pill hm-custom" title="<%= es ? 'Cerrar la sesión: Sistema y Catálogo volverán a pedir la contraseña' : 'Sign out: System and Catalog will ask for the password again' %>">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+    <%= es ? 'Bloquear' : 'Lock' %>
+  </a>
+  <% } %>
 <% } %>
 
 <%# «Abrir enlaces en»: control compacto en la cabecera, junto a Personalizar. %>
@@ -296,6 +333,7 @@ const tile = (it, small) => '<a href="' + it.href + '" class="hm-tile' + (small 
           <span class="hm-dot" style="background:<%= it.a %>"></span>
           <span class="hm-row__t"><%= it.label %></span>
           <span class="hm-mono hm-mute"><%= it.count %></span>
+          <% if (it.locked) { %><%- lockIco %><% } %>
           <span class="hm-mute">›</span>
         </a>
       <% }) %>
@@ -309,7 +347,7 @@ const tile = (it, small) => '<a href="' + it.href + '" class="hm-tile' + (small 
     <h2 class="hm-sec"><%= groups[2].title %></h2>
     <div class="hm-chips">
       <% groups[2].items.forEach(function (it) { %>
-        <a href="<%= it.href %>" class="hm-chip" data-win data-search="<%= it.label.toLowerCase() %>"><%= it.label %></a>
+        <a href="<%= it.href %>" class="hm-chip" data-win data-search="<%= it.label.toLowerCase() %>"><% if (it.locked) { %><%- lockIco %><% } %><%= it.label %></a>
       <% }) %>
     </div>
   </section>
@@ -415,16 +453,17 @@ const tile = (it, small) => '<a href="' + it.href + '" class="hm-tile' + (small 
           </button>
         <% }) %>
       </div>
+      <h3 class="hm-dlg__sub"><%= es ? 'Modo de la app' : 'App mode' %></h3>
+      <p class="hm-mute hm-dlg__p"><%= es ? 'Básico: solo entreno libre, carrera sprint, resultados, categorías, escenarios y ajustes. Avanzado: todos los accesos.' : 'Basic: only free practice, sprint race, results, categories, scenarios and settings. Advanced: every shortcut.' %></p>
+      <div class="hm-seg hm-dlg__mode" role="group" aria-label="<%= es ? 'Modo de la app' : 'App mode' %>">
+        <button type="submit" formaction="/home/mode" name="ui_mode" value="basic" aria-pressed="<%= BASIC %>"><%= es ? 'Básico' : 'Basic' %></button>
+        <button type="submit" formaction="/home/mode" name="ui_mode" value="advanced" aria-pressed="<%= !BASIC %>"><%= es ? 'Avanzado' : 'Advanced' %></button>
+      </div>
     </form>
   </dialog>
 <% } %>
 
-<% const quick = [
-  { href: '/races/new', label: es ? 'Nueva carrera' : 'New race', icon: 'flag', a: '#ef4651', desc: es ? 'Asistente paso a paso.' : 'Step-by-step wizard.' },
-  { href: '/training', label: es ? 'Entrenamientos' : 'Training', icon: 'clock', a: '#38bdf8', desc: es ? 'Libres o de competición.' : 'Free or competition.' },
-  { href: '/results', label: es ? 'Resultados' : 'Results', icon: 'trophy', a: '#f6c90e', desc: es ? 'Carreras finalizadas.' : 'Finished races.' },
-  { href: '/lap', label: 'Lap', icon: 'phone', a: '#58a6ff', desc: es ? 'PINs y timing del equipo en el móvil.' : 'PINs and team timing on the phone.' },
-]; %>
+<% const quick = BASIC ? BASIC_COMP : [RACE_SPRINT, RACE_ENDURANCE, TRAIN_FREE, TRAIN_COMP, RESULTS, LAP]; %>
 
 <div class="hm hm--<%= L %>">
 <% if (L === 'b' || L === 'd') { %>
@@ -436,6 +475,7 @@ const tile = (it, small) => '<a href="' + it.href + '" class="hm-tile' + (small 
         <div class="hm-pills">
           <a href="/races/new" class="hm-btn" data-win><%= es ? 'Nueva carrera' : 'New race' %><%- ext %></a>
           <a href="/training" class="hm-btn" data-win><%= es ? 'Entreno libre' : 'Free practice' %><%- ext %></a>
+          <% lockBtn() %>
           <% modeToggle() %>
           <button type="button" class="hm-pill hm-custom" id="hmCustomBtn" aria-haspopup="dialog" title="<%= es ? 'Elegir el diseño del inicio' : 'Choose the home layout' %>">
             <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
@@ -466,16 +506,16 @@ const tile = (it, small) => '<a href="' + it.href + '" class="hm-tile' + (small 
 
     <% if (L === 'a') { %>
       <% hero('full') %>
-      <% bigCards([
+      <% bigCards(BASIC ? BASIC_COMP : [
         { href: '/races', label: es ? 'Carreras' : 'Races', icon: 'flag', a: '#ef4651', desc: es ? 'Crear, gestionar y lanzar mangas.' : 'Create, manage and run heats.' },
-        { href: '/training', label: es ? 'Entrenamientos' : 'Training', icon: 'clock', a: '#38bdf8', desc: es ? 'Libres o de competición · resultados.' : 'Free or competition · results.' },
-        { href: '/results', label: es ? 'Resultados' : 'Results', icon: 'trophy', a: '#f6c90e', desc: es ? 'Carreras finalizadas y estadísticas.' : 'Finished races and stats.' },
-        { href: '/lap', label: 'Lap', icon: 'phone', a: '#58a6ff', desc: es ? 'Timing del equipo en el móvil.' : 'Team timing on the phone.' },
+        RACE_SPRINT, RACE_ENDURANCE, TRAIN_FREE, TRAIN_COMP, RESULTS, LAP,
       ], groups[0].title) %>
       <div class="hm-cols">
         <% catalogRows() %>
         <% systemChips() %>
       </div>
+      <%# En básico no hay botón «Carreras»: las ya creadas se abren desde aquí. %>
+      <% if (BASIC) { racesTable(); } %>
     <% } else if (L === 'c') { %>
       <% hero('strip') %>
       <% tileGroup(groups[0]) %>
@@ -483,6 +523,7 @@ const tile = (it, small) => '<a href="' + it.href + '" class="hm-tile' + (small 
         <% tileGroup(groups[1]) %>
         <% tileGroup(groups[2], true) %>
       </div>
+      <% if (BASIC) { racesTable(); } %>
       <% noResults() %>
     <% } else { %>
       <% hero('full') %>

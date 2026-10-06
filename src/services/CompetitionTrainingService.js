@@ -22,6 +22,7 @@ const LaneColors = require('./LaneColors');
 
 // Vueltas que se guardan por carril para el gráfico de ritmo del directo de
 // entrenamiento (en orden cronológico). `laps` sigue con las 20 de siempre.
+const { pushBest } = require('../utils/bestLaps');
 const PACE_MAX = 120;
 
 class CompetitionTrainingServiceClass {
@@ -133,7 +134,7 @@ class CompetitionTrainingServiceClass {
       this._laneMap.set(lane, {
         participantIdx: null,
         count: 0, sum: 0, lastMs: null,
-        laps: [], chronoLaps: [],
+        laps: [], chronoLaps: [], top: [],
       });
     }
 
@@ -227,6 +228,7 @@ class CompetitionTrainingServiceClass {
       ld.laps.sort((a, b) => a - b);
       ld.chronoLaps.push(lapTimeMs);
       if (ld.chronoLaps.length > 20) ld.chronoLaps.shift();
+      const top = pushBest(ld.top = ld.top || [], ld.count, lapTimeMs);
       (ld.pace = ld.pace || []).push(lapTimeMs);
       if (ld.pace.length > PACE_MAX) ld.pace.shift();
 
@@ -241,6 +243,7 @@ class CompetitionTrainingServiceClass {
         bestMs: ld.laps[0],
         lastMs: lapTimeMs,
         laps:   [...ld.chronoLaps].reverse(),
+        top:    [...top],
         pace:   ld.pace ? [...ld.pace] : [],
       });
     };
@@ -316,7 +319,7 @@ class CompetitionTrainingServiceClass {
       this._durationMs = null;
       for (const ld of this._laneMap.values()) {
         ld.count = 0; ld.sum = 0; ld.lastMs = null;
-        ld.laps = []; ld.chronoLaps = []; ld.pace = [];
+        ld.laps = []; ld.chronoLaps = []; ld.top = []; ld.pace = [];
       }
       SocketService.emit('training:standby', this.getLanes());
       console.log(`[CompetitionTraining] Heat ${this._heatNumber} force-stopped — same heat`);
@@ -363,6 +366,7 @@ class CompetitionTrainingServiceClass {
         bestMs: ld.laps.length > 0 ? ld.laps[0] : null,
         lastMs: ld.lastMs,
         laps:   [...ld.chronoLaps].reverse(),
+        top:    ld.top ? [...ld.top] : [],
         pace:   ld.pace ? [...ld.pace] : [],
       });
     }
