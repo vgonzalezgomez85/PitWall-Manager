@@ -278,10 +278,13 @@ app.on('web-contents-created', (_e, contents) => {
 // Pantalla completa de la VENTANA, no la del documento: la del documento
 // (Fullscreen API) se pierde en cada recarga y el directo se recarga tras el
 // semáforo, al acabar la manga, en pausa… La de la ventana sobrevive.
+// El estado sale del evento y no de isFullScreen(): en Windows el evento llega
+// antes de que isFullScreen() cambie, y el directo creía seguir sin pantalla
+// completa (el botón ya no sabía salir).
 function trackFullScreen(win) {
-  const notify = () => { if (!win.isDestroyed()) win.webContents.send('pitwall:fullscreen-changed', win.isFullScreen()); };
-  win.on('enter-full-screen', notify);
-  win.on('leave-full-screen', notify);
+  const notify = (on) => () => { if (!win.isDestroyed()) win.webContents.send('pitwall:fullscreen-changed', on); };
+  win.on('enter-full-screen', notify(true));
+  win.on('leave-full-screen', notify(false));
 }
 
 ipcMain.handle('pitwall:fullscreen', (e, on) => {
@@ -291,9 +294,10 @@ ipcMain.handle('pitwall:fullscreen', (e, on) => {
   // Resuelve al terminar la transición (en macOS es una animación de cambio de
   // Space): quien abre una ventana justo después necesita que haya acabado.
   return new Promise((resolve) => {
-    const done = () => { clearTimeout(t); resolve(!win.isDestroyed() && win.isFullScreen()); };
-    const t = setTimeout(done, 1500);
-    win.once(on ? 'enter-full-screen' : 'leave-full-screen', done);
+    const t = setTimeout(() => { win.removeListener(evt, onEvt); resolve(!win.isDestroyed() && win.isFullScreen()); }, 1500);
+    const evt = on ? 'enter-full-screen' : 'leave-full-screen';
+    const onEvt = () => { clearTimeout(t); resolve(on); };
+    win.once(evt, onEvt);
     win.setFullScreen(on);
   });
 });
