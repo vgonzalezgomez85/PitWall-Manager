@@ -94,10 +94,13 @@
     flag_lap: (d, es) => {
       const p = d.payload || {};
       const n = p.count || 1;
+      // `real` = el cruce llegó dentro de la ventana tras el final y va con su
+      // tiempo cronometrado; sin él, la vuelta se repuso por contador con la media.
+      const real = !!p.real;
       const base = es
-        ? `${who(d, es)} — ${n > 1 ? n + ' vueltas de final de bandera repuestas' : 'vuelta de final de bandera repuesta'}`
-        : `${who(d, es)} — ${n} flag-finish lap${n > 1 ? 's' : ''} restored`;
-      return base + ` (${fmtS(p.lapTimeMs)}s ${es ? 'media' : 'avg'})`;
+        ? `${who(d, es)} — ${n > 1 ? n + ' vueltas' : 'vuelta'} de final de bandera ${real ? 'cronometrada' : 'repuesta'}`
+        : `${who(d, es)} — ${n} flag-finish lap${n > 1 ? 's' : ''} ${real ? 'timed' : 'restored'}`;
+      return base + ` (${fmtS(p.lapTimeMs)}s${real ? '' : (es ? ' media' : ' avg')})`;
     },
   };
 

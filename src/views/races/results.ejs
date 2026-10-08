@@ -352,11 +352,11 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
     <div class="results-panel active" id="tab-matrix">
       <%
         const orderedLanes = (laneSequence || []).filter(l => l > 0);
-        // Desempate a igual vueltas: la coma de la ÚLTIMA manga (quién iba más
-        // adelantado al final) → va delante. Después el tiempo total y la mejor
-        // vuelta. DEBE coincidir con Lap.aggregateByRace / la proyección del motor.
+        // Desempate a igual vueltas (utils/tieBreak): misma manga final → quien cruzó antes;
+        // si no, la coma de la ÚLTIMA manga (quién iba más adelantado al final). Después el
+        // tiempo total y la mejor vuelta. DEBE coincidir con Lap.aggregateByRace / la proyección del motor.
         const byTotalM = [...results].sort((a,b) => b.total_laps - a.total_laps
-          || (b.last_manga_coma||0) - (a.last_manga_coma||0)
+          || compareLastManga(a, b)
           || (a.total_time_ms||Infinity) - (b.total_time_ms||Infinity)
           || (a.best_lap_ms||Infinity) - (b.best_lap_ms||Infinity));
 

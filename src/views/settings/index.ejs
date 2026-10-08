@@ -534,6 +534,13 @@ const navItems = [
                 </select>
               </div>
             </div>
+            <div class="st-row st-row--wrap">
+              <div class="st-row__txt">
+                <div class="st-row__t"><%= es ? 'Espera de cruces tras el final (s)' : 'Wait for crossings after the end (s)' %></div>
+                <div class="st-row__d"><%= es ? 'Tiempo durante el que, al terminar la manga, un coche que cruza la meta cuenta como vuelta de bandera con su tiempo real. Con las mismas vueltas gana quien cruzó antes. 0 lo desactiva (la vuelta se repone con el tiempo medio). Se guarda al momento y se aplica desde la siguiente manga.' : 'How long after the heat ends a car crossing the line still counts as a flag lap with its real time. On equal laps, whoever crossed first wins. 0 disables it (the lap is restored at the average time). Saved instantly; applies from the next heat.' %></div>
+              </div>
+              <input type="number" min="0" max="10" step="0.1" class="vt-inp is-mono st-row__ctl" value="<%= (lateCrossingGraceMs / 1000).toString() %>" data-pref-ms="late_crossing_grace_ms" aria-label="<%= es ? 'Espera de cruces tras el final (s)' : 'Wait for crossings after the end (s)' %>">
+            </div>
             <div class="st-row st-row--hint" hidden><div class="st-row__d" id="prefsMsg" role="status"></div></div>
           </div>
           <%
@@ -1031,6 +1038,24 @@ const settingsForm = document.getElementById('settingsForm');
       } catch {
         sel.value = saved;
         msg.textContent = LANG === 'es' ? 'No se ha podido guardar' : 'Could not save';
+      }
+    });
+  });
+  document.querySelectorAll('input[data-pref-ms]').forEach(inp => {
+    let saved = inp.value;
+    inp.addEventListener('change', async () => {
+      try {
+        const r = await fetch('/settings/prefs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+          body: new URLSearchParams({ key: inp.dataset.prefMs, value: String(Math.round(parseFloat(inp.value.replace(',', '.')) * 1000)) }),
+        });
+        if (!r.ok) throw new Error(r.status);
+        saved = inp.value;
+        msg.textContent = LANG === 'es' ? 'Guardado ✓' : 'Saved ✓';
+      } catch {
+        inp.value = saved;
+        msg.textContent = LANG === 'es' ? 'No se ha podido guardar (0 a 10 s)' : 'Could not save (0 to 10 s)';
       }
     });
   });

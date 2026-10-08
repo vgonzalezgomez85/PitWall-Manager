@@ -442,6 +442,11 @@ const migrations = [
   // en meta es una estimación: (fin − último cruce) / media limpia del carril.
   // Se acumula por entidad en la clasificación como desempate a igual vueltas.
   `ALTER TABLE manga_lanes ADD COLUMN coma REAL NOT NULL DEFAULT 0`,
+  // Instante (ms desde el GO de su circuito) del último cruce del carril en la
+  // manga, incluida la vuelta de bandera. Lo escribe TimingService.stopManga y
+  // desempata a igualdad de vueltas entre equipos de la misma manga final
+  // (utils/tieBreak): delante quien cruzó antes. NULL = sin dato (mangas viejas).
+  `ALTER TABLE manga_lanes ADD COLUMN last_cross_ms INTEGER`,
   // PIN de 4 dígitos por equipo para el cliente web "Lap" (timing del equipo
   // desde el móvil). Se genera bajo demanda; ver Team.ensureLapPins.
   `ALTER TABLE teams ADD COLUMN lap_pin TEXT`,

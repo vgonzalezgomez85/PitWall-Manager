@@ -23,7 +23,8 @@ const totalFlagged = laneGroups.reduce((acc, g) => acc + g.laps.filter(l => l.is
 // mano: si un coche se paró en pista durante el corte, se habrán repuesto más
 // vueltas de las que dio. Distintas de las de FINAL DE BANDERA (is_flag_lap):
 // esas no vienen de una caída, sino del cruce que completó justo al caer la
-// bandera y que el circuito ya 'finished' descartó en directo.
+// bandera: con su tiempo real si la trama llegó dentro de la ventana tras el
+// fin; con la media del carril (is_estimated) si hubo que reponerla por contador.
 const totalEstimated = laneGroups.reduce((acc, g) => acc + g.laps.filter(l => l.is_estimated && !l.is_flag_lap && !l.is_ghost).length, 0);
 const totalFlagLap    = laneGroups.reduce((acc, g) => acc + g.laps.filter(l => l.is_flag_lap && !l.is_ghost).length, 0);
 
@@ -100,8 +101,8 @@ if (firstFlagged >= 0) initActive = firstFlagged;
       <% if (totalFlagLap > 0) { %>
         <span class="lc-meta-pill" style="color:#58a6ff;border-color:rgba(88,166,255,.35)"
               title="<%= lang === 'es'
-                ? 'El cruce que completó justo al caer la bandera: la caja DS lo contó pero llegó con el circuito ya cerrado y se descartó. Su tiempo es la media del carril.'
-                : 'The crossing that completed right as the flag fell: the DS box counted it but it arrived after the circuit had already closed. Its time is the lane average.' %>">
+                ? 'El cruce que completó justo al caer la bandera. Si su trama llegó a PitWall va con su tiempo real; si no, se repuso con la media del carril.'
+                : 'The crossing that completed right as the flag fell. If its frame reached PitWall it carries its real time; otherwise it was restored with the lane average.' %>">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M4 21V4M4 4h13l-2.5 4L17 12H4"/></svg>
           <b><%= totalFlagLap %></b> <%= lang === 'es' ? 'vueltas de final de bandera' : 'flag-finish laps' %>
         </span>
@@ -267,8 +268,12 @@ if (firstFlagged >= 0) initActive = firstFlagged;
                         <% } else if (lap.is_flag_lap) { %>
                           <span class="lc-flagtag is-flaglap"
                                 title="<%= lang === 'es'
-                                  ? 'El cruce que completó justo al caer la bandera: la caja DS lo contó pero llegó con el circuito ya cerrado. Su tiempo es la media del carril: corrígelo si sabes el real.'
-                                  : 'The crossing that completed right as the flag fell: the DS box counted it but the circuit had already closed. Its time is the lane average.' %>">
+                                  ? (lap.is_estimated
+                                      ? 'El cruce que completó justo al caer la bandera: la caja DS lo contó pero su trama no llegó a PitWall. Su tiempo es la media del carril: corrígelo si sabes el real.'
+                                      : 'El cruce que completó justo al caer la bandera, con su tiempo real del DS.')
+                                  : (lap.is_estimated
+                                      ? 'The crossing that completed right as the flag fell: the DS box counted it but its frame never reached PitWall. Its time is the lane average.'
+                                      : 'The crossing that completed right as the flag fell, with its real DS time.') %>">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V4M4 4h13l-2.5 4L17 12H4"/></svg>
                             <%= lang === 'es' ? 'Final de bandera' : 'Flag finish' %>
                           </span>

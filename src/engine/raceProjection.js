@@ -78,6 +78,11 @@ function raceAggregate(db, Lap, raceId, opts = {}) {
   return Lap.aggregateByRaceSplit(raceId, activa.id, priorRaw);
 }
 
+const { compareLastManga } = require('../utils/tieBreak');
+const tieRow = (r) => ({
+  last_manga_id: r.lastMangaId, last_manga_cross_ms: r.lastMangaCrossMs, last_manga_coma: r.lastMangaComa,
+});
+
 /**
  * Proyección de carrera por entidad. Ver cabecera del módulo para la fórmula.
  * Devuelve array ordenado de:
@@ -196,7 +201,8 @@ function buildRaceProjection(raceId, deps = {}) {
       entity_id: a.eid, entity_name: a.name,
       entity_type: isTeam ? 'team' : 'driver',
       total_laps: 0, avg_lap_ms: null, best_lap_ms: null,
-      coma_total: 0, last_manga_coma: 0, mangas_raced: 0, total_time_ms: 0,
+      coma_total: 0, last_manga_coma: 0, last_manga_id: null, last_manga_cross_ms: null,
+      mangas_raced: 0, total_time_ms: 0,
     });
   });
 
@@ -242,6 +248,8 @@ function buildRaceProjection(raceId, deps = {}) {
       bestLapMs:   p.best_lap_ms,
       comaTotal:   p.coma_total || 0,
       lastMangaComa: p.last_manga_coma || 0,
+      lastMangaId:   p.last_manga_id ?? null,
+      lastMangaCrossMs: p.last_manga_cross_ms ?? null,
       mangasRaced: p.mangas_raced || 0,
       totalTimeMs: p.total_time_ms ?? null,
       remainingMs: remMs,
@@ -265,7 +273,7 @@ function buildRaceProjection(raceId, deps = {}) {
     if (b.projectedRaw == null) return -1;
     return (b.projectedRaw - a.projectedRaw)
         || (b.totalLaps - a.totalLaps)
-        || ((b.lastMangaComa || 0) - (a.lastMangaComa || 0))
+        || compareLastManga(tieRow(a), tieRow(b))
         || ((a.totalTimeMs ?? Infinity) - (b.totalTimeMs ?? Infinity))
         || ((a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity));
   });

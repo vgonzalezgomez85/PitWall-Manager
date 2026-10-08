@@ -63,6 +63,7 @@ app.locals.appVersion = require('../package.json').version;
 app.locals.fmtHms          = require('./utils/duration').fmtHms;
 app.locals.shiftCompliance = require('./utils/shiftCompliance').evaluate;
 app.locals.shiftBadge      = require('./utils/shiftCompliance').badgeClass;
+app.locals.compareLastManga = require('./utils/tieBreak').compareLastManga;
 // Colores de carril en las vistas: laneColorsFor(race) usa los del circuito de
 // la carrera (o los globales); laneInk(hex) = texto legible encima.
 const LaneColors = require('./services/LaneColors');

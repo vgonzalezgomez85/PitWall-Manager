@@ -13,6 +13,13 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.47.0] — 2026-10-08
+
+### Añadido
+- **La vuelta de bandera va con su tiempo real.** Cuando termina una manga, el último paso de cada coche por meta llega un instante después del final: antes se descartaba y PitWall reponía esa vuelta con la **media del carril** (una estimación). Ahora PitWall sigue esperando ese cruce unos segundos y lo guarda como **vuelta de bandera cronometrada**, con el **tiempo real del DS-300**, así la última vuelta y el orden de llegada son los de verdad. Si el cruce no llega, la vuelta se repone con la media como hasta ahora; en el **registro de sucesos** se distingue si quedó **cronometrada** o **repuesta**.
+- **A igualdad de vueltas, gana quien cruzó antes la meta.** Cuando dos pilotos o equipos empatan a vueltas y acabaron en la **misma manga**, ahora desempata el **instante de su último cruce**: va delante quien pasó antes por meta. Si acabaron en mangas distintas o no hay dato (carreras antiguas), sigue decidiendo la **coma de la última manga** como siempre. Se aplica en el directo, los resultados, las clasificaciones y las exportaciones a Excel/CSV.
+- **Nuevo ajuste «Espera de cruces tras el final (s)»** en **Ajustes → Preferencias**: los segundos que se sigue esperando, tras el final de la manga, el cruce que cronometra la vuelta de bandera (de **0 a 10 s**; por defecto **1,5 s**). Con **0** se desactiva y la vuelta vuelve a reponerse con la media. Se guarda al momento y se aplica desde la siguiente manga.
+
 ## [1.46.0] — 2026-10-06
 
 ### Añadido

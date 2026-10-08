@@ -16,6 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 const Lap           = require('../models/Lap');
+const Settings      = require('../models/Settings');
 const Manga         = require('../models/Manga');
 const Tanda         = require('../models/Tanda');
 const Team          = require('../models/Team');
@@ -79,6 +80,20 @@ class TimingServiceClass {
     this._priorCache     = new Map(); // raceId → agregados de mangas anteriores (ver _priorAggregates)
     this._projCache      = new Map(); // raceId → proyección de carrera con TTL (ver _cachedProjection)
     this._projRefresh    = new Map(); // raceId → { inFlight } — dedup de peticiones al worker de stats
+    // carril → ventana en la que se acepta el cruce de la bandera de un circuito ya
+    // terminado (ver _openLateWindows / _acceptLateCrossing).
+    this._lateWindows        = new Map();
+    this._lateCloseTimer     = null; // suelta el oyente de cruces al expirar las ventanas
+    this._flagReconcileTimer = null; // red de seguridad por contador del DS (ver _reconcileFinalLaps)
+  }
+
+  // Cuánto tiempo después del final de su circuito se acepta un cruce como vuelta de
+  // bandera. Ajustes → `late_crossing_grace_ms`; 0 lo desactiva (queda la reposición
+  // por contador del DS, con tiempo estimado).
+  static get LATE_CROSSING_DEFAULT_MS() { return 1500; }
+  static lateCrossingGraceMs() {
+    const v = parseInt(Settings.get('late_crossing_grace_ms', String(TimingServiceClass.LATE_CROSSING_DEFAULT_MS)), 10);
+    return Number.isFinite(v) ? Math.min(10000, Math.max(0, v)) : TimingServiceClass.LATE_CROSSING_DEFAULT_MS;
   }
 
   // Registra un suceso en el registro de carrera (GO, pausa, vuelta
@@ -793,6 +808,7 @@ class TimingServiceClass {
     // la cronología del informe sí quedaría falseada.
     if (this._isChampionship) this._closeDriverShiftsForCircuit(ci);
     this._persistCircuits();
+    this._openLateWindows(ci);
 
     const list = Object.values(this.session.circuits);
     const anyRunning  = list.some(x => x.status === 'running');
@@ -820,7 +836,7 @@ class TimingServiceClass {
     this._tickInt = this._autoStopTimer = this._outageReconcileTimer = null;
     this._clearAllCircuitTimers();
 
-    this._detachLapHandler();
+    this._releaseLapHandler();
     this._pendingSetup = null;
 
     // Arrastre del piloto: ANTES de cerrar los turnos, apuntamos qué piloto
@@ -876,7 +892,7 @@ class TimingServiceClass {
       // entera). Se persiste en manga_lanes.coma para el desempate a igual
       // número de vueltas en la clasificación.
       const dbConn = require('../config/database');
-      const comaStmt = dbConn.prepare('UPDATE manga_lanes SET coma = ? WHERE manga_id = ? AND lane = ?');
+      const comaStmt = dbConn.prepare('UPDATE manga_lanes SET coma = ?, last_cross_ms = ? WHERE manga_id = ? AND lane = ?');
       const nowTs = Date.now();
       for (const ld of Object.values(this.session.laneMap)) {
         const ci = this.session.laneToCircuit[ld.lane];
@@ -893,18 +909,25 @@ class TimingServiceClass {
         if (ld.lapCount > 0 && refAvg > 0 && ld.lastCrossing) {
           coma = Math.min(0.99, Math.max(0, (endTs - ld.lastCrossing) / refAvg));
         }
+        // Instante del último cruce: desempata entre equipos de la misma manga final.
+        let crossMs = (ld.lapCount > 0 && ld.lastCrossing && c) ? Math.max(0, Math.round(ld.lastCrossing - c.startTime)) : null;
+        // Si su cruce de bandera ya llegó (circuito terminado antes que la manga), la
+        // vuelta ya está completada: no queda fracción de la siguiente.
+        const flag = this._lateWindows.get(ld.lane);
+        if (flag && flag.used && flag.mangaId === this.session.manga.id) { coma = 0; crossMs = flag.crossMs; }
         try {
-          comaStmt.run(+coma.toFixed(3), this.session.manga.id, ld.lane);
+          comaStmt.run(+coma.toFixed(3), crossMs, this.session.manga.id, ld.lane);
         } catch (err) { console.error('[TimingService] persist coma error:', err.message); }
       }
 
       // ── Snapshot para la reconciliación del cruce "en la bandera" ──────────
       // El frame de FIN de manga (0xA4) se procesa µs ANTES que el frame del
-      // último cruce; ese cruce llega con el circuito ya 'finished' y se
-      // descarta (reason 'circuit_not_running') → se pierde 1 vuelta que el DS
-      // SÍ contó (byte12). Guardamos aquí lo necesario para, ~1.5 s después,
+      // último cruce; ese cruce llega con el circuito ya 'finished' y, si no lo
+      // recoge la ventana de _openLateWindows, se pierde 1 vuelta que el DS SÍ
+      // contó (byte12). Guardamos aquí lo necesario para, pasada la ventana,
       // comparar byte12 con lo persistido y reponer la(s) vuelta(s) que falten.
-      // Solo aplica al DS-300 REAL (no simulación ni BART).
+      // Red de seguridad: si el cruce entró por la ventana con su tiempo real,
+      // el contador ya cuadra y no se repone nada. Solo DS-300 REAL.
       const simNow = SerialService.getLinkStatus().simulating;
       if (!simNow && !SerialService.isBart) {
         reconcileData = {
@@ -922,6 +945,7 @@ class TimingServiceClass {
               refAvgMs:         ld.cleanAvgMs > 0 ? ld.cleanAvgMs : ld.lapAvgMs,
               lastCrossing:     ld.lastCrossing,
               circuitStartTime: c ? c.startTime : null,
+              endElapsedMs:     c && c.endTime ? c.endTime - c.startTime : null,
             };
           }),
         };
@@ -1061,11 +1085,132 @@ class TimingServiceClass {
     // por llegar con el circuito ya 'finished'. Se hace tras cerrar/persistir la
     // manga y con la sesión ya vaciada (trabaja 100% sobre BD).
     if (reconcileData) {
-      setTimeout(() => {
+      clearTimeout(this._flagReconcileTimer);
+      this._flagReconcileTimer = setTimeout(() => {
+        this._flagReconcileTimer = null;
         try { this._reconcileFinalLaps(reconcileData); }
         catch (err) { console.error('[TimingService] reconcile error:', err.message); }
-      }, 1500);
+      }, Math.max(TimingServiceClass.LATE_CROSSING_DEFAULT_MS, TimingServiceClass.lateCrossingGraceMs()));
     }
+  }
+
+  // ── Cruce de la bandera con su tiempo real (DS-300 real) ────────────────────
+  // El último cruce de un carril llega µs DESPUÉS de la trama de fin de su circuito,
+  // que ya lo dejó 'finished'. Antes se descartaba y la reconciliación reponía la
+  // vuelta con la media del carril, perdiendo el orden real entre dos coches que
+  // cruzan seguidos. Ahora, al terminar el circuito se abre una ventana por carril
+  // (`late_crossing_grace_ms`) en la que UN cruce cuenta como vuelta de bandera con
+  // su tiempo real. La reconciliación por contador sigue de red de seguridad.
+  _lateEnabled() {
+    if (TimingServiceClass.lateCrossingGraceMs() <= 0) return false;
+    return !SerialService.getLinkStatus().simulating && !SerialService.isBart;
+  }
+
+  // Suelta el oyente de cruces al cerrar la manga — salvo que haya ventanas de vuelta
+  // de bandera abiertas: el último cruce de cada carril llega µs DESPUÉS del frame de
+  // fin (por eso existen las ventanas), así que el oyente vive hasta que expiren. Los
+  // cruces que no encajen en ventana se descartan en _onCrossing (sesión ya vaciada).
+  _releaseLapHandler() {
+    if (!this._lateWindows.size) { this._detachLapHandler(); return; }
+    SerialService.setRaceRunning(false);   // manga parada: el silencio del DS es normal
+    const until = Math.max(...Array.from(this._lateWindows.values(), w => w.expiresAt));
+    clearTimeout(this._lateCloseTimer);
+    this._lateCloseTimer = setTimeout(() => {
+      this._lateCloseTimer = null;
+      this._lateWindows.clear();
+      this._detachLapHandler();
+    }, Math.max(0, until - Date.now()) + 250);
+  }
+
+  // Manga nueva o cancelada: las ventanas pendientes son de una manga que ya no está
+  // en pista. Sin esto, un cruce tardío se colaría en la manga anterior minutos después.
+  _clearLateWindows() {
+    clearTimeout(this._lateCloseTimer);
+    this._lateCloseTimer = null;
+    this._lateWindows.clear();
+  }
+
+  _openLateWindows(ci) {
+    if (!this.session || !this._lateEnabled()) return;
+    const c = this.session.circuits[ci];
+    if (!c || !c.endTime) return;
+    const grace = TimingServiceClass.lateCrossingGraceMs();
+    for (const ld of Object.values(this.session.laneMap)) {
+      if (this.session.laneToCircuit[ld.lane] !== ci || !(ld.lapCount > 0) || !ld.lastCrossing) continue;
+      this._lateWindows.set(ld.lane, {
+        mangaId: this.session.manga.id, raceId: this.session.race.id,
+        mangaNumber: this.session.manga.number,
+        teamId: ld.teamId, driverId: ld.driverId, name: ld.name,
+        startTime: c.startTime, expiresAt: c.endTime + grace,
+        lapNum: ld.lapCount + (ld.lapNumOffset || 0) + 1,
+        lastElapsedMs: Math.max(0, ld.lastCrossing - c.startTime),
+        used: false, crossMs: null,
+      });
+    }
+  }
+
+  // ¿Es este cruce la vuelta de bandera de un circuito ya terminado? Si sí, la guarda
+  // y devuelve true (el llamador no hace nada más con él).
+  _acceptLateCrossing(lane, timestamp, deviceLapTimeMs) {
+    const w = this._lateWindows.get(lane);
+    if (!w) return false;
+    if (w.used || timestamp > w.expiresAt) {
+      if (timestamp > w.expiresAt) this._lateWindows.delete(lane);
+      return false;
+    }
+    const crossMs   = Math.max(0, Math.round(timestamp - w.startTime));
+    const lapTimeMs = deviceLapTimeMs != null ? deviceLapTimeMs : Math.max(0, crossMs - w.lastElapsedMs);
+    try {
+      Lap.create({
+        race_id: w.raceId, manga_id: w.mangaId,
+        team_id: w.teamId, driver_id: w.driverId,
+        lane, lap_number: w.lapNum,
+        lap_time_ms: lapTimeMs, elapsed_ms: crossMs,
+        is_exit: 0, is_ghost: 0, is_warmup: 0,
+        is_estimated: 0, is_flag_lap: 1,
+      });
+    } catch (err) {
+      console.error('[TimingService] late crossing error:', err.message);
+      return false;
+    }
+    w.used = true;
+    w.crossMs = crossMs;
+    DebugLogger.log('crossing', { lane, timestamp, deviceLapTimeMs, flagLap: true });
+    console.log(`[TimingService] Cruce de bandera carril ${lane}: vuelta ${w.lapNum} @ ${crossMs}ms (tiempo real ${lapTimeMs}ms)`);
+    // Completó su vuelta al caer la bandera: no queda fracción de la siguiente.
+    try {
+      require('../config/database')
+        .prepare('UPDATE manga_lanes SET coma = 0, last_cross_ms = ? WHERE manga_id = ? AND lane = ?')
+        .run(crossMs, w.mangaId, lane);
+    } catch (err) { console.error('[TimingService] late crossing coma error:', err.message); }
+    this._logEvent('flag_lap', {
+      raceId: w.raceId, mangaId: w.mangaId, mangaNumber: w.mangaNumber,
+      lane, entityName: w.name, payload: { count: 1, lapTimeMs, real: true },
+    });
+
+    const ld = this.session && this.session.manga.id === w.mangaId ? this.session.laneMap[lane] : null;
+    if (ld) {
+      ld.lapCount++;
+      ld.lastLapMs    = lapTimeMs;
+      ld.lastCrossing = timestamp;
+      this.invalidateStandingsCaches();
+      SocketService.emitStandings(this.getStandings());
+    } else {
+      this.invalidateStandingsCaches();
+      this._announceFlagLaps(w.raceId, w.mangaId, 1);
+    }
+    return true;
+  }
+
+  // Avisa a las vistas (resultados, stats, móvil) de que se han añadido vueltas de
+  // bandera a una manga ya cerrada.
+  _announceFlagLaps(raceId, mangaId, count) {
+    try {
+      const MobileController = require('../controllers/MobileController');
+      const snapshot = MobileController.buildStatsSnapshot(raceId);
+      if (snapshot) SocketService.emit('race:stats-snapshot', snapshot);
+    } catch (err) { console.error('[TimingService] flag snapshot failed:', err.message); }
+    SocketService.emit('manga:reconciled', { raceId, mangaId, insertedLaps: count });
   }
 
   // ── Reconciliación del cruce "en la bandera" (DS-300 real) ──────────────────
@@ -1134,6 +1279,14 @@ class TimingServiceClass {
           inserted++;
         } catch (err) { console.error('[TimingService] reconcile insert error:', err.message); }
       }
+      // La vuelta de bandera completa la vuelta en curso: sin fracción de la siguiente.
+      // Su instante es estimado, pero siempre posterior al fin del circuito.
+      try {
+        const crossMs = Math.round(Math.max(elapsed, ld.endElapsedMs || 0));
+        require('../config/database')
+          .prepare('UPDATE manga_lanes SET coma = 0, last_cross_ms = ? WHERE manga_id = ? AND lane = ?')
+          .run(crossMs, data.mangaId, ld.lane);
+      } catch (err) { console.error('[TimingService] reconcile coma error:', err.message); }
       console.log(`[TimingService] Reconciliación bandera: carril ${ld.lane} DS=${dsCount} BD=${registered} → +${missing} vuelta(s) @ ${refAvg}ms`);
       this._logEvent('flag_lap', {
         raceId: data.raceId, mangaId: data.mangaId, mangaNumber: data.mangaNumber,
@@ -1343,6 +1496,8 @@ class TimingServiceClass {
     this._tickInt = this._autoStopTimer = this._outageReconcileTimer = null;
     this._clearAllCircuitTimers();
 
+    // Cancelar borra las vueltas de la manga: un cruce tardío no puede reponer ninguna.
+    this._clearLateWindows();
     this._detachLapHandler();
 
     const mangaId = this.session.manga.id;
@@ -1395,6 +1550,7 @@ class TimingServiceClass {
    */
   _attachLapHandler() {
     const SerialService = require('./SerialService');
+    this._clearLateWindows();   // las ventanas de la manga anterior ya no valen
     this._detachLapHandler();
     this._lapHandler = (data) => this._onCrossing(data.lane, data.timestamp, data.lapTimeMs, data.missed);
     SerialService.on('lane_crossing', this._lapHandler);
@@ -1418,6 +1574,7 @@ class TimingServiceClass {
    * se guarda marcada para que el operador pueda revisarla o borrarla.
    */
   _onCrossing(lane, timestamp, deviceLapTimeMs, missed = false) {
+    if (!missed && this._lateWindows.size && this._acceptLateCrossing(lane, timestamp, deviceLapTimeMs)) return;
     if (!this.session) {
       DebugLogger.log('crossing_dropped', { lane, deviceLapTimeMs, reason: 'no_session' });
       return;

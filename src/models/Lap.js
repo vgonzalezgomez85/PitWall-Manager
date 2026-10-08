@@ -16,6 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 const db = require('../config/database');
+const { compareLastManga } = require('../utils/tieBreak');
 
 // ── Contador de mutaciones ───────────────────────────────────────────────────
 //
@@ -273,22 +274,23 @@ class Lap {
   }
 
   /**
-   * Coma de la ÚLTIMA manga que corrió cada entidad (la de mayor `manga_id` con
-   * `is_rest = 0`). Es lo que desempata a igualdad de vueltas: quién iba más
-   * adelantado en pista al caer la bandera de su último tramo. `manga_id` es
-   * monótono con la creación, así que "el mayor" = el último tramo (también con
-   * varias tandas). Si descansó la última manga, cuenta la última que sí corrió.
+   * Última manga que corrió cada entidad (la de mayor `manga_id` con `is_rest = 0`)
+   * y, de ella, su coma y el instante de su último cruce. Es lo que desempata a
+   * igualdad de vueltas (ver utils/tieBreak): quién cruzó antes o iba más adelantado
+   * al caer la bandera de su último tramo. `manga_id` es monótono con la creación, así
+   * que "el mayor" = el último tramo (también con varias tandas). Si descansó la última
+   * manga, cuenta la última que sí corrió.
    */
-  static _lastComaByEntity(raceId) {
-    const out = {}, best = {};
+  static _lastMangaByEntity(raceId) {
+    const out = {};
     db.prepare(`
-      SELECT ml.team_id, ml.driver_id, ml.manga_id AS mid, ml.coma
+      SELECT ml.team_id, ml.driver_id, ml.manga_id AS mid, ml.coma, ml.last_cross_ms AS cross
       FROM manga_lanes ml
       JOIN mangas mg ON mg.id = ml.manga_id
       WHERE mg.race_id = ? AND ml.is_rest = 0
     `).all(raceId).forEach(r => {
       const k = r.team_id != null ? 'team:' + r.team_id : 'driver:' + r.driver_id;
-      if (best[k] == null || r.mid > best[k]) { best[k] = r.mid; out[k] = r.coma || 0; }
+      if (!out[k] || r.mid > out[k].mid) out[k] = { mid: r.mid, coma: r.coma || 0, cross: r.cross };
     });
     return out;
   }
@@ -426,7 +428,7 @@ class Lap {
 
     const meta     = Lap._entityMeta(raceId);
     const coma     = Lap._comaByEntity(raceId);
-    const lastComa = Lap._lastComaByEntity(raceId);
+    const lastManga = Lap._lastMangaByEntity(raceId);
     const rows = Object.entries(acc).map(([k, a]) => ({
       entity_id:    a.entity_id,
       entity_name:  meta[k]?.entity_name ?? null,
@@ -441,7 +443,9 @@ class Lap {
       pit_stops:    a.pit_stops,
       last_lap_id:  a.last_lap_id,
       coma_total:      coma[k] || 0,       // suma (referencia)
-      last_manga_coma: lastComa[k] || 0,   // desempate oficial
+      last_manga_coma: lastManga[k]?.coma || 0,         // desempate oficial
+      last_manga_id:   lastManga[k]?.mid ?? null,
+      last_manga_cross_ms: lastManga[k]?.cross ?? null,
     }));
 
     // Corrección de la vuelta de salida sobre total_time_ms (1ª manga de cada
@@ -454,7 +458,7 @@ class Lap {
     // por si empataran también en esa coma. DEBE coincidir con aggregateByRace.
     rows.sort((x, y) =>
       (y.total_laps - x.total_laps) ||
-      ((y.last_manga_coma || 0) - (x.last_manga_coma || 0)) ||
+      compareLastManga(x, y) ||
       (x.total_time_ms - y.total_time_ms));
     return rows;
   }
@@ -530,9 +534,15 @@ class Lap {
     // hay que reordenar en JS con el MISMO comparador que _mergeAgg — el ORDER BY
     // de SQL ordenaba por el total crudo. Así ambas vías dan idéntico resultado.
     Lap._applyStartSettled(raceId, rows);
+    const lastManga = Lap._lastMangaByEntity(raceId);
+    for (const r of rows) {
+      const lm = lastManga[r.entity_type + ':' + r.entity_id];
+      r.last_manga_id       = lm?.mid ?? null;
+      r.last_manga_cross_ms = lm?.cross ?? null;
+    }
     rows.sort((x, y) =>
       (y.total_laps - x.total_laps) ||
-      ((y.last_manga_coma || 0) - (x.last_manga_coma || 0)) ||
+      compareLastManga(x, y) ||
       (x.total_time_ms - y.total_time_ms));
     return rows;
   }

@@ -26,6 +26,11 @@ const PREFS = {
   training_history_mode: ['recent', 'best'],
 };
 
+// Preferencias numéricas de guardado inmediato: clave → [mín, máx].
+const NUM_PREFS = {
+  late_crossing_grace_ms: [0, 10000],
+};
+
 class SettingsController {
 
   static async _scanPorts() {
@@ -85,6 +90,7 @@ class SettingsController {
       caFingerprint:  (() => { try { return require('../services/TlsService').caFingerprint(); } catch { return null; } })(),
       uiMode:              cfg.ui_mode === 'basic' ? 'basic' : 'advanced',
       trainingHistoryMode: cfg.training_history_mode === 'best' ? 'best' : 'recent',
+      lateCrossingGraceMs: require('../services/TimingService').constructor.lateCrossingGraceMs(),
       passwordEnabled:     require('../services/AccessPassword').isEnabled(),
       passwordOverridden:  process.env.PITWALL_DISABLE_PASSWORD === '1',
     });
@@ -103,6 +109,13 @@ class SettingsController {
   // por save(), que reabre los puertos serie). Solo las claves de PREFS.
   static savePrefs(req, res) {
     const key = String(req.body.key || '');
+    const range = NUM_PREFS[key];
+    if (range) {
+      const n = Math.round(Number(req.body.value));
+      if (!Number.isFinite(n) || n < range[0] || n > range[1]) return res.status(400).json({ ok: false });
+      Settings.set(key, n);
+      return res.json({ ok: true, key, value: n });
+    }
     const allowed = PREFS[key];
     const value = String(req.body.value || '');
     if (!allowed || !allowed.includes(value)) return res.status(400).json({ ok: false });

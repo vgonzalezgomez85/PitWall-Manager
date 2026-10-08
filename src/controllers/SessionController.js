@@ -19,6 +19,7 @@ const Race           = require('../models/Race');
 const Manga          = require('../models/Manga');
 const Tanda          = require('../models/Tanda');
 const Lap            = require('../models/Lap');
+const { compareLastManga } = require('../utils/tieBreak');
 const Team           = require('../models/Team');
 const Driver         = require('../models/Driver');
 const DriverShift    = require('../models/DriverShift');
@@ -1550,7 +1551,7 @@ class SessionController {
     // tiempo total → mejor vuelta. Antes ordenaba solo por mejor vuelta, así que
     // el Excel salía en distinto orden que la pantalla en los empates a vueltas.
     const byTotal = [...aggregate].sort((a,b) => b.total_laps - a.total_laps
-      || (b.last_manga_coma||0) - (a.last_manga_coma||0)
+      || compareLastManga(a, b)
       || (a.total_time_ms||Infinity) - (b.total_time_ms||Infinity)
       || (a.best_lap_ms||Infinity) - (b.best_lap_ms||Infinity));
     const s1 = wb.addWorksheet(isEs ? 'Clasificación' : 'Standings');
@@ -1630,7 +1631,7 @@ class SessionController {
       }
     }
     const byTotalM = [...entityData].sort((a,b) => b.total_laps - a.total_laps
-      || (b.last_manga_coma||0) - (a.last_manga_coma||0)
+      || compareLastManga(a, b)
       || (a.total_time_ms||Infinity) - (b.total_time_ms||Infinity)
       || (a.best_lap_ms||Infinity) - (b.best_lap_ms||Infinity));
 
@@ -2330,7 +2331,7 @@ class SessionController {
     // coma última manga → tiempo total → mejor vuelta.
     const sorted = [...aggregate].sort((a, b) =>
       b.total_laps - a.total_laps
-      || (b.last_manga_coma || 0) - (a.last_manga_coma || 0)
+      || compareLastManga(a, b)
       || (a.total_time_ms || Infinity) - (b.total_time_ms || Infinity)
       || (a.best_lap_ms || Infinity) - (b.best_lap_ms || Infinity));
     return sorted.map((r, i) => ({
