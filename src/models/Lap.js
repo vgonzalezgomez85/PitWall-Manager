@@ -257,18 +257,34 @@ class Lap {
     return meta;
   }
 
+  /**
+   * Corrección manual de la coma (Ajustes → Preferencias; apagada por defecto).
+   * Se lee de SQLite en cada uso, como el resto de preferencias del motor.
+   */
+  static manualComaEnabled() {
+    return require('./Settings').get('manual_coma', 'auto') === 'manual';
+  }
+
+  /**
+   * Coma efectiva de una fila de manga_lanes: la fijada a mano si el ajuste está
+   * activo; si no, la automática (la que calcula TimingService al cerrar la manga).
+   */
+  static _effectiveComa(row, manualOn) {
+    return (manualOn && row.coma_manual != null) ? row.coma_manual : (row.coma || 0);
+  }
+
   /** Coma acumulada por entidad. Sale de manga_lanes, no de laps: no depende de las vueltas. */
   static _comaByEntity(raceId) {
+    const manualOn = Lap.manualComaEnabled();
     const out = {};
     db.prepare(`
-      SELECT ml.team_id, ml.driver_id, SUM(ml.coma) AS coma
+      SELECT ml.team_id, ml.driver_id, ml.coma, ml.coma_manual
       FROM manga_lanes ml
       JOIN mangas mg ON mg.id = ml.manga_id
       WHERE mg.race_id = ? AND ml.is_rest = 0
-      GROUP BY ml.team_id, ml.driver_id
     `).all(raceId).forEach(r => {
       const k = r.team_id != null ? 'team:' + r.team_id : 'driver:' + r.driver_id;
-      out[k] = r.coma || 0;
+      out[k] = (out[k] || 0) + Lap._effectiveComa(r, manualOn);
     });
     return out;
   }
@@ -279,18 +295,25 @@ class Lap {
    * igualdad de vueltas (ver utils/tieBreak): quién cruzó antes o iba más adelantado
    * al caer la bandera de su último tramo. `manga_id` es monótono con la creación, así
    * que "el mayor" = el último tramo (también con varias tandas). Si descansó la última
-   * manga, cuenta la última que sí corrió.
+   * manga, cuenta la última que sí corrió. `manual` = esa coma la fijó el operador a
+   * mano (con el ajuste activo): utils/tieBreak le da prioridad sobre el cruce.
    */
   static _lastMangaByEntity(raceId) {
+    const manualOn = Lap.manualComaEnabled();
     const out = {};
     db.prepare(`
-      SELECT ml.team_id, ml.driver_id, ml.manga_id AS mid, ml.coma, ml.last_cross_ms AS cross
+      SELECT ml.team_id, ml.driver_id, ml.manga_id AS mid, ml.coma, ml.coma_manual, ml.last_cross_ms AS cross
       FROM manga_lanes ml
       JOIN mangas mg ON mg.id = ml.manga_id
       WHERE mg.race_id = ? AND ml.is_rest = 0
     `).all(raceId).forEach(r => {
       const k = r.team_id != null ? 'team:' + r.team_id : 'driver:' + r.driver_id;
-      if (!out[k] || r.mid > out[k].mid) out[k] = { mid: r.mid, coma: r.coma || 0, cross: r.cross };
+      if (!out[k] || r.mid > out[k].mid) {
+        out[k] = {
+          mid: r.mid, coma: Lap._effectiveComa(r, manualOn), cross: r.cross,
+          manual: manualOn && r.coma_manual != null,
+        };
+      }
     });
     return out;
   }
@@ -444,6 +467,7 @@ class Lap {
       last_lap_id:  a.last_lap_id,
       coma_total:      coma[k] || 0,       // suma (referencia)
       last_manga_coma: lastManga[k]?.coma || 0,         // desempate oficial
+      last_manga_coma_manual: !!lastManga[k]?.manual,   // fijada a mano en esa manga
       last_manga_id:   lastManga[k]?.mid ?? null,
       last_manga_cross_ms: lastManga[k]?.cross ?? null,
     }));
@@ -497,36 +521,16 @@ class Lap {
         SUM(l.is_pit_stop)                       AS pit_stops,
         -- Id de la última vuelta válida (el mayor id: son monótonos). Solo el id;
         -- su tiempo se busca por clave primaria cuando hace falta, que es gratis.
-        MAX(CASE WHEN l.is_warmup = 0 AND l.lap_number > 0 THEN l.id END) AS last_lap_id,
-        -- Coma acumulada: fracción de vuelta en curso al caer la bandera de
-        -- cada manga (estimada en stopManga). Desempate a igualdad de vueltas:
-        -- más coma = llegó más lejos en las vueltas que no llegó a marcar.
-        COALESCE((
-          SELECT SUM(ml.coma) FROM manga_lanes ml
-          JOIN mangas mg ON mg.id = ml.manga_id
-          WHERE mg.race_id = l.race_id AND ml.is_rest = 0
-            AND ((t.id IS NOT NULL AND ml.team_id = t.id)
-              OR (t.id IS NULL    AND ml.driver_id = d.id))
-        ), 0) AS coma_total,
-        -- Coma de la ÚLTIMA manga que corrió (mayor manga_id, is_rest=0): el
-        -- desempate oficial. Quién iba más adelantado en pista al final.
-        COALESCE((
-          SELECT ml.coma FROM manga_lanes ml
-          WHERE ml.is_rest = 0
-            AND ml.manga_id IN (SELECT id FROM mangas WHERE race_id = l.race_id)
-            AND ((t.id IS NOT NULL AND ml.team_id = t.id)
-              OR (t.id IS NULL    AND ml.driver_id = d.id))
-          ORDER BY ml.manga_id DESC LIMIT 1
-        ), 0) AS last_manga_coma
+        MAX(CASE WHEN l.is_warmup = 0 AND l.lap_number > 0 THEN l.id END) AS last_lap_id
       FROM laps l
       LEFT JOIN teams   t ON t.id = l.team_id
       LEFT JOIN drivers d ON d.id = l.driver_id
       WHERE l.race_id = ? AND l.is_ghost = 0 AND l.manga_id IS NOT NULL
       GROUP BY entity_id, entity_type
-      -- Desempate a igualdad de vueltas: la coma de la ÚLTIMA manga (quién iba más
-      -- adelantado en pista al final). El tiempo total, criterio posterior.
+      -- Las comas NO se calculan aquí: se adjuntan abajo desde los MISMOS helpers
+      -- que usa la vía troceada (_mergeAgg), para que las dos no puedan divergir.
+      -- El orden final lo decide el re-sort de JS; el de SQL es solo respaldo.
       ORDER BY total_laps DESC,
-               last_manga_coma DESC,
                total_time_ms ASC
     `).all(raceId);
 
@@ -534,11 +538,16 @@ class Lap {
     // hay que reordenar en JS con el MISMO comparador que _mergeAgg — el ORDER BY
     // de SQL ordenaba por el total crudo. Así ambas vías dan idéntico resultado.
     Lap._applyStartSettled(raceId, rows);
-    const lastManga = Lap._lastMangaByEntity(raceId);
+    const comaTotals = Lap._comaByEntity(raceId);
+    const lastManga  = Lap._lastMangaByEntity(raceId);
     for (const r of rows) {
-      const lm = lastManga[r.entity_type + ':' + r.entity_id];
-      r.last_manga_id       = lm?.mid ?? null;
-      r.last_manga_cross_ms = lm?.cross ?? null;
+      const k  = r.entity_type + ':' + r.entity_id;
+      const lm = lastManga[k];
+      r.coma_total             = comaTotals[k] || 0;      // suma (referencia)
+      r.last_manga_coma        = lm?.coma || 0;           // desempate oficial
+      r.last_manga_coma_manual = !!lm?.manual;
+      r.last_manga_id          = lm?.mid ?? null;
+      r.last_manga_cross_ms    = lm?.cross ?? null;
     }
     rows.sort((x, y) =>
       (y.total_laps - x.total_laps) ||

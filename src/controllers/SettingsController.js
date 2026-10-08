@@ -24,6 +24,10 @@ const Circuit        = require('../models/Circuit');
 const PREFS = {
   ui_mode:               ['advanced', 'basic'],
   training_history_mode: ['recent', 'best'],
+  // Por defecto 'auto': la coma (fracción de vuelta al caer la bandera) se
+  // calcula sola. 'manual' habilita corregirla a mano en la pantalla de
+  // correcciones de una manga cerrada (ver models/Lap._lastMangaByEntity).
+  manual_coma:           ['auto', 'manual'],
 };
 
 // Preferencias numéricas de guardado inmediato: clave → [mín, máx].
@@ -90,6 +94,7 @@ class SettingsController {
       caFingerprint:  (() => { try { return require('../services/TlsService').caFingerprint(); } catch { return null; } })(),
       uiMode:              cfg.ui_mode === 'basic' ? 'basic' : 'advanced',
       trainingHistoryMode: cfg.training_history_mode === 'best' ? 'best' : 'recent',
+      manualComa:          cfg.manual_coma === 'manual' ? 'manual' : 'auto',
       lateCrossingGraceMs: require('../services/TimingService').constructor.lateCrossingGraceMs(),
       passwordEnabled:     require('../services/AccessPassword').isEnabled(),
       passwordOverridden:  process.env.PITWALL_DISABLE_PASSWORD === '1',
@@ -120,6 +125,13 @@ class SettingsController {
     const value = String(req.body.value || '');
     if (!allowed || !allowed.includes(value)) return res.status(400).json({ ok: false });
     Settings.set(key, value);
+    // Encender o apagar la corrección manual cambia la coma efectiva de carreras
+    // ya cerradas sin tocar `laps` ni `manga_lanes`: hay que tirar a mano las
+    // cachés por contador (resultados, móvil, Lap) y las del motor + worker.
+    if (key === 'manual_coma') {
+      require('../models/Lap').markExternalMutation();
+      require('../services/TimingService').invalidateStandingsCaches();
+    }
     res.json({ ok: true, key, value });
   }
 

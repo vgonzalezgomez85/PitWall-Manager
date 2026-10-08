@@ -13,6 +13,13 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.48.0] — 2026-10-08
+
+### Añadido
+- **Corregir a mano la coma (opcional).** La **coma** —la fracción de vuelta que llevaba cada coche al caer la bandera— se sigue calculando sola, y por defecto nada cambia. Pero si el automatismo engaña (un coche que se sale o se queda parado y sigue «avanzando» en la estimación), ahora puedes arreglarlo: en **Ajustes → Preferencias → «Corrección manual de la coma»** eliges **Automática (recomendado)** o **Permitir corregirla a mano**. Se guarda al momento y el cambio reordena al instante las clasificaciones ya calculadas. Con el ajuste activo, en la pantalla de **Correcciones** de una manga **ya terminada** cada carril tiene un control **Coma**: escribes la fracción (**de 0 a 0,99**, con coma o punto) y **guardas**, o la dejas **vacía** (o pulsas el botón de **volver a la automática**) para recuperar el cálculo de siempre. Los carriles corregidos se marcan **a mano** (azul) con la automática de referencia; en mangas que no son la última que corrió esa entidad, una etiqueta **«no decide»** avisa de que ahí la corrección no cambia el desempate (solo la coma acumulada de referencia que se exporta).
+- **La coma corregida manda en el desempate.** A igualdad de vueltas, si alguno de los implicados tiene la coma corregida a mano, manda ella por delante de «gana quien cruzó antes la meta»: el instante del cruce es justo el dato que engaña si el coche se quedó parado. Sin ninguna corrección, sigue decidiendo el instante del cruce igual que antes. Se aplica al orden de clasificación, la clasificación estimada en directo, los resultados (allí el badge de la coma sale en **azul** y avisa «corregida a mano»), el podio y las exportaciones a Excel/CSV.
+- **Apagado por defecto y reversible.** Con el ajuste en automática, las comas corregidas se ignoran al momento (vuelve el cálculo automático) pero **no se borran**: al reactivarlo, reaparecen. Al **repetir una manga** (o tras un stop forzado que la devuelve a pendiente), sus comas corregidas se borran, porque la manga se vuelve a correr. El control solo aparece en mangas cerradas.
+
 ## [1.47.0] — 2026-10-08
 
 ### Añadido

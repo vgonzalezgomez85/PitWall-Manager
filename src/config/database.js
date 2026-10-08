@@ -447,6 +447,12 @@ const migrations = [
   // desempata a igualdad de vueltas entre equipos de la misma manga final
   // (utils/tieBreak): delante quien cruzó antes. NULL = sin dato (mangas viejas).
   `ALTER TABLE manga_lanes ADD COLUMN last_cross_ms INTEGER`,
+  // Coma FIJADA A MANO por el operador (Ajustes → Preferencias → corrección
+  // manual; apagada por defecto). NULL = automática. Va aparte de `coma` para no
+  // pisar el valor calculado: apagar el ajuste vuelve a la automática al instante
+  // y el valor manual sobrevive a las escrituras de `coma` al cruce de bandera /
+  // reconciliación. Ver Lap._lastMangaByEntity y utils/tieBreak.
+  `ALTER TABLE manga_lanes ADD COLUMN coma_manual REAL`,
   // PIN de 4 dígitos por equipo para el cliente web "Lap" (timing del equipo
   // desde el móvil). Se genera bajo demanda; ver Team.ensureLapPins.
   `ALTER TABLE teams ADD COLUMN lap_pin TEXT`,

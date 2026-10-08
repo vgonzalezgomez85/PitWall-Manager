@@ -62,9 +62,53 @@ class LapCorrectionController {
       });
     });
 
-    res.render('races/lap-corrections', {
-      t: req.t, race, manga, tanda, laneGroups, activeLanes, LANE_COLORS: LaneColors.forRace(race), mangaOptions
+    // ¿Esta manga es la última que corrió cada entidad? Solo entonces su coma
+    // decide el desempate; en una anterior, corregirla solo cambia la suma de
+    // referencia (Excel/Control) y la pantalla lo avisa.
+    const lastManga = Lap._lastMangaByEntity(race.id);
+    const decidesTie = {};
+    laneGroups.forEach(g => {
+      const k = g.info.team_id != null ? 'team:' + g.info.team_id : 'driver:' + g.info.driver_id;
+      decidesTie[g.info.lane] = lastManga[k]?.mid === manga.id;
     });
+
+    res.render('races/lap-corrections', {
+      t: req.t, race, manga, tanda, laneGroups, activeLanes, LANE_COLORS: LaneColors.forRace(race), mangaOptions,
+      // Corrección manual de la coma (Ajustes → Preferencias): el control solo
+      // sale con el ajuste activo y la manga cerrada.
+      manualComa: Lap.manualComaEnabled(),
+      decidesTie,
+    });
+  }
+
+  // POST /races/:id/mangas/:mangaId/corrections/coma
+  // Fija (o borra, con el campo vacío) la coma manual de un carril. Solo mangas
+  // cerradas: en una viva, TimingService.stopManga la reescribe al caer la bandera.
+  static setComa(req, res) {
+    const race  = Race.findById(req.params.id);
+    const manga = Manga.findById(req.params.mangaId);
+    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+
+    const redirect = () => res.redirect(`/races/${race.id}/mangas/${manga.id}/corrections`);
+    if (manga.race_id !== race.id) return redirect();   // URL de otra carrera: no tocar
+    if (!Lap.manualComaEnabled() || manga.status !== 'finished') return redirect();
+
+    const lane = parseInt(req.body.lane, 10);
+    const laneRow = Manga.getLanes(manga.id).find(l => l.lane === lane && !l.is_rest);
+    if (!laneRow) return redirect();
+
+    const raw = String(req.body.coma ?? '').trim().replace(',', '.');
+    let coma = null;
+    if (raw !== '') {
+      coma = Number(raw);
+      if (!Number.isFinite(coma) || coma < 0 || coma > 0.99) return redirect();
+      coma = +coma.toFixed(3);
+    }
+
+    // setLaneComa ya invalida las cachés por contador (la coma no vive en `laps`);
+    // corrected() limpia las del motor y las del worker, y refresca el directo.
+    Manga.setLaneComa(manga.id, lane, coma);
+    corrected(res, race, manga);
   }
 
   // POST /races/:id/mangas/:mangaId/corrections/ghost/:lapId

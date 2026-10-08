@@ -59,7 +59,13 @@ class Manga {
     // proyección (`status != 'finished' AND started_at IS NOT NULL`) y a la vez la
     // excluía del conjunto de pendientes. La clasificación estimada quedaba mal en
     // toda la ventana entre el STOP y el nuevo GO.
-    else if (status === 'pending') db.prepare('UPDATE mangas SET status=?, started_at=NULL, finished_at=NULL WHERE id=?').run(status, id);
+    else if (status === 'pending') {
+      db.prepare('UPDATE mangas SET status=?, started_at=NULL, finished_at=NULL WHERE id=?').run(status, id);
+      // Una manga que vuelve a 'pending' se vuelve a correr (repetir manga, stop
+      // forzado): la coma que el operador fijó a mano en la pasada anterior ya no
+      // describe nada y, si sobreviviera, pisaría la de la nueva pasada.
+      db.prepare('UPDATE manga_lanes SET coma_manual = NULL WHERE manga_id = ?').run(id);
+    }
     else db.prepare('UPDATE mangas SET status=? WHERE id=?').run(status, id);
   }
 
@@ -173,6 +179,21 @@ class Manga {
         stmt.run(teamId ?? null, driverId ?? null, mlId);
       });
     })();
+  }
+
+  /**
+   * Fija (o borra, con `null`) la coma manual de un carril de la manga. La coma
+   * automática (`coma`) no se toca: el valor manual vive aparte y solo manda
+   * cuando el ajuste de corrección manual está activo (ver Lap._lastMangaByEntity).
+   */
+  static setLaneComa(mangaId, lane, coma) {
+    const changes = db.prepare('UPDATE manga_lanes SET coma_manual = ? WHERE manga_id = ? AND lane = ?')
+      .run(coma, mangaId, lane).changes;
+    // La coma no vive en `laps`: ninguna escritura de vueltas mueve los contadores
+    // con los que se validan las cachés (resultados, directo, móvil, Lap). El bump
+    // va AQUÍ, dentro del dueño de la tabla, para que ningún llamador lo olvide.
+    if (changes > 0) require('./Lap').markExternalMutation();
+    return changes;
   }
 
   // Next pending manga in a tanda

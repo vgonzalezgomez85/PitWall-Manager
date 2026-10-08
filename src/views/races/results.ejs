@@ -525,7 +525,13 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
                   <% } %>
                 </td>
                 <td class="matrix-laps matrix-total">
-                  <%= r.total_laps %><% if (r.last_manga_coma > 0) { %><span style="font-size:.6em; color:#8b949e; margin-left:4px; font-weight:normal;" title="<%= lang === 'es' ? 'Coma de la última manga: fracción de la vuelta en curso al caer la bandera de la última manga. Desempata a igualdad de vueltas (más = iba más adelantado al final).' : 'Last-heat coma: fraction of the unfinished lap at the final flag. Breaks ties on equal laps (more = further ahead at the end).' %>">+<%= r.last_manga_coma.toFixed(2).replace('.', ',') %></span><% } %>
+                  <%= r.total_laps %><% if (r.last_manga_coma > 0) { %><span style="font-size:.6em; color:<%= r.last_manga_coma_manual ? '#58a6ff' : '#8b949e' %>; margin-left:4px; font-weight:normal;" title="<%= lang === 'es'
+                    ? (r.last_manga_coma_manual
+                        ? 'Coma de la última manga CORREGIDA A MANO: fracción de la vuelta en curso al caer la bandera de la última manga. Desempata a igualdad de vueltas (más = iba más adelantado al final).'
+                        : 'Coma de la última manga: fracción de la vuelta en curso al caer la bandera de la última manga. Desempata a igualdad de vueltas (más = iba más adelantado al final).')
+                    : (r.last_manga_coma_manual
+                        ? 'CORRECTED BY HAND — last-heat fraction: fraction of the unfinished lap at the final flag. Breaks ties on equal laps (more = further ahead at the end).'
+                        : 'Last-heat coma: fraction of the unfinished lap at the final flag. Breaks ties on equal laps (more = further ahead at the end).') %>">+<%= r.last_manga_coma.toFixed(2).replace('.', ',') %></span><% } %>
                 </td>
                 <% if (perOcc) { %>
                   <% occColumns.forEach(col => {

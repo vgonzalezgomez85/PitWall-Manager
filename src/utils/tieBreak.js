@@ -20,12 +20,16 @@
 //
 // Misma manga final y ambos con instante del último cruce → delante quien cruzó
 // antes. Si no (mangas distintas o sin dato), la coma de la última manga.
-// Campos: last_manga_id, last_manga_cross_ms (desde el GO de su circuito), last_manga_coma.
+// Campos: last_manga_id, last_manga_cross_ms (desde el GO de su circuito),
+// last_manga_coma y last_manga_coma_manual (coma fijada a mano por el operador).
 
 function compareLastManga(x, y) {
   const mx = x.last_manga_id, cx = x.last_manga_cross_ms;
   const my = y.last_manga_id, cy = y.last_manga_cross_ms;
-  if (mx != null && mx === my && cx != null && cy != null && cx !== cy) return cx - cy;
+  // Con coma corregida a mano manda ella: el instante del cruce es justo el dato
+  // que engaña si un coche se quedó parado (cruzó hace mucho y le acaban de pasar).
+  if (!x.last_manga_coma_manual && !y.last_manga_coma_manual
+      && mx != null && mx === my && cx != null && cy != null && cx !== cy) return cx - cy;
   return (y.last_manga_coma || 0) - (x.last_manga_coma || 0);
 }
 

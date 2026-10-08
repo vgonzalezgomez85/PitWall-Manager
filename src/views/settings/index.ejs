@@ -536,6 +536,18 @@ const navItems = [
             </div>
             <div class="st-row st-row--wrap">
               <div class="st-row__txt">
+                <div class="st-row__t"><%= es ? 'Corrección manual de la coma' : 'Manual correction of the fraction' %></div>
+                <div class="st-row__d"><%= es ? 'La coma (la fracción de vuelta de cada coche al caer la bandera) se calcula sola. Actívalo para poder corregirla a mano por carril en la pantalla de correcciones de una manga cerrada; la coma corregida manda en el desempate a igualdad de vueltas. Se guarda al momento.' : 'The fraction (each car’s partial lap when the flag falls) is calculated automatically. Turn this on to fix it by hand, per lane, in the corrections screen of a finished heat; a corrected fraction wins tie-breaks on equal laps. Saved instantly.' %></div>
+              </div>
+              <div class="vt-selw st-row__ctl st-row__ctl--wide">
+                <select data-pref="manual_coma" aria-label="<%= es ? 'Corrección manual de la coma' : 'Manual correction of the fraction' %>">
+                  <option value="auto" <%= manualComa === 'auto' ? 'selected' : '' %>><%= es ? 'Automática (recomendado)' : 'Automatic (recommended)' %></option>
+                  <option value="manual" <%= manualComa === 'manual' ? 'selected' : '' %>><%= es ? 'Permitir corregirla a mano' : 'Allow manual correction' %></option>
+                </select>
+              </div>
+            </div>
+            <div class="st-row st-row--wrap">
+              <div class="st-row__txt">
                 <div class="st-row__t"><%= es ? 'Espera de cruces tras el final (s)' : 'Wait for crossings after the end (s)' %></div>
                 <div class="st-row__d"><%= es ? 'Tiempo durante el que, al terminar la manga, un coche que cruza la meta cuenta como vuelta de bandera con su tiempo real. Con las mismas vueltas gana quien cruzó antes. 0 lo desactiva (la vuelta se repone con el tiempo medio). Se guarda al momento y se aplica desde la siguiente manga.' : 'How long after the heat ends a car crossing the line still counts as a flag lap with its real time. On equal laps, whoever crossed first wins. 0 disables it (the lap is restored at the average time). Saved instantly; applies from the next heat.' %></div>
               </div>

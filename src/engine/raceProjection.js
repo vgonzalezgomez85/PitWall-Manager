@@ -81,6 +81,7 @@ function raceAggregate(db, Lap, raceId, opts = {}) {
 const { compareLastManga } = require('../utils/tieBreak');
 const tieRow = (r) => ({
   last_manga_id: r.lastMangaId, last_manga_cross_ms: r.lastMangaCrossMs, last_manga_coma: r.lastMangaComa,
+  last_manga_coma_manual: r.lastMangaComaManual,
 });
 
 /**
@@ -201,7 +202,7 @@ function buildRaceProjection(raceId, deps = {}) {
       entity_id: a.eid, entity_name: a.name,
       entity_type: isTeam ? 'team' : 'driver',
       total_laps: 0, avg_lap_ms: null, best_lap_ms: null,
-      coma_total: 0, last_manga_coma: 0, last_manga_id: null, last_manga_cross_ms: null,
+      coma_total: 0, last_manga_coma: 0, last_manga_coma_manual: false, last_manga_id: null, last_manga_cross_ms: null,
       mangas_raced: 0, total_time_ms: 0,
     });
   });
@@ -248,6 +249,7 @@ function buildRaceProjection(raceId, deps = {}) {
       bestLapMs:   p.best_lap_ms,
       comaTotal:   p.coma_total || 0,
       lastMangaComa: p.last_manga_coma || 0,
+      lastMangaComaManual: !!p.last_manga_coma_manual,
       lastMangaId:   p.last_manga_id ?? null,
       lastMangaCrossMs: p.last_manga_cross_ms ?? null,
       mangasRaced: p.mangas_raced || 0,
