@@ -277,6 +277,9 @@ input, button, select { font-family: inherit; }
 .form-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(88,166,255,.15); }
 .form-input--error { border-color: var(--red) !important; }
 .form-input--sm { width: 100px; }
+/* Campos opcionales por participante (categoría/copa y coche): asistente y tandas */
+.participant-attrs { display: flex; gap: 6px; margin-top: 6px; flex: 1 0 100%; }
+.participant-attrs .form-input { flex: 1; min-width: 0; }
 .form-input::placeholder { color: var(--text-muted); opacity: .85; }
 .form-hint { font-size: .8rem; color: var(--text-muted); }
 .input-row { display: flex; align-items: center; gap: .75rem; }

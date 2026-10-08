@@ -31,19 +31,24 @@
       <% if (wizard.format === 'individual') { %>
 
         <div id="driversGrid" class="drivers-grid">
-          <% const initD = Math.max(_minRows, body.drivers ? body.drivers.length : 0); %>
+          <% const initD = Math.max(_minRows, body.drivers ? Object.keys(body.drivers).length : 0); %>
           <% for (let i = 0; i < initD; i++) { %>
+            <% const _rawD = (body.drivers && body.drivers[i]) || {}; %>
+            <% const _d = typeof _rawD === 'string' ? { name: _rawD } : _rawD; %>
             <div class="driver-row participant-row" data-row="<%= i %>">
               <span class="lane-badge participant-badge" style="background:<%= LANE_COLORS[i % LANE_COLORS.length] %>" data-index="<%= i %>"><%= i + 1 %></span>
               <div class="driver-field participant-fields">
                 <input
                   class="form-input participant-name"
                   type="text"
-                  name="drivers[]"
+                  name="drivers[<%= i %>][name]"
                   placeholder="<%= t('wizard.driver_name_ph') %>"
-                  value="<%= (body.drivers && body.drivers[i]) || '' %>"
+                  value="<%= _d.name || '' %>"
                   autocomplete="off"
                   <%= i < _minRows ? 'required' : '' %>>
+                <%- include('./_participant-attrs', { idxPrefix: 'drivers[' + i + ']',
+                      showCat: wizard.has_categoria, showCar: wizard.has_coche,
+                      categoria: _d.categoria, coche: _d.coche }) %>
               </div>
               <% if (i >= _minRows) { %>
                 <button type="button" class="btn btn--danger btn--sm remove-row">✕</button>
@@ -94,6 +99,10 @@
                   <button type="button" class="btn btn--danger btn--sm remove-row" style="margin-left:.5rem">✕</button>
                 <% } %>
               </div>
+              <%- include('./_participant-attrs', { idxPrefix: 'teams[' + i + ']',
+                    showCat: wizard.has_categoria, showCar: wizard.has_coche,
+                    categoria: (body.teams && body.teams[i] && body.teams[i].categoria) || '',
+                    coche:     (body.teams && body.teams[i] && body.teams[i].coche)     || '' }) %>
               <div class="team-members">
                 <% const _mem = (body.teams && body.teams[i] && body.teams[i].members) || []; const _mrows = Math.max(4, _mem.length); %>
                 <% for (let m = 0; m < _mrows; m++) { %>
@@ -141,7 +150,20 @@ const MEMBER_PH = "<%= t('wizard.member_ph') %>";
 const OPT_LBL   = "<%= t('wizard.optional') %>";
 
 const ALL_PROFILES = <%- JSON.stringify((profiles || []).map(p => ({ name: p.name, category: p.category }))) %>;
-const CATALOG      = <%- JSON.stringify((teamsCatalog || []).map(ct => ({ id: ct.id, name: ct.name, members: (ct.members || []).map(m => m.name) }))) %>;
+const CATALOG      = <%- JSON.stringify((teamsCatalog || []).map(ct => ({ id: ct.id, name: ct.name, members: (ct.members || []).map(m => m.name), categoria: ct.categoria || '', coche: ct.coche || '' }))) %>;
+// Campos opcionales por participante (interruptores del asistente): categoría/copa y coche.
+const SHOW_CAT = <%= wizard.has_categoria ? 'true' : 'false' %>;
+const SHOW_CAR = <%= wizard.has_coche ? 'true' : 'false' %>;
+const CAT_PH   = "<%= lang === 'es' ? 'Categoría / copa' : 'Category / cup' %>";
+const CAR_PH   = "<%= lang === 'es' ? 'Coche' : 'Car' %>";
+// HTML de los dos campos para una fila nueva (prefijo: teams[i] / drivers[i]).
+function attrsHtml(prefix) {
+  if (!SHOW_CAT && !SHOW_CAR) return '';
+  let h = '<div class="participant-attrs">';
+  if (SHOW_CAT) h += `<input class="form-input participant-cat" type="text" name="${prefix}[categoria]" placeholder="${CAT_PH}" autocomplete="off">`;
+  if (SHOW_CAR) h += `<input class="form-input participant-car" type="text" name="${prefix}[coche]" placeholder="${CAR_PH}" autocomplete="off">`;
+  return h + '</div>';
+}
 const CAT_ICONS    = { platino: '💎', oro: '🥇', plata: '🥈', bronce: '🥉' };
 
 // ── Autocomplete ──────────────────────────────────────────────────────────────
@@ -191,7 +213,7 @@ function acShowTeams(input) {
 function acChoose(item) {
   if (acMode === 'team') {
     const team = CATALOG.find(t => t.id === parseInt(item.dataset.teamId, 10));
-    if (team && acTarget) { fillTeamBlock(acTarget.closest('.participant-row'), team.name, team.members); refreshCatalogUsedState(); }
+    if (team && acTarget) { fillTeamBlock(acTarget.closest('.participant-row'), team.name, team.members, team.categoria, team.coche); refreshCatalogUsedState(); }
     acHide();
   } else {
     acSelect(item.dataset.name);
@@ -229,6 +251,15 @@ function renumber(containerId) {
       if (hdr) hdr.style.borderLeftColor = COLORS[i % COLORS.length];
       const ni = row.querySelector('.team-name-input'); if (ni) ni.name = `teams[${i}][name]`;
       row.querySelectorAll('.team-members input').forEach(inp => { inp.name = `teams[${i}][members][]`; });
+      const cat = row.querySelector('.participant-cat'); if (cat) cat.name = `teams[${i}][categoria]`;
+      const car = row.querySelector('.participant-car'); if (car) car.name = `teams[${i}][coche]`;
+    } else {
+      row.querySelectorAll('input').forEach(inp => {
+        const key = inp.classList.contains('participant-name') ? 'name'
+                  : inp.classList.contains('participant-cat')  ? 'categoria'
+                  : inp.classList.contains('participant-car')  ? 'coche' : null;
+        if (key) inp.name = `drivers[${i}][${key}]`;
+      });
     }
   });
 }
@@ -242,7 +273,8 @@ document.getElementById('addDriver')?.addEventListener('click', () => {
   div.innerHTML = `
     <span class="lane-badge participant-badge" style="background:${COLORS[idx%COLORS.length]}" data-index="${idx}">${idx+1}</span>
     <div class="driver-field participant-fields">
-      <input class="form-input participant-name" type="text" name="drivers[]" placeholder="${DRIVER_PH}" autocomplete="off">
+      <input class="form-input participant-name" type="text" name="drivers[${idx}][name]" placeholder="${DRIVER_PH}" autocomplete="off">
+      ${attrsHtml(`drivers[${idx}]`)}
     </div>
     <button type="button" class="btn btn--danger btn--sm remove-row">✕</button>`;
   grid.appendChild(div); div.querySelector('.participant-name').focus();
@@ -287,6 +319,7 @@ function appendTeamBlock(name, memberNames) {
       <input class="form-input team-name-input" type="text" name="teams[${idx}][name]" placeholder="${TEAM_PH}" value="${escAttr(name)}" autocomplete="off" required>
       <button type="button" class="btn btn--danger btn--sm remove-row" style="margin-left:.5rem">✕</button>
     </div>
+    ${attrsHtml(`teams[${idx}]`)}
     <div class="team-members">${members}</div>
     <button type="button" class="btn btn--ghost btn--sm add-member" style="margin-top:.4rem">+ ${LANG==='es'?'Añadir piloto':'Add driver'}</button>`;
   container.appendChild(block);
@@ -300,8 +333,8 @@ function firstEmptyTeamBlock() {
   return null;
 }
 
-// Rellena un bloque existente con un equipo del catálogo (nombre + pilotos).
-function fillTeamBlock(block, name, memberNames) {
+// Rellena un bloque existente con un equipo del catálogo (nombre + pilotos + copa/coche).
+function fillTeamBlock(block, name, memberNames, categoria, coche) {
   block.querySelector('.team-name-input').value = name || '';
   const idx  = block.dataset.row;
   const wrap = block.querySelector('.team-members');
@@ -309,6 +342,9 @@ function fillTeamBlock(block, name, memberNames) {
   for (let m = inputs.length; m < memberNames.length; m++) wrap.insertAdjacentHTML('beforeend', memberRowHtml(idx, m, ''));
   inputs = wrap.querySelectorAll('.participant-name');
   inputs.forEach((inp, m) => { inp.value = memberNames[m] || ''; });
+  // Copa/coche del catálogo como valor de partida (editables después).
+  const cat = block.querySelector('.participant-cat'); if (cat && categoria != null && categoria !== '') cat.value = categoria;
+  const car = block.querySelector('.participant-car'); if (car && coche     != null && coche     !== '') car.value = coche;
 }
 
 document.getElementById('addTeam')?.addEventListener('click', () => {
@@ -333,7 +369,7 @@ document.getElementById('catalogPicker')?.addEventListener('click', e => {
   const team = CATALOG.find(t => t.id === parseInt(card.dataset.teamId, 10));
   if (!team) return;
   const block = firstEmptyTeamBlock() || appendTeamBlock();
-  fillTeamBlock(block, team.name, team.members);
+  fillTeamBlock(block, team.name, team.members, team.categoria, team.coche);
   refreshCatalogUsedState();
 });
 refreshCatalogUsedState();

@@ -380,7 +380,9 @@ class PoleController {
       orderedEntries.forEach((entry, idx) => {
         const driverId = Driver.create({
           race_id: race.id, tanda_id: tandaId, team_id: null,
-          name: entry.entity_name, lane: idx + 1, car_number: idx + 1
+          name: entry.entity_name, lane: idx + 1, car_number: idx + 1,
+          // Capturados en el paso 4 del asistente (si la carrera los tiene activos).
+          categoria: entry.categoria || null, coche: entry.coche || null,
         });
         entities.push({ id: driverId, type: 'driver', name: entry.entity_name });
       });
@@ -397,7 +399,10 @@ class PoleController {
           teamId = existing.id;
           Team.assignToTanda(teamId, tandaId, 0, color);
         } else {
-          teamId = Team.create({ race_id: race.id, tanda_id: tandaId, name: entry.entity_name, lane: 0, color });
+          teamId = Team.create({
+            race_id: race.id, tanda_id: tandaId, name: entry.entity_name, lane: 0, color,
+            categoria: entry.categoria || null, coche: entry.coche || null,
+          });
         }
         let members = [];
         try { members = JSON.parse(entry.members_json || '[]'); } catch {}

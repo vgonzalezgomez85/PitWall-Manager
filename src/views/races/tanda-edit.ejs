@@ -107,10 +107,13 @@
                          autocomplete="off" required>
                 <% } else { %>
                   <input class="form-input participant-name" type="text"
-                         name="drivers[<%= i %>]" value="<%= d.name %>"
+                         name="drivers[<%= i %>][name]" value="<%= d.name %>"
                          autocomplete="off"
                          <%= i < laneSequence.length ? 'required' : '' %>>
                 <% } %>
+                <%- include('./_participant-attrs', { idxPrefix: 'drivers[' + i + ']',
+                      showCat: race.has_categoria, showCar: race.has_coche,
+                      categoria: d.categoria, coche: d.coche }) %>
               </div>
               <% if (canRestructure && i >= laneSequence.length) { %>
                 <button type="button" class="btn btn--danger btn--sm remove-row" title="<%= lang === 'es' ? 'Eliminar' : 'Remove' %>">✕</button>
@@ -171,6 +174,9 @@
                   <button type="button" class="btn btn--danger btn--sm remove-row" style="margin-left:.5rem">✕</button>
                 <% } %>
               </div>
+              <%- include('./_participant-attrs', { idxPrefix: 'teams[' + i + ']',
+                    showCat: race.has_categoria, showCar: race.has_coche,
+                    categoria: team.categoria, coche: team.coche }) %>
               <div class="team-members">
                 <%
                   const existingMembers = team.members || [];
@@ -247,6 +253,18 @@ function slotOrder(n){
 const DRIVER_PH = "<%= t('wizard.driver_name_ph') %>";
 const TEAM_PH   = "<%= t('wizard.team_name_ph') %>";
 const MEMBER_PH = "<%= t('wizard.member_ph') %>";
+// Campos opcionales por participante (interruptores de la carrera).
+const SHOW_CAT = <%= race.has_categoria ? 'true' : 'false' %>;
+const SHOW_CAR = <%= race.has_coche ? 'true' : 'false' %>;
+const CAT_PH   = "<%= lang === 'es' ? 'Categoría / copa' : 'Category / cup' %>";
+const CAR_PH   = "<%= lang === 'es' ? 'Coche' : 'Car' %>";
+function attrsHtml(prefix) {
+  if (!SHOW_CAT && !SHOW_CAR) return '';
+  let h = '<div class="participant-attrs">';
+  if (SHOW_CAT) h += `<input class="form-input participant-cat" type="text" name="${prefix}[categoria]" placeholder="${CAT_PH}" autocomplete="off">`;
+  if (SHOW_CAR) h += `<input class="form-input participant-car" type="text" name="${prefix}[coche]" placeholder="${CAR_PH}" autocomplete="off">`;
+  return h + '</div>';
+}
 const OPT_LBL   = "<%= t('wizard.optional') %>";
 
 const ALL_PROFILES = <%- JSON.stringify(
@@ -313,12 +331,18 @@ function renumber(containerId) {
     const badge = row.querySelector('.participant-badge');
     if (badge) { badge.dataset.index = i; badge.textContent = slotLabel(i, rows.length); const color = slotColor(i); badge.style.background = color; if (isTeams) { const hdr = row.querySelector('.team-block__header'); if (hdr) hdr.style.borderLeftColor = color; } }
     if (!isTeams) {
-      const nameInp = row.querySelector('.participant-name');
-      if (nameInp) nameInp.name = `drivers[${i}]`;
+      row.querySelectorAll('input').forEach(inp => {
+        const key = inp.classList.contains('participant-name') ? 'name'
+                  : inp.classList.contains('participant-cat')  ? 'categoria'
+                  : inp.classList.contains('participant-car')  ? 'coche' : null;
+        if (key) inp.name = `drivers[${i}][${key}]`;
+      });
     } else {
       const nameInp = row.querySelector('.team-name-input');
       if (nameInp) nameInp.name = `teams[${i}][name]`;
       row.querySelectorAll('.team-members input').forEach(inp => { inp.name = `teams[${i}][members][]`; });
+      const cat = row.querySelector('.participant-cat'); if (cat) cat.name = `teams[${i}][categoria]`;
+      const car = row.querySelector('.participant-car'); if (car) car.name = `teams[${i}][coche]`;
     }
   });
   updateRestInfo();
@@ -331,9 +355,10 @@ document.getElementById('addDriver')?.addEventListener('click', () => {
   const div  = document.createElement('div');
   div.className = 'driver-row participant-row'; div.dataset.row = idx;
   div.innerHTML = `<span class="lane-badge participant-badge" style="background:${color}" data-index="${idx}">${slotLabel(idx)}</span>
-    <div class="driver-field participant-fields" style="display:flex;flex:1;align-items:center;gap:.5rem">
+    <div class="driver-field participant-fields" style="display:flex;flex:1;flex-wrap:wrap;align-items:center;gap:.5rem">
       <span class="drag-handle" draggable="true" title="${LANG==='es'?'Arrastrar para reordenar':'Drag to reorder'}">⠿</span>
-      <input class="form-input participant-name" type="text" name="drivers[]" placeholder="${DRIVER_PH}" autocomplete="off" style="flex:1">
+      <input class="form-input participant-name" type="text" name="drivers[${idx}][name]" placeholder="${DRIVER_PH}" autocomplete="off" style="flex:1">
+      ${attrsHtml(`drivers[${idx}]`)}
     </div>
     <button type="button" class="btn btn--danger btn--sm remove-row" title="${LANG==='es'?'Eliminar':'Remove'}">✕</button>`;
   grid.appendChild(div);

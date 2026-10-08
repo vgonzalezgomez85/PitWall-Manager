@@ -99,6 +99,8 @@ class RaceController {
       min_lap_s: w.min_lap_ms ? (w.min_lap_ms / 1000).toFixed(2) : '',
       passes: w.passes || 1, lane_repeat: w.lane_repeat || 1,
       has_pole: w.has_pole ? '1' : '0',
+      has_categoria: w.has_categoria ? '1' : '',
+      has_coche:     w.has_coche     ? '1' : '',
       driver_min_total_min: w.driver_min_total_ms ? w.driver_min_total_ms / 60000 : '',
       driver_max_total_min: w.driver_max_total_ms ? w.driver_max_total_ms / 60000 : '',
       driver_change_lockout_s: w.driver_change_lockout_ms != null ? w.driver_change_lockout_ms / 1000 : 120,
@@ -194,6 +196,8 @@ class RaceController {
       passes:      Math.max(1, parseInt(req.body.passes, 10)      || 1),
       lane_repeat: Math.max(1, parseInt(req.body.lane_repeat, 10) || 1),
       has_pole: req.body.has_pole === '1' ? 1 : 0,
+      has_categoria: req.body.has_categoria === '1' ? 1 : 0,
+      has_coche:     req.body.has_coche     === '1' ? 1 : 0,
       circuit_id: circuitId,
       category_id: categoryId,
       min_lap_ms: minLapMs,
@@ -293,10 +297,19 @@ class RaceController {
     let participants = [];
 
     if (w.format === 'individual') {
-      const names = Array.isArray(req.body.drivers) ? req.body.drivers : Object.values(req.body.drivers || {});
-      const filled = names.filter(n => n?.trim());
+      // Los pilotos llegan como objetos indexados (drivers[i][name|categoria|coche]);
+      // se tolera también el formato antiguo (array de nombres) por si el paso 4
+      // se envía desde un formulario cacheado.
+      const rawDrivers = req.body.drivers || {};
+      const filled = Object.values(rawDrivers)
+        .map(d => (typeof d === 'string' ? { name: d } : d))
+        .filter(d => d?.name?.trim());
       if (filled.length < 2) errors.push('not_enough_drivers');
-      filled.forEach(name => participants.push({ name: name.trim(), members: [] }));
+      filled.forEach(d => participants.push({
+        name: d.name.trim(), members: [],
+        categoria: (d.categoria || '').trim() || null,
+        coche:     (d.coche     || '').trim() || null,
+      }));
     } else {
       const rawTeams = req.body.teams || {};
       const teamsArr = Array.isArray(rawTeams) ? rawTeams : Object.values(rawTeams);
@@ -306,7 +319,9 @@ class RaceController {
         const members = Array.isArray(team.members) ? team.members : Object.values(team.members || {});
         participants.push({
           name: team.name.trim(),
-          members: members.filter(m => m?.trim()).map(m => m.trim())
+          members: members.filter(m => m?.trim()).map(m => m.trim()),
+          categoria: (team.categoria || '').trim() || null,
+          coche:     (team.coche     || '').trim() || null,
         });
       });
     }
@@ -358,6 +373,8 @@ class RaceController {
       passes:                   wizard.passes                   || 1,
       lane_repeat:              wizard.lane_repeat              || 1,
       tire_pairs_per_team:      wizard.tire_pairs_per_team      || 0,
+      has_categoria:            wizard.has_categoria            || 0,
+      has_coche:                wizard.has_coche                || 0,
     });
 
     // If pole enabled, create session + entries from wizard participants
@@ -370,7 +387,11 @@ class RaceController {
           poleSessionId: sessionId,
           entityType,
           entityName:    p.name,
-          membersJson:   p.members?.length ? JSON.stringify(p.members) : null
+          membersJson:   p.members?.length ? JSON.stringify(p.members) : null,
+          // Categoría/coche capturados en el paso 4: viajan con la inscripción
+          // para que la tanda que nazca de la pole no los pierda.
+          categoria:     p.categoria || null,
+          coche:         p.coche     || null,
         });
 
         // Equipos "maestros" SIN tanda (tanda_id null): existen ya desde antes
@@ -381,6 +402,7 @@ class RaceController {
           Team.create({
             race_id: raceId, tanda_id: null,
             name: p.name, lane: 0, color: teamPalette[idx % teamPalette.length],
+            categoria: p.categoria || null, coche: p.coche || null,
           });
         }
       });
@@ -615,6 +637,19 @@ class RaceController {
     // ninguna manga (una vez rodada, la dotación y los límites quedan fijados).
     const hasRunManga = Race.hasRunAnyManga(race.id);
     const editKeep    = { ...race }; // valores a re-mostrar si hay errores
+
+    // Categoría/copa y coche por participante: son presentación, no tocan el
+    // cronometraje ni el calendario, así que se pueden activar o desactivar en
+    // cualquier momento (también con la carrera en marcha) para anotar copas.
+    if (req.body.has_categoria !== undefined) patch.has_categoria = req.body.has_categoria === '1' ? 1 : 0;
+    if (req.body.has_coche     !== undefined) patch.has_coche     = req.body.has_coche     === '1' ? 1 : 0;
+    editKeep.has_categoria = patch.has_categoria !== undefined ? patch.has_categoria : race.has_categoria;
+    editKeep.has_coche     = patch.has_coche     !== undefined ? patch.has_coche     : race.has_coche;
+    if (patch.has_categoria !== undefined || patch.has_coche !== undefined) {
+      // Si hay un directo abierto, que las vistas recojan el cambio ya.
+      try { require('../services/TimingService').invalidateStandingsCaches(); } catch {}
+    }
+
     if (race.type === 'championship' && !hasRunManga) {
       const minMin  = parseInt(req.body.driver_min_total_min, 10);
       const maxMin  = parseInt(req.body.driver_max_total_min, 10);

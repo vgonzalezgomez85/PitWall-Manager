@@ -13,6 +13,14 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.49.0] — 2026-10-08
+
+### Añadido
+- **Categoría/copa y coche por equipo o piloto (opcional).** Cada carrera estrena dos interruptores —**Categoría / copa** y **Coche**— en el **asistente de nueva carrera** (paso 1) y en **Editar carrera**, para anotar por participante la copa en la que corre y el coche con el que participa. Con ellos activos, al **inscribir** los equipos o pilotos (en el asistente, carreras con pole, y en la pantalla de **nueva tanda**) aparecen dos campos de texto libre que se pueden dejar vacíos; al inscribir un **equipo del catálogo**, su categoría y su coche se copian como punto de partida. Después se pueden **editar desde la tanda**, también con mangas ya corridas. Si el dato de la carrera está vacío, se sigue leyendo el del **catálogo** por nombre, así que las carreras anteriores a esta versión se ven igual que siempre.
+- **La categoría se ve en el directo, ahora también en sprint.** La categoría acompaña al nombre en las tarjetas, las filas, la clasificación, la TV, las mejores vueltas y las estadísticas en vivo; en las carreras **sprint** (de pilotos) ahora también aparece la de cada piloto, donde antes no salía ninguna. El **coche** no se muestra en el directo: se ve en la vista **Le Mans**.
+- **Excel de resultados con Categoría y Coche junto al nombre.** Con los interruptores activos, las hojas **Clasificación**, **Mejor vuelta** y **Comparativa** añaden esas dos columnas justo al lado del nombre. El CSV de Control no cambia.
+- **Apagados por defecto y reversibles.** Con los dos interruptores apagados nada cambia respecto a la versión anterior, y se pueden encender o apagar en cualquier momento —también con la carrera en marcha—: no afectan al cronometraje ni al calendario. Al apagarlos, lo ya anotado **no se borra**: si los vuelves a encender, reaparece.
+
 ## [1.48.0] — 2026-10-08
 
 ### Añadido

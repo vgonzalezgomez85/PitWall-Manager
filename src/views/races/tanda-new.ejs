@@ -92,7 +92,7 @@
         %>
         <div id="driversGrid" class="drivers-grid drivers-grid--cols"
              style="display:grid; grid-template-columns: repeat(<%= _numCircuits %>, minmax(0, 1fr)); column-gap: 1rem; row-gap: .5rem">
-          <% const initD = Math.max(laneSequence.length, body.drivers ? body.drivers.length : 0); %>
+          <% const initD = Math.max(laneSequence.length, body.drivers ? Object.keys(body.drivers).length : 0); %>
           <% for (let i = 0; i < initD; i++) { %>
             <%
               const slotLane = i < laneSequence.length ? laneSequence[i] : 0;
@@ -131,14 +131,19 @@
                   // así el tabulador sigue 1,2,3…8 (col 1), 9,10…16 (col 2)…
                   const _tabIdx = (colIdx * 100) + rowIdx;
                 %>
+                <% const _rawD = (body.drivers && body.drivers[i]) || {}; %>
+                <% const _d = typeof _rawD === 'string' ? { name: _rawD } : _rawD; %>
                 <input
                   class="form-input participant-name"
                   type="text"
-                  name="drivers[]"
+                  name="drivers[<%= i %>][name]"
                   placeholder="<%= t('wizard.driver_name_ph') %>"
-                  value="<%= (body.drivers && body.drivers[i]) || '' %>"
+                  value="<%= _d.name || '' %>"
                   autocomplete="off"
                   tabindex="<%= _tabIdx %>">
+                <%- include('./_participant-attrs', { idxPrefix: 'drivers[' + i + ']',
+                      showCat: race.has_categoria, showCar: race.has_coche,
+                      categoria: _d.categoria, coche: _d.coche }) %>
               </div>
               <% if (i >= laneSequence.length) { %>
                 <button type="button" class="btn btn--danger btn--sm remove-row" title="<%= lang === 'es' ? 'Eliminar' : 'Remove' %>">✕</button>
@@ -181,6 +186,12 @@
                     <img src="/flags/4x3/<%= flagEmojiToIso(flag) %>.svg" alt="" width="20" height="13" style="object-fit:cover;border-radius:2px;flex-shrink:0">
                   <% } %>
                   <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><%= ct.name %></span>
+                  <% if (race.has_categoria && ct.categoria) { %>
+                    <span style="font-size:.7rem;color:#58a6ff;flex-shrink:0" title="<%= lang === 'es' ? 'Categoría del catálogo' : 'Catalog category' %>"><%= ct.categoria %></span>
+                  <% } %>
+                  <% if (race.has_coche && ct.coche) { %>
+                    <span style="font-size:.7rem;color:#8b949e;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;max-width:6.5rem" title="<%= lang === 'es' ? 'Coche del catálogo' : 'Catalog car' %>"><%= ct.coche %></span>
+                  <% } %>
                   <span style="font-size:.75rem;color:#8b949e;flex-shrink:0"><%= ct.members.length %>👤</span>
                 </div>
               <% }) %>
@@ -312,6 +323,18 @@ function slotLabel(i, total){
 }
 function slotColor(i){ const l = i < LANE_SEQ.length ? LANE_SEQ[i] : 0; return l > 0 ? COLORS[(l-1) % COLORS.length] : '#30363d'; }
 const DRIVER_PH = "<%= t('wizard.driver_name_ph') %>";
+// Campos opcionales por participante (interruptores de la carrera).
+const SHOW_CAT = <%= race.has_categoria ? 'true' : 'false' %>;
+const SHOW_CAR = <%= race.has_coche ? 'true' : 'false' %>;
+const CAT_PH   = "<%= lang === 'es' ? 'Categoría / copa' : 'Category / cup' %>";
+const CAR_PH   = "<%= lang === 'es' ? 'Coche' : 'Car' %>";
+function attrsHtml(prefix) {
+  if (!SHOW_CAT && !SHOW_CAR) return '';
+  let h = '<div class="participant-attrs">';
+  if (SHOW_CAT) h += `<input class="form-input participant-cat" type="text" name="${prefix}[categoria]" placeholder="${CAT_PH}" autocomplete="off">`;
+  if (SHOW_CAR) h += `<input class="form-input participant-car" type="text" name="${prefix}[coche]" placeholder="${CAR_PH}" autocomplete="off">`;
+  return h + '</div>';
+}
 const TEAM_PH   = "<%= t('wizard.team_name_ph') %>";
 const MEMBER_PH = "<%= t('wizard.member_ph') %>";
 const OPT_LBL   = "<%= t('wizard.optional') %>";
@@ -455,6 +478,13 @@ function renumber(containerId) {
       const nameInp = row.querySelector('.team-name-input');
       if (nameInp) nameInp.name = `teams[${i}][name]`;
       row.querySelectorAll('.team-members input').forEach(inp => { inp.name = `teams[${i}][members][]`; });
+    } else {
+      row.querySelectorAll('input').forEach(inp => {
+        const key = inp.classList.contains('participant-name') ? 'name'
+                  : inp.classList.contains('participant-cat')  ? 'categoria'
+                  : inp.classList.contains('participant-car')  ? 'coche' : null;
+        if (key) inp.name = `drivers[${i}][${key}]`;
+      });
     }
   });
   updateRestInfo();
@@ -470,9 +500,10 @@ document.getElementById('addDriver')?.addEventListener('click', () => {
   div.dataset.row = idx;
   div.innerHTML = `
     <span class="lane-badge participant-badge" style="background:${color}" data-index="${idx}">${slotLabel(idx)}</span>
-    <div class="driver-field participant-fields" style="display:flex;flex:1">
-      <input class="form-input participant-name" type="text" name="drivers[]"
+    <div class="driver-field participant-fields" style="display:flex;flex:1;flex-direction:column;align-items:stretch">
+      <input class="form-input participant-name" type="text" name="drivers[${idx}][name]"
         placeholder="${DRIVER_PH}" autocomplete="off">
+      ${attrsHtml(`drivers[${idx}]`)}
     </div>
     <button type="button" class="btn btn--danger btn--sm remove-row"
       title="${LANG === 'es' ? 'Eliminar' : 'Remove'}">✕</button>`;

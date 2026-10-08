@@ -39,7 +39,11 @@ class Manga {
     return db.prepare(`
       SELECT ml.*,
         t.name  AS team_name,  t.color AS team_color,  t.country AS team_country,
-        tc.categoria AS team_categoria,
+        -- Categoría del equipo: la de ESTA carrera manda; si está vacía (o la
+        -- carrera es de antes de la v1.49), la del catálogo por nombre. En
+        -- individual no hay equipo: la del piloto se lee de driver_categoria.
+        COALESCE(t.categoria, tc.categoria) AS team_categoria,
+        d.categoria AS driver_categoria,
         d.name  AS driver_name
       FROM manga_lanes ml
       LEFT JOIN teams   t ON t.id = ml.team_id

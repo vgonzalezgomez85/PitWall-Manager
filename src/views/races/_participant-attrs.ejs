@@ -1,0 +1,23 @@
+<%
+  // Campos opcionales por participante: categoría/copa y coche. Solo salen si la
+  // carrera los tiene activados (interruptores del asistente). Los usan el paso 4
+  // (carreras con pole) y las pantallas de tanda (nueva y edición).
+  // Espera: idxPrefix ('drivers[0]' / 'teams[2]'), showCat, showCar, categoria, coche.
+  const _es = (typeof lang === 'undefined' || lang === 'es');
+%>
+<% if (showCat || showCar) { %>
+  <div class="participant-attrs">
+    <% if (showCat) { %>
+      <input class="form-input participant-cat" type="text"
+             name="<%= idxPrefix %>[categoria]"
+             placeholder="<%= _es ? 'Categoría / copa' : 'Category / cup' %>"
+             value="<%= categoria || '' %>" autocomplete="off">
+    <% } %>
+    <% if (showCar) { %>
+      <input class="form-input participant-car" type="text"
+             name="<%= idxPrefix %>[coche]"
+             placeholder="<%= _es ? 'Coche' : 'Car' %>"
+             value="<%= coche || '' %>" autocomplete="off">
+    <% } %>
+  </div>
+<% } %>

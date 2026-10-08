@@ -28,11 +28,12 @@ class Driver {
     `).all(tandaId);
   }
 
-  static create({ race_id, tanda_id, team_id, name, lane, car_number }) {
+  static create({ race_id, tanda_id, team_id, name, lane, car_number, categoria, coche }) {
     const { lastInsertRowid } = db.prepare(`
-      INSERT INTO drivers (race_id, tanda_id, team_id, name, lane, car_number)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(race_id, tanda_id ?? null, team_id ?? null, name, lane ?? null, car_number ?? null);
+      INSERT INTO drivers (race_id, tanda_id, team_id, name, lane, car_number, categoria, coche)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(race_id, tanda_id ?? null, team_id ?? null, name, lane ?? null, car_number ?? null,
+           categoria ?? null, coche ?? null);
     return lastInsertRowid;
   }
 

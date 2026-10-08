@@ -25,6 +25,31 @@ const TeamCatalog    = require('../models/TeamCatalog');
 
 const LaneColors = require('../services/LaneColors');
 
+// ── Categoría/copa y coche por participante (opcionales por carrera) ──────────
+// Estos campos NO afectan al calendario, así que se pueden editar también en una
+// tanda con mangas ya corridas. Sólo se tocan si el formulario los envía
+// (`!== undefined`): un formulario viejo no debe borrarlos por omisión.
+function _attrSets(obj) {
+  const sets = [], vals = [];
+  if (obj.categoria !== undefined) { sets.push('categoria = ?'); vals.push((obj.categoria || '').trim() || null); }
+  if (obj.coche     !== undefined) { sets.push('coche = ?');     vals.push((obj.coche     || '').trim() || null); }
+  return { sets, vals };
+}
+
+function applyDriverAttrs(db, driverId, obj) {
+  const { sets, vals } = _attrSets(obj);
+  if (!sets.length) return;
+  db.prepare(`UPDATE drivers SET ${sets.join(', ')} WHERE id = ?`).run(...vals, driverId);
+}
+
+// Por NOMBRE dentro de la carrera: la fila de la tanda y la "maestra" que crea la
+// pole son filas distintas con el mismo nombre, y el directo puede leer cualquiera.
+function applyTeamAttrs(db, raceId, teamName, obj) {
+  const { sets, vals } = _attrSets(obj);
+  if (!sets.length) return;
+  db.prepare(`UPDATE teams SET ${sets.join(', ')} WHERE race_id = ? AND name = ?`).run(...vals, raceId, teamName);
+}
+
 // Devuelve el array de tamaños de sub-circuitos. Si no hay circuito asignado
 // o la config no es válida, devuelve [lanes_count] (un solo sub-circuito).
 function _circuitSizesFor(race) {
@@ -101,6 +126,10 @@ class TandaController {
           race_id: race.id, tanda_id: tandaId,
           name: teamName, lane: 0, color: teamPalette[idx % teamPalette.length],
           country: catalogTeam ? catalogTeam.country : null,
+          // Copa/coche del catálogo como valor de partida (snapshot: la carrera
+          // se queda con ellos y editarlos en el catálogo ya no la cambia).
+          categoria: catalogTeam ? (catalogTeam.categoria || null) : null,
+          coche:     catalogTeam ? (catalogTeam.coche     || null) : null,
         });
         if (catalogTeam) {
           catalogTeam.members.forEach(m => {
@@ -114,11 +143,14 @@ class TandaController {
 
     } else {
       const rawDrivers = req.body.drivers || {};
-      const driversArray = Array.isArray(rawDrivers) ? rawDrivers : Object.values(rawDrivers);
+      // Los pilotos llegan como objetos (drivers[i][name|categoria|coche]); se
+      // tolera el formato antiguo (array de nombres) por compatibilidad.
+      const driversArray = (Array.isArray(rawDrivers) ? rawDrivers : Object.values(rawDrivers))
+        .map(d => (typeof d === 'string' ? { name: d } : d));
 
       // Igual que en equipos: basta con un piloto; los carriles libres se
       // resuelven con emptyLaneMode ('fixed' | 'rotate').
-      if (driversArray.filter(d => d?.trim()).length < 1) {
+      if (driversArray.filter(d => d?.name?.trim()).length < 1) {
         errors.push('no_participants');
       }
 
@@ -127,13 +159,16 @@ class TandaController {
         return res.render('races/tanda-new', { t: req.t, race, laneSequence, LANE_COLORS: LaneColors.forRace(race), profiles: DriverProfile.findAll(), circuitSizes: _circuitSizesFor(race), errors, body: req.body });
       }
 
-      driversArray.forEach((name, idx) => {
-        if (!name?.trim()) return;
+      driversArray.forEach((d, idx) => {
+        const name = d?.name?.trim();
+        if (!name) return;
         const driverId = Driver.create({
           race_id: race.id, tanda_id: tandaId, team_id: null,
-          name: name.trim(), lane: idx + 1, car_number: idx + 1
+          name, lane: idx + 1, car_number: idx + 1,
+          categoria: (d.categoria || '').trim() || null,
+          coche:     (d.coche     || '').trim() || null,
         });
-        entities.push({ id: driverId, type: 'driver', name: name.trim() });
+        entities.push({ id: driverId, type: 'driver', name });
       });
     }
 
@@ -293,7 +328,11 @@ class TandaController {
         const entities = [];
         valid.forEach((d, idx) => {
           const name = (typeof d === 'string' ? d : d.name).trim();
-          const id   = Driver.create({ race_id: race.id, tanda_id: tanda.id, team_id: null, name, lane: idx + 1, car_number: idx + 1 });
+          const id   = Driver.create({
+            race_id: race.id, tanda_id: tanda.id, team_id: null, name, lane: idx + 1, car_number: idx + 1,
+            categoria: (typeof d === 'object' ? (d.categoria || '').trim() : '') || null,
+            coche:     (typeof d === 'object' ? (d.coche     || '').trim() : '') || null,
+          });
           entities.push({ id, type: 'driver', name });
         });
         Manga.persistSchedule(tanda.id, race.id, Manga.buildSchedule(laneSequence, entities, race.passes, race.lane_repeat, tanda.empty_lane_mode || 'fixed'));
@@ -302,6 +341,9 @@ class TandaController {
           const id   = parseInt(d.id);
           const name = d.name?.trim();
           if (id && name) db.prepare('UPDATE drivers SET name = ? WHERE id = ?').run(name, id);
+          // Categoría/coche: no afectan al calendario, editables también en modo
+          // solo renombrar. Sólo se tocan si el formulario los envía.
+          if (id) applyDriverAttrs(db, id, d);
         });
       }
 
@@ -327,7 +369,11 @@ class TandaController {
         const teamPalette = LaneColors.forRace(race);
         valid.forEach((team, idx) => {
           const teamName = team.name.trim();
-          const teamId   = Team.create({ race_id: race.id, tanda_id: tanda.id, name: teamName, lane: 0, color: teamPalette[idx % teamPalette.length] });
+          const teamId   = Team.create({
+            race_id: race.id, tanda_id: tanda.id, name: teamName, lane: 0, color: teamPalette[idx % teamPalette.length],
+            categoria: (team.categoria || '').trim() || null,
+            coche:     (team.coche     || '').trim() || null,
+          });
           const members  = Array.isArray(team.members) ? team.members : Object.values(team.members || {});
           members.forEach(m => {
             const mName = (typeof m === 'string' ? m : m?.name)?.trim();
@@ -339,9 +385,14 @@ class TandaController {
       } else {
         teamsArray.forEach(team => {
           const teamId = parseInt(team.id);
-          if (teamId && team.name?.trim()) {
-            db.prepare('UPDATE teams SET name = ? WHERE id = ?').run(team.name.trim(), teamId);
+          const teamName = team.name?.trim();
+          if (teamId && teamName) {
+            db.prepare('UPDATE teams SET name = ? WHERE id = ?').run(teamName, teamId);
           }
+          // Categoría/coche (editables también sin reestructurar). Se propagan a
+          // TODAS las filas del equipo con ese nombre en la carrera: la fila de
+          // la tanda y la "maestra" que crea la pole son filas distintas.
+          if (teamName) applyTeamAttrs(db, race.id, teamName, team);
           const members = typeof team.members === 'object' ? Object.values(team.members) : [];
           members.forEach(m => {
             const memberId = parseInt(m.id);
@@ -352,6 +403,10 @@ class TandaController {
         });
       }
     }
+
+    // La categoría/coche no mueven los contadores de `laps`: si hay un directo
+    // abierto, invalida sus cachés para que el cambio se vea sin esperar.
+    try { require('../services/TimingService').invalidateStandingsCaches(); } catch {}
 
     res.redirect(`/races/${race.id}`);
   }

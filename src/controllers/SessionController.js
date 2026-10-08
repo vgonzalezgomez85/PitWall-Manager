@@ -684,8 +684,10 @@ class SessionController {
                  THEN l.lap_time_ms END) AS best_lap_ms,
         -- Media SIMPLE de tiempos de vuelta, sin fantasmas ni warmup (= TicTac).
         AVG(CASE WHEN l.is_ghost=0 AND l.is_warmup=0 THEN l.lap_time_ms END) AS avg_lap_ms,
-        MAX(tc.categoria)  AS categoria,
-        MAX(tc.coche)      AS coche,
+        -- Categoría/coche: los de ESTA carrera mandan; si vacíos, los del
+        -- catálogo por nombre (carreras anteriores a la v1.49).
+        MAX(COALESCE(t.categoria, tc.categoria)) AS categoria,
+        MAX(COALESCE(t.coche,     tc.coche))     AS coche,
         MAX(tc.car_photo)  AS car_photo,
         MAX(tc.country)    AS country
       FROM teams t
@@ -1426,6 +1428,21 @@ class SessionController {
     const aggregate = Lap.aggregateByRace(race.id);
     const isEs      = (req.query.lang || 'es') === 'es';
 
+    // Categoría/copa y coche por participante: columnas opcionales que activa la
+    // carrera (interruptores del asistente / editar carrera). Apagadas, el Excel
+    // sale exactamente como siempre (xN = 0 y ni cabeceras ni celdas).
+    const extraHead = [];
+    if (race.has_categoria) extraHead.push(isEs ? 'Categoría' : 'Category');
+    if (race.has_coche)     extraHead.push(isEs ? 'Coche' : 'Car');
+    const xN = extraHead.length;
+    const extraVals  = (r) => {
+      const v = [];
+      if (race.has_categoria) v.push(r.categoria || '');
+      if (race.has_coche)     v.push(r.coche || '');
+      return v;
+    };
+    const blankExtra = () => Array(xN).fill('');
+
     const fmtMs = (ms) => {
       if (ms == null) return '';
       const s = Math.floor(ms / 1000);
@@ -1555,43 +1572,44 @@ class SessionController {
       || (a.total_time_ms||Infinity) - (b.total_time_ms||Infinity)
       || (a.best_lap_ms||Infinity) - (b.best_lap_ms||Infinity));
     const s1 = wb.addWorksheet(isEs ? 'Clasificación' : 'Standings');
-    s1.columns = [{ width: 5 }, { width: 30 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 10 }];
-    addRaceHeader(s1, 6);
-    const s1Header = s1.addRow(['#', isEs ? 'Piloto / Equipo' : 'Driver / Team', isEs ? 'Total vueltas' : 'Total laps', isEs ? 'Mejor vuelta' : 'Best lap', isEs ? 'Vuelta media' : 'Avg lap', isEs ? 'Mangas' : 'Heats']);
+    s1.columns = [{ width: 5 }, { width: 30 }, ...extraHead.map(() => ({ width: 18 })),
+                   { width: 14 }, { width: 14 }, { width: 14 }, { width: 10 }];
+    addRaceHeader(s1, 6 + xN);
+    const s1Header = s1.addRow(['#', isEs ? 'Piloto / Equipo' : 'Driver / Team', ...extraHead, isEs ? 'Total vueltas' : 'Total laps', isEs ? 'Mejor vuelta' : 'Best lap', isEs ? 'Vuelta media' : 'Avg lap', isEs ? 'Mangas' : 'Heats']);
     s1Header.height = 22;
     s1Header.eachCell(c => Object.assign(c, headerStyle));
     s1.views = [{ state: 'frozen', ySplit: s1Header.number }];
     byTotal.forEach((r, i) => {
-      const row = s1.addRow([i+1, r.entity_name, r.total_laps, fmtMs(r.best_lap_ms), fmtMs(Math.round(r.avg_lap_ms)), r.mangas_raced]);
+      const row = s1.addRow([i+1, r.entity_name, ...extraVals(r), r.total_laps, fmtMs(r.best_lap_ms), fmtMs(Math.round(r.avg_lap_ms)), r.mangas_raced]);
       const fill = podiumFill(i+1);
-      row.eachCell(c => {
+      row.eachCell({ includeEmpty: true }, c => {
         c.border = thinBorder;
         if (fill) c.fill = fill;
         if (fill && i < 3) c.font = { bold: true };
       });
-      row.getCell(3).font = { bold: true };
-      if (i % 2 === 1 && !fill) row.eachCell(c => c.fill = fillSolid(COL.band));
+      row.getCell(3 + xN).font = { bold: true };
+      if (i % 2 === 1 && !fill) row.eachCell({ includeEmpty: true }, c => c.fill = fillSolid(COL.band));
     });
 
     // ── Sheet 2 — Mejor vuelta ──────────────────────────────────────────────
     const byBest = [...aggregate].filter(r => r.best_lap_ms).sort((a,b) => a.best_lap_ms - b.best_lap_ms);
     const s2 = wb.addWorksheet(isEs ? 'Mejor vuelta' : 'Best lap');
-    s2.columns = [{ width: 5 }, { width: 30 }, { width: 14 }, { width: 14 }];
-    addRaceHeader(s2, 4);
-    const s2Header = s2.addRow(['#', isEs ? 'Piloto / Equipo' : 'Driver / Team', isEs ? 'Mejor vuelta' : 'Best lap', isEs ? 'Total vueltas' : 'Total laps']);
+    s2.columns = [{ width: 5 }, { width: 30 }, ...extraHead.map(() => ({ width: 18 })), { width: 14 }, { width: 14 }];
+    addRaceHeader(s2, 4 + xN);
+    const s2Header = s2.addRow(['#', isEs ? 'Piloto / Equipo' : 'Driver / Team', ...extraHead, isEs ? 'Mejor vuelta' : 'Best lap', isEs ? 'Total vueltas' : 'Total laps']);
     s2Header.height = 22;
     s2Header.eachCell(c => Object.assign(c, headerStyle));
     s2.views = [{ state: 'frozen', ySplit: s2Header.number }];
     byBest.forEach((r, i) => {
-      const row = s2.addRow([i+1, r.entity_name, fmtMs(r.best_lap_ms), r.total_laps]);
+      const row = s2.addRow([i+1, r.entity_name, ...extraVals(r), fmtMs(r.best_lap_ms), r.total_laps]);
       const fill = podiumFill(i+1);
-      row.eachCell(c => {
+      row.eachCell({ includeEmpty: true }, c => {
         c.border = thinBorder;
         if (fill) c.fill = fill;
         if (fill) c.font = { bold: true };
       });
-      row.getCell(3).font = { bold: true, color: { argb: 'FF1A7F37' } };
-      if (i % 2 === 1 && !fill) row.eachCell(c => c.fill = fillSolid(COL.band));
+      row.getCell(3 + xN).font = { bold: true, color: { argb: 'FF1A7F37' } };
+      if (i % 2 === 1 && !fill) row.eachCell({ includeEmpty: true }, c => c.fill = fillSolid(COL.band));
     });
 
     // ── Sheet 3 — Por carril ────────────────────────────────────────────────
@@ -1770,10 +1788,11 @@ class SessionController {
     s4.columns = [
       { width: 5 },   // #
       { width: 28 },  // name / label
+      ...extraHead.map(() => ({ width: 18 })),   // categoría / coche (opcionales)
       { width: 12 },  // total / per-row value
       ...columns.map(() => ({ width: 12 })),
     ];
-    addRaceHeader(s4, 3 + numLaneCols);
+    addRaceHeader(s4, 3 + xN + numLaneCols);
 
     // Banner row: TODO el texto en una sola celda combinada (A..última) para que
     // la etiqueta no se recorte en la columna A (que es estrecha).
@@ -1783,7 +1802,7 @@ class SessionController {
       s4.addRow([bannerText]);
       const r = s4.lastRow;
       r.height = 26;
-      s4.mergeCells(r.number, 1, r.number, 3 + numLaneCols);
+      s4.mergeCells(r.number, 1, r.number, 3 + xN + numLaneCols);
       const c = r.getCell(1);
       c.fill = fillSolid(COL.gold);
       c.font = { bold: true, size: 12, color: { argb: 'FF1A1A1A' } };
@@ -1792,7 +1811,7 @@ class SessionController {
     }
 
     // Header
-    const headerRow = s4.addRow(['#', isEs ? 'Equipo / Piloto' : 'Team / Driver', isEs ? 'Vueltas' : 'Laps', ...columns.map(col => col.label)]);
+    const headerRow = s4.addRow(['#', isEs ? 'Equipo / Piloto' : 'Team / Driver', ...extraHead, isEs ? 'Vueltas' : 'Laps', ...columns.map(col => col.label)]);
     headerRow.height = 22;
     headerRow.eachCell(c => Object.assign(c, headerStyle));
     s4.views = [{ state: 'frozen', ySplit: headerRow.number }];
@@ -1834,7 +1853,7 @@ class SessionController {
 
       // Entity header row (light gray on lane cells)
       const nameDisplay = startLane ? `${r.entity_name}   🚦 P${startLane}` : r.entity_name;
-      const rowA = s4.addRow([pos, nameDisplay, r.total_laps, ...columns.map(col => {
+      const rowA = s4.addRow([pos, nameDisplay, ...extraVals(r), r.total_laps, ...columns.map(col => {
         const c = cellFor(r, col);
         if (!c || c.laps == null) return '';
         const rank = colLapRank[col.key] ? colLapRank[col.key][keyOf(r)] : null;
@@ -1851,13 +1870,13 @@ class SessionController {
       if (podium) {
         rowA.getCell(1).fill = podium;
         rowA.getCell(2).fill = podium;
-        rowA.getCell(3).fill = podium;
+        rowA.getCell(3 + xN).fill = podium;
       }
-      rowA.getCell(3).font = { bold: true, size: 12, color: { argb: pos === 1 ? 'FF8A6D00' : pos === 2 ? 'FF374151' : pos === 3 ? 'FFFFFFFF' : 'FF0969DA' } };
+      rowA.getCell(3 + xN).font = { bold: true, size: 12, color: { argb: pos === 1 ? 'FF8A6D00' : pos === 2 ? 'FF374151' : pos === 3 ? 'FFFFFFFF' : 'FF0969DA' } };
 
       // Mark the starting-lane cell on the entity header row
       if (startColIdx >= 0) {
-        const cell = rowA.getCell(4 + startColIdx);
+        const cell = rowA.getCell(4 + xN + startColIdx);
         cell.fill   = startLaneFill;
         cell.border = startLaneBorder;
       }
@@ -1869,7 +1888,7 @@ class SessionController {
       const bestLapPl = r.best_lap_ms != null ? r.perLane.find(pl => pl.best_ms === r.best_lap_ms) : null;
       const bestLapLane = bestLapPl ? bestLapPl.lane : null;
       const bestLapTotalStr = bestLapLane != null ? `${fmtSec(r.best_lap_ms)} (${bestLapLane})` : fmtSec(r.best_lap_ms);
-      const rowB = s4.addRow(['', `⚡ ${isEs ? 'Vuelta rápida' : 'Fastest'}`, bestLapTotalStr, ...fastestVals]);
+      const rowB = s4.addRow(['', `⚡ ${isEs ? 'Vuelta rápida' : 'Fastest'}`, ...blankExtra(), bestLapTotalStr, ...fastestVals]);
       rowB.outlineLevel = 1;
       rowB.eachCell({ includeEmpty: true }, c => {
         c.border = thinBorder;
@@ -1883,13 +1902,13 @@ class SessionController {
       columns.forEach((col, idx) => {
         const c = cellFor(r, col);
         if (c && c.best_ms != null && c.best_ms === raceBestLapMs) {
-          const cell = rowB.getCell(4 + idx);
+          const cell = rowB.getCell(4 + xN + idx);
           cell.fill = fillSolid(COL.raceBest);
           cell.font = { bold: true, color: { argb: 'FF8A6D00' }, size: 12 };
           cell.value = `${fmtSec(c.best_ms)} ★`;
         }
       });
-      if (startColIdx >= 0) rowB.getCell(4 + startColIdx).border = startLaneBorder;
+      if (startColIdx >= 0) rowB.getCell(4 + xN + startColIdx).border = startLaneBorder;
 
       // Average row
       const avgVals = columns.map(col => {
@@ -1900,7 +1919,7 @@ class SessionController {
       const avgTotalStr = bestAvgLane != null
         ? `${fmtSec(Math.round(r.avg_lap_ms))} / ${fmtSec(Math.round(bestAvgMs))} (${bestAvgLane})`
         : fmtSec(Math.round(r.avg_lap_ms));
-      const rowC = s4.addRow(['', isEs ? 'Media gen / Mejor med' : 'Avg / Best avg', avgTotalStr, ...avgVals]);
+      const rowC = s4.addRow(['', isEs ? 'Media gen / Mejor med' : 'Avg / Best avg', ...blankExtra(), avgTotalStr, ...avgVals]);
       rowC.outlineLevel = 1;
       rowC.eachCell({ includeEmpty: true }, c => {
         c.border = thinBorder;
@@ -1909,14 +1928,14 @@ class SessionController {
       });
       rowC.getCell(2).alignment = { horizontal: 'left' };
       rowC.getCell(2).font = { color: { argb: COL.muted }, italic: true };
-      if (startColIdx >= 0) rowC.getCell(4 + startColIdx).border = startLaneBorder;
+      if (startColIdx >= 0) rowC.getCell(4 + xN + startColIdx).border = startLaneBorder;
 
       // Consistency row (SIN salidas/pits, ritmo puro)
       const consVals = columns.map(col => {
         const c = cellFor(r, col);
         return (c && c.consistency != null) ? fmtPct(c.consistency) : '';
       });
-      const rowCons = s4.addRow(['', isEs ? 'Const. sin' : 'Const. clean', fmtPct(r.raceConsistency), ...consVals]);
+      const rowCons = s4.addRow(['', isEs ? 'Const. sin' : 'Const. clean', ...blankExtra(), fmtPct(r.raceConsistency), ...consVals]);
       rowCons.outlineLevel = 1;
       rowCons.eachCell({ includeEmpty: true }, c => {
         c.border = thinBorder;
@@ -1926,7 +1945,7 @@ class SessionController {
       });
       rowCons.getCell(2).alignment = { horizontal: 'left' };
       rowCons.getCell(2).font = { color: { argb: COL.muted }, italic: true, size: 10 };
-      if (startColIdx >= 0) rowCons.getCell(4 + startColIdx).border = startLaneBorder;
+      if (startColIdx >= 0) rowCons.getCell(4 + xN + startColIdx).border = startLaneBorder;
 
       // Exits row
       const exitVals = columns.map(col => {
@@ -1934,7 +1953,7 @@ class SessionController {
         if (!c || c.worst_ms == null) return '';
         return `(${c.exit_count||0}) ${fmtSec(c.worst_ms)}`;
       });
-      const rowD = s4.addRow(['', `${isEs ? 'Salidas' : 'Exits'} (${totalExits})`, '', ...exitVals]);
+      const rowD = s4.addRow(['', `${isEs ? 'Salidas' : 'Exits'} (${totalExits})`, ...blankExtra(), '', ...exitVals]);
       rowD.outlineLevel = 1;
       rowD.eachCell({ includeEmpty: true }, c => {
         c.border = thinBorder;
@@ -1948,11 +1967,11 @@ class SessionController {
       columns.forEach((col, idx) => {
         const c = cellFor(r, col);
         if (c && c.exit_count > 0) {
-          const cell = rowD.getCell(4 + idx);
+          const cell = rowD.getCell(4 + xN + idx);
           cell.font = { size: 10, color: { argb: COL.exit }, bold: true };
         }
       });
-      if (startColIdx >= 0) rowD.getCell(4 + startColIdx).border = startLaneBorder;
+      if (startColIdx >= 0) rowD.getCell(4 + xN + startColIdx).border = startLaneBorder;
 
       // Pit-stops row
       const pitVals = columns.map(col => {
@@ -1963,7 +1982,7 @@ class SessionController {
           : '';
         return `(${c.pit_stop_count}) ${laps}`;
       });
-      const rowE = s4.addRow(['', `🔧 ${isEs ? 'Pit-stops' : 'Pit-stops'} (${totalPits})`, '', ...pitVals]);
+      const rowE = s4.addRow(['', `🔧 ${isEs ? 'Pit-stops' : 'Pit-stops'} (${totalPits})`, ...blankExtra(), '', ...pitVals]);
       rowE.outlineLevel = 1;
       rowE.eachCell({ includeEmpty: true }, c => {
         c.border = thinBorder;
@@ -1976,11 +1995,11 @@ class SessionController {
       columns.forEach((col, idx) => {
         const c = cellFor(r, col);
         if (c && c.pit_stop_count > 0) {
-          const cell = rowE.getCell(4 + idx);
+          const cell = rowE.getCell(4 + xN + idx);
           cell.font = { size: 10, color: { argb: 'FFFF9800' }, bold: true };
         }
       });
-      if (startColIdx >= 0) rowE.getCell(4 + startColIdx).border = startLaneBorder;
+      if (startColIdx >= 0) rowE.getCell(4 + xN + startColIdx).border = startLaneBorder;
 
       // Spacer
       s4.addRow([]);

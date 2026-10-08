@@ -37,22 +37,24 @@ class Race {
 
   static create({ name, type, format, lanes_count, lane_sequence, manga_duration_minutes, circuits, has_pole, circuit_id, min_lap_ms,
                   driver_min_total_ms, driver_max_total_ms, driver_change_lockout_ms, driver_max_runs,
-                  passes, lane_repeat, tire_pairs_per_team }) {
+                  passes, lane_repeat, tire_pairs_per_team, has_categoria, has_coche }) {
     const seq  = Array.isArray(lane_sequence) ? JSON.stringify(lane_sequence) : (lane_sequence || '[]');
     const circ = Array.isArray(circuits) ? JSON.stringify(circuits) : '[]';
     let raceKey = null;
     try { raceKey = require('crypto').randomUUID(); } catch { /* backfill lo cubre */ }
     const { lastInsertRowid } = db.prepare(`
       INSERT INTO races (name, type, format, lanes_count, lane_sequence, manga_duration_minutes, circuits_config, has_pole, circuit_id, min_lap_ms,
-                          driver_min_total_ms, driver_max_total_ms, driver_change_lockout_ms, driver_max_runs, passes, lane_repeat, tire_pairs_per_team, race_key)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                          driver_min_total_ms, driver_max_total_ms, driver_change_lockout_ms, driver_max_runs, passes, lane_repeat, tire_pairs_per_team,
+                          has_categoria, has_coche, race_key)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(name, type, format, lanes_count, seq, manga_duration_minutes || 5, circ, has_pole ? 1 : 0,
            circuit_id || null, min_lap_ms || 0,
            driver_min_total_ms || 0, driver_max_total_ms || 0,
            (driver_change_lockout_ms != null ? driver_change_lockout_ms : 120000),
            driver_max_runs || 0,
            Math.max(1, parseInt(passes, 10) || 1), Math.max(1, parseInt(lane_repeat, 10) || 1),
-           Math.max(0, parseInt(tire_pairs_per_team, 10) || 0), raceKey);
+           Math.max(0, parseInt(tire_pairs_per_team, 10) || 0),
+           has_categoria ? 1 : 0, has_coche ? 1 : 0, raceKey);
     return lastInsertRowid;
   }
 
@@ -61,7 +63,7 @@ class Race {
   // endurance rules —turnos de piloto y neumáticos— antes de correr).
   static update(id, { name, circuit_id, min_lap_ms, lanes_count, circuits_config, lane_sequence,
                       driver_min_total_ms, driver_max_total_ms, driver_change_lockout_ms, driver_max_runs,
-                      tire_pairs_per_team }) {
+                      tire_pairs_per_team, has_categoria, has_coche }) {
     const sets = [], vals = [];
     if (name            !== undefined) { sets.push('name=?');            vals.push(name); }
     if (circuit_id      !== undefined) { sets.push('circuit_id=?');      vals.push(circuit_id || null); }
@@ -74,6 +76,8 @@ class Race {
     if (driver_change_lockout_ms !== undefined) { sets.push('driver_change_lockout_ms=?'); vals.push(driver_change_lockout_ms != null ? driver_change_lockout_ms : 120000); }
     if (driver_max_runs          !== undefined) { sets.push('driver_max_runs=?');          vals.push(driver_max_runs || 0); }
     if (tire_pairs_per_team      !== undefined) { sets.push('tire_pairs_per_team=?');      vals.push(Math.max(0, parseInt(tire_pairs_per_team, 10) || 0)); }
+    if (has_categoria            !== undefined) { sets.push('has_categoria=?');            vals.push(has_categoria ? 1 : 0); }
+    if (has_coche                !== undefined) { sets.push('has_coche=?');                vals.push(has_coche ? 1 : 0); }
     if (!sets.length) return;
     vals.push(id);
     db.prepare(`UPDATE races SET ${sets.join(', ')} WHERE id=?`).run(...vals);

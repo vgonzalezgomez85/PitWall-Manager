@@ -104,16 +104,22 @@ function buildRaceProjection(raceId, deps = {}) {
   const isTeam = race.format === 'team';
   const idCol  = isTeam ? 'ml.team_id' : 'ml.driver_id';
 
-  // ── Categoría por equipo (catálogo del club, empareja por NOMBRE — igual
-  // que Le Mans/live-stats). Solo aplica a carreras por equipos; un piloto
-  // suelto no tiene categoría de equipo.
+  // ── Categoría por participante: la de ESTA carrera manda; si está vacía, la
+  // del catálogo por nombre (equipos, igual que Le Mans/live-stats). Los
+  // pilotos sueltos (individual) usan la suya propia.
   const categoriaById = {};
   if (isTeam) {
     db.prepare(`
-      SELECT t.id AS eid, tc.categoria AS categoria
+      SELECT t.id AS eid, COALESCE(t.categoria, tc.categoria) AS categoria
       FROM teams t
       LEFT JOIN teams_catalog tc ON tc.name = t.name
-      WHERE t.race_id = ? AND tc.categoria IS NOT NULL
+      WHERE t.race_id = ? AND COALESCE(t.categoria, tc.categoria) IS NOT NULL
+    `).all(raceId).forEach(r => { categoriaById[r.eid] = r.categoria; });
+  } else {
+    db.prepare(`
+      SELECT d.id AS eid, d.categoria AS categoria
+      FROM drivers d
+      WHERE d.race_id = ? AND d.categoria IS NOT NULL
     `).all(raceId).forEach(r => { categoriaById[r.eid] = r.categoria; });
   }
 

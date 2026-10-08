@@ -218,6 +218,26 @@
       </div>
     <% } %>
 
+    <!-- Categoría/copa y coche por participante (opcional, se puede cambiar siempre) -->
+    <div class="form-group">
+      <label class="form-label"><%= lang === 'es' ? 'Categoría y coche (opcional)' : 'Category and car (optional)' %></label>
+      <p class="form-hint" style="margin:.2rem 0 .6rem">
+        <%= lang === 'es'
+          ? 'Actívalos para poder anotar la categoría/copa y el coche de cada equipo o piloto en la tanda. Son opcionales: rellenarlos no es obligatorio. La categoría se ve en el directo; ambos salen en el Excel.'
+          : 'Turn them on to record each team’s or driver’s category/cup and car in the heat group. Optional: filling them in is not required. The category shows in the live view; both appear in the Excel.' %>
+      </p>
+      <div style="display:flex;gap:1.4rem;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+          <input type="checkbox" name="has_categoria" value="1" <%= race.has_categoria ? 'checked' : '' %>>
+          <span><%= lang === 'es' ? 'Categoría / copa' : 'Category / cup' %></span>
+        </label>
+        <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+          <input type="checkbox" name="has_coche" value="1" <%= race.has_coche ? 'checked' : '' %>>
+          <span><%= lang === 'es' ? 'Coche' : 'Car' %></span>
+        </label>
+      </div>
+    </div>
+
     <div class="form-actions">
       <a href="/races/<%= race.id %>" class="btn btn--ghost"><%= lang === 'es' ? 'Cancelar' : 'Cancel' %></a>
       <button type="submit" class="btn btn--primary"><%= lang === 'es' ? 'Guardar cambios' : 'Save changes' %></button>

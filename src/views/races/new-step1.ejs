@@ -163,6 +163,22 @@ const tirePairs = body.tire_pairs_per_team != null ? body.tire_pairs_per_team : 
       </div>
     </section>
 
+    <!-- ── Categoría y coche por participante (opcional) ──────────────────── -->
+    <section class="nr-sec">
+      <span class="nr-sec__t"><%= es ? 'Categoría y coche (opcional)' : 'Category and car (optional)' %></span>
+      <p class="nr-help"><%= es ? 'Al activarlos, al inscribir cada equipo o piloto podrás indicar su categoría/copa y su coche (y editarlos luego desde la tanda). Rellenarlos no es obligatorio.' : 'When on, you can set each team’s or driver’s category/cup and car while signing them up (and edit them later from the heat group). Filling them in is not required.' %></p>
+      <div class="nr-seg">
+        <label class="nr-seg__opt">
+          <input type="checkbox" name="has_categoria" value="1" <%= body.has_categoria === '1' ? 'checked' : '' %>>
+          <span><b><%= es ? 'Categoría / copa' : 'Category / cup' %></b><small><%= es ? 'Se ve junto al nombre en el directo y sale en el Excel.' : 'Shown next to the name in the live view and included in the Excel.' %></small></span>
+        </label>
+        <label class="nr-seg__opt">
+          <input type="checkbox" name="has_coche" value="1" <%= body.has_coche === '1' ? 'checked' : '' %>>
+          <span><b><%= es ? 'Coche' : 'Car' %></b><small><%= es ? 'Columna en el Excel de resultados.' : 'Column in the results Excel.' %></small></span>
+        </label>
+      </div>
+    </section>
+
     <!-- ── Resistencia: turnos y neumáticos ───────────────────────────────── -->
     <section class="nr-sec" id="champSection" <%= isChamp ? '' : 'hidden' %>>
       <span class="nr-sec__t"><%= es ? 'Reglas de resistencia' : 'Endurance rules' %></span>

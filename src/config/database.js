@@ -456,6 +456,23 @@ const migrations = [
   // PIN de 4 dígitos por equipo para el cliente web "Lap" (timing del equipo
   // desde el móvil). Se genera bajo demanda; ver Team.ensureLapPins.
   `ALTER TABLE teams ADD COLUMN lap_pin TEXT`,
+  // Categoría/copa y coche POR CARRERA y por participante (texto libre, NULL =
+  // sin dato). Se rellenan en el asistente o en la tanda si la carrera los tiene
+  // activados (races.has_categoria/has_coche) y, si están vacíos, se sigue
+  // leyendo la categoría/coche del catálogo de equipos por nombre. Ver
+  // Manga.getLanes y Lap.aggregateByRace.
+  `ALTER TABLE teams   ADD COLUMN categoria TEXT`,
+  `ALTER TABLE teams   ADD COLUMN coche     TEXT`,
+  `ALTER TABLE drivers ADD COLUMN categoria TEXT`,
+  `ALTER TABLE drivers ADD COLUMN coche     TEXT`,
+  // Interruptores por carrera (0 = desactivado, por defecto): activan los campos
+  // de categoría/copa y coche por participante y sus columnas en el Excel.
+  `ALTER TABLE races ADD COLUMN has_categoria INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE races ADD COLUMN has_coche     INTEGER NOT NULL DEFAULT 0`,
+  // Categoría/copa y coche capturados en el paso 4 del asistente (carreras con
+  // pole): viajan con la inscripción hasta la tanda que la pole crea después.
+  `ALTER TABLE pole_entries ADD COLUMN categoria TEXT`,
+  `ALTER TABLE pole_entries ADD COLUMN coche     TEXT`,
 
   // race_key: identificador ESTABLE de la carrera (uuid) que sobrevive al
   // export/import entre instancias distintas (feature maestro/esclavo). El

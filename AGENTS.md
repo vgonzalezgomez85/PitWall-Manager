@@ -115,7 +115,7 @@ Siguiente manga pendiente se activa automáticamente
 | `mangas` | Una manga individual. Estados: pending → active → finished. `actual_duration_ms` = duración real que mandó el DS al GO (la usa la estimada) |
 | `manga_lanes` | Asignación carril↔equipo/piloto por manga. `lane=0, is_rest=1` = descanso |
 | `laps` | Vueltas registradas. `is_ghost=1` = inválida (< min_lap_ms); `is_warmup=1` = 1ª vuelta (no cuenta para mejor vuelta); `is_exit`/`is_pit_stop` = salida/parada |
-| `teams` / `drivers` | Entidades de competición |
+| `teams` / `drivers` | Entidades de competición. `categoria` y `coche` son la copa y el coche **de esta carrera** (opcionales; interruptores `races.has_categoria`/`has_coche`). Al leerlos manda el valor de la carrera y, si está vacío, cae al del catálogo de equipos por nombre (`teams_catalog.categoria/coche`) — ver `Manga.getLanes`, `Lap._entityCategoria` |
 | `settings` | Clave-valor persistente (puerto serie, carriles, etc.) |
 | `circuits` | Circuitos con `lanes_count` y `min_lap_ms` |
 

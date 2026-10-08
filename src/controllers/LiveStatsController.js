@@ -248,7 +248,9 @@ class LiveStatsController {
         COALESCE(t.id, d.id)   AS entity_id,
         COALESCE(t.name, d.name) AS entity_name,
         CASE WHEN t.id IS NOT NULL THEN 'team' ELSE 'driver' END AS entity_type,
-        tc.categoria AS categoria
+        CASE WHEN t.id IS NOT NULL
+             THEN COALESCE(t.categoria, tc.categoria)
+             ELSE d.categoria END AS categoria
       FROM manga_lanes ml
       JOIN mangas m ON m.id = ml.manga_id
       JOIN tandas tn ON tn.id = m.tanda_id

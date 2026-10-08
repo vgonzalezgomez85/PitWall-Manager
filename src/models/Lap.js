@@ -174,7 +174,11 @@ class Lap {
         b.bestLapMs,
         COALESCE(t.name, d.name) AS entityName,
         CASE WHEN t.id IS NOT NULL THEN 'team' ELSE 'driver' END AS entityType,
-        tc.categoria AS entityCategoria
+        -- Categoría: la de esta carrera manda; si vacía, la del catálogo por
+        -- nombre (equipos). En individual, la del piloto.
+        CASE WHEN t.id IS NOT NULL
+             THEN COALESCE(t.categoria, tc.categoria)
+             ELSE d.categoria END AS entityCategoria
       FROM best_per_lane b
       JOIN laps l ON l.race_id = ? AND l.lane = b.lane AND l.lap_time_ms = b.bestLapMs
                  AND l.is_ghost = 0 AND l.is_exit = 0 AND l.is_warmup = 0 AND l.lap_number > 1
@@ -271,6 +275,31 @@ class Lap {
    */
   static _effectiveComa(row, manualOn) {
     return (manualOn && row.coma_manual != null) ? row.coma_manual : (row.coma || 0);
+  }
+
+  /**
+   * Categoría/copa y coche por entidad de la carrera. La de ESTA carrera manda;
+   * si está vacía, se cae a la del catálogo de equipos por nombre (equipos sin
+   * dato propio y carreras de antes de la v1.49). Los pilotos van por formato
+   * individual: solo la suya. Se resuelve en JS (sin JOIN al catálogo) porque
+   * `teams_catalog.name` no es UNIQUE y un JOIN multiplicaría filas del agregado.
+   */
+  static _entityCategoria(raceId) {
+    const catByName = {};
+    db.prepare('SELECT name, MAX(categoria) AS categoria, MAX(coche) AS coche FROM teams_catalog GROUP BY name')
+      .all().forEach(c => { catByName[c.name] = c; });
+    const out = {};
+    db.prepare('SELECT id, name, categoria, coche FROM teams WHERE race_id = ?').all(raceId)
+      .forEach(t => {
+        const cat = catByName[t.name] || {};
+        out['team:' + t.id] = {
+          categoria: t.categoria ?? cat.categoria ?? null,
+          coche:     t.coche     ?? cat.coche     ?? null,
+        };
+      });
+    db.prepare('SELECT id, categoria, coche FROM drivers WHERE race_id = ?').all(raceId)
+      .forEach(d => { out['driver:' + d.id] = { categoria: d.categoria ?? null, coche: d.coche ?? null }; });
+    return out;
   }
 
   /** Coma acumulada por entidad. Sale de manga_lanes, no de laps: no depende de las vueltas. */
@@ -452,11 +481,14 @@ class Lap {
     const meta     = Lap._entityMeta(raceId);
     const coma     = Lap._comaByEntity(raceId);
     const lastManga = Lap._lastMangaByEntity(raceId);
+    const cats     = Lap._entityCategoria(raceId);
     const rows = Object.entries(acc).map(([k, a]) => ({
       entity_id:    a.entity_id,
       entity_name:  meta[k]?.entity_name ?? null,
       entity_type:  a.entity_type,
       color:        a.entity_type === 'team' ? (meta[k]?.color ?? null) : null,
+      categoria:    cats[k]?.categoria ?? null,
+      coche:        cats[k]?.coche ?? null,
       total_laps:   a.total_laps,
       best_lap_ms:  a.best_lap_ms,
       avg_lap_ms:   a.avg_cnt > 0 ? a.avg_sum / a.avg_cnt : null,
@@ -540,9 +572,12 @@ class Lap {
     Lap._applyStartSettled(raceId, rows);
     const comaTotals = Lap._comaByEntity(raceId);
     const lastManga  = Lap._lastMangaByEntity(raceId);
+    const cats       = Lap._entityCategoria(raceId);
     for (const r of rows) {
       const k  = r.entity_type + ':' + r.entity_id;
       const lm = lastManga[k];
+      r.categoria              = cats[k]?.categoria ?? null;
+      r.coche                  = cats[k]?.coche ?? null;
       r.coma_total             = comaTotals[k] || 0;      // suma (referencia)
       r.last_manga_coma        = lm?.coma || 0;           // desempate oficial
       r.last_manga_coma_manual = !!lm?.manual;

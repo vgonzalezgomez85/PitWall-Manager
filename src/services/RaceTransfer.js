@@ -74,6 +74,9 @@ const RaceTransfer = {
         ref: teamRef(t.id),
         tandaNumber: t.tanda_id != null ? tandaNumById[t.tanda_id] ?? null : null,
         name: t.name, lane: t.lane, color: t.color, country: t.country,
+        // Categoría/copa y coche (opcionales por carrera). Los esclavos de
+        // versiones anteriores ignoran estas claves extra.
+        categoria: t.categoria ?? null, coche: t.coche ?? null,
       }));
 
     const drivers = db.prepare('SELECT * FROM drivers WHERE race_id = ? ORDER BY id ASC').all(race.id)
@@ -82,6 +85,7 @@ const RaceTransfer = {
         tandaNumber: d.tanda_id != null ? tandaNumById[d.tanda_id] ?? null : null,
         teamRef: teamRef(d.team_id),
         name: d.name, lane: d.lane, car_number: d.car_number,
+        categoria: d.categoria ?? null, coche: d.coche ?? null,
       }));
 
     const mangaRows = db.prepare('SELECT * FROM mangas WHERE race_id = ? ORDER BY tanda_id ASC, number ASC').all(race.id);
@@ -128,6 +132,8 @@ const RaceTransfer = {
         passes: race.passes,
         lane_repeat: race.lane_repeat,
         lap_pin_required: race.lap_pin_required,
+        has_categoria: race.has_categoria || 0,
+        has_coche: race.has_coche || 0,
       },
       tandas: tandas.map(t => ({ number: t.number })),
       teams,
@@ -157,11 +163,13 @@ const RaceTransfer = {
         INSERT INTO races (name, type, format, lanes_count, lane_sequence, manga_duration_minutes,
                            circuits_config, has_pole, circuit_id, min_lap_ms,
                            driver_min_total_ms, driver_max_total_ms, driver_change_lockout_ms,
-                           driver_max_runs, passes, lane_repeat, lap_pin_required, race_key, status)
+                           driver_max_runs, passes, lane_repeat, lap_pin_required, has_categoria, has_coche,
+                           race_key, status)
         VALUES (@name, @type, @format, @lanes_count, @lane_sequence, @manga_duration_minutes,
                 @circuits_config, @has_pole, NULL, @min_lap_ms,
                 @driver_min_total_ms, @driver_max_total_ms, @driver_change_lockout_ms,
-                @driver_max_runs, @passes, @lane_repeat, @lap_pin_required, @race_key, 'pending')
+                @driver_max_runs, @passes, @lane_repeat, @lap_pin_required, @has_categoria, @has_coche,
+                @race_key, 'pending')
       `).run({
         name: r.name, type: r.type, format: r.format,
         lanes_count: r.lanes_count ?? 6,
@@ -177,6 +185,8 @@ const RaceTransfer = {
         passes: Math.max(1, parseInt(r.passes, 10) || 1),
         lane_repeat: Math.max(1, parseInt(r.lane_repeat, 10) || 1),
         lap_pin_required: r.lap_pin_required === 0 ? 0 : 1,
+        has_categoria: r.has_categoria ? 1 : 0,
+        has_coche: r.has_coche ? 1 : 0,
         race_key: payload.raceKey,
       });
 
@@ -190,24 +200,26 @@ const RaceTransfer = {
       // 3) Equipos → mapa ref→id
       const teamIdByRef = {};
       const insTeam = db.prepare(`
-        INSERT INTO teams (race_id, tanda_id, name, lane, color, country)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO teams (race_id, tanda_id, name, lane, color, country, categoria, coche)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `);
       for (const t of (payload.teams || [])) {
         const tandaId = t.tandaNumber != null ? tandaIdByNum[t.tandaNumber] ?? null : null;
-        teamIdByRef[t.ref] = insTeam.run(raceId, tandaId, t.name, t.lane ?? 0, t.color || '#e63946', t.country ?? null).lastInsertRowid;
+        teamIdByRef[t.ref] = insTeam.run(raceId, tandaId, t.name, t.lane ?? 0, t.color || '#e63946',
+                                         t.country ?? null, t.categoria ?? null, t.coche ?? null).lastInsertRowid;
       }
 
       // 4) Pilotos → mapa ref→id
       const driverIdByRef = {};
       const insDriver = db.prepare(`
-        INSERT INTO drivers (race_id, tanda_id, team_id, name, lane, car_number)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO drivers (race_id, tanda_id, team_id, name, lane, car_number, categoria, coche)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `);
       for (const d of (payload.drivers || [])) {
         const tandaId = d.tandaNumber != null ? tandaIdByNum[d.tandaNumber] ?? null : null;
         const teamId  = d.teamRef != null ? teamIdByRef[d.teamRef] ?? null : null;
-        driverIdByRef[d.ref] = insDriver.run(raceId, tandaId, teamId, d.name, d.lane ?? null, d.car_number ?? null).lastInsertRowid;
+        driverIdByRef[d.ref] = insDriver.run(raceId, tandaId, teamId, d.name, d.lane ?? null, d.car_number ?? null,
+                                             d.categoria ?? null, d.coche ?? null).lastInsertRowid;
       }
 
       // 5) Mangas + asignaciones de carril

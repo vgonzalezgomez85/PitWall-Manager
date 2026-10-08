@@ -207,7 +207,8 @@ class TimingServiceClass {
         driverId:     ml.driver_id || null,
         color:        ml.team_color || '#8b949e',
         country:      ml.team_country || null,
-        categoria:    ml.team_categoria || null,
+        // Equipo → su categoría (carrera o catálogo); individual → la del piloto.
+        categoria:    (ml.team_id != null ? ml.team_categoria : ml.driver_categoria) || null,
         lapCount:      0,
         bestLapMs:     null,
         lastLapMs:     null,
@@ -441,7 +442,7 @@ class TimingServiceClass {
         driverId: ml.driver_id || null,
         color: ml.team_color || '#8b949e',
         country: ml.team_country || null,
-        categoria: ml.team_categoria || null,
+        categoria: (ml.team_id != null ? ml.team_categoria : ml.driver_categoria) || null,
         lapCount: 0, bestLapMs: null, lastLapMs: null, lastCrossing: startTime,
         avgLapCount: 0, lapsMsSum: 0, lapAvgMs: 0,
         cleanAvgCount: 0, cleanLapsSum: 0, cleanAvgMs: 0,

@@ -100,7 +100,7 @@
         lane:  l.lane,
         color: LC[l.lane - 1] || '#8b949e',
         name:  l.team_name || l.driver_name || ('Lane ' + l.lane),
-        categoria: l.team_categoria || null,
+        categoria: (l.team_id != null ? l.team_categoria : l.driver_categoria) || null,
       }));
   %>
 

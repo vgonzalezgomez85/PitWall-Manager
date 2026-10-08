@@ -29,11 +29,12 @@ class PoleSession {
     ).run(raceId).lastInsertRowid;
   }
 
-  static addEntry({ poleSessionId, entityType, entityName, membersJson }) {
+  static addEntry({ poleSessionId, entityType, entityName, membersJson, categoria, coche }) {
     return db.prepare(`
-      INSERT INTO pole_entries (pole_session_id, entity_type, entity_name, members_json)
-      VALUES (?, ?, ?, ?)
-    `).run(poleSessionId, entityType, entityName, membersJson ?? null).lastInsertRowid;
+      INSERT INTO pole_entries (pole_session_id, entity_type, entity_name, members_json, categoria, coche)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(poleSessionId, entityType, entityName, membersJson ?? null,
+           categoria ?? null, coche ?? null).lastInsertRowid;
   }
 
   // Persist an explicit order for the entries (array of IDs).
@@ -65,7 +66,8 @@ class PoleSession {
   // Get entries in random (shuffled) order
   static getEntriesOrdered(poleSessionId) {
     return db.prepare(`
-      SELECT pe.*, tc.categoria AS categoria
+      SELECT pe.*, COALESCE(pe.categoria, tc.categoria) AS categoria,
+             COALESCE(pe.coche, tc.coche) AS coche
       FROM pole_entries pe
       LEFT JOIN teams_catalog tc ON tc.name = pe.entity_name
       WHERE pe.pole_session_id = ?
@@ -94,7 +96,8 @@ class PoleSession {
   // no debería darse ya con sesión 'done') van al final de todo.
   static getEntriesSorted(poleSessionId) {
     return db.prepare(`
-      SELECT pe.*, tc.categoria AS categoria
+      SELECT pe.*, COALESCE(pe.categoria, tc.categoria) AS categoria,
+             COALESCE(pe.coche, tc.coche) AS coche
       FROM pole_entries pe
       LEFT JOIN teams_catalog tc ON tc.name = pe.entity_name
       WHERE pe.pole_session_id = ?
