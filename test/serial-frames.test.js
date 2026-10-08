@@ -254,6 +254,21 @@ test('el GO de una manga nueva reinicia el contador absoluto', () => {
     'tras el GO el contador empieza de cero: no hay hueco que rellenar');
 });
 
+test('el GO con clase 0x3A (variante de algunas unidades) también arranca', () => {
+  // Un club con una unidad que manda [7]=0x3A en vez de 0x3E se quedaba sin
+  // arranque: el GO no enganchaba el latch y el verde 0xA3 se ignoraba.
+  const { c } = circuito();
+  const go = new Array(21).fill(0);
+  go[0] = 0xe0; go[7] = 0x3a; go[8] = 0xa1; go[10] = 0x06; go[20] = 0xeb;
+  c._processFrame(go, 2000);
+  assert.equal(c._pendingGoStart, true, 'la variante 0x3A engancha el latch del GO');
+
+  const verde = new Array(21).fill(0);
+  verde[0] = 0xe0; verde[7] = 0x00; verde[8] = 0xa3; verde[20] = 0xeb;
+  c._processFrame(verde, 5000);
+  assert.equal(c._raceState, 'running', 'el verde posterior arranca la carrera');
+});
+
 // ── El reloj desempata: ¿29 vueltas perdidas o 129? ────────────────────────
 //
 // El byte12 solo dice en qué acaba el contador. Tras la vuelta 90, un byte12 de

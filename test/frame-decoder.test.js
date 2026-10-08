@@ -48,6 +48,17 @@ test('GO: etiqueta y duración en BCD', () => {
   assert.deepEqual(r.fields, [{ k: 'duración', v: '99 min' }]);
 });
 
+test('el GO de una unidad con clase 0x3A también es un GO', () => {
+  // Variante observada en un club (checksum válido sobre el byte real): sin
+  // aceptarla, el visor la pintaba como cruce a 0 s y el verde salía "sin GO
+  // pendiente" — un diagnóstico que apuntaba al sitio equivocado.
+  const d = createDecoder();
+  const r = d.ds(frame({ 7: 0x3a, 8: 0xa1, 10: 0x60 }));
+  assert.equal(r.kind, 'go');
+  assert.deepEqual(r.fields, [{ k: 'duración', v: '60 min' }]);
+  assert.equal(d.ds(A3).kind, 'started');
+});
+
 test('el verde 0xA3 solo cuenta si hay un GO pendiente', () => {
   const d = createDecoder();
   d.ds(GO);

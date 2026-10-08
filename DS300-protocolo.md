@@ -71,7 +71,7 @@ Suma decimal: 54+21+3+0+4+76+27+169+0+64+0+2+0+0+4+87+136 = 647
 | B7 | Clase | Significado |
 |----|-------|-------------|
 | `0x1B` | Cruce de carril | B10 contiene el bitmask de carril; B12–B17 contienen vuelta y tiempo. |
-| `0x3E` | Señal GO | Inicio de carrera. Acompañado de B8=`0xA1`. |
+| `0x3E` | Señal GO | Inicio de carrera. Acompañado de B8=`0xA1`. Algunas unidades emiten esta trama con clase `0x3A` (ver nota en §Trama GO). |
 | `0x00` | Trama de control | B10 = 0. Estado del sistema (fin, pausa, info periódica). |
 
 ---
@@ -170,6 +170,8 @@ mins = BCD(B9) × 100 + BCD(B10)
 | `0x00` | `0x10` | 10 minutos |
 
 Inmediatamente después del GO el DS-300 emite dos tramas de confirmación con B8=`0xA2` y B8=`0xA3` (ignoradas por la implementación).
+
+> **Variante observada (2026-10-08):** una unidad de club emite la trama GO con **B7=`0x3A`** en lugar de `0x3E` — mismo B8=`0xA1`, B9/B10 con la duración y checksum válido sobre el byte real (`… 4c 3a a1 00 60 … c4 …`). El parser (`SerialService.js`) y el visor de tramas (`frameDecoder.js`) aceptan ambas clases; sin ello el GO no enganchaba el latch de arranque, el «verde» 0xA3 se ignoraba y la carrera no arrancaba al dar al GO.
 
 ---
 

@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.49.1] — 2026-10-08
+
+### Corregido
+- **El arranque ya funciona en las unidades DS-300 que mandan el GO con clase `0x3A`.** Algunas unidades (detectado en un club que probaba PitWall) emiten la primera trama del GO con `byte7=0x3A` en vez de `0x3E`, con el mismo `byte8=0xA1` y el checksum válido sobre el byte real. PitWall solo reconocía `0x3E`: la señal no enganchaba el arranque, el «verde» posterior se ignoraba —el visor de tramas lo mostraba como «Verde sin GO pendiente» y pintaba la trama de GO como un cruce a 0 s— y **la carrera no empezaba al dar al GO**. Ahora el parser y el visor de tramas aceptan ambas clases.
+
 ## [1.49.0] — 2026-10-08
 
 ### Añadido

@@ -125,7 +125,9 @@ function createDecoder() {
     }
 
     // — GO (trama 1): b[7]=0x3E b[8]=0xA1. b[10] = minutos de manga en BCD.
-    if (b.length >= 11 && b7 === 0x3E && b8 === 0xA1) {
+    //   Algunas unidades de club emiten la clase 0x3A con el mismo b[8] y
+    //   checksum válido; sin aceptarla el GO no engancha el latch.
+    if (b.length >= 11 && (b7 === 0x3E || b7 === 0x3A) && b8 === 0xA1) {
       pendingGo = true;
       pendingResume = false;
       const mins = bcd(b[10]);

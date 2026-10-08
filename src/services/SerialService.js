@@ -612,7 +612,10 @@ class CircuitConnection {
     //    Trama 1: byte7=0x3E byte8=0xA1 byte10=BCD(durationMins)  → store duration, latch pending start
     //    Trama 2: byte7=0x00 byte8=0xA2                            → semaphore step 2 (intermediate)
     //    Trama 3: byte7=0x00 byte8=0xA3                            → current ON, race starts (countdown)
-    if (frame.length >= 11 && frame[7] === 0x3e && frame[8] === 0xa1) {
+    // Algunas unidades de club emiten la trama 1 con clase 0x3A en vez de 0x3E
+    // (mismo byte8=0xA1, checksum válido): sin aceptarla el GO no enganchaba el
+    // latch, el verde 0xA3 se ignoraba y la carrera no arrancaba.
+    if (frame.length >= 11 && (frame[7] === 0x3e || frame[7] === 0x3a) && frame[8] === 0xa1) {
       const mins = ds300Byte(frame[10]) ?? 0;
       // New manga → reset per-lane lap counters and stats for gap detection.
       this._lastLapByLane.clear();
