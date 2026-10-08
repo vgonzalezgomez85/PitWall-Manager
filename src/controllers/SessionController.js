@@ -2344,6 +2344,68 @@ class SessionController {
     res.send('﻿' + lines.join('\r\n') + '\r\n');
   }
 
+  // GET /races/:id/results/areacorse.csv
+  // Clasificación general en el formato estándar que importa la plataforma
+  // italiana Area Corse (area-corse.it): dos primeras líneas obligatorias —
+  // `sep=;` y la cabecera de columnas—, y los campos separados por `;`:
+  //   pilota_id  id interno de PitWall (allí emparejan por `nome`)
+  //   giri       vueltas totales
+  //   settori    sectores de la vuelta en curso al caer SU bandera, en la
+  //              escala de la pista (100 sectores por defecto, su regla
+  //              estándar): la coma de la última manga × 100. Su clasificación
+  //              normaliza con giri + settori/settori_pista, así que el orden
+  //              relativo se conserva en cualquier escala (`?settori=NN`).
+  //   miglior_tempo  mejor vuelta en HH:MM:SS.mmm
+  //   posizione  posición oficial (nuestro desempate; "el cronometraje es ley")
+  //   nome       nombre del piloto/equipo, al final y extra, para el emparejado
+  static areaCorseCsv(req, res) {
+    const race = Race.findById(req.params.id);
+    if (!race) return res.status(404).send('Not found');
+
+    const sectores = Math.min(1000, Math.max(1, parseInt(req.query.settori, 10) || 100));
+    const rows = Lap.aggregateByRace(race.id)
+      .filter(r => r.entity_id != null)
+      // Orden oficial de la clasificación (igual que /results y los puntos).
+      .sort((a, b) => b.total_laps - a.total_laps
+        || compareLastManga(a, b)
+        || (a.total_time_ms || Infinity) - (b.total_time_ms || Infinity)
+        || (a.best_lap_ms || Infinity) - (b.best_lap_ms || Infinity));
+
+    // Mejor vuelta con horas (00:00:08.590), como en sus ejemplos.
+    const fmtBest = (ms) => {
+      if (ms == null) return '';
+      const h = Math.floor(ms / 3600000);
+      const m = Math.floor((ms % 3600000) / 60000);
+      const s = Math.floor((ms % 60000) / 1000);
+      const mil = Math.round(ms % 1000);
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(mil).padStart(3, '0')}`;
+    };
+
+    const esc = (v) => {
+      const s = v == null ? '' : String(v);
+      return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const lines = ['sep=;', 'pilota_id;giri;settori;miglior_tempo;posizione;nome'];
+    rows.forEach((r, i) => {
+      // Coma de su ÚLTIMA manga (la que decide la clasificación), en sectores.
+      const coma = Math.min(0.999, Math.max(0, Number(r.last_manga_coma) || 0));
+      const settori = Math.round(coma * sectores) % sectores;
+      lines.push([
+        r.entity_id,
+        r.total_laps,
+        settori,
+        fmtBest(r.best_lap_ms),
+        i + 1,
+        r.entity_name,
+      ].map(esc).join(';'));
+    });
+
+    const filename = `${race.name.replace(/[^a-zA-Z0-9_-]/g, '_')}_areacorse.csv`;
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.send('﻿' + lines.join('\r\n') + '\r\n');
+  }
+
   static _buildPointsRanking(raceId) {
     const aggregate = Lap.aggregateByRace(raceId);
     // Desempate oficial (igual que /results), CLAVE para los puntos: vueltas →

@@ -318,6 +318,7 @@ router.get( '/races/:id/results/xlsx', SessionController.excel);
 router.get( '/races/:id/results/points.xlsx', SessionController.pointsExcel);
 router.get( '/races/:id/results/points.csv',  SessionController.pointsCsv);
 router.get( '/races/:id/results/control.csv', SessionController.controlCsv);
+router.get( '/races/:id/results/areacorse.csv', SessionController.areaCorseCsv);
 router.post('/races/:id/complete',     RaceController.complete);
 router.post('/races/:id/status',       RaceController.setStatus);
 

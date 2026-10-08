@@ -13,6 +13,12 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.50.0] — 2026-10-08
+
+### Añadido
+- **Exportar los resultados para area-corse.it (Italia).** La página de **Resultados** de una carrera estrena un botón, **area-corse**, junto a los de Excel, Puntos, Control y GitHub: descarga la **clasificación general** en el formato CSV que importa la plataforma italiana **Area Corse**, para llevar las carreras del club a sus campeonatos. El archivo lleva las **vueltas**, los **sectores** de la vuelta en curso al caer la bandera, la **mejor vuelta** y la **posición oficial** de cada participante.
+- **El emparejado se hace por el nombre.** El identificador de piloto que exporta PitWall es el **interno** del programa, así que el CSV incluye también el **nombre** del piloto o equipo, que es por donde Area Corse reconoce cada resultado. El resto de exportaciones —**Excel**, **Puntos**, **Control** y **GitHub**— no cambian.
+
 ## [1.49.1] — 2026-10-08
 
 ### Corregido
