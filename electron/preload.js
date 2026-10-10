@@ -31,6 +31,14 @@ contextBridge.exposeInMainWorld('pitwallWindows', {
   close: (id) => ipcRenderer.invoke('pitwall:window-close', id),
 });
 
+// Ajustes → Ventanas y pantallas (ver windowPlacement.js).
+contextBridge.exposeInMainWorld('pitwallScreens', {
+  list:     () => ipcRenderer.invoke('pitwall:screens'),
+  identify: () => ipcRenderer.invoke('pitwall:screens-identify'),
+  getPrefs: () => ipcRenderer.invoke('pitwall:placement'),
+  setPrefs: (prefs) => ipcRenderer.invoke('pitwall:placement', prefs),
+});
+
 // Pantalla completa de la ventana (ver main.js: sobrevive a las recargas).
 contextBridge.exposeInMainWorld('pitwallWindow', {
   setFullScreen: (on) => ipcRenderer.invoke('pitwall:fullscreen', !!on),

@@ -15,13 +15,14 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-const { app, BrowserWindow, Tray, Menu, shell, nativeImage, dialog, ipcMain } = require('electron');
+const { app, BrowserWindow, Tray, Menu, shell, nativeImage, dialog, ipcMain, screen } = require('electron');
 const path   = require('path');
 const zlib   = require('zlib');
 const crypto = require('crypto');
 const fs     = require('fs');
 const net    = require('net');
 const { fork } = require('child_process');
+const placement = require('./windowPlacement');
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 let mainWindow = null;
@@ -191,7 +192,7 @@ function windowOptions() {
   };
 }
 
-function createWindow() {
+function createWindow(query = '') {
   mainWindow = new BrowserWindow({
     ...windowOptions(),
     width: 1400, height: 900, minWidth: 900, minHeight: 600,
@@ -199,7 +200,7 @@ function createWindow() {
   });
   mainWindow.setMenuBarVisibility(false);
   trackFullScreen(mainWindow);
-  mainWindow.loadURL(`http://127.0.0.1:${PORT}`);
+  mainWindow.loadURL(`http://127.0.0.1:${PORT}/${query}`);
   mainWindow.on('close', e => { if (!app.isQuiting) { e.preventDefault(); mainWindow.hide(); } });
   mainWindow.on('closed', () => { mainWindow = null; });
 }
@@ -267,13 +268,110 @@ app.on('web-contents-created', (_e, contents) => {
       if (/^https?:/i.test(url)) shell.openExternal(url);
       return { action: 'deny' };
     }
+    const place = placementFor(url);
     return {
       action: 'allow',
-      overrideBrowserWindowOptions: { ...windowOptions(), width: 1280, height: 860, minWidth: 700, minHeight: 500 },
+      overrideBrowserWindowOptions: childWindowOptions(place),
     };
   });
-  contents.on('did-create-window', (win) => { win.setMenuBarVisibility(false); trackFullScreen(win); });
+  contents.on('did-create-window', (win, details) => {
+    win.setMenuBarVisibility(false);
+    trackFullScreen(win);
+    const place = placementFor(details.url);
+    if (place) showPlaced(win, place);
+    else if (!win.isVisible()) win.show();
+  });
 });
+
+// ── Ventanas por pantalla (Ajustes → Ventanas y pantallas) ───────────────────
+// Se guarda en la carpeta de datos de la app y no en la BD: los monitores son
+// de cada ordenador, y la BD viaja (exportar, restaurar en otro equipo…).
+let placementFile = null;
+const CHILD_SIZE = { width: 1280, height: 860 };
+
+function loadPlacement() {
+  try { return placement.sanitize(JSON.parse(fs.readFileSync(placementFile, 'utf8'))); }
+  catch { return placement.sanitize({}); }
+}
+
+function savePlacement(prefs) {
+  const clean = placement.sanitize(prefs);
+  fs.writeFileSync(placementFile, JSON.stringify(clean, null, 2));
+  return clean;
+}
+
+function orderedDisplays() {
+  return placement.orderDisplays(screen.getAllDisplays(), screen.getPrimaryDisplay().id);
+}
+
+function placementFor(url) {
+  const type = placement.classify(url);
+  if (!type || !placementFile) return null;
+  return placement.resolve(loadPlacement(), type, screen.getAllDisplays(), screen.getPrimaryDisplay().id, CHILD_SIZE);
+}
+
+function childWindowOptions(place) {
+  return {
+    ...windowOptions(), ...CHILD_SIZE, minWidth: 700, minHeight: 500,
+    ...(place ? { ...place.bounds, show: false } : {}),
+  };
+}
+
+// La ventana nace oculta y se enseña ya en su pantalla. Si la página no pinta
+// en 3 s se enseña igual: una ventana que nunca aparece parece la app colgada.
+// La posición se vuelve a fijar al enseñarla porque en Windows, con escalas
+// distintas por monitor, la del constructor puede salir corrida.
+function showPlaced(win, place) {
+  let done = false;
+  const go = () => {
+    if (done || win.isDestroyed()) return;
+    done = true;
+    win.setBounds(place.bounds);
+    win.show();
+    if (place.mode === 'maximized') win.maximize();
+    else if (place.mode === 'fullscreen') win.setFullScreen(true);
+  };
+  win.once('ready-to-show', go);
+  setTimeout(go, 3000);
+}
+
+ipcMain.handle('pitwall:screens', () =>
+  orderedDisplays().map((d, i) => ({
+    n: i + 1, label: d.label || '', width: d.size.width, height: d.size.height, internal: !!d.internal,
+  })));
+
+ipcMain.handle('pitwall:placement', (_e, prefs) => (prefs === undefined ? loadPlacement() : savePlacement(prefs)));
+
+// Un número grande en cada pantalla durante 3 s, para saber cuál es cuál.
+ipcMain.handle('pitwall:screens-identify', () => {
+  orderedDisplays().forEach((d, i) => {
+    const size = 320;
+    const win = new BrowserWindow({
+      x: Math.round(d.bounds.x + (d.bounds.width - size) / 2),
+      y: Math.round(d.bounds.y + (d.bounds.height - size) / 2),
+      width: size, height: size,
+      frame: false, transparent: true, resizable: false, movable: false, focusable: false,
+      alwaysOnTop: true, skipTaskbar: true, hasShadow: false, show: false,
+    });
+    const html = '<!doctype html><meta charset="utf-8"><body style="margin:0;height:100vh;display:grid;place-items:center;' +
+      'background:rgba(10,13,19,.88);border-radius:28px;color:#F6C90E;font:700 200px/1 system-ui,sans-serif">' + (i + 1);
+    win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
+    win.once('ready-to-show', () => win.showInactive());
+    setTimeout(() => { if (!win.isDestroyed()) win.close(); }, 3000);
+  });
+  return true;
+});
+
+// Entreno libre al arrancar. Con una carrera o una pole en curso no se abre:
+// entrar en el entreno lo arma para el próximo GO, y ese GO es de la carrera.
+async function trainingAutostart() {
+  if (!loadPlacement().training.autostart) return {};
+  try {
+    const r = await fetch(`http://127.0.0.1:${PORT}/api/windows/startup`);
+    const d = await r.json();
+    return d.busy ? { skipped: true } : { open: true };
+  } catch { return {}; }
+}
 
 // Pantalla completa de la VENTANA, no la del documento: la del documento
 // (Fullscreen API) se pierde en cada recarga y el directo se recarga tras el
@@ -338,7 +436,13 @@ ipcMain.handle('pitwall:open-window', (_e, url, name) => {
     bringToFront(win);
     return true;
   }
-  win = new BrowserWindow({ ...windowOptions(), width: 1280, height: 860, minWidth: 700, minHeight: 500 });
+  openNamedWindow(target, name);
+  return true;
+});
+
+function openNamedWindow(target, name) {
+  const place = placementFor(target);
+  const win = new BrowserWindow(childWindowOptions(place));
   win.setMenuBarVisibility(false);
   trackFullScreen(win);
   namedWindows.set(name, win);
@@ -346,8 +450,8 @@ ipcMain.handle('pitwall:open-window', (_e, url, name) => {
   const id = win.id;
   win.on('closed', () => { namedWindows.delete(name); windowNames.delete(id); });
   win.loadURL(target);
-  return true;
-});
+  if (place) showPlaced(win, place);
+}
 
 ipcMain.handle('pitwall:window-focus', (_e, id) => {
   const win = BrowserWindow.fromId(Number(id));
@@ -374,8 +478,12 @@ app.whenReady().then(async () => {
     app.quit();
     return;
   }
+  placementFile = path.join(userData, 'window-placement.json');
   createTray();
-  createWindow();
+  const startup = await trainingAutostart();
+  createWindow(startup.skipped ? '?notice=training_skipped' : '');
+  // Mismo nombre que da el inicio a «Entreno libre»: un clic luego la trae al frente.
+  if (startup.open) openNamedWindow(`http://127.0.0.1:${PORT}/training/free`, 'pw-training');
 });
 
 app.on('window-all-closed', () => { /* stay in tray */ });

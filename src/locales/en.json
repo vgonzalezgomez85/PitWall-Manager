@@ -440,7 +440,14 @@
       "tictac_sin_modulo": "USB reading is not available in this installation",
       "tunel_en_marcha": "Tunnel running",
       "tunel_parado": "Tunnel stopped",
-      "v_puertos": "{{v}} ports"
+      "v_puertos": "{{v}} ports",
+      "ventana_sin_asignar": "As usual",
+      "pantalla_principal": "Screen 1 · main",
+      "pantalla_n": "Screen {{n}}",
+      "pantalla_no_conectada": "Screen {{n}} · not connected",
+      "modo_normal": "Window",
+      "modo_maximizada": "Maximized",
+      "modo_completa": "Full screen"
     },
     "shifts-live": {
       "ambiguedad_usa_override_manual": "Ambiguous — use manual override",
@@ -1233,7 +1240,8 @@
     "en_curso": "in progress",
     "sigue_el_cronometraje_de_la_pole_en_directo": "Follow the live pole timing.",
     "sigue_el_timing_de_tu_equipo_en_directo_desde": "Follow your team timing live from your phone.",
-    "sigue_tu_carrera_y_comparate_con_tus_rivales_en": "Follow your race and compare with rivals in real time."
+    "sigue_tu_carrera_y_comparate_con_tus_rivales_en": "Follow your race and compare with rivals in real time.",
+    "entreno_no_abierto_carrera_en_curso": "Free practice was not opened at startup because a race or a pole is in progress."
   },
   "import-preview": {
     "accion": "Action",
@@ -1897,7 +1905,22 @@
     "varias_cajas_ds_por_un_solo_puerto_com": "Several DS boxes over one COM port.",
     "visor_de_tramas_en_vivo": "Live frame viewer",
     "vuelta_media_ms": "Avg lap time (ms)",
-    "vueltas_reales_a_igualdad_menos_tiempo_total": "Actual laps (ties: lower total time)"
+    "vueltas_reales_a_igualdad_menos_tiempo_total": "Actual laps (ties: lower total time)",
+    "ventanas_y_pantallas": "Windows and screens",
+    "ventanas_intro": "Which screen each window opens on, and how. Saved on this computer and applied when the window opens.",
+    "ventanas_solo_escritorio": "Desktop app only: a browser cannot place windows on another screen.",
+    "ventanas_identificar": "Identify screens",
+    "ventanas_identificar_d": "Shows each screen's number for 3 seconds.",
+    "ventanas_nota": "If the chosen screen is not connected, the window opens on the main screen as a normal window. A window that is already open is not moved: it is brought to the front where it is.",
+    "ventana_training": "Free practice",
+    "ventana_live": "Live",
+    "ventana_tv": "TV",
+    "ventana_pole": "Live pole",
+    "ventana_lemans": "Le Mans",
+    "ventana_pantalla": "Screen",
+    "ventana_modo": "How it opens",
+    "ventana_abrir_al_iniciar": "Open when PitWall starts",
+    "ventana_abrir_al_iniciar_d": "It does not open if a race or a pole is in progress: the next GO belongs to the race."
   },
   "shifts-live": {
     "a_punto": "Near",

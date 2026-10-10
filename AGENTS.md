@@ -66,7 +66,7 @@ public/
     app.js                — JS global compartido
   css/
     live.css              — Estilos de la vista live
-electron/                 — Electron main + launcher
+electron/                 — Electron main + launcher. `windowPlacement.js` (PURO, con tests): en qué pantalla/modo se abre cada tipo de ventana (Ajustes → Ventanas y pantallas); se guarda en `userData/window-placement.json`, no en la BD
 database/                 — pitwall.db (SQLite, no commitear)
 ```
 

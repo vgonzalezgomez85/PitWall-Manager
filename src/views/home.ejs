@@ -182,6 +182,12 @@ const c = typeof counts !== 'undefined' ? counts : { drivers: 0, teams: 0, cars:
   })();
 </script>
 <% } else { %>
+<% if (typeof homeNotice !== 'undefined' && homeNotice) { %>
+<div class="hm-wrap" style="padding:12px 24px 0">
+  <div class="vt-alert" role="status" style="margin:0;background:rgba(246,201,14,.10);border-color:rgba(246,201,14,.35);color:#f6e2a0"><%= homeNotice %></div>
+</div>
+<script>history.replaceState(null, '', location.pathname);</script>
+<% } %>
 <%- include('home/_admin') %>
 <% } %>
 

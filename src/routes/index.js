@@ -122,6 +122,17 @@ router.get('/api/home/state', (req, res) => {
   res.json({ sig });
 });
 
+// La app de escritorio lo consulta al arrancar antes de abrir sola el entreno
+// libre: con una carrera o una pole en curso, el próximo GO es de la carrera.
+router.get('/api/windows/startup', (req, res) => {
+  const db = require('../config/database');
+  const TimingService = require('../services/TimingService');
+  const activeRace = db.prepare("SELECT 1 FROM races WHERE status = 'active' LIMIT 1").get();
+  let pole = null;
+  try { pole = db.prepare("SELECT 1 FROM pole_sessions WHERE status = 'in_progress' LIMIT 1").get(); } catch (_) {}
+  res.json({ busy: !!(activeRace || pole || TimingService.isBusy) });
+});
+
 router.get('/', (req, res) => {
   const Race          = require('../models/Race');
   const DriverProfile = require('../models/DriverProfile');
@@ -175,7 +186,8 @@ router.get('/', (req, res) => {
   const uiMode = Settings.get('ui_mode', 'advanced') === 'basic' ? 'basic' : 'advanced';
   res.render('home', { t: req.t, counts, activeRaceCount, activePoleRaces, serial, serverIps, serverPort,
                        live, recentRaces, totalRaces: allRaces.length, homeLayout, homeLayouts: HOME_LAYOUTS, uiMode,
-                       passwordEnabled: require('../services/AccessPassword').isEnabled() });
+                       passwordEnabled: require('../services/AccessPassword').isEnabled(),
+                       homeNotice: req.query.notice === 'training_skipped' ? req.t('home.entreno_no_abierto_carrera_en_curso') : null });
 });
 
 // ── Contraseña de organización (Ajustes → Seguridad) ─────────────────────────

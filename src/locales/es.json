@@ -440,7 +440,14 @@
       "tictac_sin_modulo": "Lectura USB no disponible en esta instalación",
       "tunel_en_marcha": "Túnel en marcha",
       "tunel_parado": "Túnel parado",
-      "v_puertos": "{{v}} puertos"
+      "v_puertos": "{{v}} puertos",
+      "ventana_sin_asignar": "Donde siempre",
+      "pantalla_principal": "Pantalla 1 · principal",
+      "pantalla_n": "Pantalla {{n}}",
+      "pantalla_no_conectada": "Pantalla {{n}} · no conectada",
+      "modo_normal": "Ventana",
+      "modo_maximizada": "Maximizada",
+      "modo_completa": "Pantalla completa"
     },
     "shifts-live": {
       "ambiguedad_usa_override_manual": "Ambigüedad — usa override manual",
@@ -1233,7 +1240,8 @@
     "en_curso": "en curso",
     "sigue_el_cronometraje_de_la_pole_en_directo": "Sigue el cronometraje de la pole en directo.",
     "sigue_el_timing_de_tu_equipo_en_directo_desde": "Sigue el timing de tu equipo en directo desde el móvil.",
-    "sigue_tu_carrera_y_comparate_con_tus_rivales_en": "Sigue tu carrera y compárate con tus rivales en tiempo real."
+    "sigue_tu_carrera_y_comparate_con_tus_rivales_en": "Sigue tu carrera y compárate con tus rivales en tiempo real.",
+    "entreno_no_abierto_carrera_en_curso": "No se ha abierto el entrenamiento libre al arrancar porque hay una carrera o una pole en curso."
   },
   "import-preview": {
     "accion": "Acción",
@@ -1897,7 +1905,22 @@
     "varias_cajas_ds_por_un_solo_puerto_com": "Varias cajas DS por un solo puerto COM.",
     "visor_de_tramas_en_vivo": "Visor de tramas en vivo",
     "vuelta_media_ms": "Vuelta media (ms)",
-    "vueltas_reales_a_igualdad_menos_tiempo_total": "Vueltas reales (a igualdad, menos tiempo total)"
+    "vueltas_reales_a_igualdad_menos_tiempo_total": "Vueltas reales (a igualdad, menos tiempo total)",
+    "ventanas_y_pantallas": "Ventanas y pantallas",
+    "ventanas_intro": "En qué pantalla y cómo se abre cada ventana. Se guarda en este ordenador y se aplica al abrirla.",
+    "ventanas_solo_escritorio": "Solo en la app de escritorio de PitWall: el navegador no puede colocar ventanas en otra pantalla.",
+    "ventanas_identificar": "Identificar pantallas",
+    "ventanas_identificar_d": "Muestra durante 3 segundos el número de cada pantalla.",
+    "ventanas_nota": "Si la pantalla elegida no está conectada, la ventana se abre en la principal y en modo ventana. Una ventana que ya está abierta no se mueve: se trae al frente donde esté.",
+    "ventana_training": "Entrenamiento libre",
+    "ventana_live": "Directo",
+    "ventana_tv": "TV",
+    "ventana_pole": "Pole en directo",
+    "ventana_lemans": "Le Mans",
+    "ventana_pantalla": "Pantalla",
+    "ventana_modo": "Cómo se abre",
+    "ventana_abrir_al_iniciar": "Abrir al iniciar PitWall",
+    "ventana_abrir_al_iniciar_d": "No se abre si hay una carrera o una pole en curso: el próximo GO es de la carrera."
   },
   "shifts-live": {
     "a_punto": "A punto",

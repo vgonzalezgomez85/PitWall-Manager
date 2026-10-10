@@ -9,6 +9,8 @@ const navItems = [
     icon: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M10 2h4M12 2v3"/>' },
   { key: 'live', label: t('settings.preferencias'), dot: '',
     icon: '<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>' },
+  { key: 'win', label: t('settings.ventanas_y_pantallas'), dot: '',
+    icon: '<rect x="2" y="4" width="13" height="10" rx="1.5"/><rect x="10" y="9" width="12" height="9" rx="1.5"/><path d="M5 18h4"/>' },
   { key: 'net', label: t('settings.red_local'), dot: '',
     icon: '<path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5h.01M2 9a15 15 0 0 1 20 0"/>' },
   { key: 'sec', label: t('settings.seguridad'), dot: passwordEnabled ? 'ok' : '',
@@ -658,6 +660,56 @@ const navItems = [
           </div>
         </section>
 
+        <!-- ══ Ventanas y pantallas (solo app de escritorio) ═══════════════ -->
+        <section class="st-sec" data-sec="win">
+          <header class="st-sec__h">
+            <h2><%= t('settings.ventanas_y_pantallas') %></h2>
+            <p><%= t('settings.ventanas_intro') %></p>
+          </header>
+          <div class="st-card">
+            <div class="st-row st-row--hint" id="winNoDesktop" hidden><div class="st-row__d"><%= t('settings.ventanas_solo_escritorio') %></div></div>
+            <div id="winRows" hidden>
+              <% ['training', 'live', 'tv', 'pole', 'lemans'].forEach(ty => { %>
+                <div class="st-row st-row--wrap" data-wtype="<%= ty %>">
+                  <div class="st-row__txt">
+                    <div class="st-row__t"><%= t('settings.ventana_' + ty) %></div>
+                  </div>
+                  <div class="st-row__ctl st-row__ctl--wide" style="display:flex;gap:8px;flex-wrap:wrap">
+                    <div class="vt-selw" style="flex:1 1 200px"><select data-w="display" aria-label="<%= t('settings.ventana_pantalla') %>"></select></div>
+                    <div class="vt-selw" style="flex:1 1 150px">
+                      <select data-w="mode" aria-label="<%= t('settings.ventana_modo') %>">
+                        <option value="normal"><%= t('client.settings.modo_normal') %></option>
+                        <option value="maximized"><%= t('client.settings.modo_maximizada') %></option>
+                        <option value="fullscreen"><%= t('client.settings.modo_completa') %></option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <% if (ty === 'training') { %>
+                  <div class="st-row">
+                    <div class="st-row__txt">
+                      <div class="st-row__t st-row__t--sm"><%= t('settings.ventana_abrir_al_iniciar') %></div>
+                      <div class="st-row__d"><%= t('settings.ventana_abrir_al_iniciar_d') %></div>
+                    </div>
+                    <button type="button" class="vt-switch" id="winAutostart" role="switch" aria-checked="false" aria-label="<%= t('settings.ventana_abrir_al_iniciar') %>"></button>
+                  </div>
+                <% } %>
+              <% }) %>
+              <div class="st-row st-row--hint" hidden><div class="st-row__d" id="winMsg" role="status"></div></div>
+            </div>
+          </div>
+          <div class="st-card" id="winIdentifyCard" hidden>
+            <div class="st-row st-row--wrap">
+              <div class="st-row__txt">
+                <div class="st-row__t"><%= t('settings.ventanas_identificar') %></div>
+                <div class="st-row__d"><%= t('settings.ventanas_identificar_d') %></div>
+              </div>
+              <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="winIdentify"><%= t('settings.ventanas_identificar') %></button>
+            </div>
+            <div class="st-row st-row--hint"><div class="st-row__d"><%= t('settings.ventanas_nota') %></div></div>
+          </div>
+        </section>
+
         <!-- ══ Red local ═════════════════════════════════════════════════ -->
         <section class="st-sec" data-sec="net">
           <header class="st-sec__h">
@@ -1172,6 +1224,74 @@ const settingsForm = document.getElementById('settingsForm');
       }
     });
   });
+})();
+
+/* ── Ventanas y pantallas: lo guarda la app de escritorio, no el servidor ── */
+(function () {
+  const api = window.pitwallScreens;
+  const rows = document.getElementById('winRows');
+  if (!rows) return;
+  if (!api) { document.getElementById('winNoDesktop').hidden = false; return; }
+  rows.hidden = false;
+  document.getElementById('winIdentifyCard').hidden = false;
+  const msgEl = document.getElementById('winMsg');
+  const msg = (v) => { msgEl.textContent = v; msgEl.parentElement.hidden = !v; };
+  const auto = document.getElementById('winAutostart');
+  let prefs = null;
+
+  function screenLabel(n, s) {
+    if (!s) return I18N.t('client.settings.pantalla_no_conectada', { n });
+    const base = n === 1 ? I18N.t('client.settings.pantalla_principal') : I18N.t('client.settings.pantalla_n', { n });
+    return base + ' — ' + s.width + '×' + s.height + (s.label ? ' · ' + s.label : '');
+  }
+
+  async function paint() {
+    const [screens, p] = await Promise.all([api.list(), api.getPrefs()]);
+    prefs = p;
+    rows.querySelectorAll('[data-wtype]').forEach(row => {
+      const rule = prefs[row.dataset.wtype];
+      const sel = row.querySelector('[data-w="display"]');
+      sel.innerHTML = '';
+      const add = (v, l) => { const o = document.createElement('option'); o.value = String(v); o.textContent = l; sel.appendChild(o); };
+      add(0, I18N.t('client.settings.ventana_sin_asignar'));
+      // Una pantalla guardada que hoy no está se sigue ofreciendo, para no perder el ajuste.
+      for (let n = 1; n <= Math.max(screens.length, rule.display); n++) add(n, screenLabel(n, screens[n - 1]));
+      sel.value = String(rule.display);
+      const mode = row.querySelector('[data-w="mode"]');
+      mode.value = rule.mode;
+      mode.disabled = rule.display === 0;
+    });
+    const on = !!prefs.training.autostart;
+    auto.classList.toggle('is-on', on);
+    auto.setAttribute('aria-checked', String(on));
+  }
+
+  async function save(next) {
+    try {
+      prefs = await api.setPrefs(next);
+      msg(I18N.t('client.settings.guardado'));
+    } catch {
+      msg(I18N.t('client.settings.no_se_ha_podido_guardar'));
+    }
+    paint();
+  }
+
+  rows.querySelectorAll('[data-wtype] select').forEach(sel => sel.addEventListener('change', () => {
+    const row = sel.closest('[data-wtype]');
+    const next = JSON.parse(JSON.stringify(prefs));
+    next[row.dataset.wtype].display = parseInt(row.querySelector('[data-w="display"]').value, 10) || 0;
+    next[row.dataset.wtype].mode = row.querySelector('[data-w="mode"]').value;
+    save(next);
+  }));
+  auto.addEventListener('click', () => {
+    const next = JSON.parse(JSON.stringify(prefs));
+    next.training.autostart = !next.training.autostart;
+    save(next);
+  });
+  document.getElementById('winIdentify').addEventListener('click', () => api.identify());
+  // Al volver a la ventana puede haber un monitor más o uno menos.
+  window.addEventListener('focus', () => { paint().catch(() => {}); });
+  paint().catch(() => {});
 })();
 
 /* ── Seguridad: contraseña de acceso ── */

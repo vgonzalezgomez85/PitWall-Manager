@@ -440,7 +440,14 @@
       "tictac_sin_modulo": "Lettura USB non disponibile in questa installazione",
       "tunel_en_marcha": "Túnel en marcha",
       "tunel_parado": "Túnel parado",
-      "v_puertos": "{{v}} puertos"
+      "v_puertos": "{{v}} puertos",
+      "ventana_sin_asignar": "Come sempre",
+      "pantalla_principal": "Schermo 1 · principale",
+      "pantalla_n": "Schermo {{n}}",
+      "pantalla_no_conectada": "Schermo {{n}} · non collegato",
+      "modo_normal": "Finestra",
+      "modo_maximizada": "Massimizzata",
+      "modo_completa": "Schermo intero"
     },
     "shifts-live": {
       "ambiguedad_usa_override_manual": "Ambigüedad — usa override manual",
@@ -1233,7 +1240,8 @@
     "en_curso": "en curso",
     "sigue_el_cronometraje_de_la_pole_en_directo": "Sigue el cronometraje de la pole en directo.",
     "sigue_el_timing_de_tu_equipo_en_directo_desde": "Sigue el timing de tu equipo en directo desde el móvil.",
-    "sigue_tu_carrera_y_comparate_con_tus_rivales_en": "Sigue tu carrera y compárate con tus rivales en tiempo real."
+    "sigue_tu_carrera_y_comparate_con_tus_rivales_en": "Sigue tu carrera y compárate con tus rivales en tiempo real.",
+    "entreno_no_abierto_carrera_en_curso": "Le prove libere non sono state aperte all'avvio perché c'è una gara o una pole in corso."
   },
   "import-preview": {
     "accion": "Acción",
@@ -1897,7 +1905,22 @@
     "varias_cajas_ds_por_un_solo_puerto_com": "Varias cajas DS por un solo puerto COM.",
     "visor_de_tramas_en_vivo": "Visor de tramas en vivo",
     "vuelta_media_ms": "Vuelta media (ms)",
-    "vueltas_reales_a_igualdad_menos_tiempo_total": "Vueltas reales (a igualdad, menos tiempo total)"
+    "vueltas_reales_a_igualdad_menos_tiempo_total": "Vueltas reales (a igualdad, menos tiempo total)",
+    "ventanas_y_pantallas": "Finestre e schermi",
+    "ventanas_intro": "Su quale schermo e come si apre ogni finestra. Si salva su questo computer e si applica all'apertura.",
+    "ventanas_solo_escritorio": "Solo nell'app desktop di PitWall: il browser non può posizionare finestre su un altro schermo.",
+    "ventanas_identificar": "Identifica schermi",
+    "ventanas_identificar_d": "Mostra per 3 secondi il numero di ogni schermo.",
+    "ventanas_nota": "Se lo schermo scelto non è collegato, la finestra si apre su quello principale in modalità finestra. Una finestra già aperta non si sposta: viene portata in primo piano dov'è.",
+    "ventana_training": "Prove libere",
+    "ventana_live": "Diretta",
+    "ventana_tv": "TV",
+    "ventana_pole": "Pole in diretta",
+    "ventana_lemans": "Le Mans",
+    "ventana_pantalla": "Schermo",
+    "ventana_modo": "Come si apre",
+    "ventana_abrir_al_iniciar": "Apri all'avvio di PitWall",
+    "ventana_abrir_al_iniciar_d": "Non si apre se c'è una gara o una pole in corso: il prossimo GO è della gara."
   },
   "shifts-live": {
     "a_punto": "A punto",

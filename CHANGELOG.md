@@ -13,6 +13,16 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.55.0] — 2026-10-10
+
+### Añadido
+- **Cada ventana en su pantalla (app de escritorio).** En Ajustes → **Ventanas y pantallas** se elige en qué monitor y cómo (ventana, maximizada o pantalla completa) se abren el **Entrenamiento libre**, el **Directo**, la **TV**, la **Pole en directo** y **Le Mans**. Por ejemplo: el operador en el portátil y el Directo a pantalla completa en la pantalla del público, sin arrastrar nada. Vale igual si la ventana se abre desde el inicio o desde el propio directo.
+  - Las pantallas se numeran (1 = la principal, el resto de izquierda a derecha) y el botón **Identificar pantallas** muestra 3 segundos el número en cada una.
+  - Si la pantalla elegida no está conectada (el portátil sin el monitor), la ventana se abre en la principal y en modo ventana, nunca en un monitor que ya no está ni tapando al operador.
+  - Solo se aplica al abrir: una ventana que ya está abierta se trae al frente donde esté, así que se puede seguir moviendo a mano.
+  - Se guarda en el ordenador, no en la base de datos: al llevarse una carrera a otro equipo no viaja la colocación de monitores de este.
+- **El entrenamiento libre puede abrirse solo al iniciar PitWall**, en su pantalla y modo. Si al arrancar hay una carrera o una pole en curso no se abre (el próximo GO es de la carrera) y el inicio lo avisa.
+
 ## [1.54.0] — 2026-10-10
 
 ### Mejorado
