@@ -341,7 +341,11 @@
       "seleccionar": "seleccionar",
       "sin_cambios": "Sin cambios",
       "tunel_en_marcha": "Túnel en marcha",
-      "tunel_parado": "Túnel parado"
+      "tunel_parado": "Túnel parado",
+      "modelo": "Modello",
+      "tictac_detectado": "TicTacSlot detectado por USB",
+      "tictac_no_detectado": "No se detecta: conecta el interface por USB",
+      "tictac_sin_modulo": "Lectura USB no disponible en esta instalación"
     },
     "shifts-live": {
       "ambiguedad_usa_override_manual": "Ambigüedad — usa override manual",
@@ -1319,12 +1323,18 @@
     "token_del_tunel": "Token del túnel",
     "transporte": "Transporte",
     "ultimos_bytes_recibidos": "Últimos bytes recibidos",
-    "uno_o_varios_ds_300_por_usb_rs_232": "Uno o varios DS-300 por USB/RS-232.",
+    "uno_o_varios_ds_300_por_usb_rs_232": "Uno o varios DS (300, 200, 030 o 080) por USB/RS-232.",
     "uno_por_linea_admite_cidr_p_ej_192_168_1_50_o": "Uno por línea. Admite CIDR, p. ej. 192.168.1.50 o 192.168.1.0/24.",
     "varias_cajas_ds_por_un_solo_puerto_com": "Varias cajas DS por un solo puerto COM.",
     "visor_de_tramas_en_vivo": "Visor de tramas en vivo",
     "vuelta_media_ms": "Vuelta media (ms)",
-    "vueltas_reales_a_igualdad_menos_tiempo_total": "Vueltas reales (a igualdad, menos tiempo total)"
+    "vueltas_reales_a_igualdad_menos_tiempo_total": "Vueltas reales (a igualdad, menos tiempo total)",
+    "interface_tictacslot_cuentavueltas": "Interface TicTacSlot (Cuentavueltas) por USB, se detecta solo.",
+    "tictac_explicacion": "El interface TicTacSlot se conecta por USB y PitWall lo detecta solo: basta con enchufarlo (si se desenchufa, se vuelve a enganchar al reconectarlo). El aparato solo manda cruces: no tiene señal de GO, pausa ni fin. «Puerto serie» sirve para el emulador o el puente hid-bridge.js. En macOS puede pedir permiso de «Monitorización de entrada».",
+    "tictac_conexion": "Conexión",
+    "tictac_conexion_usb": "USB (automática)",
+    "tictac_conexion_serie": "Puerto serie (emulador o puente)",
+    "tictac_estado": "Estado"
   },
   "shifts-live": {
     "a_punto": "A punto",

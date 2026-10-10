@@ -448,6 +448,7 @@ router.post('/diagnostico/reconnect-serial',      DiagnosticsController.reconnec
 
 router.get( '/settings',           SettingsController.index);
 router.post('/settings',           SettingsController.save);
+router.get( '/api/settings/tictac-devices', SettingsController.tictacDevices);
 router.post('/settings/lane-colors', SettingsController.saveLaneColors);
 router.post('/settings/prefs',       SettingsController.savePrefs);
 router.post('/settings/security',    SettingsController.saveSecurity);

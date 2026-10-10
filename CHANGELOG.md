@@ -13,6 +13,13 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.52.0] — 2026-10-10
+
+### Añadido
+- **Modelo de DS en Ajustes: DS-300, DS-200, DS-030 y DS-080.** La tarjeta de la fuente de datos pasa a llamarse «DS». Cada circuito tiene ahora un selector de modelo (Ajustes → Fuente de datos → DS). Al elegir uno la velocidad pasa a la suya (56000 baudios el DS-300, 4800 el resto) y se puede cambiar a mano. El DS-200 (2 carriles) codifica el carril de otra forma y PitWall ya la entiende; el DS-080 lleva **dos circuitos por un solo puerto** y sus carriles salen como 1–8 y 9–16. El visor de tramas también respeta el modelo. **Sin probar con aparatos reales:** los tres modelos nuevos siguen el documento de protocolo sacado de TicTacSlot; el DS-300 funciona exactamente igual que antes y es el valor por defecto.
+- **Nueva fuente de datos «TicTac»: lee los cruces del interface TicTacSlot (Cuentavueltas) por USB.** Ajustes → Fuente de datos → TicTac. El aparato es USB HID (no crea ningún puerto COM), así que PitWall lo **detecta solo** por su identificador USB: basta con enchufarlo, aunque PitWall ya esté arrancado, y si se desenchufa se marca como caído y se reengancha al volver a conectarlo. Ajustes muestra si lo ve («✓ TicTacSlot detectado por USB»). La opción «Puerto serie» queda para el emulador (`emulador-tictac`) o su puente `hid-bridge.js`. PitWall decodifica la trama de 16 bytes y saca el tiempo de vuelta restando el **reloj del propio aparato** entre dos cruces del mismo carril (más preciso que la hora de llegada al PC); el primer cruce de cada carril, o el que llega tras más de 4 minutos de silencio, no trae tiempo. El visor de tramas también lo muestra. La lectura USB usa el módulo opcional `node-hid`: si no está disponible en una instalación, la fuente avisa y el resto de PitWall funciona igual. En macOS puede pedir permiso de «Monitorización de entrada». **Por ahora solo lee:** el aparato no manda GO, pausa, stop ni fin, y esa parte (que sea PitWall quien dirija la carrera con este aparato) llega en la siguiente fase, así que de momento no se puede correr una manga con él. Probado con el emulador y con tramas de la captura real del club; **la lectura USB directa no se ha probado con el aparato físico**.
+- El vigilante del latido de 60 s solo se aplica al DS-300: en los otros modelos no está confirmado que lo emitan, y un silencio normal habría cerrado el puerto como si fuera una avería.
+
 ## [1.51.1] — 2026-10-10
 
 ### Mejorado

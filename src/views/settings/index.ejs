@@ -99,7 +99,7 @@ const navItems = [
           <div class="vt-opt__ico">
             <svg viewBox="0 0 24 24"><path d="M9 2v5M15 2v5"/><path d="M7 7h10v3a5 5 0 0 1-10 0z"/><path d="M12 15v6"/></svg>
           </div>
-          <div class="vt-opt__t">DS-300</div>
+          <div class="vt-opt__t">DS</div>
           <div class="vt-opt__d"><%= t('settings.uno_o_varios_ds_300_por_usb_rs_232') %></div>
         </label>
 
@@ -121,6 +121,16 @@ const navItems = [
           </div>
           <div class="vt-opt__t">BART</div>
           <div class="vt-opt__d"><%= t('settings.cronometro_ble_slot_it_policar_via_puente') %></div>
+        </label>
+
+        <label class="vt-opt <%= cfg.serial_mode === 'tictac' ? 'is-sel' : '' %>" id="optTictac">
+          <input type="radio" name="serial_mode" value="tictac" <%= cfg.serial_mode === 'tictac' ? 'checked' : '' %>>
+          <div class="vt-opt__radio"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></div>
+          <div class="vt-opt__ico">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="7"/><path d="M12 13V9M9 3h6"/></svg>
+          </div>
+          <div class="vt-opt__t">TicTac</div>
+          <div class="vt-opt__d"><%= t('settings.interface_tictacslot_cuentavueltas') %></div>
         </label>
       </div>
 
@@ -297,6 +307,71 @@ const navItems = [
         </div>
       </div>
 
+      <!-- ── Interface TicTac (TicTacSlot Cuentavueltas) ─────────────────── -->
+      <div id="tictacSettings" style="display:none;margin-top:26px">
+        <div class="vt-sub">
+          <div>
+            <h3>TicTac</h3>
+            <p class="vt-sub__p"><%= t('settings.tictac_explicacion') %></p>
+          </div>
+          <div class="vt-sub__actions">
+            <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="refreshPortsTictac" title="<%= t('settings.buscar_puertos_com') %>">
+              <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v5h-5"/></svg>
+              <%= t('settings.buscar_puertos') %>
+            </button>
+          </div>
+        </div>
+
+        <% const _ttTransport = cfg.tictac_transport === 'serial' ? 'serial' : 'usb'; %>
+        <div class="vt-fields vt-fields--3" style="margin-top:14px">
+          <div class="vt-field">
+            <label><%= t('settings.tictac_conexion') %></label>
+            <div class="vt-selw">
+              <select name="tictac_transport" id="tictacTransport">
+                <option value="usb" <%= _ttTransport === 'usb' ? 'selected' : '' %>><%= t('settings.tictac_conexion_usb') %></option>
+                <option value="serial" <%= _ttTransport === 'serial' ? 'selected' : '' %>><%= t('settings.tictac_conexion_serie') %></option>
+              </select>
+            </div>
+          </div>
+          <div class="vt-field">
+            <label><%= t('client.settings.n_de_carriles') %></label>
+            <input class="vt-inp is-mono" type="number" name="tictac_lanes" min="1" max="8" value="<%= cfg.tictac_lanes || 8 %>">
+          </div>
+          <div class="vt-field" id="tictacUsbStatusField">
+            <label><%= t('settings.tictac_estado') %></label>
+            <div class="vt-hint" id="tictacUsbStatus" style="margin:0">…</div>
+          </div>
+        </div>
+
+        <div class="vt-fields vt-fields--3" id="tictacSerialFields" style="margin-top:14px">
+          <div class="vt-field circuit-row__field--port">
+            <label><%= t('client.settings.puerto') %></label>
+            <div class="vt-selw">
+              <select class="port-select" name="tictac_port" id="tictacPortSelect">
+                <option value="">— <%= t('client.settings.seleccionar') %> —</option>
+                <% ports.forEach(p => { %>
+                  <option value="<%= p.path %>" <%= cfg.tictac_port === p.path ? 'selected' : '' %>>
+                    <%= p.path %><%= p.manufacturer ? ` — ${p.manufacturer}` : '' %>
+                  </option>
+                <% }) %>
+                <% if (cfg.tictac_port && !ports.find(p => p.path === cfg.tictac_port)) { %>
+                  <option value="<%= cfg.tictac_port %>" selected><%= cfg.tictac_port %></option>
+                <% } %>
+              </select>
+            </div>
+            <% const _ttCustomPort = cfg.tictac_port && !ports.find(p => p.path === cfg.tictac_port); %>
+            <button type="button" class="port-manual-toggle <%= _ttCustomPort ? 'is-open' : '' %>" aria-expanded="<%= _ttCustomPort ? 'true' : 'false' %>">
+              <svg class="port-manual-toggle__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+              <span><%= t('client.settings.escribir_el_path_a_mano') %></span>
+            </button>
+            <input class="vt-inp is-mono port-manual <%= _ttCustomPort ? '' : 'is-hidden' %>" type="text"
+              placeholder="<%= t('client.settings.p_ej_dev_ttys003') %>"
+              value="<%= cfg.tictac_port || '' %>" style="margin-top:7px;font-size:13px">
+          </div>
+          <input type="hidden" name="tictac_baud" value="<%= cfg.tictac_baud || 57600 %>">
+        </div>
+      </div>
+
       <!-- ── Multi-circuit serial ───────────────────────────────────────── -->
       <div id="serialSettings" style="display:none;margin-top:26px">
 
@@ -340,6 +415,17 @@ const navItems = [
 
               <div class="vt-group-lbl"><%= t('client.settings.conexion_serie') %></div>
               <div class="vt-fields vt-fields--3 circuit-row__body">
+                <% const _model = c.model || 'ds300'; %>
+                <div class="vt-field circuit-row__field circuit-row__field--model">
+                  <label><%= t('client.settings.modelo') %></label>
+                  <div class="vt-selw">
+                    <select class="model-select" name="circuit_model">
+                      <% Object.entries(dsModels).forEach(([k, m]) => { %>
+                        <option value="<%= k %>" data-baud="<%= m.baud %>" <%= _model === k ? 'selected' : '' %>><%= m.label %></option>
+                      <% }) %>
+                    </select>
+                  </div>
+                </div>
                 <div class="vt-field circuit-row__field circuit-row__field--port">
                   <label><%= t('client.settings.puerto') %></label>
                   <div class="vt-selw">
@@ -364,7 +450,7 @@ const navItems = [
                     placeholder="<%= t('client.settings.p_ej_dev_ttys003') %>"
                     value="<%= c.port || '' %>" style="margin-top:7px;font-size:13px">
                 </div>
-                <% const _bauds = [9600,19200,38400,56000,57600,115200,230400,460800,921600]; %>
+                <% const _bauds = [4800,9600,19200,38400,56000,57600,115200,230400,460800,921600]; %>
                 <% const _curBaud = Number(c.baud || 57600); %>
                 <% const _customBaud = !_bauds.includes(_curBaud); %>
                 <div class="vt-field circuit-row__field circuit-row__field--baud js-baud-field">
@@ -866,20 +952,46 @@ const sim = document.getElementById('optSim');
 const ds  = document.getElementById('optDs');
 const agg = document.getElementById('optAgg');
 const bart = document.getElementById('optBart');
+const tictac = document.getElementById('optTictac');
 const simDiv = document.getElementById('simSettings');
 const serialDiv = document.getElementById('serialSettings');
 const aggDiv = document.getElementById('aggSettings');
 const bartDiv = document.getElementById('bartSettings');
+const tictacDiv = document.getElementById('tictacSettings');
+/* ── TicTac: conexión USB (autodetectada) o puerto serie, y estado de detección ── */
+const tictacTransport = document.getElementById('tictacTransport');
+function pickTictacTransport(){
+  const usb = !tictacTransport || tictacTransport.value === 'usb';
+  const serialFields = document.getElementById('tictacSerialFields');
+  if (serialFields) serialFields.style.display = usb ? 'none' : '';
+  const statusField = document.getElementById('tictacUsbStatusField');
+  if (statusField) statusField.style.visibility = usb ? '' : 'hidden';
+}
+async function refreshTictacStatus(){
+  const el = document.getElementById('tictacUsbStatus');
+  if (!el) return;
+  try {
+    const r = await (await fetch('/api/settings/tictac-devices')).json();
+    if (!r.available)            el.textContent = '⚠ ' + I18N.t('client.settings.tictac_sin_modulo');
+    else if (r.devices.length)   el.textContent = '✓ ' + I18N.t('client.settings.tictac_detectado');
+    else                         el.textContent = '— ' + I18N.t('client.settings.tictac_no_detectado');
+  } catch { el.textContent = '—'; }
+}
+if (tictacTransport) { tictacTransport.addEventListener('change', pickTictacTransport); pickTictacTransport(); }
+
 function pickSource(){
   const mode = document.querySelector('input[name="serial_mode"]:checked')?.value;
   sim.classList.toggle('is-sel', mode === 'simulation');
   ds.classList.toggle('is-sel',  mode === 'serial');
   if (agg) agg.classList.toggle('is-sel', mode === 'serial_agg');
   if (bart) bart.classList.toggle('is-sel', mode === 'bart');
+  if (tictac) tictac.classList.toggle('is-sel', mode === 'tictac');
   simDiv.style.display    = mode === 'simulation' ? '' : 'none';
   serialDiv.style.display = mode === 'serial'     ? '' : 'none';
   if (aggDiv)  aggDiv.style.display  = mode === 'serial_agg' ? '' : 'none';
   if (bartDiv) bartDiv.style.display = mode === 'bart' ? '' : 'none';
+  if (tictacDiv) tictacDiv.style.display = mode === 'tictac' ? '' : 'none';
+  if (mode === 'tictac') refreshTictacStatus();
 }
 document.querySelectorAll('input[name="serial_mode"]').forEach(r => r.addEventListener('change', pickSource));
 pickSource();
@@ -1243,6 +1355,21 @@ document.getElementById('circuitList').addEventListener('input', e => {
 });
 
 /* ── port options template for add-circuit ── */
+const dsModelOptions = <%- JSON.stringify(Object.entries(dsModels).map(([k, m]) => `<option value="${k}" data-baud="${m.baud}">${m.label}</option>`).join('')) %>;
+/* Al cambiar de modelo la velocidad pasa a la suya (el DS-300 va a 56000, el resto a 4800); sigue siendo editable. */
+function wireModelField(row){
+  const ms = row.querySelector('.model-select');
+  if (!ms) return;
+  ms.addEventListener('change', () => {
+    const baud = ms.selectedOptions[0] && ms.selectedOptions[0].dataset.baud;
+    const sel = row.querySelector('.baud-select'), inp = row.querySelector('.baud-manual');
+    if (!sel || !baud) return;
+    if (!Array.from(sel.options).some(o => o.value === baud)) sel.appendChild(new Option(baud, baud));
+    sel.value = baud;
+    if (inp) inp.value = baud;
+  });
+}
+document.querySelectorAll('.circuit-row').forEach(wireModelField);
 const portOptions = Array.from(document.querySelectorAll('select.port-select option'))
   .filter((o,i,a) => a.findIndex(x => x.value === o.value) === i && o.value)
   .map(o => `<option value="${o.value}">${o.textContent.trim()}</option>`).join('');
@@ -1266,6 +1393,10 @@ function circuitRowHTML(){
     </div>
     <div class="vt-group-lbl">${I18N.t('client.settings.conexion_serie')}</div>
     <div class="vt-fields vt-fields--3 circuit-row__body">
+      <div class="vt-field circuit-row__field circuit-row__field--model">
+        <label>${I18N.t('client.settings.modelo')}</label>
+        <div class="vt-selw"><select class="model-select" name="circuit_model">${dsModelOptions}</select></div>
+      </div>
       <div class="vt-field circuit-row__field circuit-row__field--port">
         <label>${I18N.t('client.settings.puerto')}</label>
         <div class="vt-selw"><select class="port-select" name="circuit_port">
@@ -1281,7 +1412,7 @@ function circuitRowHTML(){
       <div class="vt-field circuit-row__field circuit-row__field--baud js-baud-field">
         <label>Baud rate</label>
         <div class="vt-selw"><select class="baud-select" name="circuit_baud" required>
-          <option value="9600">9600</option><option value="19200">19200</option><option value="38400">38400</option><option value="56000">56000</option><option value="57600" selected>57600</option><option value="115200">115200</option><option value="230400">230400</option><option value="460800">460800</option><option value="921600">921600</option>
+          <option value="4800">4800</option><option value="9600">9600</option><option value="19200">19200</option><option value="38400">38400</option><option value="56000">56000</option><option value="57600" selected>57600</option><option value="115200">115200</option><option value="230400">230400</option><option value="460800">460800</option><option value="921600">921600</option>
         </select></div>
         <button type="button" class="port-manual-toggle baud-manual-toggle" aria-expanded="false">
           <svg class="port-manual-toggle__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
@@ -1335,6 +1466,7 @@ function makeCircuitRow(){
   div.innerHTML = circuitRowHTML();
   wirePortFields(div.querySelector('.circuit-row__field--port'));
   wireBaudFields(div.querySelector('.js-baud-field'));
+  wireModelField(div);
   wireCircuitRef(div);
   return div;
 }
@@ -1380,6 +1512,7 @@ async function refreshPortsHandler(e) {
 }
 document.getElementById('refreshPorts')?.addEventListener('click', refreshPortsHandler);
 document.getElementById('refreshPortsAgg')?.addEventListener('click', refreshPortsHandler);
+document.getElementById('refreshPortsTictac')?.addEventListener('click', e => { refreshTictacStatus(); refreshPortsHandler(e); });
 
 /* ── túnel público (Cloudflare del club) ── */
 function tunnelModeUi() {

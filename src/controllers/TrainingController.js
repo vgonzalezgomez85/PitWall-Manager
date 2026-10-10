@@ -27,7 +27,7 @@ const CompetitionResult   = require('../models/CompetitionTrainingResult');
 // Suma de carriles de TODOS los circuitos configurados (DS-300 o BART); 0 si no aplica.
 function serialLaneTotal() {
   const mode = Settings.get('serial_mode', '');
-  if (mode !== 'serial' && mode !== 'serial_agg' && mode !== 'bart') return 0;
+  if (mode !== 'serial' && mode !== 'serial_agg' && mode !== 'bart' && mode !== 'tictac') return 0;
   try {
     const cfg = JSON.parse(Settings.get('circuits_serial', '[]'));
     if (Array.isArray(cfg) && cfg.length > 0) {

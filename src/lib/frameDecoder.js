@@ -26,18 +26,16 @@
 //
 // API:
 //   const dec = createDecoder();            // guarda el latch entre tramas
-//   dec.ds(bytes, { boxesPerPort, laneOffset })  → Frame
+//   dec.ds(bytes, { boxesPerPort, laneOffset, model })  → Frame
 //   dec.reset()
 // Frame = { kind, label, badge, fields: [{k, v}], lanes: [n], unknown: [i] }
+
+const { isControlFrame, crossingLanes, LANE_BITS } = require('./dsModels');
+const tictac = require('./tictacProtocol');
 
 const DS_FRAME_LEN = 21;
 const MIN_CROSSING_MS = 500;
 const MAX_LAP_MS = 240000;
-
-// bitmask → carril local. Array de pares: un byte puede llevar VARIOS bits
-// activos y entonces la trama reporta varios cruces a la vez.
-const LANE_BITS = [[0x80, 1], [0x40, 2], [0x20, 3], [0x10, 4],
-                   [0x08, 5], [0x04, 6], [0x02, 7], [0x01, 8]];
 
 // Decimal-en-hex (BCD): 0x57 → 57. null si algún nibble > 9.
 const bcd = b => (((b >> 4) <= 9 && (b & 0xF) <= 9) ? parseInt(b.toString(16), 10) : null);
@@ -74,6 +72,9 @@ function unknownBytes(b) {
 function createDecoder() {
   let pendingGo = false;
   let pendingResume = false;
+  // Interface TicTac: el tiempo de vuelta sale del reloj del cruce anterior del
+  // mismo carril, así que el decodificador lleva la última lectura por carril.
+  const tictacClock = new Map();
 
   // Decodifica UNA trama DS-300 ya ensamblada.
   // opts.boxesPerPort > 1 ⇒ modo agrupador: b[4] es el id de caja (1..4).
@@ -115,7 +116,6 @@ function createDecoder() {
     }
 
     const b7 = b[7], b8 = b[8];
-    const laneByte = b.length >= 11 ? b[10] : 0;
     const unknown = unknownBytes(b);
 
     // — Heartbeat: b[7]=0x00 b[8]=0xC0. El minuto es el byte CRUDO, no BCD.
@@ -149,7 +149,7 @@ function createDecoder() {
     }
 
     // — Tramas de control (sin carril).
-    if (laneByte === 0) {
+    if (isControlFrame(opts.model, b)) {
       switch (b8) {
         case 0xA7: return { ...base, unknown, kind: 'stopped',  badge: '⏹', label: 'Stop forzado' };
         case 0xA4: return { ...base, unknown, kind: 'finished', badge: '🏁', label: 'Fin de manga' };
@@ -171,10 +171,7 @@ function createDecoder() {
     // — Cruce de carril. Se identifica por b[10]!=0 y len>=18, NO por b[7].
     const lapMs = readLapTimeMs(b);
     const boxOffset = boxes > 1 ? Math.min(Math.max((b[4] || 1) - 1, 0), boxes - 1) * 8 : 0;
-    const lanes = [];
-    for (const [bit, local] of LANE_BITS) {
-      if (laneByte & bit) lanes.push({ local, global: boxOffset + local + laneOffset });
-    }
+    const lanes = crossingLanes(opts.model, b).map(local => ({ local, global: boxOffset + local + laneOffset }));
 
     const fields = [];
     if (boxes > 1) fields.push({ k: 'caja', v: String(b[4]) });
@@ -293,10 +290,59 @@ function createDecoder() {
     }
   }
 
+  // Decodifica UNA trama del interface TicTac (16 bytes, 0xC0 …). Replica el
+  // criterio de TicTacConnection: primer cruce / manga nueva sin tiempo, y un
+  // rebote no mueve la referencia.
+  function tictacFrame(bytes, opts = {}) {
+    const b = Buffer.from(bytes);
+    const laneOffset = opts.laneOffset || 0;
+    const base = { hex: Array.from(b).map(hex).join(' '), len: b.length, lanes: [], fields: [], unknown: [] };
+    const d = tictac.decodificar(b);
+    if (!d) return { ...base, kind: 'ignored', badge: '·', label: 'Trama sin sincronismo o incompleta' };
+
+    if (d.tipo === 'evento') {
+      return { ...base, unknown: [1, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], kind: 'ignored', badge: '·',
+               label: `Evento ${d.nombre} (0x${hex(d.codigo)}) — PitWall lo ignora: el interface no manda la carrera` };
+    }
+    if (d.tipo !== 'cruce') {
+      return { ...base, kind: 'ignored', badge: '·', label: `Tipo desconocido 0x${hex(b[2])}` };
+    }
+
+    const unknown = [1, 3, 12, 13, 14, 15];
+    if (d.lane < 1 || d.lane > 8) {
+      return { ...base, unknown, kind: 'ignored', badge: '·', label: `Carril ${d.lane} fuera de rango (descartada)` };
+    }
+    const global = d.lane + laneOffset;
+    const prev = tictacClock.get(d.lane);
+    let lapMs = null;
+    if (prev != null) {
+      const dt = tictac.deltaReloj(prev, d.clockMs);
+      if (dt <= MAX_LAP_MS) lapMs = dt;
+    }
+    const rebote = lapMs != null && lapMs < MIN_CROSSING_MS;
+    if (!rebote) tictacClock.set(d.lane, d.clockMs);
+
+    return {
+      ...base,
+      unknown,
+      kind: rebote ? 'crossing_filtered' : 'crossing',
+      badge: rebote ? '⊗' : '⏱',
+      label: rebote ? `Cruce filtrado — rebote (${fmtMs(lapMs)})` : `Cruce — carril ${global}`,
+      lanes: [global],
+      fields: [
+        { k: 'carril',  v: d.lane === global ? `${d.lane}` : `${d.lane}→${global}` },
+        { k: 'tiempo',  v: lapMs == null ? 'primera vuelta' : fmtMs(lapMs) },
+        { k: 'vuelta',  v: String(d.lap) },
+        { k: 'reloj',   v: fmtMs(d.clockMs) },
+      ],
+    };
+  }
+
   return {
     ds,
     bart,
-    reset() { pendingGo = false; pendingResume = false; },
+    tictac: tictacFrame,
+    reset() { pendingGo = false; pendingResume = false; tictacClock.clear(); },
   };
 }
 

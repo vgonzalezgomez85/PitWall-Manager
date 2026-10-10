@@ -19,6 +19,7 @@ const Settings       = require('../models/Settings');
 const SerialService  = require('../services/SerialService');
 const DebugLogger    = require('../services/DebugLogger');
 const Circuit        = require('../models/Circuit');
+const { DEFAULT_MODEL, MODELS, normalizeModel, modelInfo } = require('../lib/dsModels');
 
 // Preferencias de guardado inmediato y sus valores válidos (el 1º = por defecto).
 const PREFS = {
@@ -54,6 +55,12 @@ class SettingsController {
     return out;
   }
 
+  // ¿Se ve el interface TicTacSlot por USB? Lo consulta Ajustes para mostrar «detectado».
+  static tictacDevices(req, res) {
+    const TicTacConnection = require('../services/TicTacConnection');
+    res.json(TicTacConnection.listDevices());
+  }
+
   static async index(req, res) {
     const cfg   = Settings.getAll();
     const ports = await SettingsController._scanPorts();
@@ -77,6 +84,7 @@ class SettingsController {
       cfg,
       ports,
       circuits,
+      dsModels: MODELS,
       multiCircuit,
       allCircuits:    Circuit.findAll(),
       bartCircuits,
@@ -185,6 +193,7 @@ class SettingsController {
     const sbArr    = [].concat(req.body['circuit_stopbits'] || []);
     const flowArr  = [].concat(req.body['circuit_flow']     || []);
     const subArr   = [].concat(req.body['circuit_sub']      || []);
+    const modelArr = [].concat(req.body['circuit_model']    || []);
 
     let circuits = portArr
       .map((port, i) => {
@@ -205,6 +214,12 @@ class SettingsController {
             lanes = cfg[sub_index] || ref.lanes_count;
           }
         }
+        // Modelo de la familia DS. El DS-300 no se guarda (es el valor por
+        // defecto) para que la configuración existente quede idéntica.
+        const model = normalizeModel(modelArr[i]);
+        const info  = modelInfo(model);
+        if (model === 'ds200') lanes = Math.min(lanes, info.lanes);
+        if (model === 'ds080') lanes = info.lanes;
         return {
           port:  port.trim(),
           baud:  parseInt(baudArr[i] || '57600', 10),
@@ -213,6 +228,8 @@ class SettingsController {
           stopBits:    parseInt(sbArr[i] || '1', 10),
           flowControl: flowArr[i] || 'none',
           lanes,
+          ...(model !== DEFAULT_MODEL ? { model } : {}),
+          ...(model === 'ds080' ? { boxes: info.boxes } : {}),
           ...(circuit_id ? { circuit_id, sub_index } : {}),
         };
       })
@@ -271,6 +288,19 @@ class SettingsController {
         : [];
     }
 
+    // Interface TicTac: un único circuito de lectura. Por USB (HID, autodetectado,
+    // sin puerto) o por un puerto serie (el PTY del emulador o del puente). 8 carriles
+    // como máximo; la velocidad es irrelevante en un PTY.
+    const ttTransport = req.body.tictac_transport === 'serial' ? 'serial' : 'usb';
+    const ttPort  = String(req.body.tictac_port || '').trim();
+    const ttBaud  = parseInt(req.body.tictac_baud || '57600', 10) || 57600;
+    const ttLanes = Math.max(1, Math.min(8, parseInt(req.body.tictac_lanes || '8', 10) || 8));
+    if (serial_mode === 'tictac') {
+      if (ttTransport === 'usb')      circuits = [{ type: 'tictac', transport: 'usb', lanes: ttLanes }];
+      else if (ttPort)                circuits = [{ type: 'tictac', transport: 'serial', port: ttPort, baud: ttBaud, lanes: ttLanes }];
+      else                            circuits = [];
+    }
+
     Settings.setMany({
       serial_mode:          serial_mode || 'simulation',
       circuits_serial:      JSON.stringify(circuits),
@@ -279,6 +309,10 @@ class SettingsController {
       agg_port:             aggPort,
       agg_baud:             String(aggBaud),
       agg_boxes:            String(aggBoxes),
+      tictac_transport:     ttTransport,
+      tictac_port:          ttPort,
+      tictac_baud:          String(ttBaud),
+      tictac_lanes:         String(ttLanes),
       sim_lanes:            sim_lanes   || '6',
       sim_avg_ms:           sim_avg_ms  || '12000',
       training_circuit_id:  String(trainingCircuitId),
@@ -314,7 +348,7 @@ class SettingsController {
       if (!infolapOn && InfolapServer.isRunning)  InfolapServer.stop();
     } catch (e) { console.warn('[Settings] Infolap toggle failed:', e.message); }
 
-    if ((serial_mode === 'serial' || serial_mode === 'serial_agg' || serial_mode === 'bart') && circuits.length > 0) {
+    if ((serial_mode === 'serial' || serial_mode === 'serial_agg' || serial_mode === 'bart' || serial_mode === 'tictac') && circuits.length > 0) {
       await SerialService.closeAll();
       SerialService.init(); // re-reads frame gap + reconnects (DS-300 or BART)
     } else {
@@ -334,7 +368,10 @@ class SettingsController {
         ? (isEs ? `BART (BLE) — buscando "${bartName}"…` : `BART (BLE) — searching "${bartName}"…`)
         : (isEs ? `BART (TCP ${bartHost}:${bartPort})` : `BART (TCP ${bartHost}:${bartPort})`);
     } else if (serial_mode === 'serial') {
-      src = isEs ? `DS-300 (${circuits.length} circuito${circuits.length === 1 ? '' : 's'})` : `DS-300 (${circuits.length} circuit${circuits.length === 1 ? '' : 's'})`;
+      const labels = [...new Set(circuits.map(c => modelInfo(c.model).label))].join(' + ');
+      src = isEs ? `${labels} (${circuits.length} circuito${circuits.length === 1 ? '' : 's'})` : `${labels} (${circuits.length} circuit${circuits.length === 1 ? '' : 's'})`;
+    } else if (serial_mode === 'tictac') {
+      src = `TicTac (${ttTransport === 'usb' ? 'USB' : (ttPort || '—')})`;
     } else if (serial_mode === 'serial_agg') {
       src = isEs ? `DS-300 agrupador (${aggBoxes} caja${aggBoxes === 1 ? '' : 's'} · ${aggBoxes * 8} carriles)` : `DS-300 aggregator (${aggBoxes} box${aggBoxes === 1 ? '' : 'es'} · ${aggBoxes * 8} lanes)`;
     } else {

@@ -82,7 +82,7 @@ module.exports = {
   },
 
   // Entrada desde SerialService / BartConnection.
-  //   source  'ds300' | 'bart'
+  //   source  'ds300' | 'bart' | 'tictac'
   //   circuit índice 1-based del circuito
   //   bytes   Buffer o array de la trama ya ensamblada
   //   ts      ms epoch (float) de inicio de trama
@@ -92,7 +92,9 @@ module.exports = {
     let decoded;
     try {
       const dec = decoderFor(`${source}:${circuit}`);
-      decoded = source === 'bart' ? dec.bart(bytes, opts) : dec.ds(bytes, opts);
+      decoded = source === 'bart' ? dec.bart(bytes, opts)
+              : source === 'tictac' ? dec.tictac(bytes, opts)
+              : dec.ds(bytes, opts);
     } catch (err) {
       decoded = { kind: 'error', badge: '!', label: `Error al decodificar: ${err.message}`,
                   hex: Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(' '),

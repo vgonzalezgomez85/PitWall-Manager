@@ -123,6 +123,7 @@
       + '<span class="vt-frame__time">' + esc(hora(ts)) + '</span>'
       + (circuit != null ? '<span class="vt-frame__circ">C' + esc(circuit) + '</span>' : '')
       + (source === 'bart' ? '<span class="vt-frame__src">BART</span>' : '')
+      + (source === 'tictac' ? '<span class="vt-frame__src">TicTac</span>' : '')
       + (f.badge ? '<span class="vt-frame__badge">' + esc(f.badge) + '</span>' : '')
       + '<span class="vt-frame__label">' + esc(f.label || kind) + '</span>';
 

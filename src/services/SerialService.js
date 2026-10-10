@@ -22,6 +22,7 @@ const EventEmitter = require('events');
 const Settings     = require('../models/Settings');
 const DebugLogger  = require('./DebugLogger');
 const FrameMonitor = require('./FrameMonitor');
+const { DEFAULT_MODEL, normalizeModel, modelInfo, isControlFrame, crossingLanes } = require('../lib/dsModels');
 
 // Fixed offset so performance.now() (relative) maps to epoch ms (float, ~0.01ms precision)
 const _PERF_OFFSET = Date.now() - performance.now();
@@ -150,6 +151,9 @@ class CircuitConnection {
     // >1 → el parser de-multiplexa por byte[4] (id de caja) en bloques de 8
     // carriles. Lo fija connect() desde opts.boxes.
     this._boxesPerPort  = 1;
+    // Modelo de la familia DS (dsModels.js). Solo cambia cómo se lee el carril y si
+    // se espera el latido de 60 s; la trama es la misma.
+    this._model         = DEFAULT_MODEL;
     // Last DS-300 lap counter (B12) seen per local lane. Used to detect missed
     // crossings when the serial link drops temporarily: if the next frame for
     // the lane jumps from N to N+k (k>1), the gap is emitted as k-1 phantom
@@ -192,7 +196,8 @@ class CircuitConnection {
 
     // Agrupador: cuántas cajas DS comparten este puerto (1..4). Persiste en
     // _lastConfig (opts), así que la reconexión automática lo conserva.
-    this._boxesPerPort = Math.max(1, Math.min(4, parseInt(opts.boxes, 10) || 1));
+    this._model        = normalizeModel(opts.model);
+    this._boxesPerPort = Math.max(1, Math.min(4, parseInt(opts.boxes, 10) || modelInfo(this._model).boxes));
 
     const { SerialPort } = require('serialport');
     if (this._port) await new Promise(r => this._port.close(r));
@@ -299,6 +304,9 @@ class CircuitConnection {
   }
 
   _armWatchdog() {
+    // El latido de 60 s es del DS-300; en el resto no está confirmado y un silencio
+    // legítimo cerraría el puerto como si fuera una avería.
+    if (this._model !== DEFAULT_MODEL) return;
     if (this._watchdogTimer) clearTimeout(this._watchdogTimer);
     this._watchdogTimer = setTimeout(() => this._onHeartbeatTimeout(), HEARTBEAT_TIMEOUT_MS);
   }
@@ -492,6 +500,7 @@ class CircuitConnection {
       FrameMonitor.push('ds300', this._circuitIndex + 1, frame, ts, {
         boxesPerPort: this._boxesPerPort,
         laneOffset:   this._laneOffset,
+        model:        this._model,
       });
     } catch {}
     try {
@@ -667,7 +676,7 @@ class CircuitConnection {
     }
 
     // ── Control frame (no lane crossing) ──────────────────────────────────────
-    if (!laneByte) {
+    if (isControlFrame(this._model, frame)) {
       // Forced stop: byte8=0xa7
       if (frame[8] === 0xa7) {
         this._setRaceState('stopped');
@@ -733,9 +742,14 @@ class CircuitConnection {
       boxOffset   = idx * 8;
     }
 
-    for (const [mask, localLane] of LANE_MAP) {
-      if (!(laneByte & mask)) continue;
+    const lanes = crossingLanes(this._model, frame);
+    if (lanes.length === 0) {
+      console.warn(`[DS C${this._circuitIndex + 1}] ${modelInfo(this._model).label}: byte de carril 0x${laneByte.toString(16)} no válido — trama descartada`);
+      DebugLogger.log('ds_lane_invalido', { circuit: this._circuitIndex + 1, model: this._model, laneByte });
+      return;
+    }
 
+    for (const localLane of lanes) {
       // Clave interna del carril: incluye el offset de caja (1..cajas×8) para que
       // los mapas por-carril NO colisionen entre cajas (la caja 2 carril 1 no
       // debe pisar la caja 1 carril 1). El carril GLOBAL le suma además el offset
@@ -831,8 +845,9 @@ class SerialServiceClass extends EventEmitter {
     // 'serial' (DS-300), 'serial_agg' (agrupador: varias cajas DS en un único
     // puerto, de-multiplexadas por byte[4]) y 'bart' (BLE vía puente) comparten
     // ruta: todos conectan los circuitos de circuits_serial; el type/boxes de
-    // cada entrada decide CircuitConnection (una o N cajas) vs BartConnection.
-    if (mode === 'serial' || mode === 'serial_agg' || mode === 'bart') {
+    // cada entrada decide CircuitConnection (una o N cajas), BartConnection o
+    // TicTacConnection.
+    if (mode === 'serial' || mode === 'serial_agg' || mode === 'bart' || mode === 'tictac') {
       const circuitsJson = Settings.get('circuits_serial', '[]');
       let circuits = [];
       try { circuits = JSON.parse(circuitsJson); } catch {}
@@ -880,7 +895,7 @@ class SerialServiceClass extends EventEmitter {
       const type = cfg.type || 'ds300';
       // Callbacks idénticos para cualquier fuente: lo que cambia es de dónde
       // salen los cruces, no cómo se reemiten. Aguas abajo nadie nota la fuente.
-      const source = type === 'bart' ? 'bart' : 'ds300';
+      const source = type === 'bart' ? 'bart' : type === 'tictac' ? 'tictac' : 'ds300';
       const callbacks = [
         i,
         laneOffset,
@@ -916,12 +931,28 @@ class SerialServiceClass extends EventEmitter {
         } catch (e) {
           console.warn(`[SerialService] BART C${i + 1}: ${e.message} — reintentando en segundo plano`);
         }
+      } else if (type === 'tictac') {
+        // Interface TicTac: { type:'tictac', transport:'usb'|'serial', port?, baud?, lanes }.
+        // Solo lectura de cruces (ver TicTacConnection). 'usb' (por defecto) busca el
+        // aparato por VID/PID y se engancha solo; 'serial' lee el PTY del emulador o
+        // del puente. Como BART, si aún no hay fuente NO tiramos a simulación: la
+        // conexión reintenta sola.
+        const TicTacConnection = require('./TicTacConnection');
+        lanes = cfg.lanes || 8;
+        conn  = new TicTacConnection(...callbacks);
+        try {
+          if (cfg.transport === 'serial') await conn.connect(cfg.port, cfg.baud || 57600);
+          else                            await conn.connectUsb();
+        } catch (e) {
+          console.warn(`[SerialService] TicTac C${i + 1}: ${e.message} — reintentando en segundo plano`);
+        }
       } else {
         // Circuito DS-300: { port, baud, lanes, dataBits, ... }
-        if (!cfg.baud) throw new Error(`Circuit ${i + 1}: baud rate missing in DB config`);
-        lanes = cfg.lanes || 8;
+        const baud = cfg.baud || (cfg.model ? modelInfo(cfg.model).baud : 0);
+        if (!baud) throw new Error(`Circuit ${i + 1}: baud rate missing in DB config`);
+        lanes = cfg.lanes || modelInfo(cfg.model).lanes;
         conn  = new CircuitConnection(...callbacks);
-        await conn.connect(cfg.port, cfg.baud, { dataBits: cfg.dataBits, parity: cfg.parity, stopBits: cfg.stopBits, flowControl: cfg.flowControl, boxes: cfg.boxes });
+        await conn.connect(cfg.port, baud, { dataBits: cfg.dataBits, parity: cfg.parity, stopBits: cfg.stopBits, flowControl: cfg.flowControl, boxes: cfg.boxes, model: cfg.model });
       }
       // Trasplante: misma posición = misma caja física = mismos carriles.
       const anterior = previas[i];

@@ -341,7 +341,11 @@
       "seleccionar": "select",
       "sin_cambios": "No changes",
       "tunel_en_marcha": "Tunnel running",
-      "tunel_parado": "Tunnel stopped"
+      "tunel_parado": "Tunnel stopped",
+      "modelo": "Model",
+      "tictac_detectado": "TicTacSlot detected over USB",
+      "tictac_no_detectado": "Not detected: plug the interface in via USB",
+      "tictac_sin_modulo": "USB reading is not available in this installation"
     },
     "shifts-live": {
       "ambiguedad_usa_override_manual": "Ambiguous — use manual override",
@@ -1319,12 +1323,18 @@
     "token_del_tunel": "Tunnel token",
     "transporte": "Transport",
     "ultimos_bytes_recibidos": "Last received bytes",
-    "uno_o_varios_ds_300_por_usb_rs_232": "One or more DS-300 via USB/RS-232.",
+    "uno_o_varios_ds_300_por_usb_rs_232": "One or more DS units (300, 200, 030 or 080) via USB/RS-232.",
     "uno_por_linea_admite_cidr_p_ej_192_168_1_50_o": "One per line. CIDR ok, e.g. 192.168.1.50 or 192.168.1.0/24.",
     "varias_cajas_ds_por_un_solo_puerto_com": "Several DS boxes over one COM port.",
     "visor_de_tramas_en_vivo": "Live frame viewer",
     "vuelta_media_ms": "Avg lap time (ms)",
-    "vueltas_reales_a_igualdad_menos_tiempo_total": "Actual laps (ties: lower total time)"
+    "vueltas_reales_a_igualdad_menos_tiempo_total": "Actual laps (ties: lower total time)",
+    "interface_tictacslot_cuentavueltas": "TicTacSlot interface (lap counter) over USB, detected automatically.",
+    "tictac_explicacion": "The TicTacSlot interface connects over USB and PitWall detects it automatically: just plug it in (if it is unplugged, it reattaches when reconnected). The device only sends crossings: it has no GO, pause or finish signal. \"Serial port\" is for the emulator or the hid-bridge.js bridge. On macOS it may ask for \"Input Monitoring\" permission.",
+    "tictac_conexion": "Connection",
+    "tictac_conexion_usb": "USB (automatic)",
+    "tictac_conexion_serie": "Serial port (emulator or bridge)",
+    "tictac_estado": "Status"
   },
   "shifts-live": {
     "a_punto": "Near",
