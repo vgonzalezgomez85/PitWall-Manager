@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.52.2] — 2026-10-10
+
+### Mejorado
+- **Los avisos que fabrica el servidor salen ya del diccionario.** Son los mensajes que no están en ninguna plantilla porque no existen hasta que pasa algo: «Esta carrera ya está en este PC» al importar una carrera, «Selecciona un archivo .db.», «No se puede exportar a Excel mientras hay una manga en curso», los errores de creación de coches y categorías, y los avisos de sincronización del catálogo. Eran 110 en el código del servidor. Lo que se ve en español y en inglés no cambia: verificado con las 148 pantallas.
+
 ## [1.52.1] — 2026-10-10
 
 ### Mejorado

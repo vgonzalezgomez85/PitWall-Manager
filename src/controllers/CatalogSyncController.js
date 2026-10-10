@@ -30,7 +30,7 @@ class CatalogSyncController {
 
     res.render('catalog-sync/index', {
       t: req.t, diffs, focus,
-      pageTitle: lang === 'es' ? 'Sincronizar catálogo' : 'Sync catalog',
+      pageTitle: req.t('common.sincronizar_catalogo'),
     });
   }
 
@@ -44,7 +44,7 @@ class CatalogSyncController {
     if (ids.length === 0) {
       req.session.flash = {
         type: 'error',
-        text: lang === 'es' ? 'No has seleccionado ninguna carrera.' : 'No race selected.',
+        text: req.t('catalogsync.no_has_seleccionado_ninguna_carrera'),
       };
       return res.redirect('/catalog-sync');
     }
@@ -65,7 +65,7 @@ class CatalogSyncController {
     if (added)   parts.push(lang === 'es' ? `${added} piloto(s) añadido(s)`   : `${added} driver(s) added`);
     if (removed) parts.push(lang === 'es' ? `${removed} piloto(s) quitado(s)` : `${removed} driver(s) removed`);
     if (country) parts.push(lang === 'es' ? `${country} país(es) actualizado(s)` : `${country} country field(s) updated`);
-    if (parts.length === 0) parts.push(lang === 'es' ? 'sin cambios' : 'no changes');
+    if (parts.length === 0) parts.push(req.t('client.log.sin_cambios'));
 
     let text = (lang === 'es'
       ? `Catálogo sincronizado en ${done} carrera(s): `

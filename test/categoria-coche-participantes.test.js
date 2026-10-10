@@ -65,7 +65,13 @@ const fakeRes = () => ({
   redirect(u) { this.redirectTo = u; return this; },
   render(v, d) { this.view = v; this.data = d; return this; },
 });
-const fakeReq = (raceId, body) => ({ params: { id: String(raceId), tandaId: body.__tandaId }, body, t: k => k });
+// Traductor de verdad, leyendo es.json: la vista y el Excel ya pasan los textos
+// por `t()`, y con un `t: k => k` de mentira la cabecera saldría como la clave.
+// Los tests que comprueban texto visible tienen que usar el diccionario real.
+const { locales } = require('../src/middleware/i18n');
+const tReal = (k) => k.split('.').reduce((o, x) => o?.[x], locales.es) ?? k;
+
+const fakeReq = (raceId, body) => ({ params: { id: String(raceId), tandaId: body.__tandaId }, body, t: tReal });
 
 const equiposDe = (raceId) => db.prepare('SELECT * FROM teams WHERE race_id = ? ORDER BY id').all(raceId);
 const pilotosDe = (raceId) => db.prepare('SELECT * FROM drivers WHERE race_id = ? ORDER BY id').all(raceId);
@@ -284,7 +290,7 @@ async function excelDe(raceId) {
     send(b) { this.body = b; return this; },
     render() { return this; },
   };
-  await SessionController.excel({ params: { id: String(raceId) }, query: { lang: 'es' }, t: s => s }, res);
+  await SessionController.excel({ params: { id: String(raceId) }, query: { lang: 'es' }, t: tReal }, res);
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(res.body);
   return wb;

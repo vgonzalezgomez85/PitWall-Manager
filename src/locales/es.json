@@ -84,6 +84,16 @@
     "tagline": "Gestión de carreras de scalextric",
     "title": "Slot Timer Pro"
   },
+  "auth": {
+    "wrong_password": "Wrong password."
+  },
+  "car": {
+    "el_modelo_es_requerido": "El modelo es requerido",
+    "error_actualizando_coche": "Error actualizando coche",
+    "error_creando_coche": "Error creando coche",
+    "la_categoria_es_requerida": "La categoría es requerida",
+    "la_marca_es_requerida": "La marca es requerida"
+  },
   "cars": {
     "anade_tu_primer_coche_al_catalogo": "Añade tu primer coche al catálogo.",
     "buscar_marca_modelo_categoria": "Buscar marca, modelo, categoría…",
@@ -105,6 +115,9 @@
     "todo_al_dia": "Todo al día",
     "vuelca_los_cambios_del_a_href_teams_catalogo_de": "Vuelca los cambios del <a href=\"/teams\">catálogo de equipos</a> (pilotos y país) a las carreras que <b>todavía no han arrancado ninguna manga</b>, sin pasar por «Editar tanda». Empareja equipos por nombre y deja la plantilla <b>idéntica al catálogo</b>: añade y quita pilotos. No toca la parrilla ni añade o quita equipos."
   },
+  "catalogsync": {
+    "no_has_seleccionado_ninguna_carrera": "No has seleccionado ninguna carrera."
+  },
   "categories": {
     "categorias_de_carrera": "Categorías de carrera",
     "crea_categorias_para_agrupar_coches_por_nivel": "Crea categorías para agrupar coches por nivel.",
@@ -112,6 +125,11 @@
     "crear_primera_categoria": "Crear primera categoría",
     "eliminar_categoria": "¿Eliminar categoría?",
     "sin_categorias": "Sin categorías"
+  },
+  "category": {
+    "el_nombre_es_requerido": "El nombre es requerido",
+    "error_actualizando_categoria": "Error actualizando categoría",
+    "error_creando_categoria": "Error creando categoría"
   },
   "cert": {
     "ajustes_seguridad_cifrado_y_credenciales": "Ajustes → Seguridad → Cifrado y credenciales → Instalar un certificado → Certificado de CA.",
@@ -480,6 +498,7 @@
     "estado": "Estado",
     "estado_de_puertos_serie": "Estado de puertos serie",
     "exportar_qr": "Exportar QR",
+    "fichero_vacio_o_sin_filas_validas": "Fichero vacío o sin filas válidas",
     "guardar_cambios": "Guardar cambios",
     "historial_de_cambios": "Historial de cambios",
     "historial_de_versiones": "Historial de versiones",
@@ -616,6 +635,14 @@
     "participantes_de_pole": "Participantes de Pole",
     "si_con_sesion_de_clasificacion": "Sí, con sesión de clasificación"
   },
+  "control": {
+    "al_90_del_maximo": "Al 90% del máximo",
+    "limites": "Límites: ",
+    "max": "máx",
+    "max_turnos": "máx turnos",
+    "min": "mín",
+    "sin_limites_configurados": "Sin límites configurados"
+  },
   "database": {
     "al_subirla_no_cambia_nada_todavia_queda": "Al subirla no cambia nada todavía: queda pendiente.",
     "antes_se_guarda_sola_una_copia_de_los_datos": "Antes se guarda sola una copia de los datos actuales, por si hay que deshacer.",
@@ -624,10 +651,15 @@
     "cancelar_importacion": "Cancelar importación",
     "cancelar_la_importacion_pendiente_no_se_aplicara": "¿Cancelar la importación pendiente? No se aplicará.",
     "carrera_a_exportar": "Carrera a exportar",
+    "copia_cargada_cierra_pitwall_por_completo_y": "Copia cargada. Cierra PitWall por completo y vuelve a abrirlo para aplicarla — hasta entonces sigues viendo los datos actuales. Se guarda automáticamente una copia de seguridad de los datos actuales antes de aplicarla.",
     "copia_de_seguridad": "Copia de seguridad",
     "descarga_un_archivo_db_con_todos_los_datos": "Descarga un archivo .db con todos los datos: carreras, equipos, pilotos, circuitos y ajustes. Sirve para pasarlo a otro PC o como respaldo. Se puede hacer aunque haya una carrera en curso.",
     "descargar_copia": "Descargar copia",
+    "el_archivo_no_es_una_base_de_datos_sqlite_valida": "El archivo no es una base de datos SQLite válida.",
+    "el_archivo_no_es_una_carrera_exportada_de": "El archivo no es una carrera exportada de PitWall, o está dañado.",
+    "el_archivo_viene_de_una_version_mas_nueva_de": "El archivo viene de una versión más nueva de PitWall. Actualiza este PC e inténtalo de nuevo.",
     "en_curso": "en curso",
+    "esa_carrera_no_existe": "Esa carrera no existe.",
     "esto_reemplazara_todos_los_datos_actuales_la": "Esto reemplazará TODOS los datos actuales la próxima vez que abras PitWall. ¿Continuar?",
     "exp_imp_carrera": "Exp. / Imp. carrera",
     "exportar": "Exportar",
@@ -637,15 +669,25 @@
     "genera_un_archivo_pwrace_con_todo_equipos": "Genera un archivo .pwrace con todo: equipos, pilotos, mangas, vueltas, turnos, neumáticos, verificaciones y pole.",
     "gestion_de_base_de_datos": "Gestión de base de datos",
     "hay_una_copia_pendiente_de_aplicar": "Hay una copia pendiente de aplicar",
+    "hay_una_manga_en_marcha_exporta_la_carrera": "Hay una manga en marcha: exporta la carrera cuando termine.",
+    "hay_una_manga_en_marcha_importa_la_carrera": "Hay una manga en marcha: importa la carrera cuando termine.",
+    "importacion_pendiente_cancelada": "Importación pendiente cancelada.",
     "importar_carrera": "Importar carrera",
     "importar_copia": "Importar copia",
+    "la_carrera_tiene_una_manga_sin_cerrar_cierrala": "La carrera tiene una manga sin cerrar. Ciérrala (o cancélala en Diagnóstico) antes de exportarla.",
     "lo_que_hay_ahora_mismo_en_la_base_de_datos_de": "Lo que hay ahora mismo en la base de datos de este PC.",
     "manga_sin_cerrar": "manga sin cerrar",
+    "no_habia_ninguna_importacion_pendiente": "No había ninguna importación pendiente.",
+    "no_se_pudo_exportar_la_carrera": "No se pudo exportar la carrera.",
+    "no_se_pudo_subir_el_archivo": "No se pudo subir el archivo: ",
+    "no_se_pudo_validar_el_archivo": "No se pudo validar el archivo.",
     "para_llevarte_una_carrera_a_otro_pc_por_ejemplo": "Para llevarte una carrera a otro PC (por ejemplo, la que has corrido en otro club) sin tocar el resto de datos.",
     "restaurar_copia": "Restaurar copia",
     "resumen": "Resumen",
     "se_anade_como_carrera_nueva_y_se_aplica_al": "Se añade como carrera nueva y se aplica al momento; tus carreras no se tocan. Si su circuito no existe aquí, se crea.",
     "se_aplica_al_cerrar_pitwall_por_completo_y": "Se aplica al cerrar PitWall por completo y volver a abrirlo.",
+    "selecciona_un_archivo_db": "Selecciona un archivo .db.",
+    "selecciona_un_archivo_pwrace": "Selecciona un archivo .pwrace.",
     "subir_copia": "Subir copia",
     "sustituir_todos_los_datos_de_este_pc_por_los_de": "Sustituir todos los datos de este PC por los de una copia de seguridad.",
     "sustituye_todos_los_datos_de_este_pc_por_los_de": "Sustituye TODOS los datos de este PC por los de un archivo .db de PitWall (de esta u otra instalación).",
@@ -673,6 +715,8 @@
     "control_puede_conectarse": "Control puede conectarse",
     "controla_si_pitwall_control_puede_conectarse_a": "Controla si PitWall Control puede conectarse a este Manager por la red local para enviarnos información.",
     "cuando_control_se_conecta_desde_otro": "Cuando Control se conecta desde otro dispositivo de la red, tiene que introducir este PIN.",
+    "ecosystem_connection_disabled": "Ecosystem connection disabled.",
+    "ecosystem_connection_enabled": "Ecosystem connection enabled.",
     "importar_tanda": "Importar tanda",
     "permitir_que_pitwall_control_se_conecte": "Permitir que PitWall Control se conecte",
     "pin_de_emparejamiento": "PIN de emparejamiento",
@@ -723,6 +767,9 @@
   },
   "events": {
     "mostrar_fichajes_de_piloto_antes_del_go_rutina": "Mostrar fichajes de piloto antes del GO (rutina de arranque)"
+  },
+  "exportguard": {
+    "no_se_puede_exportar_a_excel_mientras_hay_una": "No se puede exportar a Excel mientras hay una manga en curso. Detén la manga o espera a que termine la carrera y vuelve a intentarlo."
   },
   "form": {
     "anadir_descanso_dsc": "Añadir descanso (DSC)",
@@ -1122,6 +1169,7 @@
     "esta_carrera_no_lleva_control_de_neumaticos": "Esta carrera no lleva control de neumáticos",
     "esta_pagina_se_activara_automaticamente_cuando": "Esta página se activará automáticamente cuando arranque una carrera con control de neumáticos.",
     "fotos_de_verificacion": "Fotos de verificación",
+    "hay_una_manga_de_esta_carrera_en_marcha_parala": "Hay una manga de esta carrera en marcha. Párala antes de cambiar el estado.",
     "kiosco_carrera_activa": "Kiosco (carrera activa)",
     "la_dotacion_de_neumaticos_por_equipo_se_fija_al": "La dotación de neumáticos por equipo se fija al crear una carrera de resistencia (valor 0 = sin control).",
     "lane": "Carril",
@@ -1282,6 +1330,17 @@
     "resultados_del_entreno": "Resultados del entreno",
     "todos_los_entrenos": "Todos los entrenos"
   },
+  "session": {
+    "delta_vs_media_de_carril_s": "Δ Delta vs media de carril (s)",
+    "fecha": "Fecha",
+    "no_se_puede_repetir_hay_otra_manga_en_marcha": "No se puede repetir: hay otra manga en marcha.",
+    "por_carril": "Por carril",
+    "puntos": "Puntos",
+    "tiempo_absoluto_s": "⏱ Tiempo absoluto (s)",
+    "total_vueltas": "Total vueltas",
+    "vuelta_media": "Vuelta media",
+    "vuelta_rapida": "Vuelta rápida"
+  },
   "settings": {
     "activar_con_esta_contrasena": "Activar con esta contraseña",
     "anade_el_subdominio_p_ej_directo_miclub_com": "añade el subdominio (p. ej. directo.miclub.com) apuntando a",
@@ -1393,12 +1452,15 @@
     "se_guarda_al_momento_sin_tocar_la_conexion_del": "Se guarda al momento, sin tocar la conexión del cronometraje.",
     "seguimiento_online": "Seguimiento online",
     "seguridad": "Seguridad",
+    "settings_applied_source": "Settings applied · Source: ",
     "silencio_ms_entre_bytes_que_separa_dos_tramas": "Silencio (ms) entre bytes que separa dos tramas. Por defecto 75. Bájalo si tu DS encadena tramas muy rápido (Tic-Tac usa ~1).",
+    "simulation": "Simulation",
     "sin_conexion": "Sin conexión",
     "sin_el_el_navegador_avisa_una_vez_conexion_no": "Sin él, el navegador avisa una vez («conexión no privada → continuar»).",
     "sin_interfaces_de_red_detectadas": "Sin interfaces de red detectadas.",
     "solo_este_equipo_localhost_y_las_ips_de_la": "Solo este equipo (localhost) y las IPs de la lista. La app móvil e Infolap siguen recibiendo el vuelta a vuelta.",
     "tcp_emulador_puente": "TCP (emulador / puente)",
+    "the_two_passwords_do_not_match": "The two passwords do not match.",
     "tictac_conexion": "Conexión",
     "tictac_conexion_serie": "Puerto serie (emulador o puente)",
     "tictac_conexion_usb": "USB (automática)",
@@ -1602,6 +1664,9 @@
     "selecciona_un_equipo_de_la_izquierda_y_pulsa_un": "Selecciona un equipo de la izquierda y pulsa un carril o descanso (o arrástralo). Pulsa uno asignado para liberarlo.",
     "si_hay_menos_participantes_que_carriles_que": "Si hay menos participantes que carriles, ¿qué hacer con los carriles que quedan libres?",
     "sobran_los_ultimos": "Sobran los últimos"
+  },
+  "teamcatalog": {
+    "falta_la_columna_nombre_en_la_cabecera": "Falta la columna \"nombre\" en la cabecera"
   },
   "teams": {
     "b_cabecera_obligatoria_b_columnas_reconocidas": "<b>Cabecera obligatoria.</b> Columnas reconocidas (orden libre): <b>nombre</b> (obligatorio), <b>categoria</b>, <b>coche</b>, <b>pais</b> (escribe el nombre: España, Francia, Reino Unido… — la bandera se añade automáticamente), <b>notas</b>, <b>pilotos</b> (lista separada por \"|\"). Cada piloto se busca en tu base de datos por nombre: si existe, se enlaza al equipo; si no existe, se crea automáticamente como bronce y aparece en /pilotos para que le ajustes la categoría. Acepta separador \",\" o \";\". Si una celda lleva comas dentro, envuélvela en comillas.",

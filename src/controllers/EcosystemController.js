@@ -39,8 +39,8 @@ const EcosystemController = {
     req.session.flash = {
       type: 'success',
       text: on
-        ? (isEs ? 'Conexión ecosistema activada.' : 'Ecosystem connection enabled.')
-        : (isEs ? 'Conexión ecosistema desactivada.' : 'Ecosystem connection disabled.'),
+        ? (req.t('ecosystem.ecosystem_connection_enabled'))
+        : (req.t('ecosystem.ecosystem_connection_disabled')),
     };
     res.redirect('/ecosystem');
   },

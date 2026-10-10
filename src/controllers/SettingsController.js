@@ -160,7 +160,7 @@ class SettingsController {
       if (password.length < AccessPassword.MIN_LENGTH) {
         return fail(es ? `La contraseña necesita al menos ${AccessPassword.MIN_LENGTH} caracteres.` : `The password needs at least ${AccessPassword.MIN_LENGTH} characters.`);
       }
-      if (password !== confirm) return fail(es ? 'Las dos contraseñas no coinciden.' : 'The two passwords do not match.');
+      if (password !== confirm) return fail(req.t('settings.the_two_passwords_do_not_match'));
       AccessPassword.setPassword(password);
     }
     AccessPassword.setEnabled(true);
@@ -375,9 +375,9 @@ class SettingsController {
     } else if (serial_mode === 'serial_agg') {
       src = isEs ? `DS-300 agrupador (${aggBoxes} caja${aggBoxes === 1 ? '' : 's'} · ${aggBoxes * 8} carriles)` : `DS-300 aggregator (${aggBoxes} box${aggBoxes === 1 ? '' : 'es'} · ${aggBoxes * 8} lanes)`;
     } else {
-      src = isEs ? 'Simulación' : 'Simulation';
+      src = req.t('settings.simulation');
     }
-    req.session.flash = { type: 'success', text: (isEs ? 'Configuración aplicada · Fuente: ' : 'Settings applied · Source: ') + src };
+    req.session.flash = { type: 'success', text: (req.t('settings.settings_applied_source')) + src };
 
     res.redirect('/settings');
   }

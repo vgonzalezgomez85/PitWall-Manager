@@ -199,9 +199,7 @@ class SessionController {
     if (TimingService.isRunning) {
       req.session.flash = {
         type: 'error',
-        text: req.session?.lang === 'en'
-          ? 'Cannot repeat: another heat is currently running.'
-          : 'No se puede repetir: hay otra manga en marcha.',
+        text: req.session?.req.t('session.no_se_puede_repetir_hay_otra_manga_en_marcha'),
       };
       return res.redirect(`/races/${race.id}/mangas/${manga.id}/live`);
     }
@@ -1491,8 +1489,8 @@ class SessionController {
     // carrera (interruptores del asistente / editar carrera). Apagadas, el Excel
     // sale exactamente como siempre (xN = 0 y ni cabeceras ni celdas).
     const extraHead = [];
-    if (race.has_categoria) extraHead.push(isEs ? 'Categoría' : 'Category');
-    if (race.has_coche)     extraHead.push(isEs ? 'Coche' : 'Car');
+    if (race.has_categoria) extraHead.push(req.t('client.common.categoria'));
+    if (race.has_coche)     extraHead.push(req.t('common.coche'));
     const xN = extraHead.length;
     const extraVals  = (r) => {
       const v = [];
@@ -1579,14 +1577,14 @@ class SessionController {
     const raceDateStr = raceDate
       ? raceDate.toLocaleString(isEs ? 'es-ES' : 'en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
       : '';
-    const titleLabel = isEs ? 'Carrera' : 'Race';
-    const dateLabel  = isEs ? 'Fecha'   : 'Date';
+    const titleLabel = req.t('common.carrera');
+    const dateLabel  = req.t('session.fecha');
 
     // Adds 2 header rows (title + date) to a sheet across `cols` columns
     // Subtítulo: tipo · formato · fecha (lo que haya).
     const _fmtType = race.type ? String(race.type).charAt(0).toUpperCase() + String(race.type).slice(1) : null;
-    const _fmtFormat = race.format === 'team' ? (isEs ? 'Equipos' : 'Teams')
-                     : race.format === 'individual' ? (isEs ? 'Individual' : 'Individual') : null;
+    const _fmtFormat = race.format === 'team' ? (req.t('common.equipos'))
+                     : race.format === 'individual' ? (req.t('races.format.individual')) : null;
     const subParts = [_fmtType, _fmtFormat, raceDateStr].filter(Boolean);
     const subLine  = subParts.join('   ·   ');
 
@@ -1630,11 +1628,11 @@ class SessionController {
       || compareLastManga(a, b)
       || (a.total_time_ms||Infinity) - (b.total_time_ms||Infinity)
       || (a.best_lap_ms||Infinity) - (b.best_lap_ms||Infinity));
-    const s1 = wb.addWorksheet(isEs ? 'Clasificación' : 'Standings');
+    const s1 = wb.addWorksheet(req.t('common.clasificacion'));
     s1.columns = [{ width: 5 }, { width: 30 }, ...extraHead.map(() => ({ width: 18 })),
                    { width: 14 }, { width: 14 }, { width: 14 }, { width: 10 }];
     addRaceHeader(s1, 6 + xN);
-    const s1Header = s1.addRow(['#', isEs ? 'Piloto / Equipo' : 'Driver / Team', ...extraHead, isEs ? 'Total vueltas' : 'Total laps', isEs ? 'Mejor vuelta' : 'Best lap', isEs ? 'Vuelta media' : 'Avg lap', isEs ? 'Mangas' : 'Heats']);
+    const s1Header = s1.addRow(['#', req.t('tv.piloto_equipo'), ...extraHead, req.t('session.total_vueltas'), req.t('common.mejor_vuelta'), req.t('session.vuelta_media'), req.t('_admin.mangas')]);
     s1Header.height = 22;
     s1Header.eachCell(c => Object.assign(c, headerStyle));
     s1.views = [{ state: 'frozen', ySplit: s1Header.number }];
@@ -1652,10 +1650,10 @@ class SessionController {
 
     // ── Sheet 2 — Mejor vuelta ──────────────────────────────────────────────
     const byBest = [...aggregate].filter(r => r.best_lap_ms).sort((a,b) => a.best_lap_ms - b.best_lap_ms);
-    const s2 = wb.addWorksheet(isEs ? 'Mejor vuelta' : 'Best lap');
+    const s2 = wb.addWorksheet(req.t('common.mejor_vuelta'));
     s2.columns = [{ width: 5 }, { width: 30 }, ...extraHead.map(() => ({ width: 18 })), { width: 14 }, { width: 14 }];
     addRaceHeader(s2, 4 + xN);
-    const s2Header = s2.addRow(['#', isEs ? 'Piloto / Equipo' : 'Driver / Team', ...extraHead, isEs ? 'Mejor vuelta' : 'Best lap', isEs ? 'Total vueltas' : 'Total laps']);
+    const s2Header = s2.addRow(['#', req.t('tv.piloto_equipo'), ...extraHead, req.t('common.mejor_vuelta'), req.t('session.total_vueltas')]);
     s2Header.height = 22;
     s2Header.eachCell(c => Object.assign(c, headerStyle));
     s2.views = [{ state: 'frozen', ySplit: s2Header.number }];
@@ -1676,10 +1674,10 @@ class SessionController {
     // entidad que repite carril (race.passes>1 || race.lane_repeat>1) aparezca
     // en filas separadas por manga, igual que en pantalla, en vez de sumarse
     // en una única fila por carril.
-    const s3 = wb.addWorksheet(isEs ? 'Por carril' : 'Per lane');
+    const s3 = wb.addWorksheet(req.t('session.por_carril'));
     s3.columns = [{ width: 30 }, { width: 8 }, { width: 10 }, { width: 10 }, { width: 12 }, { width: 12 }, { width: 10 }];
     addRaceHeader(s3, 7);
-    const s3Header = s3.addRow([isEs ? 'Piloto / Equipo' : 'Driver / Team', isEs ? 'Carril' : 'Lane', isEs ? 'Manga' : 'Heat', isEs ? 'Vueltas' : 'Laps', isEs ? 'Mejor' : 'Best', isEs ? 'Media' : 'Avg', isEs ? 'Salidas' : 'Exits']);
+    const s3Header = s3.addRow([req.t('tv.piloto_equipo'), req.t('client.common.carril'), req.t('common.manga'), req.t('client.common.vueltas'), req.t('client.common.mejor'), req.t('client.common.media'), req.t('client.common.salidas')]);
     s3Header.height = 22;
     s3Header.eachCell(c => Object.assign(c, headerStyle));
     s3.views = [{ state: 'frozen', ySplit: s3Header.number }];
@@ -1746,7 +1744,7 @@ class SessionController {
         for (let occ = 1; occ <= K; occ++) {
           occColumns.push({
             lane, occ, occCount: K, key: `${lane}-${occ}`,
-            label: K > 1 ? `${isEs ? 'Pista' : 'Lane'} ${lane} · ${ordinal[occ - 1] || (occ + 'ª')}` : `${isEs ? 'Pista' : 'Lane'} ${lane}`,
+            label: K > 1 ? `${req.t('results.pista')} ${lane} · ${ordinal[occ - 1] || (occ + 'ª')}` : `${req.t('results.pista')} ${lane}`,
           });
         }
       });
@@ -1754,7 +1752,7 @@ class SessionController {
     // Columnas unificadas: en modo ocurrencia son (carril, manga); si no, una
     // por carril (occ siempre 1 — mismo resultado que antes de este cambio).
     const columns = perOccurrence ? occColumns : laneSeq.map(l => ({
-      lane: l, occ: 1, occCount: 1, key: l, label: `${isEs ? 'Pista' : 'Lane'} ${l}`,
+      lane: l, occ: 1, occCount: 1, key: l, label: `${req.t('results.pista')} ${l}`,
     }));
     function cellFor(r, col) {
       return perOccurrence ? (r.occByKey && r.occByKey[col.key]) || null
@@ -1836,7 +1834,7 @@ class SessionController {
       if (startLaneByEntity[key] == null) startLaneByEntity[key] = r.lane;
     });
 
-    const s4 = wb.addWorksheet(isEs ? 'Comparativa' : 'Comparison', {
+    const s4 = wb.addWorksheet(req.t('results.comparativa'), {
       properties: { outlineProperties: { summaryBelow: false, summaryRight: false } }
     });
     // Que "Comparativa" sea la PRIMERA pestaña (y la que se abre) aunque se cree
@@ -1856,8 +1854,8 @@ class SessionController {
     // Banner row: TODO el texto en una sola celda combinada (A..última) para que
     // la etiqueta no se recorte en la columna A (que es estrecha).
     if (raceBestLapMs != null) {
-      const bannerText = `⚡ ${isEs ? 'Vuelta rápida de la carrera' : 'Race fastest lap'}:  `
-        + `${fmtSec(raceBestLapMs)}s — ${raceBestEntity} (${isEs ? 'Pista' : 'Lane'} ${raceBestLane})`;
+      const bannerText = `⚡ ${req.t('results.vuelta_rapida_de_la_carrera')}:  `
+        + `${fmtSec(raceBestLapMs)}s — ${raceBestEntity} (${req.t('results.pista')} ${raceBestLane})`;
       s4.addRow([bannerText]);
       const r = s4.lastRow;
       r.height = 26;
@@ -1870,7 +1868,7 @@ class SessionController {
     }
 
     // Header
-    const headerRow = s4.addRow(['#', isEs ? 'Equipo / Piloto' : 'Team / Driver', ...extraHead, isEs ? 'Vueltas' : 'Laps', ...columns.map(col => col.label)]);
+    const headerRow = s4.addRow(['#', req.t('common.equipo_piloto'), ...extraHead, req.t('client.common.vueltas'), ...columns.map(col => col.label)]);
     headerRow.height = 22;
     headerRow.eachCell(c => Object.assign(c, headerStyle));
     s4.views = [{ state: 'frozen', ySplit: headerRow.number }];
@@ -1947,7 +1945,7 @@ class SessionController {
       const bestLapPl = r.best_lap_ms != null ? r.perLane.find(pl => pl.best_ms === r.best_lap_ms) : null;
       const bestLapLane = bestLapPl ? bestLapPl.lane : null;
       const bestLapTotalStr = bestLapLane != null ? `${fmtSec(r.best_lap_ms)} (${bestLapLane})` : fmtSec(r.best_lap_ms);
-      const rowB = s4.addRow(['', `⚡ ${isEs ? 'Vuelta rápida' : 'Fastest'}`, ...blankExtra(), bestLapTotalStr, ...fastestVals]);
+      const rowB = s4.addRow(['', `⚡ ${req.t('session.vuelta_rapida')}`, ...blankExtra(), bestLapTotalStr, ...fastestVals]);
       rowB.outlineLevel = 1;
       rowB.eachCell({ includeEmpty: true }, c => {
         c.border = thinBorder;
@@ -1978,7 +1976,7 @@ class SessionController {
       const avgTotalStr = bestAvgLane != null
         ? `${fmtSec(Math.round(r.avg_lap_ms))} / ${fmtSec(Math.round(bestAvgMs))} (${bestAvgLane})`
         : fmtSec(Math.round(r.avg_lap_ms));
-      const rowC = s4.addRow(['', isEs ? 'Media gen / Mejor med' : 'Avg / Best avg', ...blankExtra(), avgTotalStr, ...avgVals]);
+      const rowC = s4.addRow(['', req.t('results.media_gen_mejor_med'), ...blankExtra(), avgTotalStr, ...avgVals]);
       rowC.outlineLevel = 1;
       rowC.eachCell({ includeEmpty: true }, c => {
         c.border = thinBorder;
@@ -1994,7 +1992,7 @@ class SessionController {
         const c = cellFor(r, col);
         return (c && c.consistency != null) ? fmtPct(c.consistency) : '';
       });
-      const rowCons = s4.addRow(['', isEs ? 'Const. sin' : 'Const. clean', ...blankExtra(), fmtPct(r.raceConsistency), ...consVals]);
+      const rowCons = s4.addRow(['', req.t('results.const_sin'), ...blankExtra(), fmtPct(r.raceConsistency), ...consVals]);
       rowCons.outlineLevel = 1;
       rowCons.eachCell({ includeEmpty: true }, c => {
         c.border = thinBorder;
@@ -2012,7 +2010,7 @@ class SessionController {
         if (!c || c.worst_ms == null) return '';
         return `(${c.exit_count||0}) ${fmtSec(c.worst_ms)}`;
       });
-      const rowD = s4.addRow(['', `${isEs ? 'Salidas' : 'Exits'} (${totalExits})`, ...blankExtra(), '', ...exitVals]);
+      const rowD = s4.addRow(['', `${req.t('client.common.salidas')} (${totalExits})`, ...blankExtra(), '', ...exitVals]);
       rowD.outlineLevel = 1;
       rowD.eachCell({ includeEmpty: true }, c => {
         c.border = thinBorder;
@@ -2041,7 +2039,7 @@ class SessionController {
           : '';
         return `(${c.pit_stop_count}) ${laps}`;
       });
-      const rowE = s4.addRow(['', `🔧 ${isEs ? 'Pit-stops' : 'Pit-stops'} (${totalPits})`, ...blankExtra(), '', ...pitVals]);
+      const rowE = s4.addRow(['', `🔧 ${req.t('results.pit_stops_2')} (${totalPits})`, ...blankExtra(), '', ...pitVals]);
       rowE.outlineLevel = 1;
       rowE.eachCell({ includeEmpty: true }, c => {
         c.border = thinBorder;
@@ -2132,12 +2130,12 @@ class SessionController {
       sE.addRow([]);
 
       // ── Section: Absolute times ─────────────────────────────────────────
-      const absTitle = sE.addRow([isEs ? '⏱ Tiempo absoluto (s)' : '⏱ Absolute time (s)']);
+      const absTitle = sE.addRow([req.t('session.tiempo_absoluto_s')]);
       sE.mergeCells(absTitle.number, 1, absTitle.number, 1 + lanes.length);
       absTitle.getCell(1).font = { bold: true, size: 11, color: { argb: 'FF1F6FEB' } };
       absTitle.getCell(1).alignment = { vertical: 'middle', indent: 1 };
 
-      const absHeader = sE.addRow([isEs ? 'Vuelta' : 'Lap', ...lanes.map(l => `${isEs ? 'Pista' : 'Lane'} ${l}`)]);
+      const absHeader = sE.addRow([req.t('client.common.vuelta'), ...lanes.map(l => `${req.t('results.pista')} ${l}`)]);
       absHeader.height = 20;
       absHeader.eachCell({ includeEmpty: true }, c => Object.assign(c, headerStyle));
 
@@ -2176,7 +2174,7 @@ class SessionController {
       }
 
       // Avg row at the bottom of absolute section
-      const avgRow = sE.addRow([isEs ? 'Media' : 'Avg', ...lanes.map(l => {
+      const avgRow = sE.addRow([req.t('client.common.media'), ...lanes.map(l => {
         const v = prog.laneAvg[l];
         return v != null ? Number((v / 1000).toFixed(3)) : '';
       })]);
@@ -2190,12 +2188,12 @@ class SessionController {
       sE.addRow([]);
 
       // ── Section: Delta vs lane average ─────────────────────────────────
-      const dTitle = sE.addRow([isEs ? 'Δ Delta vs media de carril (s)' : 'Δ Delta vs lane avg (s)']);
+      const dTitle = sE.addRow([req.t('session.delta_vs_media_de_carril_s')]);
       sE.mergeCells(dTitle.number, 1, dTitle.number, 1 + lanes.length);
       dTitle.getCell(1).font = { bold: true, size: 11, color: { argb: 'FF1F6FEB' } };
       dTitle.getCell(1).alignment = { vertical: 'middle', indent: 1 };
 
-      const dHeader = sE.addRow([isEs ? 'Vuelta' : 'Lap', ...lanes.map(l => `${isEs ? 'Pista' : 'Lane'} ${l}`)]);
+      const dHeader = sE.addRow([req.t('client.common.vuelta'), ...lanes.map(l => `${req.t('results.pista')} ${l}`)]);
       dHeader.height = 20;
       dHeader.eachCell({ includeEmpty: true }, c => Object.assign(c, headerStyle));
 
@@ -2290,15 +2288,15 @@ class SessionController {
     const wb = new ExcelJS.Workbook();
     wb.creator = 'PitWall';
     wb.created = new Date();
-    const ws = wb.addWorksheet(isEs ? 'Puntos' : 'Points');
+    const ws = wb.addWorksheet(req.t('session.puntos'));
     ws.columns = [{ width: 5 }, { width: 30 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 10 }, { width: 12 }];
 
-    const hdr = ws.addRow(['#', isEs ? 'Piloto / Equipo' : 'Driver / Team',
-                           isEs ? 'Total vueltas' : 'Total laps',
-                           isEs ? 'Mejor vuelta'  : 'Best lap',
-                           isEs ? 'Vuelta media'  : 'Avg lap',
-                           isEs ? 'Mangas'        : 'Heats',
-                           isEs ? 'Puntos'        : 'Points']);
+    const hdr = ws.addRow(['#', req.t('tv.piloto_equipo'),
+                           req.t('session.total_vueltas'),
+                           req.t('common.mejor_vuelta'),
+                           req.t('session.vuelta_media'),
+                           req.t('_admin.mangas'),
+                           req.t('session.puntos')]);
     hdr.height = 22;
     hdr.eachCell(c => {
       c.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };

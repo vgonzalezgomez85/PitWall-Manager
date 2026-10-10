@@ -124,7 +124,7 @@ class DriverProfileController {
     const lang = req.session?.lang || 'es';
     const { rows, csv_content } = DriverProfileController._parseDriversCsv(req.body.csv_content || '');
     if (rows.length === 0) {
-      req.session.flash = { type: 'error', text: lang === 'es' ? 'Fichero vacío o sin filas válidas' : 'Empty file or no valid rows' };
+      req.session.flash = { type: 'error', text: req.t('common.fichero_vacio_o_sin_filas_validas') };
       return res.redirect('/drivers');
     }
     const stats = {
@@ -210,7 +210,7 @@ class DriverProfileController {
     if (skipped > 0) parts.push(lang === 'es' ? `${skipped} omitidos`             : `${skipped} skipped`);
     req.session.flash = {
       type: (created + updated) > 0 ? 'success' : 'error',
-      text: parts.join(' · ') || (lang === 'es' ? 'Sin cambios' : 'No changes'),
+      text: parts.join(' · ') || (req.t('client.settings.sin_cambios')),
     };
     res.redirect('/drivers');
   }

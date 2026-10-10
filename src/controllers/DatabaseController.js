@@ -110,11 +110,11 @@ class DatabaseController {
     restoreUpload.single('backup_file')(req, res, (err) => {
       const lang = req.session?.lang || 'es';
       if (err) {
-        req.session.flash = { type: 'error', text: (lang === 'es' ? 'No se pudo subir el archivo: ' : 'Could not upload the file: ') + err.message };
+        req.session.flash = { type: 'error', text: (req.t('database.no_se_pudo_subir_el_archivo')) + err.message };
         return res.redirect('/database');
       }
       if (!req.file) {
-        req.session.flash = { type: 'error', text: lang === 'es' ? 'Selecciona un archivo .db.' : 'Select a .db file.' };
+        req.session.flash = { type: 'error', text: req.t('database.selecciona_un_archivo_db') };
         return res.redirect('/database');
       }
 
@@ -127,19 +127,17 @@ class DatabaseController {
         fs.closeSync(fd);
         if (header.toString('utf8', 0, 15) !== 'SQLite format 3') {
           fs.unlinkSync(req.file.path);
-          req.session.flash = { type: 'error', text: lang === 'es' ? 'El archivo no es una base de datos SQLite válida.' : 'The file is not a valid SQLite database.' };
+          req.session.flash = { type: 'error', text: req.t('database.el_archivo_no_es_una_base_de_datos_sqlite_valida') };
           return res.redirect('/database');
         }
       } catch {
-        req.session.flash = { type: 'error', text: lang === 'es' ? 'No se pudo validar el archivo.' : 'Could not validate the file.' };
+        req.session.flash = { type: 'error', text: req.t('database.no_se_pudo_validar_el_archivo') };
         return res.redirect('/database');
       }
 
       req.session.flash = {
         type: 'success',
-        text: lang === 'es'
-          ? 'Copia cargada. Cierra PitWall por completo y vuelve a abrirlo para aplicarla — hasta entonces sigues viendo los datos actuales. Se guarda automáticamente una copia de seguridad de los datos actuales antes de aplicarla.'
-          : 'Backup uploaded. Fully close PitWall and reopen it to apply it — until then you still see the current data. The current data is backed up automatically before applying it.',
+        text: req.t('database.copia_cargada_cierra_pitwall_por_completo_y'),
       };
       res.redirect('/database');
     });
@@ -150,7 +148,7 @@ class DatabaseController {
     const es = (req.session?.lang || 'es') === 'es';
     const fail = text => { req.session.flash = { type: 'error', text }; res.redirect('/database'); };
     if (ExportGuard.isMangaLive()) {
-      return fail(es ? 'Hay una manga en marcha: exporta la carrera cuando termine.' : 'A heat is running: export the race when it ends.');
+      return fail(req.t('database.hay_una_manga_en_marcha_exporta_la_carrera'));
     }
     try {
       const { archive, buffer } = RaceArchive.exportRaceFile(parseInt(req.query.race, 10));
@@ -162,14 +160,12 @@ class DatabaseController {
       res.type('application/gzip');
       res.send(buffer);
     } catch (e) {
-      if (e.code === 'not_found') return fail(es ? 'Esa carrera no existe.' : 'That race does not exist.');
+      if (e.code === 'not_found') return fail(req.t('database.esa_carrera_no_existe'));
       if (e.code === 'open_manga') {
-        return fail(es
-          ? 'La carrera tiene una manga sin cerrar. Ciérrala (o cancélala en Diagnóstico) antes de exportarla.'
-          : 'The race has an unclosed heat. Close it (or cancel it in Diagnostics) before exporting.');
+        return fail(req.t('database.la_carrera_tiene_una_manga_sin_cerrar_cierrala'));
       }
       console.error('[DatabaseController] race export failed:', e.message);
-      fail(es ? 'No se pudo exportar la carrera.' : 'Could not export the race.');
+      fail(req.t('database.no_se_pudo_exportar_la_carrera'));
     }
   }
 
@@ -178,12 +174,12 @@ class DatabaseController {
     raceUpload.single('race_file')(req, res, (err) => {
       const es = (req.session?.lang || 'es') === 'es';
       const fail = text => { req.session.flash = { type: 'error', text }; res.redirect('/database'); };
-      if (err) return fail((es ? 'No se pudo subir el archivo: ' : 'Could not upload the file: ') + err.message);
-      if (!req.file) return fail(es ? 'Selecciona un archivo .pwrace.' : 'Select a .pwrace file.');
+      if (err) return fail((req.t('database.no_se_pudo_subir_el_archivo')) + err.message);
+      if (!req.file) return fail(req.t('database.selecciona_un_archivo_pwrace'));
       // Miles de inserciones en una transacción: con una manga viva bloquearía
       // el hilo lo bastante como para partir una trama del DS-300.
       if (ExportGuard.isMangaLive()) {
-        return fail(es ? 'Hay una manga en marcha: importa la carrera cuando termine.' : 'A heat is running: import the race when it ends.');
+        return fail(req.t('database.hay_una_manga_en_marcha_importa_la_carrera'));
       }
       try {
         const result = RaceArchive.importRace(RaceArchive.parseFile(req.file.buffer));
@@ -208,8 +204,8 @@ class DatabaseController {
           };
           return res.redirect('/database');
         }
-        if (e.code === 'bad_file') return fail(es ? 'El archivo no es una carrera exportada de PitWall, o está dañado.' : 'The file is not an exported PitWall race, or it is damaged.');
-        if (e.code === 'newer_version') return fail(es ? 'El archivo viene de una versión más nueva de PitWall. Actualiza este PC e inténtalo de nuevo.' : 'The file comes from a newer PitWall version. Update this PC and try again.');
+        if (e.code === 'bad_file') return fail(req.t('database.el_archivo_no_es_una_carrera_exportada_de'));
+        if (e.code === 'newer_version') return fail(req.t('database.el_archivo_viene_de_una_version_mas_nueva_de'));
         console.error('[DatabaseController] race import failed:', e);
         fail(es ? 'No se pudo importar la carrera: ' + escapeHtml(e.message) : 'Could not import the race: ' + escapeHtml(e.message));
       }
@@ -222,9 +218,9 @@ class DatabaseController {
     try {
       const pendingPath = path.join(path.dirname(db.name), RESTORE_FILENAME);
       fs.unlinkSync(pendingPath);
-      req.session.flash = { type: 'success', text: lang === 'es' ? 'Importación pendiente cancelada.' : 'Pending import cancelled.' };
+      req.session.flash = { type: 'success', text: req.t('database.importacion_pendiente_cancelada') };
     } catch {
-      req.session.flash = { type: 'error', text: lang === 'es' ? 'No había ninguna importación pendiente.' : 'There was no pending import.' };
+      req.session.flash = { type: 'error', text: req.t('database.no_habia_ninguna_importacion_pendiente') };
     }
     res.redirect('/database');
   }

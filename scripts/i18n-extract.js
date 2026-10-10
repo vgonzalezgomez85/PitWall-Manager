@@ -69,7 +69,12 @@ function listarFicheros() {
   const views   = recorrer(path.join(ROOT, 'src/views'),   p => p.endsWith('.ejs'));
   const jsCli   = recorrer(path.join(ROOT, 'public/js'),   p => p.endsWith('.js'))
                     .filter(p => !/chart\.umd|jsQR/.test(p));   // librerías vendorizadas
-  return [...views, ...jsCli].sort();
+  // Aquí hay texto de usuario que no sale de ninguna plantilla: los avisos que el
+  // servidor fabrica al vuelo (una importación que falla, una manga que no
+  // encuentra). Su traductor es `req.t`, no `t`, así que van marcados aparte.
+  const srv = [...recorrer(path.join(ROOT, 'src/controllers'), p => p.endsWith('.js')),
+               ...recorrer(path.join(ROOT, 'src/services'),    p => p.endsWith('.js'))];
+  return [...views, ...jsCli, ...srv].sort();
 }
 
 // ── Máscaras: dónde hay código de verdad ──────────────────────────────────
@@ -78,7 +83,11 @@ function listarFicheros() {
 // dentro de una cadena o un comentario) y si ese código es de cliente (dentro de
 // un <script>) o de servidor. Sin esto, una regex suelta muerde dentro de
 // atributos o de textos y rompe la plantilla.
-function analizar(src, esEjs) {
+// `esCliente` solo para el JS que corre en el navegador (`public/js`). En un
+// controlador o un servicio, aunque sea un .js y no lleve <script>, el texto se
+// resuelve en el servidor: llamarle "cliente" hacía que la conversión emitiera
+// `I18N.t(...)` en vez de `req.t(...)`, que en el servidor no existe.
+function analizar(src, esEjs, esCliente = !esEjs) {
   const n = src.length;
   const enJs      = new Uint8Array(n);
   const enCliente = new Uint8Array(n);
@@ -112,7 +121,7 @@ function analizar(src, esEjs) {
       i = b + 2;
     }
   } else {
-    zonasScript.push([0, n]);
+    zonasScript.push([0, n, esCliente]);
   }
 
   // Las zonas se SOLAPAN a propósito: un `<% %>` va casi siempre dentro de un
@@ -125,7 +134,7 @@ function analizar(src, esEjs) {
   // las etiquetas (ver `saltarEtiqueta`), que es como las ve el navegador: la
   // etiqueta ya se habrá sustituido antes de que él mire.
   const zonas = [];   // [ini, fin, esCliente] — las de servidor, las últimas
-  for (const z of zonasScript)   zonas.push([z[0], z[1], true]);
+  for (const z of zonasScript)   zonas.push([z[0], z[1], z[2] !== false]);   // en EJS, un <script> es cliente
   for (const z of zonasServidor) zonas.push([z[0], z[1], false]);
 
   for (const [ini, fin] of zonas) for (let k = ini; k < fin; k++) enJs[k] = 1;
@@ -266,6 +275,12 @@ function aliasDeIdioma(src) {
 function dominioDe(fichero) {
   const rel = path.relative(ROOT, fichero);
   if (rel.startsWith('public/js/')) return 'js';        // se refina abajo
+  if (/src[\\/](controllers|services)[\\/]/.test(rel)) {
+    // SessionController → session · RaceArchive.js → racearchive. Se quita el
+    // sufijo para que las claves no salgan como `SessionController.lo_que_sea`.
+    const n = path.basename(fichero, '.js').replace(/Controller$|Service$/, '');
+    return aSlug(n).replace(/_/g, '') || 'srv';
+  }
   const base = path.basename(fichero, path.extname(fichero));
   const dir  = path.basename(path.dirname(fichero));
   if (dir === 'partials') return 'common';
@@ -319,7 +334,16 @@ function esTecnico(a, b) {
 function analizarFichero(fichero) {
   const src = fs.readFileSync(fichero, 'utf8');
   const esEjs = fichero.endsWith('.ejs');
-  const { enJs, enCliente, enCodigo } = analizar(src, esEjs);
+  // Controladores y servicios: el traductor es `req.t`. Se dan por buenos solo si
+  // el fichero declara el idioma a partir de `req`, que es lo que garantiza que
+  // `req` esté en el ámbito de la conversión.
+  const esReq = !esEjs
+    && /src[\\/](controllers|services)[\\/]/.test(fichero)
+    && /\breq\b/.test(src);
+  // El JS de cliente es solo `public/js`; en un .js de servidor el texto se
+  // resuelve con `req.t`.
+  const esClienteArchivo = /public[\\/]js[\\/]/.test(fichero);
+  const { enJs, enCliente, enCodigo } = analizar(src, esEjs, esClienteArchivo);
   const alias = aliasDeIdioma(src);
   const dominio = dominioDe(fichero);
 
@@ -367,6 +391,7 @@ function analizarFichero(fichero) {
     hallazgos.push({
       ini, fin, es, en,
       cliente: !!enCliente[ini],
+      req: esReq,
       dominio,
       linea: src.slice(0, ini).split('\n').length,
     });
@@ -509,7 +534,9 @@ function main() {
       if (!clave) continue;
       // En el navegador el ayudante es `I18N.t`, no `t`: el JS de cliente ya usa
       // `t` como variable en una docena de sitios y llamarlo `t()` los rompería.
-      const llamada = h.cliente ? `I18N.t('${clave}')` : `t('${clave}')`;
+      const llamada = h.cliente ? `I18N.t('${clave}')`
+                    : h.req     ? `req.t('${clave}')`
+                    :             `t('${clave}')`;
       out = out.slice(0, h.ini) + llamada + out.slice(h.fin);
       reemplazos++;
       porDominio[h.dominio] = (porDominio[h.dominio] || 0) + 1;

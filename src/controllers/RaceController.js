@@ -726,9 +726,7 @@ class RaceController {
 
     const TimingService = require('../services/TimingService');
     if (TimingService.isRunning && String(TimingService.activeRaceId) === String(race.id)) {
-      req.session.flash = { type: 'error', text: es
-        ? 'Hay una manga de esta carrera en marcha. Párala antes de cambiar el estado.'
-        : 'A heat of this race is running. Stop it before changing the status.' };
+      req.session.flash = { type: 'error', text: req.t('race.hay_una_manga_de_esta_carrera_en_marcha_parala') };
       return res.redirect(back);
     }
 

@@ -84,6 +84,16 @@
     "tagline": "Scalextric race management",
     "title": "Slot Timer Pro"
   },
+  "auth": {
+    "wrong_password": "Contraseña incorrecta."
+  },
+  "car": {
+    "el_modelo_es_requerido": "Model is required",
+    "error_actualizando_coche": "Error updating car",
+    "error_creando_coche": "Error creating car",
+    "la_categoria_es_requerida": "Category is required",
+    "la_marca_es_requerida": "Brand is required"
+  },
   "cars": {
     "anade_tu_primer_coche_al_catalogo": "Add your first car to the catalog.",
     "buscar_marca_modelo_categoria": "Search brand, model, category…",
@@ -105,6 +115,9 @@
     "todo_al_dia": "All up to date",
     "vuelca_los_cambios_del_a_href_teams_catalogo_de": "Pushes <a href=\"/teams\">team-catalog</a> changes (drivers and country) into races that <b>have not started any heat yet</b>, without going through “Edit heat group”. Matches teams by name and makes the roster <b>identical to the catalog</b>: adds and removes drivers. Does not touch the grid or add/remove teams."
   },
+  "catalogsync": {
+    "no_has_seleccionado_ninguna_carrera": "No race selected."
+  },
   "categories": {
     "categorias_de_carrera": "Race categories",
     "crea_categorias_para_agrupar_coches_por_nivel": "Create categories to group cars by level.",
@@ -112,6 +125,11 @@
     "crear_primera_categoria": "Create first category",
     "eliminar_categoria": "Delete category?",
     "sin_categorias": "No categories"
+  },
+  "category": {
+    "el_nombre_es_requerido": "Category name is required",
+    "error_actualizando_categoria": "Error updating category",
+    "error_creando_categoria": "Error creating category"
   },
   "cert": {
     "ajustes_seguridad_cifrado_y_credenciales": "Settings → Security → Encryption & credentials → Install a certificate → CA certificate.",
@@ -480,6 +498,7 @@
     "estado": "Status",
     "estado_de_puertos_serie": "Serial port status",
     "exportar_qr": "Export QR",
+    "fichero_vacio_o_sin_filas_validas": "Empty file or no valid rows",
     "guardar_cambios": "Save changes",
     "historial_de_cambios": "Change log",
     "historial_de_versiones": "Version history",
@@ -616,6 +635,14 @@
     "participantes_de_pole": "Pole participants",
     "si_con_sesion_de_clasificacion": "Yes, with qualifying session"
   },
+  "control": {
+    "al_90_del_maximo": "At 90% of max",
+    "limites": "Limits: ",
+    "max": "max",
+    "max_turnos": "max stints",
+    "min": "min",
+    "sin_limites_configurados": "No limits configured"
+  },
   "database": {
     "al_subirla_no_cambia_nada_todavia_queda": "Uploading changes nothing yet: it stays pending.",
     "antes_se_guarda_sola_una_copia_de_los_datos": "The current data is backed up automatically first, in case you need to undo.",
@@ -624,10 +651,15 @@
     "cancelar_importacion": "Cancel import",
     "cancelar_la_importacion_pendiente_no_se_aplicara": "Cancel the pending import? It will not be applied.",
     "carrera_a_exportar": "Race to export",
+    "copia_cargada_cierra_pitwall_por_completo_y": "Backup uploaded. Fully close PitWall and reopen it to apply it — until then you still see the current data. The current data is backed up automatically before applying it.",
     "copia_de_seguridad": "Backup",
     "descarga_un_archivo_db_con_todos_los_datos": "Downloads a .db file with all your data: races, teams, drivers, circuits and settings. Use it to move to another PC or as a backup. Safe to run even during a race.",
     "descargar_copia": "Download backup",
+    "el_archivo_no_es_una_base_de_datos_sqlite_valida": "The file is not a valid SQLite database.",
+    "el_archivo_no_es_una_carrera_exportada_de": "The file is not an exported PitWall race, or it is damaged.",
+    "el_archivo_viene_de_una_version_mas_nueva_de": "The file comes from a newer PitWall version. Update this PC and try again.",
     "en_curso": "running",
+    "esa_carrera_no_existe": "That race does not exist.",
     "esto_reemplazara_todos_los_datos_actuales_la": "This will replace ALL current data the next time you open PitWall. Continue?",
     "exp_imp_carrera": "Export / import race",
     "exportar": "Export",
@@ -637,15 +669,25 @@
     "genera_un_archivo_pwrace_con_todo_equipos": "Creates a .pwrace file with everything: teams, drivers, heats, laps, shifts, tires, inspections and pole.",
     "gestion_de_base_de_datos": "Database management",
     "hay_una_copia_pendiente_de_aplicar": "An import is pending",
+    "hay_una_manga_en_marcha_exporta_la_carrera": "A heat is running: export the race when it ends.",
+    "hay_una_manga_en_marcha_importa_la_carrera": "A heat is running: import the race when it ends.",
+    "importacion_pendiente_cancelada": "Pending import cancelled.",
     "importar_carrera": "Import race",
     "importar_copia": "Import backup",
+    "la_carrera_tiene_una_manga_sin_cerrar_cierrala": "The race has an unclosed heat. Close it (or cancel it in Diagnostics) before exporting.",
     "lo_que_hay_ahora_mismo_en_la_base_de_datos_de": "What is in this PC's database right now.",
     "manga_sin_cerrar": "unclosed heat",
+    "no_habia_ninguna_importacion_pendiente": "There was no pending import.",
+    "no_se_pudo_exportar_la_carrera": "Could not export the race.",
+    "no_se_pudo_subir_el_archivo": "Could not upload the file: ",
+    "no_se_pudo_validar_el_archivo": "Could not validate the file.",
     "para_llevarte_una_carrera_a_otro_pc_por_ejemplo": "To take one race to another PC (e.g. one you ran at another club) without touching the rest of the data.",
     "restaurar_copia": "Restore backup",
     "resumen": "Summary",
     "se_anade_como_carrera_nueva_y_se_aplica_al": "Added as a new race, instantly; your races are not touched. If its circuit does not exist here, it is created.",
     "se_aplica_al_cerrar_pitwall_por_completo_y": "It is applied when you fully close and reopen PitWall.",
+    "selecciona_un_archivo_db": "Select a .db file.",
+    "selecciona_un_archivo_pwrace": "Select a .pwrace file.",
     "subir_copia": "Upload backup",
     "sustituir_todos_los_datos_de_este_pc_por_los_de": "Replace all data on this PC with a backup.",
     "sustituye_todos_los_datos_de_este_pc_por_los_de": "Replaces ALL data on this PC with a PitWall .db file (from this or another install).",
@@ -673,6 +715,8 @@
     "control_puede_conectarse": "Control can connect",
     "controla_si_pitwall_control_puede_conectarse_a": "Controls whether PitWall Control can connect to this Manager over the local network to send us information.",
     "cuando_control_se_conecta_desde_otro": "When Control connects from another device on the network, it has to enter this PIN.",
+    "ecosystem_connection_disabled": "Conexión ecosistema desactivada.",
+    "ecosystem_connection_enabled": "Conexión ecosistema activada.",
     "importar_tanda": "Import round",
     "permitir_que_pitwall_control_se_conecte": "Allow PitWall Control to connect",
     "pin_de_emparejamiento": "Pairing PIN",
@@ -723,6 +767,9 @@
   },
   "events": {
     "mostrar_fichajes_de_piloto_antes_del_go_rutina": "Show driver check-ins before GO (routine start-up)"
+  },
+  "exportguard": {
+    "no_se_puede_exportar_a_excel_mientras_hay_una": "Cannot export to Excel while a heat is running. Stop the heat or wait until the race finishes, then try again."
   },
   "form": {
     "anadir_descanso_dsc": "Add rest (DSC)",
@@ -1122,6 +1169,7 @@
     "esta_carrera_no_lleva_control_de_neumaticos": "This race has no tyre control",
     "esta_pagina_se_activara_automaticamente_cuando": "This page activates automatically when an endurance race with tyre control starts.",
     "fotos_de_verificacion": "Verification photos",
+    "hay_una_manga_de_esta_carrera_en_marcha_parala": "A heat of this race is running. Stop it before changing the status.",
     "kiosco_carrera_activa": "Kiosk (active race)",
     "la_dotacion_de_neumaticos_por_equipo_se_fija_al": "Tyre allowance per team is set when creating an endurance race (0 = no control).",
     "lane": "Lane",
@@ -1282,6 +1330,17 @@
     "resultados_del_entreno": "Training results",
     "todos_los_entrenos": "All sessions"
   },
+  "session": {
+    "delta_vs_media_de_carril_s": "Δ Delta vs lane avg (s)",
+    "fecha": "Date",
+    "no_se_puede_repetir_hay_otra_manga_en_marcha": "Cannot repeat: another heat is currently running.",
+    "por_carril": "Per lane",
+    "puntos": "Points",
+    "tiempo_absoluto_s": "⏱ Absolute time (s)",
+    "total_vueltas": "Total laps",
+    "vuelta_media": "Avg lap",
+    "vuelta_rapida": "Fastest"
+  },
   "settings": {
     "activar_con_esta_contrasena": "Enable with this password",
     "anade_el_subdominio_p_ej_directo_miclub_com": "add the subdomain (e.g. live.myclub.com) pointing at",
@@ -1393,12 +1452,15 @@
     "se_guarda_al_momento_sin_tocar_la_conexion_del": "Saved instantly, without touching the timing connection.",
     "seguimiento_online": "Online tracking",
     "seguridad": "Security",
+    "settings_applied_source": "Configuración aplicada · Fuente: ",
     "silencio_ms_entre_bytes_que_separa_dos_tramas": "Silence (ms) between bytes that separates two frames. Default 75. Lower it if your DS chains frames fast.",
+    "simulation": "Simulación",
     "sin_conexion": "Not connected",
     "sin_el_el_navegador_avisa_una_vez_conexion_no": "Without it the browser warns once (“not private → proceed”).",
     "sin_interfaces_de_red_detectadas": "No network interfaces detected.",
     "solo_este_equipo_localhost_y_las_ips_de_la": "Only this machine (localhost) and the listed IPs. The mobile app and Infolap keep receiving live laps.",
     "tcp_emulador_puente": "TCP (emulator / bridge)",
+    "the_two_passwords_do_not_match": "Las dos contraseñas no coinciden.",
     "tictac_conexion": "Connection",
     "tictac_conexion_serie": "Serial port (emulator or bridge)",
     "tictac_conexion_usb": "USB (automatic)",
@@ -1602,6 +1664,9 @@
     "selecciona_un_equipo_de_la_izquierda_y_pulsa_un": "Select a team on the left and click a lane or rest (or drag it). Click an assigned one to free it.",
     "si_hay_menos_participantes_que_carriles_que": "If there are fewer participants than lanes, what should happen with the free lanes?",
     "sobran_los_ultimos": "Leave the last ones free"
+  },
+  "teamcatalog": {
+    "falta_la_columna_nombre_en_la_cabecera": "Missing \"name\" column in header"
   },
   "teams": {
     "b_cabecera_obligatoria_b_columnas_reconocidas": "<b>Header required.</b> Recognized columns (free order): <b>name</b> (required), <b>category</b>, <b>car</b>, <b>country</b> (just the name — flag auto-added), <b>notes</b>, <b>drivers</b> (list separated by \"|\"). Each driver is looked up in the database by name: if it exists, linked to the team; if not, auto-created as bronze and shown in /drivers so you can adjust the category. Accepts \",\" or \";\" as separator. Quote cells that contain commas.",

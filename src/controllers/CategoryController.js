@@ -38,7 +38,7 @@ class CategoryController {
         t: req.t,
         lang,
         category: null,
-        error: lang === 'es' ? 'El nombre es requerido' : 'Category name is required'
+        error: req.t('category.el_nombre_es_requerido')
       });
     }
 
@@ -50,7 +50,7 @@ class CategoryController {
         t: req.t,
         lang,
         category: null,
-        error: err.message || (lang === 'es' ? 'Error creando categoría' : 'Error creating category')
+        error: err.message || (req.t('category.error_creando_categoria'))
       });
     }
   }
@@ -74,7 +74,7 @@ class CategoryController {
         t: req.t,
         lang,
         category,
-        error: lang === 'es' ? 'El nombre es requerido' : 'Category name is required'
+        error: req.t('category.el_nombre_es_requerido')
       });
     }
 
@@ -86,7 +86,7 @@ class CategoryController {
         t: req.t,
         lang,
         category,
-        error: err.message || (lang === 'es' ? 'Error actualizando categoría' : 'Error updating category')
+        error: err.message || (req.t('category.error_actualizando_categoria'))
       });
     }
   }

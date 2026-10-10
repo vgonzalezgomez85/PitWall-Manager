@@ -347,7 +347,7 @@ class ControlController {
     const isEs = (req.query.lang || 'es') === 'es';
     const wb = new ExcelJS.Workbook();
     wb.creator = 'PitWall';
-    const ws = wb.addWorksheet(isEs ? 'Turnos' : 'Shifts');
+    const ws = wb.addWorksheet(req.t('common.turnos_2'));
 
     const COL = { header: 'FF161B22', headerFg: 'FFFFFFFF', border: 'FFD0D7DE',
                   bad: 'FFFDECEC', warn: 'FFFFFBE6', band: 'FFF6F8FA' };
@@ -360,18 +360,18 @@ class ControlController {
 
     ws.mergeCells('A1:G1');
     const titulo = ws.getCell('A1');
-    titulo.value = `${race.name} — ${isEs ? 'Informe de turnos de piloto' : 'Driver shift report'}`;
+    titulo.value = `${race.name} — ${req.t('shifts-report.informe_de_turnos_de_piloto')}`;
     titulo.font = { bold: true, size: 14 };
     ws.getRow(1).height = 22;
 
     ws.mergeCells('A2:G2');
     const sub = ws.getCell('A2');
     const lim = [];
-    if (reglas.minMs)   lim.push(`${isEs ? 'mín' : 'min'} ${fmtHmsFijo(reglas.minMs)}`);
-    if (reglas.maxMs)   lim.push(`${isEs ? 'máx' : 'max'} ${fmtHmsFijo(reglas.maxMs)}`);
-    if (reglas.maxRuns) lim.push(`${isEs ? 'máx turnos' : 'max stints'} ${reglas.maxRuns}`);
-    sub.value = lim.length ? (isEs ? 'Límites: ' : 'Limits: ') + lim.join(' · ')
-                           : (isEs ? 'Sin límites configurados' : 'No limits configured');
+    if (reglas.minMs)   lim.push(`${req.t('control.min')} ${fmtHmsFijo(reglas.minMs)}`);
+    if (reglas.maxMs)   lim.push(`${req.t('control.max')} ${fmtHmsFijo(reglas.maxMs)}`);
+    if (reglas.maxRuns) lim.push(`${req.t('control.max_turnos')} ${reglas.maxRuns}`);
+    sub.value = lim.length ? (req.t('control.limites')) + lim.join(' · ')
+                           : (req.t('control.sin_limites_configurados'));
     sub.font = { italic: true, color: { argb: 'FF6E7681' } };
 
     const cabecera = isEs
@@ -388,11 +388,11 @@ class ControlController {
     });
 
     const etiqueta = (c) => {
-      if (c.overMax)  return isEs ? 'PASADO DE TIEMPO' : 'OVER TIME';
-      if (c.overRuns) return isEs ? 'PASADO DE TURNOS' : 'OVER STINTS';
-      if (c.underMin) return isEs ? 'BAJO MÍNIMO'      : 'UNDER MIN';
-      if (c.nearMax)  return isEs ? 'Al 90% del máximo' : 'At 90% of max';
-      if (c.nearRuns) return isEs ? 'Último turno'      : 'Last stint';
+      if (c.overMax)  return req.t('shifts-report.pasado_de_tiempo');
+      if (c.overRuns) return req.t('shifts-report.pasado_de_turnos');
+      if (c.underMin) return req.t('shifts-report.bajo_minimo');
+      if (c.nearMax)  return req.t('control.al_90_del_maximo');
+      if (c.nearRuns) return req.t('common.ultimo_turno');
       return 'OK';
     };
 

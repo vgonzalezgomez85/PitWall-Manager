@@ -43,7 +43,7 @@ const AuthController = {
     if (!ok) {
       const error = lockedMs
         ? (es ? `Demasiados intentos. Espera ${Math.ceil(lockedMs / 1000)} s.` : `Too many attempts. Wait ${Math.ceil(lockedMs / 1000)} s.`)
-        : (es ? 'Contraseña incorrecta.' : 'Wrong password.');
+        : (req.t('auth.wrong_password'));
       return render(req, res, { error, status: 401 });
     }
     // Sesión nueva al entrar (no se reutiliza un id que existía sin autenticar).

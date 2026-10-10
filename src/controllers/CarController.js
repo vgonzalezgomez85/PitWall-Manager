@@ -55,7 +55,7 @@ class CarController {
         car: null,
         categories,
         brands: BRANDS,
-        error: lang === 'es' ? 'La marca es requerida' : 'Brand is required'
+        error: req.t('car.la_marca_es_requerida')
       });
     }
 
@@ -66,7 +66,7 @@ class CarController {
         car: null,
         categories,
         brands: BRANDS,
-        error: lang === 'es' ? 'El modelo es requerido' : 'Model is required'
+        error: req.t('car.el_modelo_es_requerido')
       });
     }
 
@@ -77,7 +77,7 @@ class CarController {
         car: null,
         categories,
         brands: BRANDS,
-        error: lang === 'es' ? 'La categoría es requerida' : 'Category is required'
+        error: req.t('car.la_categoria_es_requerida')
       });
     }
 
@@ -92,7 +92,7 @@ class CarController {
         car: null,
         categories,
         brands: BRANDS,
-        error: err.message || (lang === 'es' ? 'Error creando coche' : 'Error creating car')
+        error: err.message || (req.t('car.error_creando_coche'))
       });
     }
   }
@@ -122,7 +122,7 @@ class CarController {
         car,
         categories,
         brands: BRANDS,
-        error: lang === 'es' ? 'La marca es requerida' : 'Brand is required'
+        error: req.t('car.la_marca_es_requerida')
       });
     }
 
@@ -133,7 +133,7 @@ class CarController {
         car,
         categories,
         brands: BRANDS,
-        error: lang === 'es' ? 'El modelo es requerido' : 'Model is required'
+        error: req.t('car.el_modelo_es_requerido')
       });
     }
 
@@ -144,7 +144,7 @@ class CarController {
         car,
         categories,
         brands: BRANDS,
-        error: lang === 'es' ? 'La categoría es requerida' : 'Category is required'
+        error: req.t('car.la_categoria_es_requerida')
       });
     }
 
@@ -159,7 +159,7 @@ class CarController {
         car,
         categories,
         brands: BRANDS,
-        error: err.message || (lang === 'es' ? 'Error actualizando coche' : 'Error updating car')
+        error: err.message || (req.t('car.error_actualizando_coche'))
       });
     }
   }
@@ -227,7 +227,7 @@ class CarController {
     const lang = req.session?.lang || 'es';
     const { rows, csv_content } = CarController._parseCarsCsv(req.body.csv_content || '');
     if (rows.length === 0) {
-      req.session.flash = { type: 'error', text: lang === 'es' ? 'Fichero vacío o sin filas válidas' : 'Empty file or no valid rows' };
+      req.session.flash = { type: 'error', text: req.t('common.fichero_vacio_o_sin_filas_validas') };
       return res.redirect('/cars');
     }
     const stats = {
@@ -307,7 +307,7 @@ class CarController {
     if (skipped > 0) parts.push(lang === 'es' ? `${skipped} omitidos`             : `${skipped} skipped`);
     req.session.flash = {
       type: (created + updated) > 0 ? 'success' : 'error',
-      text: parts.join(' · ') || (lang === 'es' ? 'Sin cambios' : 'No changes'),
+      text: parts.join(' · ') || (req.t('client.settings.sin_cambios')),
     };
     res.redirect('/cars');
   }
