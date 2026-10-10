@@ -1,4 +1,4 @@
-<%- include('../partials/header', { lang, pageTitle: (lang === 'es' ? 'Histórico de turnos' : 'Shifts history') + ' — ' + race.name }) %>
+<%- include('../partials/header', { lang, pageTitle: (t('race-shifts.historico_de_turnos')) + ' — ' + race.name }) %>
 
 <%
 // fmtHms / shiftCompliance / shiftBadge vienen de app.locals: fuente única de
@@ -25,30 +25,30 @@ const reglas  = { minMs, maxMs, maxRuns, final: true };
 
     <a href="/races/<%= race.id %>" class="vt-back-link">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      <%= lang === 'es' ? 'Volver a la carrera' : 'Back to race' %>
+      <%= t('common.volver_a_la_carrera') %>
     </a>
 
     <div class="vt-head">
       <div class="vt-head__title">
-        <h1><%= lang === 'es' ? 'Histórico de turnos' : 'Shifts history' %></h1>
+        <h1><%= t('race-shifts.historico_de_turnos') %></h1>
         <span class="vt-cnt"><%= race.name %></span>
       </div>
       <div class="vt-head__actions">
         <% if (!notChampionship) { %>
           <a href="/races/<%= race.id %>/shifts/report" class="vt-btn vt-btn--sm">
-            <%= lang === 'es' ? 'Informe final' : 'Final report' %>
+            <%= t('race-shifts.informe_final') %>
           </a>
         <% } %>
         <a href="/control/shifts" class="vt-btn vt-btn--ghost vt-btn--sm">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-          <%= lang === 'es' ? 'Control en vivo' : 'Live control' %>
+          <%= t('race-shifts.control_en_vivo') %>
         </a>
       </div>
     </div>
 
     <% if (notChampionship) { %>
       <div class="vt-empty" style="margin-top:32px">
-        <div class="vt-empty__t"><%= lang === 'es' ? 'No aplica' : 'Not applicable' %></div>
+        <div class="vt-empty__t"><%= t('race-shifts.no_aplica') %></div>
         <p style="color:var(--vt-mute);margin:6px 0 0">
           <%= lang === 'es'
             ? 'Solo las carreras de tipo campeonato registran turnos de pilotos.'
@@ -59,21 +59,21 @@ const reglas  = { minMs, maxMs, maxRuns, final: true };
 
       <!-- Resumen por piloto -->
       <div class="sc-section" style="margin-top:18px">
-        <div class="vt-sec-lbl"><%= lang === 'es' ? 'Tiempo total por piloto' : 'Total time per driver' %></div>
+        <div class="vt-sec-lbl"><%= t('common.tiempo_total_por_piloto') %></div>
         <% if (summary.length === 0) { %>
-          <p style="color:var(--vt-mute)"><%= lang === 'es' ? 'Aún no hay turnos registrados.' : 'No shifts recorded yet.' %></p>
+          <p style="color:var(--vt-mute)"><%= t('common.aun_no_hay_turnos_registrados') %></p>
         <% } else { %>
           <div class="vt-table-card">
             <table class="vt-table">
               <thead>
                 <tr>
-                  <th><%= lang === 'es' ? 'Piloto' : 'Driver' %></th>
-                  <th><%= lang === 'es' ? 'Categoría' : 'Category' %></th>
-                  <th class="is-num"><%= lang === 'es' ? 'Total' : 'Total' %></th>
-                  <% if (minMs > 0) { %><th class="is-num"><%= lang === 'es' ? 'Mín.' : 'Min' %></th><% } %>
-                  <% if (maxMs > 0) { %><th class="is-num"><%= lang === 'es' ? 'Máx.' : 'Max' %></th><% } %>
-                  <th class="is-num"><%= lang === 'es' ? 'Turnos' : 'Shifts' %></th>
-                  <th><%= lang === 'es' ? 'Estado' : 'Status' %></th>
+                  <th><%= t('client.common.piloto') %></th>
+                  <th><%= t('client.common.categoria') %></th>
+                  <th class="is-num"><%= t('client.common.total') %></th>
+                  <% if (minMs > 0) { %><th class="is-num"><%= t('race-shifts.min') %></th><% } %>
+                  <% if (maxMs > 0) { %><th class="is-num"><%= t('race-shifts.max') %></th><% } %>
+                  <th class="is-num"><%= t('common.turnos_2') %></th>
+                  <th><%= t('common.estado') %></th>
                 </tr>
               </thead>
               <tbody>
@@ -92,15 +92,15 @@ const reglas  = { minMs, maxMs, maxRuns, final: true };
                     <td class="is-num is-mono"><%= runs %><% if (maxRuns > 0) { %><span class="is-mute">/<%= maxRuns %></span><% } %></td>
                     <td>
                       <% if (c.overMax) { %>
-                        <span class="vt-badge is-bad"><span class="vt-badge__d"></span><%= lang === 'es' ? 'PASADO' : 'OVER' %></span>
+                        <span class="vt-badge is-bad"><span class="vt-badge__d"></span><%= t('common.pasado') %></span>
                       <% } else if (c.overRuns) { %>
-                        <span class="vt-badge is-bad"><span class="vt-badge__d"></span><%= lang === 'es' ? 'TURNOS' : 'STINTS' %></span>
+                        <span class="vt-badge is-bad"><span class="vt-badge__d"></span><%= t('common.turnos') %></span>
                       <% } else if (c.underMin) { %>
-                        <span class="vt-badge is-bad"><span class="vt-badge__d"></span><%= lang === 'es' ? 'Bajo mín.' : 'Under min' %></span>
+                        <span class="vt-badge is-bad"><span class="vt-badge__d"></span><%= t('common.bajo_min') %></span>
                       <% } else if (c.nearMax) { %>
                         <span class="vt-badge is-warn"><span class="vt-badge__d"></span>90%+</span>
                       <% } else if (c.nearRuns) { %>
-                        <span class="vt-badge is-warn"><span class="vt-badge__d"></span><%= lang === 'es' ? 'Último turno' : 'Last stint' %></span>
+                        <span class="vt-badge is-warn"><span class="vt-badge__d"></span><%= t('common.ultimo_turno') %></span>
                       <% } else { %>
                         <span class="vt-badge is-ok"><span class="vt-badge__d"></span>OK</span>
                       <% } %>
@@ -117,25 +117,25 @@ const reglas  = { minMs, maxMs, maxRuns, final: true };
       <% mangas.forEach(m => { %>
         <div class="sc-section" style="margin-top:28px">
           <div class="vt-sec-lbl">
-            <%= lang === 'es' ? 'Tanda' : 'Round' %> <%= m.tanda_number || '?' %> ·
-            <%= lang === 'es' ? 'Manga' : 'Heat' %> <%= m.number %>
+            <%= t('common.tanda_2') %> <%= m.tanda_number || '?' %> ·
+            <%= t('common.manga') %> <%= m.number %>
             <span style="margin-left:10px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--vt-mute)">— <%= m.status %></span>
           </div>
           <% if (m.shifts.length === 0) { %>
             <p style="color:var(--vt-mute);font-size:13px;margin:0">
-              <%= lang === 'es' ? 'Sin turnos.' : 'No shifts.' %>
+              <%= t('race-shifts.sin_turnos') %>
             </p>
           <% } else { %>
             <div class="vt-table-card">
               <table class="vt-table">
                 <thead>
                   <tr>
-                    <th class="is-num"><%= lang === 'es' ? 'Carril' : 'Lane' %></th>
-                    <th><%= lang === 'es' ? 'Piloto' : 'Driver' %></th>
-                    <th><%= lang === 'es' ? 'Inicio' : 'Start' %></th>
-                    <th><%= lang === 'es' ? 'Fin' : 'End' %></th>
-                    <th class="is-num"><%= lang === 'es' ? 'Duración' : 'Duration' %></th>
-                    <th><%= lang === 'es' ? 'Tipo' : 'Type' %></th>
+                    <th class="is-num"><%= t('client.common.carril') %></th>
+                    <th><%= t('client.common.piloto') %></th>
+                    <th><%= t('race-shifts.inicio') %></th>
+                    <th><%= t('race-shifts.fin') %></th>
+                    <th class="is-num"><%= t('race-shifts.duracion') %></th>
+                    <th><%= t('common.tipo') %></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -144,15 +144,15 @@ const reglas  = { minMs, maxMs, maxRuns, final: true };
                       <td class="is-num is-mono is-name">L<%= s.lane %></td>
                       <td class="is-name"><%= s.driver_name %></td>
                       <td class="is-mute is-mono"><%= fmtMsStamp(s.started_at_ms) %></td>
-                      <td class="is-mute is-mono"><%= s.ended_at_ms ? fmtMsStamp(s.ended_at_ms) : '<span style="color:var(--vt-green)">— ' + (lang === 'es' ? 'abierto' : 'open') + '</span>' %></td>
+                      <td class="is-mute is-mono"><%= s.ended_at_ms ? fmtMsStamp(s.ended_at_ms) : '<span style="color:var(--vt-green)">— ' + (t('race-shifts.abierto')) + '</span>' %></td>
                       <td class="is-num is-mono is-name"><%= fmtTime(s.driving_ms) %></td>
                       <td>
                         <% if (s.pre_armed) { %>
                           <span class="vt-badge is-info"><span class="vt-badge__d"></span>Pre-arme</span>
                         <% } else if (s.ended_at_ms == null) { %>
-                          <span class="vt-badge is-ok is-live"><span class="vt-badge__d"></span><%= lang === 'es' ? 'En curso' : 'Active' %></span>
+                          <span class="vt-badge is-ok is-live"><span class="vt-badge__d"></span><%= t('common.en_curso') %></span>
                         <% } else { %>
-                          <span class="vt-badge is-neutral"><span class="vt-badge__d"></span><%= lang === 'es' ? 'Cerrado' : 'Closed' %></span>
+                          <span class="vt-badge is-neutral"><span class="vt-badge__d"></span><%= t('race-shifts.cerrado') %></span>
                         <% } %>
                       </td>
                     </tr>

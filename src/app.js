@@ -61,6 +61,8 @@ app.locals.appVersion = require('../package.json').version;
 // EJS no pueden hacer require). Fuente única: la regla y el formato dejan de
 // estar copiados en cada plantilla, que es como habían divergido entre sí.
 app.locals.fmtHms          = require('./utils/duration').fmtHms;
+// Locale BCP-47 del idioma activo, para `toLocaleString`/`Intl` en las vistas.
+app.locals.localeFor       = require('./utils/locale').localeFor;
 app.locals.shiftCompliance = require('./utils/shiftCompliance').evaluate;
 app.locals.shiftBadge      = require('./utils/shiftCompliance').badgeClass;
 app.locals.compareLastManga = require('./utils/tieBreak').compareLastManga;

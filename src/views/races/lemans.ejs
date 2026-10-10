@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= race.name %> — <%= lang === 'es' ? 'Clasificación' : 'Standings' %></title>
+  <title><%= race.name %> — <%= t('common.clasificacion') %></title>
   <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
   <link rel="icon" type="image/png" sizes="32x32"  href="/img/favicon-32.png">
   <link rel="icon" type="image/png" sizes="256x256" href="/img/favicon-256.png">
@@ -331,12 +331,12 @@
 
   <header class="lm-header">
     <div class="lm-header__left">
-      <div class="lm-header__title"><%= lang === 'es' ? 'CLASIFICACIÓN GENERAL' : 'OVERALL STANDINGS' %></div>
+      <div class="lm-header__title"><%= t('common.clasificacion_general') %></div>
       <div class="lm-header__race"><%= race.name %></div>
     </div>
     <div class="lm-header__mid">
-      <div class="lm-stat"><span class="lm-stat__lbl"><%= lang === 'es' ? 'Manga' : 'Heat' %></span><span class="lm-stat__val" id="lmManga">—</span></div>
-      <div class="lm-stat"><span class="lm-stat__lbl"><%= lang === 'es' ? 'Restante' : 'Remaining' %></span><span class="lm-stat__val" id="lmTimer">--:--</span></div>
+      <div class="lm-stat"><span class="lm-stat__lbl"><%= t('common.manga') %></span><span class="lm-stat__val" id="lmManga">—</span></div>
+      <div class="lm-stat"><span class="lm-stat__lbl"><%= t('lemans.restante') %></span><span class="lm-stat__val" id="lmTimer">--:--</span></div>
       <div class="lm-state" id="lmState">—</div>
     </div>
     <div class="lm-header__right">
@@ -349,16 +349,16 @@
       <thead>
         <tr>
           <th class="td-pos">P</th>
-          <th class="td-bar" style="width:42px"><%= lang === 'es' ? 'Car.' : 'Ln' %></th>
-          <th class="td-car"><%= lang === 'es' ? 'Coche' : 'Car' %></th>
-          <th><%= lang === 'es' ? 'Equipo / Piloto activo' : 'Team / Active driver' %></th>
-          <th style="width:80px"><%= lang === 'es' ? 'Categoría' : 'Category' %></th>
-          <th class="th-r" style="width:74px" title="<%= lang === 'es' ? 'Vueltas proyectadas' : 'Projected laps' %>"><%= lang === 'es' ? 'V.Proy' : 'Proj' %></th>
-          <th class="th-r" style="width:70px"><%= lang === 'es' ? 'Vueltas' : 'Laps' %></th>
+          <th class="td-bar" style="width:42px"><%= t('lemans.car') %></th>
+          <th class="td-car"><%= t('common.coche') %></th>
+          <th><%= t('lemans.equipo_piloto_activo') %></th>
+          <th style="width:80px"><%= t('client.common.categoria') %></th>
+          <th class="th-r" style="width:74px" title="<%= t('lemans.vueltas_proyectadas') %>"><%= t('lemans.v_proy') %></th>
+          <th class="th-r" style="width:70px"><%= t('client.common.vueltas') %></th>
           <th class="th-r" style="width:80px">Gap</th>
-          <th class="th-r" style="width:78px"><%= lang === 'es' ? 'Media' : 'Avg' %></th>
-          <th class="th-r" style="width:90px"><%= lang === 'es' ? 'Mejor' : 'Best' %></th>
-          <th class="th-r" style="width:82px" title="<%= lang === 'es' ? 'Media necesaria para subir' : 'Avg needed to climb' %>"><%= lang === 'es' ? 'P/Subir' : 'To climb' %></th>
+          <th class="th-r" style="width:78px"><%= t('client.common.media') %></th>
+          <th class="th-r" style="width:90px"><%= t('client.common.mejor') %></th>
+          <th class="th-r" style="width:82px" title="<%= t('lemans.media_necesaria_para_subir') %>"><%= t('common.p_subir') %></th>
         </tr>
       </thead>
       <tbody id="lmBody"></tbody>

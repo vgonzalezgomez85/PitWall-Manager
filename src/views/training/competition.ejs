@@ -1,11 +1,11 @@
-<%- include('../partials/header', { lang, pageTitle: lang === 'es' ? 'Entrenamiento de competición' : 'Competition training' }) %>
+<%- include('../partials/header', { lang, pageTitle: t('competition.entrenamiento_de_competicion') }) %>
 
 <div class="vt-page">
   <div class="vt-wrap vt-wrap--narrow">
 
     <a href="/training" class="vt-back-link">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      <%= lang === 'es' ? 'Volver a entrenamiento' : 'Back to training' %>
+      <%= t('competition.volver_a_entrenamiento') %>
     </a>
 
     <div class="vt-head" style="align-items:flex-start;justify-content:flex-start;gap:16px;flex-wrap:nowrap">
@@ -13,14 +13,14 @@
         <svg viewBox="0 0 24 24"><path d="M7 4h10v4a5 5 0 0 1-10 0z"/><path d="M7 5H4.5A1.5 1.5 0 0 0 3 6.5 3.5 3.5 0 0 0 6.5 10M17 5h2.5A1.5 1.5 0 0 1 21 6.5 3.5 3.5 0 0 1 17.5 10"/><path d="M12 13v3M9 20h6M9.5 20l.4-4h4.2l.4 4"/></svg>
       </div>
       <div>
-        <h1><%= lang === 'es' ? 'Entrenamiento de competición' : 'Competition training' %></h1>
+        <h1><%= t('competition.entrenamiento_de_competicion') %></h1>
         <p class="vt-lead">
           <%= lang === 'es'
             ? 'Asigna participantes a los carriles y prepara una sesión por tandas con rotación automática.'
             : 'Assign participants to lanes and prepare a session by heats with auto rotation.' %>
         </p>
         <a href="/training/competition/results" style="font-size:.85rem;color:#58a6ff">
-          <%= lang === 'es' ? 'Ver entrenos guardados ›' : 'See saved sessions ›' %>
+          <%= t('competition.ver_entrenos_guardados') %>
         </a>
       </div>
     </div>
@@ -32,9 +32,9 @@
         <div class="vt-card">
           <div class="vt-card-h">
             <svg viewBox="0 0 24 24"><path d="M6 18a3 3 0 0 1 0-6h9a3 3 0 0 0 0-6H7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="18" r="1.4" fill="currentColor"/><circle cx="6" cy="6" r="1.4" fill="currentColor"/></svg>
-            <span class="tc-step">1</span><%= lang === 'es' ? 'Carriles' : 'Lanes' %>
+            <span class="tc-step">1</span><%= t('common.carriles') %>
             <span class="vt-badge is-info" style="margin-left:auto;white-space:nowrap">
-              <span class="vt-badge__d"></span> <%= serialTotal %> <%= lang === 'es' ? 'carriles (de los DS)' : 'lanes (from DS)' %>
+              <span class="vt-badge__d"></span> <%= serialTotal %> <%= t('competition.carriles_de_los_ds') %>
             </span>
           </div>
           <p class="vt-hint" style="margin-top:8px">
@@ -49,19 +49,19 @@
         <div class="vt-card">
           <div class="vt-card-h">
             <svg viewBox="0 0 24 24"><path d="M6 18a3 3 0 0 1 0-6h9a3 3 0 0 0 0-6H7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="18" r="1.4" fill="currentColor"/><circle cx="6" cy="6" r="1.4" fill="currentColor"/></svg>
-            <span class="tc-step">1</span><%= lang === 'es' ? 'Circuito' : 'Circuit' %>
+            <span class="tc-step">1</span><%= t('client.common.circuito') %>
           </div>
           <div class="vt-fields vt-fields--2" style="align-items:end">
             <div class="vt-field" style="grid-column:1 / -1">
-              <label><%= lang === 'es' ? 'Selecciona el circuito de la sesión' : 'Select the session circuit' %></label>
+              <label><%= t('competition.selecciona_el_circuito_de_la_sesion') %></label>
               <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
                 <div class="vt-selw" style="flex:1;min-width:240px">
                   <select name="circuit_id" id="circuitSelect">
-                    <option value=""><%= lang === 'es' ? '— Por defecto (de ajustes) —' : '— Default (from settings) —' %></option>
+                    <option value=""><%= t('competition.por_defecto_de_ajustes') %></option>
                     <% (circuits || []).forEach(c => { %>
                       <option value="<%= c.id %>" data-lanes="<%= c.lanes_count %>" data-min-ms="<%= c.min_lap_ms %>"
                         <%= defaultCircuitId === c.id ? 'selected' : '' %>>
-                        <%= c.name %> (<%= c.lanes_count %> <%= lang === 'es' ? 'carriles' : 'lanes' %>)
+                        <%= c.name %> (<%= c.lanes_count %> <%= t('client.common.carriles') %>)
                       </option>
                     <% }) %>
                   </select>
@@ -83,7 +83,7 @@
       <div class="vt-card">
         <div class="vt-card-h">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9.5" r="2.3"/><path d="M3 20v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1"/><path d="M16 14a4 4 0 0 1 5 4v1"/></svg>
-          <span class="tc-step">2</span><%= lang === 'es' ? 'Participantes' : 'Participants' %>
+          <span class="tc-step">2</span><%= t('common.participantes') %>
           <span class="vt-cnt" id="partCount" style="margin-left:auto">0 / 0</span>
         </div>
 
@@ -93,8 +93,8 @@
               <label class="vt-search tc-cat__search">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
                 <input type="search" id="catalogSearch" autocomplete="off"
-                       placeholder="<%= lang === 'es' ? 'Buscar en el catálogo de equipos…' : 'Search the team catalog…' %>"
-                       aria-label="<%= lang === 'es' ? 'Buscar en el catálogo de equipos' : 'Search the team catalog' %>">
+                       placeholder="<%= t('competition.buscar_en_el_catalogo_de_equipos_2') %>"
+                       aria-label="<%= t('competition.buscar_en_el_catalogo_de_equipos') %>">
               </label>
               <span class="vt-hint" id="catalogCount"></span>
             </div>
@@ -109,19 +109,19 @@
                   <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><%= ct.name %></span>
                 </button>
               <% }) %>
-              <p class="vt-hint tc-cat__none" id="catalogNone" hidden><%= lang === 'es' ? 'Ningún equipo coincide.' : 'No team matches.' %></p>
+              <p class="vt-hint tc-cat__none" id="catalogNone" hidden><%= t('competition.ningun_equipo_coincide') %></p>
             </div>
           </div>
         <% } %>
 
         <div class="tc-tools">
-          <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="shuffleBtn" title="<%= lang === 'es' ? 'Reparte los participantes en carriles al azar' : 'Randomly assign participants to lanes' %>">
+          <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="shuffleBtn" title="<%= t('competition.reparte_los_participantes_en_carriles_al_azar') %>">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>
-            <%= lang === 'es' ? 'Sortear carriles' : 'Shuffle lanes' %>
+            <%= t('competition.sortear_carriles') %>
           </button>
           <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="clearAllBtn">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
-            <%= lang === 'es' ? 'Vaciar todo' : 'Clear all' %>
+            <%= t('competition.vaciar_todo') %>
           </button>
           <span class="tc-dup" id="dupWarn" hidden></span>
         </div>
@@ -130,7 +130,7 @@
 
         <button type="button" id="addPilotBtn" class="vt-btn vt-btn--ghost" style="margin-top:6px">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-          <%= lang === 'es' ? 'Añadir piloto' : 'Add pilot' %>
+          <%= t('competition.anadir_piloto') %>
         </button>
 
         <p class="vt-hint" style="margin-top:10px">
@@ -144,8 +144,8 @@
       <div class="vt-card">
         <div class="vt-card-h">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h11M4 12h16M4 17h8"/><path d="M17 5l3 2-3 2M14 15l3 2-3 2"/></svg>
-          <span class="tc-step">3</span><%= lang === 'es' ? 'Secuencia de cambio de carril' : 'Lane rotation sequence' %>
-          <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="seqResetBtn" style="margin-left:auto"><%= lang === 'es' ? 'Orden natural' : 'Natural order' %></button>
+          <span class="tc-step">3</span><%= t('competition.secuencia_de_cambio_de_carril') %>
+          <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="seqResetBtn" style="margin-left:auto"><%= t('competition.orden_natural') %></button>
         </div>
         <p class="vt-hint" style="margin:6px 0 12px">
           <%= lang === 'es'
@@ -163,7 +163,7 @@
         <div class="tc-submit__sum" id="tcSummary" aria-live="polite"></div>
         <button type="submit" class="vt-btn vt-btn--primary vt-btn--lg" id="startBtn" disabled>
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-          <%= lang === 'es' ? 'Preparar sesión' : 'Prepare session' %>
+          <%= t('competition.preparar_sesion') %>
         </button>
       </div>
 
@@ -536,6 +536,7 @@ document.getElementById('seqResetBtn').addEventListener('click', () => { laneSeq
     // El Pt sigue al circuito, pero sin pisar lo que haya tecleado el usuario.
     const minMs = parseInt(sel.options[sel.selectedIndex]?.dataset?.minMs || '0', 10);
     if (minLapInput && !minLapInput.dataset.touched) {
+      // Punto, NO coma: <input type="number"> exige el formato inglés en `value`.
       minLapInput.value = minMs > 0 ? (minMs / 1000).toFixed(2) : '';
     }
     renderSlots();

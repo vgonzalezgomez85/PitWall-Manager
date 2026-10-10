@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>
-    <%= lang === 'es' ? 'Vueltas Rápidas' : 'Fastest Laps' %> — <%= race.name %>
+    <%= t('live-panel-fastest.vueltas_rapidas') %> — <%= race.name %>
   </title>
   <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
   <link rel="stylesheet" href="/css/fonts.css">
@@ -101,10 +101,10 @@
 
   <header class="pf-header">
     <div>
-      <div class="pf-title">⚡ <%= lang === 'es' ? 'Vueltas Rápidas por Pista' : 'Fastest Laps by Lane' %></div>
+      <div class="pf-title">⚡ <%= t('live-panel-fastest.vueltas_rapidas_por_pista') %></div>
       <div class="pf-manga">
-        <% if (tanda) { %><%= lang === 'es' ? 'Tanda' : 'Round' %> <%= tanda.number %> · <% } %>
-        <%= lang === 'es' ? 'Manga' : 'Heat' %> #<%= manga.number %>
+        <% if (tanda) { %><%= t('common.tanda_2') %> <%= tanda.number %> · <% } %>
+        <%= t('common.manga') %> #<%= manga.number %>
       </div>
     </div>
     <span class="pf-race"><%= race.name %></span>

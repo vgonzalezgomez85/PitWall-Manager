@@ -1,4 +1,4 @@
-<%- include('../partials/header', { pageTitle: lang === 'es' ? 'Editar piloto' : 'Edit driver' }) %>
+<%- include('../partials/header', { pageTitle: t('edit.editar_piloto') }) %>
 
 <%
 const CATS = [
@@ -16,9 +16,9 @@ const nameVal = body.name ?? profile.name;
 
     <a href="/drivers" class="vt-back-link">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      <%= lang === 'es' ? 'Volver a pilotos' : 'Back to drivers' %>
+      <%= t('common.volver_a_pilotos') %>
     </a>
-    <h1><%= lang === 'es' ? 'Editar piloto' : 'Edit driver' %></h1>
+    <h1><%= t('edit.editar_piloto') %></h1>
 
     <% if (errors.length > 0) { %>
       <div class="vt-alert" style="margin-top:16px">
@@ -29,12 +29,12 @@ const nameVal = body.name ?? profile.name;
     <form action="/drivers/<%= profile.id %>" method="POST" class="vt-panel">
 
       <div class="vt-form-group">
-        <label class="vt-form-group__label" for="name"><%= lang === 'es' ? 'Nombre del piloto' : 'Driver name' %></label>
+        <label class="vt-form-group__label" for="name"><%= t('common.nombre_del_piloto') %></label>
         <input class="vt-inp" type="text" id="name" name="name" value="<%= nameVal %>" autocomplete="off" autofocus required>
       </div>
 
       <div class="vt-form-group">
-        <label class="vt-form-group__label"><%= lang === 'es' ? 'Categoría' : 'Category' %></label>
+        <label class="vt-form-group__label"><%= t('client.common.categoria') %></label>
         <div class="vt-opts vt-opts--4">
           <% CATS.forEach(c => { %>
             <label class="vt-opt vt-opt--compact <%= selectedCat === c.key ? 'is-sel' : '' %>" data-cat="<%= c.key %>">
@@ -50,8 +50,8 @@ const nameVal = body.name ?? profile.name;
       </div>
 
       <div class="vt-form-actions">
-        <a href="/drivers" class="vt-btn vt-btn--ghost"><%= lang === 'es' ? 'Cancelar' : 'Cancel' %></a>
-        <button type="submit" class="vt-btn vt-btn--primary"><%= lang === 'es' ? 'Guardar cambios' : 'Save changes' %></button>
+        <a href="/drivers" class="vt-btn vt-btn--ghost"><%= t('client.common.cancelar') %></a>
+        <button type="submit" class="vt-btn vt-btn--primary"><%= t('common.guardar_cambios') %></button>
       </div>
     </form>
   </div>

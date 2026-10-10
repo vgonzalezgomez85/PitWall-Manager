@@ -1,4 +1,4 @@
-<%- include('../partials/header', { pageTitle: lang === 'es' ? 'Nueva Tanda' : 'New Heat Group' }) %>
+<%- include('../partials/header', { pageTitle: t('tanda-new.nueva_tanda') }) %>
 <%
   // Con varios circuitos ensanchamos la página para que las columnas de
   // asignación (una por circuito) quepan en fila, como en pole.
@@ -8,7 +8,7 @@
 <div class="container" style="max-width:<%= _pageMax %>px">
 
   <a href="/races/<%= race.id %>" class="back-link">← <%= t('race.back_to_list') %></a>
-  <h1 class="page-title"><%= lang === 'es' ? 'Nueva Tanda' : 'New Heat Group' %></h1>
+  <h1 class="page-title"><%= t('tanda-new.nueva_tanda') %></h1>
   <p class="page-subtitle"><%= race.name %> · <%= t('races.format.' + race.format) %> · <%= laneSequence.length %> <%= t('races.lanes') %></p>
 
   <% if (errors.length > 0) { %>
@@ -61,7 +61,7 @@
   <div class="form-card">
 
     <div class="seq-display" style="margin-bottom:1.75rem">
-      <span class="seq-display__label"><%= lang === 'es' ? 'Secuencia:' : 'Sequence:' %></span>
+      <span class="seq-display__label"><%= t('common.secuencia') %></span>
       <% laneSequence.forEach((lane, i) => { %>
         <% if (lane === 0) { %>
           <span class="seq-display__lane" style="background:#30363d;color:#8b949e;font-size:.6rem;padding:0 .35rem"><%= _dscLabels[i] %></span>
@@ -100,7 +100,7 @@
               // Sub-circuito del DSC + posición dentro de él (para etiqueta DSCx-Cy)
               const _dscCi = slotLane === 0 ? _dscCircuitFor(i) : -1;
               const _dscPos = slotLane === 0 ? ((_dscPerCol[_dscCi] || 0) + 1) : 0;
-              const _dscPrefix = lang === 'es' ? 'DSC' : 'REST';
+              const _dscPrefix = t('client.common.dsc');
               const slotLabel = slotLane > 0
                 ? slotLane
                 : (_numCircuits > 1
@@ -146,14 +146,14 @@
                       categoria: _d.categoria, coche: _d.coche }) %>
               </div>
               <% if (i >= laneSequence.length) { %>
-                <button type="button" class="btn btn--danger btn--sm remove-row" title="<%= lang === 'es' ? 'Eliminar' : 'Remove' %>">✕</button>
+                <button type="button" class="btn btn--danger btn--sm remove-row" title="<%= t('client.common.eliminar') %>">✕</button>
               <% } %>
             </div>
           <% } %>
         </div>
 
         <button type="button" id="addDriver" class="btn btn--ghost btn--sm" style="margin-top:.75rem">
-          + <%= lang === 'es' ? 'Añadir piloto' : 'Add driver' %>
+          + <%= t('client.common.anadir_piloto') %>
         </button>
 
       <% } else { %>
@@ -167,8 +167,8 @@
           <!-- Left: catalog -->
           <div style="flex:0 0 220px;min-width:180px">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">
-              <span class="form-label" style="margin:0"><%= lang === 'es' ? 'Equipos disponibles' : 'Available teams' %></span>
-              <button type="button" id="btnNewTeamModal" class="btn btn--ghost btn--sm">+ <%= lang === 'es' ? 'Nuevo' : 'New' %></button>
+              <span class="form-label" style="margin:0"><%= t('tanda-new.equipos_disponibles') %></span>
+              <button type="button" id="btnNewTeamModal" class="btn btn--ghost btn--sm">+ <%= t('common.nuevo') %></button>
             </div>
             <div id="catalogList" style="display:flex;flex-direction:column;gap:.4rem;max-height:calc(100vh - 210px);min-height:480px;overflow-y:auto;padding-right:2px">
               <% teamsCatalog.forEach(ct => { %>
@@ -187,17 +187,17 @@
                   <% } %>
                   <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><%= ct.name %></span>
                   <% if (race.has_categoria && ct.categoria) { %>
-                    <span style="font-size:.7rem;color:#58a6ff;flex-shrink:0" title="<%= lang === 'es' ? 'Categoría del catálogo' : 'Catalog category' %>"><%= ct.categoria %></span>
+                    <span style="font-size:.7rem;color:#58a6ff;flex-shrink:0" title="<%= t('tanda-new.categoria_del_catalogo') %>"><%= ct.categoria %></span>
                   <% } %>
                   <% if (race.has_coche && ct.coche) { %>
-                    <span style="font-size:.7rem;color:#8b949e;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;max-width:6.5rem" title="<%= lang === 'es' ? 'Coche del catálogo' : 'Catalog car' %>"><%= ct.coche %></span>
+                    <span style="font-size:.7rem;color:#8b949e;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;max-width:6.5rem" title="<%= t('tanda-new.coche_del_catalogo') %>"><%= ct.coche %></span>
                   <% } %>
                   <span style="font-size:.75rem;color:#8b949e;flex-shrink:0"><%= ct.members.length %>👤</span>
                 </div>
               <% }) %>
               <% if (teamsCatalog.length === 0) { %>
                 <p id="emptyCatalogMsg" class="form-hint" style="text-align:center;padding:.75rem 0">
-                  <%= lang === 'es' ? 'No hay equipos. Crea uno.' : 'No teams. Create one.' %>
+                  <%= t('tanda-new.no_hay_equipos_crea_uno') %>
                 </p>
               <% } %>
             </div>
@@ -209,7 +209,7 @@
                (orden de secuencia), independiente de esta disposición visual. -->
           <div style="flex:1;min-width:280px">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;flex-wrap:wrap;gap:.5rem">
-              <span class="form-label" style="margin:0"><%= lang === 'es' ? 'Asignación de carriles' : 'Lane assignment' %></span>
+              <span class="form-label" style="margin:0"><%= t('client.common.asignacion_de_carriles') %></span>
             </div>
             <div id="restInfoTeams" class="alert" style="display:none;background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.25);color:#58a6ff;margin-bottom:.75rem;font-size:.85rem">
             </div>
@@ -233,19 +233,19 @@
               <% for (let ci = 0; ci < _numCircuits; ci++) { %>
                 <div class="tanda-col" data-ci="<%= ci %>">
                   <% if (_numCircuits > 1) { %>
-                    <div class="tanda-col__hd"><%= lang === 'es' ? 'Circuito' : 'Circuit' %> <%= ci + 1 %></div>
+                    <div class="tanda-col__hd"><%= t('client.common.circuito') %> <%= ci + 1 %></div>
                   <% } %>
                   <button type="button" class="tanda-addrest" data-ci="<%= ci %>">
-                    💤 <%= lang === 'es' ? '+ descanso' : '+ rest' %>
+                    💤 <%= t('common.descanso') %>
                   </button>
                   <div class="tanda-col__slots" id="col-slots-<%= ci %>">
                     <% const _rTot = _circuitSeqRests[ci].length; %>
                     <% _circuitSeqRests[ci].forEach((seqIdx, r) => {
-                         const _lbl = (lang === 'es' ? 'DSC ' : 'REST ') + (r + 1) + '/' + _rTot
+                         const _lbl = (t('tanda-new.dsc')) + (r + 1) + '/' + _rTot
                                     + (_numCircuits > 1 ? ' · C' + (ci + 1) : '');
                     %>
                       <button type="button" class="tanda-lane-btn tanda-lane-btn--rest" data-rest="<%= _restCtr++ %>" data-ci="<%= ci %>">
-                        <span class="tanda-rest-remove" title="<%= lang === 'es' ? 'Quitar descanso' : 'Remove rest' %>">✕</span>
+                        <span class="tanda-rest-remove" title="<%= t('client.tanda-new.quitar_descanso') %>">✕</span>
                         <span class="tanda-lane-num">💤</span>
                         <span class="tanda-rest-label"><%= _lbl %></span>
                         <span class="tanda-lane-owner"></span>
@@ -272,7 +272,7 @@
 
       <div class="form-group" style="margin-top:1.75rem;padding-top:1.25rem;border-top:1px solid #21262d">
         <span class="form-label" style="margin-bottom:.15rem">
-          <%= lang === 'es' ? 'Carriles sin participante' : 'Empty lanes' %>
+          <%= t('tanda-new.carriles_sin_participante') %>
         </span>
         <p class="form-hint" style="margin:0 0 .7rem">
           <%= lang === 'es'
@@ -282,7 +282,7 @@
         <label style="display:flex;gap:.55rem;align-items:flex-start;margin-bottom:.5rem;cursor:pointer">
           <input type="radio" name="empty_lane_mode" value="fixed" checked style="margin-top:.2rem">
           <span>
-            <strong><%= lang === 'es' ? 'Sobran los últimos' : 'Leave the last ones free' %></strong>
+            <strong><%= t('tanda-new.sobran_los_ultimos') %></strong>
             — <%= lang === 'es'
                  ? 'los carriles de mayor número quedan siempre vacíos; nadie corre por ellos.'
                  : 'the highest-numbered lanes stay empty; nobody runs on them.' %>
@@ -291,7 +291,7 @@
         <label style="display:flex;gap:.55rem;align-items:flex-start;cursor:pointer">
           <input type="radio" name="empty_lane_mode" value="rotate" style="margin-top:.2rem">
           <span>
-            <strong><%= lang === 'es' ? 'El hueco rota' : 'The gap rotates' %></strong>
+            <strong><%= t('tanda-new.el_hueco_rota') %></strong>
             — <%= lang === 'es'
                  ? 'el carril libre va cambiando cada manga para que todos pasen por los mismos carriles.'
                  : 'the free lane changes every heat so everyone runs on the same lanes.' %>
@@ -302,7 +302,7 @@
       <div class="form-actions" style="margin-top:1.5rem">
         <a href="/races/<%= race.id %>" class="btn btn--ghost">← <%= t('wizard.back') %></a>
         <button type="submit" class="btn btn--primary">
-          🏁 <%= lang === 'es' ? 'Crear Tanda' : 'Create Heat Group' %>
+          🏁 <%= t('tanda-new.crear_tanda') %>
         </button>
       </div>
 
@@ -326,8 +326,8 @@ const DRIVER_PH = "<%= t('wizard.driver_name_ph') %>";
 // Campos opcionales por participante (interruptores de la carrera).
 const SHOW_CAT = <%= race.has_categoria ? 'true' : 'false' %>;
 const SHOW_CAR = <%= race.has_coche ? 'true' : 'false' %>;
-const CAT_PH   = "<%= lang === 'es' ? 'Categoría / copa' : 'Category / cup' %>";
-const CAR_PH   = "<%= lang === 'es' ? 'Coche' : 'Car' %>";
+const CAT_PH   = "<%= t('common.categoria_copa') %>";
+const CAR_PH   = "<%= t('common.coche') %>";
 function attrsHtml(prefix) {
   if (!SHOW_CAT && !SHOW_CAR) return '';
   let h = '<div class="participant-attrs">';

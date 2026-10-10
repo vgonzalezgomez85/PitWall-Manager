@@ -11,7 +11,7 @@ function fmtSeconds3(ms) {
 }
 const poleHolderName = entries[0]?.entity_name || '';
 %>
-<%- include('../partials/header', { pageTitle: lang === 'es' ? 'Elección de Carriles' : 'Lane Selection' }) %>
+<%- include('../partials/header', { pageTitle: t('pole-lanes.eleccion_de_carriles') }) %>
 
 <link rel="stylesheet" href="/css/fonts.css">
 
@@ -19,11 +19,11 @@ const poleHolderName = entries[0]?.entity_name || '';
   <div class="pole-bcast-wrap">
 
     <!-- ── Cabecera ──────────────────────────────────────────────────── -->
-    <a href="/races/<%= race.id %>/pole/results" class="pole-back">← <%= lang === 'es' ? 'Volver a resultados' : 'Back to results' %></a>
+    <a href="/races/<%= race.id %>/pole/results" class="pole-back">← <%= t('common.volver_a_resultados') %></a>
 
     <div class="pole-title-row">
       <div class="pole-flag" aria-hidden="true"></div>
-      <h1 class="pole-h1"><%= lang === 'es' ? 'Elección de carril' : 'Lane selection' %></h1>
+      <h1 class="pole-h1"><%= t('pole-lanes.eleccion_de_carril') %></h1>
     </div>
 
     <div class="pole-meta">
@@ -32,12 +32,12 @@ const poleHolderName = entries[0]?.entity_name || '';
       <span>1c–<%= race.lanes_count %>c</span>
       <span class="pole-dot"></span>
       <span class="pole-lane-badge">
-        <%= lang === 'es' ? 'Carriles activos' : 'Active lanes' %>
+        <%= t('pole-lanes.carriles_activos') %>
         <span class="pole-lane-num"><%= activeLanes.length %></span>
       </span>
       <% if (poleHolderName) { %>
         <span class="pole-dot"></span>
-        <span class="pole-meta-pole"><%= lang === 'es' ? 'Pole:' : 'Pole:' %> <b><%= poleHolderName %></b></span>
+        <span class="pole-meta-pole"><%= t('common.pole') %> <b><%= poleHolderName %></b></span>
       <% } %>
     </div>
 
@@ -49,7 +49,7 @@ const poleHolderName = entries[0]?.entity_name || '';
 
     <!-- ── Nº de tandas ───────────────────────────────────────────────── -->
     <div class="pole-tandas-ctrl">
-      <label for="numTandas"><%= lang === 'es' ? 'Nº de tandas' : 'Number of heat groups' %></label>
+      <label for="numTandas"><%= t('pole-lanes.n_de_tandas') %></label>
       <input type="number" id="numTandas" min="1" max="<%= entries.length %>" value="1" inputmode="numeric">
       <span class="pole-tandas-hint">
         <%= lang === 'es'
@@ -63,7 +63,7 @@ const poleHolderName = entries[0]?.entity_name || '';
       <!-- Bolsa de pilotos sin asignar (píldoras, orden de pole) -->
       <div class="pole-pool" id="poolZone">
         <div class="pole-pool__hd">
-          <%= lang === 'es' ? 'Sin asignar' : 'Unassigned' %>
+          <%= t('common.sin_asignar') %>
           <span class="pole-pool__count" id="poolCount"></span>
         </div>
         <div class="pole-pool__pills" id="poolPills"></div>
@@ -76,15 +76,15 @@ const poleHolderName = entries[0]?.entity_name || '';
     <form id="laneForm" action="/races/<%= race.id %>/pole/lanes" method="POST" class="pole-lanes-form">
       <div id="hiddenInputs"></div>
       <div id="formActions" class="pole-lanes-actions">
-        <a href="/races/<%= race.id %>/pole/results" class="pole-btn-edit">← <%= lang === 'es' ? 'Volver' : 'Back' %></a>
+        <a href="/races/<%= race.id %>/pole/results" class="pole-btn-edit">← <%= t('common.volver') %></a>
         <button type="submit" class="pole-btn-confirm" id="confirmBtn">
-          🏁 <span id="confirmLbl"><%= lang === 'es' ? 'Crear la tanda' : 'Create the heat group' %></span>
+          🏁 <span id="confirmLbl"><%= t('pole-lanes.crear_la_tanda') %></span>
         </button>
       </div>
     </form>
 
     <div class="pole-bcast-foot">
-      <%= lang === 'es' ? 'SI POLE · elección de carril en orden de clasificación' : 'Pole order lane selection' %>
+      <%= t('pole-lanes.si_pole_eleccion_de_carril_en_orden_de') %>
     </div>
 
   </div>
@@ -112,12 +112,12 @@ const formActions     = document.getElementById('formActions');
 const confirmBtn      = document.getElementById('confirmBtn');
 const confirmLbl      = document.getElementById('confirmLbl');
 const hiddenInputs    = document.getElementById('hiddenInputs');
-const LBL_CREATE_1    = <%- JSON.stringify(lang === 'es' ? 'Crear la tanda' : 'Create the heat group') %>;
-const LBL_CREATE_N    = <%- JSON.stringify(lang === 'es' ? 'Crear las tandas' : 'Create the groups') %>;
-const T_REST          = <%- JSON.stringify(lang === 'es' ? 'Descanso' : 'Rest') %>;
-const T_ADDREST       = <%- JSON.stringify(lang === 'es' ? '+ descanso' : '+ rest') %>;
-const T_TANDA         = <%- JSON.stringify(lang === 'es' ? 'Tanda' : 'Group') %>;
-const T_CIRCUIT       = <%- JSON.stringify(lang === 'es' ? 'Circuito' : 'Circuit') %>;
+const LBL_CREATE_1    = <%- JSON.stringify(t('pole-lanes.crear_la_tanda')) %>;
+const LBL_CREATE_N    = <%- JSON.stringify(t('pole-lanes.crear_las_tandas')) %>;
+const T_REST          = <%- JSON.stringify(t('client.common.descanso')) %>;
+const T_ADDREST       = <%- JSON.stringify(t('common.descanso')) %>;
+const T_TANDA         = <%- JSON.stringify(t('pole-lanes.tanda')) %>;
+const T_CIRCUIT       = <%- JSON.stringify(t('client.common.circuito')) %>;
 // Carriles agrupados por circuito (caja), en orden NUMÉRICO. Con varios circuitos
 // se rotula cada bloque; con uno solo, no.
 const CIRCUITS      = <%- JSON.stringify(circuits) %>;

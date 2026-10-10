@@ -1,11 +1,11 @@
-<%- include('../partials/header', { lang, pageTitle: lang === 'es' ? 'Entrenamiento' : 'Training' }) %>
+<%- include('../partials/header', { lang, pageTitle: t('common.entrenamiento') }) %>
 
 <div class="vt-page vt-page--training-pick">
   <div class="vt-wrap" style="max-width:920px">
 
     <a href="/" class="vt-back-link">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      <%= lang === 'es' ? 'Inicio' : 'Home' %>
+      <%= t('common.inicio') %>
     </a>
 
     <div class="tr-pick__header">
@@ -17,11 +17,11 @@
           <path d="M16 8l5-5M21 3h-3.5M21 3v3.5"/>
         </svg>
       </div>
-      <h1><%= lang === 'es' ? 'Entrenamiento' : 'Training' %></h1>
-      <p><%= lang === 'es' ? 'Selecciona la modalidad de entrenamiento.' : 'Select the training mode.' %></p>
+      <h1><%= t('common.entrenamiento') %></h1>
+      <p><%= t('training.selecciona_la_modalidad_de_entrenamiento') %></p>
       <p style="margin-top:.4rem">
         <a href="/training/competition/results" style="font-size:.85rem;color:#58a6ff">
-          🏆 <%= lang === 'es' ? 'Ver resultados de entrenos de competición' : 'See competition training results' %>
+          🏆 <%= t('training.ver_resultados_de_entrenos_de_competicion') %>
         </a>
       </p>
     </div>
@@ -37,19 +37,19 @@
             <circle cx="17" cy="18.5" r="1.9"/>
           </svg>
         </div>
-        <h2><%= lang === 'es' ? 'Entrenamiento libre' : 'Free practice' %></h2>
+        <h2><%= t('training.entrenamiento_libre') %></h2>
         <div class="tr-pick__desc">
           <%= lang === 'es'
             ? 'Registra vueltas por carril sin estructura de equipos. Ideal para sesiones abiertas.'
             : 'Record laps per lane without team structure. Ideal for open sessions.' %>
         </div>
         <div class="tr-pick__chips">
-          <span class="tr-pick__chip"><%= lang === 'es' ? 'Sin equipos' : 'No teams' %></span>
-          <span class="tr-pick__chip"><%= lang === 'es' ? 'Vueltas por carril' : 'Laps per lane' %></span>
-          <span class="tr-pick__chip"><%= lang === 'es' ? 'Sesión abierta' : 'Open session' %></span>
+          <span class="tr-pick__chip"><%= t('common.sin_equipos') %></span>
+          <span class="tr-pick__chip"><%= t('training.vueltas_por_carril') %></span>
+          <span class="tr-pick__chip"><%= t('training.sesion_abierta') %></span>
         </div>
         <span class="tr-pick__go">
-          <%= lang === 'es' ? 'Empezar libre' : 'Start free' %>
+          <%= t('training.empezar_libre') %>
           <span class="tr-pick__arr">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </span>
@@ -65,19 +65,19 @@
             <path d="M9 20h6M9.5 20l.4-4h4.2l.4 4"/>
           </svg>
         </div>
-        <h2><%= lang === 'es' ? 'De competición' : 'Competition' %></h2>
+        <h2><%= t('training.de_competicion') %></h2>
         <div class="tr-pick__desc">
           <%= lang === 'es'
             ? 'Equipos o pilotos asignados a carriles con rotación automática tras cada tanda.'
             : 'Teams or drivers assigned to lanes with automatic rotation after each heat.' %>
         </div>
         <div class="tr-pick__chips">
-          <span class="tr-pick__chip"><%= lang === 'es' ? 'Equipos / pilotos' : 'Teams / drivers' %></span>
-          <span class="tr-pick__chip"><%= lang === 'es' ? 'Rotación automática' : 'Auto rotation' %></span>
-          <span class="tr-pick__chip"><%= lang === 'es' ? 'Por tandas' : 'By heats' %></span>
+          <span class="tr-pick__chip"><%= t('training.equipos_pilotos') %></span>
+          <span class="tr-pick__chip"><%= t('training.rotacion_automatica') %></span>
+          <span class="tr-pick__chip"><%= t('training.por_tandas') %></span>
         </div>
         <span class="tr-pick__go">
-          <%= lang === 'es' ? 'Empezar competición' : 'Start competition' %>
+          <%= t('training.empezar_competicion') %>
           <span class="tr-pick__arr">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </span>

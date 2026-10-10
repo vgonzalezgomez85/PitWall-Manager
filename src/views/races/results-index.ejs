@@ -1,4 +1,4 @@
-<%- include('../partials/header', { pageTitle: (lang === 'es' ? 'Resultados' : 'Results') }) %>
+<%- include('../partials/header', { pageTitle: (t('common.resultados')) }) %>
 <%
 const es = lang === 'es';
 const fmtDate = (s) => s ? new Date(s).toLocaleDateString(es ? 'es-ES' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
@@ -7,7 +7,7 @@ const fmtLap = (ms) => {
   const m = Math.floor(ms / 60000), s = ((ms % 60000) / 1000).toFixed(3);
   return m > 0 ? m + ':' + s.padStart(6, '0') : s;
 };
-const typeLabel = (r) => r.type === 'championship' ? (es ? 'Resistencia' : 'Endurance') : 'Sprint';
+const typeLabel = (r) => r.type === 'championship' ? (t('client.common.resistencia')) : 'Sprint';
 const counts = {
   all: races.length,
   club: races.filter(r => r.type !== 'championship').length,
@@ -20,38 +20,38 @@ const counts = {
 
     <a href="/" class="vt-back-link">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      <%= es ? 'Inicio' : 'Home' %>
+      <%= t('common.inicio') %>
     </a>
 
     <div class="vt-head">
       <div class="vt-head__title">
-        <h1><%= es ? 'Resultados' : 'Results' %></h1>
+        <h1><%= t('common.resultados') %></h1>
         <span class="vt-cnt" id="rxCount"><%= races.length %></span>
       </div>
       <% if (races.length > 0) { %>
       <div class="vt-head__actions">
         <label class="vt-search">
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-          <input type="search" id="rxQuery" placeholder="<%= es ? 'Buscar carrera, equipo o piloto…' : 'Search race, team or driver…' %>" autocomplete="off">
+          <input type="search" id="rxQuery" placeholder="<%= t('results-index.buscar_carrera_equipo_o_piloto') %>" autocomplete="off">
         </label>
       </div>
       <% } %>
     </div>
-    <p class="rx-sub"><%= es ? 'Carreras finalizadas: clasificación, estadísticas y vueltas de cada una.' : 'Finished races: standings, statistics and laps for each one.' %></p>
+    <p class="rx-sub"><%= t('results-index.carreras_finalizadas_clasificacion_estadisticas') %></p>
 
     <% if (races.length === 0) { %>
       <div class="rx-empty">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v6a5 5 0 0 1-10 0z"/><path d="M7 5H4.5A1.5 1.5 0 0 0 3 6.5 3.5 3.5 0 0 0 6.5 10M17 5h2.5A1.5 1.5 0 0 1 21 6.5 3.5 3.5 0 0 1 17.5 10"/></svg>
-        <div class="rx-empty__t"><%= es ? 'Todavía no hay carreras finalizadas' : 'No finished races yet' %></div>
-        <div class="rx-empty__d"><%= es ? 'Cuando una carrera termine, sus resultados aparecerán aquí.' : 'When a race finishes, its results will show up here.' %></div>
+        <div class="rx-empty__t"><%= t('results-index.todavia_no_hay_carreras_finalizadas') %></div>
+        <div class="rx-empty__d"><%= t('results-index.cuando_una_carrera_termine_sus_resultados') %></div>
       </div>
     <% } else { %>
 
       <div class="vt-filters">
         <div class="vt-tabs" id="rxTabs">
-          <button type="button" class="vt-tab is-active" data-f="all"><%= es ? 'Todas' : 'All' %> <span class="vt-tab__b"><%= counts.all %></span></button>
+          <button type="button" class="vt-tab is-active" data-f="all"><%= t('client.common.todas') %> <span class="vt-tab__b"><%= counts.all %></span></button>
           <button type="button" class="vt-tab" data-f="club">Sprint <span class="vt-tab__b"><%= counts.club %></span></button>
-          <button type="button" class="vt-tab" data-f="championship"><%= es ? 'Resistencia' : 'Endurance' %> <span class="vt-tab__b"><%= counts.championship %></span></button>
+          <button type="button" class="vt-tab" data-f="championship"><%= t('client.common.resistencia') %> <span class="vt-tab__b"><%= counts.championship %></span></button>
         </div>
       </div>
 
@@ -63,14 +63,14 @@ const counts = {
              data-type="<%= r.type === 'championship' ? 'championship' : 'club' %>" data-search="<%= search %>">
             <div class="rx-card__top">
               <span class="rx-badge rx-badge--<%= r.type === 'championship' ? 'end' : 'spr' %>"><%= typeLabel(r) %></span>
-              <% if (i === 0) { %><span class="rx-badge rx-badge--new"><%= es ? 'Última' : 'Latest' %></span><% } %>
+              <% if (i === 0) { %><span class="rx-badge rx-badge--new"><%= t('results-index.ultima') %></span><% } %>
               <span class="rx-date"><%= fmtDate(r.finished_at || r.created_at) %></span>
             </div>
             <h2 class="rx-card__name"><%= r.name %></h2>
             <div class="rx-card__meta">
               <% if (r.circuitName) { %><span><%= r.circuitName %></span><% } %>
-              <span><%= r.participants %> <%= r.format === 'team' ? (es ? 'equipos' : 'teams') : (es ? 'pilotos' : 'drivers') %></span>
-              <span><%= r.mangaCount %> <%= es ? 'mangas' : 'heats' %></span>
+              <span><%= r.participants %> <%= r.format === 'team' ? (t('client.common.equipos')) : (t('results-index.pilotos')) %></span>
+              <span><%= r.mangaCount %> <%= t('common.mangas') %></span>
             </div>
 
             <% if (r.podium && r.podium.length) { %>
@@ -79,27 +79,27 @@ const counts = {
                   <li class="rx-pos rx-pos--<%= k + 1 %>">
                     <span class="rx-pos__n"><%= k + 1 %></span>
                     <span class="rx-pos__name"><%= p.name %></span>
-                    <span class="rx-pos__laps"><%= p.laps %> <%= es ? 'v' : 'laps' %></span>
+                    <span class="rx-pos__laps"><%= p.laps %> <%= t('results-index.v') %></span>
                   </li>
                 <% }) %>
               </ol>
             <% } else { %>
-              <div class="rx-nolaps"><%= es ? 'Sin vueltas registradas' : 'No laps recorded' %></div>
+              <div class="rx-nolaps"><%= t('results-index.sin_vueltas_registradas') %></div>
             <% } %>
 
             <div class="rx-card__foot">
               <% if (r.bestLap) { %>
-                <span class="rx-best" title="<%= es ? 'Vuelta rápida de la carrera' : 'Fastest lap of the race' %>">
+                <span class="rx-best" title="<%= t('results-index.vuelta_rapida_de_la_carrera') %>">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5M9 2h6M12 2v3"/></svg>
                   <b><%= fmtLap(r.bestLap.ms) %></b> <span><%= r.bestLap.name %></span>
                 </span>
               <% } else { %><span></span><% } %>
-              <span class="rx-go"><%= es ? 'Ver resultados' : 'View results' %> <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+              <span class="rx-go"><%= t('results-index.ver_resultados') %> <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
             </div>
           </a>
         <% }) %>
       </div>
-      <p class="rx-nores" id="rxNoRes" hidden><%= es ? 'Ninguna carrera coincide con la búsqueda.' : 'No race matches your search.' %></p>
+      <p class="rx-nores" id="rxNoRes" hidden><%= t('results-index.ninguna_carrera_coincide_con_la_busqueda') %></p>
     <% } %>
   </div>
 </div>

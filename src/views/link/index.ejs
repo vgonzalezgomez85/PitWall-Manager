@@ -1,35 +1,35 @@
-<%- include('../partials/header', { pageTitle: lang === 'es' ? 'Sincronizar carrera' : 'Sync race' }) %>
+<%- include('../partials/header', { pageTitle: t('common.sincronizar_carrera') }) %>
 
 <% var _cfg = (typeof linkCfg !== 'undefined' && linkCfg) ? linkCfg : { role:'off', slaveUrl:'', token:'' };
    var _st  = (typeof linkState !== 'undefined' && linkState) ? linkState : { activeMangaId:null, isRunning:false, isPaused:false };
    var es = lang === 'es';
    var navItems = [
-     { key: 'link',   label: es ? 'Enlace maestro / esclavo' : 'Master / slave link', dot: _cfg.role === 'off' ? 'off' : 'ok',
+     { key: 'link',   label: t('common.enlace_maestro_esclavo'), dot: _cfg.role === 'off' ? 'off' : 'ok',
        icon: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>' },
-     { key: 'master', label: es ? 'Desde el maestro' : 'From the master', dot: '',
+     { key: 'master', label: t('link.desde_el_maestro'), dot: '',
        icon: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>' },
-     { key: 'file',   label: es ? 'Desde fichero' : 'From a file', dot: '',
+     { key: 'file',   label: t('link.desde_fichero'), dot: '',
        icon: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>' },
    ]; %>
 <div class="vt-page st-page">
   <div class="st-top">
     <a href="/" class="vt-back-link">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      <%= es ? 'Inicio' : 'Home' %>
+      <%= t('common.inicio') %>
     </a>
     <span class="st-top__sep"></span>
-    <h1 class="st-top__h"><%= es ? 'Sincronizar carrera' : 'Sync race' %></h1>
+    <h1 class="st-top__h"><%= t('common.sincronizar_carrera') %></h1>
     <span class="st-top__fill"></span>
     <div class="vt-port-pill <%= _cfg.role === 'off' ? 'is-sim' : '' %>">
       <span class="dot"></span>
-      <%= _cfg.role === 'master' ? (es ? 'Este PC es maestro (DS)' : 'This PC is master (DS)')
-        : _cfg.role === 'slave' ? (es ? 'Este PC es esclavo (BART)' : 'This PC is slave (BART)')
-        : (es ? 'Enlace desactivado' : 'Link disabled') %>
+      <%= _cfg.role === 'master' ? (t('link.este_pc_es_maestro_ds'))
+        : _cfg.role === 'slave' ? (t('link.este_pc_es_esclavo_bart'))
+        : (t('link.enlace_desactivado')) %>
     </div>
   </div>
 
   <div class="st-layout">
-    <nav class="st-nav" aria-label="<%= es ? 'Secciones' : 'Sections' %>">
+    <nav class="st-nav" aria-label="<%= t('common.secciones') %>">
       <% navItems.forEach(function (it) { %>
         <button type="button" class="st-nav__item <%= it.key === 'link' ? 'is-active' : '' %>" data-sec="<%= it.key %>">
           <svg viewBox="0 0 24 24"><%- it.icon %></svg>
@@ -39,7 +39,7 @@
       <% }) %>
       <a class="st-nav__item" href="/link/compare">
         <svg viewBox="0 0 24 24"><path d="M8 3v18M16 3v18M4 8h4M4 16h4M16 8h4M16 16h4"/></svg>
-        <span class="st-nav__lbl"><%= es ? 'Comparar DS↔BART' : 'Compare DS↔BART' %></span>
+        <span class="st-nav__lbl"><%= t('link.comparar_ds_bart') %></span>
         <svg class="st-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
       </a>
       <div class="st-nav__note">
@@ -54,7 +54,7 @@
       <!-- ══ Enlace maestro / esclavo ═════════════════════════════════════ -->
       <section class="st-sec is-active" data-sec="link">
         <header class="st-sec__h">
-          <h2><%= es ? 'Enlace maestro / esclavo' : 'Master / slave link' %></h2>
+          <h2><%= t('common.enlace_maestro_esclavo') %></h2>
           <p><%= es
             ? 'El maestro (DS) reenvía el estado de carrera al esclavo (BART), que replica GO, pausa y stop sin operador. Con el rol en «Off», PitWall funciona como siempre.'
             : 'The master (DS) forwards the race state to the slave (BART), which replays GO, pause and stop with no operator. With role "Off", PitWall behaves as usual.' %></p>
@@ -63,11 +63,11 @@
         <form id="linkCfgForm" class="st-card" onsubmit="return false">
           <div class="st-row st-row--wrap">
             <div class="st-row__txt">
-              <label class="st-row__t" for="linkRole"><%= es ? 'Rol de este PC' : 'This PC role' %></label>
+              <label class="st-row__t" for="linkRole"><%= t('link.rol_de_este_pc') %></label>
             </div>
             <div class="vt-selw st-row__ctl st-row__ctl--wide">
               <select id="linkRole">
-                <option value="off"    <%= _cfg.role === 'off'    ? 'selected' : '' %>><%= es ? 'Off (desactivado)' : 'Off (disabled)' %></option>
+                <option value="off"    <%= _cfg.role === 'off'    ? 'selected' : '' %>><%= t('link.off_desactivado') %></option>
                 <option value="master" <%= _cfg.role === 'master' ? 'selected' : '' %>>Master (DS)</option>
                 <option value="slave"  <%= _cfg.role === 'slave'  ? 'selected' : '' %>>Slave (BART)</option>
               </select>
@@ -75,31 +75,31 @@
           </div>
           <div class="st-row st-row--wrap" id="linkSlaveUrlField" style="<%= _cfg.role === 'master' ? '' : 'display:none' %>">
             <div class="st-row__txt">
-              <label class="st-row__t" for="linkSlaveUrl"><%= es ? 'Dirección del esclavo' : 'Slave address' %></label>
-              <div class="st-row__d"><%= es ? 'Solo en el maestro.' : 'Master only.' %></div>
+              <label class="st-row__t" for="linkSlaveUrl"><%= t('link.direccion_del_esclavo') %></label>
+              <div class="st-row__d"><%= t('link.solo_en_el_maestro') %></div>
             </div>
             <input type="text" id="linkSlaveUrl" class="vt-inp is-mono st-row__ctl st-row__ctl--wide"
                    placeholder="192.168.10.108:3000" autocomplete="off" spellcheck="false" value="<%= _cfg.slaveUrl %>">
           </div>
           <div class="st-row st-row--wrap">
             <div class="st-row__txt">
-              <label class="st-row__t" for="linkToken"><%= es ? 'Token compartido' : 'Shared token' %></label>
-              <div class="st-row__d"><%= es ? 'El mismo en los dos PCs.' : 'The same on both PCs.' %></div>
+              <label class="st-row__t" for="linkToken"><%= t('link.token_compartido') %></label>
+              <div class="st-row__d"><%= t('link.el_mismo_en_los_dos_pcs') %></div>
             </div>
             <input type="text" id="linkToken" class="vt-inp is-mono st-row__ctl st-row__ctl--wide"
                    placeholder="secreto" autocomplete="off" spellcheck="false" value="<%= _cfg.token %>">
           </div>
           <div class="st-row st-row--wrap">
             <div class="st-row__txt">
-              <div class="st-row__t st-row__t--sm"><%= es ? 'Cronómetro de este PC' : 'This PC timing' %></div>
+              <div class="st-row__t st-row__t--sm"><%= t('link.cronometro_de_este_pc') %></div>
               <div class="st-row__d is-mono" id="linkLiveState">
                 <%= _st.activeMangaId != null
                     ? ('manga ' + _st.activeMangaId + ' · ' + (_st.isRunning ? 'running' : _st.isPaused ? 'paused' : 'idle'))
-                    : (es ? 'sin manga activa' : 'no active heat') %>
+                    : (t('link.sin_manga_activa')) %>
               </div>
             </div>
             <span id="cfgMsg" class="link-msg" style="display:none"></span>
-            <button type="button" id="btnSaveCfg" class="vt-btn vt-btn--primary"><%= es ? 'Guardar enlace' : 'Save link' %></button>
+            <button type="button" id="btnSaveCfg" class="vt-btn vt-btn--primary"><%= t('link.guardar_enlace') %></button>
           </div>
         </form>
       </section>
@@ -107,18 +107,18 @@
       <!-- ══ Desde el maestro ═════════════════════════════════════════════ -->
       <section class="st-sec" data-sec="master">
         <header class="st-sec__h">
-          <h2><%= es ? 'Desde el maestro' : 'From the master' %></h2>
-          <p><%= es ? 'Busca las carreras del PC maestro por la red y crea aquí la que vayas a correr.' : 'Find the master PC races over the network and create here the one you will run.' %></p>
+          <h2><%= t('link.desde_el_maestro') %></h2>
+          <p><%= t('link.busca_las_carreras_del_pc_maestro_por_la_red_y') %></p>
         </header>
         <div class="st-card">
           <div class="st-row st-row--wrap">
             <div class="st-row__txt">
-              <label class="st-row__t" for="masterHost"><%= es ? 'Dirección del maestro' : 'Master address' %></label>
-              <div class="st-row__d"><%= es ? 'Host o IP:puerto.' : 'Host or IP:port.' %></div>
+              <label class="st-row__t" for="masterHost"><%= t('link.direccion_del_maestro') %></label>
+              <div class="st-row__d"><%= t('link.host_o_ip_puerto') %></div>
             </div>
             <div class="lk-search">
               <input type="text" id="masterHost" class="vt-inp is-mono" placeholder="192.168.1.50:3000" autocomplete="off" spellcheck="false">
-              <button type="button" id="btnSearch" class="vt-btn vt-btn--primary"><%= es ? 'Buscar carreras' : 'Search races' %></button>
+              <button type="button" id="btnSearch" class="vt-btn vt-btn--primary"><%= t('link.buscar_carreras') %></button>
             </div>
           </div>
           <div class="st-row st-row--hint lk-msg-row"><div id="searchMsg" class="link-msg" style="display:none"></div></div>
@@ -129,10 +129,10 @@
             <table class="vt-table">
               <thead>
                 <tr>
-                  <th><%= es ? 'Carrera' : 'Race' %></th>
-                  <th class="is-num"><%= es ? 'Tandas' : 'Rounds' %></th>
-                  <th class="is-num"><%= es ? 'Pilotos' : 'Drivers' %></th>
-                  <th><%= es ? 'Clave' : 'Key' %></th>
+                  <th><%= t('common.carrera') %></th>
+                  <th class="is-num"><%= t('link.tandas') %></th>
+                  <th class="is-num"><%= t('client.common.pilotos') %></th>
+                  <th><%= t('link.clave') %></th>
                   <th class="is-actions"></th>
                 </tr>
               </thead>
@@ -145,20 +145,20 @@
       <!-- ══ Desde fichero ════════════════════════════════════════════════ -->
       <section class="st-sec" data-sec="file">
         <header class="st-sec__h">
-          <h2><%= es ? 'Desde fichero' : 'From a file' %></h2>
+          <h2><%= t('link.desde_fichero') %></h2>
           <p><%= es
             ? 'Plan B sin red: pega el JSON exportado del maestro (ruta /link/races/ID/export.json).'
             : 'Plan B without network: paste the JSON exported from the master (/link/races/ID/export.json).' %></p>
         </header>
         <div class="st-card">
           <div class="st-row st-row--wrap st-row--top lk-json">
-            <label class="st-row__t st-row__t--sm" for="importJson"><%= es ? 'Contenido JSON' : 'JSON payload' %></label>
+            <label class="st-row__t st-row__t--sm" for="importJson"><%= t('link.contenido_json') %></label>
             <textarea id="importJson" class="vt-inp is-mono" rows="9" placeholder='{"raceKey":"…","race":{…}}' spellcheck="false"></textarea>
           </div>
           <div class="st-row st-row--wrap">
             <span class="st-top__fill"></span>
             <span id="importMsg" class="link-msg" style="display:none"></span>
-            <button type="button" id="btnImport" class="vt-btn vt-btn--primary"><%= es ? 'Importar' : 'Import' %></button>
+            <button type="button" id="btnImport" class="vt-btn vt-btn--primary"><%= t('common.importar') %></button>
           </div>
         </div>
       </section>

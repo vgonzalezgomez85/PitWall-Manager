@@ -21,7 +21,7 @@
 // la redacción de cada tipo dos veces. La BD solo guarda hechos estructurados
 // (type + payload) — el texto se construye siempre aquí, en cliente.
 (function (global) {
-  function fmtS(ms) { return (Number(ms) / 1000).toFixed(3); }
+  function fmtS(ms) { return (Number(ms) / 1000).toFixed(3).replace('.', ','); }
   function fmtSecShort(ms) { return Math.round(Number(ms) / 1000); }
 
   const ICON = {

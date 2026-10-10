@@ -14,7 +14,7 @@
   <p class="page-subtitle">
     <%= wizard.name %> ·
     <% circuitLabels.forEach((c, i) => { %>
-      <%= lang === 'es' ? 'C' : 'C' %><%= c.num %>: <%= c.lanes %> <%= t('races.lanes') %><%= i < circuitLabels.length-1 ? ' · ' : '' %>
+      <%= t('wizard.c') %><%= c.num %>: <%= c.lanes %> <%= t('races.lanes') %><%= i < circuitLabels.length-1 ? ' · ' : '' %>
     <% }) %>
     (total: <%= wizard.lanes_count %>)
   </p>
@@ -38,7 +38,7 @@
           <% const colors = ['#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4']; %>
           <span class="circuit-legend-item">
             <span class="circuit-legend-dot" style="background:<%= colors[c.num-1] %>">C<%= c.num %></span>
-            <%= lang === 'es' ? 'Carriles' : 'Lanes' %> <%= c.start %>–<%= c.end %>
+            <%= t('common.carriles') %> <%= c.start %>–<%= c.end %>
           </span>
         <% }) %>
       </div>
@@ -47,21 +47,21 @@
     <!-- Controls arriba -->
     <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-bottom:1.25rem;padding:1rem;background:#000000;border-radius:8px;border:1px solid #21262d">
       <label class="form-label" style="margin:0;white-space:nowrap;font-size:1rem">
-        <%= lang === 'es' ? 'Participantes:' : 'Participants:' %>
+        <%= t('wizard.participantes') %>
       </label>
       <input type="number" id="numParticipants" class="form-input form-input--sm"
         min="<%= wizard.lanes_count %>" max="99"
         value="<%= wizard.lanes_count %>"
         style="width:80px;font-size:1rem">
       <button type="button" id="btnSmartSeq" class="btn btn--primary">
-        ⚡ <%= lang === 'es' ? 'Generar secuencia' : 'Generate sequence' %>
+        ⚡ <%= t('wizard.generar_secuencia') %>
       </button>
       <button type="button" id="btnAddRest" class="btn btn--ghost">
-        ➕ <%= lang === 'es' ? 'Añadir descanso' : 'Add rest' %>
+        ➕ <%= t('wizard.anadir_descanso') %>
       </button>
       <% if (circuits.length >= 2) { %>
         <span class="form-hint" style="color:#8b949e">
-          💡 <%= lang === 'es' ? 'C impares: DSC después del carril 2 · C pares: DSC después del penúltimo' : 'Odd C: rest after lane 2 · Even C: rest after second-to-last' %>
+          💡 <%= t('wizard.c_impares_dsc_despues_del_carril_2_c_pares_dsc') %>
         </span>
       <% } %>
     </div>
@@ -76,8 +76,8 @@
         <% if (lane === 0) { %>
           <div class="seq-item seq-item--rest" draggable="true" data-lane="0">
             <span class="seq-handle">⠿</span>
-            <span class="seq-dot seq-dot--rest"><%= lang === 'es' ? 'DSC' : 'REST' %></span>
-            <button type="button" class="seq-remove" title="<%= lang === 'es' ? 'Quitar' : 'Remove' %>">✕</button>
+            <span class="seq-dot seq-dot--rest"><%= t('client.common.dsc') %></span>
+            <button type="button" class="seq-remove" title="<%= t('client.common.quitar') %>">✕</button>
             <span class="seq-arrow"><%= i < sequence.length - 1 ? '→' : '' %></span>
           </div>
         <% } else { %>
@@ -91,7 +91,7 @@
     </div>
 
     <p class="form-hint" style="margin-top:.5rem;color:#6e7681">
-      <%= lang === 'es' ? 'Arrastra los elementos para ajustar el orden manualmente.' : 'Drag items to manually adjust the order.' %>
+      <%= t('wizard.arrastra_los_elementos_para_ajustar_el_orden') %>
     </p>
 
     <form action="/races/new/step3" method="POST" id="seqForm" style="margin-top:1.5rem">

@@ -1,4 +1,4 @@
-<%- include('../partials/header', { pageTitle: (lang === 'es' ? 'Resultados' : 'Results') + ' — ' + race.name }) %>
+<%- include('../partials/header', { pageTitle: (t('common.resultados')) + ' — ' + race.name }) %>
 <style>
 /* ── Race fastest lap banner ── */
 .race-best-banner {
@@ -60,6 +60,12 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
 .matrix-entity .matrix-name { padding-top: .7rem; padding-bottom: .25rem; }
 .matrix-entity .matrix-total { font-size: 1.15rem; font-weight: 800; color: #58a6ff; }
 .matrix-entity .matrix-lane-laps { font-size: 1rem; font-weight: 700; color: #c9d1d9; }
+/* Piloto(s) que rodaron ese carril en esa manga, bajo el nº de vueltas. Nombre
+   completo: parte en varias líneas si la columna es estrecha. */
+.matrix-driver {
+  display: block; margin-top: 2px; font-size: .6rem; line-height: 1.15;
+  font-weight: 500; color: #8b949e; text-transform: none; letter-spacing: 0;
+}
 /* Posición por vueltas dentro del carril, entre paréntesis junto al nº de vueltas */
 .lane-rank { font-size: .62em; font-weight: 600; color: #8b949e; margin-left: 3px; font-variant-numeric: tabular-nums; }
 .lane-rank--top { color: #fbbf24; }
@@ -188,6 +194,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
   }
   .matrix-lane__label { color: #555; }
   .matrix-occ__label { color: #555; }
+  .matrix-driver { color: #333 !important; }
   .matrix-occ__ord { color: #000 !important; }
   .matrix-occ--group-start, thead .matrix-occ--group-start {
     box-shadow: none; border-left: 2px solid #999 !important;
@@ -244,13 +251,13 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
     <% var _publicView = (typeof publicView !== 'undefined' && publicView); %>
     <a href="<%= _publicView ? '/results' : '/races/' + race.id %>" class="vt-back-link">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      <%= _publicView ? (lang === 'es' ? 'Volver a resultados' : 'Back to results') : (lang === 'es' ? 'Volver a la carrera' : 'Back to race') %>
+      <%= _publicView ? (t('common.volver_a_resultados')) : (t('common.volver_a_la_carrera')) %>
     </a>
 
   <!-- Header -->
   <div class="vt-head" style="align-items:flex-start">
     <div class="vt-head__title" style="flex-direction:column;align-items:flex-start;gap:6px">
-      <h1><%= lang === 'es' ? 'Resultados' : 'Results' %></h1>
+      <h1><%= t('common.resultados') %></h1>
       <p class="vt-lead" style="margin-top:0">
         <strong style="color:var(--vt-text);font-weight:600"><%= race.name %></strong>
         · <%= t('races.type.' + race.type) %>
@@ -258,34 +265,34 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
       </p>
     </div>
     <div class="vt-head__actions">
-      <span class="vt-badge is-info"><span class="vt-badge__d"></span><%= tandas.length %> <%= lang === 'es' ? 'tandas' : 'rounds' %></span>
+      <span class="vt-badge is-info"><span class="vt-badge__d"></span><%= tandas.length %> <%= t('results.tandas') %></span>
       <% if (!_publicView) { %>
-      <a href="/races/<%= race.id %>/results/xlsx?lang=<%= lang %>" class="vt-btn vt-btn--ghost vt-btn--sm" title="<%= lang === 'es' ? 'Exportar a Excel' : 'Export to Excel' %>">
+      <a href="/races/<%= race.id %>/results/xlsx?lang=<%= lang %>" class="vt-btn vt-btn--ghost vt-btn--sm" title="<%= t('results.exportar_a_excel') %>">
         <svg viewBox="0 0 24 24"><path d="M14 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13l3 3 3-3M12 16V9"/></svg>
         Excel
       </a>
-      <a href="/races/<%= race.id %>/results/points.xlsx?lang=<%= lang %>" class="vt-btn vt-btn--ghost vt-btn--sm" title="<%= lang === 'es' ? 'Exportar puntos de clasificación (Excel)' : 'Export classification points (Excel)' %>">
+      <a href="/races/<%= race.id %>/results/points.xlsx?lang=<%= lang %>" class="vt-btn vt-btn--ghost vt-btn--sm" title="<%= t('results.exportar_puntos_de_clasificacion_excel') %>">
         <svg viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v6a5 5 0 0 1-10 0z"/><path d="M7 5H4.5A1.5 1.5 0 0 0 3 6.5 3.5 3.5 0 0 0 6.5 10M17 5h2.5A1.5 1.5 0 0 1 21 6.5 3.5 3.5 0 0 1 17.5 10"/></svg>
-        <%= lang === 'es' ? 'Puntos (xlsx)' : 'Points (xlsx)' %>
+        <%= t('results.puntos_xlsx') %>
       </a>
-      <a href="/races/<%= race.id %>/results/points.csv?lang=<%= lang %>" class="vt-btn vt-btn--ghost vt-btn--sm" title="<%= lang === 'es' ? 'Exportar puntos (CSV)' : 'Export points (CSV)' %>">
+      <a href="/races/<%= race.id %>/results/points.csv?lang=<%= lang %>" class="vt-btn vt-btn--ghost vt-btn--sm" title="<%= t('results.exportar_puntos_csv') %>">
         <svg viewBox="0 0 24 24"><path d="M14 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
-        <%= lang === 'es' ? 'Puntos (csv)' : 'Points (csv)' %>
+        <%= t('results.puntos_csv') %>
       </a>
-      <a href="/races/<%= race.id %>/results/control.csv" class="vt-btn vt-btn--ghost vt-btn--sm" title="<%= lang === 'es' ? 'Exportar para PitWall Control (CSV TicTacSlot)' : 'Export for PitWall Control (TicTacSlot CSV)' %>">
+      <a href="/races/<%= race.id %>/results/control.csv" class="vt-btn vt-btn--ghost vt-btn--sm" title="<%= t('results.exportar_para_pitwall_control_csv_tictacslot') %>">
         <svg viewBox="0 0 24 24"><path d="M14 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M8 13h8M8 17h5"/></svg>
         Control
       </a>
-      <a href="/races/<%= race.id %>/results/areacorse.csv" class="vt-btn vt-btn--ghost vt-btn--sm" title="<%= lang === 'es' ? 'Exportar para area-corse.it (CSV de resultados, Italia)' : 'Export for area-corse.it (results CSV, Italy)' %>">
+      <a href="/races/<%= race.id %>/results/areacorse.csv" class="vt-btn vt-btn--ghost vt-btn--sm" title="<%= t('results.exportar_para_area_corse_it_csv_de_resultados') %>">
         <svg viewBox="0 0 24 24"><path d="M14 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M8 13h8M8 17h5"/></svg>
         area-corse
       </a>
-      <a href="/races/<%= race.id %>/results/export.html" class="vt-btn vt-btn--ghost vt-btn--sm" title="<%= lang === 'es' ? 'Descarga un index.html autocontenido para publicar en GitHub Pages' : 'Download a self-contained index.html to publish on GitHub Pages' %>">
+      <a href="/races/<%= race.id %>/results/export.html" class="vt-btn vt-btn--ghost vt-btn--sm" title="<%= t('results.descarga_un_index_html_autocontenido_para') %>">
         <svg viewBox="0 0 24 24"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
-        <%= lang === 'es' ? 'Exportar para GitHub' : 'Export for GitHub' %>
+        <%= t('results.exportar_para_github') %>
       </a>
       <% } %>
-      <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" onclick="window.print()" title="<%= lang === 'es' ? 'Guardar como PDF' : 'Save as PDF' %>">
+      <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" onclick="window.print()" title="<%= t('results.guardar_como_pdf') %>">
         <svg viewBox="0 0 24 24"><path d="M6 9V4h12v5M6 18H4a1 1 0 0 1-1-1v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a1 1 0 0 1-1 1h-2M6 14h12v7H6z"/></svg>
         PDF
       </button>
@@ -297,14 +304,14 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
       <%- include('_pole-panel', { pole, lang }) %>
       <div class="vt-empty" style="margin-top:20px">
         <p style="color:var(--vt-mute);margin:0">
-          <%= lang === 'es' ? 'Completa al menos una manga para ver el resto de resultados.' : 'Complete at least one heat to see the rest of the results.' %>
+          <%= t('results.completa_al_menos_una_manga_para_ver_el_resto') %>
         </p>
       </div>
     <% } else { %>
       <div class="vt-empty" style="margin-top:32px">
-        <div class="vt-empty__t"><%= lang === 'es' ? 'Sin datos todavía' : 'No data yet' %></div>
+        <div class="vt-empty__t"><%= t('results.sin_datos_todavia') %></div>
         <p style="color:var(--vt-mute);margin:6px 0 0">
-          <%= lang === 'es' ? 'Completa al menos una manga para ver resultados.' : 'Complete at least one heat to see results.' %>
+          <%= t('results.completa_al_menos_una_manga_para_ver_resultados') %>
         </p>
       </div>
     <% } %>
@@ -324,22 +331,22 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
     <!-- Tab nav -->
     <div class="results-tabs">
       <button class="results-tab active" data-tab="matrix">
-        <%= lang === 'es' ? 'Comparativa' : 'Comparison' %>
+        <%= t('results.comparativa') %>
       </button>
       <button class="results-tab" data-tab="progression">
-        <%= lang === 'es' ? 'Progresión' : 'Progression' %>
+        <%= t('results.progresion') %>
       </button>
       <button class="results-tab" data-tab="positions">
-        <%= lang === 'es' ? 'Posiciones' : 'Positions' %>
+        <%= t('results.posiciones') %>
       </button>
       <button class="results-tab" data-tab="gap">
-        <%= lang === 'es' ? 'Gap al líder' : 'Gap to leader' %>
+        <%= t('results.gap_al_lider') %>
       </button>
       <button class="results-tab" data-tab="gapgrid">
-        <%= lang === 'es' ? 'Gap (rejilla)' : 'Gap (grid)' %>
+        <%= t('results.gap_rejilla') %>
       </button>
       <button class="results-tab" data-tab="advanced">
-        <%= lang === 'es' ? 'Estadísticas avanzadas' : 'Advanced stats' %>
+        <%= t('results.estadisticas_avanzadas') %>
       </button>
       <% if (typeof pole !== 'undefined' && pole) { %>
       <button class="results-tab" data-tab="pole">Pole</button>
@@ -439,10 +446,10 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
         function consLabel(level) {
           const es = lang === 'es';
           switch (level) {
-            case 'excelente': return es ? 'Excelente' : 'Excellent';
-            case 'buena':     return es ? 'Buena'     : 'Good';
-            case 'irregular': return es ? 'Irregular' : 'Irregular';
-            case 'erratica':  return es ? 'Errática'  : 'Erratic';
+            case 'excelente': return t('client.common.excelente');
+            case 'buena':     return t('client.common.buena');
+            case 'irregular': return t('client.common.irregular');
+            case 'erratica':  return t('client.common.erratica');
             default:          return '—';
           }
         }
@@ -461,10 +468,10 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
       <% if (raceBestLapMs != null) { %>
         <div class="race-best-banner">
           <div>
-            <div class="race-best-banner__label"><%= lang === 'es' ? 'Vuelta rápida de la carrera' : 'Race fastest lap' %></div>
+            <div class="race-best-banner__label"><%= t('results.vuelta_rapida_de_la_carrera') %></div>
             <div class="race-best-banner__value">
               <strong><%= fmtSec(raceBestLapMs) %>s</strong>
-              <span class="race-best-banner__meta"><%= raceBestEntity %> · <%= lang === 'es' ? 'Pista' : 'Lane' %> <%= raceBestLane %></span>
+              <span class="race-best-banner__meta"><%= raceBestEntity %> · <%= t('results.pista') %> <%= raceBestLane %></span>
             </div>
           </div>
         </div>
@@ -476,8 +483,8 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
           <thead>
             <tr>
               <th class="matrix-pos">#</th>
-              <th class="matrix-name"><%= lang === 'es' ? 'Equipo / Piloto' : 'Team / Driver' %></th>
-              <th class="matrix-laps"><%= lang === 'es' ? 'Vueltas' : 'Laps' %></th>
+              <th class="matrix-name"><%= t('common.equipo_piloto') %></th>
+              <th class="matrix-laps"><%= t('client.common.vueltas') %></th>
               <% if (perOcc) { %>
                 <% occColumns.forEach(col => {
                      // Separador de grupo al empezar un carril nuevo (occ === 1).
@@ -494,7 +501,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
                 <% orderedLanes.forEach(lane => { %>
                   <th class="matrix-lane">
                     <span class="lane-pill" style="background:<%= LANE_COLORS[lane-1] || '#8b949e' %>"><%= lane %></span>
-                    <div class="matrix-lane__label"><%= lang === 'es' ? 'Pista' : 'Lane' %> <%= lane %></div>
+                    <div class="matrix-lane__label"><%= t('results.pista') %> <%= lane %></div>
                   </th>
                 <% }) %>
               <% } %>
@@ -525,7 +532,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
                   <% } %>
                   <strong><%= r.entity_name %></strong>
                   <% if (startLane) { %>
-                    <span class="start-lane-tag" title="<%= lang === 'es' ? 'Carril de inicio' : 'Starting lane' %>"><%= lang === 'es' ? 'Sale' : 'Start' %> P<%= startLane %></span>
+                    <span class="start-lane-tag" title="<%= t('results.carril_de_inicio') %>"><%= t('results.sale') %> P<%= startLane %></span>
                   <% } %>
                 </td>
                 <td class="matrix-laps matrix-total">
@@ -545,6 +552,9 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
                     <td class="matrix-lane-cell matrix-lane-laps <%= groupStart ? 'matrix-occ--group-start' : '' %>">
                       <% const oRank = (c && c.laps != null && occLapRank[col.key]) ? occLapRank[col.key][startKey] : null; %>
                       <%= c ? c.laps : '—' %><% if (oRank) { %><span class="lane-rank <%= oRank === 1 ? 'lane-rank--top' : '' %>">(<%= oRank %>)</span><% } %>
+                      <% if (c && c.drivers && c.drivers.length) { %>
+                        <span class="matrix-driver" title="<%= (t('results.piloto_del_carril_en_esta_manga')) %>: <%= c.drivers.join(' · ') %>"><%= c.drivers.join(' · ') %></span>
+                      <% } %>
                     </td>
                   <% }) %>
                 <% } else { %>
@@ -555,6 +565,9 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
                     <td class="matrix-lane-cell matrix-lane-laps <%= isStart ? 'matrix-lane-cell--start' : '' %>">
                       <% const lRank = (pl && pl.laps != null && laneLapRank[lane]) ? laneLapRank[lane][startKey] : null; %>
                       <%= pl ? pl.laps : '—' %><% if (lRank) { %><span class="lane-rank <%= lRank === 1 ? 'lane-rank--top' : '' %>">(<%= lRank %>)</span><% } %>
+                      <% if (pl && pl.drivers && pl.drivers.length) { %>
+                        <span class="matrix-driver" title="<%= (t('results.piloto_del_carril')) %>: <%= pl.drivers.join(' · ') %>"><%= pl.drivers.join(' · ') %></span>
+                      <% } %>
                     </td>
                   <% }) %>
                 <% } %>
@@ -562,8 +575,8 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
 
               <!-- Fastest lap row -->
               <tr class="matrix-stat matrix-stat--best">
-                <td class="matrix-stat__label"><%= lang === 'es' ? 'Vuelta rápida' : 'Fast lap' %></td>
-                <td class="matrix-stat__total"><%= fmtSec(r.best_lap_ms) %><% if (bestLapLane) { %><span class="lane-rank lane-rank--top" title="<%= lang === 'es' ? 'Carril de la vuelta rápida' : 'Fast lap lane' %>">(<%= bestLapLane %>)</span><% } %></td>
+                <td class="matrix-stat__label"><%= t('client.common.vuelta_rapida') %></td>
+                <td class="matrix-stat__total"><%= fmtSec(r.best_lap_ms) %><% if (bestLapLane) { %><span class="lane-rank lane-rank--top" title="<%= t('results.carril_de_la_vuelta_rapida') %>">(<%= bestLapLane %>)</span><% } %></td>
                 <% if (perOcc) { %>
                   <% occColumns.forEach(col => {
                        const c = (r.occByKey || {})[col.key];
@@ -573,7 +586,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
                   %>
                     <td class="matrix-lane-cell <%= isRaceBest ? 'race-best' : '' %> <%= groupStart ? 'matrix-occ--group-start' : '' %>">
                       <% if (c && c.best_ms != null) { %>
-                        <% if (isColFastest) { %><span class="lane-fastest-dot" title="<%= lang === 'es' ? 'Vuelta rápida del carril' : 'Lane fastest lap' %>"></span><% } %><%= fmtSec(c.best_ms) %><% if (isRaceBest) { %><span class="race-best-tag" title="<%= lang === 'es' ? 'Vuelta rápida de la carrera' : 'Race fastest lap' %>"><%= lang === 'es' ? 'Mejor' : 'Best' %></span><% } %>
+                        <% if (isColFastest) { %><span class="lane-fastest-dot" title="<%= t('results.vuelta_rapida_del_carril') %>"></span><% } %><%= fmtSec(c.best_ms) %><% if (isRaceBest) { %><span class="race-best-tag" title="<%= t('results.vuelta_rapida_de_la_carrera') %>"><%= t('client.common.mejor') %></span><% } %>
                       <% } else { %>—<% } %>
                     </td>
                   <% }) %>
@@ -586,7 +599,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
                   %>
                     <td class="matrix-lane-cell <%= isRaceBest ? 'race-best' : '' %> <%= isLaneFastest ? 'lane-fastest' : '' %> <%= isStart ? 'matrix-lane-cell--start' : '' %>">
                       <% if (pl && pl.best_ms != null) { %>
-                        <% if (isLaneFastest) { %><span class="lane-fastest-dot" title="<%= lang === 'es' ? 'Vuelta rápida del carril' : 'Lane fastest lap' %>"></span><% } %><%= fmtSec(pl.best_ms) %><% if (isRaceBest) { %><span class="race-best-tag" title="<%= lang === 'es' ? 'Vuelta rápida de la carrera' : 'Race fastest lap' %>"><%= lang === 'es' ? 'Mejor' : 'Best' %></span><% } %>
+                        <% if (isLaneFastest) { %><span class="lane-fastest-dot" title="<%= t('results.vuelta_rapida_del_carril') %>"></span><% } %><%= fmtSec(pl.best_ms) %><% if (isRaceBest) { %><span class="race-best-tag" title="<%= t('results.vuelta_rapida_de_la_carrera') %>"><%= t('client.common.mejor') %></span><% } %>
                       <% } else { %>—<% } %>
                     </td>
                   <% }) %>
@@ -595,8 +608,8 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
 
               <!-- Average row -->
               <tr class="matrix-stat matrix-stat--avg">
-                <td class="matrix-stat__label"><%= lang === 'es' ? 'Media gen / Mejor med' : 'Avg / Best avg' %></td>
-                <td class="matrix-stat__total"><%= fmtSec(Math.round(r.avg_lap_ms)) %><% if (bestAvgLane) { %><span class="stat-best-lane" title="<%= lang === 'es' ? 'Mejor media de carril' : 'Best lane average' %>"> / <%= fmtSec(Math.round(bestAvgMs)) %><span class="lane-rank">(<%= bestAvgLane %>)</span></span><% } %></td>
+                <td class="matrix-stat__label"><%= t('results.media_gen_mejor_med') %></td>
+                <td class="matrix-stat__total"><%= fmtSec(Math.round(r.avg_lap_ms)) %><% if (bestAvgLane) { %><span class="stat-best-lane" title="<%= t('results.mejor_media_de_carril') %>"> / <%= fmtSec(Math.round(bestAvgMs)) %><span class="lane-rank">(<%= bestAvgLane %>)</span></span><% } %></td>
                 <% if (perOcc) { %>
                   <% occColumns.forEach(col => {
                        const c = (r.occByKey || {})[col.key];
@@ -620,7 +633,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
 
               <!-- Consistency row (per lane) -->
               <tr class="matrix-stat matrix-stat--cons">
-                <td class="matrix-stat__label"><%= lang === 'es' ? 'Const. sin' : 'Const. clean' %></td>
+                <td class="matrix-stat__label"><%= t('results.const_sin') %></td>
                 <td class="matrix-stat__total">
                   <% if (r.raceConsistency != null) { %><span class="res-cons <%= consClass(r.raceConsistencyLevel) %>"><%= fmtPct(r.raceConsistency) %></span><% } else { %>—<% } %>
                 </td>
@@ -652,7 +665,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
               <!-- Slowest + exits row -->
               <tr class="matrix-stat matrix-stat--worst">
                 <td class="matrix-stat__label">
-                  <%= lang === 'es' ? 'Salidas' : 'Exits' %>
+                  <%= t('client.common.salidas') %>
                   <span class="exit-total">(<%= (r.perLane||[]).reduce((s,pl)=>s+(pl.exit_count||0),0) %>)</span>
                 </td>
                 <td class="matrix-stat__total">—</td>
@@ -689,7 +702,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
               %>
               <tr class="matrix-stat matrix-stat--pit">
                 <td class="matrix-stat__label">
-                  <%= lang === 'es' ? 'Pit-stops' : 'Pit-stops' %>
+                  <%= t('results.pit_stops_2') %>
                   <span class="exit-total">(<%= totalPitStops %>)</span>
                 </td>
                 <td class="matrix-stat__total">—</td>
@@ -735,37 +748,37 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
     <div class="results-panel" id="tab-progression">
       <div class="progression-controls">
         <div class="prog-control prog-control--wide">
-          <label><%= lang === 'es' ? 'Equipos / Pilotos (compara)' : 'Teams / Drivers (compare)' %></label>
+          <label><%= t('results.equipos_pilotos_compara') %></label>
           <div id="progEntities" class="prog-entities"></div>
         </div>
         <div class="prog-control">
-          <label for="progManga"><%= lang === 'es' ? 'Manga' : 'Heat' %></label>
-          <select id="progManga" class="prog-select" disabled title="<%= lang === 'es' ? 'Siempre todas las mangas' : 'Always all heats' %>"><option value="all"><%= lang === 'es' ? 'Todas' : 'All' %></option></select>
+          <label for="progManga"><%= t('common.manga') %></label>
+          <select id="progManga" class="prog-select" disabled title="<%= t('results.siempre_todas_las_mangas') %>"><option value="all"><%= t('client.common.todas') %></option></select>
         </div>
         <div class="prog-control">
-          <label for="progDriver"><%= lang === 'es' ? 'Piloto' : 'Driver' %></label>
-          <select id="progDriver" class="prog-select"><option value="all"><%= lang === 'es' ? 'Todos' : 'All' %></option></select>
+          <label for="progDriver"><%= t('client.common.piloto') %></label>
+          <select id="progDriver" class="prog-select"><option value="all"><%= t('common.todos') %></option></select>
         </div>
         <div class="prog-control">
           <label>
-            <%= lang === 'es' ? 'Carriles' : 'Lanes' %>
+            <%= t('common.carriles') %>
             <span class="prog-lane-actions">
-              <button type="button" id="progLanesAll"  class="prog-mini-btn"><%= lang === 'es' ? 'Todos' : 'All' %></button>
-              <button type="button" id="progLanesNone" class="prog-mini-btn"><%= lang === 'es' ? 'Ninguno' : 'None' %></button>
+              <button type="button" id="progLanesAll"  class="prog-mini-btn"><%= t('common.todos') %></button>
+              <button type="button" id="progLanesNone" class="prog-mini-btn"><%= t('results.ninguno') %></button>
             </span>
           </label>
           <div id="progLanes" class="prog-lanes"></div>
         </div>
         <div class="prog-control">
-          <label><%= lang === 'es' ? 'Mostrar' : 'Show' %></label>
+          <label><%= t('results.mostrar') %></label>
           <div class="prog-checks">
-            <label class="prog-check"><input type="checkbox" id="progShowExits" checked> <%= lang === 'es' ? 'Piños' : 'Crashes' %></label>
-            <label class="prog-check"><input type="checkbox" id="progShowPits" checked> <%= lang === 'es' ? 'Pit stops' : 'Pit stops' %></label>
+            <label class="prog-check"><input type="checkbox" id="progShowExits" checked> <%= t('results.pinos') %></label>
+            <label class="prog-check"><input type="checkbox" id="progShowPits" checked> <%= t('results.pit_stops') %></label>
           </div>
         </div>
         <div class="prog-subtabs">
-          <button class="prog-subtab active" data-prog="abs"><%= lang === 'es' ? 'Tiempo' : 'Time' %></button>
-          <button class="prog-subtab" data-prog="delta">Δ <%= lang === 'es' ? 'Delta vs media' : 'Delta vs avg' %></button>
+          <button class="prog-subtab active" data-prog="abs"><%= t('common.tiempo') %></button>
+          <button class="prog-subtab" data-prog="delta">Δ <%= t('results.delta_vs_media') %></button>
         </div>
       </div>
       <div class="prog-chart-wrap" style="height: 620px;">
@@ -821,16 +834,16 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
     <div class="results-panel" id="tab-gap">
       <div class="progression-controls">
         <div class="prog-control">
-          <label for="gapFrom"><%= lang === 'es' ? 'Desde manga' : 'From heat' %></label>
+          <label for="gapFrom"><%= t('results.desde_manga') %></label>
           <select id="gapFrom" class="prog-select"></select>
         </div>
         <div class="prog-control">
-          <label for="gapTo"><%= lang === 'es' ? 'Hasta manga' : 'To heat' %></label>
+          <label for="gapTo"><%= t('results.hasta_manga') %></label>
           <select id="gapTo" class="prog-select"></select>
         </div>
         <div class="prog-control">
           <label>&nbsp;</label>
-          <button type="button" id="gapReset" class="prog-subtab">↺ <%= lang === 'es' ? 'Todas' : 'All' %></button>
+          <button type="button" id="gapReset" class="prog-subtab">↺ <%= t('client.common.todas') %></button>
         </div>
       </div>
       <div class="prog-chart-wrap" style="height: 560px;">
@@ -848,7 +861,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
     <!-- ── Gap to leader (grid / matrix) ── -->
     <div class="results-panel" id="tab-gapgrid">
       <div class="prog-control prog-control--wide">
-        <label><%= lang === 'es' ? 'Comparar equipos (elige 2–4; vacío = todos vs líder)' : 'Compare teams (pick 2–4; empty = all vs leader)' %></label>
+        <label><%= t('results.comparar_equipos_elige_2_4_vacio_todos_vs_lider') %></label>
         <div id="gapgridEntities" class="prog-entities"></div>
       </div>
       <div class="gapgrid-wrap">
@@ -881,17 +894,17 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
     <div class="results-panel" id="tab-advanced">
       <div class="adv-controls">
         <label>
-          <%= lang === 'es' ? 'Equipo/piloto:' : 'Team/driver:' %>
+          <%= t('results.equipo_piloto') %>
           <select id="advEntity" class="prog-select"></select>
         </label>
         <label>
-          <%= lang === 'es' ? 'Comparar con:' : 'Compare with:' %>
+          <%= t('results.comparar_con') %>
           <select id="advCompare" class="prog-select">
-            <option value=""><%= lang === 'es' ? '— Sin comparar —' : '— None —' %></option>
+            <option value=""><%= t('results.sin_comparar') %></option>
           </select>
         </label>
         <label style="cursor:pointer; user-select:none">
-          <input type="checkbox" id="advIncludeOutliers"> <%= lang === 'es' ? 'Con salidas/pit-stops' : 'With exits/pit-stops' %>
+          <input type="checkbox" id="advIncludeOutliers"> <%= t('results.con_salidas_pit_stops') %>
         </label>
       </div>
 
@@ -1369,7 +1382,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
                   if (m?.driver && m.driver !== '—') s += ' · ' + m.driver;
                   if (m?.manga) s += ' · M' + m.manga;
                   if (m?.isPitStop) s += ' · pit-stop';
-                  else if (m?.isExit) s += ' · <%= lang === "es" ? "salida" : "exit" %>';
+                  else if (m?.isExit) s += ' · <%= t('results.salida') %>';
                   return s;
                 }
               }
@@ -1479,13 +1492,13 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
           scales: {
             x: {
               type: 'linear',
-              title: { display: true, text: '<%= lang === "es" ? "Tiempo de carrera (min)" : "Race time (min)" %>', color: '#8b949e' },
+              title: { display: true, text: '<%= t('results.tiempo_de_carrera_min') %>', color: '#8b949e' },
               ticks: { color: '#8b949e' }, grid: { color: '#21262d' },
             },
             y: {
               reverse: true, // P1 at top
               min: 1, max: totalEntities,
-              title: { display: true, text: '<%= lang === "es" ? "Posición (proyectada)" : "Position (projected)" %>', color: '#8b949e' },
+              title: { display: true, text: '<%= t('results.posicion_proyectada') %>', color: '#8b949e' },
               ticks: { color: '#8b949e', stepSize: 1, callback: (v) => 'P' + v },
               grid: { color: '#21262d' },
             }
@@ -1584,8 +1597,8 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
               callbacks: {
                 title: (items) => 'M' + items[0].parsed.x,
                 label: (ctx) => ctx.dataset.label + ': ' + (ctx.parsed.y === 0
-                  ? '<%= lang === "es" ? "líder" : "leader" %>'
-                  : ctx.parsed.y + ' <%= lang === "es" ? "vueltas" : "laps" %>'),
+                  ? '<%= t('common.lider') %>'
+                  : ctx.parsed.y + ' <%= t('common.vueltas') %>'),
               }
             }
           },
@@ -1593,7 +1606,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
             x: {
               type: 'linear',
               min: 1, max: maxManga,
-              title: { display: true, text: '<%= lang === "es" ? "Manga" : "Heat" %>', color: '#8b949e' },
+              title: { display: true, text: '<%= t('common.manga') %>', color: '#8b949e' },
               ticks: { color: '#8b949e', stepSize: 1, precision: 0, callback: (v) => 'M' + v },
               grid: { color: '#21262d' },
             },
@@ -1601,7 +1614,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
               // Líder en 0 (arriba); el resto NEGATIVO (vueltas perdidas) hacia abajo.
               // min "duro" para que el eje encoja al quitar equipos/rango.
               max: 0, min: Math.min(-1, Math.floor(minGap) - 1),
-              title: { display: true, text: '<%= lang === "es" ? "Vueltas tras el líder" : "Laps behind leader" %>', color: '#8b949e' },
+              title: { display: true, text: '<%= t('results.vueltas_tras_el_lider') %>', color: '#8b949e' },
               // Divisiones del eje Y de 200 en 200.
               ticks: { color: '#8b949e', precision: 0, stepSize: 200, maxTicksLimit: 30 },
               grid: { color: '#21262d' },
@@ -1633,7 +1646,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
     const table    = document.getElementById('gapgridTable');
     const chipsBox = document.getElementById('gapgridEntities');
     if (!table) return;
-    const LBL_TEAM = '<%= lang === "es" ? "Equipo" : "Team" %>';
+    const LBL_TEAM = '<%= t('common.equipo') %>';
     let prevDay = null;
     function timeHeader(m) {
       const iso = mangaTimes[m];
@@ -1720,7 +1733,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
     <% if (!_publicView && tandas.some(t => t.mangas && t.mangas.length > 0)) { %>
       <div class="print-hide" style="margin-top:2.5rem">
         <h2 class="section-title">
-          <%= lang === 'es' ? 'Corrección de vueltas' : 'Lap Corrections' %>
+          <%= t('common.correccion_de_vueltas') %>
         </h2>
         <p class="form-hint" style="margin-bottom:1rem">
           <%= lang === 'es'
@@ -1728,17 +1741,20 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
             : 'Remove ghost laps, transfer laps between lanes, or add laps manually.' %>
         </p>
         <div style="display:flex;flex-direction:column;gap:.5rem">
-          <% tandas.forEach(t => { %>
-            <% if (t.mangas && t.mangas.length > 0) { %>
+          <%# El bucle se llamaba `t`, que es justo el nombre del traductor en las
+              vistas: al pasar los textos a t() la llamada acababa en la variable
+              del bucle. %>
+          <% tandas.forEach(tanda => { %>
+            <% if (tanda.mangas && tanda.mangas.length > 0) { %>
               <div class="tanda-block" style="padding:.75rem 1rem">
-                <span class="tanda-num"><%= lang === 'es' ? 'Tanda' : 'Round' %> <%= t.number %></span>
+                <span class="tanda-num"><%= t('common.tanda_2') %> <%= tanda.number %></span>
                 <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.5rem">
-                  <% t.mangas.forEach(m => { %>
+                  <% tanda.mangas.forEach(m => { %>
                     <a href="/races/<%= race.id %>/mangas/<%= m.id %>/corrections"
                        class="btn btn--ghost btn--sm">
-                      <%= lang === 'es' ? 'Manga' : 'Heat' %> <%= m.number %>
+                      <%= t('common.manga') %> <%= m.number %>
                       <span class="badge badge--<%= m.status %>" style="font-size:.65rem;margin-left:.3rem">
-                        <%= {pending: lang==='es'?'Pend.':'Pend.', active: lang==='es'?'Activa':'Active', finished: '✓'}[m.status] %>
+                        <%= {pending: t('results.pend'), active: t('results.activa'), finished: '✓'}[m.status] %>
                       </span>
                     </a>
                   <% }) %>

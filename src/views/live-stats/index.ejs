@@ -3,10 +3,10 @@
 <div class="container container--narrow">
   <a href="/" class="vt-back-link" style="margin-top:1rem">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-    <%= lang === 'es' ? 'Inicio' : 'Home' %>
+    <%= t('common.inicio') %>
   </a>
   <div class="page-header">
-    <h1 class="page-title">📊 <%= lang === 'es' ? 'Estadísticas en vivo' : 'Live stats' %></h1>
+    <h1 class="page-title">📊 <%= t('common.estadisticas_en_vivo') %></h1>
     <p style="color:#8b949e; margin-top:.3rem">
       <%= lang === 'es'
         ? 'Elige la carrera activa que quieres seguir en directo.'
@@ -19,18 +19,18 @@
   <% if (typeof noLive !== 'undefined' && noLive) { %>
     <div class="ls-nolive">
       <div class="ls-nolive__icon">🏁</div>
-      <p class="ls-nolive__title"><%= lang === 'es' ? 'No hay ninguna carrera en directo ahora mismo.' : 'No race is live right now.' %></p>
-      <p class="ls-nolive__sub"><%= lang === 'es' ? 'Cuando se dé el GO a una carrera, aparecerá aquí automáticamente.' : 'When a race gets the GO, it will appear here automatically.' %></p>
+      <p class="ls-nolive__title"><%= t('live-stats.no_hay_ninguna_carrera_en_directo_ahora_mismo') %></p>
+      <p class="ls-nolive__sub"><%= t('live-stats.cuando_se_de_el_go_a_una_carrera_aparecera_aqui') %></p>
     </div>
   <% } else { %>
     <% if (poleRacesList.length > 0) { %>
-      <p class="ls-section-title"><%= lang === 'es' ? '🏁 Pole en directo' : '🏁 Pole live' %></p>
+      <p class="ls-section-title"><%= t('live-stats.pole_en_directo') %></p>
       <div class="ls-race-list" style="margin-bottom:1.4rem">
         <% poleRacesList.forEach(r => { %>
           <a href="/races/<%= r.id %>/pole/timing" class="ls-race-card">
             <div class="ls-race-card__name"><%= r.name %></div>
             <div class="ls-race-card__meta">
-              <span class="ls-race-card__status ls-race-card__status--active"><%= lang === 'es' ? 'pole en curso' : 'pole in progress' %></span>
+              <span class="ls-race-card__status ls-race-card__status--active"><%= t('live-stats.pole_en_curso') %></span>
             </div>
           </a>
         <% }) %>
@@ -52,7 +52,7 @@
       </div>
     <% } else if (poleRacesList.length === 0) { %>
       <p style="color:#8b949e">
-        <%= lang === 'es' ? 'No hay carreras creadas todavía.' : 'No races created yet.' %>
+        <%= t('live-stats.no_hay_carreras_creadas_todavia') %>
       </p>
     <% } %>
   <% } %>

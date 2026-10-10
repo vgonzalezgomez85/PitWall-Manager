@@ -37,12 +37,12 @@
 </head>
 <body>
   <div class="no-print">
-    <button onclick="window.print()" class="primary">🖨 <%= lang === 'es' ? 'Imprimir todos' : 'Print all' %></button>
-    <button onclick="window.close()"><%= lang === 'es' ? 'Cerrar' : 'Close' %></button>
+    <button onclick="window.print()" class="primary">🖨 <%= t('qr-all.imprimir_todos') %></button>
+    <button onclick="window.close()"><%= t('common.cerrar') %></button>
   </div>
 
   <% if (items.length === 0) { %>
-    <p style="color:#888"><%= lang === 'es' ? 'No hay pilotos con QR.' : 'No drivers with QR.' %></p>
+    <p style="color:#888"><%= t('qr-all.no_hay_pilotos_con_qr') %></p>
   <% } else { %>
     <div class="grid">
       <% items.forEach(p => { %>

@@ -1,11 +1,11 @@
-<%- include('../partials/header', { pageTitle: lang === 'es' ? 'Escenarios' : 'Scenarios' }) %>
+<%- include('../partials/header', { pageTitle: t('common.escenarios') }) %>
 
 <div class="vt-page">
   <div class="vt-wrap">
 
     <a href="/" class="vt-back-link">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      <%= lang === 'es' ? 'Inicio' : 'Home' %>
+      <%= t('common.inicio') %>
     </a>
 
     <% if (flash) { %>
@@ -14,23 +14,23 @@
 
     <div class="vt-head">
       <div class="vt-head__title">
-        <h1><%= lang === 'es' ? 'Escenarios' : 'Scenarios' %></h1>
+        <h1><%= t('common.escenarios') %></h1>
         <span class="vt-cnt"><%= circuits.length %></span>
       </div>
       <div class="vt-head__actions">
         <a href="/circuits/new" class="vt-btn vt-btn--primary">
-          + <%= lang === 'es' ? 'Nuevo escenario' : 'New scenario' %>
+          + <%= t('common.nuevo_escenario') %>
         </a>
       </div>
     </div>
 
     <% if (circuits.length === 0) { %>
       <div class="vt-empty" style="margin-top:32px">
-        <div class="vt-empty__t"><%= lang === 'es' ? 'Sin escenarios' : 'No scenarios' %></div>
+        <div class="vt-empty__t"><%= t('circuits.sin_escenarios') %></div>
         <p style="color:var(--vt-mute);margin:6px 0 16px">
-          <%= lang === 'es' ? 'Crea uno para reutilizarlo en tus carreras.' : 'Create one to reuse it in your races.' %>
+          <%= t('common.crea_uno_para_reutilizarlo_en_tus_carreras') %>
         </p>
-        <a href="/circuits/new" class="vt-btn vt-btn--primary">+ <%= lang === 'es' ? 'Crear escenario' : 'Create scenario' %></a>
+        <a href="/circuits/new" class="vt-btn vt-btn--primary">+ <%= t('common.crear_escenario') %></a>
       </div>
     <% } else { %>
 
@@ -38,14 +38,14 @@
         <table class="vt-table">
           <thead>
             <tr>
-              <th><%= lang === 'es' ? 'Nombre' : 'Name' %></th>
-              <th class="is-num"><%= lang === 'es' ? 'Circuitos' : 'Circuits' %></th>
-              <th><%= lang === 'es' ? 'Configuración' : 'Configuration' %></th>
-              <th class="is-num"><%= lang === 'es' ? 'Carriles' : 'Lanes' %></th>
-              <th><%= lang === 'es' ? 'Vuelta mín.' : 'Min lap' %></th>
-              <th><%= lang === 'es' ? 'Por categoría' : 'Per category' %></th>
-              <th><%= lang === 'es' ? 'Notas' : 'Notes' %></th>
-              <th><%= lang === 'es' ? 'Creado' : 'Created' %></th>
+              <th><%= t('common.nombre') %></th>
+              <th class="is-num"><%= t('common.circuitos') %></th>
+              <th><%= t('circuits.configuracion') %></th>
+              <th class="is-num"><%= t('common.carriles') %></th>
+              <th><%= t('circuits.vuelta_min') %></th>
+              <th><%= t('circuits.por_categoria') %></th>
+              <th><%= t('common.notas') %></th>
+              <th><%= t('common.creado') %></th>
               <th class="is-actions"></th>
             </tr>
           </thead>
@@ -88,12 +88,12 @@
                 <td class="is-mute"><%= c.description || '—' %></td>
                 <td class="is-mute is-mono"><%= created %></td>
                 <td class="is-actions">
-                  <a href="/circuits/<%= c.id %>/edit" class="vt-icon-btn" title="<%= lang === 'es' ? 'Editar' : 'Edit' %>">
+                  <a href="/circuits/<%= c.id %>/edit" class="vt-icon-btn" title="<%= t('client.common.editar') %>">
                     <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
                   </a>
                   <form action="/circuits/<%= c.id %>/delete" method="POST" style="display:inline"
-                        onsubmit="return confirm('<%= lang === 'es' ? '¿Eliminar escenario?' : 'Delete scenario?' %>')">
-                    <button type="submit" class="vt-icon-btn is-danger" title="<%= lang === 'es' ? 'Eliminar' : 'Delete' %>">
+                        onsubmit="return confirm('<%= t('circuits.eliminar_escenario') %>')">
+                    <button type="submit" class="vt-icon-btn is-danger" title="<%= t('common.eliminar') %>">
                       <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/></svg>
                     </button>
                   </form>

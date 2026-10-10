@@ -1,9 +1,9 @@
-<%- include('../partials/header', { pageTitle: lang === 'es' ? 'Editar Manga' : 'Edit Heat' }) %>
+<%- include('../partials/header', { pageTitle: t('manga-edit.editar_manga') }) %>
 <div class="container container--narrow">
 
-  <a href="/races/<%= race.id %>" class="back-link">← <%= lang === 'es' ? 'Volver a la carrera' : 'Back to race' %></a>
+  <a href="/races/<%= race.id %>" class="back-link">← <%= t('common.volver_a_la_carrera') %></a>
   <h1 class="page-title">
-    <%= lang === 'es' ? 'Editar Manga' : 'Edit Heat' %> <%= manga.number %>
+    <%= t('manga-edit.editar_manga') %> <%= manga.number %>
   </h1>
   <p class="page-subtitle"><%= race.name %></p>
 
@@ -44,7 +44,7 @@
       <% if (restLanes.length > 0) { %>
         <div style="display:flex;align-items:center;gap:.5rem;margin-top:.4rem">
           <span style="flex:1;height:1px;background:#21262d"></span>
-          <span class="form-hint" style="font-size:.75rem;letter-spacing:.08em">💤 <%= lang === 'es' ? 'DESCANSOS' : 'RESTING' %></span>
+          <span class="form-hint" style="font-size:.75rem;letter-spacing:.08em">💤 <%= t('manga-edit.descansos') %></span>
           <span style="flex:1;height:1px;background:#21262d"></span>
         </div>
         <% restLanes.forEach((lane, idx) => {
@@ -68,10 +68,10 @@
 
     <div class="form-actions" style="margin-top:1.5rem">
       <a href="/races/<%= race.id %>" class="btn btn--ghost">
-        <%= lang === 'es' ? 'Cancelar' : 'Cancel' %>
+        <%= t('client.common.cancelar') %>
       </a>
       <button type="submit" class="btn btn--primary">
-        <%= lang === 'es' ? 'Guardar cambios' : 'Save changes' %>
+        <%= t('common.guardar_cambios') %>
       </button>
     </div>
 

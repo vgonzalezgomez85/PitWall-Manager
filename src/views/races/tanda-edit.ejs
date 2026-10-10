@@ -1,15 +1,15 @@
-<%- include('../partials/header', { pageTitle: lang === 'es' ? 'Editar Tanda' : 'Edit Heat Group' }) %>
+<%- include('../partials/header', { pageTitle: t('tanda-edit.editar_tanda_2') }) %>
 
 <link rel="stylesheet" href="/css/fonts.css">
 
 <div class="pole-broadcast pole-broadcast--form">
 <div class="pole-bcast-wrap pole-bcast-wrap--narrow">
 
-  <a href="/races/<%= race.id %>" class="pole-back">← <%= lang === 'es' ? 'Volver a la carrera' : 'Back to race' %></a>
+  <a href="/races/<%= race.id %>" class="pole-back">← <%= t('common.volver_a_la_carrera') %></a>
 
   <div class="pole-title-row">
     <div class="pole-flag" aria-hidden="true"></div>
-    <h1 class="pole-h1"><%= lang === 'es' ? 'Editar Tanda' : 'Edit Heat' %> <%= tanda.number %></h1>
+    <h1 class="pole-h1"><%= t('tanda-edit.editar_tanda') %> <%= tanda.number %></h1>
   </div>
 
   <div class="pole-meta">
@@ -18,14 +18,14 @@
     <span><%= t('races.format.' + race.format) %></span>
     <span class="pole-dot"></span>
     <span class="pole-lane-badge">
-      <%= lang === 'es' ? 'Carriles' : 'Lanes' %>
+      <%= t('common.carriles') %>
       <span class="pole-lane-num"><%= laneSequence.length %></span>
     </span>
   </div>
 
   <% if (!canRestructure) { %>
     <div class="alert" style="background:rgba(255,152,0,.08);border:1px solid rgba(255,152,0,.3);color:#ff9800;margin-bottom:1.25rem">
-      <strong>⚠ <%= lang === 'es' ? 'Modo solo renombrar' : 'Rename-only mode' %></strong><br>
+      <strong>⚠ <%= t('tanda-edit.modo_solo_renombrar') %></strong><br>
       <span style="font-size:.88rem">
         <%= lang === 'es'
           ? 'Esta tanda ya tiene mangas iniciadas. Solo puedes cambiar los nombres — no añadir ni eliminar participantes.'
@@ -43,10 +43,10 @@
   <div class="form-card">
 
     <div class="seq-display" style="margin-bottom:1.75rem">
-      <span class="seq-display__label"><%= lang === 'es' ? 'Secuencia:' : 'Sequence:' %></span>
+      <span class="seq-display__label"><%= t('common.secuencia') %></span>
       <% laneSequence.forEach((lane, i) => { %>
         <% if (lane === 0) { %>
-          <span class="seq-display__lane" style="background:#30363d;color:#8b949e;font-size:.65rem"><%= lang === 'es' ? 'DSC' : 'REST' %></span>
+          <span class="seq-display__lane" style="background:#30363d;color:#8b949e;font-size:.65rem"><%= t('client.common.dsc') %></span>
         <% } else { %>
           <span class="seq-display__lane" style="background:<%= LANE_COLORS[lane-1] %>"><%= lane %></span>
         <% } %>
@@ -61,7 +61,7 @@
     <% } %>
 
     <form action="/races/<%= race.id %>/tandas/<%= tanda.id %>/edit" method="POST"
-          <% if (canRestructure) { %>onsubmit="return confirm('<%= lang === 'es' ? '¿Guardar cambios? Se regenerará la programación de mangas.' : 'Save changes? The heat schedule will be regenerated.' %>')"<% } %>>
+          <% if (canRestructure) { %>onsubmit="return confirm('<%= t('tanda-edit.guardar_cambios_se_regenerara_la_programacion') %>')"<% } %>>
 
       <% if (race.format === 'individual') { %>
 
@@ -71,7 +71,7 @@
               ? `Mínimo ${laneSequence.length} pilotos. Añade más para rotaciones con descanso.`
               : `Minimum ${laneSequence.length} drivers. Add more for rotation with rest slots.` %>
           <% } else { %>
-            <%= lang === 'es' ? 'Modifica los nombres de los pilotos.' : 'Edit driver names.' %>
+            <%= t('tanda-edit.modifica_los_nombres_de_los_pilotos') %>
           <% } %>
         </p>
 
@@ -94,12 +94,12 @@
                const restIdx = slotLane === 0 ? (drivers.length - i) : 0;
                const slotLabel = slotLane > 0
                  ? slotLane
-                 : ((lang === 'es' ? 'DSC' : 'REST') + (restIdx > 0 ? restIdx : ''));
+                 : ((t('client.common.dsc')) + (restIdx > 0 ? restIdx : ''));
           %>
             <div class="driver-row participant-row" data-row="<%= pos %>">
               <span class="lane-badge participant-badge" style="background:<%= slotColor %>;<%= slotLane === 0 ? 'color:#8b949e;font-size:.65rem' : '' %>" data-index="<%= i %>"><%= slotLabel %></span>
               <div class="driver-field participant-fields">
-                <% if (canRestructure) { %><span class="drag-handle" draggable="true" title="<%= lang === 'es' ? 'Arrastrar para reordenar' : 'Drag to reorder' %>">⠿</span><% } %>
+                <% if (canRestructure) { %><span class="drag-handle" draggable="true" title="<%= t('client.tanda-edit.arrastrar_para_reordenar') %>">⠿</span><% } %>
                 <% if (!canRestructure) { %>
                   <input type="hidden" name="drivers[<%= i %>][id]" value="<%= d.id %>">
                   <input class="form-input participant-name" type="text"
@@ -116,7 +116,7 @@
                       categoria: d.categoria, coche: d.coche }) %>
               </div>
               <% if (canRestructure && i >= laneSequence.length) { %>
-                <button type="button" class="btn btn--danger btn--sm remove-row" title="<%= lang === 'es' ? 'Eliminar' : 'Remove' %>">✕</button>
+                <button type="button" class="btn btn--danger btn--sm remove-row" title="<%= t('client.common.eliminar') %>">✕</button>
               <% } %>
             </div>
           <% }) %>
@@ -124,7 +124,7 @@
 
         <% if (canRestructure) { %>
           <button type="button" id="addDriver" class="btn btn--ghost btn--sm" style="margin-top:.75rem">
-            + <%= lang === 'es' ? 'Añadir piloto' : 'Add driver' %>
+            + <%= t('client.common.anadir_piloto') %>
           </button>
         <% } %>
 
@@ -136,7 +136,7 @@
               ? `Mínimo ${laneSequence.length} equipos. Añade más para rotaciones con descanso.`
               : `Minimum ${laneSequence.length} teams. Add more for rotation with rest slots.` %>
           <% } else { %>
-            <%= lang === 'es' ? 'Modifica los nombres de los equipos y pilotos.' : 'Edit team and driver names.' %>
+            <%= t('tanda-edit.modifica_los_nombres_de_los_equipos_y_pilotos') %>
           <% } %>
         </p>
 
@@ -158,12 +158,12 @@
                const restIdx = slotLane === 0 ? (teams.length - i) : 0;
                const slotLabel = slotLane > 0
                  ? slotLane
-                 : ((lang === 'es' ? 'DSC' : 'REST') + (restIdx > 0 ? restIdx : ''));
+                 : ((t('client.common.dsc')) + (restIdx > 0 ? restIdx : ''));
           %>
             <div class="team-block participant-row" data-row="<%= pos %>">
               <div class="team-block__header" style="border-left-color:<%= slotColor %>">
                 <span class="lane-badge participant-badge" style="background:<%= slotColor %>;<%= slotLane === 0 ? 'color:#8b949e;font-size:.65rem' : '' %>" data-index="<%= i %>"><%= slotLabel %></span>
-                <% if (canRestructure) { %><span class="drag-handle" draggable="true" title="<%= lang === 'es' ? 'Arrastrar para reordenar' : 'Drag to reorder' %>">⠿</span><% } %>
+                <% if (canRestructure) { %><span class="drag-handle" draggable="true" title="<%= t('client.tanda-edit.arrastrar_para_reordenar') %>">⠿</span><% } %>
                 <% if (!canRestructure) { %>
                   <input type="hidden" name="teams[<%= i %>][id]" value="<%= team.id %>">
                 <% } %>
@@ -209,7 +209,7 @@
 
         <% if (canRestructure) { %>
           <button type="button" id="addTeam" class="btn btn--ghost btn--sm" style="margin-top:.75rem">
-            + <%= lang === 'es' ? 'Añadir equipo' : 'Add team' %>
+            + <%= t('tanda-edit.anadir_equipo') %>
           </button>
         <% } %>
 
@@ -218,7 +218,7 @@
       <div class="form-actions pole-lanes-actions" style="margin-top:1.5rem">
         <a href="/races/<%= race.id %>" class="pole-btn-edit">← <%= t('wizard.back') %></a>
         <button type="submit" class="pole-btn-confirm pole-btn-confirm--save">
-          💾 <%= lang === 'es' ? 'Guardar cambios' : 'Save changes' %>
+          💾 <%= t('common.guardar_cambios') %>
         </button>
       </div>
 
@@ -226,7 +226,7 @@
   </div>
 
   <div class="pole-bcast-foot">
-    <%= lang === 'es' ? 'Edición de tanda · arrastra para reordenar' : 'Heat editing · drag to reorder' %>
+    <%= t('tanda-edit.edicion_de_tanda_arrastra_para_reordenar') %>
   </div>
 
 </div>
@@ -256,8 +256,8 @@ const MEMBER_PH = "<%= t('wizard.member_ph') %>";
 // Campos opcionales por participante (interruptores de la carrera).
 const SHOW_CAT = <%= race.has_categoria ? 'true' : 'false' %>;
 const SHOW_CAR = <%= race.has_coche ? 'true' : 'false' %>;
-const CAT_PH   = "<%= lang === 'es' ? 'Categoría / copa' : 'Category / cup' %>";
-const CAR_PH   = "<%= lang === 'es' ? 'Coche' : 'Car' %>";
+const CAT_PH   = "<%= t('common.categoria_copa') %>";
+const CAR_PH   = "<%= t('common.coche') %>";
 function attrsHtml(prefix) {
   if (!SHOW_CAT && !SHOW_CAR) return '';
   let h = '<div class="participant-attrs">';

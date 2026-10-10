@@ -3,7 +3,7 @@
 <div class="container container--narrow">
   <a href="/" class="vt-back-link" style="margin-top:1rem">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-    <%= lang === 'es' ? 'Inicio' : 'Home' %>
+    <%= t('common.inicio') %>
   </a>
   <div class="page-header">
     <h1 class="page-title">Lap</h1>
@@ -17,7 +17,7 @@
   <% if (races.length === 0) { %>
     <div class="ls-nolive">
       <div class="ls-nolive__icon">🏎️</div>
-      <p class="ls-nolive__title"><%= lang === 'es' ? 'No hay carreras de resistencia activas ahora mismo.' : 'No endurance races active right now.' %></p>
+      <p class="ls-nolive__title"><%= t('lap.no_hay_carreras_de_resistencia_activas_ahora') %></p>
     </div>
   <% } else { %>
     <div class="ls-race-list">
@@ -26,9 +26,9 @@
           <div class="ls-race-card__name"><%= r.name %></div>
           <div class="ls-race-card__meta">
             <% if (r.status === 'active') { %>
-              <span class="ls-race-card__status ls-race-card__status--active"><%= lang === 'es' ? 'en vivo' : 'live' %></span>
+              <span class="ls-race-card__status ls-race-card__status--active"><%= t('lap.en_vivo') %></span>
             <% } else { %>
-              <span class="ls-race-card__status"><%= r.teamsCount %> <%= lang === 'es' ? 'equipos' : 'teams' %></span>
+              <span class="ls-race-card__status"><%= r.teamsCount %> <%= t('client.common.equipos') %></span>
             <% } %>
           </div>
         </a>

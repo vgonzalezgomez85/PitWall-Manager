@@ -1,8 +1,8 @@
 <%
   const isEdit = !!team;
   const formTitle = isEdit
-    ? (lang === 'es' ? 'Editar equipo' : 'Edit team')
-    : (lang === 'es' ? 'Nuevo equipo' : 'New team');
+    ? (t('form.editar_equipo'))
+    : (t('client.common.nuevo_equipo'));
   const formAction = isEdit ? '/teams/' + team.id : '/teams';
   const currentMembers = isEdit ? team.members : [];
 %>
@@ -12,7 +12,7 @@
 
   <a href="/teams" class="vt-back-link">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-    <%= lang === 'es' ? 'Volver a equipos' : 'Back to teams' %>
+    <%= t('form.volver_a_equipos') %>
   </a>
   <h1><%= formTitle %></h1>
 
@@ -21,7 +21,7 @@
       <% errors.forEach(e => { %>
         <p>
           <% if (e === 'name_required') { %>
-            <%= lang === 'es' ? 'El nombre es obligatorio (mínimo 2 caracteres).' : 'Name is required (min 2 characters).' %>
+            <%= t('form.el_nombre_es_obligatorio_minimo_2_caracteres') %>
           <% } else { %><%= e %><% } %>
         </p>
       <% }) %>
@@ -32,32 +32,32 @@
 
     <!-- Name -->
     <div class="form-group">
-      <label class="form-label" for="tName"><%= lang === 'es' ? 'Nombre del equipo' : 'Team name' %></label>
+      <label class="form-label" for="tName"><%= t('client.common.nombre_del_equipo') %></label>
       <input class="form-input <%= errors.includes('name_required') ? 'form-input--error' : '' %>"
              type="text" id="tName" name="name"
-             placeholder="<%= lang === 'es' ? 'Ej: Red Racers' : 'e.g. Red Racers' %>"
+             placeholder="<%= t('client.common.ej_red_racers') %>"
              value="<%= body.name || '' %>" autocomplete="off" autofocus required>
     </div>
 
     <!-- Categoria + Coche (two columns) -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
       <div class="form-group" style="margin:0">
-        <label class="form-label" for="tCategoria"><%= lang === 'es' ? 'Categoría' : 'Category' %></label>
+        <label class="form-label" for="tCategoria"><%= t('client.common.categoria') %></label>
         <input class="form-input" type="text" id="tCategoria" name="categoria"
-               placeholder="<%= lang === 'es' ? 'Ej: LMH, LMGT3, Clase A...' : 'e.g. LMH, GTE, Class A...' %>"
+               placeholder="<%= t('form.ej_lmh_lmgt3_clase_a') %>"
                value="<%= body.categoria || '' %>" autocomplete="off">
       </div>
       <div class="form-group" style="margin:0">
-        <label class="form-label" for="tCoche"><%= lang === 'es' ? 'Coche' : 'Car' %></label>
+        <label class="form-label" for="tCoche"><%= t('common.coche') %></label>
         <input class="form-input" type="text" id="tCoche" name="coche"
-               placeholder="<%= lang === 'es' ? 'Ej: Ferrari 499P, Porsche 963...' : 'e.g. Ferrari 499P, Porsche 963...' %>"
+               placeholder="<%= t('form.ej_ferrari_499p_porsche_963') %>"
                value="<%= body.coche || '' %>" autocomplete="off">
       </div>
     </div>
 
     <!-- Car photo -->
     <div class="form-group">
-      <label class="form-label"><%= lang === 'es' ? 'Foto del coche' : 'Car photo' %></label>
+      <label class="form-label"><%= t('form.foto_del_coche') %></label>
       <% const currentPhoto = isEdit ? team.car_photo : null; %>
       <% if (currentPhoto) { %>
         <div id="currentPhotoWrap" style="margin-bottom:.6rem;display:flex;align-items:center;gap:.75rem">
@@ -66,7 +66,7 @@
           <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-size:.82rem;color:#8b949e">
             <input type="checkbox" name="remove_car_photo" value="1" id="removePhotoChk"
                    onchange="document.getElementById('currentPhotoWrap').style.opacity=this.checked?'0.3':'1'">
-            <%= lang === 'es' ? 'Eliminar foto' : 'Remove photo' %>
+            <%= t('form.eliminar_foto') %>
           </label>
         </div>
       <% } %>
@@ -79,7 +79,7 @@
           <img id="carPreview" src="#" alt=""
                style="display:none;height:64px;object-fit:contain;border-radius:4px;background:#000000">
           <span id="carUploadHint" style="font-size:.82rem;color:#8b949e">
-            <%= lang === 'es' ? '📁 Seleccionar imagen (JPG, PNG, WebP — máx 4MB)' : '📁 Select image (JPG, PNG, WebP — max 4MB)' %>
+            <%= t('form.seleccionar_imagen_jpg_png_webp_max_4mb') %>
           </span>
         </label>
       </div>
@@ -87,7 +87,7 @@
 
     <!-- Country -->
     <div class="form-group">
-      <label class="form-label"><%= lang === 'es' ? 'País' : 'Country' %></label>
+      <label class="form-label"><%= t('common.pais') %></label>
       <div style="position:relative">
         <div id="flagPickerBtn" class="form-input" style="cursor:pointer;display:flex;align-items:center;gap:.6rem;user-select:none">
           <span id="flagDisplay" style="font-size:1.4rem;line-height:1;display:flex;align-items:center">
@@ -102,7 +102,7 @@
             <% } %>
           </span>
           <span id="flagLabel" style="flex:1;color:<%= body.country ? '#e6edf3' : '#8b949e' %>">
-            <%= body.country ? body.country.split('|')[0] : (lang === 'es' ? 'Selecciona un país...' : 'Select a country...') %>
+            <%= body.country ? body.country.split('|')[0] : (t('form.selecciona_un_pais')) %>
           </span>
           <span style="color:#8b949e;font-size:.8rem">▼</span>
         </div>
@@ -110,7 +110,7 @@
         <div id="flagDropdown" style="display:none;position:absolute;top:calc(100% + 2px);left:0;right:0;z-index:200;background:#161b22;border:1px solid #30363d;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.5);overflow:hidden">
           <div style="padding:.5rem">
             <input type="text" id="flagSearch" class="form-input form-input--sm"
-                   placeholder="<%= lang === 'es' ? 'Buscar país...' : 'Search country...' %>"
+                   placeholder="<%= t('form.buscar_pais') %>"
                    autocomplete="off" style="width:100%">
           </div>
           <ul id="flagList" style="margin:0;padding:0 0 .4rem;list-style:none;max-height:220px;overflow-y:auto"></ul>
@@ -120,48 +120,48 @@
 
     <!-- Members -->
     <div class="form-group">
-      <label class="form-label"><%= lang === 'es' ? 'Pilotos del equipo' : 'Team drivers' %></label>
+      <label class="form-label"><%= t('form.pilotos_del_equipo') %></label>
       <div id="membersList" style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:.75rem">
         <% currentMembers.forEach(m => { %>
           <div class="member-row" style="position:relative;display:flex;gap:.5rem;align-items:center">
             <div style="flex:1;position:relative">
               <input type="text" name="member_name[]" class="form-input member-name-input"
-                     placeholder="<%= lang === 'es' ? 'Nombre piloto' : 'Driver name' %>"
+                     placeholder="<%= t('client.common.nombre_piloto') %>"
                      value="<%= m.name %>" autocomplete="off">
               <input type="hidden" name="member_driver_id[]" class="member-driver-id" value="<%= m.driver_id || '' %>">
               <ul class="ac-dropdown" style="display:none"></ul>
             </div>
             <% if (m.driver_id) { %>
-              <span class="member-linked" title="<%= lang === 'es' ? 'Vinculado a perfil' : 'Linked to profile' %>">🔗</span>
+              <span class="member-linked" title="<%= t('form.vinculado_a_perfil') %>">🔗</span>
             <% } else { %>
               <span class="member-linked" style="visibility:hidden">🔗</span>
             <% } %>
-            <button type="button" class="btn btn--danger btn--sm member-remove" title="<%= lang === 'es' ? 'Quitar' : 'Remove' %>">✕</button>
+            <button type="button" class="btn btn--danger btn--sm member-remove" title="<%= t('client.common.quitar') %>">✕</button>
           </div>
         <% }) %>
       </div>
       <button type="button" id="btnAddMember" class="btn btn--ghost btn--sm">
-        + <%= lang === 'es' ? 'Añadir piloto' : 'Add driver' %>
+        + <%= t('client.common.anadir_piloto') %>
       </button>
       <p class="form-hint" style="margin-top:.4rem">
-        <%= lang === 'es' ? 'Escribe para buscar entre los perfiles existentes o introduce un nombre nuevo.' : 'Type to search existing profiles or enter a new name.' %>
+        <%= t('form.escribe_para_buscar_entre_los_perfiles') %>
       </p>
     </div>
 
     <!-- Notes -->
     <div class="form-group">
       <label class="form-label" for="tNotes">
-        <%= lang === 'es' ? 'Notas (opcional)' : 'Notes (optional)' %>
+        <%= t('form.notas_opcional') %>
       </label>
       <input class="form-input" type="text" id="tNotes" name="notes"
-             placeholder="<%= lang === 'es' ? 'Club, categoría...' : 'Club, category...' %>"
+             placeholder="<%= t('form.club_categoria') %>"
              value="<%= body.notes || '' %>">
     </div>
 
     <div class="vt-form-actions">
-      <a href="/teams" class="vt-btn vt-btn--ghost"><%= lang === 'es' ? 'Cancelar' : 'Cancel' %></a>
+      <a href="/teams" class="vt-btn vt-btn--ghost"><%= t('client.common.cancelar') %></a>
       <button type="submit" class="vt-btn vt-btn--primary">
-        <%= isEdit ? (lang === 'es' ? 'Guardar cambios' : 'Save changes') : (lang === 'es' ? 'Crear equipo' : 'Create team') %>
+        <%= isEdit ? (t('common.guardar_cambios')) : (t('client.common.crear_equipo')) %>
       </button>
     </div>
 

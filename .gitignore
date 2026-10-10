@@ -37,3 +37,7 @@ database/tls/
 carrera test vicos/
 bkp_portatil_SAVED_*/
 notas usuarios/
+
+# Directorio de trabajo de scripts (copias de BD, capturas de i18n…): son datos
+# de la máquina, no código.
+.tmp/

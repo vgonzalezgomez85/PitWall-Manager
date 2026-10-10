@@ -150,10 +150,14 @@ test('la vista del informe se renderiza y marca cada infracción', async () => {
 
   const ejs  = require('ejs');
   const path = require('path');
+  // Traductor de verdad, leyendo es.json: la vista ya pasa los textos por `t()`,
+  // así que un `t: (k) => k` de mentira devolvería la clave y no el texto.
+  const { locales } = require('../src/middleware/i18n');
+  const tReal = (k) => k.split('.').reduce((o, x) => o?.[x], locales.es) ?? k;
   const html = await ejs.renderFile(
     path.resolve(__dirname, '../src/views/control/shifts-report.ejs'),
     {
-      ...data, t: (k) => k, lang: 'es',
+      ...data, t: tReal, lang: 'es',
       fmtHms: require('../src/utils/duration').fmtHms,
       shiftCompliance: require('../src/utils/shiftCompliance').evaluate,
       shiftBadge: require('../src/utils/shiftCompliance').badgeClass,

@@ -3,8 +3,8 @@ const es = lang === 'es';
 const isChamp = body.type === 'championship';
 const locked = typeof typeLocked !== 'undefined' && typeLocked && (body.type === 'club' || isChamp);
 const title = locked
-  ? (isChamp ? (es ? 'Nueva carrera de resistencia' : 'New endurance race') : (es ? 'Nueva carrera sprint' : 'New sprint race'))
-  : (es ? 'Nueva carrera' : 'New race');
+  ? (isChamp ? (t('wizard.nueva_carrera_de_resistencia')) : (t('wizard.nueva_carrera_sprint')))
+  : (t('common.nueva_carrera'));
 const passes = parseInt(body.passes, 10) || 1;
 const laneRepeat = parseInt(body.lane_repeat, 10) || 1;
 // Defaults para el form: en BD se guardan en ms, en el form en minutos/segundos.
@@ -30,11 +30,11 @@ const tirePairs = body.tire_pairs_per_team != null ? body.tire_pairs_per_team : 
       <p class="page-subtitle">
         <% if (locked) { %>
           <%= isChamp
-            ? (es ? 'Larga duración, por equipos, con turnos de piloto y neumáticos.' : 'Long race, by teams, with driver shifts and tyres.')
-            : (es ? 'Carrera corta, cada piloto corre por su cuenta.' : 'Short race, each driver on their own.') %>
-          <a class="nr-switch" href="/races/new?type=<%= isChamp ? 'club' : 'championship' %>"><%= isChamp ? (es ? 'Cambiar a sprint' : 'Switch to sprint') : (es ? 'Cambiar a resistencia' : 'Switch to endurance') %></a>
+            ? (t('wizard.larga_duracion_por_equipos_con_turnos_de_piloto'))
+            : (t('wizard.carrera_corta_cada_piloto_corre_por_su_cuenta')) %>
+          <a class="nr-switch" href="/races/new?type=<%= isChamp ? 'club' : 'championship' %>"><%= isChamp ? (t('wizard.cambiar_a_sprint')) : (t('wizard.cambiar_a_resistencia')) %></a>
         <% } else { %>
-          <%= es ? 'Lo básico de la carrera. Los participantes y los carriles vienen después.' : 'The race basics. Participants and lanes come next.' %>
+          <%= t('wizard.lo_basico_de_la_carrera_los_participantes_y_los') %>
         <% } %>
       </p>
     </div>
@@ -53,7 +53,7 @@ const tirePairs = body.tire_pairs_per_team != null ? body.tire_pairs_per_team : 
       <input type="hidden" name="type_locked" value="1">
     <% } else { %>
       <section class="nr-sec">
-        <h2 class="nr-sec__t"><%= es ? '¿Qué carrera quieres crear?' : 'What kind of race?' %></h2>
+        <h2 class="nr-sec__t"><%= t('wizard.que_carrera_quieres_crear') %></h2>
         <div class="option-cards">
           <label class="option-card">
             <input type="radio" name="type" value="club" <%= body.type === 'club' ? 'checked' : '' %> required>
@@ -86,11 +86,11 @@ const tirePairs = body.tire_pairs_per_team != null ? body.tire_pairs_per_team : 
     <!-- ── Circuito ───────────────────────────────────────────────────────── -->
     <section class="nr-sec">
       <div class="nr-sec__row">
-        <label class="nr-sec__t" for="circuitSelect"><%= es ? 'Circuito' : 'Circuit' %></label>
-        <a href="/circuits/new" class="nr-link" target="_blank">+ <%= es ? 'Nuevo circuito' : 'New circuit' %></a>
+        <label class="nr-sec__t" for="circuitSelect"><%= t('client.common.circuito') %></label>
+        <a href="/circuits/new" class="nr-link" target="_blank">+ <%= t('wizard.nuevo_circuito') %></a>
       </div>
       <select id="circuitSelect" class="form-input" onchange="applyCircuit(this.value)">
-        <option value="">— <%= es ? 'Configurar a mano' : 'Configure manually' %> —</option>
+        <option value="">— <%= t('wizard.configurar_a_mano') %> —</option>
         <% savedCircuits.forEach(c => { %>
           <option value="<%= c.id %>" data-count="<%= c.circuits_count %>" data-config="<%= c.circuits_config %>"
                   data-min-ms="<%= c.min_lap_ms %>" data-lanes="<%= c.lanes_count %>"
@@ -104,9 +104,9 @@ const tirePairs = body.tire_pairs_per_team != null ? body.tire_pairs_per_team : 
 
       <%# Categoría (solo si el circuito tiene Pt por categoría). %>
       <div class="nr-inline" id="categoryWrap" hidden>
-        <label class="nr-lbl" for="categorySelect"><%= es ? 'Categoría' : 'Category' %></label>
+        <label class="nr-lbl" for="categorySelect"><%= t('client.common.categoria') %></label>
         <select id="categorySelect" class="form-input form-input--sm">
-          <option value=""><%= es ? '— por defecto —' : '— default —' %></option>
+          <option value=""><%= t('common.por_defecto') %></option>
         </select>
         <input type="hidden" name="category_id" id="categoryId" value="<%= body.category_id || '' %>">
       </div>
@@ -114,7 +114,7 @@ const tirePairs = body.tire_pairs_per_team != null ? body.tire_pairs_per_team : 
       <%# A mano: nº de circuitos, carriles de cada uno y vuelta mínima. %>
       <div class="nr-manual" id="circuitConfigGroup">
         <div class="nr-inline">
-          <span class="nr-lbl"><%= es ? 'Circuitos' : 'Circuits' %></span>
+          <span class="nr-lbl"><%= t('common.circuitos') %></span>
           <div class="circ-pills" id="circPills">
             <% for (let i = 1; i <= 6; i++) { %>
               <button type="button" class="circ-pill<%= (parseInt(body.circuits_count) || 1) === i ? ' active' : '' %>" data-n="<%= i %>"><%= i %></button>
@@ -129,20 +129,20 @@ const tirePairs = body.tire_pairs_per_team != null ? body.tire_pairs_per_team : 
               <input class="form-input form-input--sm <%= errors.includes('lanes_invalid') ? 'form-input--error' : '' %>"
                      type="number" name="circuit_lanes_<%= i %>" id="circLanes_<%= i %>" min="2" max="8"
                      value="<%= body['circuit_lanes_' + i] || (i === 1 ? 6 : 4) %>"
-                     aria-label="<%= (es ? 'Carriles del circuito ' : 'Lanes of circuit ') + i %>">
-              <span class="form-hint"><%= es ? 'carriles' : 'lanes' %></span>
+                     aria-label="<%= (t('wizard.carriles_del_circuito')) + i %>">
+              <span class="form-hint"><%= t('client.common.carriles') %></span>
             </div>
           <% } %>
         </div>
         <div class="nr-inline">
-          <span class="nr-lbl"><%= es ? 'Total' : 'Total' %></span>
+          <span class="nr-lbl"><%= t('client.common.total') %></span>
           <strong id="totalLanesDisplay" class="nr-total"><%= body.lanes_count || 6 %></strong>
           <span class="form-hint"><%= t('races.lanes') %></span>
         </div>
         <div class="nr-inline">
-          <label class="nr-lbl" for="minLapS"><%= es ? 'Vuelta mínima' : 'Min lap time' %></label>
+          <label class="nr-lbl" for="minLapS"><%= t('common.vuelta_minima') %></label>
           <input class="form-input form-input--sm nr-num" type="number" id="minLapS" name="min_lap_s" step="0.01" min="0" max="999"
-                 placeholder="<%= es ? 'sin mínimo' : 'none' %>" value="<%= body.min_lap_s || '' %>">
+                 placeholder="<%= t('wizard.sin_minimo') %>" value="<%= body.min_lap_s || '' %>">
           <span class="form-hint">s</span>
         </div>
       </div>
@@ -150,76 +150,76 @@ const tirePairs = body.tire_pairs_per_team != null ? body.tire_pairs_per_team : 
 
     <!-- ── Pole ───────────────────────────────────────────────────────────── -->
     <section class="nr-sec">
-      <span class="nr-sec__t"><%= es ? 'Pole position' : 'Pole position' %></span>
-      <div class="nr-seg" role="radiogroup" aria-label="<%= es ? 'Pole position' : 'Pole position' %>">
+      <span class="nr-sec__t"><%= t('common.pole_position') %></span>
+      <div class="nr-seg" role="radiogroup" aria-label="<%= t('common.pole_position') %>">
         <label class="nr-seg__opt">
           <input type="radio" name="has_pole" value="0" <%= (body.has_pole || '0') !== '1' ? 'checked' : '' %>>
-          <span><b><%= es ? 'Sin pole' : 'No pole' %></b><small><%= es ? 'Los carriles se reparten al crear la tanda.' : 'Lanes are assigned when creating the heat group.' %></small></span>
+          <span><b><%= t('wizard.sin_pole') %></b><small><%= t('wizard.los_carriles_se_reparten_al_crear_la_tanda') %></small></span>
         </label>
         <label class="nr-seg__opt">
           <input type="radio" name="has_pole" value="1" <%= body.has_pole === '1' ? 'checked' : '' %>>
-          <span><b><%= es ? 'Con pole' : 'With pole' %></b><small><%= es ? 'El más rápido elige carril primero.' : 'Fastest picks a lane first.' %></small></span>
+          <span><b><%= t('wizard.con_pole') %></b><small><%= t('wizard.el_mas_rapido_elige_carril_primero') %></small></span>
         </label>
       </div>
     </section>
 
     <!-- ── Categoría y coche por participante (opcional) ──────────────────── -->
     <section class="nr-sec">
-      <span class="nr-sec__t"><%= es ? 'Categoría y coche (opcional)' : 'Category and car (optional)' %></span>
-      <p class="nr-help"><%= es ? 'Al activarlos, al inscribir cada equipo o piloto podrás indicar su categoría/copa y su coche (y editarlos luego desde la tanda). Rellenarlos no es obligatorio.' : 'When on, you can set each team’s or driver’s category/cup and car while signing them up (and edit them later from the heat group). Filling them in is not required.' %></p>
+      <span class="nr-sec__t"><%= t('common.categoria_y_coche_opcional') %></span>
+      <p class="nr-help"><%= t('wizard.al_activarlos_al_inscribir_cada_equipo_o_piloto') %></p>
       <div class="nr-seg">
         <label class="nr-seg__opt">
           <input type="checkbox" name="has_categoria" value="1" <%= body.has_categoria === '1' ? 'checked' : '' %>>
-          <span><b><%= es ? 'Categoría / copa' : 'Category / cup' %></b><small><%= es ? 'Se ve junto al nombre en el directo y sale en el Excel.' : 'Shown next to the name in the live view and included in the Excel.' %></small></span>
+          <span><b><%= t('common.categoria_copa') %></b><small><%= t('wizard.se_ve_junto_al_nombre_en_el_directo_y_sale_en') %></small></span>
         </label>
         <label class="nr-seg__opt">
           <input type="checkbox" name="has_coche" value="1" <%= body.has_coche === '1' ? 'checked' : '' %>>
-          <span><b><%= es ? 'Coche' : 'Car' %></b><small><%= es ? 'Columna en el Excel de resultados.' : 'Column in the results Excel.' %></small></span>
+          <span><b><%= t('common.coche') %></b><small><%= t('wizard.columna_en_el_excel_de_resultados') %></small></span>
         </label>
       </div>
     </section>
 
     <!-- ── Resistencia: turnos y neumáticos ───────────────────────────────── -->
     <section class="nr-sec" id="champSection" <%= isChamp ? '' : 'hidden' %>>
-      <span class="nr-sec__t"><%= es ? 'Reglas de resistencia' : 'Endurance rules' %></span>
-      <p class="nr-help"><%= es ? 'Deja en blanco lo que no quieras controlar. Cada piloto se identifica por QR y cuenta sus minutos en todas las mangas.' : 'Leave blank whatever you do not want to control. Each driver scans a QR and their minutes add up across all heats.' %></p>
+      <span class="nr-sec__t"><%= t('wizard.reglas_de_resistencia') %></span>
+      <p class="nr-help"><%= t('wizard.deja_en_blanco_lo_que_no_quieras_controlar_cada') %></p>
       <div class="nr-grid">
         <label class="nr-field">
-          <span class="nr-lbl"><%= es ? 'Mínimo por piloto' : 'Min per driver' %></span>
+          <span class="nr-lbl"><%= t('wizard.minimo_por_piloto') %></span>
           <span class="nr-unit"><input class="form-input form-input--sm" type="number" id="driverMinMin" name="driver_min_total_min" min="0" max="600" step="1" placeholder="—" value="<%= minMin %>"><span>min</span></span>
         </label>
         <label class="nr-field">
-          <span class="nr-lbl"><%= es ? 'Máximo por piloto' : 'Max per driver' %></span>
+          <span class="nr-lbl"><%= t('wizard.maximo_por_piloto') %></span>
           <span class="nr-unit"><input class="form-input form-input--sm" type="number" id="driverMaxMin" name="driver_max_total_min" min="0" max="600" step="1" placeholder="—" value="<%= maxMin %>"><span>min</span></span>
         </label>
         <label class="nr-field">
-          <span class="nr-lbl"><%= es ? 'Máximo de turnos' : 'Max turns' %></span>
-          <span class="nr-unit"><input class="form-input form-input--sm" type="number" id="driverMaxRuns" name="driver_max_runs" min="0" max="100" step="1" placeholder="—" value="<%= maxRuns %>"><span><%= es ? 'por piloto' : 'per driver' %></span></span>
+          <span class="nr-lbl"><%= t('wizard.maximo_de_turnos') %></span>
+          <span class="nr-unit"><input class="form-input form-input--sm" type="number" id="driverMaxRuns" name="driver_max_runs" min="0" max="100" step="1" placeholder="—" value="<%= maxRuns %>"><span><%= t('wizard.por_piloto') %></span></span>
         </label>
         <label class="nr-field">
-          <span class="nr-lbl"><%= es ? 'Neumáticos' : 'Tyres' %></span>
-          <span class="nr-unit"><input class="form-input form-input--sm" type="number" id="tirePairs" name="tire_pairs_per_team" min="0" max="99" step="1" placeholder="—" value="<%= tirePairs %>"><span><%= es ? 'pares por equipo' : 'pairs per team' %></span></span>
+          <span class="nr-lbl"><%= t('common.neumaticos') %></span>
+          <span class="nr-unit"><input class="form-input form-input--sm" type="number" id="tirePairs" name="tire_pairs_per_team" min="0" max="99" step="1" placeholder="—" value="<%= tirePairs %>"><span><%= t('common.pares_por_equipo') %></span></span>
         </label>
         <label class="nr-field">
-          <span class="nr-lbl"><%= es ? 'Sin cambios al final' : 'No swaps at the end' %></span>
-          <span class="nr-unit"><input class="form-input form-input--sm" type="number" id="lockoutS" name="driver_change_lockout_s" min="0" max="600" step="1" value="<%= lockS %>"><span><%= es ? 's de cada manga' : 's of each heat' %></span></span>
+          <span class="nr-lbl"><%= t('wizard.sin_cambios_al_final') %></span>
+          <span class="nr-unit"><input class="form-input form-input--sm" type="number" id="lockoutS" name="driver_change_lockout_s" min="0" max="600" step="1" value="<%= lockS %>"><span><%= t('wizard.s_de_cada_manga') %></span></span>
         </label>
       </div>
     </section>
 
     <!-- ── Más opciones ───────────────────────────────────────────────────── -->
     <details class="nr-sec nr-more" <%= (passes > 1 || laneRepeat > 1) ? 'open' : '' %>>
-      <summary><span class="nr-sec__t"><%= es ? 'Más opciones' : 'More options' %></span><span class="nr-help" id="moreSummary"></span></summary>
+      <summary><span class="nr-sec__t"><%= t('common.mas_opciones') %></span><span class="nr-help" id="moreSummary"></span></summary>
       <div class="nr-grid">
         <label class="nr-field">
-          <span class="nr-lbl"><%= es ? 'Pasadas' : 'Passes' %></span>
+          <span class="nr-lbl"><%= t('common.pasadas') %></span>
           <input class="form-input form-input--sm nr-num" type="number" id="passes" name="passes" min="1" step="1" value="<%= passes %>">
-          <small class="nr-help"><%= es ? 'Veces que se corre la rotación completa de carriles.' : 'Times the full lane rotation is run.' %></small>
+          <small class="nr-help"><%= t('wizard.veces_que_se_corre_la_rotacion_completa_de') %></small>
         </label>
         <label class="nr-field">
-          <span class="nr-lbl"><%= es ? 'Repetir carril' : 'Repeat lane' %></span>
+          <span class="nr-lbl"><%= t('common.repetir_carril') %></span>
           <input class="form-input form-input--sm nr-num" type="number" id="laneRepeat" name="lane_repeat" min="1" step="1" value="<%= laneRepeat %>">
-          <small class="nr-help"><%= es ? 'Mangas seguidas en el mismo carril; las vueltas se suman.' : 'Consecutive heats on the same lane; laps add up.' %></small>
+          <small class="nr-help"><%= t('wizard.mangas_seguidas_en_el_mismo_carril_las_vueltas') %></small>
         </label>
       </div>
     </details>
@@ -295,6 +295,8 @@ function applyCircuit(id) {
   });
   updateTotal();
   const minMs = parseInt(opt.dataset.minMs, 10) || 0;
+  // Punto, NO coma: el campo es <input type="number"> y el navegador exige el
+  // formato inglés en `value`. Cambiarlo a coma deja el campo vacío.
   minLapInput.value = minMs > 0 ? (minMs / 1000).toFixed(2) : '';
   manualBox.hidden = true;
   factsEl.hidden = false;

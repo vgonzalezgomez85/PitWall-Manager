@@ -31,7 +31,7 @@ function formatMs(ms) {
   const millis   = Math.floor(ms % 1000);
   const secs = totalSec % 60;
   const mins = Math.floor(totalSec / 60);
-  return `${mins > 0 ? mins + ':' : ''}${String(secs).padStart(mins > 0 ? 2 : 1, '0')}.${String(millis).padStart(3, '0')}`;
+  return `${mins > 0 ? mins + ':' : ''}${String(secs).padStart(mins > 0 ? 2 : 1, '0')},${String(millis).padStart(3, '0')}`;
 }
 
 function formatMsForSpeech(ms) {
@@ -63,10 +63,15 @@ let _trPendingReload = false;                        // recargar tras activar (q
 let warned60 = false;
 let warned30 = false;
 
+// Voz por idioma. Antes era un ternario es/en: con un tercer idioma la voz
+// italiana habría leído con acento inglés.
+const VOICE_LOCALES = { es: 'es-ES', en: 'en-US', it: 'it-IT' };
+function speechLocale() { return VOICE_LOCALES[LANG] || VOICE_LOCALES.es; }
+
 function announceWarning(text) {
   if (!window.speechSynthesis) return;
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = LANG === 'es' ? 'es-ES' : 'en-US';
+  u.lang = speechLocale();
   u.rate = 1;
   speechSynthesis.speak(u);
 }
@@ -280,7 +285,7 @@ function showPaceAt(box, laneNum, idx) {
   const lapNo = (st.count || pace.length) - (pace.length - 1 - idx);
   const ms = pace[idx];
   const diff = st.bestMs != null ? ms - st.bestMs : null;
-  tip.textContent = `${TXT.lap} ${lapNo} · ${formatMs(ms)}` + (diff != null && diff > 0 ? ` (+${(diff / 1000).toFixed(3)})` : '');
+  tip.textContent = `${TXT.lap} ${lapNo} · ${formatMs(ms)}` + (diff != null && diff > 0 ? ` (+${(diff / 1000).toFixed(3).replace('.', ',')})` : '');
   tip.style.left = `clamp(40px, ${xPct}%, calc(100% - 40px))`;
   tip.hidden = false;
 }
@@ -337,7 +342,7 @@ function updateCard(data) {
   if (deltaEl) {
     const d = (lastMs != null && st.bestMs != null) ? lastMs - st.bestMs : null;
     deltaEl.classList.toggle('is-best', d != null && d <= 1);
-    deltaEl.textContent = d == null ? '' : (d <= 1 ? TXT.isBest : `+${(d / 1000).toFixed(3)}`);
+    deltaEl.textContent = d == null ? '' : (d <= 1 ? TXT.isBest : `+${(d / 1000).toFixed(3).replace('.', ',')}`);
   }
   if (avgEl)    avgEl.textContent    = formatMs(st.avgMs);
   if (recordEl) recordEl.textContent = formatMs(st.bestMs);
@@ -488,7 +493,7 @@ function drainSpeech() {
   if (!speechQueue.length) { speechBusy = false; return; }
   speechBusy = true;
   const utt = new SpeechSynthesisUtterance(speechQueue.shift());
-  utt.lang  = LANG === 'es' ? 'es-ES' : 'en-US';
+  utt.lang  = speechLocale();
   utt.rate  = 1.15;
   utt.onend = utt.onerror = drainSpeech;
   window.speechSynthesis.speak(utt);

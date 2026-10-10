@@ -1,12 +1,12 @@
-<%- include('../partials/header', { pageTitle: lang === 'es' ? 'Nueva Carrera — Participantes' : 'New Race — Participants' }) %>
+<%- include('../partials/header', { pageTitle: t('wizard.nueva_carrera_participantes') }) %>
 <div class="container container--narrow">
 
   <%- include('../partials/wizard-progress', { current: 'participants', hasPole: wizard.has_pole, skipSequence: !!wizard.circuit_id }) %>
 
-  <h1 class="page-title"><%= lang === 'es' ? 'Participantes de Pole Position' : 'Pole Position Participants' %></h1>
+  <h1 class="page-title"><%= t('wizard.participantes_de_pole_position') %></h1>
   <p class="page-subtitle">
     <%= wizard.name %> · <%= t('races.format.' + wizard.format) %> ·
-    <%= lang === 'es' ? 'Los tiempos se registran durante la sesión de pole.' : 'Times are recorded during the pole session.' %>
+    <%= t('wizard.los_tiempos_se_registran_durante_la_sesion_de') %>
   </p>
 
   <% if (errors.length > 0) { %>
@@ -19,9 +19,9 @@
 
     <p class="form-hint" style="margin-bottom:1.25rem">
       <% if (wizard.format === 'individual') { %>
-        <%= lang === 'es' ? 'Añade todos los pilotos que participarán en la pole y en la carrera.' : 'Add all drivers who will participate in qualifying and the race.' %>
+        <%= t('wizard.anade_todos_los_pilotos_que_participaran_en_la') %>
       <% } else { %>
-        <%= lang === 'es' ? 'Añade todos los equipos con sus integrantes.' : 'Add all teams with their members.' %>
+        <%= t('wizard.anade_todos_los_equipos_con_sus_integrantes') %>
       <% } %>
     </p>
 
@@ -58,7 +58,7 @@
         </div>
 
         <button type="button" id="addDriver" class="btn btn--ghost btn--sm" style="margin-top:.75rem">
-          + <%= lang === 'es' ? 'Añadir piloto' : 'Add driver' %>
+          + <%= t('client.common.anadir_piloto') %>
         </button>
 
       <% } else { %>
@@ -115,19 +115,19 @@
                       placeholder="<%= t('wizard.member_ph') %> <%= m + 1 %><%= m === 0 ? '' : (' (' + t('wizard.optional') + ')') %>"
                       value="<%= _mem[m] || '' %>"
                       autocomplete="off">
-                    <button type="button" class="btn btn--danger btn--sm member-remove" tabindex="-1" title="<%= lang === 'es' ? 'Quitar piloto' : 'Remove driver' %>">✕</button>
+                    <button type="button" class="btn btn--danger btn--sm member-remove" tabindex="-1" title="<%= t('client.wizard.quitar_piloto') %>">✕</button>
                   </div>
                 <% } %>
               </div>
               <button type="button" class="btn btn--ghost btn--sm add-member" style="margin-top:.4rem">
-                + <%= lang === 'es' ? 'Añadir piloto' : 'Add driver' %>
+                + <%= t('client.common.anadir_piloto') %>
               </button>
             </div>
           <% } %>
         </div>
 
         <button type="button" id="addTeam" class="btn btn--ghost btn--sm" style="margin-top:.75rem">
-          + <%= lang === 'es' ? 'Añadir equipo a mano' : 'Add team manually' %>
+          + <%= t('wizard.anadir_equipo_a_mano') %>
         </button>
 
       <% } %>
@@ -154,8 +154,8 @@ const CATALOG      = <%- JSON.stringify((teamsCatalog || []).map(ct => ({ id: ct
 // Campos opcionales por participante (interruptores del asistente): categoría/copa y coche.
 const SHOW_CAT = <%= wizard.has_categoria ? 'true' : 'false' %>;
 const SHOW_CAR = <%= wizard.has_coche ? 'true' : 'false' %>;
-const CAT_PH   = "<%= lang === 'es' ? 'Categoría / copa' : 'Category / cup' %>";
-const CAR_PH   = "<%= lang === 'es' ? 'Coche' : 'Car' %>";
+const CAT_PH   = "<%= t('common.categoria_copa') %>";
+const CAR_PH   = "<%= t('common.coche') %>";
 // HTML de los dos campos para una fila nueva (prefijo: teams[i] / drivers[i]).
 function attrsHtml(prefix) {
   if (!SHOW_CAT && !SHOW_CAR) return '';

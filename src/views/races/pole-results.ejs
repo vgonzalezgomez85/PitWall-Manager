@@ -18,7 +18,7 @@ const pendingEntries = entries.filter(e => e.lap_time_ms == null && !e.is_noshow
 const bestMs = timedEntries.length > 0 ? timedEntries[0].lap_time_ms : null;
 const poleHolderName = timedEntries.length > 0 ? timedEntries[0].entity_name : null;
 %>
-<%- include('../partials/header', { pageTitle: lang === 'es' ? 'Resultados Pole Position' : 'Pole Position Results' }) %>
+<%- include('../partials/header', { pageTitle: t('pole-results.resultados_pole_position') }) %>
 
 <!-- Fuentes broadcast (mismas que la pole/timing) -->
 <link rel="stylesheet" href="/css/fonts.css">
@@ -31,7 +31,7 @@ const poleHolderName = timedEntries.length > 0 ? timedEntries[0].entity_name : n
 
     <div class="pole-title-row">
       <div class="pole-flag" aria-hidden="true"></div>
-      <h1 class="pole-h1"><%= lang === 'es' ? 'Resultados Pole' : 'Pole Results' %></h1>
+      <h1 class="pole-h1"><%= t('pole-results.resultados_pole') %></h1>
     </div>
 
     <div class="pole-meta">
@@ -40,12 +40,12 @@ const poleHolderName = timedEntries.length > 0 ? timedEntries[0].entity_name : n
       <span>1c–<%= race.lanes_count %>c</span>
       <span class="pole-dot"></span>
       <span class="pole-lane-badge">
-        <%= lang === 'es' ? 'Carril de pole' : 'Pole lane' %>
+        <%= t('common.carril_de_pole') %>
         <span class="pole-lane-num"><%= session.lane %></span>
       </span>
       <% if (poleHolderName) { %>
         <span class="pole-dot"></span>
-        <span class="pole-meta-pole"><%= lang === 'es' ? 'Pole:' : 'Pole:' %> <b><%= poleHolderName %></b></span>
+        <span class="pole-meta-pole"><%= t('common.pole') %> <b><%= poleHolderName %></b></span>
       <% } %>
     </div>
 
@@ -58,10 +58,10 @@ const poleHolderName = timedEntries.length > 0 ? timedEntries[0].entity_name : n
     <% } %>
 
     <!-- ── Clasificación final ──────────────────────────────────────── -->
-    <section class="pole-bcast-card pole-results-card" aria-label="<%= lang === 'es' ? 'Clasificación final' : 'Final classification' %>">
+    <section class="pole-bcast-card pole-results-card" aria-label="<%= t('pole-results.clasificacion_final') %>">
       <div class="pole-bcast-title">
         <span class="pole-bcast-ico">🏆</span>
-        <%= lang === 'es' ? 'Clasificación final' : 'Final classification' %>
+        <%= t('pole-results.clasificacion_final') %>
       </div>
       <div class="pole-tower pole-tower--results">
         <% timedEntries.forEach((entry, i) => {
@@ -74,13 +74,13 @@ const poleHolderName = timedEntries.length > 0 ? timedEntries[0].entity_name : n
             <div class="pole-tower-name">
               <%= entry.entity_name %>
               <% if (isP1) { %>
-                <span class="pole-tower-fastest"><%= lang === 'es' ? 'Vuelta rápida' : 'Fast lap' %></span>
+                <span class="pole-tower-fastest"><%= t('client.common.vuelta_rapida') %></span>
               <% } %>
             </div>
             <div class="pole-tower-time">
               <%= fmtSeconds3(entry.lap_time_ms) %>
               <% if (isP1) { %>
-                <span class="pole-tower-gap"><%= lang === 'es' ? 'Líder' : 'Leader' %></span>
+                <span class="pole-tower-gap"><%= t('client.common.lider') %></span>
               <% } else { %>
                 <span class="pole-tower-gap">+<%= (gapMs / 1000).toFixed(3) %></span>
               <% } %>
@@ -100,7 +100,7 @@ const poleHolderName = timedEntries.length > 0 ? timedEntries[0].entity_name : n
           <div class="pole-tower-row pole-tower-row--pending">
             <div class="pole-tower-pos">—</div>
             <div class="pole-tower-name"><%= entry.entity_name %></div>
-            <div class="pole-tower-time"><%= lang === 'es' ? 'Ausente' : 'No-show' %></div>
+            <div class="pole-tower-time"><%= t('client.common.ausente') %></div>
           </div>
         <% }) %>
       </div>
@@ -109,16 +109,16 @@ const poleHolderName = timedEntries.length > 0 ? timedEntries[0].entity_name : n
     <!-- ── Acciones ─────────────────────────────────────────────────── -->
     <div class="pole-results-actions">
       <button type="button" id="btnEditTimes" class="pole-btn-edit">
-        ✏️ <%= lang === 'es' ? 'Editar tiempos' : 'Edit times' %>
+        ✏️ <%= t('pole-results.editar_tiempos') %>
       </button>
       <% if (session.status !== 'done') { %>
         <a href="/races/<%= race.id %>/pole/lanes" class="pole-btn-confirm">
-          🚦 <%= lang === 'es' ? 'Asignar carriles de salida' : 'Assign starting lanes' %> →
+          🚦 <%= t('pole-results.asignar_carriles_de_salida') %> →
         </a>
       <% } else { %>
-        <span class="pole-done-tag">✓ <%= lang === 'es' ? 'Pole completada' : 'Pole done' %></span>
+        <span class="pole-done-tag">✓ <%= t('pole-results.pole_completada') %></span>
         <a href="/races/<%= race.id %>" class="pole-btn-edit">
-          <%= lang === 'es' ? 'Volver a la carrera' : 'Back to race' %>
+          <%= t('common.volver_a_la_carrera') %>
         </a>
       <% } %>
     </div>
@@ -127,8 +127,8 @@ const poleHolderName = timedEntries.length > 0 ? timedEntries[0].entity_name : n
     <div id="timeEditor" class="pole-bcast-card pole-edit-card" style="display:none">
       <div class="pole-bcast-title">
         <span class="pole-bcast-ico">✏️</span>
-        <%= lang === 'es' ? 'Editar tiempos' : 'Edit times' %>
-        <span class="pole-edit-hint"><%= lang === 'es' ? '— formato: 8.456 ó 1:08.456' : '— format: 8.456 or 1:08.456' %></span>
+        <%= t('pole-results.editar_tiempos') %>
+        <span class="pole-edit-hint"><%= t('pole-results.formato_8_456_o_1_08_456') %></span>
       </div>
       <form action="/races/<%= race.id %>/pole/times" method="POST" class="pole-edit-form">
         <% entries.forEach(entry => { %>
@@ -139,22 +139,22 @@ const poleHolderName = timedEntries.length > 0 ? timedEntries[0].entity_name : n
               type="text"
               name="times[e<%= entry.id %>]"
               value="<%= entry.lap_time_ms ? (entry.lap_time_ms / 1000).toFixed(3) : '' %>"
-              placeholder="<%= lang === 'es' ? 'ej: 8.456' : 'e.g. 8.456' %>">
+              placeholder="<%= t('pole-results.ej_8_456') %>">
           </div>
         <% }) %>
         <div class="pole-edit-actions">
           <button type="button" id="btnCancelEdit" class="pole-btn-edit">
-            <%= lang === 'es' ? 'Cancelar' : 'Cancel' %>
+            <%= t('client.common.cancelar') %>
           </button>
           <button type="submit" class="pole-btn-confirm pole-btn-confirm--save">
-            💾 <%= lang === 'es' ? 'Guardar tiempos' : 'Save times' %>
+            💾 <%= t('pole-results.guardar_tiempos') %>
           </button>
         </div>
       </form>
     </div>
 
     <div class="pole-bcast-foot">
-      <%= lang === 'es' ? 'SI POLE · clasificación a vuelta única · el más rápido elige carril' : 'Single-lap qualifying · fastest picks lane' %>
+      <%= t('common.si_pole_clasificacion_a_vuelta_unica_el_mas') %>
     </div>
 
   </div>

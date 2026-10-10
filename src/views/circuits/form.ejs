@@ -1,8 +1,8 @@
 <%
   const isEdit = !!circuit;
   const formTitle = isEdit
-    ? (lang === 'es' ? 'Editar escenario' : 'Edit scenario')
-    : (lang === 'es' ? 'Nuevo escenario' : 'New scenario');
+    ? (t('form.editar_escenario'))
+    : (t('common.nuevo_escenario'));
   const formAction = isEdit ? '/circuits/' + circuit.id : '/circuits';
   const CIRCUIT_COLORS = ['#e63946','#2196f3','#4caf50','#ff9800','#9c27b0','#00bcd4'];
 %>
@@ -12,7 +12,7 @@
 
   <a href="/circuits" class="vt-back-link">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-    <%= lang === 'es' ? 'Volver a escenarios' : 'Back to scenarios' %>
+    <%= t('form.volver_a_escenarios') %>
   </a>
   <h1><%= formTitle %></h1>
 
@@ -20,8 +20,8 @@
     <div class="vt-alert" style="margin-top:16px">
       <% errors.forEach(e => { %>
         <p>
-          <% if (e === 'name_required') { %><%= lang === 'es' ? 'El nombre es obligatorio (mínimo 2 caracteres).' : 'Name is required (min 2 characters).' %>
-          <% } else if (e === 'lanes_invalid') { %><%= lang === 'es' ? 'Número de carriles no válido (2–8 por circuito).' : 'Invalid lane count (2–8 per sub-circuit).' %>
+          <% if (e === 'name_required') { %><%= t('form.el_nombre_es_obligatorio_minimo_2_caracteres') %>
+          <% } else if (e === 'lanes_invalid') { %><%= t('form.numero_de_carriles_no_valido_2_8_por_circuito') %>
           <% } else { %><%= e %><% } %>
         </p>
       <% }) %>
@@ -31,21 +31,21 @@
   <form action="<%= formAction %>" method="POST" class="vt-panel">
 
     <div class="form-group">
-      <label class="form-label" for="cName"><%= lang === 'es' ? 'Nombre' : 'Name' %></label>
+      <label class="form-label" for="cName"><%= t('common.nombre') %></label>
       <input class="form-input <%= errors.includes('name_required') ? 'form-input--error' : '' %>"
              type="text" id="cName" name="name"
-             placeholder="<%= lang === 'es' ? 'Ej: Pista principal' : 'e.g. Main track' %>"
+             placeholder="<%= t('form.ej_pista_principal') %>"
              value="<%= body.name || '' %>" autocomplete="off" autofocus required>
     </div>
 
     <div class="form-group">
       <label class="form-label">
-        <%= lang === 'es' ? 'Configuración de carriles' : 'Lane configuration' %>
+        <%= t('form.configuracion_de_carriles') %>
       </label>
 
       <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem">
         <span class="form-hint" style="flex-shrink:0">
-          <%= lang === 'es' ? 'Número de circuitos:' : 'Number of circuits:' %>
+          <%= t('form.numero_de_circuitos') %>
         </span>
         <div class="circ-pills" id="circPills">
           <% for (let i = 1; i <= 6; i++) { %>
@@ -64,21 +64,21 @@
             <input class="form-input form-input--sm <%= errors.includes('lanes_invalid') ? 'form-input--error' : '' %>"
                    type="number" name="circuit_lanes_<%= i %>" id="circLanes_<%= i %>"
                    min="2" max="8" value="<%= body['circuit_lanes_' + i] || (i === 1 ? 6 : 4) %>">
-            <span class="form-hint"><%= lang === 'es' ? 'carriles' : 'lanes' %></span>
+            <span class="form-hint"><%= t('client.common.carriles') %></span>
           </div>
         <% } %>
       </div>
 
       <div class="circuits-total">
-        <span class="form-hint"><%= lang === 'es' ? 'Total:' : 'Total:' %></span>
+        <span class="form-hint"><%= t('form.total') %></span>
         <strong id="totalLanesDisplay" style="color:#58a6ff">—</strong>
-        <span class="form-hint"> <%= lang === 'es' ? 'carriles' : 'lanes' %></span>
+        <span class="form-hint"> <%= t('client.common.carriles') %></span>
       </div>
     </div>
 
     <div class="form-group">
       <label class="form-label">
-        <%= lang === 'es' ? 'Secuencia de carriles (rotación)' : 'Lane rotation sequence' %>
+        <%= t('form.secuencia_de_carriles_rotacion') %>
       </label>
       <p class="form-hint" style="margin-bottom:.5rem">
         <%= lang === 'es'
@@ -89,13 +89,13 @@
       <input type="hidden" name="lane_sequence" id="laneSequenceInput" value="<%= body.lane_sequence || '' %>">
       <div style="display:flex;gap:.5rem;margin-top:.5rem;flex-wrap:wrap">
         <button type="button" id="btnAddRest" class="btn btn--ghost btn--sm">
-          + <%= lang === 'es' ? 'Añadir descanso (DSC)' : 'Add rest (DSC)' %>
+          + <%= t('form.anadir_descanso_dsc') %>
         </button>
         <button type="button" id="btnSmartSeq" class="btn btn--ghost btn--sm">
-          ⚡ <%= lang === 'es' ? 'Distribución automática' : 'Auto distribute' %>
+          ⚡ <%= t('form.distribucion_automatica') %>
         </button>
         <button type="button" id="btnResetSeq" class="btn btn--ghost btn--sm">
-          ↺ <%= lang === 'es' ? 'Restablecer' : 'Reset' %>
+          ↺ <%= t('form.restablecer') %>
         </button>
       </div>
       <p class="form-hint" style="margin-top:.4rem">
@@ -111,24 +111,24 @@
     %>
     <div class="form-group">
       <label class="form-label">
-        <%= lang === 'es' ? 'Colores de los carriles' : 'Lane colors' %>
+        <%= t('form.colores_de_los_carriles') %>
       </label>
       <label style="display:flex;align-items:center;gap:.55rem;cursor:pointer;margin-bottom:.6rem">
         <input type="checkbox" id="laneColorsCustom" name="lane_colors_custom" value="1" <%= lcCustom ? 'checked' : '' %>>
-        <span><%= lang === 'es' ? 'Usar colores propios en este circuito' : 'Use this circuit’s own colors' %></span>
+        <span><%= t('form.usar_colores_propios_en_este_circuito') %></span>
       </label>
       <div class="lc-grid<%= lcCustom ? '' : ' is-disabled' %>" id="laneColorsGrid">
         <% for (let i = 1; i <= 32; i++) {
              const c = (lcCustom && body['lane_color_' + i]) || gLaneColors[i - 1]; %>
           <label class="lc-swatch" data-lane="<%= i %>" style="background:<%= c %>;color:<%= laneInk(c) %>">
             <%= i %>
-            <input type="color" name="lane_color_<%= i %>" value="<%= c %>" aria-label="<%= (lang === 'es' ? 'Color del carril ' : 'Lane color ') + i %>">
+            <input type="color" name="lane_color_<%= i %>" value="<%= c %>" aria-label="<%= (t('common.color_del_carril')) + i %>">
           </label>
         <% } %>
       </div>
       <div class="lc-actions">
         <button type="button" id="btnLaneColorsGlobal" class="btn btn--ghost btn--sm" <%= lcCustom ? '' : 'disabled' %>>
-          ↺ <%= lang === 'es' ? 'Copiar los colores globales' : 'Copy global colors' %>
+          ↺ <%= t('form.copiar_los_colores_globales') %>
         </button>
       </div>
       <p class="form-hint" style="margin-top:.4rem">
@@ -140,12 +140,12 @@
 
     <div class="form-group">
       <label class="form-label" for="minLapS">
-        <%= lang === 'es' ? 'Vuelta mínima por defecto (segundos)' : 'Default minimum lap (seconds)' %>
+        <%= t('form.vuelta_minima_por_defecto_segundos') %>
       </label>
       <div class="input-row">
         <input class="form-input form-input--sm"
                type="number" id="minLapS" name="min_lap_s" step="0.01" min="0" max="999"
-               placeholder="<%= lang === 'es' ? 'Ej: 3.50' : 'e.g. 3.50' %>"
+               placeholder="<%= t('form.ej_3_50') %>"
                value="<%= body.min_lap_s || '' %>">
         <span class="form-hint">s</span>
       </div>
@@ -158,7 +158,7 @@
 
     <div class="form-group">
       <label class="form-label">
-        <%= lang === 'es' ? 'Vueltas mínimas por categoría (opcional)' : 'Per-category minimum laps (optional)' %>
+        <%= t('form.vueltas_minimas_por_categoria_opcional') %>
       </label>
       <p class="form-hint" style="margin-bottom:.6rem">
         <%= lang === 'es'
@@ -183,17 +183,17 @@
 
       <% if (!categories || categories.length === 0) { %>
         <p id="catEmpty" class="form-hint" style="margin:.6rem 0">
-          <%= lang === 'es' ? 'No hay categorías todavía. Crea una abajo para asignarle un tiempo mínimo.' : 'No categories yet. Create one below to assign it a minimum lap time.' %>
+          <%= t('form.no_hay_categorias_todavia_crea_una_abajo_para') %>
         </p>
       <% } %>
 
       <!-- Inline create category -->
       <div style="display:flex;gap:.5rem;align-items:center;margin-top:.6rem;flex-wrap:wrap">
         <input id="newCatName" type="text" class="form-input form-input--sm"
-               placeholder="<%= lang === 'es' ? 'Nombre de categoría (p. ej. GT, GRUPO C)' : 'Category name (e.g. GT, GROUP C)' %>"
+               placeholder="<%= t('form.nombre_de_categoria_p_ej_gt_grupo_c') %>"
                style="flex:1;min-width:200px" maxlength="40" autocomplete="off">
         <button type="button" id="btnAddCategory" class="btn btn--ghost btn--sm">
-          + <%= lang === 'es' ? 'Crear categoría' : 'Create category' %>
+          + <%= t('form.crear_categoria') %>
         </button>
       </div>
       <p id="catFeedback" class="form-hint" style="margin-top:.35rem;display:none"></p>
@@ -201,17 +201,17 @@
 
     <div class="form-group">
       <label class="form-label" for="cDesc">
-        <%= lang === 'es' ? 'Notas (opcional)' : 'Notes (optional)' %>
+        <%= t('form.notas_opcional') %>
       </label>
       <input class="form-input" type="text" id="cDesc" name="description"
-             placeholder="<%= lang === 'es' ? 'Descripción o ubicación...' : 'Description or location...' %>"
+             placeholder="<%= t('form.descripcion_o_ubicacion') %>"
              value="<%= body.description || '' %>">
     </div>
 
     <!-- ── Trazado del circuito (opcional) ─────────────────────────────── -->
     <details class="form-group" <%= (isEdit && circuit && circuit.track_image_b64) ? 'open' : '' %>>
       <summary style="cursor:pointer; padding:.6rem 0; font-weight:600; color:#c9d1d9">
-        🗺 <%= lang === 'es' ? 'Trazado del circuito (minimapa)' : 'Track outline (minimap)' %>
+        🗺 <%= t('form.trazado_del_circuito_minimapa') %>
       </summary>
       <p class="form-hint" style="margin:.4rem 0 .8rem">
         <%= lang === 'es'
@@ -222,17 +222,17 @@
       <input type="file" id="trackImageInput" accept="image/*" style="position:absolute;left:-9999px">
       <div style="display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:.6rem; align-items:center">
         <button type="button" id="trackBtnUpload" class="btn btn--primary btn--sm">
-          📷 <%= lang === 'es' ? 'Subir foto del circuito' : 'Upload circuit photo' %>
+          📷 <%= t('form.subir_foto_del_circuito') %>
         </button>
         <button type="button" id="trackBtnBlank" class="btn btn--ghost btn--sm">
-          ✏️ <%= lang === 'es' ? 'Dibujar sin foto' : 'Draw without photo' %>
+          ✏️ <%= t('form.dibujar_sin_foto') %>
         </button>
-        <button type="button" id="trackBtnTrace" class="btn btn--ghost btn--sm" title="<%= lang === 'es' ? 'Mantén el ratón pulsado y arrastra para trazar curvas con muchos puntos automáticamente' : 'Hold mouse and drag to auto-trace curves with many points' %>" disabled>✏️ <%= lang === 'es' ? 'Trazar a mano alzada' : 'Free-hand trace' %></button>
-        <button type="button" id="trackBtnSmooth" class="btn btn--ghost btn--sm" title="<%= lang === 'es' ? 'Mostrar curva suave (Catmull-Rom) para previsualizar cómo se verá en la simulación' : 'Show smooth curve preview' %>" disabled>~ <%= lang === 'es' ? 'Vista suave' : 'Smooth preview' %></button>
-        <button type="button" id="trackBtnUndo" class="btn btn--ghost btn--sm" title="<%= lang === 'es' ? 'Deshacer último punto' : 'Undo last point' %>" disabled>↶ <%= lang === 'es' ? 'Deshacer' : 'Undo' %></button>
-        <button type="button" id="trackBtnClose" class="btn btn--ghost btn--sm" disabled><%= lang === 'es' ? 'Cerrar/abrir trazado' : 'Toggle closed loop' %></button>
-        <button type="button" id="trackBtnClear" class="btn btn--ghost btn--sm" disabled><%= lang === 'es' ? 'Limpiar puntos' : 'Clear points' %></button>
-        <button type="button" id="trackBtnRemoveImg" class="btn btn--ghost btn--sm" style="color:#e63946" disabled><%= lang === 'es' ? 'Quitar imagen' : 'Remove image' %></button>
+        <button type="button" id="trackBtnTrace" class="btn btn--ghost btn--sm" title="<%= t('form.manten_el_raton_pulsado_y_arrastra_para_trazar') %>" disabled>✏️ <%= t('form.trazar_a_mano_alzada') %></button>
+        <button type="button" id="trackBtnSmooth" class="btn btn--ghost btn--sm" title="<%= t('form.mostrar_curva_suave_catmull_rom_para') %>" disabled>~ <%= t('form.vista_suave') %></button>
+        <button type="button" id="trackBtnUndo" class="btn btn--ghost btn--sm" title="<%= t('form.deshacer_ultimo_punto') %>" disabled>↶ <%= t('form.deshacer') %></button>
+        <button type="button" id="trackBtnClose" class="btn btn--ghost btn--sm" disabled><%= t('form.cerrar_abrir_trazado') %></button>
+        <button type="button" id="trackBtnClear" class="btn btn--ghost btn--sm" disabled><%= t('form.limpiar_puntos') %></button>
+        <button type="button" id="trackBtnRemoveImg" class="btn btn--ghost btn--sm" style="color:#e63946" disabled><%= t('form.quitar_imagen') %></button>
         <span id="trackPointCount" class="form-hint" style="margin-left:auto"></span>
       </div>
 
@@ -241,11 +241,11 @@
         <div id="trackPlaceholder" style="color:#c9d1d9; padding:2.5rem 1rem; text-align:center">
           <div style="font-size:2.5rem; opacity:.5; margin-bottom:.6rem">📷</div>
           <div style="font-size:1rem; font-weight:600">
-            <%= lang === 'es' ? 'Elige cómo crear el trazado' : 'Choose how to create the outline' %>
+            <%= t('form.elige_como_crear_el_trazado') %>
           </div>
           <div style="font-size:.85rem; color:#8b949e; margin-top:.4rem; line-height:1.5">
-            <%= lang === 'es' ? '• "Subir foto" — pon una imagen cenital de fondo' : '• "Upload photo" — drop an overhead image as background' %><br>
-            <%= lang === 'es' ? '• "Dibujar sin foto" — empieza con un lienzo en negro' : '• "Draw without photo" — start with a blank canvas' %>
+            <%= t('form.subir_foto_pon_una_imagen_cenital_de_fondo') %><br>
+            <%= t('form.dibujar_sin_foto_empieza_con_un_lienzo_en_negro') %>
           </div>
         </div>
       </div>
@@ -268,7 +268,7 @@
       %>
       <div class="form-group" style="margin-top:1.1rem">
         <label class="form-label" style="display:block;margin-bottom:.6rem">
-          <%= lang === 'es' ? 'Sentido del circuito' : 'Track direction' %>
+          <%= t('form.sentido_del_circuito') %>
         </label>
         <div class="dir-opts">
           <label class="dir-opt <%= trackDir !== 'ccw' ? 'is-sel' : '' %>" data-dir="cw">
@@ -278,8 +278,8 @@
               <path d="M40 6v8h-8"/>
             </svg>
             <div class="dir-opt__txt">
-              <div class="dir-opt__t"><%= lang === 'es' ? 'Horario' : 'Clockwise' %></div>
-              <div class="dir-opt__d"><%= lang === 'es' ? 'Sentido de las agujas del reloj' : 'Same as clock hands' %></div>
+              <div class="dir-opt__t"><%= t('form.horario') %></div>
+              <div class="dir-opt__d"><%= t('form.sentido_de_las_agujas_del_reloj') %></div>
             </div>
           </label>
           <label class="dir-opt <%= trackDir === 'ccw' ? 'is-sel' : '' %>" data-dir="ccw">
@@ -289,8 +289,8 @@
               <path d="M8 6v8h8"/>
             </svg>
             <div class="dir-opt__txt">
-              <div class="dir-opt__t"><%= lang === 'es' ? 'Antihorario' : 'Counter-clockwise' %></div>
-              <div class="dir-opt__d"><%= lang === 'es' ? 'Contra las agujas del reloj' : 'Against clock hands' %></div>
+              <div class="dir-opt__t"><%= t('form.antihorario') %></div>
+              <div class="dir-opt__d"><%= t('form.contra_las_agujas_del_reloj') %></div>
             </div>
           </label>
         </div>
@@ -308,9 +308,9 @@
     </details>
 
     <div class="vt-form-actions">
-      <a href="/circuits" class="vt-btn vt-btn--ghost"><%= lang === 'es' ? 'Cancelar' : 'Cancel' %></a>
+      <a href="/circuits" class="vt-btn vt-btn--ghost"><%= t('client.common.cancelar') %></a>
       <button type="submit" class="vt-btn vt-btn--primary">
-        <%= isEdit ? (lang === 'es' ? 'Guardar cambios' : 'Save changes') : (lang === 'es' ? 'Crear escenario' : 'Create scenario') %>
+        <%= isEdit ? (t('common.guardar_cambios')) : (t('common.crear_escenario')) %>
       </button>
     </div>
 

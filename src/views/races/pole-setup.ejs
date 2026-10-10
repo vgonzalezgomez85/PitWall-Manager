@@ -1,8 +1,8 @@
-<%- include('../partials/header', { pageTitle: lang === 'es' ? 'Iniciar Pole Position' : 'Start Pole Position' }) %>
+<%- include('../partials/header', { pageTitle: t('pole-setup.iniciar_pole_position') }) %>
 <div class="container container--narrow">
 
   <a href="/races/<%= race.id %>" class="back-link">← <%= t('race.back_to_list') %></a>
-  <h1 class="page-title">🏁 <%= lang === 'es' ? 'Configurar Pole Position' : 'Setup Pole Position' %></h1>
+  <h1 class="page-title">🏁 <%= t('pole-setup.configurar_pole_position') %></h1>
   <p class="page-subtitle"><%= race.name %> · <%= t('races.format.' + race.format) %></p>
 
   <% if (errors.length > 0) { %>
@@ -20,13 +20,13 @@
     <div style="margin-bottom:1.5rem">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-bottom:.75rem;flex-wrap:wrap">
         <p class="pole-section-title" style="margin:0">
-          <%= lang === 'es' ? 'Participantes' : 'Participants' %>
+          <%= t('common.participantes') %>
           <span class="form-hint" style="font-weight:400;margin-left:.5rem">
             (<%= entries.length %>)
           </span>
         </p>
         <button type="button" id="shuffleEntries" class="btn btn--ghost btn--sm">
-          🎲 <%= lang === 'es' ? 'Aleatorio' : 'Random' %>
+          🎲 <%= t('pole-setup.aleatorio') %>
         </button>
       </div>
       <div id="entriesList" class="entry-grid">
@@ -50,7 +50,7 @@
 
       <div class="form-group">
         <label class="form-label">
-          <%= lang === 'es' ? 'Carril de pole' : 'Pole lane' %>
+          <%= t('common.carril_de_pole') %>
         </label>
         <p class="form-hint" style="margin-bottom:.75rem">
           <%= lang === 'es'
@@ -64,12 +64,12 @@
         %>
         <% if (_circuits.length > 1) { %>
           <div class="pole-circuit-pick" style="display:flex;align-items:center;gap:.45rem;flex-wrap:wrap;margin-bottom:.85rem">
-            <span class="form-hint" style="margin:0"><%= lang === 'es' ? 'Acotar aleatorio a circuito:' : 'Limit random to circuit:' %></span>
-            <button type="button" class="btn btn--ghost btn--sm pole-circ-btn is-active" data-circ="all"><%= lang === 'es' ? 'Todos' : 'All' %></button>
+            <span class="form-hint" style="margin:0"><%= t('pole-setup.acotar_aleatorio_a_circuito') %></span>
+            <button type="button" class="btn btn--ghost btn--sm pole-circ-btn is-active" data-circ="all"><%= t('common.todos') %></button>
             <% _circuits.forEach(c => { %>
               <button type="button" class="btn btn--ghost btn--sm pole-circ-btn" data-circ="<%= c.index %>"
                       data-from="<%= c.from %>" data-to="<%= c.to %>"
-                      title="<%= lang === 'es' ? 'Carriles' : 'Lanes' %> <%= c.from %>–<%= c.to %>">
+                      title="<%= t('common.carriles') %> <%= c.from %>–<%= c.to %>">
                 C<%= c.index %> <span style="opacity:.6;font-size:.85em">(<%= c.from %>–<%= c.to %>)</span>
               </button>
             <% }) %>
@@ -82,7 +82,7 @@
           </div>
           <button type="button" id="poleLaneInc" class="btn btn--ghost btn--sm pole-lane-btn">+</button>
           <button type="button" id="poleLaneRandom" class="btn btn--ghost" style="margin-left:.75rem">
-            🎲 <%= lang === 'es' ? 'Aleatorio' : 'Random' %>
+            🎲 <%= t('pole-setup.aleatorio') %>
           </button>
         </div>
         <input type="hidden" name="pole_lane" id="poleLaneInput" value="1">
@@ -91,7 +91,7 @@
       <div class="form-actions" style="margin-top:1.5rem">
         <a href="/races/<%= race.id %>" class="btn btn--ghost">← <%= t('wizard.back') %></a>
         <button type="submit" class="btn btn--primary btn--lg">
-          🚦 <%= lang === 'es' ? 'Empezar Pole' : 'Start Pole' %>
+          🚦 <%= t('pole-setup.empezar_pole') %>
         </button>
       </div>
 

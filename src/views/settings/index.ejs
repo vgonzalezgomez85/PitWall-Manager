@@ -1,24 +1,24 @@
-<%- include('../partials/header', { pageTitle: lang === 'es' ? 'Configuración' : 'Settings' }) %>
+<%- include('../partials/header', { pageTitle: t('settings.configuracion') }) %>
 
 <%
 const es = lang === 'es';
 const portsList = (connectedPorts || []).map(p => String(p).split('/').pop()).join(' · ');
 const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.length > 0 ? 'ok' : 'off');
-const restartChip = '<span class="st-chip st-chip--warn">' + (es ? 'Reinicio' : 'Restart') + '</span>';
+const restartChip = '<span class="st-chip st-chip--warn">' + (t('settings.reinicio')) + '</span>';
 const navItems = [
-  { key: 'timing', label: es ? 'Fuente de datos' : 'Data source', dot: portState === 'ok' ? 'ok' : (portState === 'sim' ? 'warn' : 'bad'),
+  { key: 'timing', label: t('settings.fuente_de_datos'), dot: portState === 'ok' ? 'ok' : (portState === 'sim' ? 'warn' : 'bad'),
     icon: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M10 2h4M12 2v3"/>' },
-  { key: 'live', label: es ? 'Preferencias' : 'Preferences', dot: '',
+  { key: 'live', label: t('settings.preferencias'), dot: '',
     icon: '<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>' },
-  { key: 'net', label: es ? 'Red local' : 'Local network', dot: '',
+  { key: 'net', label: t('settings.red_local'), dot: '',
     icon: '<path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5h.01M2 9a15 15 0 0 1 20 0"/>' },
-  { key: 'sec', label: es ? 'Seguridad' : 'Security', dot: passwordEnabled ? 'ok' : '',
+  { key: 'sec', label: t('settings.seguridad'), dot: passwordEnabled ? 'ok' : '',
     icon: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>' },
-  { key: 'web', label: es ? 'Seguimiento online' : 'Online tracking', dot: 'off',
+  { key: 'web', label: t('settings.seguimiento_online'), dot: 'off',
     icon: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.9 5.7 3.9 9S14.5 18.4 12 21c-2.5-2.6-3.9-5.7-3.9-9S9.5 5.6 12 3z"/>' },
-  { key: 'int', label: es ? 'Integraciones' : 'Integrations', dot: '',
+  { key: 'int', label: t('settings.integraciones'), dot: '',
     icon: '<path d="M3 12h4l3-7 4 14 3-7h4"/>' },
-  { key: 'diag', label: es ? 'Diagnóstico' : 'Diagnostics', dot: cfg.debug_mode === '1' ? 'warn' : '',
+  { key: 'diag', label: t('settings.diagnostico'), dot: cfg.debug_mode === '1' ? 'warn' : '',
     icon: '<rect x="8" y="8" width="8" height="10" rx="4"/><path d="M12 8V5M8 11H4M16 11h4M8 15H4M16 15h4"/>' },
 ];
 %>
@@ -27,28 +27,28 @@ const navItems = [
   <div class="st-top">
     <a href="/" class="vt-back-link">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      <%= es ? 'Inicio' : 'Home' %>
+      <%= t('common.inicio') %>
     </a>
     <span class="st-top__sep"></span>
-    <h1 class="st-top__h"><%= es ? 'Configuración' : 'Settings' %></h1>
+    <h1 class="st-top__h"><%= t('settings.configuracion') %></h1>
     <span class="st-top__fill"></span>
     <% if (portState === 'sim') { %>
-      <div class="vt-port-pill is-sim"><span class="dot"></span> <%= es ? 'Modo simulación activo' : 'Simulation mode active' %></div>
+      <div class="vt-port-pill is-sim"><span class="dot"></span> <%= t('settings.modo_simulacion_activo') %></div>
     <% } else if (portState === 'ok') { %>
       <div class="vt-port-pill" title="<%= connectedPorts.join('  ·  ') %>">
         <span class="dot"></span>
-        <%= es ? 'Conectado' : 'Connected' %>
-        <span class="vt-mono"><%= connectedPorts.length > 1 ? connectedPorts.length + (es ? ' circuitos · ' : ' circuits · ') : '' %><%= portsList %></span>
+        <%= t('settings.conectado') %>
+        <span class="vt-mono"><%= connectedPorts.length > 1 ? connectedPorts.length + (t('settings.circuitos')) : '' %><%= portsList %></span>
       </div>
     <% } else { %>
-      <div class="vt-port-pill is-off"><span class="dot"></span> <%= es ? 'Sin conexión' : 'Not connected' %></div>
+      <div class="vt-port-pill is-off"><span class="dot"></span> <%= t('settings.sin_conexion') %></div>
     <% } %>
   </div>
 
   <form action="/settings" method="POST" class="st-form" id="settingsForm" novalidate>
     <div class="st-layout">
 
-      <nav class="st-nav" aria-label="<%= es ? 'Secciones' : 'Sections' %>">
+      <nav class="st-nav" aria-label="<%= t('common.secciones') %>">
         <% navItems.forEach(it => { %>
           <button type="button" class="st-nav__item <%= it.key === 'timing' ? 'is-active' : '' %>" data-sec="<%= it.key %>" <%= it.key === 'timing' ? 'aria-current=true' : '' %>>
             <svg viewBox="0 0 24 24"><%- it.icon %></svg>
@@ -57,8 +57,8 @@ const navItems = [
           </button>
         <% }) %>
         <div class="st-nav__note">
-          <span><%= es ? 'Los cambios se aplican al pulsar «Guardar y aplicar».' : 'Changes apply when you press “Save & apply”.' %></span>
-          <span><%= es ? 'Los marcados con' : 'Those marked' %> <%- restartChip %> <%= es ? 'necesitan además reiniciar PitWall.' : 'also need a PitWall restart.' %></span>
+          <span><%= t('settings.los_cambios_se_aplican_al_pulsar_guardar_y') %></span>
+          <span><%= t('settings.los_marcados_con') %> <%- restartChip %> <%= t('settings.necesitan_ademas_reiniciar_pitwall') %></span>
         </div>
       </nav>
 
@@ -66,8 +66,8 @@ const navItems = [
         <!-- ══ Fuente de datos ═══════════════════════════════════════════ -->
         <section class="st-sec is-active" data-sec="timing">
           <header class="st-sec__h">
-            <h2><%= es ? 'Fuente de datos' : 'Data source' %></h2>
-            <p><%= es ? 'De dónde llegan las vueltas.' : 'Where laps come from.' %></p>
+            <h2><%= t('settings.fuente_de_datos') %></h2>
+            <p><%= t('settings.de_donde_llegan_las_vueltas') %></p>
           </header>
 
       <datalist id="baud-options">
@@ -89,8 +89,8 @@ const navItems = [
           <div class="vt-opt__ico">
             <svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="11" rx="5.5"/><path d="M7.5 11v3M6 12.5h3"/><circle cx="16" cy="11.5" r="1"/><circle cx="18" cy="14" r="1"/></svg>
           </div>
-          <div class="vt-opt__t"><%= lang === 'es' ? 'Simulación' : 'Simulation' %></div>
-          <div class="vt-opt__d"><%= lang === 'es' ? 'Genera vueltas aleatorias. Ideal para pruebas.' : 'Generates random laps. Ideal for testing.' %></div>
+          <div class="vt-opt__t"><%= t('client.common.simulacion') %></div>
+          <div class="vt-opt__d"><%= t('settings.genera_vueltas_aleatorias_ideal_para_pruebas') %></div>
         </label>
 
         <label class="vt-opt <%= cfg.serial_mode === 'serial' ? 'is-sel' : '' %>" id="optDs">
@@ -100,7 +100,7 @@ const navItems = [
             <svg viewBox="0 0 24 24"><path d="M9 2v5M15 2v5"/><path d="M7 7h10v3a5 5 0 0 1-10 0z"/><path d="M12 15v6"/></svg>
           </div>
           <div class="vt-opt__t">DS-300</div>
-          <div class="vt-opt__d"><%= lang === 'es' ? 'Uno o varios DS-300 por USB/RS-232.' : 'One or more DS-300 via USB/RS-232.' %></div>
+          <div class="vt-opt__d"><%= t('settings.uno_o_varios_ds_300_por_usb_rs_232') %></div>
         </label>
 
         <label class="vt-opt <%= cfg.serial_mode === 'serial_agg' ? 'is-sel' : '' %>" id="optAgg">
@@ -109,8 +109,8 @@ const navItems = [
           <div class="vt-opt__ico">
             <svg viewBox="0 0 24 24"><path d="M9 2v5M15 2v5"/><path d="M7 7h10v3a5 5 0 0 1-10 0z"/><path d="M4 21h16"/><path d="M8 21v-3M12 21v-3M16 21v-3"/></svg>
           </div>
-          <div class="vt-opt__t"><%= lang === 'es' ? 'DS-300 agrupador' : 'DS-300 aggregator' %></div>
-          <div class="vt-opt__d"><%= lang === 'es' ? 'Varias cajas DS por un solo puerto COM.' : 'Several DS boxes over one COM port.' %></div>
+          <div class="vt-opt__t"><%= t('settings.ds_300_agrupador') %></div>
+          <div class="vt-opt__d"><%= t('settings.varias_cajas_ds_por_un_solo_puerto_com') %></div>
         </label>
 
         <label class="vt-opt <%= cfg.serial_mode === 'bart' ? 'is-sel' : '' %>" id="optBart">
@@ -120,20 +120,20 @@ const navItems = [
             <svg viewBox="0 0 24 24"><path d="M7 7l10 10-5 4V3l5 4L7 17"/></svg>
           </div>
           <div class="vt-opt__t">BART</div>
-          <div class="vt-opt__d"><%= lang === 'es' ? 'Cronómetro BLE (Slot.it/Policar) vía puente.' : 'BLE timer (Slot.it/Policar) via bridge.' %></div>
+          <div class="vt-opt__d"><%= t('settings.cronometro_ble_slot_it_policar_via_puente') %></div>
         </label>
       </div>
 
       <!-- ── Simulation ──────────────────────────────────────────────────── -->
       <div id="simSettings" style="margin-top:22px">
-        <div class="vt-sec-lbl"><%= lang === 'es' ? 'Parámetros de simulación' : 'Simulation parameters' %></div>
+        <div class="vt-sec-lbl"><%= t('settings.parametros_de_simulacion') %></div>
         <div class="vt-fields vt-fields--2">
           <div class="vt-field">
-            <label><%= lang === 'es' ? 'Carriles a simular' : 'Lanes to simulate' %></label>
+            <label><%= t('settings.carriles_a_simular') %></label>
             <input class="vt-inp is-mono" type="number" name="sim_lanes" min="1" max="32" value="<%= cfg.sim_lanes || 6 %>">
           </div>
           <div class="vt-field">
-            <label><%= lang === 'es' ? 'Vuelta media (ms)' : 'Avg lap time (ms)' %></label>
+            <label><%= t('settings.vuelta_media_ms') %></label>
             <input class="vt-inp is-mono" type="number" name="sim_avg_ms" min="3000" max="60000" step="1000" value="<%= cfg.sim_avg_ms || 12000 %>">
           </div>
         </div>
@@ -143,7 +143,7 @@ const navItems = [
       <div id="bartSettings" style="display:none;margin-top:26px">
         <div class="vt-sub">
           <div>
-            <h3><%= lang === 'es' ? 'Cronómetro BART (BLE)' : 'BART timer (BLE)' %></h3>
+            <h3><%= t('settings.cronometro_bart_ble') %></h3>
             <p class="vt-sub__p">
               <%= lang === 'es'
                 ? 'Cada Master BART (p. ej. BART_TRACK1, BART_TRACK2…) es un aparato independiente que hay que emparejar por separado — no comparten carriles entre sí. Añade una fila por cada Master físico; los carriles se numeran de forma global en el orden de la lista.'
@@ -153,26 +153,26 @@ const navItems = [
           <div class="vt-sub__actions">
             <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="addBartMaster">
               <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-              <%= lang === 'es' ? 'Añadir Master' : 'Add Master' %>
+              <%= t('settings.anadir_master') %>
             </button>
           </div>
         </div>
 
         <div class="vt-fields vt-fields--2" style="margin-top:14px">
           <div class="vt-field">
-            <label><%= lang === 'es' ? 'Transporte' : 'Transport' %></label>
+            <label><%= t('settings.transporte') %></label>
             <div class="vt-selw">
               <select name="bart_transport" id="bartTransport">
-                <option value="ble" <%= (cfg.bart_transport || 'ble') === 'ble' ? 'selected' : '' %>>BLE (<%= lang === 'es' ? 'directo' : 'direct' %>)</option>
-                <option value="tcp" <%= cfg.bart_transport === 'tcp' ? 'selected' : '' %>><%= lang === 'es' ? 'TCP (emulador / puente)' : 'TCP (emulator / bridge)' %></option>
+                <option value="ble" <%= (cfg.bart_transport || 'ble') === 'ble' ? 'selected' : '' %>>BLE (<%= t('settings.directo') %>)</option>
+                <option value="tcp" <%= cfg.bart_transport === 'tcp' ? 'selected' : '' %>><%= t('settings.tcp_emulador_puente') %></option>
               </select>
             </div>
           </div>
           <div class="vt-field">
-            <label><%= lang === 'es' ? 'MinLap del Master (ms)' : 'Master MinLap (ms)' %></label>
+            <label><%= t('settings.minlap_del_master_ms') %></label>
             <input class="vt-inp is-mono" type="number" name="bart_minlap" min="0" max="65535" step="100"
                    value="<%= cfg.bart_minlap || 2000 %>"
-                   title="<%= lang === 'es' ? 'Filtro anti-rebote del hardware: descarta cruces más rápidos que esto' : 'Hardware debounce: drops crossings faster than this' %>">
+                   title="<%= t('settings.filtro_anti_rebote_del_hardware_descarta_cruces') %>">
           </div>
         </div>
 
@@ -181,31 +181,31 @@ const navItems = [
             <div class="vt-circuit-row bart-row" data-index="<%= i %>">
               <div class="vt-circuit-row__h">
                 <div class="vt-circuit-row__num bnum"><%= i + 1 %></div>
-                <div class="vt-circuit-row__title bname"><%= lang === 'es' ? 'Master' : 'Master' %> <%= i + 1 %></div>
+                <div class="vt-circuit-row__title bname"><%= t('settings.master') %> <%= i + 1 %></div>
                 <span class="vt-circuit-row__lanes-badge bart-lanes-badge"></span>
                 <% if (bartCircuits.length > 1) { %>
-                  <button type="button" class="vt-circuit-row__x btn-remove-bart" data-index="<%= i %>" title="<%= lang === 'es' ? 'Eliminar' : 'Remove' %>">
+                  <button type="button" class="vt-circuit-row__x btn-remove-bart" data-index="<%= i %>" title="<%= t('client.common.eliminar') %>">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
                   </button>
                 <% } %>
               </div>
               <div class="vt-fields vt-fields--2 circuit-row__body">
                 <div class="vt-field">
-                  <label><%= lang === 'es' ? 'Nombre BLE del Master' : 'Master BLE name' %></label>
+                  <label><%= t('client.settings.nombre_ble_del_master') %></label>
                   <input class="vt-inp is-mono bart-name-input" type="text" name="bart_master_name" placeholder="BART_TRACK<%= i + 1 %>" value="<%= c.name || '' %>">
                 </div>
                 <div class="vt-field">
-                  <label><%= lang === 'es' ? 'Nº de carriles' : 'Lanes' %></label>
+                  <label><%= t('client.settings.n_de_carriles') %></label>
                   <input class="vt-inp is-mono bart-lanes-input" type="number" name="bart_master_lanes" min="2" max="32" value="<%= c.lanes || 8 %>">
                 </div>
               </div>
               <div class="vt-fields vt-fields--2 bart-tcp-fields" style="margin-top:14px<%= (cfg.bart_transport || 'ble') === 'tcp' ? '' : ';display:none' %>">
                 <div class="vt-field">
-                  <label><%= lang === 'es' ? 'Host del puente' : 'Bridge host' %></label>
+                  <label><%= t('client.settings.host_del_puente') %></label>
                   <input class="vt-inp is-mono" type="text" name="bart_master_host" placeholder="127.0.0.1" value="<%= c.host || '127.0.0.1' %>">
                 </div>
                 <div class="vt-field">
-                  <label><%= lang === 'es' ? 'Puerto' : 'Port' %></label>
+                  <label><%= t('client.settings.puerto') %></label>
                   <input class="vt-inp is-mono" type="number" name="bart_master_port" min="1" max="65535" value="<%= c.port || 9300 %>">
                 </div>
               </div>
@@ -218,7 +218,7 @@ const navItems = [
       <div id="aggSettings" style="display:none;margin-top:26px">
         <div class="vt-sub">
           <div>
-            <h3><%= lang === 'es' ? 'DS-300 agrupador' : 'DS-300 aggregator' %></h3>
+            <h3><%= t('settings.ds_300_agrupador') %></h3>
             <p class="vt-sub__p">
               <%= lang === 'es'
                 ? 'Un aparato agrupa varias cajas DS-300 y las entrega por un único puerto COM. PitWall separa las cajas por su identificador de trama (byte 4) y numera los carriles de forma global: caja 1 → 1–8, caja 2 → 9–16, y así sucesivamente.'
@@ -226,19 +226,19 @@ const navItems = [
             </p>
           </div>
           <div class="vt-sub__actions">
-            <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="refreshPortsAgg" title="<%= lang === 'es' ? 'Buscar puertos COM' : 'Search COM ports' %>">
+            <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="refreshPortsAgg" title="<%= t('settings.buscar_puertos_com') %>">
               <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v5h-5"/></svg>
-              <%= lang === 'es' ? 'Buscar puertos' : 'Refresh ports' %>
+              <%= t('settings.buscar_puertos') %>
             </button>
           </div>
         </div>
 
         <div class="vt-fields vt-fields--3" style="margin-top:14px">
           <div class="vt-field circuit-row__field--port">
-            <label><%= lang === 'es' ? 'Puerto' : 'Port' %></label>
+            <label><%= t('client.settings.puerto') %></label>
             <div class="vt-selw">
               <select class="port-select" name="agg_port" id="aggPortSelect">
-                <option value="">— <%= lang === 'es' ? 'seleccionar' : 'select' %> —</option>
+                <option value="">— <%= t('client.settings.seleccionar') %> —</option>
                 <% ports.forEach(p => { %>
                   <option value="<%= p.path %>" <%= cfg.agg_port === p.path ? 'selected' : '' %>>
                     <%= p.path %><%= p.manufacturer ? ` — ${p.manufacturer}` : '' %>
@@ -252,10 +252,10 @@ const navItems = [
             <% const _aggCustomPort = cfg.agg_port && !ports.find(p => p.path === cfg.agg_port); %>
             <button type="button" class="port-manual-toggle <%= _aggCustomPort ? 'is-open' : '' %>" aria-expanded="<%= _aggCustomPort ? 'true' : 'false' %>">
               <svg class="port-manual-toggle__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
-              <span><%= lang === 'es' ? 'Escribir el path a mano' : 'Type the path manually' %></span>
+              <span><%= t('client.settings.escribir_el_path_a_mano') %></span>
             </button>
             <input class="vt-inp is-mono port-manual <%= _aggCustomPort ? '' : 'is-hidden' %>" type="text"
-              placeholder="<%= lang === 'es' ? 'p. ej. /dev/ttys003' : 'e.g. COM3' %>"
+              placeholder="<%= t('client.settings.p_ej_dev_ttys003') %>"
               value="<%= cfg.agg_port || '' %>" style="margin-top:7px;font-size:13px">
           </div>
           <% const _aggBauds = [9600,19200,38400,56000,57600,115200,230400,460800,921600]; %>
@@ -273,18 +273,18 @@ const navItems = [
             </div>
             <button type="button" class="port-manual-toggle baud-manual-toggle <%= _aggCustomBaud ? 'is-open' : '' %>" aria-expanded="<%= _aggCustomBaud ? 'true' : 'false' %>">
               <svg class="port-manual-toggle__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
-              <span><%= lang === 'es' ? 'Escribir a mano' : 'Type manually' %></span>
+              <span><%= t('client.settings.escribir_a_mano') %></span>
             </button>
             <input class="vt-inp is-mono baud-manual <%= _aggCustomBaud ? '' : 'is-hidden' %>" type="number"
-              min="300" max="921600" step="1" placeholder="<%= lang === 'es' ? 'p. ej. 57600' : 'e.g. 57600' %>"
+              min="300" max="921600" step="1" placeholder="<%= t('client.settings.p_ej_57600') %>"
               value="<%= _aggCur %>" style="margin-top:7px;font-size:13px">
           </div>
           <div class="vt-field">
-            <label><%= lang === 'es' ? 'Nº de cajas en el puerto' : 'Boxes on the port' %></label>
+            <label><%= t('settings.n_de_cajas_en_el_puerto') %></label>
             <div class="vt-selw">
               <select name="agg_boxes" id="aggBoxes">
                 <% [2, 3, 4].forEach(v => { %>
-                  <option value="<%= v %>" <%= String(cfg.agg_boxes || '2') === String(v) ? 'selected' : '' %>><%= v %> (<%= v * 8 %> <%= lang === 'es' ? 'carriles' : 'lanes' %>)</option>
+                  <option value="<%= v %>" <%= String(cfg.agg_boxes || '2') === String(v) ? 'selected' : '' %>><%= v %> (<%= v * 8 %> <%= t('client.common.carriles') %>)</option>
                 <% }) %>
               </select>
             </div>
@@ -302,7 +302,7 @@ const navItems = [
 
         <div class="vt-sub">
           <div>
-            <h3><%= lang === 'es' ? 'Circuitos DS-300' : 'DS-300 circuits' %></h3>
+            <h3><%= t('settings.circuitos_ds_300') %></h3>
             <p class="vt-sub__p">
               <%= lang === 'es'
                 ? 'Cada DS-300 controla un circuito independiente. Los carriles se numeran de forma global.'
@@ -310,13 +310,13 @@ const navItems = [
             </p>
           </div>
           <div class="vt-sub__actions">
-            <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="refreshPorts" title="<%= lang === 'es' ? 'Buscar puertos COM' : 'Search COM ports' %>">
+            <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="refreshPorts" title="<%= t('settings.buscar_puertos_com') %>">
               <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v5h-5"/></svg>
-              <%= lang === 'es' ? 'Buscar puertos' : 'Refresh ports' %>
+              <%= t('settings.buscar_puertos') %>
             </button>
             <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="addCircuit">
               <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-              <%= lang === 'es' ? 'Añadir circuito' : 'Add circuit' %>
+              <%= t('settings.anadir_circuito') %>
             </button>
           </div>
         </div>
@@ -327,9 +327,9 @@ const navItems = [
             <div class="vt-circuit-row circuit-row" data-index="<%= i %>">
               <div class="vt-circuit-row__h">
                 <div class="vt-circuit-row__num cnum"><%= i + 1 %></div>
-                <div class="vt-circuit-row__title cname"><%= lang === 'es' ? 'Circuito' : 'Circuit' %> <%= i + 1 %></div>
+                <div class="vt-circuit-row__title cname"><%= t('client.common.circuito') %> <%= i + 1 %></div>
                 <span class="vt-circuit-row__lanes-badge circuit-row__lanes-badge">
-                  <%= lang === 'es' ? 'Carriles' : 'Lanes' %>&nbsp;<%= globalLaneStart %>–<%= globalLaneStart + (c.lanes || 8) - 1 %>
+                  <%= t('common.carriles') %>&nbsp;<%= globalLaneStart %>–<%= globalLaneStart + (c.lanes || 8) - 1 %>
                 </span>
                 <% if (multiCircuit) { %>
                   <button type="button" class="vt-circuit-row__x btn-remove-circuit" data-index="<%= i %>" title="Eliminar">
@@ -338,13 +338,13 @@ const navItems = [
                 <% } %>
               </div>
 
-              <div class="vt-group-lbl"><%= lang === 'es' ? 'Conexión serie' : 'Serial connection' %></div>
+              <div class="vt-group-lbl"><%= t('client.settings.conexion_serie') %></div>
               <div class="vt-fields vt-fields--3 circuit-row__body">
                 <div class="vt-field circuit-row__field circuit-row__field--port">
-                  <label><%= lang === 'es' ? 'Puerto' : 'Port' %></label>
+                  <label><%= t('client.settings.puerto') %></label>
                   <div class="vt-selw">
                     <select class="port-select" name="circuit_port">
-                      <option value="">— <%= lang === 'es' ? 'seleccionar' : 'select' %> —</option>
+                      <option value="">— <%= t('client.settings.seleccionar') %> —</option>
                       <% ports.forEach(p => { %>
                         <option value="<%= p.path %>" <%= c.port === p.path ? 'selected' : '' %>>
                           <%= p.path %><%= p.manufacturer ? ` — ${p.manufacturer}` : '' %>
@@ -358,10 +358,10 @@ const navItems = [
                   <% const isCustomPort = c.port && !ports.find(p => p.path === c.port); %>
                   <button type="button" class="port-manual-toggle <%= isCustomPort ? 'is-open' : '' %>" aria-expanded="<%= isCustomPort ? 'true' : 'false' %>">
                     <svg class="port-manual-toggle__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
-                    <span><%= lang === 'es' ? 'Escribir el path a mano' : 'Type the path manually' %></span>
+                    <span><%= t('client.settings.escribir_el_path_a_mano') %></span>
                   </button>
                   <input class="vt-inp is-mono port-manual <%= isCustomPort ? '' : 'is-hidden' %>" type="text"
-                    placeholder="<%= lang === 'es' ? 'p. ej. /dev/ttys003' : 'e.g. COM3' %>"
+                    placeholder="<%= t('client.settings.p_ej_dev_ttys003') %>"
                     value="<%= c.port || '' %>" style="margin-top:7px;font-size:13px">
                 </div>
                 <% const _bauds = [9600,19200,38400,56000,57600,115200,230400,460800,921600]; %>
@@ -379,10 +379,10 @@ const navItems = [
                   </div>
                   <button type="button" class="port-manual-toggle baud-manual-toggle <%= _customBaud ? 'is-open' : '' %>" aria-expanded="<%= _customBaud ? 'true' : 'false' %>">
                     <svg class="port-manual-toggle__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
-                    <span><%= lang === 'es' ? 'Escribir a mano' : 'Type manually' %></span>
+                    <span><%= t('client.settings.escribir_a_mano') %></span>
                   </button>
                   <input class="vt-inp is-mono baud-manual <%= _customBaud ? '' : 'is-hidden' %>" type="number"
-                    min="300" max="921600" step="1" placeholder="<%= lang === 'es' ? 'p. ej. 57600' : 'e.g. 57600' %>"
+                    min="300" max="921600" step="1" placeholder="<%= t('client.settings.p_ej_57600') %>"
                     value="<%= _curBaud %>" style="margin-top:7px;font-size:13px">
                 </div>
               </div>
@@ -390,7 +390,7 @@ const navItems = [
               <details class="vt-adv circuit-row__adv">
                 <summary>
                   <svg class="vt-adv__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
-                  <%= lang === 'es' ? 'Opciones avanzadas del puerto' : 'Advanced port options' %>
+                  <%= t('client.settings.opciones_avanzadas_del_puerto') %>
                 </summary>
                 <div class="vt-adv__body vt-fields vt-fields--3">
                   <div class="vt-field circuit-row__field">
@@ -404,7 +404,7 @@ const navItems = [
                     </div>
                   </div>
                   <div class="vt-field circuit-row__field">
-                    <label><%= lang === 'es' ? 'Paridad' : 'Parity' %></label>
+                    <label><%= t('client.settings.paridad') %></label>
                     <div class="vt-selw">
                       <select name="circuit_parity">
                         <% ['none','even','odd'].forEach(v => { %>
@@ -424,7 +424,7 @@ const navItems = [
                     </div>
                   </div>
                   <div class="vt-field circuit-row__field">
-                    <label><%= lang === 'es' ? 'Control de flujo' : 'Flow control' %></label>
+                    <label><%= t('client.settings.control_de_flujo') %></label>
                     <div class="vt-selw">
                       <select name="circuit_flow">
                         <% ['none','rtscts','xonxoff'].forEach(v => { %>
@@ -438,13 +438,13 @@ const navItems = [
 
               <div class="vt-divider"></div>
 
-              <div class="vt-group-lbl"><%= lang === 'es' ? 'Asignación de carriles' : 'Lane assignment' %></div>
+              <div class="vt-group-lbl"><%= t('client.common.asignacion_de_carriles') %></div>
               <div class="vt-fields vt-fields--2">
                 <div class="vt-field circuit-row__field circuit-row__field--circuit">
-                  <label><%= lang === 'es' ? 'Circuito' : 'Circuit' %></label>
+                  <label><%= t('client.common.circuito') %></label>
                   <div class="vt-selw">
                     <select class="circuit-ref-select" name="circuit_ref">
-                      <option value="">— <%= lang === 'es' ? 'Manual' : 'Manual' %> —</option>
+                      <option value="">— <%= t('client.common.manual') %> —</option>
                       <% allCircuits.forEach(ac => { %>
                         <option value="<%= ac.id %>" data-lanes="<%= ac.lanes_count %>"
                           data-config='<%= (ac.circuits_config && ac.circuits_config !== "[]") ? ac.circuits_config : ("[" + ac.lanes_count + "]") %>'
@@ -456,7 +456,7 @@ const navItems = [
                   </div>
                 </div>
                 <div class="vt-field circuit-row__field circuit-row__field--lanes">
-                  <label><%= lang === 'es' ? 'Nº de carriles' : 'Lanes' %></label>
+                  <label><%= t('client.settings.n_de_carriles') %></label>
                   <input class="vt-inp is-mono circuit-lanes-input" type="number" name="circuit_lanes" min="2" max="8"
                     value="<%= c.lanes || 8 %>" <%= c.circuit_id ? 'readonly' : '' %>>
                   <input type="hidden" class="circuit-sub-input" name="circuit_sub" value="<%= (c.circuit_id != null && c.sub_index != null) ? c.sub_index : '' %>">
@@ -472,7 +472,7 @@ const navItems = [
           <summary>
             <span class="ar"></span>
             <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
-            <%= lang === 'es' ? 'Avanzado: timing del parser DS-300' : 'Advanced: DS-300 parser timing' %>
+            <%= t('settings.avanzado_timing_del_parser_ds_300') %>
           </summary>
           <div class="vt-disc-body">
             <div class="vt-field" style="max-width:160px;margin-top:10px">
@@ -492,19 +492,19 @@ const navItems = [
         <!-- ══ Preferencias ══════════════════════════════════════════════ -->
         <section class="st-sec" data-sec="live">
           <header class="st-sec__h">
-            <h2><%= es ? 'Preferencias' : 'Preferences' %></h2>
-            <p><%= es ? 'Cómo prefieres ver la información de la carrera.' : 'How you prefer to see race information.' %></p>
+            <h2><%= t('settings.preferencias') %></h2>
+            <p><%= t('settings.como_prefieres_ver_la_informacion_de_la_carrera') %></p>
           </header>
           <div class="st-card">
             <div class="st-row st-row--wrap">
               <div class="st-row__txt">
-                <div class="st-row__t"><%= es ? 'Orden del directo' : 'Live view order' %></div>
-                <div class="st-row__d"><%= es ? 'Cómo se ordenan tarjetas y filas, y qué posición (P.x) muestra cada equipo o piloto. La clasificación estimada del panel lateral no cambia.' : 'How cards and rows are ordered, and which position (P.x) each team or driver shows. The projected standings side panel does not change.' %></div>
+                <div class="st-row__t"><%= t('settings.orden_del_directo') %></div>
+                <div class="st-row__d"><%= t('settings.como_se_ordenan_tarjetas_y_filas_y_que_posicion') %></div>
               </div>
               <div class="vt-selw st-row__ctl st-row__ctl--wide">
-                <select name="live_order" aria-label="<%= es ? 'Ordenar por' : 'Order by' %>">
-                  <option value="projected" <%= cfg.live_order !== 'laps' ? 'selected' : '' %>><%= es ? 'Clasificación estimada (recomendado)' : 'Projected standings (recommended)' %></option>
-                  <option value="laps" <%= cfg.live_order === 'laps' ? 'selected' : '' %>><%= es ? 'Vueltas reales (a igualdad, menos tiempo total)' : 'Actual laps (ties: lower total time)' %></option>
+                <select name="live_order" aria-label="<%= t('settings.ordenar_por') %>">
+                  <option value="projected" <%= cfg.live_order !== 'laps' ? 'selected' : '' %>><%= t('settings.clasificacion_estimada_recomendado') %></option>
+                  <option value="laps" <%= cfg.live_order === 'laps' ? 'selected' : '' %>><%= t('settings.vueltas_reales_a_igualdad_menos_tiempo_total') %></option>
                 </select>
               </div>
             </div>
@@ -512,46 +512,46 @@ const navItems = [
           <div class="st-card">
             <div class="st-row st-row--wrap">
               <div class="st-row__txt">
-                <div class="st-row__t"><%= es ? 'Modo de la app' : 'App mode' %></div>
-                <div class="st-row__d"><%= es ? 'Básico: el inicio solo muestra entreno libre, carrera sprint, resultados, categorías, escenarios y ajustes. Avanzado: todos los accesos. Se guarda al momento.' : 'Basic: home only shows free practice, sprint race, results, categories, scenarios and settings. Advanced: every shortcut. Saved instantly.' %></div>
+                <div class="st-row__t"><%= t('common.modo_de_la_app') %></div>
+                <div class="st-row__d"><%= t('settings.basico_el_inicio_solo_muestra_entreno_libre') %></div>
               </div>
               <div class="vt-selw st-row__ctl st-row__ctl--wide">
-                <select data-pref="ui_mode" aria-label="<%= es ? 'Modo de la app' : 'App mode' %>">
-                  <option value="advanced" <%= uiMode === 'advanced' ? 'selected' : '' %>><%= es ? 'Avanzado (todo)' : 'Advanced (everything)' %></option>
-                  <option value="basic" <%= uiMode === 'basic' ? 'selected' : '' %>><%= es ? 'Básico' : 'Basic' %></option>
+                <select data-pref="ui_mode" aria-label="<%= t('common.modo_de_la_app') %>">
+                  <option value="advanced" <%= uiMode === 'advanced' ? 'selected' : '' %>><%= t('settings.avanzado_todo') %></option>
+                  <option value="basic" <%= uiMode === 'basic' ? 'selected' : '' %>><%= t('common.basico') %></option>
                 </select>
               </div>
             </div>
             <div class="st-row st-row--wrap">
               <div class="st-row__txt">
-                <div class="st-row__t"><%= es ? 'Historial de vueltas en entrenos' : 'Practice lap history' %></div>
-                <div class="st-row__d"><%= es ? 'Las 10 vueltas que muestra cada carril en la vista «Con historial» de los entrenos. Se guarda al momento; en un entreno abierto se aplica al recargar.' : 'The 10 laps each lane shows in the practice "With history" view. Saved instantly; an open practice picks it up on reload.' %></div>
+                <div class="st-row__t"><%= t('settings.historial_de_vueltas_en_entrenos') %></div>
+                <div class="st-row__d"><%= t('settings.las_10_vueltas_que_muestra_cada_carril_en_la') %></div>
               </div>
               <div class="vt-selw st-row__ctl st-row__ctl--wide">
-                <select data-pref="training_history_mode" aria-label="<%= es ? 'Historial de vueltas en entrenos' : 'Practice lap history' %>">
-                  <option value="recent" <%= trainingHistoryMode === 'recent' ? 'selected' : '' %>><%= es ? 'Las 10 últimas (la más reciente arriba)' : 'Last 10 (newest first)' %></option>
-                  <option value="best" <%= trainingHistoryMode === 'best' ? 'selected' : '' %>><%= es ? 'Las 10 mejores (de mejor a peor)' : 'Best 10 (best first)' %></option>
+                <select data-pref="training_history_mode" aria-label="<%= t('settings.historial_de_vueltas_en_entrenos') %>">
+                  <option value="recent" <%= trainingHistoryMode === 'recent' ? 'selected' : '' %>><%= t('settings.las_10_ultimas_la_mas_reciente_arriba') %></option>
+                  <option value="best" <%= trainingHistoryMode === 'best' ? 'selected' : '' %>><%= t('settings.las_10_mejores_de_mejor_a_peor') %></option>
                 </select>
               </div>
             </div>
             <div class="st-row st-row--wrap">
               <div class="st-row__txt">
-                <div class="st-row__t"><%= es ? 'Corrección manual de la coma' : 'Manual correction of the fraction' %></div>
-                <div class="st-row__d"><%= es ? 'La coma (la fracción de vuelta de cada coche al caer la bandera) se calcula sola. Actívalo para poder corregirla a mano por carril en la pantalla de correcciones de una manga cerrada; la coma corregida manda en el desempate a igualdad de vueltas. Se guarda al momento.' : 'The fraction (each car’s partial lap when the flag falls) is calculated automatically. Turn this on to fix it by hand, per lane, in the corrections screen of a finished heat; a corrected fraction wins tie-breaks on equal laps. Saved instantly.' %></div>
+                <div class="st-row__t"><%= t('settings.correccion_manual_de_la_coma') %></div>
+                <div class="st-row__d"><%= t('settings.la_coma_la_fraccion_de_vuelta_de_cada_coche_al') %></div>
               </div>
               <div class="vt-selw st-row__ctl st-row__ctl--wide">
-                <select data-pref="manual_coma" aria-label="<%= es ? 'Corrección manual de la coma' : 'Manual correction of the fraction' %>">
-                  <option value="auto" <%= manualComa === 'auto' ? 'selected' : '' %>><%= es ? 'Automática (recomendado)' : 'Automatic (recommended)' %></option>
-                  <option value="manual" <%= manualComa === 'manual' ? 'selected' : '' %>><%= es ? 'Permitir corregirla a mano' : 'Allow manual correction' %></option>
+                <select data-pref="manual_coma" aria-label="<%= t('settings.correccion_manual_de_la_coma') %>">
+                  <option value="auto" <%= manualComa === 'auto' ? 'selected' : '' %>><%= t('settings.automatica_recomendado') %></option>
+                  <option value="manual" <%= manualComa === 'manual' ? 'selected' : '' %>><%= t('settings.permitir_corregirla_a_mano') %></option>
                 </select>
               </div>
             </div>
             <div class="st-row st-row--wrap">
               <div class="st-row__txt">
-                <div class="st-row__t"><%= es ? 'Espera de cruces tras el final (s)' : 'Wait for crossings after the end (s)' %></div>
-                <div class="st-row__d"><%= es ? 'Tiempo durante el que, al terminar la manga, un coche que cruza la meta cuenta como vuelta de bandera con su tiempo real. Con las mismas vueltas gana quien cruzó antes. 0 lo desactiva (la vuelta se repone con el tiempo medio). Se guarda al momento y se aplica desde la siguiente manga.' : 'How long after the heat ends a car crossing the line still counts as a flag lap with its real time. On equal laps, whoever crossed first wins. 0 disables it (the lap is restored at the average time). Saved instantly; applies from the next heat.' %></div>
+                <div class="st-row__t"><%= t('settings.espera_de_cruces_tras_el_final_s') %></div>
+                <div class="st-row__d"><%= t('settings.tiempo_durante_el_que_al_terminar_la_manga_un') %></div>
               </div>
-              <input type="number" min="0" max="10" step="0.1" class="vt-inp is-mono st-row__ctl" value="<%= (lateCrossingGraceMs / 1000).toString() %>" data-pref-ms="late_crossing_grace_ms" aria-label="<%= es ? 'Espera de cruces tras el final (s)' : 'Wait for crossings after the end (s)' %>">
+              <input type="number" min="0" max="10" step="0.1" class="vt-inp is-mono st-row__ctl" value="<%= (lateCrossingGraceMs / 1000).toString() %>" data-pref-ms="late_crossing_grace_ms" aria-label="<%= t('settings.espera_de_cruces_tras_el_final_s') %>">
             </div>
             <div class="st-row st-row--hint" hidden><div class="st-row__d" id="prefsMsg" role="status"></div></div>
           </div>
@@ -561,8 +561,8 @@ const navItems = [
           <div class="st-card">
             <div class="st-row st-row--wrap">
               <div class="st-row__txt">
-                <div class="st-row__t"><%= es ? 'Colores de carril' : 'Lane colors' %></div>
-                <div class="st-row__d"><%= es ? 'Los que usan todas las pantallas cuando no hay circuito o el circuito no tiene colores propios (se ponen en la ficha de cada circuito). Se guardan al momento, sin tocar la conexión del cronometraje.' : 'Used on every screen when there is no circuit or the circuit has no colors of its own (set them on each circuit). Saved instantly, without touching the timing connection.' %></div>
+                <div class="st-row__t"><%= t('settings.colores_de_carril') %></div>
+                <div class="st-row__d"><%= t('settings.los_que_usan_todas_las_pantallas_cuando_no_hay') %></div>
               </div>
             </div>
             <div class="st-row st-row--wrap" style="display:block">
@@ -570,13 +570,13 @@ const navItems = [
                 <% for (let i = 1; i <= gLaneColors.length; i++) { const c = gLaneColors[i - 1]; %>
                   <label class="lc-swatch" style="background:<%= c %>;color:<%= laneInk(c) %>">
                     <%= i %>
-                    <input type="color" value="<%= c %>" aria-label="<%= (es ? 'Color del carril ' : 'Lane color ') + i %>">
+                    <input type="color" value="<%= c %>" aria-label="<%= (t('common.color_del_carril')) + i %>">
                   </label>
                 <% } %>
               </div>
               <div class="lc-actions">
-                <button type="button" class="vt-btn vt-btn--primary vt-btn--sm" id="laneColorsSave" disabled><%= es ? 'Guardar colores' : 'Save colors' %></button>
-                <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="laneColorsDefault"><%= es ? 'Colores de fábrica' : 'Factory colors' %></button>
+                <button type="button" class="vt-btn vt-btn--primary vt-btn--sm" id="laneColorsSave" disabled><%= t('settings.guardar_colores') %></button>
+                <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="laneColorsDefault"><%= t('settings.colores_de_fabrica') %></button>
                 <span class="st-row__d" id="laneColorsMsg" role="status"></span>
               </div>
             </div>
@@ -586,19 +586,19 @@ const navItems = [
         <!-- ══ Red local ═════════════════════════════════════════════════ -->
         <section class="st-sec" data-sec="net">
           <header class="st-sec__h">
-            <h2><%= es ? 'Red local' : 'Local network' %></h2>
-            <p><%= es ? 'Quién puede entrar a PitWall desde la red del circuito.' : 'Who can reach PitWall from the venue network.' %></p>
+            <h2><%= t('settings.red_local') %></h2>
+            <p><%= t('settings.quien_puede_entrar_a_pitwall_desde_la_red_del') %></p>
           </header>
 
           <div class="st-card">
             <div class="st-row st-row--wrap">
               <div class="st-row__txt">
-                <div class="st-row__t"><%= es ? 'Interfaz de red' : 'Network interface' %> <%- restartChip %></div>
-                <div class="st-row__d"><%= es ? '«Todas» lo hace accesible por cable y WiFi a la vez; elige una para limitarlo a esa red.' : '"All" makes it reachable on LAN and WiFi at once; pick one to limit it.' %></div>
+                <div class="st-row__t"><%= t('settings.interfaz_de_red') %> <%- restartChip %></div>
+                <div class="st-row__d"><%= t('settings.todas_lo_hace_accesible_por_cable_y_wifi_a_la') %></div>
               </div>
               <div class="vt-selw st-row__ctl st-row__ctl--wide">
-                <select name="server_bind_iface" data-restart aria-label="<%= es ? 'Interfaz de red' : 'Network interface' %>">
-                  <option value="" <%= !bindIface ? 'selected' : '' %>><%= es ? 'Todas las interfaces (recomendado)' : 'All interfaces (recommended)' %></option>
+                <select name="server_bind_iface" data-restart aria-label="<%= t('settings.interfaz_de_red') %>">
+                  <option value="" <%= !bindIface ? 'selected' : '' %>><%= t('settings.todas_las_interfaces_recomendado') %></option>
                   <% (netInterfaces || []).forEach(function (i) { %>
                     <option value="<%= i.name %>" <%= bindIface === i.name ? 'selected' : '' %>><%= i.name %> — <%= i.ip %></option>
                   <% }); %>
@@ -606,10 +606,10 @@ const navItems = [
               </div>
             </div>
             <div class="st-row st-row--wrap st-row--top">
-              <div class="st-row__txt"><div class="st-row__t st-row__t--sm"><%= es ? 'Direcciones ahora' : 'Addresses now' %></div></div>
+              <div class="st-row__txt"><div class="st-row__t st-row__t--sm"><%= t('settings.direcciones_ahora') %></div></div>
               <div class="st-addrs">
                 <% if (!serverIps || serverIps.length === 0) { %>
-                  <span class="st-row__d"><%= es ? 'Sin interfaces de red detectadas.' : 'No network interfaces detected.' %></span>
+                  <span class="st-row__d"><%= t('settings.sin_interfaces_de_red_detectadas') %></span>
                 <% } else { %>
                   <% serverIps.forEach(function (i) { %>
                     <div>http://<%= i.ip %>:<%= serverPort %> <span>(<%= i.name %>)</span></div>
@@ -622,16 +622,16 @@ const navItems = [
           <div class="st-card">
             <div class="st-row">
               <div class="st-row__txt">
-                <div class="st-row__t"><%= es ? 'Restringir acceso web' : 'Restrict web access' %></div>
-                <div class="st-row__d"><%= es ? 'Solo este equipo (localhost) y las IPs de la lista. La app móvil e Infolap siguen recibiendo el vuelta a vuelta.' : 'Only this machine (localhost) and the listed IPs. The mobile app and Infolap keep receiving live laps.' %></div>
+                <div class="st-row__t"><%= t('settings.restringir_acceso_web') %></div>
+                <div class="st-row__d"><%= t('settings.solo_este_equipo_localhost_y_las_ips_de_la') %></div>
               </div>
-              <button type="button" class="vt-switch <%= cfg.access_restrict_enabled !== '0' ? 'is-on' : '' %>" id="accessSwitch" data-switch="accessInput" role="switch" aria-checked="<%= cfg.access_restrict_enabled !== '0' %>" aria-label="<%= es ? 'Restringir acceso web' : 'Restrict web access' %>"></button>
+              <button type="button" class="vt-switch <%= cfg.access_restrict_enabled !== '0' ? 'is-on' : '' %>" id="accessSwitch" data-switch="accessInput" role="switch" aria-checked="<%= cfg.access_restrict_enabled !== '0' %>" aria-label="<%= t('settings.restringir_acceso_web') %>"></button>
               <input type="hidden" name="access_restrict_enabled" id="accessInput" value="<%= cfg.access_restrict_enabled !== '0' ? '1' : '' %>">
             </div>
             <div class="st-row st-row--wrap st-row--top" data-show-when="accessInput" <%= cfg.access_restrict_enabled !== '0' ? '' : 'hidden' %>>
               <div class="st-row__txt">
-                <label class="st-row__t st-row__t--sm" for="accessAllowlist"><%= es ? 'IPs o rangos permitidos' : 'Allowed IPs or ranges' %></label>
-                <div class="st-row__d"><%= es ? 'Uno por línea. Admite CIDR, p. ej. 192.168.1.50 o 192.168.1.0/24.' : 'One per line. CIDR ok, e.g. 192.168.1.50 or 192.168.1.0/24.' %></div>
+                <label class="st-row__t st-row__t--sm" for="accessAllowlist"><%= t('settings.ips_o_rangos_permitidos') %></label>
+                <div class="st-row__d"><%= t('settings.uno_por_linea_admite_cidr_p_ej_192_168_1_50_o') %></div>
               </div>
               <textarea name="access_allowlist" id="accessAllowlist" class="vt-inp is-mono st-row__ctl st-row__ctl--wide" rows="4"
                 placeholder="192.168.1.50&#10;192.168.1.0/24"><%= (function(){ try { return JSON.parse(cfg.access_allowlist || '[]').join('\n'); } catch (e) { return ''; } })() %></textarea>
@@ -641,16 +641,16 @@ const navItems = [
           <div class="st-card">
             <div class="st-row">
               <div class="st-row__txt">
-                <div class="st-row__t"><%= es ? 'HTTPS local' : 'Local HTTPS' %> <%- restartChip %></div>
-                <div class="st-row__d"><%= es ? 'El escáner QR del control de pilotos usa la cámara, y el navegador solo la deja usar por HTTPS en los móviles y tablets que entran por la IP. PitWall sirve HTTPS con un certificado propio, en paralelo al HTTP normal.' : 'The driver-control QR scanner uses the camera, which browsers only allow over HTTPS on phones/tablets connecting by IP. PitWall serves HTTPS with its own certificate, alongside normal HTTP.' %></div>
+                <div class="st-row__t"><%= t('settings.https_local') %> <%- restartChip %></div>
+                <div class="st-row__d"><%= t('settings.el_escaner_qr_del_control_de_pilotos_usa_la') %></div>
               </div>
-              <button type="button" class="vt-switch <%= httpsEnabled ? 'is-on' : '' %>" id="httpsSwitch" data-switch="httpsInput" role="switch" aria-checked="<%= !!httpsEnabled %>" aria-label="<%= es ? 'HTTPS local' : 'Local HTTPS' %>"></button>
+              <button type="button" class="vt-switch <%= httpsEnabled ? 'is-on' : '' %>" id="httpsSwitch" data-switch="httpsInput" role="switch" aria-checked="<%= !!httpsEnabled %>" aria-label="<%= t('settings.https_local') %>"></button>
               <input type="hidden" name="https_enabled" id="httpsInput" data-restart value="<%= httpsEnabled ? '1' : '' %>">
             </div>
             <div data-show-when="httpsInput" <%= httpsEnabled ? '' : 'hidden' %>>
               <div class="st-row st-row--wrap">
                 <div class="st-row__txt">
-                  <label class="st-row__t st-row__t--sm" for="httpsPort"><%= es ? 'Puerto HTTPS' : 'HTTPS port' %></label>
+                  <label class="st-row__t st-row__t--sm" for="httpsPort"><%= t('settings.puerto_https') %></label>
                   <% if (httpsEnabled && serverIps && serverIps.length) { %>
                     <div class="st-addrs">
                       <% serverIps.forEach(function (i) { %>
@@ -663,15 +663,15 @@ const navItems = [
               </div>
               <div class="st-row st-row--wrap">
                 <div class="st-row__txt">
-                  <div class="st-row__t st-row__t--sm"><%= es ? 'Certificado en los dispositivos' : 'Certificate on devices' %></div>
-                  <div class="st-row__d"><%= es ? 'Sin él, el navegador avisa una vez («conexión no privada → continuar»).' : 'Without it the browser warns once (“not private → proceed”).' %></div>
+                  <div class="st-row__t st-row__t--sm"><%= t('settings.certificado_en_los_dispositivos') %></div>
+                  <div class="st-row__d"><%= t('settings.sin_el_el_navegador_avisa_una_vez_conexion_no') %></div>
                   <% if (caFingerprint) { %>
-                    <div class="st-row__d st-fp"><%= es ? 'Huella SHA-256 de la CA:' : 'CA SHA-256 fingerprint:' %> <%= caFingerprint %></div>
+                    <div class="st-row__d st-fp"><%= t('settings.huella_sha_256_de_la_ca') %> <%= caFingerprint %></div>
                   <% } %>
                 </div>
                 <div class="st-btns">
-                  <a class="vt-btn vt-btn--ghost vt-btn--sm" href="/cert" target="_blank"><%= es ? 'Instalar certificado (guía)' : 'Install certificate (guide)' %></a>
-                  <a class="vt-btn vt-btn--ghost vt-btn--sm" href="/cert/ca" download><%= es ? 'Descargar CA' : 'Download CA' %></a>
+                  <a class="vt-btn vt-btn--ghost vt-btn--sm" href="/cert" target="_blank"><%= t('settings.instalar_certificado_guia') %></a>
+                  <a class="vt-btn vt-btn--ghost vt-btn--sm" href="/cert/ca" download><%= t('settings.descargar_ca') %></a>
                 </div>
               </div>
             </div>
@@ -681,36 +681,36 @@ const navItems = [
         <!-- ══ Seguridad ═════════════════════════════════════════════════ -->
         <section class="st-sec" data-sec="sec">
           <header class="st-sec__h">
-            <h2><%= es ? 'Seguridad' : 'Security' %></h2>
-            <p><%= es ? 'Para que quien no conoce el programa no toque lo que no debe: pide contraseña para Sistema (Ajustes, Base de datos, sincronizaciones, ecosistema, solución de problemas) y Catálogo (Pilotos, Equipos, Coches, Categorías, Escenarios), también en este equipo y en la app de escritorio. El inicio, las carreras, los entrenos, los resultados y el directo siguen sin contraseña.' : 'So that people who do not know the program do not touch what they should not: asks for a password for System (Settings, Database, syncs, ecosystem, troubleshooting) and Catalog (Drivers, Teams, Cars, Categories, Scenarios), also on this machine and in the desktop app. Home, races, practice, results and live stay open.' %></p>
+            <h2><%= t('settings.seguridad') %></h2>
+            <p><%= t('settings.para_que_quien_no_conoce_el_programa_no_toque') %></p>
           </header>
           <div class="st-card">
             <div class="st-row">
               <div class="st-row__txt">
-                <div class="st-row__t"><%= es ? 'Pedir contraseña de acceso' : 'Require an access password' %></div>
-                <div class="st-row__d"><%= es ? 'Se guarda al momento, sin tocar la conexión del cronometraje.' : 'Saved instantly, without touching the timing connection.' %></div>
+                <div class="st-row__t"><%= t('settings.pedir_contrasena_de_acceso') %></div>
+                <div class="st-row__d"><%= t('settings.se_guarda_al_momento_sin_tocar_la_conexion_del') %></div>
               </div>
-              <button type="button" class="vt-switch <%= passwordEnabled ? 'is-on' : '' %>" id="pwSwitch" role="switch" aria-checked="<%= passwordEnabled %>" aria-label="<%= es ? 'Pedir contraseña de acceso' : 'Require an access password' %>"></button>
+              <button type="button" class="vt-switch <%= passwordEnabled ? 'is-on' : '' %>" id="pwSwitch" role="switch" aria-checked="<%= passwordEnabled %>" aria-label="<%= t('settings.pedir_contrasena_de_acceso') %>"></button>
             </div>
             <div class="st-row st-row--wrap st-row--top" id="pwFields" <%= passwordEnabled ? 'hidden' : '' %>>
               <div class="st-row__txt">
-                <label class="st-row__t st-row__t--sm" for="pwNew" id="pwFieldsTitle"><%= passwordEnabled ? (es ? 'Cambiar contraseña' : 'Change password') : (es ? 'Contraseña' : 'Password') %></label>
-                <div class="st-row__d"><%= es ? 'Mínimo 4 caracteres. Si se olvida, arranca PitWall con PITWALL_DISABLE_PASSWORD=1 y ponla de nuevo aquí.' : 'At least 4 characters. If forgotten, start PitWall with PITWALL_DISABLE_PASSWORD=1 and set it again here.' %></div>
+                <label class="st-row__t st-row__t--sm" for="pwNew" id="pwFieldsTitle"><%= passwordEnabled ? (t('settings.cambiar_contrasena')) : (t('common.contrasena')) %></label>
+                <div class="st-row__d"><%= t('settings.minimo_4_caracteres_si_se_olvida_arranca') %></div>
               </div>
               <div class="st-row__ctl st-row__ctl--wide" style="display:grid;gap:8px">
-                <input type="password" id="pwNew" class="vt-inp" autocomplete="new-password" placeholder="<%= es ? 'Contraseña nueva' : 'New password' %>">
-                <input type="password" id="pwConfirm" class="vt-inp" autocomplete="new-password" placeholder="<%= es ? 'Repítela' : 'Repeat it' %>">
-                <button type="button" class="vt-btn vt-btn--primary vt-btn--sm" id="pwSave"><%= passwordEnabled ? (es ? 'Cambiar contraseña' : 'Change password') : (es ? 'Activar con esta contraseña' : 'Enable with this password') %></button>
+                <input type="password" id="pwNew" class="vt-inp" autocomplete="new-password" placeholder="<%= t('settings.contrasena_nueva') %>">
+                <input type="password" id="pwConfirm" class="vt-inp" autocomplete="new-password" placeholder="<%= t('settings.repitela') %>">
+                <button type="button" class="vt-btn vt-btn--primary vt-btn--sm" id="pwSave"><%= passwordEnabled ? (t('settings.cambiar_contrasena')) : (t('settings.activar_con_esta_contrasena')) %></button>
               </div>
             </div>
             <div class="st-row st-row--wrap" id="pwActions" <%= passwordEnabled ? '' : 'hidden' %>>
               <div class="st-btns">
-                <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="pwChange"><%= es ? 'Cambiar contraseña' : 'Change password' %></button>
-                <a class="vt-btn vt-btn--ghost vt-btn--sm" href="/logout"><%= es ? 'Cerrar sesión' : 'Sign out' %></a>
+                <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="pwChange"><%= t('settings.cambiar_contrasena') %></button>
+                <a class="vt-btn vt-btn--ghost vt-btn--sm" href="/logout"><%= t('settings.cerrar_sesion') %></a>
               </div>
             </div>
             <% if (passwordOverridden) { %>
-              <div class="st-row st-row--hint"><div class="st-row__d"><%= es ? 'PITWALL_DISABLE_PASSWORD=1 está puesto: ahora mismo no se pide contraseña.' : 'PITWALL_DISABLE_PASSWORD=1 is set: no password is being asked right now.' %></div></div>
+              <div class="st-row st-row--hint"><div class="st-row__d"><%= t('settings.pitwall_disable_password_1_esta_puesto_ahora') %></div></div>
             <% } %>
             <div class="st-row st-row--hint" hidden><div class="st-row__d" id="pwMsg" role="status"></div></div>
           </div>
@@ -719,42 +719,42 @@ const navItems = [
         <!-- ══ Seguimiento online ═══════════════════════════════════════ -->
         <section class="st-sec" data-sec="web">
           <header class="st-sec__h">
-            <h2><%= es ? 'Seguimiento online' : 'Online tracking' %></h2>
-            <p><%= es ? 'Publica el directo, los resultados y Lap con un túnel de Cloudflare propio del club. El control de la app queda bloqueado desde fuera.' : 'Publishes live, results and Lap via your club\'s own Cloudflare tunnel. App control stays blocked from outside.' %></p>
+            <h2><%= t('settings.seguimiento_online') %></h2>
+            <p><%= t('settings.publica_el_directo_los_resultados_y_lap_con_un') %></p>
           </header>
           <div class="st-card">
             <div class="st-row st-row--wrap">
               <span class="st-dot st-dot--lg" id="tunnelDot"></span>
               <div class="st-row__txt">
-                <div class="st-row__t" id="tunnelState"><%= es ? 'Comprobando…' : 'Checking…' %></div>
+                <div class="st-row__t" id="tunnelState"><%= t('settings.comprobando') %></div>
                 <div id="tunnelUrl" class="st-addrs"></div>
               </div>
               <div class="st-btns">
-                <button type="button" class="vt-btn vt-btn--primary" id="tunnelStartBtn" onclick="tunnelAction('start')"><%= es ? 'Arrancar túnel' : 'Start tunnel' %></button>
-                <button type="button" class="vt-btn vt-btn--ghost" id="tunnelStopBtn" onclick="tunnelAction('stop')"><%= es ? 'Parar' : 'Stop' %></button>
-                <button type="button" class="vt-btn vt-btn--primary" id="tunnelInstallBtn" style="display:none" onclick="tunnelInstall()"><%= es ? 'Instalar cloudflared' : 'Install cloudflared' %></button>
+                <button type="button" class="vt-btn vt-btn--primary" id="tunnelStartBtn" onclick="tunnelAction('start')"><%= t('settings.arrancar_tunel') %></button>
+                <button type="button" class="vt-btn vt-btn--ghost" id="tunnelStopBtn" onclick="tunnelAction('stop')"><%= t('common.parar') %></button>
+                <button type="button" class="vt-btn vt-btn--primary" id="tunnelInstallBtn" style="display:none" onclick="tunnelInstall()"><%= t('settings.instalar_cloudflared') %></button>
               </div>
             </div>
             <div class="st-row st-row--hint" id="tunnelHintRow"><div class="st-row__d" id="tunnelHint"></div></div>
             <div class="st-row st-row--wrap">
               <div class="st-row__txt">
-                <div class="st-row__t st-row__t--sm"><%= es ? 'Modo' : 'Mode' %></div>
+                <div class="st-row__t st-row__t--sm"><%= t('common.modo') %></div>
                 <div id="tunnelQuickHelp" class="st-row__d" style="display:none">
-                  <%= es ? 'Genera una URL aleatoria *.trycloudflare.com al arrancar (cambia en cada arranque). Ideal para probar o para un evento puntual.' : 'Generates a random *.trycloudflare.com URL on start (changes every start). Great for testing or one-off events.' %>
+                  <%= t('settings.genera_una_url_aleatoria_trycloudflare_com_al') %>
                 </div>
               </div>
               <div class="vt-selw st-row__ctl st-row__ctl--wide">
-                <select name="tunnel_mode" id="tunnelMode" onchange="tunnelModeUi()" aria-label="<%= es ? 'Modo' : 'Mode' %>">
-                  <option value="off"   <%= (cfg.tunnel_mode || 'off') === 'off'   ? 'selected' : '' %>><%= es ? 'Desactivado' : 'Disabled' %></option>
-                  <option value="quick" <%= cfg.tunnel_mode === 'quick' ? 'selected' : '' %>><%= es ? 'Rápido — URL temporal (sin cuenta ni dominio)' : 'Quick — temporary URL (no account/domain)' %></option>
-                  <option value="token" <%= cfg.tunnel_mode === 'token' ? 'selected' : '' %>><%= es ? 'Cloudflare propio — token del club' : 'Own Cloudflare — club token' %></option>
+                <select name="tunnel_mode" id="tunnelMode" onchange="tunnelModeUi()" aria-label="<%= t('common.modo') %>">
+                  <option value="off"   <%= (cfg.tunnel_mode || 'off') === 'off'   ? 'selected' : '' %>><%= t('settings.desactivado') %></option>
+                  <option value="quick" <%= cfg.tunnel_mode === 'quick' ? 'selected' : '' %>><%= t('settings.rapido_url_temporal_sin_cuenta_ni_dominio') %></option>
+                  <option value="token" <%= cfg.tunnel_mode === 'token' ? 'selected' : '' %>><%= t('settings.cloudflare_propio_token_del_club') %></option>
                 </select>
               </div>
             </div>
             <div id="tunnelTokenFields" style="display:none">
               <div class="st-row st-row--wrap">
                 <div class="st-row__txt">
-                  <label class="st-row__t st-row__t--sm" for="tunnelToken"><%= es ? 'Token del túnel' : 'Tunnel token' %></label>
+                  <label class="st-row__t st-row__t--sm" for="tunnelToken"><%= t('settings.token_del_tunel') %></label>
                   <div class="st-row__d">Cloudflare → Zero Trust → Networks → Tunnels</div>
                 </div>
                 <input type="password" name="tunnel_token" id="tunnelToken" class="vt-inp is-mono st-row__ctl st-row__ctl--wide"
@@ -762,26 +762,26 @@ const navItems = [
               </div>
               <div class="st-row st-row--wrap">
                 <div class="st-row__txt">
-                  <label class="st-row__t st-row__t--sm" for="tunnelHost"><%= es ? 'Dominio público' : 'Public hostname' %></label>
-                  <div class="st-row__d"><%= es ? 'Informativo, p. ej. directo.miclub.com' : 'Informational, e.g. live.myclub.com' %></div>
+                  <label class="st-row__t st-row__t--sm" for="tunnelHost"><%= t('settings.dominio_publico') %></label>
+                  <div class="st-row__d"><%= t('settings.informativo_p_ej_directo_miclub_com') %></div>
                 </div>
                 <input type="text" name="tunnel_hostname" id="tunnelHost" class="vt-inp is-mono st-row__ctl st-row__ctl--wide"
                        placeholder="directo.miclub.com" value="<%= cfg.tunnel_hostname || '' %>" autocomplete="off">
               </div>
               <details class="st-row st-howto">
-                <summary><span class="ar"></span><%= es ? 'Cómo configurarlo (una sola vez)' : 'How to set it up (one time)' %></summary>
+                <summary><span class="ar"></span><%= t('settings.como_configurarlo_una_sola_vez') %></summary>
                 <ol>
-                  <li><%= es ? 'Entra en el' : 'Open the' %> <a href="https://one.dash.cloudflare.com/" target="_blank" rel="noopener">Cloudflare Zero Trust dashboard</a> <%= es ? '(cuenta gratuita) con tu dominio ya añadido a Cloudflare.' : '(free account) with your domain already added to Cloudflare.' %></li>
-                  <li><b>Networks → Tunnels → Create a tunnel</b> (Cloudflared) · <%= es ? 'dale un nombre (p. ej. el del club).' : 'give it a name (e.g. your club).' %></li>
-                  <li><%= es ? 'Copia el' : 'Copy the' %> <b>token</b> <%= es ? 'del conector (la cadena larga que empieza por «eyJ…») y pégalo arriba.' : 'from the connector (the long string starting with “eyJ…”) and paste it above.' %></li>
-                  <li><%= es ? 'En' : 'Under' %> <b>Public Hostnames</b>, <%= es ? 'añade el subdominio (p. ej. directo.miclub.com) apuntando a' : 'add the subdomain (e.g. live.myclub.com) pointing at' %> <code>http://localhost:3000</code>.</li>
+                  <li><%= t('settings.entra_en_el') %> <a href="https://one.dash.cloudflare.com/" target="_blank" rel="noopener">Cloudflare Zero Trust dashboard</a> <%= t('settings.cuenta_gratuita_con_tu_dominio_ya_anadido_a') %></li>
+                  <li><b>Networks → Tunnels → Create a tunnel</b> (Cloudflared) · <%= t('settings.dale_un_nombre_p_ej_el_del_club') %></li>
+                  <li><%= t('settings.copia_el') %> <b>token</b> <%= t('settings.del_conector_la_cadena_larga_que_empieza_por') %></li>
+                  <li><%= t('settings.en') %> <b>Public Hostnames</b>, <%= t('settings.anade_el_subdominio_p_ej_directo_miclub_com') %> <code>http://localhost:3000</code>.</li>
                 </ol>
-                <a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/get-started/create-remote-tunnel/" target="_blank" rel="noopener"><%= es ? 'Guía oficial de Cloudflare (crear un túnel remoto)' : 'Official Cloudflare guide (create a remote tunnel)' %></a>
+                <a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/get-started/create-remote-tunnel/" target="_blank" rel="noopener"><%= t('settings.guia_oficial_de_cloudflare_crear_un_tunel_remoto') %></a>
               </details>
             </div>
             <label class="st-row st-check">
               <input type="checkbox" name="tunnel_autostart" value="1" <%= cfg.tunnel_autostart === '1' ? 'checked' : '' %>>
-              <span><%= es ? 'Arrancar el túnel automáticamente con PitWall' : 'Start the tunnel automatically with PitWall' %></span>
+              <span><%= t('settings.arrancar_el_tunel_automaticamente_con_pitwall') %></span>
             </label>
           </div>
         </section>
@@ -789,16 +789,16 @@ const navItems = [
         <!-- ══ Integraciones ═════════════════════════════════════════════ -->
         <section class="st-sec" data-sec="int">
           <header class="st-sec__h">
-            <h2><%= es ? 'Integraciones' : 'Integrations' %></h2>
-            <p><%= es ? 'Conexión con apps de terceros.' : 'Connection with third-party apps.' %></p>
+            <h2><%= t('settings.integraciones') %></h2>
+            <p><%= t('settings.conexion_con_apps_de_terceros') %></p>
           </header>
           <div class="st-card">
             <div class="st-row">
               <div class="st-row__txt">
-                <div class="st-row__t"><%= es ? 'Compatibilidad Infolap' : 'Infolap compatibility' %></div>
-                <div class="st-row__d"><%= es ? 'La app móvil de Tic Tac Slot Infolap se conecta a PitWall y recibe vueltas en directo. Abre UDP :4441.' : 'The Tic Tac Slot Infolap mobile app connects to PitWall and receives live laps. Opens UDP :4441.' %></div>
+                <div class="st-row__t"><%= t('settings.compatibilidad_infolap') %></div>
+                <div class="st-row__d"><%= t('settings.la_app_movil_de_tic_tac_slot_infolap_se_conecta') %></div>
               </div>
-              <button type="button" class="vt-switch <%= cfg.infolap_enabled === '1' ? 'is-on' : '' %>" id="infolapSwitch" data-switch="infolapInput" role="switch" aria-checked="<%= cfg.infolap_enabled === '1' %>" aria-label="<%= es ? 'Compatibilidad Infolap' : 'Infolap compatibility' %>"></button>
+              <button type="button" class="vt-switch <%= cfg.infolap_enabled === '1' ? 'is-on' : '' %>" id="infolapSwitch" data-switch="infolapInput" role="switch" aria-checked="<%= cfg.infolap_enabled === '1' %>" aria-label="<%= t('settings.compatibilidad_infolap') %>"></button>
               <input type="hidden" name="infolap_enabled" id="infolapInput" value="<%= cfg.infolap_enabled === '1' ? '1' : '' %>">
             </div>
           </div>
@@ -807,35 +807,35 @@ const navItems = [
         <!-- ══ Diagnóstico ═══════════════════════════════════════════════ -->
         <section class="st-sec" data-sec="diag">
           <header class="st-sec__h">
-            <h2><%= es ? 'Diagnóstico' : 'Diagnostics' %></h2>
-            <p><%= es ? 'Herramientas para investigar un problema.' : 'Tools to investigate a problem.' %></p>
+            <h2><%= t('settings.diagnostico') %></h2>
+            <p><%= t('settings.herramientas_para_investigar_un_problema') %></p>
           </header>
           <div class="st-card">
             <div class="st-row">
               <div class="st-row__txt">
-                <div class="st-row__t"><%= es ? 'Modo debug' : 'Debug mode' %></div>
-                <div class="st-row__d"><%= es ? 'Registra tramas DS-300 crudas, cruces de carril, eventos de manga y errores en logs/debug/ (.jsonl + .log). Un par de ficheros por manga.' : 'Logs raw DS-300 frames, lane crossings, manga events and errors under logs/debug/ (.jsonl + .log). One pair per manga.' %></div>
+                <div class="st-row__t"><%= t('settings.modo_debug') %></div>
+                <div class="st-row__d"><%= t('settings.registra_tramas_ds_300_crudas_cruces_de_carril') %></div>
               </div>
-              <button type="button" class="vt-switch <%= cfg.debug_mode === '1' ? 'is-on' : '' %>" id="dbgSwitch" data-switch="dbgInput" role="switch" aria-checked="<%= cfg.debug_mode === '1' %>" aria-label="<%= es ? 'Modo debug' : 'Debug mode' %>"></button>
+              <button type="button" class="vt-switch <%= cfg.debug_mode === '1' ? 'is-on' : '' %>" id="dbgSwitch" data-switch="dbgInput" role="switch" aria-checked="<%= cfg.debug_mode === '1' %>" aria-label="<%= t('settings.modo_debug') %>"></button>
               <input type="hidden" name="debug_mode" id="dbgInput" value="<%= cfg.debug_mode === '1' ? '1' : '' %>">
             </div>
             <a class="st-row st-row--link" href="/diagnostico/tramas">
               <div class="st-row__txt">
-                <div class="st-row__t"><%= es ? 'Visor de tramas en vivo' : 'Live frame viewer' %></div>
-                <div class="st-row__d"><%= es ? 'Las tramas del cronómetro según llegan.' : 'Timer frames as they arrive.' %></div>
+                <div class="st-row__t"><%= t('settings.visor_de_tramas_en_vivo') %></div>
+                <div class="st-row__d"><%= t('settings.las_tramas_del_cronometro_segun_llegan') %></div>
               </div>
               <svg class="st-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
             </a>
             <a class="st-row st-row--link" href="/diagnostico">
               <div class="st-row__txt">
-                <div class="st-row__t"><%= es ? 'Diagnóstico de mangas' : 'Manga diagnostics' %></div>
-                <div class="st-row__d"><%= es ? 'Mangas atascadas, activas o pendientes.' : 'Stuck, active or pending mangas.' %></div>
+                <div class="st-row__t"><%= t('settings.diagnostico_de_mangas') %></div>
+                <div class="st-row__d"><%= t('settings.mangas_atascadas_activas_o_pendientes') %></div>
               </div>
               <svg class="st-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
             </a>
             <% if (rawLog.length > 0) { %>
               <details class="st-row st-howto">
-                <summary><span class="ar"></span><%= es ? 'Últimos bytes recibidos' : 'Last received bytes' %></summary>
+                <summary><span class="ar"></span><%= t('settings.ultimos_bytes_recibidos') %></summary>
                 <div class="vt-bytes"><% rawLog.forEach(({ byte }) => { %><%= '0x' + byte.toString(16).padStart(2,'0').toUpperCase() + ' ' %><% }) %></div>
               </details>
             <% } %>
@@ -847,11 +847,11 @@ const navItems = [
     <div class="st-bar" id="stBar">
       <div class="st-bar__in">
         <span class="st-dot" id="stBarDot"></span>
-        <span class="st-bar__msg" id="stBarMsg"><%= es ? 'Sin cambios' : 'No changes' %></span>
+        <span class="st-bar__msg" id="stBarMsg"><%= t('client.settings.sin_cambios') %></span>
         <span id="stBarRestart" hidden><%- restartChip %></span>
         <span class="st-top__fill"></span>
-        <a href="/settings" class="vt-btn vt-btn--ghost" id="stDiscard" hidden><%= es ? 'Descartar' : 'Discard' %></a>
-        <button type="submit" class="vt-btn vt-btn--primary"><%= es ? 'Guardar y aplicar' : 'Save & apply' %></button>
+        <a href="/settings" class="vt-btn vt-btn--ghost" id="stDiscard" hidden><%= t('settings.descartar') %></a>
+        <button type="submit" class="vt-btn vt-btn--primary"><%= t('settings.guardar_y_aplicar') %></button>
       </div>
     </div>
   </form>

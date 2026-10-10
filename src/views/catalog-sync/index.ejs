@@ -8,22 +8,22 @@
   <div class="st-top">
     <a href="/" class="vt-back-link">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      <%= es ? 'Inicio' : 'Home' %>
+      <%= t('common.inicio') %>
     </a>
     <span class="st-top__sep"></span>
-    <h1 class="st-top__h"><%= es ? 'Sincronizar catálogo' : 'Sync catalog' %></h1>
+    <h1 class="st-top__h"><%= t('common.sincronizar_catalogo') %></h1>
     <span class="st-top__fill"></span>
     <div class="vt-port-pill <%= withChanges ? 'is-sim' : '' %>">
       <span class="dot"></span>
       <%= withChanges
         ? (es ? (withChanges === 1 ? '1 carrera con cambios' : withChanges + ' carreras con cambios') : (withChanges === 1 ? '1 race with changes' : withChanges + ' races with changes'))
-        : (es ? 'Todo al día' : 'All up to date') %>
+        : (t('catalog-sync.todo_al_dia')) %>
     </div>
   </div>
 
   <div class="st-solo">
     <header class="st-sec__h">
-      <h2><%= es ? 'Del catálogo a las carreras' : 'From the catalog to races' %></h2>
+      <h2><%= t('catalog-sync.del_catalogo_a_las_carreras') %></h2>
       <p><%- es
         ? 'Vuelca los cambios del <a href="/teams">catálogo de equipos</a> (pilotos y país) a las carreras que <b>todavía no han arrancado ninguna manga</b>, sin pasar por «Editar tanda». Empareja equipos por nombre y deja la plantilla <b>idéntica al catálogo</b>: añade y quita pilotos. No toca la parrilla ni añade o quita equipos.'
         : 'Pushes <a href="/teams">team-catalog</a> changes (drivers and country) into races that <b>have not started any heat yet</b>, without going through “Edit heat group”. Matches teams by name and makes the roster <b>identical to the catalog</b>: adds and removes drivers. Does not touch the grid or add/remove teams.' %></p>
@@ -34,8 +34,8 @@
         <div class="st-row">
           <span class="dg-ok"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 7"/></svg></span>
           <div class="st-row__txt">
-            <div class="st-row__t"><%= es ? 'Nada que sincronizar' : 'Nothing to sync' %></div>
-            <div class="st-row__d"><%= es ? 'No hay carreras en formato equipos pendientes de arrancar.' : 'No team-format races waiting to start.' %></div>
+            <div class="st-row__t"><%= t('catalog-sync.nada_que_sincronizar') %></div>
+            <div class="st-row__d"><%= t('catalog-sync.no_hay_carreras_en_formato_equipos_pendientes') %></div>
           </div>
         </div>
       </div>
@@ -53,11 +53,11 @@
                 <span class="st-row__t"><%= d.raceName %></span>
               </span>
               <% if (d.hasChanges) { %>
-                <span class="st-chip st-chip--warn"><%= es ? 'Con cambios' : 'Changes' %></span>
+                <span class="st-chip st-chip--warn"><%= t('catalog-sync.con_cambios') %></span>
               <% } else { %>
-                <span class="cs-done"><span class="st-dot st-dot--ok"></span><%= es ? 'Al día' : 'Up to date' %></span>
+                <span class="cs-done"><span class="st-dot st-dot--ok"></span><%= t('catalog-sync.al_dia') %></span>
               <% } %>
-              <a href="/races/<%= d.raceId %>" class="cs-open"><%= es ? 'Abrir' : 'Open' %></a>
+              <a href="/races/<%= d.raceId %>" class="cs-open"><%= t('common.abrir') %></a>
             </label>
 
             <% d.teams.filter(tm => !tm.unchanged).forEach(tm => { %>
@@ -68,7 +68,7 @@
                   <% tm.remove.forEach(n => { %><span class="cs-chip cs-chip--del">− <%= n %></span><% }) %>
                   <% if (tm.country) { %>
                     <span class="cs-chip cs-chip--meta">
-                      <%= es ? 'país' : 'country' %>:
+                      <%= t('catalog-sync.pais') %>:
                       <%= tm.country.from.map(c => String(c).split('|')[0]).join(' / ') %>
                       →
                       <%= String(tm.country.to).split('|')[0] %>
@@ -81,7 +81,7 @@
             <% if (d.unmatched.length) { %>
               <div class="st-row st-row--hint">
                 <div class="st-row__d">
-                  <%= es ? 'Sin emparejar (nombre distinto, se ignoran): ' : 'Unmatched (different name, skipped): ' %>
+                  <%= t('catalog-sync.sin_emparejar_nombre_distinto_se_ignoran') %>
                   <%= d.unmatched.join(', ') %>
                 </div>
               </div>
@@ -95,7 +95,7 @@
               <span class="st-dot st-dot--warn" id="csDot"></span>
               <span class="st-bar__msg" id="csMsg"></span>
               <span class="st-top__fill"></span>
-              <button type="submit" class="vt-btn vt-btn--primary" id="csApply"><%= es ? 'Aplicar' : 'Apply' %></button>
+              <button type="submit" class="vt-btn vt-btn--primary" id="csApply"><%= t('catalog-sync.aplicar') %></button>
             </div>
           </div>
         <% } %>

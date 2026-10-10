@@ -22,7 +22,7 @@ function formatMs(ms) {
   const millis   = ms % 1000;
   const secs = totalSec % 60;
   const mins = Math.floor(totalSec / 60);
-  return `${mins > 0 ? mins + ':' : ''}${String(secs).padStart(mins > 0 ? 2 : 1, '0')}.${String(millis).padStart(3, '0')}`;
+  return `${mins > 0 ? mins + ':' : ''}${String(secs).padStart(mins > 0 ? 2 : 1, '0')},${String(millis).padStart(3, '0')}`;
 }
 
 function formatRemaining(ms) {

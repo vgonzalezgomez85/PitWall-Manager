@@ -1,4 +1,4 @@
-<%- include('../partials/header', { pageTitle: (race ? race.name + ' — ' : '') + (lang === 'es' ? 'Neumáticos' : 'Tyres') }) %>
+<%- include('../partials/header', { pageTitle: (race ? race.name + ' — ' : '') + (t('common.neumaticos')) }) %>
 
 <link rel="stylesheet" href="/css/fonts.css">
 
@@ -79,26 +79,26 @@
 
   <a class="vt-back-link" href="<%= race ? '/races/' + race.id : '/' %>">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-    <%= race ? (lang === 'es' ? 'Volver a la carrera' : 'Back to race') : (lang === 'es' ? 'Inicio' : 'Home') %>
+    <%= race ? (t('common.volver_a_la_carrera')) : (t('common.inicio')) %>
   </a>
 
   <div class="tire-head">
     <div>
-      <h1 class="tire-h1">🛞 <%= lang === 'es' ? 'Control de neumáticos' : 'Tyre control' %></h1>
+      <h1 class="tire-h1">🛞 <%= t('common.control_de_neumaticos') %></h1>
       <div class="tire-sub">
         <% if (race) { %><%= race.name %><% } %>
-        <% if (kiosk) { %> · <span style="color:var(--rs-gold)"><%= lang === 'es' ? 'Kiosco (carrera activa)' : 'Kiosk (active race)' %></span><% } %>
+        <% if (kiosk) { %> · <span style="color:var(--rs-gold)"><%= t('race.kiosco_carrera_activa') %></span><% } %>
       </div>
     </div>
     <% if (race && enabled) { %>
       <div class="tire-headright">
         <div class="tire-ctx" id="ctxBox">
           <span class="tire-ctx__pill" id="ctxManga"></span>
-          <span class="tire-allow"><%= lang === 'es' ? 'Dotación:' : 'Allowance:' %> <b><%= summary.allowance %></b> <%= lang === 'es' ? 'juegos/equipo' : 'sets/team' %></span>
+          <span class="tire-allow"><%= t('race.dotacion') %> <b><%= summary.allowance %></b> <%= t('client.common.juegos_equipo') %></span>
         </div>
         <a href="/races/<%= race.id %>/tires/log" target="_blank" rel="noopener"
            class="rs-btn rs-btn--ghost rs-btn--sm tire-logbtn">
-          🗒️ <%= lang === 'es' ? 'Historial de cambios' : 'Change log' %>
+          🗒️ <%= t('common.historial_de_cambios') %>
         </a>
       </div>
     <% } %>
@@ -107,14 +107,14 @@
   <% if (!race) { %>
     <div class="tire-empty">
       <div class="tire-empty__ic">🛞</div>
-      <div class="tire-empty__t"><%= lang === 'es' ? 'No hay ninguna carrera de resistencia activa' : 'No active endurance race' %></div>
-      <p><%= lang === 'es' ? 'Esta página se activará automáticamente cuando arranque una carrera con control de neumáticos.' : 'This page activates automatically when an endurance race with tyre control starts.' %></p>
+      <div class="tire-empty__t"><%= t('race.no_hay_ninguna_carrera_de_resistencia_activa') %></div>
+      <p><%= t('race.esta_pagina_se_activara_automaticamente_cuando') %></p>
     </div>
   <% } else if (!enabled) { %>
     <div class="tire-empty">
       <div class="tire-empty__ic">🛞</div>
-      <div class="tire-empty__t"><%= lang === 'es' ? 'Esta carrera no lleva control de neumáticos' : 'This race has no tyre control' %></div>
-      <p><%= lang === 'es' ? 'La dotación de neumáticos por equipo se fija al crear una carrera de resistencia (valor 0 = sin control).' : 'Tyre allowance per team is set when creating an endurance race (0 = no control).' %></p>
+      <div class="tire-empty__t"><%= t('race.esta_carrera_no_lleva_control_de_neumaticos') %></div>
+      <p><%= t('race.la_dotacion_de_neumaticos_por_equipo_se_fija_al') %></p>
     </div>
   <% } else { %>
     <div class="tire-grid" id="tireGrid"></div>
@@ -135,18 +135,18 @@
     <div id="histList"></div>
     <form class="tire-form" id="histAddForm" onsubmit="return Tires.addManual(event)">
       <div class="tire-form__f">
-        <label><%= lang === 'es' ? 'Manga' : 'Heat' %></label>
+        <label><%= t('common.manga') %></label>
         <input class="w-manga" type="number" min="1" name="manga_number" id="addManga" placeholder="—">
       </div>
       <div class="tire-form__f">
-        <label><%= lang === 'es' ? 'Tiempo (mm:ss)' : 'Time (mm:ss)' %></label>
+        <label><%= t('race.tiempo_mm_ss') %></label>
         <input class="w-time" type="text" name="elapsed" id="addElapsed" placeholder="mm:ss">
       </div>
       <div class="tire-form__f">
-        <label><%= lang === 'es' ? 'Nota' : 'Note' %></label>
-        <input class="w-note" type="text" name="note" id="addNote" placeholder="<%= lang === 'es' ? 'opcional' : 'optional' %>">
+        <label><%= t('race.nota') %></label>
+        <input class="w-note" type="text" name="note" id="addNote" placeholder="<%= t('race.opcional') %>">
       </div>
-      <button class="rs-btn rs-btn--primary rs-btn--sm" type="submit">＋ <%= lang === 'es' ? 'Añadir' : 'Add' %></button>
+      <button class="rs-btn rs-btn--primary rs-btn--sm" type="submit">＋ <%= t('common.anadir') %></button>
     </form>
   </div>
 </div>

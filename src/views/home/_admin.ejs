@@ -23,8 +23,8 @@ const BASIC = typeof uiMode !== 'undefined' && uiMode === 'basic';
 const es = lang === 'es';
 const ext = '<svg class="hm-ext" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>';
 const fmtClock = (ms) => { if (ms == null) return '--:--'; const s = Math.ceil(ms / 1000); return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
-const typeLabel = (r) => (r.type === 'championship' ? (es ? 'Campeonato' : 'Championship') : 'Club') + ' · ' + (r.format === 'team' ? (es ? 'equipos' : 'teams') : (es ? 'individual' : 'individual'));
-const statusOf = (s) => s === 'active' ? ['live', es ? 'En curso' : 'In progress'] : s === 'finished' ? ['done', es ? 'Finalizada' : 'Finished'] : ['pend', es ? 'Pendiente' : 'Pending'];
+const typeLabel = (r) => (r.type === 'championship' ? (t('_admin.campeonato')) : 'Club') + ' · ' + (r.format === 'team' ? (t('client.common.equipos')) : (t('_admin.individual')));
+const statusOf = (s) => s === 'active' ? ['live', t('common.en_curso_2')] : s === 'finished' ? ['done', t('client.common.finalizada_2')] : ['pend', t('common.pendiente')];
 const I = {
   flag:   '<path d="M5 21V4M5 4h12l-2.2 3.5L17 11H5"/>',
   clock:  '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5M9 2h6M12 2v3"/>',
@@ -50,37 +50,37 @@ const I = {
 };
 const ico = (k) => '<svg viewBox="0 0 24 24" aria-hidden="true">' + I[k] + '</svg>';
 // `adv`: solo en el modo avanzado (Ajustes → Preferencias → Modo de la app).
-const RACE_SPRINT    = { href: '/races/new?type=club', label: es ? 'Carrera sprint' : 'Sprint race', icon: 'bolt', a: '#ef4651', desc: es ? 'Nueva carrera corta, formato individual.' : 'New short race, individual format.' };
-const RACE_ENDURANCE = { href: '/races/new?type=championship', label: es ? 'Carrera resistencia' : 'Endurance race', icon: 'hourglass', a: '#f97316', desc: es ? 'Nueva carrera larga por equipos.' : 'New long team race.' };
-const TRAIN_FREE     = { href: '/training/free', label: es ? 'Entreno libre' : 'Free practice', icon: 'clock', a: '#38bdf8', desc: es ? 'Vueltas por carril, sin equipos.' : 'Laps per lane, no teams.' };
-const TRAIN_COMP     = { href: '/training/competition', label: es ? 'Entreno de competición' : 'Competition practice', icon: 'people', a: '#0ea5e9', desc: es ? 'Equipos con rotación por tandas.' : 'Teams rotating by heats.' };
-const RESULTS        = { href: '/results', label: es ? 'Resultados' : 'Results', icon: 'trophy', a: '#f6c90e', desc: es ? 'Carreras finalizadas.' : 'Finished races.' };
-const LAP            = { href: '/lap', label: 'Lap', icon: 'phone', a: '#58a6ff', desc: es ? 'PINs y timing del equipo en el móvil.' : 'PINs and team timing on the phone.', adv: true };
+const RACE_SPRINT    = { href: '/races/new?type=club', label: t('_admin.carrera_sprint'), icon: 'bolt', a: '#ef4651', desc: t('_admin.nueva_carrera_corta_formato_individual') };
+const RACE_ENDURANCE = { href: '/races/new?type=championship', label: t('_admin.carrera_resistencia'), icon: 'hourglass', a: '#f97316', desc: t('_admin.nueva_carrera_larga_por_equipos') };
+const TRAIN_FREE     = { href: '/training/free', label: t('common.entreno_libre'), icon: 'clock', a: '#38bdf8', desc: t('_admin.vueltas_por_carril_sin_equipos') };
+const TRAIN_COMP     = { href: '/training/competition', label: t('common.entreno_de_competicion'), icon: 'people', a: '#0ea5e9', desc: t('_admin.equipos_con_rotacion_por_tandas') };
+const RESULTS        = { href: '/results', label: t('common.resultados'), icon: 'trophy', a: '#f6c90e', desc: t('_admin.carreras_finalizadas') };
+const LAP            = { href: '/lap', label: 'Lap', icon: 'phone', a: '#58a6ff', desc: t('_admin.pins_y_timing_del_equipo_en_el_movil'), adv: true };
 const groups = [
-  { id: 'comp', title: es ? 'Competición' : 'Competition', items: [
-    { href: '/races', label: es ? 'Carreras' : 'Races', icon: 'flag', a: '#ef4651', badge: inProgressRaces > 0 ? inProgressRaces : null, adv: true },
+  { id: 'comp', title: t('_admin.competicion'), items: [
+    { href: '/races', label: t('common.carreras'), icon: 'flag', a: '#ef4651', badge: inProgressRaces > 0 ? inProgressRaces : null, adv: true },
     RACE_SPRINT, RACE_ENDURANCE, TRAIN_FREE, TRAIN_COMP,
-    { href: '/training/competition/results', label: es ? 'Resultados de entrenos' : 'Training results', icon: 'list', a: '#38bdf8', adv: true },
-    { href: '/race-stats', label: es ? 'Estadísticas en vivo' : 'Live stats', icon: 'chart', a: '#22c55e', adv: true },
+    { href: '/training/competition/results', label: t('common.resultados_de_entrenos'), icon: 'list', a: '#38bdf8', adv: true },
+    { href: '/race-stats', label: t('common.estadisticas_en_vivo'), icon: 'chart', a: '#22c55e', adv: true },
     RESULTS, LAP,
-    { href: '/control/shifts', label: es ? 'Control de pilotos' : 'Driver shifts', icon: 'people', a: '#a855f7', adv: true },
-    { href: '/control/tires', label: es ? 'Control de neumáticos' : 'Tyre control', icon: 'tire', a: '#facc15', adv: true },
+    { href: '/control/shifts', label: t('common.control_de_pilotos'), icon: 'people', a: '#a855f7', adv: true },
+    { href: '/control/tires', label: t('common.control_de_neumaticos'), icon: 'tire', a: '#facc15', adv: true },
   ]},
-  { id: 'cat', title: es ? 'Catálogo' : 'Catalog', items: [
-    { href: '/drivers', label: es ? 'Pilotos' : 'Drivers', icon: 'helmet', a: '#f59e0b', count: c.drivers, adv: true },
-    { href: '/teams', label: es ? 'Equipos' : 'Teams', icon: 'team', a: '#a855f7', count: c.teams, adv: true },
-    { href: '/cars', label: es ? 'Coches' : 'Cars', icon: 'car', a: '#fb7185', count: c.cars, adv: true },
-    { href: '/categories', label: es ? 'Categorías' : 'Categories', icon: 'tag', a: '#2dd4bf', count: c.categories },
-    { href: '/circuits', label: es ? 'Escenarios' : 'Scenarios', icon: 'track', a: '#fb923c', count: c.circuits },
+  { id: 'cat', title: t('_admin.catalogo'), items: [
+    { href: '/drivers', label: t('client.common.pilotos'), icon: 'helmet', a: '#f59e0b', count: c.drivers, adv: true },
+    { href: '/teams', label: t('common.equipos'), icon: 'team', a: '#a855f7', count: c.teams, adv: true },
+    { href: '/cars', label: t('common.coches'), icon: 'car', a: '#fb7185', count: c.cars, adv: true },
+    { href: '/categories', label: t('common.categorias'), icon: 'tag', a: '#2dd4bf', count: c.categories },
+    { href: '/circuits', label: t('common.escenarios'), icon: 'track', a: '#fb923c', count: c.circuits },
   ]},
-  { id: 'sys', title: es ? 'Sistema' : 'System', items: [
+  { id: 'sys', title: t('_admin.sistema'), items: [
     // Ajustes se queda también en básico: es donde se vuelve al modo avanzado.
-    { href: '/settings', label: es ? 'Ajustes' : 'Settings', icon: 'gear', a: '#c9ced8' },
-    { href: '/database', label: es ? 'Base de datos' : 'Database', icon: 'db', a: '#c9ced8', adv: true },
-    { href: '/catalog-sync', label: es ? 'Sincronizar catálogo' : 'Sync catalog', icon: 'sync', a: '#c9ced8', adv: true },
-    { href: '/link', label: es ? 'Sincronizar carrera' : 'Sync race', icon: 'link', a: '#c9ced8', adv: true },
-    { href: '/ecosystem', label: es ? 'Conexión ecosistema' : 'Ecosystem connection', icon: 'net', a: '#c9ced8', adv: true },
-    { href: '/diagnostico', label: es ? 'Solución de problemas' : 'Troubleshooting', icon: 'wrench', a: '#c9ced8', adv: true },
+    { href: '/settings', label: t('common.ajustes'), icon: 'gear', a: '#c9ced8' },
+    { href: '/database', label: t('common.base_de_datos'), icon: 'db', a: '#c9ced8', adv: true },
+    { href: '/catalog-sync', label: t('common.sincronizar_catalogo'), icon: 'sync', a: '#c9ced8', adv: true },
+    { href: '/link', label: t('common.sincronizar_carrera'), icon: 'link', a: '#c9ced8', adv: true },
+    { href: '/ecosystem', label: t('common.conexion_ecosistema'), icon: 'net', a: '#c9ced8', adv: true },
+    { href: '/diagnostico', label: t('_admin.solucion_de_problemas'), icon: 'wrench', a: '#c9ced8', adv: true },
   ]},
 ];
 const forMode = (items) => BASIC ? items.filter(it => !it.adv) : items;
@@ -90,7 +90,7 @@ const BASIC_COMP = [TRAIN_FREE, RACE_SPRINT, RESULTS];
 if (BASIC) groups[0].items = BASIC_COMP;
 // Con contraseña y sin haber entrado: Sistema y Catálogo la piden al pulsarlos.
 const LOCKED = typeof pwLocked !== 'undefined' && pwLocked;
-const lockIco = '<svg class="hm-lock" viewBox="0 0 24 24" aria-label="' + (es ? 'Pide contraseña' : 'Password required') + '"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+const lockIco = '<svg class="hm-lock" viewBox="0 0 24 24" aria-label="' + (t('_admin.pide_contrasena')) + '"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
 if (LOCKED) groups.filter(g => g.id === 'cat' || g.id === 'sys').forEach(g => g.items.forEach(it => { it.locked = true; }));
 const lv = typeof live !== 'undefined' ? live : null;
 const races = typeof recentRaces !== 'undefined' ? recentRaces : [];
@@ -116,9 +116,9 @@ const tile = (it, small) => '<a href="' + it.href + '" class="hm-tile' + (small 
 <% function searchBox() { %>
   <label class="hm-search">
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-    <span class="hm-sr"><%= es ? 'Ir a una sección' : 'Go to a section' %></span>
+    <span class="hm-sr"><%= t('_admin.ir_a_una_seccion') %></span>
     <input type="search" id="hmSearch" autocomplete="off"
-           placeholder="<%= es ? 'Ir a… (pilotos, ajustes, resultados, una carrera)' : 'Go to… (drivers, settings, results, a race)' %>">
+           placeholder="<%= t('_admin.ir_a_pilotos_ajustes_resultados_una_carrera') %>">
     <kbd class="hm-kbd" id="hmKbd">⌘K</kbd>
   </label>
 <% } %>
@@ -126,15 +126,15 @@ const tile = (it, small) => '<a href="' + it.href + '" class="hm-tile' + (small 
 <% function pills(withWin) { %>
   <div class="hm-pills">
     <% if (ss.simulating) { %>
-      <a href="/settings" class="hm-pill hm-pill--sim" data-win><span class="hm-dot"></span><%= es ? 'Modo simulación' : 'Simulation mode' %></a>
+      <a href="/settings" class="hm-pill hm-pill--sim" data-win><span class="hm-dot"></span><%= t('common.modo_simulacion') %></a>
     <% } else if (serialConnected) { %>
       <a href="/settings" class="hm-pill hm-pill--ok" data-win><span class="hm-dot"></span>DS-300 ×<%= portCount %> <span class="hm-mono hm-mute">· <%= portLabels %></span></a>
     <% } else { %>
-      <a href="/settings" class="hm-pill hm-pill--off" data-win><span class="hm-dot"></span><%= es ? 'Sin conexión' : 'Disconnected' %></a>
+      <a href="/settings" class="hm-pill hm-pill--off" data-win><span class="hm-dot"></span><%= t('client.common.sin_conexion') %></a>
     <% } %>
     <% if (typeof serverIps !== 'undefined' && serverIps && serverIps.length) { %>
       <span class="hm-pill hm-pill--ip"
-            title="<%= (es ? 'Dirección(es) del servidor: ' : 'Server address(es): ') + serverIps.map(function(i){ return i.ip + ':' + serverPort + ' (' + i.name + ')'; }).join('  ·  ') %>">
+            title="<%= (t('common.direccion_es_del_servidor')) + serverIps.map(function(i){ return i.ip + ':' + serverPort + ' (' + i.name + ')'; }).join('  ·  ') %>">
         <span class="hm-dot"></span><span class="hm-mono"><%= serverIps[0].ip %>:<%= serverPort %><% if (serverIps.length > 1) { %> +<%= serverIps.length - 1 %><% } %></span>
       </span>
     <% } %>
@@ -142,17 +142,17 @@ const tile = (it, small) => '<a href="' + it.href + '" class="hm-tile' + (small 
     <% lockBtn() %>
     <% modeToggle() %>
     <button type="button" class="hm-pill hm-custom" id="hmCustomBtn" aria-haspopup="dialog"
-            title="<%= es ? 'Elegir el diseño del inicio' : 'Choose the home layout' %>">
+            title="<%= t('_admin.elegir_el_diseno_del_inicio') %>">
       <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
-      <%= es ? 'Personalizar' : 'Customize' %>
+      <%= t('_admin.personalizar') %>
     </button>
   </div>
 <% } %>
 
 <% function sidebar() { %>
-  <nav class="hm-side" aria-label="<%= es ? 'Secciones' : 'Sections' %>">
+  <nav class="hm-side" aria-label="<%= t('common.secciones') %>">
     <% brand() %>
-    <a href="/" class="hm-nav is-current" aria-current="page"><%= es ? 'Inicio' : 'Home' %></a>
+    <a href="/" class="hm-nav is-current" aria-current="page"><%= t('common.inicio') %></a>
     <% groups.forEach(function (g) { %>
       <div class="hm-grp"><%= g.title %></div>
       <% g.items.forEach(function (it) { %>
@@ -172,14 +172,14 @@ const tile = (it, small) => '<a href="' + it.href + '" class="hm-tile' + (small 
 <%# Con contraseña activada: cerrar la sesión al dejar el PC. %>
 <% function lockBtn() { if (typeof passwordEnabled === 'undefined' || !passwordEnabled) return; %>
   <% if (LOCKED) { %>
-  <a href="/login?next=%2F" class="hm-pill hm-custom" title="<%= es ? 'Entrar para usar Sistema y Catálogo' : 'Sign in to use System and Catalog' %>">
+  <a href="/login?next=%2F" class="hm-pill hm-custom" title="<%= t('_admin.entrar_para_usar_sistema_y_catalogo') %>">
     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-    <%= es ? 'Entrar' : 'Sign in' %>
+    <%= t('common.entrar') %>
   </a>
   <% } else { %>
-  <a href="/logout" class="hm-pill hm-custom" title="<%= es ? 'Cerrar la sesión: Sistema y Catálogo volverán a pedir la contraseña' : 'Sign out: System and Catalog will ask for the password again' %>">
+  <a href="/logout" class="hm-pill hm-custom" title="<%= t('_admin.cerrar_la_sesion_sistema_y_catalogo_volveran_a') %>">
     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-    <%= es ? 'Bloquear' : 'Lock' %>
+    <%= t('_admin.bloquear') %>
   </a>
   <% } %>
 <% } %>
@@ -187,112 +187,112 @@ const tile = (it, small) => '<a href="' + it.href + '" class="hm-tile' + (small 
 <%# «Abrir enlaces en»: control compacto en la cabecera, junto a Personalizar. %>
 <% function modeToggle() { %>
   <div class="hm-seg hm-seg--head" role="group"
-       aria-label="<%= es ? 'Abrir enlaces de esta página en' : 'Open links on this page in' %>"
-       title="<%= es ? 'Abrir enlaces de esta página en…' : 'Open links on this page in…' %>">
-    <button type="button" data-mode="new" aria-pressed="true"><%= es ? 'Ventana nueva' : 'New window' %></button>
-    <button type="button" data-mode="same" aria-pressed="false"><%= es ? 'Esta ventana' : 'This window' %></button>
+       aria-label="<%= t('_admin.abrir_enlaces_de_esta_pagina_en') %>"
+       title="<%= t('_admin.abrir_enlaces_de_esta_pagina_en_2') %>">
+    <button type="button" data-mode="new" aria-pressed="true"><%= t('_admin.ventana_nueva') %></button>
+    <button type="button" data-mode="same" aria-pressed="false"><%= t('_admin.esta_ventana') %></button>
   </div>
 <% } %>
 
 <% function heroActions(compact) { %>
   <div class="hm-hero__acts">
     <% if (lv.manga) { %>
-      <a href="/races/<%= lv.race.id %>/mangas/<%= lv.manga.id %>/live" class="hm-btn hm-btn--primary" data-win="pw-live-<%= lv.race.id %>"><%= compact ? (es ? 'Abrir directo' : 'Open live') : (es ? 'Directo de la manga' : 'Heat live') %><%- ext %></a>
-      <a href="/races/<%= lv.race.id %>/mangas/<%= lv.manga.id %>/tv" class="hm-btn" data-win="pw-tv-<%= lv.race.id %>"><%= compact ? 'TV' : (es ? 'Pantalla TV' : 'TV screen') %><%- ext %></a>
+      <a href="/races/<%= lv.race.id %>/mangas/<%= lv.manga.id %>/live" class="hm-btn hm-btn--primary" data-win="pw-live-<%= lv.race.id %>"><%= compact ? (t('_admin.abrir_directo')) : (t('_admin.directo_de_la_manga')) %><%- ext %></a>
+      <a href="/races/<%= lv.race.id %>/mangas/<%= lv.manga.id %>/tv" class="hm-btn" data-win="pw-tv-<%= lv.race.id %>"><%= compact ? 'TV' : (t('_admin.pantalla_tv')) %><%- ext %></a>
     <% } %>
     <% if (lv.correctionsManga) { %>
-      <a href="/races/<%= lv.race.id %>/mangas/<%= lv.correctionsManga.id %>/corrections" class="hm-btn" data-win="pw-corr-<%= lv.race.id %>"><%= compact ? (es ? 'Correcciones' : 'Corrections') : (es ? 'Corrección de vueltas' : 'Lap corrections') %><%- ext %></a>
+      <a href="/races/<%= lv.race.id %>/mangas/<%= lv.correctionsManga.id %>/corrections" class="hm-btn" data-win="pw-corr-<%= lv.race.id %>"><%= compact ? (t('_admin.correcciones')) : (t('common.correccion_de_vueltas_2')) %><%- ext %></a>
     <% } %>
-    <a href="/race-stats" class="hm-btn" data-win><%= compact ? (es ? 'Estadísticas' : 'Stats') : (es ? 'Estadísticas en vivo' : 'Live stats') %><%- ext %></a>
+    <a href="/race-stats" class="hm-btn" data-win><%= compact ? (t('_admin.estadisticas')) : (t('common.estadisticas_en_vivo')) %><%- ext %></a>
     <% if (!compact) { %>
       <% if (lv.race.type === 'championship') { %>
-        <a href="/control/shifts" class="hm-btn" data-win><%= es ? 'Control de pilotos' : 'Driver shifts' %><%- ext %></a>
+        <a href="/control/shifts" class="hm-btn" data-win><%= t('common.control_de_pilotos') %><%- ext %></a>
       <% } %>
       <% if (lv.race.tire_pairs_per_team) { %>
-        <a href="/races/<%= lv.race.id %>/tires" class="hm-btn" data-win><%= es ? 'Neumáticos' : 'Tyres' %><%- ext %></a>
+        <a href="/races/<%= lv.race.id %>/tires" class="hm-btn" data-win><%= t('common.neumaticos') %><%- ext %></a>
       <% } %>
-      <a href="/races/<%= lv.race.id %>/events" class="hm-btn" data-win><%= es ? 'Registro de sucesos' : 'Event log' %><%- ext %></a>
+      <a href="/races/<%= lv.race.id %>/events" class="hm-btn" data-win><%= t('common.registro_de_sucesos') %><%- ext %></a>
     <% } %>
-    <a href="/races/<%= lv.race.id %>" class="hm-btn hm-btn--ghost" data-win><%= es ? 'Gestionar carrera' : 'Manage race' %> ›</a>
+    <a href="/races/<%= lv.race.id %>" class="hm-btn hm-btn--ghost" data-win><%= t('_admin.gestionar_carrera') %> ›</a>
   </div>
 <% } %>
 
 <% function heroKicker() { %>
-  <%= lv.paused ? (es ? 'Carrera en pausa' : 'Race paused') : lv.running ? (es ? 'Carrera en curso' : 'Race in progress') : (es ? 'Carrera en curso · entre mangas' : 'Race in progress · between heats') %>
+  <%= lv.paused ? (t('_admin.carrera_en_pausa')) : lv.running ? (t('_admin.carrera_en_curso')) : (t('_admin.carrera_en_curso_entre_mangas')) %>
 <% } %>
 
 <%# Franja de la carrera: 'full' (A, A+C, D), 'panel' (B) o 'strip' (C). %>
 <% function hero(variant) { %>
   <% if (lv) { %>
     <% if (variant === 'strip') { %>
-      <section class="hm-strip" aria-label="<%= es ? 'Carrera en curso' : 'Race in progress' %>"
+      <section class="hm-strip" aria-label="<%= t('_admin.carrera_en_curso') %>"
                data-race-id="<%= lv.race.id %>" data-running="<%= lv.running ? 1 : 0 %>">
-        <span class="hm-strip__k"><span class="hm-dot hm-dot--live"></span><%= lv.paused ? (es ? 'EN PAUSA' : 'PAUSED') : (es ? 'EN CURSO' : 'LIVE') %></span>
+        <span class="hm-strip__k"><span class="hm-dot hm-dot--live"></span><%= lv.paused ? (t('_admin.en_pausa')) : (t('_admin.en_curso')) %></span>
         <span class="hm-strip__n"><%= lv.race.name %></span>
-        <span class="hm-strip__m"><%= es ? 'Manga' : 'Heat' %> <%= lv.position || lv.heatsShown %>/<%= lv.total %></span>
+        <span class="hm-strip__m"><%= t('common.manga') %> <%= lv.position || lv.heatsShown %>/<%= lv.total %></span>
         <span class="hm-strip__c hm-mono" id="hmClock"><%= lv.running ? fmtClock(lv.remainingMs) : '--:--' %></span>
-        <span class="hm-strip__l"><%= es ? 'Líder' : 'Leader' %> <b id="hmLeader"><%= lv.leader || '—' %></b></span>
+        <span class="hm-strip__l"><%= t('client.common.lider') %> <b id="hmLeader"><%= lv.leader || '—' %></b></span>
         <span class="hm-strip__acts">
-          <% if (lv.manga) { %><a href="/races/<%= lv.race.id %>/mangas/<%= lv.manga.id %>/live" class="hm-btn hm-btn--primary" data-win="pw-live-<%= lv.race.id %>"><%= es ? 'Abrir directo' : 'Open live' %><%- ext %></a><% } %>
-          <% if (lv.correctionsManga) { %><a href="/races/<%= lv.race.id %>/mangas/<%= lv.correctionsManga.id %>/corrections" class="hm-btn" data-win="pw-corr-<%= lv.race.id %>"><%= es ? 'Correcciones' : 'Corrections' %><%- ext %></a><% } %>
+          <% if (lv.manga) { %><a href="/races/<%= lv.race.id %>/mangas/<%= lv.manga.id %>/live" class="hm-btn hm-btn--primary" data-win="pw-live-<%= lv.race.id %>"><%= t('_admin.abrir_directo') %><%- ext %></a><% } %>
+          <% if (lv.correctionsManga) { %><a href="/races/<%= lv.race.id %>/mangas/<%= lv.correctionsManga.id %>/corrections" class="hm-btn" data-win="pw-corr-<%= lv.race.id %>"><%= t('_admin.correcciones') %><%- ext %></a><% } %>
         </span>
       </section>
     <% } else if (variant === 'panel') { %>
-      <section class="hm-hero hm-hero--panel" aria-label="<%= es ? 'Carrera en curso' : 'Race in progress' %>"
+      <section class="hm-hero hm-hero--panel" aria-label="<%= t('_admin.carrera_en_curso') %>"
                data-race-id="<%= lv.race.id %>" data-running="<%= lv.running ? 1 : 0 %>">
         <div class="hm-hero__id">
           <span class="hm-badge hm-badge--live"><span class="hm-dot hm-dot--live"></span>&nbsp;<% heroKicker() %></span>
           <div class="hm-hero__name"><%= lv.race.name %></div>
           <div class="hm-hero__sub">
-            <% if (lv.manga) { %><%= es ? 'Manga' : 'Heat' %> <%= lv.position %> <%= es ? 'de' : 'of' %> <%= lv.total %> · <%= es ? 'Tanda' : 'Round' %> <%= lv.manga.tanda_number %> · <% } %><%= es ? 'queda' : 'remaining' %> <span class="hm-mono hm-strong-t" id="hmClock"><%= lv.running ? fmtClock(lv.remainingMs) : '--:--' %></span> · <%= es ? 'líder' : 'leader' %> <b id="hmLeader"><%= lv.leader || '—' %></b>
+            <% if (lv.manga) { %><%= t('common.manga') %> <%= lv.position %> <%= es ? 'de' : 'of' %> <%= lv.total %> · <%= t('common.tanda_2') %> <%= lv.manga.tanda_number %> · <% } %><%= t('_admin.queda_2') %> <span class="hm-mono hm-strong-t" id="hmClock"><%= lv.running ? fmtClock(lv.remainingMs) : '--:--' %></span> · <%= t('common.lider') %> <b id="hmLeader"><%= lv.leader || '—' %></b>
           </div>
           <div class="hm-bar"><div style="width:<%= lv.total ? Math.round(lv.heatsShown / lv.total * 100) : 0 %>%"></div></div>
         </div>
         <% heroActions(true) %>
       </section>
     <% } else { %>
-      <section class="hm-hero" aria-label="<%= es ? 'Carrera en curso' : 'Race in progress' %>"
+      <section class="hm-hero" aria-label="<%= t('_admin.carrera_en_curso') %>"
                data-race-id="<%= lv.race.id %>" data-running="<%= lv.running ? 1 : 0 %>">
         <div class="hm-hero__top">
           <div class="hm-hero__id">
             <div class="hm-kicker"><span class="hm-dot hm-dot--live"></span><% heroKicker() %></div>
             <div class="hm-hero__name"><%= lv.race.name %></div>
             <div class="hm-hero__sub">
-              <% if (lv.manga) { %><%= es ? 'Manga' : 'Heat' %> <%= lv.position %> <%= es ? 'de' : 'of' %> <%= lv.total %> · <%= es ? 'Tanda' : 'Round' %> <%= lv.manga.tanda_number %> · <% } %><%= typeLabel(lv.race) %>
+              <% if (lv.manga) { %><%= t('common.manga') %> <%= lv.position %> <%= es ? 'de' : 'of' %> <%= lv.total %> · <%= t('common.tanda_2') %> <%= lv.manga.tanda_number %> · <% } %><%= typeLabel(lv.race) %>
             </div>
             <div class="hm-bar"><div style="width:<%= lv.total ? Math.round(lv.heatsShown / lv.total * 100) : 0 %>%"></div></div>
           </div>
           <div class="hm-hero__stats">
-            <div><span class="hm-lbl"><%= es ? 'Queda' : 'Remaining' %></span>
+            <div><span class="hm-lbl"><%= t('_admin.queda') %></span>
               <span class="hm-clock" id="hmClock"><%= lv.running ? fmtClock(lv.remainingMs) : '--:--' %></span></div>
-            <div><span class="hm-lbl"><%= es ? 'Líder estimado' : 'Projected leader' %></span><span class="hm-big" id="hmLeader"><%= lv.leader || '—' %></span></div>
-            <div><span class="hm-lbl"><%= es ? 'Mangas' : 'Heats' %></span><span class="hm-big hm-mono"><%= lv.heatsShown %> / <%= lv.total %></span></div>
+            <div><span class="hm-lbl"><%= t('_admin.lider_estimado') %></span><span class="hm-big" id="hmLeader"><%= lv.leader || '—' %></span></div>
+            <div><span class="hm-lbl"><%= t('_admin.mangas') %></span><span class="hm-big hm-mono"><%= lv.heatsShown %> / <%= lv.total %></span></div>
           </div>
         </div>
         <% heroActions(false) %>
       </section>
     <% } %>
   <% } else if (typeof activePoleRaces !== 'undefined' && activePoleRaces.length > 0) { %>
-    <section class="hm-hero" aria-label="<%= es ? 'Pole en curso' : 'Pole in progress' %>">
+    <section class="hm-hero" aria-label="<%= t('_admin.pole_en_curso') %>">
       <div class="hm-hero__id">
-        <div class="hm-kicker"><span class="hm-dot hm-dot--live"></span><%= es ? 'Pole en curso' : 'Pole in progress' %></div>
+        <div class="hm-kicker"><span class="hm-dot hm-dot--live"></span><%= t('_admin.pole_en_curso') %></div>
         <div class="hm-hero__name"><%= activePoleRaces[0].name %></div>
       </div>
       <div class="hm-hero__acts">
-        <a href="/races/<%= activePoleRaces[0].id %>/pole/timing" class="hm-btn hm-btn--primary" data-win="pw-pole-<%= activePoleRaces[0].id %>"><%= es ? 'Pole en directo' : 'Pole live' %><%- ext %></a>
-        <a href="/races/<%= activePoleRaces[0].id %>" class="hm-btn hm-btn--ghost" data-win><%= es ? 'Gestionar carrera' : 'Manage race' %> ›</a>
+        <a href="/races/<%= activePoleRaces[0].id %>/pole/timing" class="hm-btn hm-btn--primary" data-win="pw-pole-<%= activePoleRaces[0].id %>"><%= t('common.pole_en_directo') %><%- ext %></a>
+        <a href="/races/<%= activePoleRaces[0].id %>" class="hm-btn hm-btn--ghost" data-win><%= t('_admin.gestionar_carrera') %> ›</a>
       </div>
     </section>
   <% } else if (variant !== 'none') { %>
     <section class="hm-hero hm-hero--idle">
       <div class="hm-hero__top">
         <div class="hm-hero__id">
-          <div class="hm-kicker"><%= es ? 'Sin carrera en curso' : 'No race in progress' %></div>
-          <div class="hm-hero__sub"><%= es ? 'Crea una carrera o arranca una pendiente desde la lista.' : 'Create a race or start a pending one from the list.' %></div>
+          <div class="hm-kicker"><%= t('_admin.sin_carrera_en_curso') %></div>
+          <div class="hm-hero__sub"><%= t('_admin.crea_una_carrera_o_arranca_una_pendiente_desde') %></div>
         </div>
         <div class="hm-hero__acts">
-          <a href="/races/new" class="hm-btn hm-btn--primary" data-win><%= es ? 'Nueva carrera' : 'New race' %><%- ext %></a>
-          <a href="/training" class="hm-btn" data-win><%= es ? 'Entreno libre' : 'Free practice' %><%- ext %></a>
+          <a href="/races/new" class="hm-btn hm-btn--primary" data-win><%= t('common.nueva_carrera') %><%- ext %></a>
+          <a href="/training" class="hm-btn" data-win><%= t('common.entreno_libre') %><%- ext %></a>
         </div>
       </div>
     </section>
@@ -357,22 +357,22 @@ const tile = (it, small) => '<a href="' + it.href + '" class="hm-tile' + (small 
 <% function statCards() { %>
   <div class="hm-stats">
     <div class="hm-stat<%= serialConnected ? ' hm-stat--ok' : ss.simulating ? ' hm-stat--sim' : ' hm-stat--off' %>">
-      <span class="hm-lbl"><%= es ? 'Cronometraje' : 'Timing' %></span>
-      <span class="hm-stat__v"><span class="hm-dot"></span><%= ss.simulating ? (es ? 'Simulación' : 'Simulation') : serialConnected ? 'DS-300 ×' + portCount : (es ? 'Sin conexión' : 'Disconnected') %></span>
+      <span class="hm-lbl"><%= t('_admin.cronometraje') %></span>
+      <span class="hm-stat__v"><span class="hm-dot"></span><%= ss.simulating ? (t('client.common.simulacion')) : serialConnected ? 'DS-300 ×' + portCount : (t('client.common.sin_conexion')) %></span>
       <span class="hm-stat__d hm-mono"><%= serialConnected ? portLabels : '—' %></span>
     </div>
     <div class="hm-stat">
-      <span class="hm-lbl"><%= es ? 'Servidor' : 'Server' %></span>
+      <span class="hm-lbl"><%= t('_admin.servidor') %></span>
       <span class="hm-stat__v hm-mono hm-blue"><%= (typeof serverIps !== 'undefined' && serverIps && serverIps.length) ? serverIps[0].ip + ':' + serverPort : 'localhost:' + serverPort %></span>
-      <span class="hm-stat__d"><%= (typeof serverIps !== 'undefined' && serverIps && serverIps.length > 1) ? '+' + (serverIps.length - 1) + (es ? ' interfaz' : ' interface') : '' %></span>
+      <span class="hm-stat__d"><%= (typeof serverIps !== 'undefined' && serverIps && serverIps.length > 1) ? '+' + (serverIps.length - 1) + (t('_admin.interfaz')) : '' %></span>
     </div>
     <div class="hm-stat">
-      <span class="hm-lbl"><%= es ? 'Carreras' : 'Races' %></span>
-      <span class="hm-stat__v"><%= inProgressRaces %> <%= es ? 'en curso' : 'active' %></span>
-      <span class="hm-stat__d"><%= typeof totalRaces !== 'undefined' ? totalRaces : 0 %> <%= es ? 'en total' : 'in total' %></span>
+      <span class="hm-lbl"><%= t('common.carreras') %></span>
+      <span class="hm-stat__v"><%= inProgressRaces %> <%= t('_admin.en_curso_2') %></span>
+      <span class="hm-stat__d"><%= typeof totalRaces !== 'undefined' ? totalRaces : 0 %> <%= t('_admin.en_total') %></span>
     </div>
     <div class="hm-stat">
-      <span class="hm-lbl"><%= es ? 'Ventanas abiertas' : 'Open windows' %></span>
+      <span class="hm-lbl"><%= t('_admin.ventanas_abiertas') %></span>
       <span class="hm-stat__v" id="hmWinStat">0</span>
       <span class="hm-stat__d" id="hmWinStatList">—</span>
     </div>
@@ -381,18 +381,18 @@ const tile = (it, small) => '<a href="' + it.href + '" class="hm-tile' + (small 
 
 <% function racesTable(title) { %>
   <section class="hm-group" data-group="races">
-    <h2 class="hm-sec"><%= title || (es ? 'Carreras recientes' : 'Recent races') %></h2>
+    <h2 class="hm-sec"><%= title || (t('_admin.carreras_recientes')) %></h2>
     <% if (races.length === 0) { %>
-      <p class="hm-empty"><%= es ? 'Aún no hay carreras.' : 'No races yet.' %> <a href="/races/new" data-win><%= es ? 'Crear la primera' : 'Create the first one' %></a></p>
+      <p class="hm-empty"><%= t('_admin.aun_no_hay_carreras') %> <a href="/races/new" data-win><%= t('_admin.crear_la_primera') %></a></p>
     <% } else { %>
       <div class="hm-table-wrap">
         <table class="hm-table">
           <thead><tr>
-            <th><%= es ? 'Carrera' : 'Race' %></th>
-            <th><%= es ? 'Tipo' : 'Type' %></th>
-            <th><%= es ? 'Estado' : 'Status' %></th>
-            <th><%= es ? 'Mangas' : 'Heats' %></th>
-            <th class="hm-r"><%= es ? 'Acciones' : 'Actions' %></th>
+            <th><%= t('common.carrera') %></th>
+            <th><%= t('common.tipo') %></th>
+            <th><%= t('common.estado') %></th>
+            <th><%= t('_admin.mangas') %></th>
+            <th class="hm-r"><%= t('common.acciones') %></th>
           </tr></thead>
           <tbody>
             <% races.forEach(function (r) { const st = statusOf(r.status); %>
@@ -403,11 +403,11 @@ const tile = (it, small) => '<a href="' + it.href + '" class="hm-tile' + (small 
                 <td class="hm-mono"><%= (lv && lv.race.id === r.id) ? lv.heatsShown : (r.progress.done || 0) %> / <%= r.progress.total %></td>
                 <td class="hm-r">
                   <% if (r.status === 'active' && lv && lv.race.id === r.id && lv.manga) { %>
-                    <a href="/races/<%= r.id %>/mangas/<%= lv.manga.id %>/live" class="hm-act" data-win="pw-live-<%= r.id %>"><%= es ? 'Directo' : 'Live' %><%- ext %></a>
+                    <a href="/races/<%= r.id %>/mangas/<%= lv.manga.id %>/live" class="hm-act" data-win="pw-live-<%= r.id %>"><%= t('_admin.directo') %><%- ext %></a>
                   <% } else if (r.status === 'finished') { %>
-                    <a href="/races/<%= r.id %>/results" class="hm-act" data-win><%= es ? 'Resultados' : 'Results' %><%- ext %></a>
+                    <a href="/races/<%= r.id %>/results" class="hm-act" data-win><%= t('common.resultados') %><%- ext %></a>
                   <% } else { %>
-                    <a href="/races/<%= r.id %>" class="hm-act" data-win><%= es ? 'Abrir' : 'Open' %><%- ext %></a>
+                    <a href="/races/<%= r.id %>" class="hm-act" data-win><%= t('common.abrir') %><%- ext %></a>
                   <% } %>
                 </td>
               </tr>
@@ -416,48 +416,48 @@ const tile = (it, small) => '<a href="' + it.href + '" class="hm-tile' + (small 
         </table>
       </div>
       <% if (typeof totalRaces !== 'undefined' && totalRaces > races.length) { %>
-        <a href="/races" class="hm-more" data-win><%= es ? 'Ver todas las carreras' : 'See all races' %> (<%= totalRaces %>) ›</a>
+        <a href="/races" class="hm-more" data-win><%= t('_admin.ver_todas_las_carreras') %> (<%= totalRaces %>) ›</a>
       <% } %>
     <% } %>
   </section>
 <% } %>
 
 <% function dock() { %>
-  <div class="hm-dock" id="hmDock" aria-label="<%= es ? 'Ventanas abiertas' : 'Open windows' %>" hidden>
+  <div class="hm-dock" id="hmDock" aria-label="<%= t('_admin.ventanas_abiertas') %>" hidden>
     <div class="hm-dock__in">
-      <span class="hm-dock__lbl"><%= es ? 'Ventanas abiertas' : 'Open windows' %></span>
+      <span class="hm-dock__lbl"><%= t('_admin.ventanas_abiertas') %></span>
       <div class="hm-dock__list" id="hmDockList"></div>
-      <span class="hm-dock__hint"><%= es ? 'Mayús + clic = abrir aquí' : 'Shift + click = open here' %></span>
+      <span class="hm-dock__hint"><%= t('_admin.mayus_clic_abrir_aqui') %></span>
     </div>
   </div>
 <% } %>
 
 <% function noResults() { %>
-  <p class="hm-empty hm-nores" id="hmNoRes" hidden><%= es ? 'Nada coincide con la búsqueda.' : 'Nothing matches your search.' %></p>
+  <p class="hm-empty hm-nores" id="hmNoRes" hidden><%= t('common.nada_coincide_con_la_busqueda') %></p>
 <% } %>
 
 <% function customizer() { %>
   <dialog class="hm-dlg" id="hmCustomDlg" aria-labelledby="hmCustomTitle">
     <form method="POST" action="/home/layout" class="hm-dlg__f">
       <div class="hm-dlg__h">
-        <h2 id="hmCustomTitle"><%= es ? 'Diseño del inicio' : 'Home layout' %></h2>
-        <button type="button" class="hm-dlg__x" data-close aria-label="<%= es ? 'Cerrar' : 'Close' %>">✕</button>
+        <h2 id="hmCustomTitle"><%= t('_admin.diseno_del_inicio') %></h2>
+        <button type="button" class="hm-dlg__x" data-close aria-label="<%= t('common.cerrar') %>">✕</button>
       </div>
-      <p class="hm-mute hm-dlg__p"><%= es ? 'Se guarda en este PitWall: lo verá igual la app de escritorio y cualquier navegador.' : 'Saved on this PitWall: the desktop app and every browser will show it.' %></p>
+      <p class="hm-mute hm-dlg__p"><%= t('_admin.se_guarda_en_este_pitwall_lo_vera_igual_la_app') %></p>
       <div class="hm-dlg__grid">
         <% LAYOUTS.forEach(function (o) { %>
           <button type="submit" name="layout" value="<%= o.id %>" class="hm-opt<%= o.id === L ? ' is-on' : '' %>" aria-pressed="<%= o.id === L %>">
             <span class="hm-thumb hm-thumb--<%= o.id %>" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
-            <span class="hm-opt__t"><%= es ? o.es : o.en %><% if (o.id === 'ac') { %> <span class="hm-mute">· <%= es ? 'por defecto' : 'default' %></span><% } %></span>
+            <span class="hm-opt__t"><%= es ? o.es : o.en %><% if (o.id === 'ac') { %> <span class="hm-mute">· <%= t('_admin.por_defecto') %></span><% } %></span>
             <span class="hm-opt__d"><%= es ? o.dEs : o.dEn %></span>
           </button>
         <% }) %>
       </div>
-      <h3 class="hm-dlg__sub"><%= es ? 'Modo de la app' : 'App mode' %></h3>
-      <p class="hm-mute hm-dlg__p"><%= es ? 'Básico: solo entreno libre, carrera sprint, resultados, categorías, escenarios y ajustes. Avanzado: todos los accesos.' : 'Basic: only free practice, sprint race, results, categories, scenarios and settings. Advanced: every shortcut.' %></p>
-      <div class="hm-seg hm-dlg__mode" role="group" aria-label="<%= es ? 'Modo de la app' : 'App mode' %>">
-        <button type="submit" formaction="/home/mode" name="ui_mode" value="basic" aria-pressed="<%= BASIC %>"><%= es ? 'Básico' : 'Basic' %></button>
-        <button type="submit" formaction="/home/mode" name="ui_mode" value="advanced" aria-pressed="<%= !BASIC %>"><%= es ? 'Avanzado' : 'Advanced' %></button>
+      <h3 class="hm-dlg__sub"><%= t('common.modo_de_la_app') %></h3>
+      <p class="hm-mute hm-dlg__p"><%= t('_admin.basico_solo_entreno_libre_carrera_sprint') %></p>
+      <div class="hm-seg hm-dlg__mode" role="group" aria-label="<%= t('common.modo_de_la_app') %>">
+        <button type="submit" formaction="/home/mode" name="ui_mode" value="basic" aria-pressed="<%= BASIC %>"><%= t('common.basico') %></button>
+        <button type="submit" formaction="/home/mode" name="ui_mode" value="advanced" aria-pressed="<%= !BASIC %>"><%= t('_admin.avanzado') %></button>
       </div>
     </form>
   </dialog>
@@ -471,29 +471,29 @@ const tile = (it, small) => '<a href="' + it.href + '" class="hm-tile' + (small 
   <main class="hm-main">
     <% if (L === 'b') { %>
       <header class="hm-head">
-        <h1><%= es ? 'Panel' : 'Dashboard' %></h1>
+        <h1><%= t('_admin.panel') %></h1>
         <div class="hm-pills">
-          <a href="/races/new" class="hm-btn" data-win><%= es ? 'Nueva carrera' : 'New race' %><%- ext %></a>
-          <a href="/training" class="hm-btn" data-win><%= es ? 'Entreno libre' : 'Free practice' %><%- ext %></a>
+          <a href="/races/new" class="hm-btn" data-win><%= t('common.nueva_carrera') %><%- ext %></a>
+          <a href="/training" class="hm-btn" data-win><%= t('common.entreno_libre') %><%- ext %></a>
           <% lockBtn() %>
           <% modeToggle() %>
-          <button type="button" class="hm-pill hm-custom" id="hmCustomBtn" aria-haspopup="dialog" title="<%= es ? 'Elegir el diseño del inicio' : 'Choose the home layout' %>">
+          <button type="button" class="hm-pill hm-custom" id="hmCustomBtn" aria-haspopup="dialog" title="<%= t('_admin.elegir_el_diseno_del_inicio') %>">
             <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
-            <%= es ? 'Personalizar' : 'Customize' %>
+            <%= t('_admin.personalizar') %>
           </button>
         </div>
       </header>
       <% statCards() %>
       <% hero('panel') %>
-      <% racesTable(es ? 'Carreras' : 'Races') %>
+      <% racesTable(t('common.carreras')) %>
     <% } else { %>
       <header class="hm-head">
-        <h1><%= es ? 'Inicio' : 'Home' %></h1>
+        <h1><%= t('common.inicio') %></h1>
         <% pills(true) %>
       </header>
       <% hero('full') %>
-      <% bigCards(quick, es ? 'Accesos rápidos' : 'Quick access') %>
-      <% racesTable(es ? 'Carreras' : 'Races') %>
+      <% bigCards(quick, t('_admin.accesos_rapidos')) %>
+      <% racesTable(t('common.carreras')) %>
     <% } %>
   </main>
 <% } else { %>
@@ -507,7 +507,7 @@ const tile = (it, small) => '<a href="' + it.href + '" class="hm-tile' + (small 
     <% if (L === 'a') { %>
       <% hero('full') %>
       <% bigCards(BASIC ? BASIC_COMP : [
-        { href: '/races', label: es ? 'Carreras' : 'Races', icon: 'flag', a: '#ef4651', desc: es ? 'Crear, gestionar y lanzar mangas.' : 'Create, manage and run heats.' },
+        { href: '/races', label: t('common.carreras'), icon: 'flag', a: '#ef4651', desc: t('_admin.crear_gestionar_y_lanzar_mangas') },
         RACE_SPRINT, RACE_ENDURANCE, TRAIN_FREE, TRAIN_COMP, RESULTS, LAP,
       ], groups[0].title) %>
       <div class="hm-cols">

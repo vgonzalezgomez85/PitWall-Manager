@@ -1012,6 +1012,65 @@ class SessionController {
       if (startLaneByEntity[key] == null) startLaneByEntity[key] = r.lane;
     });
 
+    // ── Piloto(s) que rodaron cada carril ────────────────────────────────────
+    // La parrilla compara EQUIPOS, así que sin esto no hay forma de saber quién
+    // iba al volante en cada carril. El fichaje QR sí lo sabe: cada turno es
+    // (manga, carril) → piloto, y si hubo relevo a mitad de manga hay más de uno
+    // en la misma celda. Se cuelga de cada celda de la parrilla (y de cada carril
+    // agregado, para carreras sin «repetir carril») y la vista pinta el nombre
+    // bajo el número de vueltas. En carreras sin fichajes no se cuelga nada y la
+    // tabla queda exactamente igual que antes.
+    if (race.format === 'team') {
+      const shiftRows = db.prepare(`
+        SELECT manga_id, lane, team_id, driver_name
+        FROM driver_shifts
+        WHERE race_id = ? AND team_id IS NOT NULL AND started_at_ms IS NOT NULL
+        ORDER BY started_at_ms ASC, id ASC
+      `).all(race.id);
+
+      const pushName = (map, key, name) => {
+        let list = map.get(key);
+        if (!list) { list = []; map.set(key, list); }
+        if (!list.includes(name)) list.push(name);
+      };
+      const byCell = new Map();   // `${team}|${lane}|${manga}` → [pilotos]
+      const byLane = new Map();   // `${team}|${lane}`         → [pilotos]
+      for (const s of shiftRows) {
+        if (!s.driver_name) continue;
+        pushName(byCell, `${s.team_id}|${s.lane}|${s.manga_id}`, s.driver_name);
+        pushName(byLane, `${s.team_id}|${s.lane}`, s.driver_name);
+      }
+
+      // Respaldo para carreras sin fichajes pero con las vueltas ya asignadas a
+      // un piloto (reconstrucciones/importaciones): se deduce de `laps`.
+      if (byCell.size === 0) {
+        const lapDriverRows = db.prepare(`
+          SELECT DISTINCT l.manga_id, l.lane, l.team_id, d.name AS driver_name
+          FROM laps l
+          JOIN drivers d ON d.id = l.driver_id
+          WHERE l.race_id = ? AND l.team_id IS NOT NULL AND l.driver_id IS NOT NULL
+        `).all(race.id);
+        for (const s of lapDriverRows) {
+          pushName(byCell, `${s.team_id}|${s.lane}|${s.manga_id}`, s.driver_name);
+          pushName(byLane, `${s.team_id}|${s.lane}`, s.driver_name);
+        }
+      }
+
+      if (byCell.size || byLane.size) {
+        results.forEach(r => {
+          if (r.entity_type !== 'team') return;
+          Object.values(r.occByKey || {}).forEach(cell => {
+            const names = byCell.get(`${r.entity_id}|${cell.lane}|${cell.manga_id}`);
+            if (names && names.length) cell.drivers = names;
+          });
+          (r.perLane || []).forEach(pl => {
+            const names = byLane.get(`${r.entity_id}|${pl.lane}`);
+            if (names && names.length) pl.drivers = names;
+          });
+        });
+      }
+    }
+
     // Race overall fastest lap (across all entities & lanes) — for highlight
     let raceBestLapMs = null, raceBestEntity = null, raceBestLane = null;
     for (const r of results) {

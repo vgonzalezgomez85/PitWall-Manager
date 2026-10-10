@@ -1,19 +1,26 @@
-<%- include('../partials/header', { pageTitle: lang === 'es' ? 'Licencia' : 'License' }) %>
+<%- include('../partials/header', { pageTitle: t('common.licencia') }) %>
 <div class="container container--narrow">
 
   <a href="/" class="vt-back-link" style="margin-top:1rem">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-    <%= lang === 'es' ? 'Inicio' : 'Home' %>
+    <%= t('common.inicio') %>
   </a>
 
   <div class="page-header">
-    <h1 class="page-title"><%= lang === 'es' ? 'Licencia' : 'License' %></h1>
+    <h1 class="page-title"><%= t('common.licencia') %></h1>
     <p class="page-subtitle">PitWall · GNU Affero General Public License v3</p>
   </div>
 
+  <%# El EULA solo está redactado en español e inglés, así que su selector lista
+      esos dos y no la lista completa de idiomas de la app: ofrecer italiano aquí
+      llevaría a una página en inglés. Al traducir el texto, añadirlo a esta lista
+      y su bloque de contenido más abajo. %>
+  <% const EULA_LANGS = [['es', 'Español'], ['en', 'English']]; %>
   <div class="eula-lang-switch">
-    <a href="/eula?lang=es" class="btn btn--ghost btn--sm <%= lang === 'es' ? 'btn--active' : '' %>">Español</a>
-    <a href="/eula?lang=en" class="btn btn--ghost btn--sm <%= lang === 'en' ? 'btn--active' : '' %>">English</a>
+    <% EULA_LANGS.forEach(([code, nombre]) => { %>
+      <a href="<%= typeof langUrl !== 'undefined' ? langUrl(code) : '/eula?lang=' + code %>"
+         class="btn btn--ghost btn--sm <%= lang === code ? 'btn--active' : '' %>"><%= nombre %></a>
+    <% }) %>
   </div>
 
   <div class="eula-body">

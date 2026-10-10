@@ -1,12 +1,12 @@
-<%- include('../partials/header', { pageTitle: (lang === 'es' ? 'Editar carrera' : 'Edit race') }) %>
+<%- include('../partials/header', { pageTitle: (t('common.editar_carrera')) }) %>
 <div class="container container--narrow">
 
   <a class="vt-back-link" href="/races/<%= race.id %>">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-    <%= lang === 'es' ? 'Volver a la carrera' : 'Back to race' %>
+    <%= t('common.volver_a_la_carrera') %>
   </a>
 
-  <h1 class="page-title"><%= lang === 'es' ? 'Editar carrera' : 'Edit race' %></h1>
+  <h1 class="page-title"><%= t('common.editar_carrera') %></h1>
 
   <% if (errors.length > 0) { %>
     <div class="alert alert--error">
@@ -18,7 +18,7 @@
 
     <!-- Name -->
     <div class="form-group">
-      <label class="form-label" for="name"><%= lang === 'es' ? 'Nombre de la carrera' : 'Race name' %></label>
+      <label class="form-label" for="name"><%= t('edit.nombre_de_la_carrera') %></label>
       <input
         class="form-input <%= errors.includes('name_required') ? 'form-input--error' : '' %>"
         type="text" id="name" name="name"
@@ -28,7 +28,7 @@
     <% if (hasLaps && race.circuit_id) { %>
       <!-- Con vueltas registradas el escenario queda bloqueado -->
       <div class="form-group">
-        <label class="form-label"><%= lang === 'es' ? 'Escenario' : 'Scenario' %></label>
+        <label class="form-label"><%= t('edit.escenario') %></label>
         <% const cur = savedCircuits.find(c => c.id === race.circuit_id) || {}; %>
         <input class="form-input" type="text" style="max-width:22rem" disabled
                value="<%= cur.name || ('#' + race.circuit_id) %>">
@@ -41,35 +41,35 @@
     <% } else if (!hasLaps) { %>
       <!-- Sin vueltas: asignar, cambiar o quitar el escenario -->
       <div class="form-group">
-        <label class="form-label"><%= lang === 'es' ? 'Escenario' : 'Scenario' %></label>
+        <label class="form-label"><%= t('edit.escenario') %></label>
         <select id="circuitSelect" name="circuit_id" class="form-input" style="max-width:22rem"
                 onchange="applyCircuit(this.value)">
           <option value="" <%= !race.circuit_id ? 'selected' : '' %>>
-            <%= lang === 'es' ? '— Sin escenario (configuración manual) —' : '— No scenario (manual setup) —' %>
+            <%= t('edit.sin_escenario_configuracion_manual') %>
           </option>
           <% savedCircuits.forEach(c => { %>
             <option value="<%= c.id %>"
                     data-config="<%= c.circuits_config %>"
                     data-min-ms="<%= c.min_lap_ms %>"
                     <%= race.circuit_id == c.id ? 'selected' : '' %>>
-              <%= c.name %> (<%= c.lanes_count %> <%= lang === 'es' ? 'carriles' : 'lanes' %><% if (c.min_lap_ms > 0) { %> · min <%= (c.min_lap_ms/1000).toFixed(2) %>s<% } %>)
+              <%= c.name %> (<%= c.lanes_count %> <%= t('client.common.carriles') %><% if (c.min_lap_ms > 0) { %> · min <%= (c.min_lap_ms/1000).toFixed(2) %>s<% } %>)
             </option>
           <% }) %>
         </select>
 
         <!-- Category override (shown only if the chosen circuit has per-category times) -->
         <div id="categoryWrap" style="margin-top:.75rem;display:none;align-items:center;gap:.6rem;flex-wrap:wrap">
-          <span class="form-hint" style="flex-shrink:0"><%= lang === 'es' ? 'Categoría:' : 'Category:' %></span>
+          <span class="form-hint" style="flex-shrink:0"><%= t('edit.categoria') %></span>
           <select id="categorySelect" name="category_id" class="form-input form-input--sm" style="max-width:14rem">
-            <option value=""><%= lang === 'es' ? '— por defecto —' : '— default —' %></option>
+            <option value=""><%= t('common.por_defecto') %></option>
           </select>
           <span class="form-hint" id="categoryHint" style="color:#9aa0a6"></span>
         </div>
 
         <p class="form-hint" id="circuitInfo" style="margin-top:.7rem;display:none">
-          <%= lang === 'es' ? 'Carriles:' : 'Lanes:' %> <strong id="lanesInfo" style="color:#58a6ff">—</strong>
+          <%= t('edit.carriles') %> <strong id="lanesInfo" style="color:#58a6ff">—</strong>
           &nbsp;·&nbsp;
-          <%= lang === 'es' ? 'Vuelta mínima:' : 'Min lap:' %> <strong id="minLapInfo" style="color:#4caf50">—</strong>
+          <%= t('edit.vuelta_minima') %> <strong id="minLapInfo" style="color:#4caf50">—</strong>
         </p>
 
         <p class="form-hint" style="color:#e0a106;margin-top:.5rem">
@@ -84,11 +84,11 @@
     <div id="manualConfig">
       <!-- Manual race: change the minimum lap threshold -->
       <div class="form-group">
-        <label class="form-label" for="minLapS"><%= lang === 'es' ? 'Vuelta mínima' : 'Min lap time' %></label>
+        <label class="form-label" for="minLapS"><%= t('common.vuelta_minima') %></label>
         <div style="display:flex;align-items:center;gap:.6rem">
           <input class="form-input form-input--sm" type="number" id="minLapS" name="min_lap_s"
                  step="0.01" min="0" max="999" style="width:6rem"
-                 placeholder="<%= lang === 'es' ? 'desactivada' : 'disabled' %>"
+                 placeholder="<%= t('edit.desactivada') %>"
                  value="<%= race.min_lap_ms > 0 ? (race.min_lap_ms/1000).toFixed(2) : '' %>">
           <span class="form-hint">s</span>
         </div>
@@ -101,20 +101,20 @@
 
       <!-- Circuito manual: reordenar la secuencia de carriles -->
       <div class="form-group">
-        <label class="form-label"><%= lang === 'es' ? 'Secuencia de carriles' : 'Lane sequence' %></label>
+        <label class="form-label"><%= t('common.secuencia_de_carriles') %></label>
         <p class="form-hint" style="margin:.2rem 0 .8rem">
           <%= lang === 'es'
             ? 'Orden de rotación de salida. Arrastra para reordenar carriles y descansos (💤). No cambia su número.'
             : 'Starting rotation order. Drag to reorder lanes and rests (💤). Count unchanged.' %>
           <% if (restCount > 0) { %>
-            <strong style="color:#8fb6ff">· <%= restCount %> <%= lang === 'es' ? 'descanso(s)' : 'rest(s)' %></strong>
+            <strong style="color:#8fb6ff">· <%= restCount %> <%= t('edit.descanso_s') %></strong>
           <% } %>
         </p>
         <div id="laneSeqList" class="lane-seq-list">
           <% (laneSequence || []).forEach(l => { %>
             <% if (l === 0) { %>
               <div class="lane-seq-chip lane-seq-chip--rest" draggable="true" data-lane="0"
-                   title="<%= lang === 'es' ? 'Descanso' : 'Rest' %>">
+                   title="<%= t('client.common.descanso') %>">
                 <span class="lane-seq-grip">⋮⋮</span>💤
               </div>
             <% } else { %>
@@ -157,7 +157,7 @@
       <!-- Reglas de turnos por piloto (solo resistencia, antes de correr) -->
       <div class="form-group">
         <label class="form-label">
-          <%= lang === 'es' ? 'Reglas de turnos por piloto' : 'Driver shift rules' %>
+          <%= t('edit.reglas_de_turnos_por_piloto') %>
         </label>
         <p class="form-hint" style="margin:.2rem 0 .8rem">
           <%= lang === 'es'
@@ -167,28 +167,28 @@
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem">
           <div>
             <label class="form-label" for="driverMinMin" style="font-size:.85rem;color:var(--vt-mute,#9aa0a6)">
-              <%= lang === 'es' ? 'Mínimo por piloto (min)' : 'Min per driver (min)' %>
+              <%= t('edit.minimo_por_piloto_min') %>
             </label>
             <input class="form-input form-input--sm" type="number" id="driverMinMin" name="driver_min_total_min"
                    min="0" max="600" step="1" placeholder="0 = sin mínimo" value="<%= rMinMin %>" <%= lockRules ? 'disabled' : '' %>>
           </div>
           <div>
             <label class="form-label" for="driverMaxMin" style="font-size:.85rem;color:var(--vt-mute,#9aa0a6)">
-              <%= lang === 'es' ? 'Máximo por piloto (min)' : 'Max per driver (min)' %>
+              <%= t('edit.maximo_por_piloto_min') %>
             </label>
             <input class="form-input form-input--sm" type="number" id="driverMaxMin" name="driver_max_total_min"
                    min="0" max="600" step="1" placeholder="0 = sin máximo" value="<%= rMaxMin %>" <%= lockRules ? 'disabled' : '' %>>
           </div>
           <div>
             <label class="form-label" for="driverMaxRuns" style="font-size:.85rem;color:var(--vt-mute,#9aa0a6)">
-              <%= lang === 'es' ? 'Máximo de turnos por piloto' : 'Max turns per driver' %>
+              <%= t('edit.maximo_de_turnos_por_piloto') %>
             </label>
             <input class="form-input form-input--sm" type="number" id="driverMaxRuns" name="driver_max_runs"
                    min="0" max="100" step="1" placeholder="0 = sin máximo" value="<%= rMaxRuns %>" <%= lockRules ? 'disabled' : '' %>>
           </div>
           <div>
             <label class="form-label" for="lockoutS" style="font-size:.85rem;color:var(--vt-mute,#9aa0a6)">
-              <%= lang === 'es' ? 'Bloqueo final de manga (s)' : 'Final-manga lockout (s)' %>
+              <%= t('edit.bloqueo_final_de_manga_s') %>
             </label>
             <input class="form-input form-input--sm" type="number" id="lockoutS" name="driver_change_lockout_s"
                    min="0" max="600" step="1" value="<%= rLockS %>" <%= lockRules ? 'disabled' : '' %>>
@@ -202,7 +202,7 @@
       <!-- Neumáticos por equipo (solo resistencia, antes de correr) -->
       <div class="form-group">
         <label class="form-label" for="tirePairs">
-          <%= lang === 'es' ? 'Neumáticos por equipo' : 'Tyres per team' %>
+          <%= t('common.neumaticos_por_equipo') %>
         </label>
         <p class="form-hint" style="margin:.2rem 0 .6rem">
           <%= lang === 'es'
@@ -211,16 +211,16 @@
         </p>
         <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
           <input class="form-input form-input--sm" type="number" id="tirePairs" name="tire_pairs_per_team"
-                 min="0" max="99" step="1" placeholder="<%= lang === 'es' ? '0 = sin control' : '0 = no control' %>"
+                 min="0" max="99" step="1" placeholder="<%= t('edit.0_sin_control') %>"
                  value="<%= rPairs %>" style="width:6.5rem" <%= lockRules ? 'disabled' : '' %>>
-          <span class="form-hint"><%= lang === 'es' ? 'pares por equipo' : 'pairs per team' %></span>
+          <span class="form-hint"><%= t('common.pares_por_equipo') %></span>
         </div>
       </div>
     <% } %>
 
     <!-- Categoría/copa y coche por participante (opcional, se puede cambiar siempre) -->
     <div class="form-group">
-      <label class="form-label"><%= lang === 'es' ? 'Categoría y coche (opcional)' : 'Category and car (optional)' %></label>
+      <label class="form-label"><%= t('common.categoria_y_coche_opcional') %></label>
       <p class="form-hint" style="margin:.2rem 0 .6rem">
         <%= lang === 'es'
           ? 'Actívalos para poder anotar la categoría/copa y el coche de cada equipo o piloto en la tanda. Son opcionales: rellenarlos no es obligatorio. La categoría se ve en el directo; ambos salen en el Excel.'
@@ -229,18 +229,18 @@
       <div style="display:flex;gap:1.4rem;flex-wrap:wrap">
         <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
           <input type="checkbox" name="has_categoria" value="1" <%= race.has_categoria ? 'checked' : '' %>>
-          <span><%= lang === 'es' ? 'Categoría / copa' : 'Category / cup' %></span>
+          <span><%= t('common.categoria_copa') %></span>
         </label>
         <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
           <input type="checkbox" name="has_coche" value="1" <%= race.has_coche ? 'checked' : '' %>>
-          <span><%= lang === 'es' ? 'Coche' : 'Car' %></span>
+          <span><%= t('common.coche') %></span>
         </label>
       </div>
     </div>
 
     <div class="form-actions">
-      <a href="/races/<%= race.id %>" class="btn btn--ghost"><%= lang === 'es' ? 'Cancelar' : 'Cancel' %></a>
-      <button type="submit" class="btn btn--primary"><%= lang === 'es' ? 'Guardar cambios' : 'Save changes' %></button>
+      <a href="/races/<%= race.id %>" class="btn btn--ghost"><%= t('client.common.cancelar') %></a>
+      <button type="submit" class="btn btn--primary"><%= t('common.guardar_cambios') %></button>
     </div>
 
   </form>
@@ -249,8 +249,8 @@
 <% if (!hasLaps) { %>
 <script>
 const CIRCUIT_CATEGORY_TIMES = <%- JSON.stringify(circuitCategoryTimes || {}) %>;
-const DISABLED_TXT = '<%= lang === "es" ? "desactivada" : "disabled" %>';
-const FROM_CAT     = '<%= lang === "es" ? "← de la categoría" : "← from category" %>';
+const DISABLED_TXT = '<%= t('edit.desactivada') %>';
+const FROM_CAT     = '<%= t('edit.de_la_categoria') %>';
 
 const circuitSelect  = document.getElementById('circuitSelect');
 const categoryWrap   = document.getElementById('categoryWrap');

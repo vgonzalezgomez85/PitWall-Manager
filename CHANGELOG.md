@@ -13,6 +13,17 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.51.0] — 2026-10-10
+
+### Añadido
+- **Piloto(s) por carril en la parrilla de resultados.** En carreras por equipos, cada celda de la matriz muestra bajo el número de vueltas **quién iba al volante** en ese carril en esa manga, tomado de los fichajes de turno; si hubo relevo a mitad de manga salen los dos nombres. También en la impresión. En carreras sin control de turnos la tabla no cambia.
+- **Preparación del italiano como tercer idioma.** La app ya reconoce el italiano (navegador en italiano, selector del pie y `?lang=it`) y muestra los textos en español mientras no esté traducido, en vez de claves o huecos en blanco. Falta la traducción en sí.
+
+### Mejorado
+- **El separador decimal es la coma en toda la app.** El directo y la pantalla de TV sacaban el punto (`12.06`) mientras los resultados y las estadísticas ya usaban la coma (`12,06`): el mismo tiempo se veía distinto según la pantalla. Ahora es la coma en todas. Los campos numéricos del asistente siguen con punto, que es lo que exige el navegador.
+- **Cambiar de idioma ya no pierde lo que estabas viendo.** El selector del pie conserva el resto de la dirección (filtros, orden, pestaña), y la lista de idiomas sale de los ficheros de traducción, así que añadir uno no obliga a tocar el pie.
+- **Todos los textos de la app salen ya de un único diccionario.** Antes convivían tres sistemas —el diccionario, ternarios de idioma escritos a mano en cada vista y textos sueltos en español— que además solo entendían dos idiomas. Es el trabajo de base que hace posible el italiano. Lo que se ve en español y en inglés **no cambia**: se ha verificado que las pantallas salen idénticas.
+
 ## [1.50.0] — 2026-10-08
 
 ### Añadido

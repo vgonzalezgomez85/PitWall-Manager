@@ -10,15 +10,15 @@
         <% const cs   = serialStatus.circuits || []; %>
         <% const down = serialStatus.down     || []; %>
         <a href="/settings" id="footerSerialPill" class="footer-pill footer-pill--serial"
-           title="<%= lang === 'es' ? 'Estado de puertos serie' : 'Serial port status' %>"
+           title="<%= t('common.estado_de_puertos_serie') %>"
            data-lang="<%= typeof lang !== 'undefined' ? lang : 'es' %>">
           <% if (serialStatus.simulating) { %>
-            <span class="status-dot status-dot--sim"></span><%= lang === 'es' ? 'Simulación' : 'Simulation' %>
+            <span class="status-dot status-dot--sim"></span><%= t('client.common.simulacion') %>
           <% } else if (cs.length > 0 && down.length > 0) { %>
             <span class="status-dot status-dot--off"></span>
             DS-300 ×<%= cs.length - down.length %>/<%= cs.length %>
             <span class="footer-pill__detail">
-              <%= (lang === 'es' ? 'sin señal: caja ' : 'no signal: box ') + down.join(', ') %>
+              <%= (t('client.common.sin_senal_caja')) + down.join(', ') %>
             </span>
           <% } else if (cs.length > 0) { %>
             <span class="status-dot status-dot--ok"></span>
@@ -27,14 +27,18 @@
               <%= cs.map(c => (c.path || '').split('/').pop()).filter(Boolean).join(' · ') %>
             </span>
           <% } else { %>
-            <span class="status-dot status-dot--off"></span><%= lang === 'es' ? 'Sin conexión' : 'Disconnected' %>
+            <span class="status-dot status-dot--off"></span><%= t('client.common.sin_conexion') %>
           <% } %>
         </a>
       <% } %>
 
+      <%# La lista sale de src/locales/, así que añadir un idioma no se toca aquí.
+          `langUrl` conserva el resto del query string (vista, filtros, orden). %>
       <div class="footer-langs">
-        <a href="?lang=es" class="lang-btn <%= typeof lang !== 'undefined' && lang === 'es' ? 'active' : '' %>">ES</a>
-        <a href="?lang=en" class="lang-btn <%= typeof lang !== 'undefined' && lang === 'en' ? 'active' : '' %>">EN</a>
+        <% (typeof langs !== 'undefined' ? langs : ['es', 'en']).forEach(code => { %>
+          <a href="<%= typeof langUrl !== 'undefined' ? langUrl(code) : '?lang=' + code %>"
+             class="lang-btn <%= typeof lang !== 'undefined' && lang === code ? 'active' : '' %>"><%= code.toUpperCase() %></a>
+        <% }) %>
       </div>
     </div>
 
@@ -44,11 +48,11 @@
     <div class="footer-info">
       <span>PitWall &copy; <%= new Date().getFullYear() %> Víctor González Gómez</span>
       <span class="footer-sep">·</span>
-      <a href="/changelog" class="footer-link" title="<%= typeof lang !== 'undefined' && lang === 'en' ? 'Version history' : 'Historial de versiones' %>">v<%= appVersion %></a>
+      <a href="/changelog" class="footer-link" title="<%= typeof lang !== 'undefined' && t('common.historial_de_versiones') %>">v<%= appVersion %></a>
       <span class="footer-sep">·</span>
-      <a href="/eula" class="footer-link"><%= typeof lang !== 'undefined' && lang === 'en' ? 'License' : 'Licencia' %> (AGPLv3)</a>
+      <a href="/eula" class="footer-link"><%= typeof lang !== 'undefined' && t('common.licencia') %> (AGPLv3)</a>
       <span class="footer-sep">·</span>
-      <a href="https://github.com/vgonzalezgomez85/PitWall-Manager" class="footer-link" target="_blank" rel="noopener"><%= typeof lang !== 'undefined' && lang === 'en' ? 'Source code' : 'Código fuente' %></a>
+      <a href="https://github.com/vgonzalezgomez85/PitWall-Manager" class="footer-link" target="_blank" rel="noopener"><%= typeof lang !== 'undefined' && t('common.codigo_fuente') %></a>
     </div>
 
   </footer>

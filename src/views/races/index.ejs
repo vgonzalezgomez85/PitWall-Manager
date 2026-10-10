@@ -20,7 +20,7 @@ const counts = {
 
     <a href="/" class="vt-back-link">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      <%= lang === 'es' ? 'Inicio' : 'Home' %>
+      <%= t('common.inicio') %>
     </a>
 
     <% if (flash) { %>
@@ -35,10 +35,10 @@ const counts = {
       <div class="vt-head__actions">
         <label class="vt-search">
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-          <input type="text" id="rcQuery" placeholder="<%= lang === 'es' ? 'Buscar carrera…' : 'Search race…' %>">
+          <input type="text" id="rcQuery" placeholder="<%= t('races.buscar_carrera') %>">
         </label>
-        <a href="/import/tanda" class="vt-btn vt-btn--ghost">📥 <%= lang === 'es' ? 'Importar tanda' : 'Import tanda' %></a>
-        <a href="/races/sim/new" class="vt-btn vt-btn--ghost">🎬 <%= lang === 'es' ? 'Carrera simulada' : 'Simulated race' %></a>
+        <a href="/import/tanda" class="vt-btn vt-btn--ghost">📥 <%= t('races.importar_tanda') %></a>
+        <a href="/races/sim/new" class="vt-btn vt-btn--ghost">🎬 <%= t('races.carrera_simulada') %></a>
         <a href="/races/new" class="vt-btn vt-btn--primary">+ <%= t('nav.new_race') %></a>
       </div>
     </div>
@@ -52,18 +52,18 @@ const counts = {
 
       <div class="vt-filters">
         <div class="vt-tabs" id="rcTabs">
-          <button class="vt-tab is-active" data-f="todas"><%= lang === 'es' ? 'Todas' : 'All' %> <span class="vt-tab__b"><%= counts.todas %></span></button>
+          <button class="vt-tab is-active" data-f="todas"><%= t('client.common.todas') %> <span class="vt-tab__b"><%= counts.todas %></span></button>
           <button class="vt-tab" data-f="active"><%= t('races.status.active') %> <span class="vt-tab__b"><%= counts.active %></span></button>
           <button class="vt-tab" data-f="pending"><%= t('races.status.pending') %> <span class="vt-tab__b"><%= counts.pending %></span></button>
           <button class="vt-tab" data-f="finished"><%= t('races.status.completed') %> <span class="vt-tab__b"><%= counts.finished %></span></button>
         </div>
         <div class="vt-sort">
-          <%= lang === 'es' ? 'Ordenar' : 'Sort' %>
+          <%= t('races.ordenar') %>
           <select id="rcSort">
-            <option value="date"><%= lang === 'es' ? 'Fecha (recientes)' : 'Date (recent)' %></option>
-            <option value="date-asc"><%= lang === 'es' ? 'Fecha (antiguas)' : 'Date (oldest)' %></option>
-            <option value="name"><%= lang === 'es' ? 'Nombre' : 'Name' %></option>
-            <option value="drivers"><%= lang === 'es' ? 'Nº de pilotos' : 'Drivers' %></option>
+            <option value="date"><%= t('races.fecha_recientes') %></option>
+            <option value="date-asc"><%= t('races.fecha_antiguas') %></option>
+            <option value="name"><%= t('common.nombre') %></option>
+            <option value="drivers"><%= t('races.n_de_pilotos') %></option>
           </select>
         </div>
       </div>
@@ -86,7 +86,7 @@ const counts = {
               <% if (race.is_sim) { %>
                 <span class="vt-badge is-info" style="cursor:pointer"
                       onclick="event.preventDefault();event.stopPropagation();location.href='/races/<%= race.id %>/sim'"
-                      title="<%= lang === 'es' ? 'Panel de simulación' : 'Simulation panel' %>">🎬 Sim</span>
+                      title="<%= t('races.panel_de_simulacion') %>">🎬 Sim</span>
               <% } %>
             </div>
             <h3 class="vt-race-card__name"><%= race.name %></h3>

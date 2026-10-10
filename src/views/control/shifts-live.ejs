@@ -1,4 +1,4 @@
-<%- include('../partials/header', { lang, pageTitle: lang === 'es' ? 'Control de pilotos' : 'Driver shifts' }) %>
+<%- include('../partials/header', { lang, pageTitle: t('common.control_de_pilotos') }) %>
 
 <%
 // fmtHms / shiftCompliance vienen de app.locals (fuente única). El m:ss de antes
@@ -37,7 +37,7 @@ function esc(s) {
 // (verde ok/bajo mín · ámbar a punto · rojo pasado). driverName = piloto actual.
 function renderRoster(roster, driverName) {
   if (!roster || !roster.length) return '';
-  const title = lang === 'es' ? 'Pilotos del equipo: tiempo y turnos' : 'Team drivers: time and stints';
+  const title = t('shifts-live.pilotos_del_equipo_tiempo_y_turnos');
   let html = '<div class="sc-lane__roster" title="' + title + '">';
   roster.forEach(p => {
     // En directo el mínimo NO es infracción (nadie lo cumple en el minuto 1):
@@ -49,7 +49,7 @@ function renderRoster(roster, driverName) {
     const isNow  = driverName && p.name === driverName;
     html += '<div class="sc-lane__rost ' + rcls + (isNow ? ' is-now' : '') + '" title="' + esc(p.name) + '">'
           + '<span class="sc-lane__rost-name">' + esc(p.name) + '</span>'
-          + '<span class="sc-lane__rost-runs">' + p.runs + (maxRuns > 0 ? '/' + maxRuns : '') + (lang === 'es' ? 'T' : 'x') + '</span>'
+          + '<span class="sc-lane__rost-runs">' + p.runs + (maxRuns > 0 ? '/' + maxRuns : '') + (t('shifts-live.t')) + '</span>'
           + '<span class="sc-lane__rost-time">' + fmtTime(p.total_ms) + '</span>'
           + '</div>';
   });
@@ -90,7 +90,7 @@ const teamNameByLane = {};
 <div class="vt-page vt-page--shifts<%= isGuestAccess ? ' sc-guest' : '' %>">
   <!-- Botón de pantalla completa: solo en el modo panel "todas las tarjetas"
        (flotante arriba a la derecha, ya que ahí se oculta la cabecera). -->
-  <button type="button" id="scFsBtn" class="sc-fs-btn" title="<%= lang === 'es' ? 'Pantalla completa' : 'Fullscreen' %>">
+  <button type="button" id="scFsBtn" class="sc-fs-btn" title="<%= t('common.pantalla_completa') %>">
     <svg class="sc-fs-open"  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3m8 0h3a2 2 0 0 0 2-2v-3"/></svg>
     <svg class="sc-fs-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" hidden><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3m8 0v-3a2 2 0 0 1 2-2h3"/></svg>
   </button>
@@ -98,12 +98,12 @@ const teamNameByLane = {};
 
     <a href="/" class="vt-back-link">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      <%= lang === 'es' ? 'Inicio' : 'Home' %>
+      <%= t('common.inicio') %>
     </a>
 
     <div class="vt-head">
       <div class="vt-head__title">
-        <h1><%= lang === 'es' ? 'Control de pilotos' : 'Driver shifts' %></h1>
+        <h1><%= t('common.control_de_pilotos') %></h1>
         <% if (current) { %>
           <span class="vt-cnt"><%= current.race.name %> · M<%= current.manga.number %></span>
         <% } %>
@@ -114,28 +114,28 @@ const teamNameByLane = {};
         <% if (current) { %>
           <% const lockMs = current.race.driver_change_lockout_ms || 0; %>
           <% if (minMs > 0 || maxMs > 0 || maxRuns > 0 || lockMs > 0) { %>
-            <div class="sc-rules" aria-label="<%= lang === 'es' ? 'Reglas de turnos de esta carrera' : 'Shift rules for this race' %>">
+            <div class="sc-rules" aria-label="<%= t('shifts-live.reglas_de_turnos_de_esta_carrera') %>">
               <% if (minMs > 0) { %>
                 <span class="sc-rule is-min">
-                  <span class="sc-rule__l"><%= lang === 'es' ? 'Mínimo / piloto' : 'Minimum / driver' %></span>
+                  <span class="sc-rule__l"><%= t('shifts-live.minimo_piloto') %></span>
                   <span class="sc-rule__v"><%= fmtHms(minMs) %></span>
                 </span>
               <% } %>
               <% if (maxMs > 0) { %>
                 <span class="sc-rule is-max">
-                  <span class="sc-rule__l"><%= lang === 'es' ? 'Máximo / piloto' : 'Maximum / driver' %></span>
+                  <span class="sc-rule__l"><%= t('shifts-live.maximo_piloto') %></span>
                   <span class="sc-rule__v"><%= fmtHms(maxMs) %></span>
                 </span>
               <% } %>
               <% if (maxRuns > 0) { %>
                 <span class="sc-rule">
-                  <span class="sc-rule__l"><%= lang === 'es' ? 'Turnos máx.' : 'Max stints' %></span>
+                  <span class="sc-rule__l"><%= t('shifts-live.turnos_max') %></span>
                   <span class="sc-rule__v"><%= maxRuns %></span>
                 </span>
               <% } %>
               <% if (lockMs > 0) { %>
-                <span class="sc-rule" title="<%= lang === 'es' ? 'No se admiten cambios de piloto en los minutos finales de la manga' : 'No driver changes in the final minutes of the heat' %>">
-                  <span class="sc-rule__l"><%= lang === 'es' ? 'Sin cambios al final' : 'No changes at the end' %></span>
+                <span class="sc-rule" title="<%= t('shifts-live.no_se_admiten_cambios_de_piloto_en_los_minutos') %>">
+                  <span class="sc-rule__l"><%= t('shifts-live.sin_cambios_al_final') %></span>
                   <span class="sc-rule__v"><%= fmtHms(lockMs) %></span>
                 </span>
               <% } %>
@@ -147,26 +147,26 @@ const teamNameByLane = {};
         <% if (current) { %>
           <% const statusBadge = current.liveStatus === 'running' ? 'is-ok is-live' : current.liveStatus === 'paused' ? 'is-warn' : current.liveStatus === 'standby' ? 'is-warn' : 'is-neutral'; %>
           <% const statusLabel = {
-            running: lang === 'es' ? 'EN MARCHA' : 'RUNNING',
-            paused:  lang === 'es' ? 'PAUSADA'   : 'PAUSED',
-            standby: lang === 'es' ? 'STANDBY (pre-arme)' : 'STANDBY (pre-arm)',
-            unknown: lang === 'es' ? 'ACTIVA'    : 'ACTIVE',
+            running: t('shifts-live.en_marcha'),
+            paused:  t('shifts-live.pausada'),
+            standby: t('shifts-live.standby_pre_arme'),
+            unknown: t('shifts-live.activa'),
           }[current.liveStatus]; %>
           <span class="vt-badge <%= statusBadge %>"><span class="vt-badge__d"></span><%= statusLabel %></span>
         <% } else { %>
-          <span class="vt-badge is-neutral"><span class="vt-badge__d"></span><%= lang === 'es' ? 'Sin manga activa' : 'No active manga' %></span>
+          <span class="vt-badge is-neutral"><span class="vt-badge__d"></span><%= t('shifts-live.sin_manga_activa') %></span>
         <% } %>
         <% if (current) { %>
           <button type="button" id="scAllCardsBtn" class="vt-btn vt-btn--ghost vt-btn--sm"
-            title="<%= lang === 'es' ? 'Ver todas las tarjetas de una vez, sin pase de hojas' : 'See all cards at once, no paging' %>">
+            title="<%= t('shifts-live.ver_todas_las_tarjetas_de_una_vez_sin_pase_de') %>">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.2"/><rect x="14" y="3" width="7" height="7" rx="1.2"/><rect x="3" y="14" width="7" height="7" rx="1.2"/><rect x="14" y="14" width="7" height="7" rx="1.2"/></svg>
-            <%= lang === 'es' ? 'Todas las tarjetas' : 'All cards' %>
+            <%= t('shifts-live.todas_las_tarjetas') %>
           </button>
         <% } %>
         <% if (!isGuestAccess) { %>
         <a href="<%= current ? '/races/' + current.race.id + '/shifts' : '#' %>" class="vt-btn vt-btn--ghost vt-btn--sm" <%= current ? '' : 'aria-disabled="true" style="opacity:.4;pointer-events:none"' %>>
           <svg viewBox="0 0 24 24"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
-          <%= lang === 'es' ? 'Histórico' : 'History' %>
+          <%= t('shifts-live.historico') %>
         </a>
         <% } %>
       </div>
@@ -174,7 +174,7 @@ const teamNameByLane = {};
 
     <% if (!current) { %>
       <div class="vt-empty" style="margin-top:32px">
-        <div class="vt-empty__t"><%= lang === 'es' ? 'Esperando carrera' : 'Waiting for race' %></div>
+        <div class="vt-empty__t"><%= t('shifts-live.esperando_carrera') %></div>
         <p style="color:var(--vt-mute);margin:6px 0 0">
           <%= lang === 'es'
             ? 'Esta vista se activa cuando hay una carrera de tipo campeonato con una manga preparada o en marcha.'
@@ -190,10 +190,10 @@ const teamNameByLane = {};
           <!-- Barra de scan (info + botón Cámara) ENCIMA del cuadro -->
           <div class="sc-scan-bar" id="scScanBar">
             <span class="sc-scan-led" id="scLed"></span>
-            <span class="sc-scan-msg" id="scMsg"><%= lang === 'es' ? 'Listo para escanear' : 'Ready to scan' %></span>
+            <span class="sc-scan-msg" id="scMsg"><%= t('client.shifts-live.listo_para_escanear') %></span>
             <button type="button" class="sc-cam-btn" id="scCamBtn">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-              <%= lang === 'es' ? 'Cámara' : 'Camera' %>
+              <%= t('shifts-live.camara') %>
             </button>
             <span class="sc-remaining" id="scRemaining"></span>
           </div>
@@ -201,16 +201,16 @@ const teamNameByLane = {};
           <!-- Cuadro de cámara (modo quiosco) -->
           <aside class="sc-cam-dock" id="scCamDock" hidden>
             <div class="sc-cam-head">
-              <span class="sc-cam-status" id="scCamStatus"><%= lang === 'es' ? 'Iniciando cámara…' : 'Starting camera…' %></span>
+              <span class="sc-cam-status" id="scCamStatus"><%= t('shifts-live.iniciando_camara') %></span>
               <div class="sc-cam-acts">
-                <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="scCamSwitch" style="display:none"><%= lang === 'es' ? 'Cambiar' : 'Switch' %></button>
+                <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="scCamSwitch" style="display:none"><%= t('shifts-live.cambiar') %></button>
               </div>
             </div>
             <div class="sc-cam-view">
               <video id="scCamVideo" playsinline muted></video>
               <div class="sc-cam-reticle" id="scCamReticle"></div>
             </div>
-            <div class="sc-cam-hint" id="scCamHint"><%= lang === 'es' ? 'Apunta la cámara al QR del piloto' : 'Point the camera at the pilot QR' %></div>
+            <div class="sc-cam-hint" id="scCamHint"><%= t('shifts-live.apunta_la_camara_al_qr_del_piloto') %></div>
           </aside>
 
         </aside><!-- /.sc-left -->
@@ -219,7 +219,7 @@ const teamNameByLane = {};
 
       <!-- Input invisible que captura el lector USB-QR -->
       <input id="scScanInput" type="text" autocomplete="off" spellcheck="false"
-             aria-label="<%= lang === 'es' ? 'Lector QR' : 'QR scanner' %>"
+             aria-label="<%= t('shifts-live.lector_qr') %>"
              class="sc-scan-input">
 
       <!-- ── Pre-arme: quién falta por fichar ─────────────────────────────
@@ -230,21 +230,21 @@ const teamNameByLane = {};
            ven los 24 de golpe. -->
       <% if (['standby','running','paused'].includes(current.liveStatus) && prearme && prearme.total > 0) { %>
         <section class="sc-prearm <%= prearme.complete ? 'is-complete' : '' %>" id="scPrearm"
-                 aria-label="<%= lang === 'es' ? 'Estado del fichaje de pilotos' : 'Driver check-in status' %>">
+                 aria-label="<%= t('shifts-live.estado_del_fichaje_de_pilotos') %>">
           <div class="sc-prearm__head">
-            <span class="sc-prearm__t"><%= lang === 'es' ? 'Pre-arme' : 'Check-in' %></span>
+            <span class="sc-prearm__t"><%= t('shifts-live.pre_arme') %></span>
             <span class="sc-prearm__n">
-              <%= prearme.scanned %>/<%= prearme.total %> <%= lang === 'es' ? 'fichados' : 'checked in' %>
+              <%= prearme.scanned %>/<%= prearme.total %> <%= t('shifts-live.fichados') %>
             </span>
           </div>
 
           <% prearme.boxes.forEach(box => { %>
             <div class="sc-prearm__row">
-              <span class="sc-prearm__box"><%= lang === 'es' ? 'Circuito' : 'Circuit' %> <%= box.number %></span>
+              <span class="sc-prearm__box"><%= t('client.common.circuito') %> <%= box.number %></span>
               <span class="sc-prearm__cells">
                 <% box.cells.forEach(c => { %>
                   <span class="sc-prearm__cell <%= !c.active ? 'is-off' : (c.scanned ? 'is-ok' : 'is-missing') %>"
-                        <% if (c.active) { %>title="<%= (lang === 'es' ? 'Carril ' : 'Lane ') + c.lane %> · <%= c.teamName %> — <%= c.scanned ? (lang === 'es' ? 'fichado' : 'checked in') : (lang === 'es' ? 'sin fichar' : 'not checked in') %>"<% } %>><%= c.lane %></span>
+                        <% if (c.active) { %>title="<%= (t('common.carril')) + c.lane %> · <%= c.teamName %> — <%= c.scanned ? (t('shifts-live.fichado')) : (t('shifts-live.sin_fichar')) %>"<% } %>><%= c.lane %></span>
                 <% }) %>
               </span>
               <% const faltanCircuito = box.cells.filter(c => c.active && !c.scanned); %>
@@ -253,7 +253,7 @@ const teamNameByLane = {};
                   <% faltanCircuito.forEach(c => { %><span class="sc-prearm__chip"><b>L<%= c.lane %></b><%= c.teamName %></span><% }) %>
                 </span>
               <% } else { %>
-                <span class="sc-prearm__miss is-ok">✓ <%= lang === 'es' ? 'completo' : 'complete' %></span>
+                <span class="sc-prearm__miss is-ok">✓ <%= t('shifts-live.completo') %></span>
               <% } %>
             </div>
           <% }) %>
@@ -267,8 +267,8 @@ const teamNameByLane = {};
               </span>
             <% } else { %>
               <span class="sc-prearm__legend">
-                <span><i class="sc-prearm__dot is-ok"></i><%= lang === 'es' ? 'fichado' : 'checked in' %></span>
-                <span><i class="sc-prearm__dot is-missing"></i><%= lang === 'es' ? 'pendiente' : 'pending' %></span>
+                <span><i class="sc-prearm__dot is-ok"></i><%= t('shifts-live.fichado') %></span>
+                <span><i class="sc-prearm__dot is-missing"></i><%= t('common.pendiente_2') %></span>
               </span>
             <% } %>
           </div>
@@ -277,12 +277,12 @@ const teamNameByLane = {};
 
       <!-- ── Cards por carril (paginado si no caben) ─────────────────── -->
       <div class="sc-lane-head">
-        <span class="vt-sec-lbl"><%= lang === 'es' ? 'Carriles' : 'Lanes' %></span>
+        <span class="vt-sec-lbl"><%= t('common.carriles') %></span>
         <div class="sc-legend">
-          <span class="sc-legend__i"><span class="sc-legend__dot" style="background:#c792ea"></span><%= lang === 'es' ? 'Bajo mín.' : 'Under min' %></span>
+          <span class="sc-legend__i"><span class="sc-legend__dot" style="background:#c792ea"></span><%= t('common.bajo_min') %></span>
           <span class="sc-legend__i"><span class="sc-legend__dot" style="background:var(--vt-green)"></span>OK</span>
-          <span class="sc-legend__i"><span class="sc-legend__dot" style="background:var(--vt-amber)"></span><%= lang === 'es' ? 'A punto' : 'Near' %></span>
-          <span class="sc-legend__i"><span class="sc-legend__dot" style="background:var(--vt-red)"></span><%= lang === 'es' ? 'Pasado' : 'Over' %></span>
+          <span class="sc-legend__i"><span class="sc-legend__dot" style="background:var(--vt-amber)"></span><%= t('shifts-live.a_punto') %></span>
+          <span class="sc-legend__i"><span class="sc-legend__dot" style="background:var(--vt-red)"></span><%= t('shifts-live.pasado') %></span>
         </div>
         <span class="sc-pages-ind" id="scLaneInd"></span>
       </div>
@@ -300,22 +300,22 @@ const teamNameByLane = {};
             <div class="sc-lane__head">
               <div class="sc-lane__num" style="background:<%= LC[l.lane - 1] || '#8b949e' %>;color:<%= laneInk(LC[l.lane - 1]) %>;border-color:transparent">L<%= l.lane %></div>
               <div class="sc-lane__team" title="<%= l.team_name || l.driver_name || '' %>"><%= l.team_name || l.driver_name || '—' %></div>
-              <button type="button" class="sc-lane__fix" data-lane="<%= l.lane %>" title="<%= lang === 'es' ? 'Corregir tiempo (olvidó fichar)' : 'Correct time (forgot to scan)' %>">✎</button>
+              <button type="button" class="sc-lane__fix" data-lane="<%= l.lane %>" title="<%= t('shifts-live.corregir_tiempo_olvido_fichar') %>">✎</button>
             </div>
             <div class="sc-lane__driver<%= driverSize(driverName) %>" data-driver-name title="<%= driverName || '' %>">
               <% if (driverName) { %>
                 <%= driverName %>
               <% } else { %>
-                <span class="sc-lane__empty"><%= lang === 'es' ? 'Sin asignar' : 'Unassigned' %></span>
+                <span class="sc-lane__empty"><%= t('common.sin_asignar') %></span>
               <% } %>
             </div>
             <div class="sc-lane__stats">
               <div>
-                <span class="sc-lane__lbl"><%= lang === 'es' ? 'Turno' : 'Shift' %></span>
+                <span class="sc-lane__lbl"><%= t('shifts-live.turno') %></span>
                 <span class="sc-lane__val" data-shift-ms="<%= drivingMs %>"><%= fmtTime(drivingMs) %></span>
               </div>
               <div>
-                <span class="sc-lane__lbl"><%= lang === 'es' ? 'Total piloto' : 'Driver total' %></span>
+                <span class="sc-lane__lbl"><%= t('shifts-live.total_piloto') %></span>
                 <span class="sc-lane__val" data-total-ms="<%= totalMs %>" data-total-base-ms="<%= Math.max(0, totalMs - (s ? (s.driving_ms || 0) : 0)) %>"><%= fmtTime(totalMs) %></span>
               </div>
             </div>
@@ -327,11 +327,11 @@ const teamNameByLane = {};
         <% (restingTeams || []).forEach(rt => { %>
           <div class="sc-lane sc-lane--rest" data-rest="<%= rt.restPos %>">
             <div class="sc-lane__head">
-              <div class="sc-lane__num sc-lane__num--rest"><%= lang === 'es' ? 'DESC' : 'REST' %></div>
+              <div class="sc-lane__num sc-lane__num--rest"><%= t('shifts-live.desc') %></div>
               <div class="sc-lane__team"><%= rt.team_name %></div>
             </div>
             <div class="sc-lane__rest-badge">
-              <%= lang === 'es' ? 'Descanso' : 'Rest' %> <%= rt.restPos %>/<%= rt.restTotal %>
+              <%= t('client.common.descanso') %> <%= rt.restPos %>/<%= rt.restTotal %>
             </div>
             <%- renderRoster(rt.roster, null) %>
           </div>
@@ -371,11 +371,11 @@ const teamNameByLane = {};
       <!-- ── Pilotos por tiempo (panel lateral derecho, paginado) ─────── -->
       <aside class="sc-pilots-panel" id="scPilotsPanel">
         <div class="sc-pilots-panel__head">
-          <span class="vt-sec-lbl"><%= lang === 'es' ? 'Pilotos por tiempo' : 'Drivers by time' %></span>
+          <span class="vt-sec-lbl"><%= t('shifts-live.pilotos_por_tiempo') %></span>
           <span class="sc-pages-ind" id="scPilotsInd"></span>
         </div>
         <% if (summary.length === 0) { %>
-          <p style="color:var(--vt-mute)"><%= lang === 'es' ? 'Aún no hay turnos registrados.' : 'No shifts recorded yet.' %></p>
+          <p style="color:var(--vt-mute)"><%= t('common.aun_no_hay_turnos_registrados') %></p>
         <% } else { %>
           <div class="sc-summary" id="scPilotsPages">
             <% summary.forEach(r => {
@@ -398,13 +398,13 @@ const teamNameByLane = {};
                   <div class="sc-pilot-row__bar">
                     <div class="sc-pilot-row__bar-fill <%= badge %>" style="width:<%= pct %>%"></div>
                     <% if (minPct > 0) { %>
-                      <div class="sc-pilot-row__bar-min" style="left:<%= minPct %>%" title="<%= lang === 'es' ? 'Mínimo' : 'Min' %>"></div>
+                      <div class="sc-pilot-row__bar-min" style="left:<%= minPct %>%" title="<%= t('shifts-live.minimo') %>"></div>
                     <% } %>
                   </div>
                 <% } %>
-                <div class="sc-pilot-row__runs <%= runsCls %>" title="<%= lang === 'es' ? 'Veces que ha corrido (turnos)' : 'Times driven (stints)' %><%= maxRuns > 0 ? (lang === 'es' ? ' · máx ' : ' · max ') + maxRuns : '' %>">
+                <div class="sc-pilot-row__runs <%= runsCls %>" title="<%= t('shifts-live.veces_que_ha_corrido_turnos') %><%= maxRuns > 0 ? (t('shifts-live.max')) + maxRuns : '' %>">
                   <span class="sc-pilot-row__runs-n"><%= runs %><% if (maxRuns > 0) { %><span class="sc-pilot-row__runs-max">/<%= maxRuns %></span><% } %></span>
-                  <span class="sc-pilot-row__runs-l"><%= c.overRuns ? (lang === 'es' ? 'pasado' : 'over') : (lang === 'es' ? 'turnos' : 'stints') %></span>
+                  <span class="sc-pilot-row__runs-l"><%= c.overRuns ? (t('shifts-live.pasado_2')) : (t('shifts-live.turnos')) %></span>
                 </div>
                 <div class="sc-pilot-row__total" data-total-ms="<%= t %>">
                   <%= fmtTime(t) %>
@@ -412,15 +412,15 @@ const teamNameByLane = {};
                 </div>
                 <div class="sc-pilot-row__status">
                   <% if (c.overMax) { %>
-                    <span class="vt-badge <%= badge %>"><span class="vt-badge__d"></span><%= lang === 'es' ? 'PASADO' : 'OVER' %></span>
+                    <span class="vt-badge <%= badge %>"><span class="vt-badge__d"></span><%= t('common.pasado') %></span>
                   <% } else if (c.overRuns) { %>
-                    <span class="vt-badge <%= badge %>"><span class="vt-badge__d"></span><%= lang === 'es' ? 'TURNOS' : 'STINTS' %></span>
+                    <span class="vt-badge <%= badge %>"><span class="vt-badge__d"></span><%= t('common.turnos') %></span>
                   <% } else if (c.nearMax) { %>
                     <span class="vt-badge <%= badge %>"><span class="vt-badge__d"></span>90%+</span>
                   <% } else if (c.nearRuns) { %>
-                    <span class="vt-badge <%= badge %>"><span class="vt-badge__d"></span><%= lang === 'es' ? 'Último turno' : 'Last stint' %></span>
+                    <span class="vt-badge <%= badge %>"><span class="vt-badge__d"></span><%= t('common.ultimo_turno') %></span>
                   <% } else if (c.status === 'info') { %>
-                    <span class="vt-badge <%= badge %>"><span class="vt-badge__d"></span><%= lang === 'es' ? 'Bajo mín.' : 'Under min' %></span>
+                    <span class="vt-badge <%= badge %>"><span class="vt-badge__d"></span><%= t('common.bajo_min') %></span>
                   <% } else { %>
                     <span class="vt-badge is-ok"><span class="vt-badge__d"></span>OK</span>
                   <% } %>
@@ -449,19 +449,19 @@ const teamNameByLane = {};
       <div class="sc-fix-modal" id="scFixModal" hidden>
         <div class="sc-fix-box">
           <div class="sc-fix-head">
-            <span id="scFixTitle"><%= lang === 'es' ? 'Corregir tiempo' : 'Correct time' %></span>
+            <span id="scFixTitle"><%= t('shifts-live.corregir_tiempo') %></span>
             <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="scFixClose">✕</button>
           </div>
           <p class="sc-fix-hint"><%= lang === 'es'
             ? 'Añade tiempo a un piloto que corrió pero no se fichó por QR.'
             : 'Add time to a driver who raced but was not checked in by QR.' %></p>
-          <label class="sc-fix-lbl"><%= lang === 'es' ? 'Piloto' : 'Driver' %></label>
+          <label class="sc-fix-lbl"><%= t('client.common.piloto') %></label>
           <select id="scFixPilot" class="sc-fix-select"></select>
-          <label class="sc-fix-lbl"><%= lang === 'es' ? 'Tiempo a añadir (min:seg)' : 'Time to add (min:sec)' %></label>
+          <label class="sc-fix-lbl"><%= t('shifts-live.tiempo_a_anadir_min_seg') %></label>
           <input id="scFixTime" class="sc-fix-input" type="text" inputmode="numeric" placeholder="10:00" autocomplete="off">
           <div class="sc-fix-actions">
-            <button type="button" class="vt-btn vt-btn--ghost" id="scFixCancel"><%= lang === 'es' ? 'Cancelar' : 'Cancel' %></button>
-            <button type="button" class="vt-btn" id="scFixSubmit"><%= lang === 'es' ? 'Añadir tiempo' : 'Add time' %></button>
+            <button type="button" class="vt-btn vt-btn--ghost" id="scFixCancel"><%= t('client.common.cancelar') %></button>
+            <button type="button" class="vt-btn" id="scFixSubmit"><%= t('shifts-live.anadir_tiempo') %></button>
           </div>
         </div>
       </div>
@@ -987,8 +987,8 @@ socket.on('driver_checkin', data => {
       const open = fsBtn.querySelector('.sc-fs-open'), close = fsBtn.querySelector('.sc-fs-close');
       if (open)  open.hidden = on;
       if (close) close.hidden = !on;
-      fsBtn.title = on ? '<%= lang === "es" ? "Salir de pantalla completa" : "Exit fullscreen" %>'
-                       : '<%= lang === "es" ? "Pantalla completa" : "Fullscreen" %>';
+      fsBtn.title = on ? '<%= t('shifts-live.salir_de_pantalla_completa') %>'
+                       : '<%= t('common.pantalla_completa') %>';
     });
   }
 

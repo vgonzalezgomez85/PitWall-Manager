@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>
-    <%= lang === 'es' ? 'Minimapa' : 'Minimap' %> — <%= race.name %>
+    <%= t('live-panel-track.minimapa') %> — <%= race.name %>
   </title>
   <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
   <link rel="stylesheet" href="/css/fonts.css">
@@ -69,10 +69,10 @@
 
   <header class="tk-header">
     <div>
-      <div class="tk-title">🗺 <%= lang === 'es' ? 'Minimapa' : 'Track minimap' %></div>
+      <div class="tk-title">🗺 <%= t('live-panel-track.minimapa_2') %></div>
       <div class="tk-manga">
-        <% if (tanda) { %><%= lang === 'es' ? 'Tanda' : 'Round' %> <%= tanda.number %> · <% } %>
-        <%= lang === 'es' ? 'Manga' : 'Heat' %> #<%= manga.number %>
+        <% if (tanda) { %><%= t('common.tanda_2') %> <%= tanda.number %> · <% } %>
+        <%= t('common.manga') %> #<%= manga.number %>
       </div>
     </div>
     <span class="tk-race"><%= race.name %></span>
@@ -83,7 +83,7 @@
     <% if (!circuit || trackOutline.length < 3) { %>
       <div class="tk-empty">
         <div>
-          <b>⚠️ <%= lang === 'es' ? 'Sin trazado configurado' : 'No outline configured' %></b>
+          <b>⚠️ <%= t('live-panel-track.sin_trazado_configurado') %></b>
           <%= lang === 'es'
             ? 'Edita el circuito de esta carrera y dibuja el trazado en la sección "🗺 Trazado del circuito" para activar el minimapa.'
             : 'Edit this race\'s circuit and draw an outline in the "🗺 Track outline" section to enable the minimap.' %>

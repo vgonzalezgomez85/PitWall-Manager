@@ -1,11 +1,11 @@
-<%- include('../partials/header', { pageTitle: lang === 'es' ? 'Equipos' : 'Teams' }) %>
+<%- include('../partials/header', { pageTitle: t('common.equipos') }) %>
 
 <div class="vt-page">
   <div class="vt-wrap">
 
     <a href="/" class="vt-back-link">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      <%= lang === 'es' ? 'Inicio' : 'Home' %>
+      <%= t('common.inicio') %>
     </a>
 
     <% if (flash) { %>
@@ -14,32 +14,32 @@
 
     <div class="vt-head">
       <div class="vt-head__title">
-        <h1><%= lang === 'es' ? 'Equipos' : 'Teams' %></h1>
+        <h1><%= t('common.equipos') %></h1>
         <span class="vt-cnt" data-list-search-count><%= teams.length %></span>
       </div>
       <div class="vt-head__actions">
         <% if (teams.length) { %>
-        <label class="vt-search" title="<%= lang === 'es' ? 'Atajo: /' : 'Shortcut: /' %>">
+        <label class="vt-search" title="<%= t('common.atajo') %>">
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4" stroke-linecap="round"/></svg>
           <input type="search" data-list-search="#catList" autocomplete="off"
-                 placeholder="<%= lang === 'es' ? 'Buscar equipo, coche, piloto…' : 'Search team, car, driver…' %>"
-                 aria-label="<%= lang === 'es' ? 'Buscar equipo, coche, piloto…' : 'Search team, car, driver…' %>">
+                 placeholder="<%= t('teams.buscar_equipo_coche_piloto') %>"
+                 aria-label="<%= t('teams.buscar_equipo_coche_piloto') %>">
         </label>
         <% } %>
         <a href="/plantilla_equipos.csv" download class="vt-btn vt-btn--ghost vt-btn--sm">
           <svg viewBox="0 0 24 24"><path d="M12 4v12M6 11l6 6 6-6M5 21h14"/></svg>
-          <%= lang === 'es' ? 'Plantilla CSV' : 'CSV Template' %>
+          <%= t('common.plantilla_csv') %>
         </a>
         <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="toggleCsv">
           <svg viewBox="0 0 24 24"><path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/><path d="M12 3v12M8 11l4 4 4-4"/></svg>
-          <%= lang === 'es' ? 'Importar CSV' : 'Import CSV' %>
+          <%= t('common.importar_csv') %>
         </button>
         <a href="/teams/qr-export" target="_blank" class="vt-btn vt-btn--ghost vt-btn--sm">
           <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM19 14h2v2h-2zM14 19h2v2h-2zM19 19h2v2h-2z"/></svg>
-          <%= lang === 'es' ? 'Exportar QR' : 'Export QR' %>
+          <%= t('common.exportar_qr') %>
         </a>
         <a href="/teams/new" class="vt-btn vt-btn--primary">
-          + <%= lang === 'es' ? 'Nuevo equipo' : 'New team' %>
+          + <%= t('client.common.nuevo_equipo') %>
         </a>
       </div>
     </div>
@@ -49,7 +49,7 @@
       <div class="vt-card">
         <div class="vt-card-h">
           <svg viewBox="0 0 24 24"><path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>
-          <%= lang === 'es' ? 'Importar equipos desde CSV' : 'Import teams from CSV' %>
+          <%= t('teams.importar_equipos_desde_csv') %>
         </div>
         <p class="vt-hint" style="margin-bottom:12px;line-height:1.55">
           <%- lang === 'es'
@@ -62,7 +62,7 @@
             <input type="file" id="csv-file-picker" accept=".csv,text/csv">
             <span id="csv-file-name" class="vt-hint"></span>
             <button type="submit" id="csv-submit" class="vt-btn vt-btn--primary vt-btn--sm" disabled>
-              <%= lang === 'es' ? 'Importar' : 'Import' %>
+              <%= t('common.importar') %>
             </button>
           </div>
         </form>
@@ -85,11 +85,11 @@
 
     <% if (teams.length === 0) { %>
       <div class="vt-empty" style="margin-top:32px">
-        <div class="vt-empty__t"><%= lang === 'es' ? 'Sin equipos' : 'No teams' %></div>
+        <div class="vt-empty__t"><%= t('common.sin_equipos') %></div>
         <p style="color:var(--vt-mute);margin:6px 0 16px">
-          <%= lang === 'es' ? 'Crea uno para reutilizarlo en tus carreras.' : 'Create one to reuse it in your races.' %>
+          <%= t('common.crea_uno_para_reutilizarlo_en_tus_carreras') %>
         </p>
-        <a href="/teams/new" class="vt-btn vt-btn--primary">+ <%= lang === 'es' ? 'Crear equipo' : 'Create team' %></a>
+        <a href="/teams/new" class="vt-btn vt-btn--primary">+ <%= t('client.common.crear_equipo') %></a>
       </div>
     <% } else { %>
       <div id="catList">
@@ -99,11 +99,11 @@
           <thead>
             <tr>
               <th style="width:50px"></th>
-              <th style="width:80px"><%= lang === 'es' ? 'Coche' : 'Car' %></th>
-              <th><%= lang === 'es' ? 'Nombre' : 'Name' %></th>
-              <th><%= lang === 'es' ? 'Categoría' : 'Category' %></th>
-              <th><%= lang === 'es' ? 'Pilotos' : 'Drivers' %></th>
-              <th><%= lang === 'es' ? 'Notas' : 'Notes' %></th>
+              <th style="width:80px"><%= t('common.coche') %></th>
+              <th><%= t('common.nombre') %></th>
+              <th><%= t('client.common.categoria') %></th>
+              <th><%= t('client.common.pilotos') %></th>
+              <th><%= t('common.notas') %></th>
               <th class="is-actions"></th>
             </tr>
           </thead>
@@ -131,7 +131,7 @@
                   <% } else if (flag && flagEmojiToIso(flag)) { %>
                     <img src="/flags/4x3/<%= flagEmojiToIso(flag) %>.svg" alt="" width="28" height="18" style="object-fit:cover;border-radius:3px;vertical-align:middle">
                   <% } else { %>
-                    <span style="font-size:1.4rem;opacity:.3" title="<%= lang === 'es' ? 'Sin país' : 'No country' %>">🌐</span>
+                    <span style="font-size:1.4rem;opacity:.3" title="<%= t('teams.sin_pais') %>">🌐</span>
                   <% } %>
                 </td>
                 <td>
@@ -167,12 +167,12 @@
                 </td>
                 <td class="is-mute"><%= team.notes || '—' %></td>
                 <td class="is-actions">
-                  <a href="/teams/<%= team.id %>/edit" class="vt-icon-btn" title="<%= lang === 'es' ? 'Editar' : 'Edit' %>">
+                  <a href="/teams/<%= team.id %>/edit" class="vt-icon-btn" title="<%= t('client.common.editar') %>">
                     <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
                   </a>
                   <form action="/teams/<%= team.id %>/delete" method="POST" style="display:inline"
-                        onsubmit="return confirm('<%= lang === 'es' ? '¿Eliminar equipo?' : 'Delete team?' %>')">
-                    <button type="submit" class="vt-icon-btn is-danger" title="<%= lang === 'es' ? 'Eliminar' : 'Delete' %>">
+                        onsubmit="return confirm('<%= t('teams.eliminar_equipo') %>')">
+                    <button type="submit" class="vt-icon-btn is-danger" title="<%= t('common.eliminar') %>">
                       <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/></svg>
                     </button>
                   </form>
@@ -184,7 +184,7 @@
       </div>
 
     </div>
-    <p class="vt-hint" data-list-search-empty hidden style="margin-top:18px;text-align:center"><%= lang === 'es' ? 'Nada coincide con la búsqueda.' : 'Nothing matches your search.' %></p>
+    <p class="vt-hint" data-list-search-empty hidden style="margin-top:18px;text-align:center"><%= t('common.nada_coincide_con_la_busqueda') %></p>
     <% } %>
   </div>
 </div>

@@ -25,35 +25,35 @@
       </tr>
       <tr>
         <th><%= t('wizard.manga_duration') %></th>
-        <td><%= wizard.manga_duration_minutes %> <%= lang === 'es' ? 'minutos' : 'minutes' %></td>
+        <td><%= wizard.manga_duration_minutes %> <%= t('confirm.minutos') %></td>
       </tr>
       <% if (wizard.passes > 1) { %>
       <tr>
-        <th><%= lang === 'es' ? 'Pasadas' : 'Passes' %></th>
+        <th><%= t('common.pasadas') %></th>
         <td><%= wizard.passes %></td>
       </tr>
       <% } %>
       <% if (wizard.lane_repeat > 1) { %>
       <tr>
-        <th><%= lang === 'es' ? 'Repetir carril' : 'Repeat lane' %></th>
+        <th><%= t('common.repetir_carril') %></th>
         <td><%= wizard.lane_repeat %></td>
       </tr>
       <% } %>
       <% if (wizard.tire_pairs_per_team > 0) { %>
       <tr>
-        <th><%= lang === 'es' ? 'Neumáticos por equipo' : 'Tyres per team' %></th>
-        <td><%= wizard.tire_pairs_per_team %> <%= lang === 'es' ? 'pares' : 'pairs' %></td>
+        <th><%= t('common.neumaticos_por_equipo') %></th>
+        <td><%= wizard.tire_pairs_per_team %> <%= t('confirm.pares') %></td>
       </tr>
       <% } %>
       <tr>
-        <th><%= lang === 'es' ? 'Pole position' : 'Pole position' %></th>
+        <th><%= t('common.pole_position') %></th>
         <td>
           <% if (wizard.has_pole) { %>
             <span class="badge" style="background:rgba(246,201,14,.15);color:#f6c90e;border:1px solid rgba(246,201,14,.3)">
-              🏁 <%= lang === 'es' ? 'Sí, con sesión de clasificación' : 'Yes, with qualifying session' %>
+              🏁 <%= t('confirm.si_con_sesion_de_clasificacion') %>
             </span>
           <% } else { %>
-            <span style="color:#8b949e"><%= lang === 'es' ? 'No' : 'No' %></span>
+            <span style="color:#8b949e"><%= t('confirm.no') %></span>
           <% } %>
         </td>
       </tr>
@@ -61,7 +61,7 @@
   </div>
 
   <!-- Lane sequence preview -->
-  <h2 class="section-title"><%= lang === 'es' ? 'Secuencia de carriles' : 'Lane sequence' %></h2>
+  <h2 class="section-title"><%= t('common.secuencia_de_carriles') %></h2>
   <div class="seq-display" style="margin-bottom:2rem">
     <% wizard.lane_sequence.forEach((lane, i) => { %>
       <span class="seq-display__lane" style="background:<%= LANE_COLORS[lane-1] %>"><%= lane %></span>
@@ -70,7 +70,7 @@
   </div>
 
   <% if (wizard.has_pole && wizard.participants?.length) { %>
-    <h2 class="section-title"><%= lang === 'es' ? 'Participantes de Pole' : 'Pole participants' %></h2>
+    <h2 class="section-title"><%= t('confirm.participantes_de_pole') %></h2>
     <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:2rem">
       <% wizard.participants.forEach((p, i) => { %>
         <span class="badge badge--neutral" style="background:rgba(255,255,255,.06)">

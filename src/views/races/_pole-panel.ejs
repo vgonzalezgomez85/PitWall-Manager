@@ -9,16 +9,16 @@
 %>
 <div class="pole-tab">
   <div class="pole-tab__head">
-    <span class="pole-tab__title">🏁 <%= lang === 'es' ? 'Clasificación de la pole' : 'Pole classification' %></span>
-    <span class="pole-tab__meta"><%= lang === 'es' ? 'Carril de pole' : 'Pole lane' %> <b><%= pole.lane %></b></span>
+    <span class="pole-tab__title">🏁 <%= t('_pole-panel.clasificacion_de_la_pole') %></span>
+    <span class="pole-tab__meta"><%= t('common.carril_de_pole') %> <b><%= pole.lane %></b></span>
     <% if (pole.poleHolder) { %><span class="pole-tab__meta">Pole: <b><%= pole.poleHolder %></b></span><% } %>
   </div>
   <table class="pole-tab__table">
     <thead>
       <tr>
         <th>#</th>
-        <th><%= lang === 'es' ? 'Participante' : 'Participant' %></th>
-        <th><%= lang === 'es' ? 'Tiempo' : 'Time' %></th>
+        <th><%= t('common.participante') %></th>
+        <th><%= t('common.tiempo') %></th>
         <th>Gap</th>
       </tr>
     </thead>

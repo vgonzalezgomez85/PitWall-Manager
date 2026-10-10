@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= lang === 'es' ? 'Entrenamiento' : 'Training' %> — PitWall</title>
+  <title><%= t('common.entrenamiento') %> — PitWall</title>
   <link rel="stylesheet" href="/css/fonts.css">
   <link rel="stylesheet" href="/css/semaphore.css">
   <link rel="stylesheet" href="/css/training.css?v=<%= Date.now() %>">
@@ -15,16 +15,16 @@
   <header class="training-header">
     <div class="training-header__timer">
       <div id="trainingTimer" class="tr-timer">00:00</div>
-      <div class="tr-timer-label"><%= es ? 'tiempo' : 'time' %></div>
+      <div class="tr-timer-label"><%= t('live.tiempo') %></div>
     </div>
 
     <div class="training-header__info">
-      <div class="tr-title"><%= (typeof heatNumber !== 'undefined' && heatNumber !== null) ? (es ? 'Entreno de competición' : 'Competition practice') : (es ? 'Entreno libre' : 'Free practice') %></div>
+      <div class="tr-title"><%= (typeof heatNumber !== 'undefined' && heatNumber !== null) ? (t('common.entreno_de_competicion')) : (t('common.entreno_libre')) %></div>
       <div class="tr-subtitle" id="tr-status">
         <% if (standby) { %>
-          <span class="tr-standby-badge"><%= es ? 'Esperando GO…' : 'Waiting for GO…' %></span>
+          <span class="tr-standby-badge"><%= t('client.common.esperando_go') %></span>
         <% } else { %>
-          <%= lanes.length %> <%= es ? 'carriles activos' : 'active lanes' %>
+          <%= lanes.length %> <%= t('client.common.carriles_activos') %>
         <% } %>
       </div>
     </div>
@@ -38,11 +38,11 @@
       <% if (_swGo && standby) { %>
         <form id="trGoForm" action="/training/go" method="POST">
           <input type="hidden" name="mode" value="<%= _mode %>">
-          <label class="tr-dur" title="<%= es ? 'Duración (min)' : 'Duration (min)' %>">
+          <label class="tr-dur" title="<%= t('live.duracion_min') %>">
             <input type="number" name="duration_minutes" min="1" max="600" value="10">
             <span>min</span>
           </label>
-          <button class="lbtn lbtn--go" type="submit" title="<%= es ? 'Arrancar entrenamiento' : 'Start training' %>">
+          <button class="lbtn lbtn--go" type="submit" title="<%= t('live.arrancar_entrenamiento') %>">
             <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
             <span>GO</span>
           </button>
@@ -53,13 +53,13 @@
             <input type="hidden" name="mode" value="<%= _mode %>">
             <button class="lbtn lbtn--go" type="submit">
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
-              <span><%= es ? 'REANUDAR' : 'RESUME' %></span>
+              <span><%= t('live.reanudar') %></span>
             </button>
           </form>
         <% } else { %>
           <form id="trPauseForm" action="/training/pause" method="POST">
             <input type="hidden" name="mode" value="<%= _mode %>">
-            <button class="lbtn" type="submit" title="<%= es ? 'Pausar' : 'Pause' %>">
+            <button class="lbtn" type="submit" title="<%= t('live.pausar') %>">
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
               <span>PAUSE</span>
             </button>
@@ -67,7 +67,7 @@
         <% } %>
         <form id="trStopForm" action="/training/halt" method="POST">
           <input type="hidden" name="mode" value="<%= _mode %>">
-          <button class="lbtn lbtn--fin" type="submit" title="<%= es ? 'Parar' : 'Stop' %>">
+          <button class="lbtn lbtn--fin" type="submit" title="<%= t('common.parar') %>">
             <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>
             <span>STOP</span>
           </button>
@@ -75,42 +75,42 @@
       <% } %>
       <button id="voiceBtn" class="lbtn lbtn--back" type="button" onclick="toggleVoice()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M15 9a3 3 0 0 1 0 6"/><path d="M18 6a7 7 0 0 1 0 12"/></svg>
-        <span id="voiceLbl"><%= es ? 'Todas' : 'All' %></span>
+        <span id="voiceLbl"><%= t('client.common.todas') %></span>
       </button>
-      <button id="viewBtn" class="lbtn lbtn--view" type="button" onclick="openTrainingPicker()" title="<%= es ? 'Cambiar vista' : 'Change view' %>">
+      <button id="viewBtn" class="lbtn lbtn--view" type="button" onclick="openTrainingPicker()" title="<%= t('live.cambiar_vista') %>">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.2"/><rect x="14" y="3" width="7" height="7" rx="1.2"/><rect x="3" y="14" width="7" height="7" rx="1.2"/><rect x="14" y="14" width="7" height="7" rx="1.2"/></svg>
-        <span><%= es ? 'Vista' : 'View' %></span>
+        <span><%= t('live.vista') %></span>
       </button>
       <% if (typeof heatNumber !== 'undefined' && heatNumber !== null) { %>
         <%# Con la sesión rodando, /training y /training/competition redirigen al
             directo: esta es la única vía a los heats ya guardados. %>
         <a class="lbtn lbtn--back lbtn--icon" href="/training/competition/results" target="_blank"
-           title="<%= es ? 'Resultados: heats guardados de esta sesión y de las anteriores' : 'Results: saved heats from this and previous sessions' %>">
+           title="<%= t('live.resultados_heats_guardados_de_esta_sesion_y_de') %>">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v6a5 5 0 0 1-10 0z"/><path d="M7 5H4.5A1.5 1.5 0 0 0 3 6.5 3.5 3.5 0 0 0 6.5 10M17 5h2.5A1.5 1.5 0 0 1 21 6.5 3.5 3.5 0 0 1 17.5 10"/></svg>
         </a>
         <form action="/training/competition/stop" method="POST"
-          onsubmit="return confirm('<%= es ? '¿Reiniciar sesión? Se perderán todos los datos.' : 'Reset session? All data will be lost.' %>')">
-          <button class="lbtn lbtn--repeat" type="submit" title="<%= es ? 'Reiniciar sesión' : 'Reset session' %>">
+          onsubmit="return confirm('<%= t('live.reiniciar_sesion_se_perderan_todos_los_datos') %>')">
+          <button class="lbtn lbtn--repeat" type="submit" title="<%= t('live.reiniciar_sesion') %>">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 15.5-6.4M21 3v6h-6M21 12a9 9 0 0 1-15.5 6.4M3 21v-6h6"/></svg>
             <span>Reset</span>
           </button>
         </form>
       <% } else { %>
         <form action="/training/free/reset" method="POST"
-          onsubmit="return confirm('<%= es ? '¿Reiniciar sesión? Se borrarán los récords.' : 'Reset session? Records will be cleared.' %>')">
-          <button class="lbtn lbtn--repeat" type="submit" title="<%= es ? 'Reiniciar sesión' : 'Reset session' %>">
+          onsubmit="return confirm('<%= t('live.reiniciar_sesion_se_borraran_los_records') %>')">
+          <button class="lbtn lbtn--repeat" type="submit" title="<%= t('live.reiniciar_sesion') %>">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 15.5-6.4M21 3v6h-6M21 12a9 9 0 0 1-15.5 6.4M3 21v-6h6"/></svg>
             <span>Reset</span>
           </button>
         </form>
       <% } %>
-      <button id="fsBtn" class="lbtn lbtn--back lbtn--icon" type="button" onclick="toggleTrFullscreen()" title="<%= es ? 'Pantalla completa' : 'Fullscreen' %>">
+      <button id="fsBtn" class="lbtn lbtn--back lbtn--icon" type="button" onclick="toggleTrFullscreen()" title="<%= t('common.pantalla_completa') %>">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3m8 0h3a2 2 0 0 0 2-2v-3"/></svg>
       </button>
       <form action="/training/exit" method="POST">
-        <button class="lbtn lbtn--back" type="submit" title="<%= es ? 'Volver' : 'Back' %>">
+        <button class="lbtn lbtn--back" type="submit" title="<%= t('common.volver') %>">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-          <span><%= es ? 'Volver' : 'Back' %></span>
+          <span><%= t('common.volver') %></span>
         </button>
       </form>
     </div>
@@ -130,7 +130,7 @@
   <!-- ── Resting participants (competition only, when P > N) ───────────────── -->
   <% if (typeof resting !== 'undefined' && resting && resting.length > 0) { %>
   <div id="restingBar" class="resting-bar">
-    <div class="resting-bar__title"><%= lang === 'es' ? 'En descanso' : 'Resting' %></div>
+    <div class="resting-bar__title"><%= t('live.en_descanso') %></div>
     <div class="resting-bar__items" id="restingItems">
       <% resting.forEach(r => { %>
         <div class="resting-chip">
@@ -143,7 +143,7 @@
   </div>
   <% } else { %>
   <div id="restingBar" class="resting-bar" style="display:none">
-    <div class="resting-bar__title"><%= lang === 'es' ? 'En descanso' : 'Resting' %></div>
+    <div class="resting-bar__title"><%= t('live.en_descanso') %></div>
     <div class="resting-bar__items" id="restingItems"></div>
   </div>
   <% } %>
@@ -152,23 +152,23 @@
   <div id="trainingPickerOverlay" class="vp-overlay" hidden onclick="if(event.target===this)closeTrainingPicker()">
     <div class="vp-modal" role="dialog" aria-modal="true">
       <div class="vp-header">
-        <div class="vp-title"><%= lang === 'es' ? 'Elige cómo ver el entrenamiento' : 'Choose how to view training' %></div>
-        <button class="vp-x" onclick="closeTrainingPicker()" aria-label="<%= lang === 'es' ? 'Cerrar' : 'Close' %>">✕</button>
+        <div class="vp-title"><%= t('live.elige_como_ver_el_entrenamiento') %></div>
+        <button class="vp-x" onclick="closeTrainingPicker()" aria-label="<%= t('common.cerrar') %>">✕</button>
       </div>
       <div class="vp-grid">
         <button class="vp-opt" data-mode="history" onclick="selectTrainingView('history')">
           <div class="vp-thumb vp-thumb--tr-history" aria-hidden="true">
             <span></span><span></span><span></span><span></span>
           </div>
-          <div class="vp-label"><%= lang === 'es' ? 'Tarjetas con historial' : 'Cards with history' %></div>
-          <div class="vp-desc"><%= lang === 'es' ? 'Cada carril con sus 10 últimas vueltas numeradas y el gráfico de ritmo.' : 'Each lane with its last 10 numbered laps and the pace chart.' %></div>
+          <div class="vp-label"><%= t('live.tarjetas_con_historial') %></div>
+          <div class="vp-desc"><%= t('live.cada_carril_con_sus_10_ultimas_vueltas') %></div>
         </button>
         <button class="vp-opt" data-mode="compact" onclick="selectTrainingView('compact')">
           <div class="vp-thumb vp-thumb--tr-compact" aria-hidden="true">
             <span></span><span></span><span></span><span></span><span></span><span></span>
           </div>
-          <div class="vp-label"><%= lang === 'es' ? 'Compacta' : 'Compact' %></div>
-          <div class="vp-desc"><%= lang === 'es' ? 'Última vuelta, mejor, media y récord con un ritmo en miniatura. Para muchos carriles a la vez.' : 'Last lap, best, average and record with a tiny pace line. For many lanes at once.' %></div>
+          <div class="vp-label"><%= t('live.compacta') %></div>
+          <div class="vp-desc"><%= t('live.ultima_vuelta_mejor_media_y_record_con_un_ritmo') %></div>
         </button>
       </div>
     </div>

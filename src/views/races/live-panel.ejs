@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>
-    <%= lang === 'es' ? 'Clasificación General' : 'Overall Standings' %> — <%= race.name %>
+    <%= t('live-panel.clasificacion_general') %> — <%= race.name %>
   </title>
   <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
   <link rel="icon" type="image/png" sizes="32x32"  href="/img/favicon-32.png">
@@ -128,10 +128,10 @@
 
   <header class="panel-header">
     <div class="panel-header__left">
-      <span class="panel-title"><%= lang === 'es' ? 'Clasificación General' : 'Overall Standings' %></span>
+      <span class="panel-title"><%= t('live-panel.clasificacion_general') %></span>
       <span class="panel-manga">
-        <% if (tanda) { %><%= lang === 'es' ? 'Tanda' : 'Round' %> <%= tanda.number %><% if (typeof totalTandas !== 'undefined' && totalTandas) { %>/<%= totalTandas %><% } %> · <% } %>
-        <%= lang === 'es' ? 'Manga' : 'Heat' %> <%= manga.number %><% if (typeof totalMangasInTanda !== 'undefined' && totalMangasInTanda) { %>/<%= totalMangasInTanda %><% } %>
+        <% if (tanda) { %><%= t('common.tanda_2') %> <%= tanda.number %><% if (typeof totalTandas !== 'undefined' && totalTandas) { %>/<%= totalTandas %><% } %> · <% } %>
+        <%= t('common.manga') %> <%= manga.number %><% if (typeof totalMangasInTanda !== 'undefined' && totalMangasInTanda) { %>/<%= totalMangasInTanda %><% } %>
       </span>
       <span class="panel-timer" id="panelTimer">--:--</span>
     </div>
@@ -139,14 +139,14 @@
       <div id="panelStatus" class="panel-status">
         <% if (typeof isPaused !== 'undefined' && isPaused) { %>
           <span class="status-dot status-dot--paused"></span>
-          <span class="status-text status-text--paused"><%= lang === 'es' ? 'Pausada' : 'Paused' %></span>
+          <span class="status-text status-text--paused"><%= t('client.common.pausada') %></span>
         <% } else if (isActive) { %>
           <span class="status-dot status-dot--active"></span>
-          <span class="status-text status-text--active"><%= lang === 'es' ? 'En carrera' : 'Racing' %></span>
+          <span class="status-text status-text--active"><%= t('client.common.en_carrera') %></span>
         <% } else if (manga.status === 'finished') { %>
-          <span class="status-text status-text--finished"><%= lang === 'es' ? 'Finalizada' : 'Finished' %></span>
+          <span class="status-text status-text--finished"><%= t('client.common.finalizada_2') %></span>
         <% } else { %>
-          <span class="status-text status-text--pending"><%= lang === 'es' ? 'En espera' : 'Pending' %></span>
+          <span class="status-text status-text--pending"><%= t('client.common.en_espera') %></span>
         <% } %>
       </div>
       <span class="panel-race"><%= race.name %></span>
@@ -158,13 +158,13 @@
       <thead>
         <tr>
           <th>#</th>
-          <th title="<%= lang === 'es' ? 'Tendencia' : 'Trend' %>">↕</th>
-          <th><%= lang === 'es' ? 'Participante' : 'Participant' %></th>
-          <th class="pt-right" title="<%= lang === 'es' ? 'Vueltas proyectadas totales al final de la carrera' : 'Projected total laps at end of race' %>"><%= lang === 'es' ? 'V. Proy.' : 'Proj.' %></th>
-          <th class="pt-right"><%= lang === 'es' ? 'Total' : 'Total' %></th>
-          <th class="pt-right" title="<%= lang === 'es' ? 'Vueltas proyectadas respecto al de delante' : 'Projected laps behind the car ahead' %>"><%= lang === 'es' ? 'Gap V' : 'Gap L' %></th>
-          <th class="pt-right"><%= lang === 'es' ? 'Media' : 'Avg' %></th>
-          <th class="pt-right" title="<%= lang === 'es' ? 'Media que necesitas en lo que queda de carrera para alcanzar al de delante (— = inalcanzable con el tiempo restante)' : 'Average pace needed for the rest of the race to catch the car ahead (— = unreachable in the time left)' %>"><%= lang === 'es' ? 'P/Subir' : 'To pass' %></th>
+          <th title="<%= t('live-panel.tendencia') %>">↕</th>
+          <th><%= t('common.participante') %></th>
+          <th class="pt-right" title="<%= t('live-panel.vueltas_proyectadas_totales_al_final_de_la') %>"><%= t('common.v_proy') %></th>
+          <th class="pt-right"><%= t('client.common.total') %></th>
+          <th class="pt-right" title="<%= t('common.vueltas_proyectadas_respecto_al_de_delante') %>"><%= t('client.common.gap_v') %></th>
+          <th class="pt-right"><%= t('client.common.media') %></th>
+          <th class="pt-right" title="<%= t('live-panel.media_que_necesitas_en_lo_que_queda_de_carrera') %>"><%= t('live-panel.p_subir') %></th>
         </tr>
       </thead>
       <tbody id="panelBody"></tbody>

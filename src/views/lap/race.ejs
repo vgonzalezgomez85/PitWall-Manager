@@ -22,8 +22,9 @@
     <label for="teamId">Equipo</label>
     <select id="teamId" name="teamId" required>
       <option value="" disabled selected>— Elige tu equipo —</option>
-      <% teams.forEach(t => { %>
-        <option value="<%= t.id %>"><%= t.name %></option>
+      <%# `t` es el traductor en las vistas: no se puede usar como variable de bucle. %>
+      <% teams.forEach(team => { %>
+        <option value="<%= team.id %>"><%= team.name %></option>
       <% }) %>
     </select>
 

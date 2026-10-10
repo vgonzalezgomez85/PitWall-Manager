@@ -1,4 +1,4 @@
-<%- include('partials/header', { lang, pageTitle: lang === 'es' ? 'Inicio' : 'Home', hideNavbar: true }) %>
+<%- include('partials/header', { lang, pageTitle: t('common.inicio'), hideNavbar: true }) %>
 
 <link rel="stylesheet" href="/css/fonts.css">
 
@@ -33,7 +33,7 @@ const c = typeof counts !== 'undefined' ? counts : { drivers: 0, teams: 0, cars:
       <% if (ss.simulating) { %>
         <a href="/settings" class="vh-status vh-status--sim">
           <span class="vh-status__dot"></span>
-          <%= lang === 'es' ? 'Modo simulación' : 'Simulation mode' %>
+          <%= t('common.modo_simulacion') %>
         </a>
       <% } else if (serialConnected) { %>
         <a href="/settings" class="vh-status vh-status--ok">
@@ -44,14 +44,14 @@ const c = typeof counts !== 'undefined' ? counts : { drivers: 0, teams: 0, cars:
       <% } else { %>
         <a href="/settings" class="vh-status vh-status--off">
           <span class="vh-status__dot"></span>
-          <%= lang === 'es' ? 'Sin conexión' : 'Disconnected' %>
+          <%= t('client.common.sin_conexion') %>
         </a>
       <% } %>
       <% } %>
       <% if (typeof serverIps !== 'undefined' && serverIps && serverIps.length) { %>
         <span class="vh-status vh-status--ok"
               style="background:rgba(88,166,255,.12);border-color:rgba(88,166,255,.35);color:#58a6ff"
-              title="<%= (lang === 'es' ? 'Dirección(es) del servidor: ' : 'Server address(es): ') + serverIps.map(function(i){ return i.ip + ':' + serverPort + ' (' + i.name + ')'; }).join('  ·  ') %>">
+              title="<%= (t('common.direccion_es_del_servidor')) + serverIps.map(function(i){ return i.ip + ':' + serverPort + ' (' + i.name + ')'; }).join('  ·  ') %>">
           <span class="vh-status__dot" style="background:#58a6ff"></span>
           <span style="font-family:monospace"><%= serverIps[0].ip %>:<%= serverPort %><% if (serverIps.length > 1) { %> +<%= serverIps.length - 1 %><% } %></span>
         </span>
@@ -64,7 +64,7 @@ const c = typeof counts !== 'undefined' ? counts : { drivers: 0, teams: 0, cars:
       <section class="vh-section" style="margin-top:1.5rem">
         <button type="button" class="vh-sec-h" aria-expanded="true">
           <span class="vh-sec-chev" aria-hidden="true">▸</span>
-          <span class="vh-sec-lbl"><%= lang === 'es' ? 'Carreras activas' : 'Active races' %></span>
+          <span class="vh-sec-lbl"><%= t('home.carreras_activas') %></span>
           <span class="vh-sec-line"></span>
         </button>
         <div class="vh-grid">
@@ -77,10 +77,10 @@ const c = typeof counts !== 'undefined' ? counts : { drivers: 0, teams: 0, cars:
             </div>
             <div class="vh-body">
               <div class="vh-t">
-                <%= lang === 'es' ? 'Pole en directo' : 'Pole live' %>
-                <span class="vh-live"><span class="vh-live__d"></span><%= lang === 'es' ? 'en curso' : 'in progress' %></span>
+                <%= t('common.pole_en_directo') %>
+                <span class="vh-live"><span class="vh-live__d"></span><%= t('home.en_curso') %></span>
               </div>
-              <div class="vh-d"><%= lang === 'es' ? 'Sigue el cronometraje de la pole en directo.' : 'Follow the live pole timing.' %></div>
+              <div class="vh-d"><%= t('home.sigue_el_cronometraje_de_la_pole_en_directo') %></div>
             </div>
             <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
           </a>
@@ -93,8 +93,8 @@ const c = typeof counts !== 'undefined' ? counts : { drivers: 0, teams: 0, cars:
               </svg>
             </div>
             <div class="vh-body">
-              <div class="vh-t"><%= lang === 'es' ? 'Estadísticas en vivo' : 'Live stats' %></div>
-              <div class="vh-d"><%= lang === 'es' ? 'Sigue tu carrera y compárate con tus rivales en tiempo real.' : 'Follow your race and compare with rivals in real time.' %></div>
+              <div class="vh-t"><%= t('common.estadisticas_en_vivo') %></div>
+              <div class="vh-d"><%= t('home.sigue_tu_carrera_y_comparate_con_tus_rivales_en') %></div>
             </div>
             <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
           </a>
@@ -108,7 +108,7 @@ const c = typeof counts !== 'undefined' ? counts : { drivers: 0, teams: 0, cars:
             </div>
             <div class="vh-body">
               <div class="vh-t">Lap</div>
-              <div class="vh-d"><%= lang === 'es' ? 'Sigue el timing de tu equipo en directo desde el móvil.' : 'Follow your team timing live from your phone.' %></div>
+              <div class="vh-d"><%= t('home.sigue_el_timing_de_tu_equipo_en_directo_desde') %></div>
             </div>
             <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
           </a>
@@ -123,8 +123,8 @@ const c = typeof counts !== 'undefined' ? counts : { drivers: 0, teams: 0, cars:
               </svg>
             </div>
             <div class="vh-body">
-              <div class="vh-t"><%= lang === 'es' ? 'Control de pilotos' : 'Driver shifts' %></div>
-              <div class="vh-d"><%= lang === 'es' ? 'Consulta el estado de los turnos de piloto en cada carril.' : 'Check driver shift status on each lane.' %></div>
+              <div class="vh-t"><%= t('common.control_de_pilotos') %></div>
+              <div class="vh-d"><%= t('home.consulta_el_estado_de_los_turnos_de_piloto_en') %></div>
             </div>
             <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
           </a>
@@ -134,7 +134,7 @@ const c = typeof counts !== 'undefined' ? counts : { drivers: 0, teams: 0, cars:
       <section class="vh-section">
         <button type="button" class="vh-sec-h" aria-expanded="true">
           <span class="vh-sec-chev" aria-hidden="true">▸</span>
-          <span class="vh-sec-lbl"><%= lang === 'es' ? 'Carreras pasadas' : 'Past races' %></span>
+          <span class="vh-sec-lbl"><%= t('home.carreras_pasadas') %></span>
           <span class="vh-sec-line"></span>
         </button>
         <div class="vh-grid">
@@ -145,8 +145,8 @@ const c = typeof counts !== 'undefined' ? counts : { drivers: 0, teams: 0, cars:
               </svg>
             </div>
             <div class="vh-body">
-              <div class="vh-t"><%= lang === 'es' ? 'Resultados' : 'Results' %></div>
-              <div class="vh-d"><%= lang === 'es' ? 'Consulta resultados y estadísticas de carreras finalizadas.' : 'Browse results and stats of finished races.' %></div>
+              <div class="vh-t"><%= t('common.resultados') %></div>
+              <div class="vh-d"><%= t('home.consulta_resultados_y_estadisticas_de_carreras') %></div>
             </div>
             <span class="vh-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
           </a>

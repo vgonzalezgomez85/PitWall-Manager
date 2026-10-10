@@ -1,4 +1,4 @@
-<%- include('../partials/header', { pageTitle: (lang === 'es' ? 'Gestión de base de datos' : 'Database management') }) %>
+<%- include('../partials/header', { pageTitle: (t('database.gestion_de_base_de_datos')) }) %>
 <%
   const es = lang === 'es';
   function humanSize(bytes) {
@@ -7,7 +7,7 @@
     const u = ['KB','MB','GB'];
     let n = bytes / 1024, i = 0;
     while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
-    return n.toFixed(n < 10 ? 1 : 0) + ' ' + u[i];
+    return n.toFixed(n < 10 ? 1 : 0).replace('.', ',') + ' ' + u[i];
   }
   const fmt = n => n == null ? '—' : Number(n).toLocaleString(es ? 'es-ES' : 'en-US');
   const fmtDate = v => {
@@ -16,22 +16,22 @@
     return isNaN(d) ? '' : d.toLocaleDateString(es ? 'es-ES' : 'en-US', { day: '2-digit', month: 'short', year: 'numeric' });
   };
   const navItems = [
-    { key: 'summary', label: es ? 'Resumen' : 'Summary', dot: '',
+    { key: 'summary', label: t('database.resumen'), dot: '',
       icon: '<ellipse cx="12" cy="5.5" rx="7.5" ry="2.5"/><path d="M4.5 5.5v13c0 1.4 3.4 2.5 7.5 2.5s7.5-1.1 7.5-2.5v-13M4.5 12c0 1.4 3.4 2.5 7.5 2.5s7.5-1.1 7.5-2.5"/>' },
-    { key: 'race', label: es ? 'Exp. / Imp. carrera' : 'Export / import race', dot: '',
+    { key: 'race', label: t('database.exp_imp_carrera'), dot: '',
       icon: '<path d="M5 21V4M5 4h12l-2.5 4L17 12H5"/>' },
-    { key: 'backup', label: es ? 'Copia de seguridad' : 'Backup', dot: '',
+    { key: 'backup', label: t('database.copia_de_seguridad'), dot: '',
       icon: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>' },
-    { key: 'restore', label: es ? 'Restaurar copia' : 'Restore backup', dot: pendingRestore ? 'warn' : '',
+    { key: 'restore', label: t('database.restaurar_copia'), dot: pendingRestore ? 'warn' : '',
       icon: '<path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4"/>' },
   ];
-  const statusLabel = st => ({ finished: es ? 'terminada' : 'finished', active: es ? 'en curso' : 'running', pending: es ? 'pendiente' : 'pending' }[st] || st);
+  const statusLabel = st => ({ finished: t('database.terminada'), active: t('database.en_curso'), pending: t('common.pendiente_2') }[st] || st);
   const stats = [
-    { key: 'races',    label: es ? 'Carreras'  : 'Races' },
-    { key: 'teams',    label: es ? 'Equipos'   : 'Teams' },
-    { key: 'drivers',  label: es ? 'Pilotos'   : 'Drivers' },
-    { key: 'circuits', label: es ? 'Circuitos' : 'Circuits' },
-    { key: 'laps',     label: es ? 'Vueltas'   : 'Laps' },
+    { key: 'races',    label: t('common.carreras') },
+    { key: 'teams',    label: t('common.equipos') },
+    { key: 'drivers',  label: t('client.common.pilotos') },
+    { key: 'circuits', label: t('common.circuitos') },
+    { key: 'laps',     label: t('client.common.vueltas') },
   ];
 %>
 
@@ -39,14 +39,14 @@
   <div class="st-top">
     <a href="/" class="vt-back-link">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      <%= es ? 'Inicio' : 'Home' %>
+      <%= t('common.inicio') %>
     </a>
     <span class="st-top__sep"></span>
-    <h1 class="st-top__h"><%= es ? 'Base de datos' : 'Database' %></h1>
+    <h1 class="st-top__h"><%= t('common.base_de_datos') %></h1>
   </div>
 
   <div class="st-layout">
-      <nav class="st-nav" aria-label="<%= es ? 'Secciones' : 'Sections' %>">
+      <nav class="st-nav" aria-label="<%= t('common.secciones') %>">
         <% navItems.forEach(it => { %>
           <button type="button" class="st-nav__item <%= it.key === 'summary' ? 'is-active' : '' %>" data-sec="<%= it.key %>">
             <svg viewBox="0 0 24 24"><%- it.icon %></svg>
@@ -59,8 +59,8 @@
       <div class="st-main">
         <section class="st-sec is-active" data-sec="summary">
           <header class="st-sec__h">
-            <h2><%= es ? 'Resumen' : 'Summary' %></h2>
-            <p><%= es ? 'Lo que hay ahora mismo en la base de datos de este PC.' : 'What is in this PC\'s database right now.' %></p>
+            <h2><%= t('database.resumen') %></h2>
+            <p><%= t('database.lo_que_hay_ahora_mismo_en_la_base_de_datos_de') %></p>
           </header>
         <section class="st-card">
           <div class="db-stats">
@@ -73,7 +73,7 @@
           </div>
           <div class="st-row st-row--wrap">
             <div class="st-row__txt">
-              <div class="st-row__t st-row__t--sm"><%= es ? 'Fichero' : 'File' %></div>
+              <div class="st-row__t st-row__t--sm"><%= t('database.fichero') %></div>
               <% if (dbPath) { %><div class="st-row__d db-path"><%= dbPath %></div><% } %>
             </div>
             <div class="db-size"><%= humanSize(sizeBytes) %></div>
@@ -83,8 +83,8 @@
 
         <section class="st-sec" data-sec="race">
           <header class="st-sec__h">
-            <h2><%= es ? 'Exportar e importar carrera' : 'Export and import a race' %></h2>
-            <p><%= es ? 'Para llevarte una carrera a otro PC (por ejemplo, la que has corrido en otro club) sin tocar el resto de datos.' : 'To take one race to another PC (e.g. one you ran at another club) without touching the rest of the data.' %></p>
+            <h2><%= t('database.exportar_e_importar_carrera') %></h2>
+            <p><%= t('database.para_llevarte_una_carrera_a_otro_pc_por_ejemplo') %></p>
           </header>
         <section class="st-card">
           <form action="/database/race-export" method="GET" class="st-row st-row--wrap">
@@ -92,20 +92,20 @@
               <svg viewBox="0 0 24 24"><path d="M4 21V4M4 4h11l-2 4 2 4H4"/><path d="M14 17h7M18 14l3 3-3 3"/></svg>
             </div>
             <div class="st-row__txt">
-              <div class="st-row__t"><%= es ? 'Exportar carrera' : 'Export race' %></div>
-              <div class="st-row__d"><%= es ? 'Genera un archivo .pwrace con todo: equipos, pilotos, mangas, vueltas, turnos, neumáticos, verificaciones y pole.' : 'Creates a .pwrace file with everything: teams, drivers, heats, laps, shifts, tires, inspections and pole.' %></div>
+              <div class="st-row__t"><%= t('database.exportar_carrera') %></div>
+              <div class="st-row__d"><%= t('database.genera_un_archivo_pwrace_con_todo_equipos') %></div>
             </div>
             <div class="db-export">
               <div class="vt-selw">
-                <select name="race" required aria-label="<%= es ? 'Carrera a exportar' : 'Race to export' %>">
+                <select name="race" required aria-label="<%= t('database.carrera_a_exportar') %>">
                   <% (races || []).forEach(r => { %>
                     <option value="<%= r.id %>" <%= r.open_mangas ? 'disabled' : '' %>>
-                      <%= r.name %> · <%= fmtDate(r.at) %> · <%= r.open_mangas ? (es ? 'manga sin cerrar' : 'unclosed heat') : statusLabel(r.status) %>
+                      <%= r.name %> · <%= fmtDate(r.at) %> · <%= r.open_mangas ? (t('database.manga_sin_cerrar')) : statusLabel(r.status) %>
                     </option>
                   <% }) %>
                 </select>
               </div>
-              <button type="submit" class="vt-btn vt-btn--primary" <%= (races || []).length ? '' : 'disabled' %>><%= es ? 'Exportar' : 'Export' %></button>
+              <button type="submit" class="vt-btn vt-btn--primary" <%= (races || []).length ? '' : 'disabled' %>><%= t('database.exportar') %></button>
             </div>
           </form>
         </section>
@@ -117,17 +117,17 @@
                 <svg viewBox="0 0 24 24"><path d="M4 21V4M4 4h11l-2 4 2 4H4"/><path d="M21 17h-7M17 14l-3 3 3 3"/></svg>
               </div>
               <div class="st-row__txt">
-                <div class="st-row__t"><%= es ? 'Importar carrera' : 'Import race' %></div>
-                <div class="st-row__d"><%= es ? 'Se añade como carrera nueva y se aplica al momento; tus carreras no se tocan. Si su circuito no existe aquí, se crea.' : 'Added as a new race, instantly; your races are not touched. If its circuit does not exist here, it is created.' %></div>
+                <div class="st-row__t"><%= t('database.importar_carrera') %></div>
+                <div class="st-row__d"><%= t('database.se_anade_como_carrera_nueva_y_se_aplica_al') %></div>
               </div>
             </div>
             <label class="db-drop">
               <input type="file" name="race_file" accept=".pwrace" required>
               <svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M12 18v-6M9 15l3-3 3 3"/></svg>
-              <span class="db-drop__t"><%= es ? 'Arrastra aquí el archivo .pwrace o pulsa para elegirlo' : 'Drop the .pwrace file here or click to choose it' %></span>
+              <span class="db-drop__t"><%= t('database.arrastra_aqui_el_archivo_pwrace_o_pulsa_para') %></span>
             </label>
             <div class="db-upload__foot">
-              <button type="submit" class="vt-btn vt-btn--primary"><%= es ? 'Importar carrera' : 'Import race' %></button>
+              <button type="submit" class="vt-btn vt-btn--primary"><%= t('database.importar_carrera') %></button>
             </div>
           </form>
         </section>
@@ -135,8 +135,8 @@
 
         <section class="st-sec" data-sec="backup">
           <header class="st-sec__h">
-            <h2><%= es ? 'Copia de seguridad' : 'Backup' %></h2>
-            <p><%= es ? 'Toda la base de datos en un archivo, para guardarla o pasarla a otro PC.' : 'The whole database in one file, to keep it or move it to another PC.' %></p>
+            <h2><%= t('database.copia_de_seguridad') %></h2>
+            <p><%= t('database.toda_la_base_de_datos_en_un_archivo_para') %></p>
           </header>
         <section class="st-card">
           <div class="st-row st-row--wrap">
@@ -144,22 +144,22 @@
               <svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
             </div>
             <div class="st-row__txt">
-              <div class="st-row__t"><%= es ? 'Copia de seguridad' : 'Backup' %></div>
+              <div class="st-row__t"><%= t('database.copia_de_seguridad') %></div>
               <div class="st-row__d">
                 <%= es
                   ? 'Descarga un archivo .db con todos los datos: carreras, equipos, pilotos, circuitos y ajustes. Sirve para pasarlo a otro PC o como respaldo. Se puede hacer aunque haya una carrera en curso.'
                   : 'Downloads a .db file with all your data: races, teams, drivers, circuits and settings. Use it to move to another PC or as a backup. Safe to run even during a race.' %>
               </div>
             </div>
-            <a href="/database/backup" class="vt-btn vt-btn--primary"><%= es ? 'Descargar copia' : 'Download backup' %></a>
+            <a href="/database/backup" class="vt-btn vt-btn--primary"><%= t('database.descargar_copia') %></a>
           </div>
         </section>
         </section>
 
         <section class="st-sec" data-sec="restore">
           <header class="st-sec__h">
-            <h2><%= es ? 'Restaurar copia' : 'Restore backup' %></h2>
-            <p><%= es ? 'Sustituir todos los datos de este PC por los de una copia de seguridad.' : 'Replace all data on this PC with a backup.' %></p>
+            <h2><%= t('database.restaurar_copia') %></h2>
+            <p><%= t('database.sustituir_todos_los_datos_de_este_pc_por_los_de') %></p>
           </header>
         <section class="st-card">
           <div class="st-row">
@@ -167,7 +167,7 @@
               <svg viewBox="0 0 24 24"><path d="M12 20V9M7 14l5-5 5 5M5 4h14"/></svg>
             </div>
             <div class="st-row__txt">
-              <div class="st-row__t"><%= es ? 'Importar copia' : 'Import backup' %></div>
+              <div class="st-row__t"><%= t('database.importar_copia') %></div>
               <div class="st-row__d">
                 <%= es
                   ? 'Sustituye TODOS los datos de este PC por los de un archivo .db de PitWall (de esta u otra instalación).'
@@ -180,7 +180,7 @@
             <div class="st-row st-row--wrap db-pending">
               <span class="st-dot st-dot--warn st-dot--lg"></span>
               <div class="st-row__txt">
-                <div class="st-row__t st-row__t--sm"><%= es ? 'Hay una copia pendiente de aplicar' : 'An import is pending' %></div>
+                <div class="st-row__t st-row__t--sm"><%= t('database.hay_una_copia_pendiente_de_aplicar') %></div>
                 <div class="st-row__d">
                   <%= es
                     ? `${humanSize(pendingRestore.sizeBytes)}, subida el ${pendingRestore.uploadedAt.toLocaleString('es-ES')}. Se aplicará al cerrar PitWall por completo y volver a abrirlo.`
@@ -188,8 +188,8 @@
                 </div>
               </div>
               <form action="/database/restore/cancel" method="POST"
-                    onsubmit="return confirm('<%= es ? '¿Cancelar la importación pendiente? No se aplicará.' : 'Cancel the pending import? It will not be applied.' %>')">
-                <button type="submit" class="vt-btn vt-btn--ghost"><%= es ? 'Cancelar importación' : 'Cancel import' %></button>
+                    onsubmit="return confirm('<%= t('database.cancelar_la_importacion_pendiente_no_se_aplicara') %>')">
+                <button type="submit" class="vt-btn vt-btn--ghost"><%= t('database.cancelar_importacion') %></button>
               </form>
             </div>
           <% } %>
@@ -198,17 +198,17 @@
             <label class="db-drop">
               <input type="file" name="backup_file" accept=".db" required>
               <svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M12 18v-6M9 15l3-3 3 3"/></svg>
-              <span class="db-drop__t"><%= es ? 'Arrastra aquí el archivo .db o pulsa para elegirlo' : 'Drop the .db file here or click to choose it' %></span>
+              <span class="db-drop__t"><%= t('database.arrastra_aqui_el_archivo_db_o_pulsa_para') %></span>
             </label>
             <ol class="db-steps">
-              <li><%= es ? 'Al subirla no cambia nada todavía: queda pendiente.' : 'Uploading changes nothing yet: it stays pending.' %></li>
-              <li><%= es ? 'Se aplica al cerrar PitWall por completo y volver a abrirlo.' : 'It is applied when you fully close and reopen PitWall.' %></li>
-              <li><%= es ? 'Antes se guarda sola una copia de los datos actuales, por si hay que deshacer.' : 'The current data is backed up automatically first, in case you need to undo.' %></li>
+              <li><%= t('database.al_subirla_no_cambia_nada_todavia_queda') %></li>
+              <li><%= t('database.se_aplica_al_cerrar_pitwall_por_completo_y') %></li>
+              <li><%= t('database.antes_se_guarda_sola_una_copia_de_los_datos') %></li>
             </ol>
             <div class="db-upload__foot">
               <button type="submit" class="vt-btn vt-btn--danger"
-                      onclick="return confirm('<%= es ? 'Esto reemplazará TODOS los datos actuales la próxima vez que abras PitWall. ¿Continuar?' : 'This will replace ALL current data the next time you open PitWall. Continue?' %>')">
-                <%= es ? 'Subir copia' : 'Upload backup' %>
+                      onclick="return confirm('<%= t('database.esto_reemplazara_todos_los_datos_actuales_la') %>')">
+                <%= t('database.subir_copia') %>
               </button>
             </div>
           </form>

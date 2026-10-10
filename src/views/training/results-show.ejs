@@ -1,4 +1,4 @@
-<%- include('../partials/header', { pageTitle: (lang === 'es' ? 'Resultados del entreno' : 'Training results') }) %>
+<%- include('../partials/header', { pageTitle: (t('results-show.resultados_del_entreno')) }) %>
 
 <%
   const fmtLap = (ms) => ms == null ? '—' : (ms / 1000).toFixed(3).replace('.', ',') + 's';
@@ -14,24 +14,24 @@
 <div class="container">
   <a href="/training/competition/results" class="vt-back-link" style="margin-top:1rem">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-    <%= lang === 'es' ? 'Todos los entrenos' : 'All sessions' %>
+    <%= t('results-show.todos_los_entrenos') %>
   </a>
 
   <div class="page-header" style="display:flex; align-items:flex-start; justify-content:space-between; gap:1rem">
     <div>
-      <h1 class="page-title">🎯 <%= lang === 'es' ? 'Entreno competitivo' : 'Competition training' %></h1>
+      <h1 class="page-title">🎯 <%= t('results-show.entreno_competitivo') %></h1>
       <p style="color:#8b949e; margin-top:.3rem">
         <% if (startedAt) { %><%= new Date(startedAt + 'Z').toLocaleString(lang === 'es' ? 'es-ES' : 'en-GB') %> · <% } %>
         <%= byHeat.size %> <%= byHeat.size === 1 ? 'heat' : 'heats' %>
       </p>
     </div>
     <form action="/training/competition/results/<%= encodeURIComponent(sessionId) %>/delete" method="POST"
-          onsubmit="return confirm('<%= lang === 'es' ? '¿Borrar este entreno? No se puede deshacer.' : 'Delete this session? This cannot be undone.' %>')">
-      <button class="vt-btn vt-btn--danger" type="submit"><%= lang === 'es' ? 'Borrar' : 'Delete' %></button>
+          onsubmit="return confirm('<%= t('results-show.borrar_este_entreno_no_se_puede_deshacer') %>')">
+      <button class="vt-btn vt-btn--danger" type="submit"><%= t('client.common.borrar') %></button>
     </form>
   </div>
 
-  <h2 class="ct-h2">🏆 <%= lang === 'es' ? 'Clasificación' : 'Standings' %></h2>
+  <h2 class="ct-h2">🏆 <%= t('common.clasificacion') %></h2>
   <p class="ct-note">
     <%= lang === 'es'
       ? 'Gana quien más vueltas suma en todos sus heats; a igualdad, la mejor vuelta. La media es la de todas sus vueltas de la sesión.'
@@ -42,11 +42,11 @@
       <thead>
         <tr>
           <th style="width:3rem">#</th>
-          <th><%= lang === 'es' ? 'Participante' : 'Participant' %></th>
+          <th><%= t('common.participante') %></th>
           <th class="is-num">Heats</th>
-          <th class="is-num"><%= lang === 'es' ? 'Vueltas' : 'Laps' %></th>
-          <th class="is-num"><%= lang === 'es' ? 'Mejor vuelta' : 'Best lap' %></th>
-          <th class="is-num"><%= lang === 'es' ? 'Media' : 'Average' %></th>
+          <th class="is-num"><%= t('client.common.vueltas') %></th>
+          <th class="is-num"><%= t('common.mejor_vuelta') %></th>
+          <th class="is-num"><%= t('results-show.media') %></th>
         </tr>
       </thead>
       <tbody>
@@ -64,7 +64,7 @@
     </table>
   </div>
 
-  <h2 class="ct-h2" style="margin-top:2rem">🔁 <%= lang === 'es' ? 'Heat a heat' : 'Heat by heat' %></h2>
+  <h2 class="ct-h2" style="margin-top:2rem">🔁 <%= t('results-show.heat_a_heat') %></h2>
   <div class="ct-heats">
     <% for (const [heatNumber, rows] of byHeat) { %>
       <div class="ct-heat">
@@ -73,11 +73,11 @@
           <table class="ct-table">
             <thead>
               <tr>
-                <th style="width:4rem"><%= lang === 'es' ? 'Carril' : 'Lane' %></th>
-                <th><%= lang === 'es' ? 'Participante' : 'Participant' %></th>
-                <th class="is-num"><%= lang === 'es' ? 'Vueltas' : 'Laps' %></th>
-                <th class="is-num"><%= lang === 'es' ? 'Mejor' : 'Best' %></th>
-                <th class="is-num"><%= lang === 'es' ? 'Media' : 'Average' %></th>
+                <th style="width:4rem"><%= t('client.common.carril') %></th>
+                <th><%= t('common.participante') %></th>
+                <th class="is-num"><%= t('client.common.vueltas') %></th>
+                <th class="is-num"><%= t('client.common.mejor') %></th>
+                <th class="is-num"><%= t('results-show.media') %></th>
               </tr>
             </thead>
             <tbody>

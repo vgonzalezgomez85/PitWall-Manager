@@ -48,14 +48,14 @@ function stepState(idx) {
           <span class="rs-state__d"></span> <%= statusLabel %>
         </span>
         <details class="rs-stmenu">
-          <summary class="rs-stmenu__btn" title="<%= lang === 'es' ? 'Cambiar el estado de la carrera' : 'Change the race status' %>">
-            <%= lang === 'es' ? 'Cambiar estado' : 'Change status' %>
+          <summary class="rs-stmenu__btn" title="<%= t('show.cambiar_el_estado_de_la_carrera') %>">
+            <%= t('show.cambiar_estado') %>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
           </summary>
           <form class="rs-stmenu__pop" action="/races/<%= race.id %>/status" method="POST">
-            <% [['pending', lang === 'es' ? 'Pendiente' : 'Pending', lang === 'es' ? 'Aún no ha empezado' : 'Not started yet'],
-                ['active', lang === 'es' ? 'En curso' : 'Active', lang === 'es' ? 'Sale en el inicio y recibe el GO' : 'Shown on home, receives the GO'],
-                ['finished', lang === 'es' ? 'Completada' : 'Completed', lang === 'es' ? 'Pasa a resultados' : 'Moves to results']].forEach(function (o) { %>
+            <% [['pending', t('common.pendiente'), t('show.aun_no_ha_empezado')],
+                ['active', t('common.en_curso'), t('show.sale_en_el_inicio_y_recibe_el_go')],
+                ['finished', t('show.completada'), t('show.pasa_a_resultados')]].forEach(function (o) { %>
               <button type="submit" name="status" value="<%= o[0] %>" class="rs-stmenu__opt<%= race.status === o[0] ? ' is-current' : '' %>" <%= race.status === o[0] ? 'disabled' : '' %>>
                 <span class="rs-state rs-state--<%= o[0] %>"><span class="rs-state__d"></span> <%= o[1] %></span>
                 <span class="rs-stmenu__d"><%= o[2] %></span>
@@ -74,56 +74,56 @@ function stepState(idx) {
 
     <div class="rs-actions">
       <a href="/races/<%= race.id %>/results" class="rs-btn rs-btn--ghost">
-        <span>📊</span> <%= lang === 'es' ? 'Resultados' : 'Results' %>
+        <span>📊</span> <%= t('common.resultados') %>
       </a>
       <% if (typeof isSim !== 'undefined' && isSim) { %>
         <a href="/races/<%= race.id %>/sim" class="rs-btn rs-btn--ghost">
-          <span>🎬</span> <%= lang === 'es' ? 'Simulación' : 'Simulation' %>
+          <span>🎬</span> <%= t('client.common.simulacion') %>
         </a>
       <% } %>
       <% if (race.type === 'championship') { %>
         <a href="/races/<%= race.id %>/shifts" class="rs-btn rs-btn--ghost">
-          <span>🪪</span> <%= lang === 'es' ? 'Turnos' : 'Shifts' %>
+          <span>🪪</span> <%= t('common.turnos_2') %>
         </a>
       <% } %>
       <% if (race.type === 'championship' && race.tire_pairs_per_team > 0) { %>
         <a href="/races/<%= race.id %>/tires" class="rs-btn rs-btn--ghost">
-          <span>🛞</span> <%= lang === 'es' ? 'Neumáticos' : 'Tyres' %>
+          <span>🛞</span> <%= t('common.neumaticos') %>
         </a>
       <% } %>
       <% if (race.format === 'team') { %>
         <a href="/lap/<%= race.id %>/pins" class="rs-btn rs-btn--ghost">
-          <span>🔑</span> <%= lang === 'es' ? 'Pines Lap' : 'Lap PINs' %>
+          <span>🔑</span> <%= t('show.pines_lap') %>
         </a>
       <% } %>
       <% if (typeof verificationsCount !== 'undefined' && verificationsCount > 0) { %>
         <a href="/races/<%= race.id %>/verificaciones" class="rs-btn rs-btn--ghost">
-          <span>🔍</span> <%= lang === 'es' ? 'Verificaciones' : 'Scrutineering' %>
+          <span>🔍</span> <%= t('common.verificaciones') %>
         </a>
       <% } %>
       <a href="/races/<%= race.id %>/events" class="rs-btn rs-btn--ghost">
-        <span>🗒️</span> <%= lang === 'es' ? 'Sucesos' : 'Events' %>
+        <span>🗒️</span> <%= t('show.sucesos') %>
       </a>
       <% if (!isFinished) { %>
         <form action="/races/<%= race.id %>/complete" method="POST" style="display:inline"
-              onsubmit="return confirm('<%= lang === 'es' ? '¿Marcar carrera como completada?' : 'Mark race as completed?' %>')">
+              onsubmit="return confirm('<%= t('show.marcar_carrera_como_completada') %>')">
           <button type="submit" class="rs-btn rs-btn--ghost rs-btn--ok">
-            <span>✅</span> <%= lang === 'es' ? 'Completar carrera' : 'Complete race' %>
+            <span>✅</span> <%= t('show.completar_carrera') %>
           </button>
         </form>
         <a href="/races/<%= race.id %>/tandas/new" class="rs-btn rs-btn--primary">
-          <span>+</span> <%= lang === 'es' ? 'Nueva tanda' : 'New tanda' %>
+          <span>+</span> <%= t('show.nueva_tanda') %>
         </a>
       <% } %>
       <div class="rs-menu-wrap">
-        <button class="rs-btn rs-btn--icon" id="rsMenuBtn" aria-label="<%= lang === 'es' ? 'Más opciones' : 'More options' %>" type="button">⋯</button>
+        <button class="rs-btn rs-btn--icon" id="rsMenuBtn" aria-label="<%= t('common.mas_opciones') %>" type="button">⋯</button>
         <div class="rs-menu" id="rsMenu" role="menu">
           <button onclick="location.href='/races/<%= race.id %>/edit'" type="button">
-            <span>✏️</span> <%= lang === 'es' ? 'Editar carrera' : 'Edit race' %>
+            <span>✏️</span> <%= t('common.editar_carrera') %>
           </button>
           <% if (typeof catalogSyncEligible !== 'undefined' && catalogSyncEligible) { %>
             <button onclick="location.href='/catalog-sync?race=<%= race.id %>'" type="button">
-              <span>🔄</span> <%= lang === 'es' ? 'Actualizar desde catálogo' : 'Update from catalog' %>
+              <span>🔄</span> <%= t('show.actualizar_desde_catalogo') %>
             </button>
           <% } %>
           <div class="rs-menu__sep"></div>
@@ -140,23 +140,23 @@ function stepState(idx) {
 
   <!-- ── Estructura: stepper + secuencia de carriles ────────────────── -->
   <section class="rs-card rs-struct">
-    <div class="rs-lbl"><%= lang === 'es' ? 'Estructura de la carrera' : 'Race structure' %></div>
+    <div class="rs-lbl"><%= t('show.estructura_de_la_carrera') %></div>
 
     <%
       const steps = [
-        { state: stepState(0), title: race.has_pole ? (lang === 'es' ? 'Pole Position' : 'Pole Position') : (lang === 'es' ? 'Sin Pole' : 'No Pole'),
-          subDone: lang === 'es' ? 'Completada' : 'Completed',
-          subCurrent: lang === 'es' ? 'En curso' : 'In progress',
-          subLocked: lang === 'es' ? 'Pendiente' : 'Pending',
-          subSkipped: lang === 'es' ? 'No configurada' : 'Not configured' },
-        { state: stepState(1), title: lang === 'es' ? 'Tandas' : 'Heats',
-          subDone: tandas.length + (lang === 'es' ? ' añadidas' : ' added'),
+        { state: stepState(0), title: race.has_pole ? (t('show.pole_position')) : (t('show.sin_pole')),
+          subDone: t('show.completada'),
+          subCurrent: t('common.en_curso_2'),
+          subLocked: t('common.pendiente'),
+          subSkipped: t('show.no_configurada') },
+        { state: stepState(1), title: t('show.tandas'),
+          subDone: tandas.length + (t('show.anadidas')),
           subCurrent: lang === 'es' ? `Próximo paso · ${tandas.length} añadidas` : `Next · ${tandas.length} added`,
-          subLocked: lang === 'es' ? 'Tras la pole' : 'After pole' },
-        { state: stepState(2), title: lang === 'es' ? 'Resultados' : 'Results',
-          subDone: lang === 'es' ? 'Disponibles' : 'Available',
-          subCurrent: lang === 'es' ? 'Disponibles' : 'Available',
-          subLocked: lang === 'es' ? 'Al finalizar' : 'When finished' }
+          subLocked: t('show.tras_la_pole') },
+        { state: stepState(2), title: t('common.resultados'),
+          subDone: t('client.common.disponibles'),
+          subCurrent: t('client.common.disponibles'),
+          subLocked: t('show.al_finalizar') }
       ];
     %>
     <div class="rs-stepper">
@@ -186,7 +186,7 @@ function stepState(idx) {
 
     <% if (laneSequence && laneSequence.length > 0) { %>
       <div class="rs-laneseq">
-        <div class="rs-lbl rs-lbl--inline"><%= lang === 'es' ? 'Orden de rotación de carriles' : 'Lane rotation order' %></div>
+        <div class="rs-lbl rs-lbl--inline"><%= t('show.orden_de_rotacion_de_carriles') %></div>
         <div class="rs-lanes">
           <% laneSequence.forEach((lane, i) => { %>
             <% if (lane === 0) { %>
@@ -207,36 +207,36 @@ function stepState(idx) {
       <div class="rs-phase rs-phase--pole">
         <div class="rs-phase__flag" aria-hidden="true"></div>
         <div class="rs-phase__info">
-          <div class="rs-phase__t"><%= lang === 'es' ? 'Pole Position' : 'Pole Position' %></div>
+          <div class="rs-phase__t"><%= t('show.pole_position') %></div>
           <div class="rs-phase__s">
             <% if (!poleSession) { %>
-              <%= lang === 'es' ? 'Pendiente — sin sesión preparada' : 'Pending — no session yet' %>
+              <%= t('show.pendiente_sin_sesion_preparada') %>
             <% } else if (poleSession.status === 'setup') { %>
-              <%= lang === 'es' ? '⏱ Configuración — elige el carril y arranca' : '⏱ Setup — pick lane and start' %>
+              <%= t('show.configuracion_elige_el_carril_y_arranca') %>
             <% } else if (poleSession.status === 'in_progress' || poleSession.status === 'timing') { %>
-              <%= lang === 'es' ? '⏱ Sesión en curso' : '⏱ Session in progress' %>
+              <%= t('show.sesion_en_curso') %>
             <% } else { %>
-              ✓ <%= lang === 'es' ? 'Completada' : 'Completed' %>
+              ✓ <%= t('show.completada') %>
             <% } %>
           </div>
         </div>
         <div class="rs-phase__actions">
           <% if (!poleSession) { %>
-            <span class="rs-phase__hint"><%= lang === 'es' ? '(carrera no guardada aún)' : '(race not saved yet)' %></span>
+            <span class="rs-phase__hint"><%= t('show.carrera_no_guardada_aun') %></span>
           <% } else if (poleSession.status === 'setup') { %>
             <a href="/races/<%= race.id %>/pole/setup" class="rs-btn rs-btn--primary rs-btn--sm">
-              <span>🏁</span> <%= lang === 'es' ? 'Iniciar Pole' : 'Start Pole' %>
+              <span>🏁</span> <%= t('show.iniciar_pole') %>
             </a>
           <% } else if (poleSession.status === 'in_progress' || poleSession.status === 'timing') { %>
             <a href="/races/<%= race.id %>/pole/timing" class="rs-btn rs-btn--primary rs-btn--sm">
-              <span>⏱</span> <%= lang === 'es' ? 'Continuar' : 'Continue' %>
+              <span>⏱</span> <%= t('show.continuar') %>
             </a>
           <% } else { %>
             <a href="/races/<%= race.id %>/pole/results" class="rs-btn rs-btn--outline rs-btn--sm">
-              <span>📊</span> <%= lang === 'es' ? 'Ver clasificación' : 'View results' %>
+              <span>📊</span> <%= t('show.ver_clasificacion') %>
             </a>
             <a href="/races/<%= race.id %>/pole/lanes" class="rs-btn rs-btn--ghost rs-btn--sm">
-              <span>🚦</span> <%= lang === 'es' ? 'Asignar carriles' : 'Assign lanes' %>
+              <span>🚦</span> <%= t('show.asignar_carriles') %>
             </a>
           <% } %>
         </div>
@@ -252,24 +252,24 @@ function stepState(idx) {
       <div class="rs-empty">
         <div class="rs-empty__car">🏎️</div>
         <% if (race.has_pole && poleSession && poleSession.status !== 'done') { %>
-          <div class="rs-empty__t"><%= lang === 'es' ? 'Completa la pole primero' : 'Complete pole first' %></div>
+          <div class="rs-empty__t"><%= t('show.completa_la_pole_primero') %></div>
           <div class="rs-empty__s">
             <%= lang === 'es'
               ? 'Tienes que terminar la sesión de Pole Position antes de poder añadir tandas.'
               : 'You need to finish the Pole Position session before adding heats.' %>
           </div>
           <a href="/races/<%= race.id %>/pole/<%= poleSession.status === 'in_progress' ? 'timing' : 'setup' %>" class="rs-btn rs-btn--primary">
-            <span>🏁</span> <%= lang === 'es' ? 'Ir a Pole Position' : 'Go to Pole Position' %>
+            <span>🏁</span> <%= t('show.ir_a_pole_position') %>
           </a>
         <% } else { %>
-          <div class="rs-empty__t"><%= lang === 'es' ? 'Aún no hay tandas' : 'No heats yet' %></div>
+          <div class="rs-empty__t"><%= t('show.aun_no_hay_tandas') %></div>
           <div class="rs-empty__s">
             <%= lang === 'es'
               ? 'Cada <b>tanda</b> es una ronda donde los pilotos rotan por los carriles según el orden de arriba. Añade la primera para empezar a cronometrar.'
               : 'Each <b>heat group</b> is a round where pilots rotate through lanes following the order above. Add the first to start timing.' %>
           </div>
           <a href="/races/<%= race.id %>/tandas/new" class="rs-btn rs-btn--primary">
-            <span>+</span> <%= lang === 'es' ? 'Añadir Tanda 1' : 'Add Heat 1' %>
+            <span>+</span> <%= t('show.anadir_tanda_1') %>
           </a>
         <% } %>
       </div>
@@ -280,7 +280,7 @@ function stepState(idx) {
         <div class="rs-tanda__head">
           <button type="button" class="rs-tanda__left" aria-expanded="<%= tanda.status === 'finished' ? 'false' : 'true' %>">
             <span class="rs-tanda__chevron" aria-hidden="true">▸</span>
-            <span class="rs-tanda__num"><%= lang === 'es' ? 'Tanda' : 'Heat' %> <%= tanda.number %></span>
+            <span class="rs-tanda__num"><%= t('common.tanda') %> <%= tanda.number %></span>
             <span class="rs-state rs-state--<%= tanda.status %>">
               <%= lang === 'es'
                 ? { pending: 'Pendiente', active: 'En curso', finished: 'Finalizada' }[tanda.status]
@@ -288,7 +288,7 @@ function stepState(idx) {
             </span>
             <span class="rs-tanda__hint">
               <%= tanda.mangas_finished %> / <%= tanda.manga_count %>
-              <%= lang === 'es' ? 'mangas' : 'heats' %>
+              <%= t('common.mangas') %>
             </span>
           </button>
           <div class="rs-tanda__actions">
@@ -306,10 +306,10 @@ function stepState(idx) {
             <% } %>
             <% if (tanda.status !== 'active') { %>
               <a href="/races/<%= race.id %>/tandas/<%= tanda.id %>/edit" class="rs-btn rs-btn--ghost rs-btn--sm">
-                ✏ <%= lang === 'es' ? 'Editar' : 'Edit' %>
+                ✏ <%= t('client.common.editar') %>
               </a>
               <form action="/races/<%= race.id %>/tandas/<%= tanda.id %>?_method=DELETE" method="POST"
-                    onsubmit="return confirm('<%= lang === 'es' ? '¿Eliminar tanda?' : 'Delete tanda?' %>')" style="margin:0">
+                    onsubmit="return confirm('<%= t('show.eliminar_tanda') %>')" style="margin:0">
                 <button type="submit" class="rs-btn rs-btn--danger rs-btn--sm">✕</button>
               </form>
             <% } %>
@@ -320,7 +320,7 @@ function stepState(idx) {
           <table class="rs-sched">
             <thead>
               <tr>
-                <th class="rs-sched__entity"><%= lang === 'es' ? 'Equipo / Piloto' : 'Team / Driver' %></th>
+                <th class="rs-sched__entity"><%= t('common.equipo_piloto') %></th>
                 <% tanda.mangas.forEach(m => { %>
                   <th class="rs-sched__manga rs-sched__manga--<%= m.status %>">
                     <% if (m.status === 'finished' || m.status === 'active') { %>

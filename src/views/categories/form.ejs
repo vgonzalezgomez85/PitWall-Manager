@@ -5,20 +5,20 @@
 
     <a href="/categories" class="vt-back-link">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      <%= lang === 'es' ? 'Volver a categorías' : 'Back to categories' %>
+      <%= t('form.volver_a_categorias') %>
     </a>
 
     <h1>
       <% if (category) { %>
-        <%= lang === 'es' ? 'Editar categoría' : 'Edit category' %>
+        <%= t('form.editar_categoria') %>
       <% } else { %>
-        <%= lang === 'es' ? 'Nueva categoría' : 'New category' %>
+        <%= t('common.nueva_categoria') %>
       <% } %>
     </h1>
 
     <% if (error) { %>
       <div class="vt-alert" style="margin-top:16px">
-        <p><strong><%= lang === 'es' ? 'Error' : 'Error' %>:</strong> <%= error %></p>
+        <p><strong><%= t('client.common.error') %>:</strong> <%= error %></p>
       </div>
     <% } %>
 
@@ -26,32 +26,32 @@
 
       <div class="vt-form-group">
         <label class="vt-form-group__label" for="name">
-          <%= lang === 'es' ? 'Nombre de la categoría' : 'Category name' %> *
+          <%= t('form.nombre_de_la_categoria') %> *
         </label>
         <input class="vt-inp" type="text" id="name" name="name" maxlength="50"
           value="<%= category?.name || '' %>"
-          placeholder="<%= lang === 'es' ? 'Ej: Fórmula 1, Rally, Clásicos' : 'E.g: Formula 1, Rally, Classics' %>"
+          placeholder="<%= t('form.ej_formula_1_rally_clasicos') %>"
           autocomplete="off" autofocus required>
-        <p class="vt-hint"><%= lang === 'es' ? 'Nombre que verás en los catálogos de coches y carreras.' : 'Name displayed in car and race catalogs.' %></p>
+        <p class="vt-hint"><%= t('form.nombre_que_veras_en_los_catalogos_de_coches_y') %></p>
       </div>
 
       <div class="vt-form-group">
         <label class="vt-form-group__label" for="description">
-          <%= lang === 'es' ? 'Descripción' : 'Description' %>
+          <%= t('common.descripcion') %>
         </label>
         <textarea class="vt-inp" id="description" name="description" rows="3" maxlength="200"
           style="height:auto;padding-top:12px;padding-bottom:12px;line-height:1.5;resize:vertical"
-          placeholder="<%= lang === 'es' ? 'Descripción opcional…' : 'Optional description…' %>"><%= category?.description || '' %></textarea>
-        <p class="vt-hint"><%= lang === 'es' ? 'Información adicional sobre esta categoría.' : 'Additional information about this category.' %></p>
+          placeholder="<%= t('form.descripcion_opcional') %>"><%= category?.description || '' %></textarea>
+        <p class="vt-hint"><%= t('form.informacion_adicional_sobre_esta_categoria') %></p>
       </div>
 
       <div class="vt-form-actions">
-        <a href="/categories" class="vt-btn vt-btn--ghost"><%= lang === 'es' ? 'Cancelar' : 'Cancel' %></a>
+        <a href="/categories" class="vt-btn vt-btn--ghost"><%= t('client.common.cancelar') %></a>
         <button type="submit" class="vt-btn vt-btn--primary">
           <% if (category) { %>
-            <%= lang === 'es' ? 'Guardar cambios' : 'Save changes' %>
+            <%= t('common.guardar_cambios') %>
           <% } else { %>
-            <%= lang === 'es' ? 'Crear categoría' : 'Create category' %>
+            <%= t('form.crear_categoria') %>
           <% } %>
         </button>
       </div>

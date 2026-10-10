@@ -1,13 +1,13 @@
-<%- include('../partials/header', { pageTitle: (lang === 'es' ? 'Certificado' : 'Certificate') }) %>
+<%- include('../partials/header', { pageTitle: (t('cert.certificado')) }) %>
 
 <div class="container container--narrow">
   <a href="/settings" class="vt-back-link" style="margin-top:1rem">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-    <%= lang === 'es' ? 'Ajustes' : 'Settings' %>
+    <%= t('common.ajustes') %>
   </a>
 
   <div class="page-header">
-    <h1 class="page-title">🔒 <%= lang === 'es' ? 'Certificado de PitWall' : 'PitWall certificate' %></h1>
+    <h1 class="page-title">🔒 <%= t('cert.certificado_de_pitwall') %></h1>
     <p style="color:#8b949e; margin-top:.3rem">
       <%= lang === 'es'
         ? 'Instala este certificado en el dispositivo para que el escáner QR del control de pilotos abra la cámara SIN el aviso de «conexión no privada». Solo hace falta hacerlo una vez por dispositivo.'
@@ -23,35 +23,35 @@
 
   <div style="margin:1.2rem 0;text-align:center">
     <a class="vt-btn vt-btn--primary" href="/cert/ca" download style="font-size:1.05rem;padding:.7rem 1.4rem">
-      ⬇ <%= lang === 'es' ? 'Descargar certificado (PitWall-CA.crt)' : 'Download certificate (PitWall-CA.crt)' %>
+      ⬇ <%= t('cert.descargar_certificado_pitwall_ca_crt') %>
     </a>
   </div>
 
   <% if (fingerprint) { %>
     <p style="text-align:center;color:#6e7681;font-size:.75rem;font-family:monospace;word-break:break-all">
-      <%= lang === 'es' ? 'Huella SHA-256:' : 'SHA-256 fingerprint:' %><br><%= fingerprint %>
+      <%= t('cert.huella_sha_256') %><br><%= fingerprint %>
     </p>
   <% } %>
 
   <h2 class="ct-h2">🍎 iPhone / iPad</h2>
   <ol class="ct-steps">
-    <li><%= lang === 'es' ? 'Descarga el certificado con el botón de arriba (usa Safari).' : 'Download the certificate with the button above (use Safari).' %></li>
-    <li><%= lang === 'es' ? 'Ve a Ajustes → General → VPN y gestión de dispositivos → instala el perfil «PitWall Local CA».' : 'Go to Settings → General → VPN & Device Management → install the “PitWall Local CA” profile.' %></li>
-    <li><%= lang === 'es' ? 'Luego Ajustes → General → Información → Ajustes de certificados de confianza y activa «PitWall Local CA».' : 'Then Settings → General → About → Certificate Trust Settings and enable “PitWall Local CA”.' %></li>
+    <li><%= t('cert.descarga_el_certificado_con_el_boton_de_arriba') %></li>
+    <li><%= t('cert.ve_a_ajustes_general_vpn_y_gestion_de') %></li>
+    <li><%= t('cert.luego_ajustes_general_informacion_ajustes_de') %></li>
   </ol>
 
   <h2 class="ct-h2">🤖 Android</h2>
   <ol class="ct-steps">
-    <li><%= lang === 'es' ? 'Descarga el certificado con el botón de arriba.' : 'Download the certificate with the button above.' %></li>
-    <li><%= lang === 'es' ? 'Ajustes → Seguridad → Cifrado y credenciales → Instalar un certificado → Certificado de CA.' : 'Settings → Security → Encryption & credentials → Install a certificate → CA certificate.' %></li>
-    <li><%= lang === 'es' ? 'Elige el fichero descargado y acepta.' : 'Pick the downloaded file and accept.' %>
-      <span style="color:#6e7681"><%= lang === 'es' ? '(La ruta exacta varía según la marca del móvil.)' : '(Exact path varies by phone brand.)' %></span></li>
+    <li><%= t('cert.descarga_el_certificado_con_el_boton_de_arriba_2') %></li>
+    <li><%= t('cert.ajustes_seguridad_cifrado_y_credenciales') %></li>
+    <li><%= t('cert.elige_el_fichero_descargado_y_acepta') %>
+      <span style="color:#6e7681"><%= t('cert.la_ruta_exacta_varia_segun_la_marca_del_movil') %></span></li>
   </ol>
 
   <h2 class="ct-h2">🪟 Windows</h2>
   <ol class="ct-steps">
-    <li><%= lang === 'es' ? 'Descarga el certificado y ábrelo (doble clic).' : 'Download the certificate and open it (double-click).' %></li>
-    <li><%= lang === 'es' ? 'Instalar certificado → Equipo local → «Colocar todos los certificados en el siguiente almacén» → Entidades de certificación raíz de confianza.' : 'Install Certificate → Local Machine → “Place all certificates in the following store” → Trusted Root Certification Authorities.' %></li>
+    <li><%= t('cert.descarga_el_certificado_y_abrelo_doble_clic') %></li>
+    <li><%= t('cert.instalar_certificado_equipo_local_colocar_todos') %></li>
   </ol>
 
   <div class="ct-note-box" style="margin-top:1.5rem">

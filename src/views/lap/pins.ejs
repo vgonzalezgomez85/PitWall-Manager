@@ -35,12 +35,13 @@
     </div>
 
     <div class="pins-grid <%= pinRequired ? '' : 'pins-grid--muted' %>" id="pinsGrid">
-      <% teams.forEach(t => { %>
+      <%# `t` es el traductor en las vistas: no se puede usar como variable de bucle. %>
+      <% teams.forEach(team => { %>
         <div class="pin-row">
-          <span class="swatch" style="background:<%= t.color || '#8b949e' %>"></span>
-          <span class="pin-name"><%= t.name %></span>
-          <span class="pin-code"><%= t.lap_pin || '—' %></span>
-          <form method="POST" action="/lap/<%= race.id %>/pins/<%= t.id %>/regenerate" class="pin-form">
+          <span class="swatch" style="background:<%= team.color || '#8b949e' %>"></span>
+          <span class="pin-name"><%= team.name %></span>
+          <span class="pin-code"><%= team.lap_pin || '—' %></span>
+          <form method="POST" action="/lap/<%= race.id %>/pins/<%= team.id %>/regenerate" class="pin-form">
             <button class="pin-regen" type="submit" title="Nuevo PIN">↻</button>
           </form>
         </div>

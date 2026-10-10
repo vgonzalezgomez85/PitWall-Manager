@@ -13,7 +13,7 @@ const completed = session.current_idx;
 const total     = entries.length;
 const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
 %>
-<%- include('../partials/header', { pageTitle: lang === 'es' ? 'Pole Position — Cronometraje' : 'Pole Position — Timing' }) %>
+<%- include('../partials/header', { pageTitle: t('pole-timing.pole_position_cronometraje') }) %>
 
 <!-- Fuentes específicas para la estética broadcast de la pole -->
 <link rel="stylesheet" href="/css/fonts.css">
@@ -24,7 +24,7 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
   <div class="pole-bcast-wrap">
 
     <% if (isGuestAccess) { %>
-      <a href="/race-stats" class="pole-back">← <%= lang === 'es' ? 'Estadísticas en vivo' : 'Live stats' %></a>
+      <a href="/race-stats" class="pole-back">← <%= t('common.estadisticas_en_vivo') %></a>
     <% } else { %>
       <a href="/races/<%= race.id %>" class="pole-back">← <%= t('race.back_to_list') %></a>
     <% } %>
@@ -43,15 +43,15 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
       <span>1c–<%= race.lanes_count %>c</span>
       <span class="pole-dot"></span>
       <span class="pole-lane-badge">
-        <%= lang === 'es' ? 'Carril de pole' : 'Pole lane' %>
+        <%= t('common.carril_de_pole') %>
         <span class="pole-lane-num"><%= session.lane %></span>
       </span>
     </div>
 
     <div class="pole-progress">
       <div class="pole-progress-head">
-        <span class="pole-progress-lbl"><%= lang === 'es' ? 'Progreso de la sesión' : 'Session progress' %></span>
-        <span class="pole-progress-val"><b><%= completed %></b> / <%= total %> <%= lang === 'es' ? 'completados' : 'completed' %></span>
+        <span class="pole-progress-lbl"><%= t('pole-timing.progreso_de_la_sesion') %></span>
+        <span class="pole-progress-val"><b><%= completed %></b> / <%= total %> <%= t('pole-timing.completados') %></span>
       </div>
       <div class="pole-bar"><div class="pole-bar-fill" style="width: <%= progressPct %>%"></div></div>
     </div>
@@ -60,15 +60,15 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
     <!-- ── Opción de organización: omitir el primer cruce (out-lap) ─────── -->
     <div class="pole-omit<%= poleLocked ? ' pole-omit--locked' : '' %>">
       <label class="pole-omit-switch" title="<%= poleLocked
-              ? (lang === 'es' ? 'Bloqueado: ya hay tiempos registrados, la regla no puede cambiar a mitad de pole' : 'Locked: times already recorded, the rule cannot change mid-session')
-              : (lang === 'es' ? 'Si está activo, el primer cruce de cada piloto (out-lap) no cuenta' : 'When on, each driver\'s first crossing (out-lap) is ignored') %>">
+              ? (t('pole-timing.bloqueado_ya_hay_tiempos_registrados_la_regla'))
+              : (t('pole-timing.si_esta_activo_el_primer_cruce_de_cada_piloto')) %>">
         <input type="checkbox" id="omitFirstToggle" <%= omitFirstCrossing ? 'checked' : '' %> <%= poleLocked ? 'disabled' : '' %>>
         <span class="pole-omit-track"><span class="pole-omit-thumb"></span></span>
       </label>
-      <span class="pole-omit-text"><%= lang === 'es' ? 'Omitir 1er cruce (out-lap)' : 'Skip 1st crossing (out-lap)' %></span>
+      <span class="pole-omit-text"><%= t('pole-timing.omitir_1er_cruce_out_lap') %></span>
       <span id="omitFirstState" class="pole-omit-state"></span>
       <% if (poleLocked) { %>
-        <span class="pole-omit-lock" title="<%= lang === 'es' ? 'Bloqueado: ya hay tiempos' : 'Locked: times recorded' %>">🔒</span>
+        <span class="pole-omit-lock" title="<%= t('pole-timing.bloqueado_ya_hay_tiempos') %>">🔒</span>
       <% } %>
     </div>
 
@@ -80,7 +80,7 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
         <input type="checkbox" id="autoAdvanceToggle">
         <span class="pole-omit-track"><span class="pole-omit-thumb"></span></span>
       </label>
-      <span class="pole-omit-text"><%= lang === 'es' ? 'Cambio automático de piloto' : 'Automatic pilot change' %></span>
+      <span class="pole-omit-text"><%= t('pole-timing.cambio_automatico_de_piloto') %></span>
       <span id="autoAdvanceState" class="pole-omit-state"></span>
     </div>
     <% } %>
@@ -92,13 +92,13 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
 
       <!-- ── TARJETA EN PISTA ──────────────────────────────────────── -->
       <% if (current) { %>
-      <section class="pole-bcast-card pole-live" id="js-current-card" aria-label="<%= lang === 'es' ? 'Piloto en pista' : 'Pilot on track' %>">
+      <section class="pole-bcast-card pole-live" id="js-current-card" aria-label="<%= t('pole-timing.piloto_en_pista') %>">
 
         <div class="pole-live-status">
           <span class="pole-pulse" aria-hidden="true"></span>
-          🚦 <%= lang === 'es' ? 'En pista ahora' : 'On track now' %>
+          🚦 <%= t('pole-timing.en_pista_ahora') %>
         </div>
-        <div class="pole-live-sub" id="js-state-sub"><%= lang === 'es' ? 'Cronometrando vuelta' : 'Timing lap' %></div>
+        <div class="pole-live-sub" id="js-state-sub"><%= t('client.pole-timing.cronometrando_vuelta') %></div>
 
         <div class="pole-driver-big" id="js-current-name"><%= current.entity_name %></div>
 
@@ -111,24 +111,24 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
         <!-- Countdown discreto + mejor del piloto actual -->
         <div id="js-countdown-wrap" class="pole-countdown-row" style="display:none">
           <div class="pole-countdown-cell">
-            <span class="pole-cell-lbl"><%= lang === 'es' ? 'Tiempo restante' : 'Time left' %></span>
+            <span class="pole-cell-lbl"><%= t('pole-timing.tiempo_restante') %></span>
             <span id="js-countdown" class="pole-countdown-val">00:00</span>
           </div>
           <div class="pole-countdown-cell">
-            <span class="pole-cell-lbl"><%= lang === 'es' ? 'Mejor del piloto' : 'Pilot\'s best' %></span>
+            <span class="pole-cell-lbl"><%= t('pole-timing.mejor_del_piloto') %></span>
             <span id="js-best-val" class="pole-countdown-val pole-countdown-val--best">—</span>
           </div>
         </div>
 
         <!-- Historial de vueltas (la más reciente arriba; la mejor en morado) -->
         <div id="js-laps-wrap" class="pole-laps" style="display:none">
-          <div class="pole-laps-title"><%= lang === 'es' ? 'Vueltas' : 'Laps' %></div>
+          <div class="pole-laps-title"><%= t('client.common.vueltas') %></div>
           <div id="js-laps-list" class="pole-laps-list"></div>
         </div>
 
         <!-- Resultado al finalizar -->
         <div id="js-finished-result" class="pole-finished" style="display:none">
-          <span><%= lang === 'es' ? 'Mejor vuelta' : 'Best lap' %></span>
+          <span><%= t('common.mejor_vuelta') %></span>
           <strong id="js-final-best">—</strong>
           <span class="pole-finished-laps" id="js-final-laps"></span>
         </div>
@@ -151,13 +151,13 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
         %>
         <div id="js-btn-idle" class="pole-btn-row" style="display:none">
           <button id="js-btn-start" class="pole-btn-start" onclick="startTiming()">
-            <span class="pole-btn-tri">▶</span> <%= lang === 'es' ? 'Iniciar' : 'Start' %>
+            <span class="pole-btn-tri">▶</span> <%= t('pole-timing.iniciar') %>
           </button>
         </div>
 
         <div id="js-btn-running" class="pole-btn-row" style="display:none">
           <button id="js-btn-stop" class="pole-btn-stop" onclick="stopTiming()">
-            ⏹ <%= lang === 'es' ? 'Parar' : 'Stop' %>
+            ⏹ <%= t('common.parar') %>
           </button>
         </div>
 
@@ -177,7 +177,7 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
         <div id="js-btn-finished" class="pole-btn-row" style="display:none">
           <form id="js-next-form" action="/races/<%= race.id %>/pole/next" method="POST">
             <button type="submit" class="pole-btn-next">
-              <span id="js-btn-next-label"><%= lang === 'es' ? 'Siguiente piloto →' : 'Next pilot →' %></span>
+              <span id="js-btn-next-label"><%= t('client.pole-timing.siguiente_piloto') %></span>
             </button>
           </form>
         </div>
@@ -185,7 +185,7 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
 
         <!-- Siguiente piloto (chip al pie) -->
         <div class="pole-next-chip" id="js-next-chip" style="<%= next ? '' : 'display:none' %>">
-          <span class="pole-next-chip-lbl">⏭ <%= lang === 'es' ? 'Siguiente' : 'Next' %></span>
+          <span class="pole-next-chip-lbl">⏭ <%= t('pole-timing.siguiente') %></span>
           <span class="pole-next-chip-name" id="js-next-chip-name"><%= next ? next.entity_name : '' %></span>
         </div>
 
@@ -193,10 +193,10 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
       <% } %>
 
       <!-- ── ORDEN DE SALIDA ───────────────────────────────────────── -->
-      <section class="pole-bcast-card" aria-label="<%= lang === 'es' ? 'Orden de salida' : 'Start order' %>">
+      <section class="pole-bcast-card" aria-label="<%= t('pole-timing.orden_de_salida') %>">
         <div class="pole-bcast-title">
           <span class="pole-bcast-ico">▶</span>
-          <%= lang === 'es' ? 'Orden de salida' : 'Start order' %>
+          <%= t('pole-timing.orden_de_salida') %>
         </div>
         <div class="pole-bcast-list" id="js-order">
           <!-- populated by JS / renderOrder — así se mantiene al día sin recargar
@@ -205,10 +205,10 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
       </section>
 
       <!-- ── CLASIFICACIÓN EN VIVO ─────────────────────────────────── -->
-      <section class="pole-bcast-card" aria-label="<%= lang === 'es' ? 'Clasificación en vivo' : 'Live standings' %>">
+      <section class="pole-bcast-card" aria-label="<%= t('pole-timing.clasificacion_en_vivo') %>">
         <div class="pole-bcast-title">
           <span class="pole-bcast-ico">🏆</span>
-          <%= lang === 'es' ? 'Clasificación en vivo' : 'Live standings' %>
+          <%= t('pole-timing.clasificacion_en_vivo') %>
         </div>
         <div class="pole-tower" id="js-tower">
           <!-- populated by JS / renderTower -->
@@ -218,7 +218,7 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
     </div><!-- /grid -->
 
     <div class="pole-bcast-foot">
-      <%= lang === 'es' ? 'SI POLE · clasificación a vuelta única · el más rápido elige carril' : 'Single-lap qualifying · fastest picks lane' %>
+      <%= t('common.si_pole_clasificacion_a_vuelta_unica_el_mas') %>
     </div>
 
   </div>
@@ -256,7 +256,7 @@ function formatMs(ms) {
   const s = ((ms % 60000) / 1000).toFixed(3).padStart(6, '0');
   return m > 0 ? m + ':' + s : s + 's';
 }
-function fmtSeconds3(ms) { if (ms == null) return '—'; return (ms / 1000).toFixed(3); }
+function fmtSeconds3(ms) { if (ms == null) return '—'; return (ms / 1000).toFixed(3).replace('.', ','); }
 function fmtDelta(ms) {
   if (ms == null) return '';
   const sign = ms >= 0 ? '+' : '−';
@@ -689,7 +689,7 @@ if (IS_RUNNING) {
   const tgl   = document.getElementById('omitFirstToggle');
   const state = document.getElementById('omitFirstState');
   if (!tgl) return;
-  const LANG_ES = <%= lang === 'es' ? 'true' : 'false' %>;
+  const LANG_ES = <%= t('pole-timing.true') %>;
   function paint() { if (state) state.textContent = tgl.checked ? (LANG_ES ? 'ON' : 'ON') : 'OFF'; }
   paint();
   tgl.addEventListener('change', async () => {

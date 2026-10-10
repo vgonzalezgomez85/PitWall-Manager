@@ -10,13 +10,13 @@
     <% if (showCat) { %>
       <input class="form-input participant-cat" type="text"
              name="<%= idxPrefix %>[categoria]"
-             placeholder="<%= _es ? 'Categoría / copa' : 'Category / cup' %>"
+             placeholder="<%= t('common.categoria_copa') %>"
              value="<%= categoria || '' %>" autocomplete="off">
     <% } %>
     <% if (showCar) { %>
       <input class="form-input participant-car" type="text"
              name="<%= idxPrefix %>[coche]"
-             placeholder="<%= _es ? 'Coche' : 'Car' %>"
+             placeholder="<%= t('common.coche') %>"
              value="<%= coche || '' %>" autocomplete="off">
     <% } %>
   </div>

@@ -1,4 +1,4 @@
-<%- include('../partials/header', { pageTitle: lang === 'es' ? 'Comparador DS↔BART' : 'DS↔BART compare' }) %>
+<%- include('../partials/header', { pageTitle: t('compare.comparador_ds_bart_2') }) %>
 
 <% var _cfg = (typeof linkCfg !== 'undefined' && linkCfg) ? linkCfg : { role:'off', peerUrl:'' }; %>
 
@@ -7,12 +7,12 @@
 
     <a href="/link" class="vt-back-link">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      <%= lang === 'es' ? 'Enlace maestro / esclavo' : 'Master / slave link' %>
+      <%= t('common.enlace_maestro_esclavo') %>
     </a>
 
     <div class="vt-head">
       <div class="vt-head__title">
-        <h1><%= lang === 'es' ? 'Comparador DS ↔ BART' : 'DS ↔ BART compare' %></h1>
+        <h1><%= t('compare.comparador_ds_bart') %></h1>
       </div>
     </div>
 
@@ -31,47 +31,47 @@
 
     <!-- ── Controles ───────────────────────────────────────────────── -->
     <div class="vt-panel" style="margin-bottom:20px">
-      <div class="vt-sec-lbl"><%= lang === 'es' ? 'Qué comparar' : 'What to compare' %></div>
+      <div class="vt-sec-lbl"><%= t('compare.que_comparar') %></div>
 
       <div class="cmp-controls">
         <div class="vt-field">
-          <label for="cmpPeer"><%= lang === 'es' ? 'URL del otro sistema' : 'Other system URL' %></label>
+          <label for="cmpPeer"><%= t('compare.url_del_otro_sistema') %></label>
           <input type="text" id="cmpPeer" class="vt-inp is-mono" placeholder="192.168.1.51:3000"
                  autocomplete="off" spellcheck="false" value="<%= _cfg.peerUrl %>">
         </div>
 
         <div class="vt-field">
-          <label for="cmpRace"><%= lang === 'es' ? 'Carrera' : 'Race' %></label>
+          <label for="cmpRace"><%= t('common.carrera') %></label>
           <select id="cmpRace" class="vt-inp">
-            <option value=""><%= lang === 'es' ? 'Cargando…' : 'Loading…' %></option>
+            <option value=""><%= t('compare.cargando') %></option>
           </select>
         </div>
 
         <div class="vt-field">
-          <label for="cmpManga"><%= lang === 'es' ? 'Manga' : 'Heat' %></label>
+          <label for="cmpManga"><%= t('common.manga') %></label>
           <select id="cmpManga" class="vt-inp" disabled>
-            <option value=""><%= lang === 'es' ? 'Elige una carrera' : 'Pick a race' %></option>
+            <option value=""><%= t('compare.elige_una_carrera') %></option>
           </select>
         </div>
 
         <div class="vt-field">
-          <label for="cmpMode"><%= lang === 'es' ? 'Modo' : 'Mode' %></label>
+          <label for="cmpMode"><%= t('common.modo') %></label>
           <select id="cmpMode" class="vt-inp">
-            <option value="auto"><%= lang === 'es' ? 'Auto' : 'Auto' %></option>
-            <option value="same"><%= lang === 'es' ? 'Mismo punto (sensores juntos)' : 'Same point (sensors together)' %></option>
-            <option value="different"><%= lang === 'es' ? 'Distintos puntos (sensores separados)' : 'Different points (sensors apart)' %></option>
+            <option value="auto"><%= t('compare.auto') %></option>
+            <option value="same"><%= t('compare.mismo_punto_sensores_juntos') %></option>
+            <option value="different"><%= t('compare.distintos_puntos_sensores_separados') %></option>
           </select>
         </div>
 
         <div class="vt-field">
-          <label for="cmpTol"><%= lang === 'es' ? 'Tolerancia (ms)' : 'Tolerance (ms)' %></label>
+          <label for="cmpTol"><%= t('compare.tolerancia_ms') %></label>
           <input type="number" id="cmpTol" class="vt-inp is-mono" value="400" min="0" step="10" style="max-width:140px">
         </div>
 
         <div class="vt-field cmp-field--check">
           <label class="cmp-check">
             <input type="checkbox" id="cmpSwap">
-            <span><%= lang === 'es' ? 'Invertir DS / BART' : 'Swap DS / BART' %></span>
+            <span><%= t('compare.invertir_ds_bart') %></span>
           </label>
         </div>
       </div>
@@ -84,11 +84,11 @@
 
       <div style="display:flex;align-items:center;gap:14px;margin-top:16px;flex-wrap:wrap">
         <button type="button" id="cmpRun" class="vt-btn vt-btn--primary">
-          <%= lang === 'es' ? 'Comparar' : 'Compare' %>
+          <%= t('compare.comparar') %>
         </button>
         <button type="button" id="cmpCsv" class="vt-btn vt-btn--ghost" style="display:none">
           <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-          <%= lang === 'es' ? 'Exportar CSV' : 'Export CSV' %>
+          <%= t('compare.exportar_csv') %>
         </button>
         <span id="cmpMsg" class="link-msg" style="display:none"></span>
       </div>
@@ -100,7 +100,7 @@
       <!-- Agregado / veredicto -->
       <div class="vt-panel cmp-verdict" style="margin-bottom:18px">
         <div class="cmp-verdict__head">
-          <div class="vt-sec-lbl" style="margin:0"><%= lang === 'es' ? 'Veredicto de BART' : 'BART verdict' %></div>
+          <div class="vt-sec-lbl" style="margin:0"><%= t('compare.veredicto_de_bart') %></div>
           <span id="cmpVerdictBadge" class="vt-badge"><span class="vt-badge__d"></span><span></span></span>
         </div>
         <div class="cmp-meta is-mono" id="cmpMetaLine"></div>
@@ -112,16 +112,16 @@
         <table class="vt-table cmp-table">
           <thead>
             <tr>
-              <th><%= lang === 'es' ? 'Carril' : 'Lane' %></th>
-              <th><%= lang === 'es' ? 'Equipo' : 'Team' %></th>
+              <th><%= t('client.common.carril') %></th>
+              <th><%= t('common.equipo') %></th>
               <th class="is-num">DS</th>
               <th class="is-num">BART</th>
-              <th class="is-num"><%= lang === 'es' ? 'Offset' : 'Offset' %></th>
-              <th class="is-num" title="<%= lang === 'es' ? 'BART se comió' : 'BART missed' %>">✗</th>
-              <th class="is-num" title="<%= lang === 'es' ? 'Fantasmas' : 'Phantoms' %>">👻</th>
-              <th class="is-num" title="<%= lang === 'es' ? 'Residual medio' : 'Mean residual' %>">|res| μ</th>
-              <th class="is-num" title="<%= lang === 'es' ? 'Residual máx' : 'Max residual' %>">|res| máx</th>
-              <th><%= lang === 'es' ? 'Modo' : 'Mode' %></th>
+              <th class="is-num"><%= t('compare.offset') %></th>
+              <th class="is-num" title="<%= t('compare.bart_se_comio') %>">✗</th>
+              <th class="is-num" title="<%= t('compare.fantasmas') %>">👻</th>
+              <th class="is-num" title="<%= t('compare.residual_medio') %>">|res| μ</th>
+              <th class="is-num" title="<%= t('compare.residual_max') %>">|res| máx</th>
+              <th><%= t('common.modo') %></th>
             </tr>
           </thead>
           <tbody id="cmpLaneBody"></tbody>
@@ -131,8 +131,8 @@
     </div>
 
     <div id="cmpEmpty" class="vt-empty" style="display:none">
-      <div class="vt-empty__t"><%= lang === 'es' ? 'Sin datos' : 'No data' %></div>
-      <p style="color:var(--vt-mute)"><%= lang === 'es' ? 'Elige carrera y manga, y pulsa Comparar.' : 'Pick a race and heat, then press Compare.' %></p>
+      <div class="vt-empty__t"><%= t('compare.sin_datos') %></div>
+      <p style="color:var(--vt-mute)"><%= t('compare.elige_carrera_y_manga_y_pulsa_comparar') %></p>
     </div>
 
   </div>

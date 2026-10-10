@@ -58,17 +58,24 @@ function teamHtml(name, cat) {
 }
 function teamPlain(name, cat) { return cat ? `${name} - ${cat}` : name; }
 
+// Coma decimal (convención de toda la app). Recibe el resultado ya redondeado de
+// un toFixed() y le cambia el separador; de paso quita los ceros de relleno
+// («-0,50» → «-0,5») porque parseFloat los descarta.
+function num(str) { return String(parseFloat(str)).replace('.', ','); }
+
 function formatMs(ms) {
   if (ms == null) return '—';
-  // 2 decimales (centésimas) TRUNCANDO, sin redondear (12.069s → 12.06).
+  // 2 decimales (centésimas) TRUNCANDO, sin redondear (12.069s → 12,06).
   // Truncamos el total de centésimas; también evita la basura de coma flotante
   // (los tiempos del DS llegan en float).
+  // Coma decimal: es la convención de la app en toda la interfaz (resultados,
+  // estadísticas, Le Mans). El directo era el único sitio que sacaba punto.
   const cs = Math.floor(ms / 10);            // centésimas totales (truncadas)
   const totalSec   = Math.floor(cs / 100);
   const hundredths = cs % 100;
   const secs = totalSec % 60;
   const mins = Math.floor(totalSec / 60);
-  return `${mins > 0 ? mins + ':' : ''}${String(secs).padStart(mins > 0 ? 2 : 1, '0')}.${String(hundredths).padStart(2, '0')}`;
+  return `${mins > 0 ? mins + ':' : ''}${String(secs).padStart(mins > 0 ? 2 : 1, '0')},${String(hundredths).padStart(2, '0')}`;
 }
 
 
@@ -83,8 +90,8 @@ function formatDelta(bestMs, avgMs) {
 // de distancia respecto al que tiene delante (projGapAhead de
 // renderProjected), mismo formato en los dos sitios.
 function formatProjGapV(g) {
-  // Sin ceros de relleno: «-6» y «-0.5», no «-6.00» y «-0.50».
-  return (g && Math.abs(g) >= 0.01) ? `-${parseFloat(g.toFixed(2))}` : '—';
+  // Sin ceros de relleno: «-6» y «-0,5», no «-6,00» y «-0,50».
+  return (g && Math.abs(g) >= 0.01) ? `-${num(g.toFixed(2))}` : '—';
 }
 
 // Color para ÚLTIMA: verde si ≤ mejor, blanco si ≤ media, ámbar si ≤ mejor*1.05, rojo si peor.
@@ -445,10 +452,15 @@ function renderCircuitTimers(circuits) {
   });
 }
 
+// Voz por idioma. Antes era un ternario es/en: con un tercer idioma la voz
+// italiana habría leído con acento inglés.
+const VOICE_LOCALES = { es: 'es-ES', en: 'en-US', it: 'it-IT' };
+function speechLocale() { return VOICE_LOCALES[LANG] || VOICE_LOCALES.es; }
+
 function announceWarning(text) {
   if (!window.speechSynthesis) return;
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = LANG === 'es' ? 'es-ES' : 'en-US';
+  u.lang = speechLocale();
   u.rate = 1;
   speechSynthesis.speak(u);
 }
@@ -1778,7 +1790,7 @@ function renderStandings(data) {
         <td class="sr-right">—</td>
       </tr>`;
     }
-    const gapLapDisplay = gapInLaps[r.lane] !== 0 ? `-${gapInLaps[r.lane].toFixed(1)}` : '—';
+    const gapLapDisplay = gapInLaps[r.lane] !== 0 ? `-${num(gapInLaps[r.lane].toFixed(1))}` : '—';
     const gapSecDisplay = gapInMs[r.lane] != null ? `-${formatMs(gapInMs[r.lane])}` : '—';
 
     return `
@@ -2016,7 +2028,7 @@ function renderProjected(data) {
     <tr class="srow${activeMap.has(r.name) ? '' : ' srow--off'}">
       <td><span class="sr-pos ${posClass(i+1)}">${i+1}</span>${move}</td>
       <td><span class="sr-name" title="${teamPlain(r.name, r.categoria)}">${flagHtml(countryOf.get(r.name))}${teamHtml(r.name, r.categoria)}</span></td>
-      <td class="sr-right"><span class="sr-proj">${r.projectedTotalRaw != null ? r.projectedTotalRaw.toFixed(1) : '—'}</span></td>
+      <td class="sr-right"><span class="sr-proj">${r.projectedTotalRaw != null ? num(r.projectedTotalRaw.toFixed(1)) : '—'}</span></td>
       <td class="sr-right"><span class="sr-ontrack">${r.total}</span></td>
       <td class="sr-right"><span class="sr-avg">${formatMs(r.avgLapMs)}</span></td>
       <td class="sr-arrows">
@@ -2348,7 +2360,7 @@ function drainSpeech() {
   if (!speechQueue.length) { speechBusy = false; return; }
   speechBusy = true;
   const utt = new SpeechSynthesisUtterance(speechQueue.shift());
-  utt.lang  = LANG === 'es' ? 'es-ES' : 'en-US';
+  utt.lang  = speechLocale();
   utt.rate  = 1.15;
   utt.onend = utt.onerror = drainSpeech;
   window.speechSynthesis.speak(utt);

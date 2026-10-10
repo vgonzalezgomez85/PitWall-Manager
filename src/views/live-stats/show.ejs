@@ -4,7 +4,7 @@
 
   <a href="/" class="vt-back-link" style="margin-bottom:.8rem">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-    <%= lang === 'es' ? 'Inicio' : 'Home' %>
+    <%= t('common.inicio') %>
   </a>
 
   <!-- ── Barra superior: selección ────────────────────────────────────── -->
@@ -24,13 +24,13 @@
         <% }) %>
       </select>
       <select id="lsEntity" class="ls-select" title="Yo soy…">
-        <option value=""><%= lang === 'es' ? '— Elige tu equipo/piloto —' : '— Pick your team/driver —' %></option>
+        <option value=""><%= t('show.elige_tu_equipo_piloto') %></option>
         <% entityRows.forEach(e => { %>
           <option value="<%= e.entity_type %>_<%= e.entity_id %>"><%= e.entity_name %><%= e.categoria ? ' - ' + e.categoria : '' %></option>
         <% }) %>
       </select>
       <label class="ls-toggle" title="Δ y media incluyen vueltas con salida/pit-stop">
-        <input type="checkbox" id="lsIncludeOutliers"> <%= lang === 'es' ? 'Con salidas' : 'With exits' %>
+        <input type="checkbox" id="lsIncludeOutliers"> <%= t('show.con_salidas') %>
       </label>
     </div>
   </div>
@@ -43,9 +43,9 @@
 
   <!-- ── Pestañas: qué bloque de datos mostrar ──────────────────────────── -->
   <div class="ls-tabs" id="lsTabs">
-    <button type="button" class="ls-tab is-active" data-lstab="manga">📊 <%= lang === 'es' ? 'Manga actual' : 'Current heat' %></button>
-    <button type="button" class="ls-tab" data-lstab="proj">🏁 <%= lang === 'es' ? 'Clasificación proyectada' : 'Projected standings' %></button>
-    <button type="button" class="ls-tab" data-lstab="carril">🛣️ <%= lang === 'es' ? 'Comparativa por carril' : 'Per-lane comparison' %></button>
+    <button type="button" class="ls-tab is-active" data-lstab="manga">📊 <%= t('show.manga_actual') %></button>
+    <button type="button" class="ls-tab" data-lstab="proj">🏁 <%= t('show.clasificacion_proyectada') %></button>
+    <button type="button" class="ls-tab" data-lstab="carril">🛣️ <%= t('show.comparativa_por_carril') %></button>
   </div>
 
   <!-- ── Panel del piloto (modo B) ──────────────────────────────────────── -->
@@ -53,10 +53,10 @@
     <h2 class="ls-section__title">🏁 <span id="lsMeName">—</span></h2>
     <!-- Conmutador de alcance de la consistencia (global: tarjeta + comparativa) -->
     <div class="ls-consmode-bar">
-      <span class="ls-consmode-bar__lbl">📊 <%= lang === 'es' ? 'Consistencia' : 'Consistency' %></span>
-      <div class="ls-consmode" id="lsConsModes" role="group" aria-label="<%= lang === 'es' ? 'Alcance de la consistencia' : 'Consistency scope' %>">
-        <button type="button" class="ls-cmode is-active" data-consscope="clean"><%= lang === 'es' ? 'Sin salidas' : 'Without exits' %></button>
-        <button type="button" class="ls-cmode" data-consscope="all"><%= lang === 'es' ? 'Con salidas' : 'With exits' %></button>
+      <span class="ls-consmode-bar__lbl">📊 <%= t('show.consistencia') %></span>
+      <div class="ls-consmode" id="lsConsModes" role="group" aria-label="<%= t('show.alcance_de_la_consistencia') %>">
+        <button type="button" class="ls-cmode is-active" data-consscope="clean"><%= t('show.sin_salidas') %></button>
+        <button type="button" class="ls-cmode" data-consscope="all"><%= t('show.con_salidas') %></button>
       </div>
       <span class="ls-consmode-bar__hint" id="lsConsHint"></span>
     </div>
@@ -93,7 +93,7 @@
           <span class="ls-cons__dot"></span><span class="ls-cons__txt">—</span>
           <span class="ls-cons__de" id="lsMeConsDe"></span>
         </div>
-        <div class="ls-card__hint"><%= lang === 'es' ? 'variación vuelta a vuelta' : 'lap-to-lap variation' %></div>
+        <div class="ls-card__hint"><%= t('show.variacion_vuelta_a_vuelta') %></div>
       </div>
       <div class="ls-card ls-card--wide" id="lsMeLostCard">
         <div class="ls-card__label">⏱ Tiempo perdido en salidas</div>
@@ -109,24 +109,24 @@
 
   <!-- ── Comparativa en vivo ────────────────────────────────────────────── -->
   <section class="ls-section" id="lsCmpSection" data-lsview="manga proj" hidden>
-    <h2 class="ls-section__title">⚔️ <%= lang === 'es' ? 'Comparativa en vivo' : 'Live comparison' %></h2>
+    <h2 class="ls-section__title">⚔️ <%= t('show.comparativa_en_vivo') %></h2>
     <div class="ls-bar__controls" style="margin-bottom:.8rem">
-      <select id="lsCompare1" class="ls-select" title="<%= lang === 'es' ? 'Rival 1' : 'Rival 1' %>">
-        <option value=""><%= lang === 'es' ? '— Compárate con… —' : '— Compare with… —' %></option>
+      <select id="lsCompare1" class="ls-select" title="<%= t('show.rival_1') %>">
+        <option value=""><%= t('show.comparate_con') %></option>
       </select>
-      <select id="lsCompare2" class="ls-select" title="<%= lang === 'es' ? 'Rival 2 (opcional)' : 'Rival 2 (optional)' %>">
-        <option value=""><%= lang === 'es' ? '— y con… (opcional) —' : '— and with… (optional) —' %></option>
+      <select id="lsCompare2" class="ls-select" title="<%= t('show.rival_2_opcional') %>">
+        <option value=""><%= t('show.y_con_opcional') %></option>
       </select>
-      <button class="ls-btn" id="lsAuto" type="button"><%= lang === 'es' ? 'Mis rivales cercanos (clasificación)' : 'My closest rivals (standings)' %></button>
+      <button class="ls-btn" id="lsAuto" type="button"><%= t('show.mis_rivales_cercanos_clasificacion') %></button>
     </div>
     <div class="ls-cmp" id="lsCmpBox" hidden>
       <div class="ls-cmp-table-wrap">
         <table class="ls-cmp2" id="lsCmpTable"></table>
       </div>
       <div class="ls-cmp-chart-modes" id="lsCmpModes">
-        <button type="button" class="ls-cmode is-active" data-cmode="pace"><%= lang === 'es' ? 'Tiempo por vuelta' : 'Lap time' %></button>
-        <button type="button" class="ls-cmode" data-cmode="gap"><%= lang === 'es' ? 'Sobre la media' : 'Vs average' %></button>
-        <button type="button" class="ls-cmode" data-cmode="gaplaps"><%= lang === 'es' ? 'Gap de vueltas' : 'Lap gap' %></button>
+        <button type="button" class="ls-cmode is-active" data-cmode="pace"><%= t('show.tiempo_por_vuelta') %></button>
+        <button type="button" class="ls-cmode" data-cmode="gap"><%= t('show.sobre_la_media') %></button>
+        <button type="button" class="ls-cmode" data-cmode="gaplaps"><%= t('show.gap_de_vueltas') %></button>
       </div>
       <div class="ls-cmp-chart-wrap"><canvas id="lsCmpChart"></canvas></div>
       <div class="ls-cmp__verdicts" id="lsCmpVerdicts"></div>
@@ -135,22 +135,22 @@
 
   <!-- ── Clasificación PROYECTADA de carrera (toda la carrera) ──────────── -->
   <section class="ls-section" id="lsProjSection" data-lsview="proj" hidden>
-    <h2 class="ls-section__title">🏁 <%= lang === 'es' ? 'Clasificación proyectada de carrera' : 'Projected race standings' %></h2>
-    <p class="ls-proj-hint"><%= lang === 'es' ? 'Estimación al final de la carrera (no solo la manga en curso).' : 'Estimate at the end of the race (not just the current heat).' %></p>
+    <h2 class="ls-section__title">🏁 <%= t('show.clasificacion_proyectada_de_carrera') %></h2>
+    <p class="ls-proj-hint"><%= t('show.estimacion_al_final_de_la_carrera_no_solo_la') %></p>
     <div class="ls-table-wrap">
       <table class="ls-table" id="lsProjTable">
         <thead>
           <tr>
             <th>#</th>
-            <th><%= lang === 'es' ? 'Participante' : 'Participant' %></th>
-            <th title="<%= lang === 'es' ? 'Vueltas proyectadas al final' : 'Projected laps at the end' %>"><%= lang === 'es' ? 'V. Proy.' : 'Proj.' %></th>
-            <th><%= lang === 'es' ? 'Total' : 'Total' %></th>
-            <th title="<%= lang === 'es' ? 'Vueltas proyectadas respecto al de delante' : 'Projected laps behind the car ahead' %>"><%= lang === 'es' ? 'Gap Sig.' : 'Gap Next' %></th>
-            <th title="<%= lang === 'es' ? 'Vueltas proyectadas respecto al líder' : 'Projected laps behind the leader' %>"><%= lang === 'es' ? 'Gap Líder' : 'Gap Leader' %></th>
-            <th><%= lang === 'es' ? 'Media' : 'Avg' %></th>
-            <th title="<%= lang === 'es' ? 'Media por vuelta que necesitas para alcanzar al de delante' : 'Lap pace needed to catch the car ahead' %>"><%= lang === 'es' ? 'P/Subir' : 'To climb' %></th>
-            <th title="<%= lang === 'es' ? 'Salidas de pista / pit-stops / cambios de neumático 🛞 en TODA la carrera' : 'Track exits / pit-stops / tire changes 🛞 for the WHOLE race' %>"><%= lang === 'es' ? 'Sal./Pit Total' : 'Exits/Pit Total' %></th>
-            <th title="<%= lang === 'es' ? 'Tiempo perdido en esas salidas/pits (exceso sobre la media limpia de carrera)' : 'Time lost on those exits/pits (excess over the race-wide clean average)' %>"><%= lang === 'es' ? 'Perdido Total' : 'Lost Total' %></th>
+            <th><%= t('common.participante') %></th>
+            <th title="<%= t('show.vueltas_proyectadas_al_final') %>"><%= t('common.v_proy') %></th>
+            <th><%= t('client.common.total') %></th>
+            <th title="<%= t('common.vueltas_proyectadas_respecto_al_de_delante') %>"><%= t('show.gap_sig') %></th>
+            <th title="<%= t('show.vueltas_proyectadas_respecto_al_lider') %>"><%= t('show.gap_lider') %></th>
+            <th><%= t('client.common.media') %></th>
+            <th title="<%= t('show.media_por_vuelta_que_necesitas_para_alcanzar_al') %>"><%= t('common.p_subir') %></th>
+            <th title="<%= t('show.salidas_de_pista_pit_stops_cambios_de_neumatico') %>"><%= t('show.sal_pit_total') %></th>
+            <th title="<%= t('show.tiempo_perdido_en_esas_salidas_pits_exceso') %>"><%= t('show.perdido_total') %></th>
           </tr>
         </thead>
         <tbody id="lsProjBody"></tbody>
@@ -160,22 +160,22 @@
 
   <!-- ── Clasificación de la manga actual ───────────────────────────────── -->
   <section class="ls-section" data-lsview="manga">
-    <h2 class="ls-section__title">📋 <%= lang === 'es' ? 'Clasificación de manga actual' : 'Current heat standings' %></h2>
+    <h2 class="ls-section__title">📋 <%= t('show.clasificacion_de_manga_actual') %></h2>
     <div class="ls-table-wrap">
       <table class="ls-table" id="lsTable">
         <thead>
           <tr>
             <th>#</th>
-            <th><%= lang === 'es' ? 'Participante' : 'Participant' %></th>
-            <th><%= lang === 'es' ? 'Carril' : 'Lane' %></th>
-            <% if (race.format === 'team') { %><th><%= lang === 'es' ? 'Piloto' : 'Driver' %></th><% } %>
+            <th><%= t('common.participante') %></th>
+            <th><%= t('client.common.carril') %></th>
+            <% if (race.format === 'team') { %><th><%= t('client.common.piloto') %></th><% } %>
             <th>V</th>
-            <th title="<%= lang === 'es' ? 'Vueltas respecto al de delante en la manga; a igualdad de vueltas, diferencia de media' : 'Laps behind the car ahead in this heat; if tied on laps, average pace difference' %>"><%= lang === 'es' ? 'Gap Sig.' : 'Gap Next' %></th>
+            <th title="<%= t('show.vueltas_respecto_al_de_delante_en_la_manga_a') %>"><%= t('show.gap_sig') %></th>
             <th>Mejor</th>
             <th>Media</th>
             <th>Δ</th>
-            <th title="<%= lang === 'es' ? 'Salidas de pista / pit-stops / cambios de neumático 🛞 en esta manga' : 'Track exits / pit-stops / tire changes 🛞 in this heat' %>">Salidas</th>
-            <th><%= lang === 'es' ? '⏱ Perdido' : '⏱ Lost' %></th>
+            <th title="<%= t('show.salidas_de_pista_pit_stops_cambios_de_neumatico_2') %>">Salidas</th>
+            <th><%= t('show.perdido') %></th>
           </tr>
         </thead>
         <tbody id="lsTableBody"></tbody>
@@ -186,20 +186,20 @@
   <!-- ── Comparativa por carril ──────────────────────────────────────────── -->
   <% if (typeof lanesList !== 'undefined' && lanesList.length) { %>
   <section class="ls-section" id="lsLaneSection" data-lsview="carril">
-    <h2 class="ls-section__title">🛣️ <%= lang === 'es' ? 'Comparativa por carril' : 'Per-lane comparison' %></h2>
+    <h2 class="ls-section__title">🛣️ <%= t('show.comparativa_por_carril') %></h2>
     <div class="ls-bar__controls" style="margin-bottom:.8rem; display:flex; gap:.5rem; flex-wrap:wrap">
-      <select id="lsLane" class="ls-select" title="<%= lang === 'es' ? 'Carril' : 'Lane' %>">
-        <option value="">— <%= lang === 'es' ? 'Carril' : 'Lane' %> —</option>
-        <% lanesList.forEach(function (ln) { %><option value="<%= ln %>"><%= (lang === 'es' ? 'Carril ' : 'Lane ') + ln %></option><% }); %>
+      <select id="lsLane" class="ls-select" title="<%= t('client.common.carril') %>">
+        <option value="">— <%= t('client.common.carril') %> —</option>
+        <% lanesList.forEach(function (ln) { %><option value="<%= ln %>"><%= (t('common.carril')) + ln %></option><% }); %>
       </select>
       <% for (var i = 1; i <= 3; i++) { %>
-        <select id="lsLaneE<%= i %>" class="ls-select" title="<%= (lang === 'es' ? 'Equipo/piloto ' : 'Team/driver ') + i %>">
-          <option value="">— <%= (lang === 'es' ? 'Equipo/piloto ' : 'Team/driver ') + i %> —</option>
+        <select id="lsLaneE<%= i %>" class="ls-select" title="<%= (t('show.equipo_piloto')) + i %>">
+          <option value="">— <%= (t('show.equipo_piloto')) + i %> —</option>
           <% entityRows.forEach(function (e) { %><option value="<%= e.entity_type %>_<%= e.entity_id %>"><%= e.entity_name %><%= e.categoria ? ' - ' + e.categoria : '' %></option><% }); %>
         </select>
       <% } %>
       <button type="button" id="lsLaneClear" class="ls-select" style="cursor:pointer">
-        ✕ <%= lang === 'es' ? 'Limpiar filtros' : 'Clear filters' %>
+        ✕ <%= t('show.limpiar_filtros') %>
       </button>
     </div>
     <div class="ls-cmp" id="lsLaneBox" hidden>
@@ -215,7 +215,7 @@
   </section>
   <% } %>
 
-  <a href="/race-stats" class="ls-back">← <%= lang === 'es' ? 'Cambiar carrera' : 'Change race' %></a>
+  <a href="/race-stats" class="ls-back">← <%= t('show.cambiar_carrera') %></a>
 </div>
 
 <style>
@@ -555,7 +555,7 @@
       <tr class="${e.key === myKey ? 'is-me' : ''} ls-row--resting">
         <td>${e.position}</td>
         <td><strong>${teamHtml(e.entityName)}</strong></td>
-        <td colspan="${restColspan}" style="color:#6e7681;font-style:italic">💤 <%= lang === 'es' ? 'Descansando esta manga' : 'Resting this heat' %></td>
+        <td colspan="${restColspan}" style="color:#6e7681;font-style:italic">💤 <%= t('show.descansando_esta_manga') %></td>
       </tr>
     `;
       }
@@ -600,7 +600,7 @@
       $('lsMePos').textContent = 'P' + pos;
       if (isProj) {
         // ── Datos de TODA la carrera ─────────────────────────────────────
-        $('lsMeLapsLabel').textContent = '<%= lang === "es" ? "Vueltas carrera" : "Race laps" %>';
+        $('lsMeLapsLabel').textContent = '<%= t('show.vueltas_carrera') %>';
         $('lsMeLaps').textContent = me.raceTotalLaps != null ? me.raceTotalLaps : '—';
         $('lsMeBest').textContent = fmtMs(me.raceBestMs);
         const rAvg = includeOutliers ? me.racePaceAllMs : me.racePaceCleanMs;
@@ -614,7 +614,7 @@
         $('lsMeSectorsCard').hidden = true;
       } else {
         // ── Datos de la MANGA actual ─────────────────────────────────────
-        $('lsMeLapsLabel').textContent = '<%= lang === "es" ? "Vueltas manga" : "Heat laps" %>';
+        $('lsMeLapsLabel').textContent = '<%= t('show.vueltas_manga') %>';
         $('lsMeLaps').textContent = me.totalLaps;
         $('lsMeBest').textContent = fmtMs(me.bestMs);
         $('lsMeAvg').textContent  = fmtMs(me[useAvgKey]);
@@ -669,9 +669,9 @@
       // gapV/gapVLeader ya vienen calculados por el servidor (misma función
       // que el directo y el pop-up de clasificación): gap al de DELANTE
       // (escalonado, fila a fila) y gap al LÍDER (acumulado).
-      const gapNext   = (i === 0 || p.gapV == null)       ? '—' : '-' + p.gapV.toFixed(1) + 'v';
-      const gapLeader = (i === 0 || p.gapVLeader == null) ? '—' : '-' + p.gapVLeader.toFixed(1) + 'v';
-      const proy = p.projectedTotal != null ? p.projectedTotal.toFixed(1) + 'v' : '—';
+      const gapNext   = (i === 0 || p.gapV == null)       ? '—' : '-' + p.gapV.toFixed(1).replace('.', ',') + 'v';
+      const gapLeader = (i === 0 || p.gapVLeader == null) ? '—' : '-' + p.gapVLeader.toFixed(1).replace('.', ',') + 'v';
+      const proy = p.projectedTotal != null ? p.projectedTotal.toFixed(1).replace('.', ',') + 'v' : '—';
       // Estimada PROVISIONAL: la 1ª manga aún no ha fijado su referencia (60 %).
       const prov = p.provisional ? '<span title="Estimada provisional" style="color:#d29922">*</span>' : '';
       const pKey = p.entityType + '_' + p.entityId;
@@ -679,7 +679,7 @@
       const exitsPitTotal = rs ? `${rs.raceExits || 0}${rs.racePits ? ' / ' + rs.racePits + '🔧' : ''}${rs.raceTireChanges ? ' · ' + rs.raceTireChanges + '🛞' : ''}` : '—';
       const lostTotal = rs ? `${fmtSec(rs.raceLostMs)} <span style="color:#6e7681">(≈${rs.raceLostLapsEquiv}v)</span>` : '—';
       const restingBadge = restingActiveSet.has(pKey)
-        ? `<span class="ls-proj-resting" title="<%= lang === 'es' ? 'Descansa en la manga en curso' : 'Resting in the current heat' %>">💤 <%= lang === 'es' ? 'descansa' : 'resting' %></span>`
+        ? `<span class="ls-proj-resting" title="<%= t('show.descansa_en_la_manga_en_curso') %>">💤 <%= t('show.descansa') %></span>`
         : '';
       return `<tr class="${isMe ? 'ls-row--me' : ''}">
         <td>${p.position}</td>
@@ -818,8 +818,8 @@
   function renderCmpChart(cols, data) {
     const canvas = $('lsCmpChart');
     if (!canvas || typeof Chart === 'undefined') return;
-    const ES_LAP = '<%= lang === "es" ? "Vuelta" : "Lap" %>';
-    const ES_MANGA = '<%= lang === "es" ? "Manga" : "Heat" %>';
+    const ES_LAP = '<%= t('client.common.vuelta') %>';
+    const ES_MANGA = '<%= t('common.manga') %>';
     // En vista "manga" los gráficos usan la MANGA (lapSeries, X = vuelta); en
     // "proyectada" usan la CARRERA (raceProgress por manga, X = manga).
     const isProj = currentLsView === 'proj';
@@ -838,11 +838,11 @@
           const avg = (rp && rp.avgByName[e.entityName]) || [];
           return mk(e, i, mangas.map((mn, k) => ({ x: mn, y: avg[k] != null ? +(avg[k] / 1000).toFixed(3) : null })));
         });
-        yTitle = '<%= lang === "es" ? "Tiempo medio por manga (s)" : "Avg lap per heat (s)" %>';
+        yTitle = '<%= t('show.tiempo_medio_por_manga_s') %>';
       } else {
         datasets = cols.map((e, i) =>
           mk(e, i, (e.lapSeries || []).filter(p => p.n > 1 && !p.x).map(p => ({ x: p.n, y: +(p.t / 1000).toFixed(3) }))));
-        yTitle = '<%= lang === "es" ? "Tiempo (s)" : "Time (s)" %>';
+        yTitle = '<%= t('show.tiempo_s') %>';
       }
     } else if (cmpChartMode === 'gap') {
       if (isProj) {
@@ -859,7 +859,7 @@
           });
           return mk(e, i, pts, 0.2);
         });
-        yTitle = '<%= lang === "es" ? "Ventaja sobre la media (s)" : "Advantage vs avg (s)" %>';
+        yTitle = '<%= t('show.ventaja_sobre_la_media_s') %>';
       } else {
         let sum = 0, cnt = 0;
         cols.forEach(e => (e.lapSeries || []).forEach(p => { if (p.n > 1 && !p.x) { sum += p.t; cnt++; } }));
@@ -869,7 +869,7 @@
           let cum = 0;
           return mk(e, i, series.map(p => { cum += (ref - p.t) / 1000; return { x: p.n, y: +cum.toFixed(3) }; }));
         });
-        yTitle = '<%= lang === "es" ? "Ventaja sobre la media (s)" : "Advantage vs avg (s)" %>';
+        yTitle = '<%= t('show.ventaja_sobre_la_media_s') %>';
       }
     } else { // gaplaps
       if (isProj) {
@@ -883,7 +883,7 @@
             return mk(e, i, mangas.map((mn, k) => ({ x: mn, y: (arr[k] != null && leaderArr[k] != null) ? (arr[k] - leaderArr[k]) : null })), 0.2);
           });
         }
-        yTitle = '<%= lang === "es" ? "Gap de vueltas (al líder seleccionado)" : "Lap gap (to selected leader)" %>';
+        yTitle = '<%= t('show.gap_de_vueltas_al_lider_seleccionado') %>';
       } else {
         // Gap REAL de vueltas DENTRO de la manga: en cada momento (minuto) de la
         // manga, cuántas vueltas lleva cada equipo respecto al líder seleccionado
@@ -898,8 +898,8 @@
           const ce = ceByName[e.entityName] || [];
           return mk(e, i, leaderCE.map(lp => ({ x: +(lp.e / 60000).toFixed(2), y: lapsAt(ce, lp.e) - lp.n })), 0.2);
         });
-        xTitle = '<%= lang === "es" ? "Minutos (manga)" : "Minutes (heat)" %>';
-        yTitle = '<%= lang === "es" ? "Gap de vueltas (manga)" : "Lap gap (heat)" %>';
+        xTitle = '<%= t('show.minutos_manga') %>';
+        yTitle = '<%= t('show.gap_de_vueltas_manga') %>';
       }
     }
     if (!cmpChart) {
@@ -1122,10 +1122,10 @@
       `<th class="${cls(i)}"><div class="ls-cmp2__name">${teamHtml(c.name)}</div></th>`).join('') + '</tr></thead><tbody>';
     const row = (label, fn) => `<tr><td class="ls-cmp2__lbl">${label}</td>` +
       cols.map((c, i) => `<td class="${cls(i)}">${c.d ? fn(c.d) : '—'}</td>`).join('') + '</tr>';
-    html += row('<%= lang === "es" ? "Mejor" : "Best" %>',   d => fmtMs(d.bestMs));
-    html += row('<%= lang === "es" ? "Media" : "Avg" %>',    d => fmtMs(d[avgKey]));
-    html += row('<%= lang === "es" ? "Vueltas" : "Laps" %>', d => d.laps);
-    html += row('<%= lang === "es" ? "Salidas" : "Exits" %>', d => d.exits);
+    html += row('<%= t('client.common.mejor') %>',   d => fmtMs(d.bestMs));
+    html += row('<%= t('client.common.media') %>',    d => fmtMs(d[avgKey]));
+    html += row('<%= t('client.common.vueltas') %>', d => d.laps);
+    html += row('<%= t('client.common.salidas') %>', d => d.exits);
     html += '</tbody>';
     $('lsLaneTable').innerHTML = html;
   }

@@ -44,12 +44,12 @@
 </head>
 <body>
   <div class="no-print">
-    <button onclick="window.print()" class="primary">🖨 <%= lang === 'es' ? 'Imprimir todo' : 'Print all' %></button>
-    <button onclick="window.close()"><%= lang === 'es' ? 'Cerrar' : 'Close' %></button>
+    <button onclick="window.print()" class="primary">🖨 <%= t('qr-by-team.imprimir_todo') %></button>
+    <button onclick="window.close()"><%= t('common.cerrar') %></button>
   </div>
 
   <% if (groups.length === 0) { %>
-    <p style="color:#888"><%= lang === 'es' ? 'No hay equipos.' : 'No teams.' %></p>
+    <p style="color:#888"><%= t('qr-by-team.no_hay_equipos') %></p>
   <% } else { %>
     <% groups.forEach(g => { %>
       <div class="team-block">
@@ -58,7 +58,7 @@
           <% if (g.team.categoria) { %><span class="team-cat"><%= g.team.categoria %></span><% } %>
         </div>
         <% if (g.items.length === 0) { %>
-          <p style="color:#aaa;font-size:.8rem"><%= lang === 'es' ? 'Sin pilotos.' : 'No drivers.' %></p>
+          <p style="color:#aaa;font-size:.8rem"><%= t('qr-by-team.sin_pilotos') %></p>
         <% } else { %>
           <div class="grid">
             <% g.items.forEach(p => { %>
@@ -66,7 +66,7 @@
                 <% if (p.qrDataUrl) { %>
                   <img class="qr-img" src="<%= p.qrDataUrl %>" alt="QR">
                 <% } else { %>
-                  <div class="qr-warn">⚠️ <%= lang === 'es' ? 'sin perfil' : 'no profile' %></div>
+                  <div class="qr-warn">⚠️ <%= t('qr-by-team.sin_perfil') %></div>
                 <% } %>
                 <div class="qr-name"><%= p.name %></div>
                 <% if (p.category) { %>
