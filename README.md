@@ -34,7 +34,7 @@ pitwall/
 │   ├── services/       # SerialService, TimingService, StatsWorkerClient, SocketService...
 │   ├── middleware/      # i18n, control de acceso (accessControl)
 │   ├── views/          # Plantillas EJS
-│   ├── locales/        # Traducciones ES / EN (JSON)
+│   ├── locales/        # Diccionario de textos: es / en / it (JSON)
 │   └── config/
 │       └── database.js # Inicialización del schema SQLite
 ├── public/             # CSS, JS estático, imágenes
@@ -89,6 +89,19 @@ El schema se inicializa en `src/config/database.js`. No requiere migraciones man
 
 **Para hacer backup** basta con copiar el fichero `database/pitwall.db`.  
 **Para resetear** basta con borrarlo; se vuelve a crear vacío al reiniciar.
+
+---
+
+## Traducciones
+
+La app habla **español** e **inglés**, y está preparada para más idiomas.
+
+**¿Quieres traducirla o revisar lo que ya hay?** No hace falta saber programar ni
+usar Git: es rellenar una columna de una hoja de cálculo y mandar el fichero por
+correo a **info.pitwall@gmail.com**.
+
+Las instrucciones completas, el glosario de términos y el fichero de trabajo
+están en **[`traducciones/`](traducciones/)**.
 
 ---
 

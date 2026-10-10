@@ -23,7 +23,7 @@ por puerto serie a 56000 baudios con tramas de ~19 bytes codificadas en BCD.
 | Vistas | EJS (server-side rendering) |
 | CSS/JS cliente | Vanilla JS, CSS custom properties, sin bundler |
 | Desktop | Electron (empaqueta el servidor Express) |
-| i18n | JSON planos en `src/locales/` (es / en), middleware `src/middleware/i18n.js` |
+| i18n | JSON planos en `src/locales/` (es / en / it), middleware `src/middleware/i18n.js` |
 
 ---
 
@@ -50,7 +50,7 @@ src/
     LicenseService.js     — Validación de licencia de producto
     LaneColors.js         — Colores de carril: circuito (`circuits.lane_colors`) → global (`settings.lane_colors`) → fábrica. En vistas: `laneColorsFor(race)`, `laneInk(hex)`
   views/                  — Plantillas EJS
-  locales/                — es.json / en.json
+  locales/                — es.json / en.json / it.json (diccionario único)
   middleware/
     i18n.js               — req.t(key), res.locals.lang
     licenseGuard.js       — requireModule(feature)
@@ -179,7 +179,9 @@ Siguiente manga pendiente se activa automáticamente
 - `PITWALL_NO_WORKER=1` — desactiva el worker_thread de stats; la proyección/agregados se calculan en el hilo principal (idéntico resultado, pero bloqueante).
 - `PITWALL_DB_READONLY=1` — abre la BD en solo lectura, sin migraciones ni `ANALYZE`. Lo usa el worker de stats internamente; no ponerlo en el proceso principal.
 - `PITWALL_DISABLE_PASSWORD=1` — ignora la contraseña de acceso (Ajustes → Seguridad) mientras esté puesta. Es la vía de recuperación si se olvida: arrancar con ella, entrar y poner otra (o desactivarla).
-- **i18n**: usar `req.t('key')` en controllers/vistas. Añadir ambas claves (es + en) en `src/locales/*.json` siempre que se añada texto visible.
+- **i18n**: TODO texto visible va por `req.t('key')` en controllers y `t('key')` en vistas. **Nunca ternarios de idioma** (`lang === 'es' ? … : …`): no admiten un tercer idioma y eran 1.900 repartidos por las vistas. `es.json` es la fuente del español; al añadir texto hay que dar de alta la clave en `es.json`, `en.json` e `it.json` (en `it.json` se pone el español como provisional, nunca una clave cruda).
+  - Herramientas: `scripts/i18n-extract.js` (convierte ternarios → `t()` y avisa de lo que no puede y de los choques con una variable `t` local), `scripts/i18n-snapshot.js` (arnés de instantáneas HTML para verificar que una conversión no cambia el render), `scripts/i18n-kit.js` (exporta el diccionario a CSV para el traductor y lo reimporta).
+  - El kit para traductores está en `traducciones/` (README + CSV). Se regenera con `node scripts/i18n-kit.js export --lang it --out traducciones --sin-guia`.
 - **Sin comentarios redundantes** en el código. Solo WHY si no es obvio.
 
 ---

@@ -224,9 +224,9 @@ En italiano el manual lo llama **virgola**.
 
 ## Cómo devolvérnoslo
 
-Mándanos el mismo CSV con la columna rellena. Nosotros lo cargamos y lo
-comprobamos. Si prefieres trabajar con Git, dímelo y te paso el fichero JSON
-directo.
+Mándanos el mismo CSV con la columna rellena a **info.pitwall@gmail.com**.
+Nosotros lo cargamos, comprobamos que no falte ni sobre nada y lo publicamos.
+Si prefieres trabajar con Git, dímelo y te paso el fichero JSON directo.
 
 ${sinContexto ? `> Hay ${sinContexto} textos sin columna de \`contexto\`: son de pantallas que\n> todavía no están enlazadas. Si alguno no se entiende, pregúntanos.\n` : ''}`;
 }
@@ -256,11 +256,15 @@ function exportar() {
   const fCsv = path.join(out, `pitwall-${lang}.csv`);
   fs.writeFileSync(fCsv, '﻿' + csv);          // BOM: Excel lo abre en UTF-8
 
-  const fGuia = path.join(out, 'LEEME.md');
-  fs.writeFileSync(fGuia, guia(lang, claves.length, filas.filter(f => !f[4]).length));
-
+  // La guía se genera junto al CSV para el envío por correo. En la carpeta del
+  // repo NO, porque allí manda `traducciones/README.md` y serían dos documentos
+  // diciendo lo mismo (y divergiendo).
+  if (!argv.includes('--sin-guia')) {
+    const fGuia = path.join(out, 'LEEME.md');
+    fs.writeFileSync(fGuia, guia(lang, claves.length, filas.filter(f => !f[4]).length));
+    console.log(`Guía   : ${path.relative(ROOT, fGuia)}`);
+  }
   console.log(`CSV    : ${path.relative(ROOT, fCsv)}  (${claves.length} claves)`);
-  console.log(`Guía   : ${path.relative(ROOT, fGuia)}`);
   console.log(`sin traducir (${lang} vacío o igual al español): ` +
     filas.filter(f => !f[3] || f[3] === f[1]).length);
   console.log(`sin contexto: ${filas.filter(f => !f[4]).length}`);
