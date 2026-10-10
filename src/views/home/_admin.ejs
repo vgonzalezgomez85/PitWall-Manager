@@ -128,7 +128,7 @@ const tile = (it, small) => '<a href="' + it.href + '" class="hm-tile' + (small 
     <% if (ss.simulating) { %>
       <a href="/settings" class="hm-pill hm-pill--sim" data-win><span class="hm-dot"></span><%= t('common.modo_simulacion') %></a>
     <% } else if (serialConnected) { %>
-      <a href="/settings" class="hm-pill hm-pill--ok" data-win><span class="hm-dot"></span>DS-300 ×<%= portCount %> <span class="hm-mono hm-mute">· <%= portLabels %></span></a>
+      <a href="/settings" class="hm-pill hm-pill--ok" data-win><span class="hm-dot"></span><%= ss.label || 'DS-300' %> ×<%= portCount %> <span class="hm-mono hm-mute">· <%= portLabels %></span></a>
     <% } else { %>
       <a href="/settings" class="hm-pill hm-pill--off" data-win><span class="hm-dot"></span><%= t('client.common.sin_conexion') %></a>
     <% } %>
@@ -358,7 +358,7 @@ const tile = (it, small) => '<a href="' + it.href + '" class="hm-tile' + (small 
   <div class="hm-stats">
     <div class="hm-stat<%= serialConnected ? ' hm-stat--ok' : ss.simulating ? ' hm-stat--sim' : ' hm-stat--off' %>">
       <span class="hm-lbl"><%= t('_admin.cronometraje') %></span>
-      <span class="hm-stat__v"><span class="hm-dot"></span><%= ss.simulating ? (t('client.common.simulacion')) : serialConnected ? 'DS-300 ×' + portCount : (t('client.common.sin_conexion')) %></span>
+      <span class="hm-stat__v"><span class="hm-dot"></span><%= ss.simulating ? (t('client.common.simulacion')) : serialConnected ? (ss.label || 'DS-300') + ' ×' + portCount : (t('client.common.sin_conexion')) %></span>
       <span class="hm-stat__d hm-mono"><%= serialConnected ? portLabels : '—' %></span>
     </div>
     <div class="hm-stat">

@@ -16,13 +16,13 @@
             <span class="status-dot status-dot--sim"></span><%= t('client.common.simulacion') %>
           <% } else if (cs.length > 0 && down.length > 0) { %>
             <span class="status-dot status-dot--off"></span>
-            DS-300 ×<%= cs.length - down.length %>/<%= cs.length %>
+            <%= serialStatus.label || 'DS-300' %> ×<%= cs.length - down.length %>/<%= cs.length %>
             <span class="footer-pill__detail">
               <%= (t('client.common.sin_senal_caja')) + down.join(', ') %>
             </span>
           <% } else if (cs.length > 0) { %>
             <span class="status-dot status-dot--ok"></span>
-            DS-300 ×<%= cs.length %>
+            <%= serialStatus.label || 'DS-300' %> ×<%= cs.length %>
             <span class="footer-pill__detail">
               <%= cs.map(c => (c.path || '').split('/').pop()).filter(Boolean).join(' · ') %>
             </span>
@@ -78,10 +78,10 @@
       if (data.simulating) {
         dot = 'sim'; text = I18N.t('client.common.simulacion');
       } else if (cs.length > 0 && down.length > 0) {
-        dot = 'off'; text = `DS-300 ×${cs.length - down.length}/${cs.length}`;
+        dot = 'off'; text = `${data.label || 'DS-300'} ×${cs.length - down.length}/${cs.length}`;
         detail = (I18N.t('client.common.sin_senal_caja')) + down.join(', ');
       } else if (cs.length > 0) {
-        dot = 'ok'; text = `DS-300 ×${cs.length}`;
+        dot = 'ok'; text = `${data.label || 'DS-300'} ×${cs.length}`;
         detail = cs.map(c => (c.path || '').split('/').pop()).filter(Boolean).join(' · ');
       } else {
         dot = 'off'; text = I18N.t('client.common.sin_conexion');

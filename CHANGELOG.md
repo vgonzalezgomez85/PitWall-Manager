@@ -13,6 +13,12 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.53.1] — 2026-10-10
+
+### Mejorado
+- **El indicador de estado del pie y de la portada nombra la fuente real.** Antes ponía siempre «DS-300 ×N», aunque el cronometraje viniera de un TicTac, un BART o un DS de otro modelo. Ahora dice «DS-300 ×2», «DS-200», «BART», «TicTac» o, si se combinan, «DS-300 + TicTac».
+- **Manuales, README y guía para agentes al día** con los modelos de DS, la fuente TicTac, que PitWall dirige la carrera con ella y la pole con GO manual.
+
 ## [1.53.0] — 2026-10-10
 
 ### Añadido

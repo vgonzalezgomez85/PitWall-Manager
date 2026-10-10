@@ -1297,6 +1297,7 @@ class SerialServiceClass extends EventEmitter {
       circuit:         i + 1,
       isBart:          !!c.isBart,
       isTicTac:        !!c.isTicTac,
+      label:           c.isTicTac ? 'TicTac' : c.isBart ? 'BART' : modelInfo(c._model).label,
       path:            c.path ?? null,
       connected:       simulating ? true : !!c.connected,
       lastHeartbeatTs: c.lastHeartbeatTs ?? null,
@@ -1308,6 +1309,8 @@ class SerialServiceClass extends EventEmitter {
     // "conectado". La verdad es el enlace, no el descriptor.
     return {
       connected:  simulating || circuits.some(c => c.connected),
+      // Nombre de la fuente para las píldoras de estado («DS-300», «TicTac», «DS-300 + BART»…).
+      label:      [...new Set(circuits.map(c => c.label))].join(' + ') || modelInfo().label,
       simulating,
       ports:      this.connectedPorts,
       circuits,

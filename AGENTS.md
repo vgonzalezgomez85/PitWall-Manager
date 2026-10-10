@@ -41,7 +41,8 @@ src/
   workers/
     statsWorker.js        — worker_thread: proyección/agregados caros. Abre su propia conexión SQLite `readonly` al mismo pitwall.db (PITWALL_DB_READONLY=1). Protocolo ready/projection/raceWide/invalidate/ping/error
   services/
-    SerialService.js      — Lectura del DS-300 / simulación. Emite eventos internos
+    SerialService.js      — Lectura del DS (DS-300/200/030/080) / BART / TicTac / simulación. Emite eventos internos
+    TicTacConnection.js   — Fuente «interface TicTac»: lee los cruces por USB HID (node-hid, autodetección por VID/PID) o por un PTY (emulador/puente). Solo cruces: PitWall dirige la carrera
     TimingService.js      — Gestiona la sesión activa de manga (laps, standings, ticks)
     StatsWorkerClient.js  — Cliente del worker de stats en el hilo principal. requestProjection() SIEMPRE resuelve: si el worker no está / falló / PITWALL_NO_WORKER=1, calcula en el hilo con raceProjection
     TrainingService.js    — Modo entrenamiento libre (sin carrera)
@@ -49,6 +50,9 @@ src/
     PoleTimingService.js  — Cronometraje para sesión de pole position
     LicenseService.js     — Validación de licencia de producto
     LaneColors.js         — Colores de carril: circuito (`circuits.lane_colors`) → global (`settings.lane_colors`) → fábrica. En vistas: `laneColorsFor(race)`, `laneInk(hex)`
+  lib/
+    dsModels.js           — Familia DS PURA: modelos, baud por defecto, cómo se lee el carril (DS-200 distinto) y qué es una trama de control
+    tictacProtocol.js     — Trama HID de 16 bytes del TicTac PURA (reloj = min·60000 + ms + décimas, NO 24 bits lineales; tiempo de vuelta = resta de relojes por carril)
   views/                  — Plantillas EJS
   locales/                — es.json / en.json / it.json (diccionario único)
   middleware/
@@ -81,6 +85,23 @@ database/                 — pitwall.db (SQLite, no commitear)
   - `race_finished` → fin normal (guarda resultados)
   - `race_paused` / `race_resumed`
   - `lane_crossing` → vuelta detectada `{ lane, lapTimeMs }`
+
+---
+
+## Fuentes de datos (quién manda la carrera)
+
+| Fuente | `serial_mode` | Quién da GO/pausa/stop/fin |
+|---|---|---|
+| DS (300/200/030/080) | `serial`, `serial_agg` | la caja (señales `race_*`) |
+| BART | `bart` | PitWall (`isBart`: el Master SÍ se pausa de verdad) |
+| TicTac | `tictac` | PitWall (`isTicTac`: el aparato sigue contando en pausa, así que aplica la compensación de pausa del DS) |
+| Simulación | `simulation` | PitWall |
+
+- `SerialService.softwareGo` (BART \| simulación \| TicTac) = PitWall da el GO: semáforo de 3 s, botones GO/PAUSE/STOP en directo, entrenamiento y **pole**. `SerialService.endsByTimer` (simulación \| TicTac) = nadie avisa del fin: `TimingService` cierra justo al agotar el tiempo (los DS llevan un respaldo de 30 s de silencio). Usar estas propiedades, no `isBart`, para decidir quién manda.
+- `sendStart()` en `TicTacConnection` borra las referencias de reloj por carril: el primer cruce tras el GO sale sin tiempo = vuelta de salida desde el GO. Con la manga viva (`setExternalRaceState`) una vuelta larga no se descarta como «primer cruce» (pausas largas).
+- Modelo de DS: `circuits_serial[].model` (el DS-300 no se guarda; es el valor por defecto). El latido de 60 s solo se vigila en el DS-300.
+- La vuelta de bandera usa la misma ventana `late_crossing_grace_ms` con cualquier dispositivo (hoy desactivada en BART y simulación).
+- `node-hid` es `optionalDependencies`: si falta, la fuente TicTac USB avisa y el resto funciona. Si se copia a mano en `node_modules` (el `package-lock.json` está obsoleto desde la v1.27.0, y un `npm install` reescribe media carpeta), hay que anidar también `node-addon-api` 3.x en `node_modules/node-hid/node_modules/`: PitWall tiene la 7.x hoisted y sin la 3.x `electron-builder` falla con «Production dependency node-addon-api not found». Tras tocar `node_modules`, comprobar con `electron-builder --mac --dir` en una copia aparte.
 
 ---
 

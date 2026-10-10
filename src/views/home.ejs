@@ -38,7 +38,7 @@ const c = typeof counts !== 'undefined' ? counts : { drivers: 0, teams: 0, cars:
       <% } else if (serialConnected) { %>
         <a href="/settings" class="vh-status vh-status--ok">
           <span class="vh-status__dot"></span>
-          DS-300 ×<%= portCount %>
+          <%= ss.label || 'DS-300' %> ×<%= portCount %>
           <span class="vh-status__port">· <%= portLabels %></span>
         </a>
       <% } else { %>

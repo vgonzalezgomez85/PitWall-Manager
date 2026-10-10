@@ -120,17 +120,21 @@ El software se ofrece SIN NINGUNA GARANTÍA. El nombre «PitWall» y el logotipo
 
 ---
 
-## Hardware DS-300
+## Hardware
 
-El DS-300 es el cronómetro de carreras que se conecta por USB/RS-232.
+PitWall lee varias fuentes de cronometraje. Se elige en `/settings` → Fuente de datos.
 
-### Single circuit
-Configurar en `/settings`: seleccionar modo DS-300, elegir puerto serie, baud rate (4800 por defecto) y número de carriles.
+### DS (DS-300, DS-200, DS-030, DS-080)
+Cronómetros que se conectan por USB/RS-232 a un puerto COM. Cada circuito tiene un selector de **modelo**; al elegirlo, la velocidad pasa a la suya (DS-300: 56000 baudios; resto: 4800) y se puede cambiar a mano. El DS-080 lleva dos circuitos por un solo puerto (carriles 1–8 y 9–16). Solo el DS-300 está contrastado con aparato real; los otros tres siguen el documento de protocolo (`TicTacSlot-cuentavueltas-protocolos.md`). Manda la caja: el GO, la pausa y el fin llegan del propio DS.
 
-### Multi-circuit
-Cada DS-300 controla un circuito independiente. Los carriles se numeran globalmente: el circuito 1 ocupa los carriles 1–N, el circuito 2 continúa desde N+1, etc.
+**Un circuito:** elegir modelo, puerto serie, velocidad y número de carriles.
+**Varios circuitos:** cada DS controla un circuito independiente y los carriles se numeran globalmente: el circuito 1 ocupa los carriles 1–N, el circuito 2 continúa desde N+1, etc. Se pueden añadir tantos como puertos USB haya.
 
-Se pueden añadir hasta tantos circuitos como puertos USB haya disponibles.
+### TicTac (interface TicTacSlot «Cuentavueltas»)
+Es un dispositivo USB HID, no un puerto COM: PitWall lo **detecta solo** (VID `0x04D8`, PID `0x0001`) con el módulo opcional `node-hid`, y se reengancha si se desenchufa. En macOS puede pedir el permiso de «Monitorización de entrada»; en Linux hace falta una regla `udev`. El aparato solo manda cruces, así que **PitWall dirige la carrera**: GO con semáforo, pausa, reanudación, stop y fin por tiempo, tanto en mangas como en entrenos y pole. La opción «Puerto serie» de esa fuente sirve para el emulador (`emulador-tictac`) o su puente `hid-bridge.js`.
+
+### BART
+Cronómetro BLE/TCP (Slot.it/Policar vía puente). También lo dirige PitWall.
 
 ### Simulación
 Modo de prueba que genera vueltas aleatorias sin hardware real. Configurable: número de carriles y tiempo medio de vuelta.
@@ -203,11 +207,16 @@ kill -9 <PID>        # macOS / Linux
 taskkill /PID <PID> /F         # Windows
 ```
 
-### El DS-300 no se detecta
+### El DS no se detecta
 - Verificar que el driver USB-Serial está instalado (CH340 o similar)
 - En macOS: comprobar que el puerto aparece en `/dev/tty.usbserial-*`
 - En Windows: comprobar en Administrador de dispositivos que aparece como `COM*`
-- Probar con baud rate 9600 si 4800 no funciona
+- Comprobar la velocidad: 56000 en el DS-300, 4800 en el resto; probar 9600 si no funciona
+
+### El TicTac no se detecta
+- Enchufarlo por USB y pulsar «Buscar puertos» en Ajustes → TicTac: debe salir «✓ TicTacSlot detectado por USB»
+- Si dice «Lectura USB no disponible», falta el módulo `node-hid` en esa instalación
+- En macOS, conceder el permiso de «Monitorización de entrada» a PitWall; en Linux, añadir la regla `udev`
 
 ### La app móvil no encuentra el servidor
 - Verificar que el móvil y el PC están en la misma red WiFi

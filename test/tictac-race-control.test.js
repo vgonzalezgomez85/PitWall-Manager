@@ -107,6 +107,16 @@ test('con TicTac, PitWall da el GO: softwareGo, termina por temporizador y no es
   assert.equal(SerialService.getLinkStatus().circuits[0].isTicTac, true);
 });
 
+test('las píldoras de estado nombran la fuente: TicTac, BART o el modelo de DS', () => {
+  assert.equal(SerialService.getLinkStatus().label, 'TicTac');
+  SerialService._connections = [{ connected: true, _model: 'ds200' }];
+  assert.equal(SerialService.getLinkStatus().label, 'DS-200');
+  SerialService._connections = [{ connected: true }, { connected: true, isBart: true }, conn];
+  assert.equal(SerialService.getLinkStatus().label, 'DS-300 + BART + TicTac');
+  SerialService._connections = [{ connected: true }, { connected: true }];
+  assert.equal(SerialService.getLinkStatus().label, 'DS-300', 'un solo nombre aunque haya varias cajas');
+});
+
 test('con un DS, manda la caja: ni softwareGo ni temporizador', () => {
   SerialService._connections = [{ connected: true }];
   assert.equal(SerialService.isTicTac, false);
