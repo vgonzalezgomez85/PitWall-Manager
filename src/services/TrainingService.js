@@ -111,7 +111,7 @@ class TrainingServiceClass {
       if (!this.isReady || TimingService.isBusy) return;
       this._setCircuitPaused(circuit || 0, false);
     });
-    // Forced stop: preserve lap data, go back to standby to restart same session
+    // Forced stop: data stays on screen, cleared on next GO (records survive)
     SerialService.on('race_stopped',  () => { if (this._active) this._pauseToStandby(); });
     // Normal end: keep data on screen, cleared on next GO
     SerialService.on('race_finished', () => { if (this._active) this._resetToStandby(); });
@@ -181,7 +181,7 @@ class TrainingServiceClass {
   resume() { if (this._active) this._setCircuitPaused(0, false); }
   get isPaused() { return this._active && this._pausedCircuits.has(0); }
 
-  // STOP que conserva los datos y vuelve a standby (se puede dar GO otra vez).
+  // STOP: vuelve a standby con los datos a la vista; el siguiente GO empieza de cero.
   stopToStandby() { if (this._active) this._pauseToStandby(); }
 
   // ── Activate from standby: start recording laps ───────────────────────────
@@ -267,14 +267,15 @@ class TrainingServiceClass {
     }
   }
 
-  // ── Forced stop: stop recording but keep lap data ─────────────────────────
+  // ── Forced stop: like the normal end, data stays until the next GO ────────
   _pauseToStandby() {
     this._deactivate();
-    this._standby    = true;
-    this._startedAt  = null;
-    this._durationMs = null;
+    this._standby       = true;
+    this._startedAt     = null;
+    this._durationMs    = null;
+    this._clearOnNextGo = true;
     SocketService.emit('training:standby', this.getLanes());
-    console.log('[TrainingService] Forced stop — data preserved, back to standby');
+    console.log('[TrainingService] Forced stop — data kept until next GO, standby');
   }
 
   // ── Normal end: back to standby, data stays until the next GO ─────────────

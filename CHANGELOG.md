@@ -13,6 +13,14 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.55.1] — 2026-10-10
+
+### Mejorado
+- **Entreno libre más legible de lejos.** Mejor, Media y Récord de cada carril salen bastante más grandes, sin dejar de ir en una fila. La diferencia de la última vuelta con la mejor del carril (el «+3,106» debajo del tiempo grande) es más grande y lleva el mismo color que la última vuelta: verde si es la mejor, blanco si va por debajo de la media, ámbar a menos de un 5 % de la mejor, rojo si es peor. El número de vueltas del carril también es más grande.
+
+### Corregido
+- **En el entreno libre, el GO después de un STOP forzado no empezaba de cero** con el botón GO de PitWall (simulación, BART, TicTac): seguían las vueltas, la media y el ritmo de antes. Ahora hace lo mismo que cuando se acaba el tiempo: los datos se quedan a la vista hasta el siguiente GO, que los borra todos menos el **récord** de cada carril. Con un DS ya funcionaba así.
+
 ## [1.55.0] — 2026-10-10
 
 ### Añadido

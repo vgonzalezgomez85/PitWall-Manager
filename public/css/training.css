@@ -154,7 +154,7 @@
 .tr-card__count {
   margin-left: auto; flex-shrink: 0;
   font-family: 'Inter', system-ui, sans-serif; font-variant-numeric: tabular-nums;
-  font-weight: 700; font-size: clamp(.75rem, 1vw, 1rem); color: #c9d1d9;
+  font-weight: 800; font-size: clamp(1rem, 1.5vw, 1.6rem); color: #c9d1d9;
 }
 
 /* Última vuelta: el número grande, coloreado como en el directo de carrera */
@@ -171,16 +171,22 @@
 .tr-card__delta {
   margin-top: .15rem; min-height: 1.1em;
   font-family: 'Inter', system-ui, sans-serif; font-variant-numeric: tabular-nums;
-  font-size: clamp(.7rem, .9vw, .9rem); font-weight: 600; color: var(--tr-mute);
+  font-size: clamp(.95rem, 1.5vw, 1.7rem); font-weight: 800; color: var(--tr-mute);
 }
-.tr-card__delta.is-best { color: var(--tr-green); }
+/* Cuánto más lenta que la mejor del carril: mismo color que la última vuelta. */
+.tr-card__delta.is-best,
+.tr-card__delta.lv-color-green { color: var(--tr-green); }
+.tr-card__delta.lv-color-white { color: #fff; }
+.tr-card__delta.lv-color-amber { color: var(--tr-amber); }
+.tr-card__delta.lv-color-red   { color: var(--tr-red); }
 
-/* Mejor · Media · Récord del carril en una fila */
+/* Mejor · Media · Récord del carril en una fila. El tiempo, lo más grande que
+   cabe en un tercio de la tarjeta (a 7,5cqi «10,069» todavía entra). */
 .tr-card__stats {
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
   border-top: 1px solid var(--tr-line); border-bottom: 1px solid var(--tr-line);
 }
-.tr-stat { display: flex; flex-direction: column; gap: .1rem; padding: .4rem .45rem; min-width: 0; }
+.tr-stat { display: flex; flex-direction: column; gap: .1rem; padding: .4rem .5rem; min-width: 0; }
 .tr-stat + .tr-stat { border-left: 1px solid var(--tr-line); }
 .tr-stat__lbl {
   font-size: clamp(.6rem, .75vw, .75rem); letter-spacing: .1em; text-transform: uppercase;
@@ -188,7 +194,8 @@
 }
 .tr-stat__val {
   font-family: 'Inter', system-ui, sans-serif; font-variant-numeric: tabular-nums;
-  font-weight: 800; letter-spacing: -.03em; font-size: clamp(.78rem, 1.05vw, 1.35rem);
+  font-weight: 800; letter-spacing: -.03em; line-height: 1.1;
+  font-size: clamp(.95rem, 7.5cqi, 2.6rem);
   white-space: nowrap; overflow: hidden; text-overflow: clip; color: #fff;
 }
 .tr-stat--best .tr-stat__val { color: var(--tr-green); }

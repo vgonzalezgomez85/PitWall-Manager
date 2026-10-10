@@ -344,6 +344,7 @@ function updateCard(data) {
   if (deltaEl) {
     const d = (lastMs != null && st.bestMs != null) ? lastMs - st.bestMs : null;
     deltaEl.classList.toggle('is-best', d != null && d <= 1);
+    applyLvColor(deltaEl, ultColorMs(lastMs, st.bestMs, st.avgMs));
     deltaEl.textContent = d == null ? '' : (d <= 1 ? TXT.isBest : `+${(d / 1000).toFixed(3).replace('.', ',')}`);
   }
   if (avgEl)    avgEl.textContent    = formatMs(st.avgMs);
