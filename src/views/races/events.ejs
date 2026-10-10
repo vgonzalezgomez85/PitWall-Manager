@@ -78,7 +78,6 @@
 (function () {
   var RACE_ID = <%= race.id %>;
   var LANG    = '<%= lang %>';
-  var es = LANG === 'es';
   var MULTI_CIRCUIT = (function () {
     try { return (JSON.parse('<%- race.circuits_config || "[]" %>') || []).length > 1; } catch (e) { return false; }
   })();
@@ -98,7 +97,7 @@
   }
   function fmtWhen(ms){
     var d = new Date(ms);
-    var days = es ? ['dom','lun','mar','mié','jue','vie','sáb'] : ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    var days = I18N.t('client.events.dias').split(',');
     var pad = function(n){ return (n<10?'0':'')+n; };
     return days[d.getDay()]+' '+d.getDate()+'/'+(d.getMonth()+1)+' · '+pad(d.getHours())+':'+pad(d.getMinutes());
   }
@@ -108,7 +107,7 @@
   function renderLog(d){
     lastData = d;
     document.getElementById('logMeta').innerHTML =
-      '<b>'+d.totalEvents+'</b> '+(es? (d.totalEvents===1?'suceso':'sucesos') : (d.totalEvents===1?'event':'events'));
+      '<b>'+d.totalEvents+'</b> '+(d.totalEvents===1 ? I18N.t('client.events.suceso') : I18N.t('client.events.sucesos'));
 
     var showPreArm = chkPreArm.checked;
     var body = document.getElementById('logBody');

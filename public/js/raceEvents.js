@@ -37,10 +37,10 @@
   };
 
   const MODE_TEXT = {
-    pre_arm:            { es: 'fichaje', en: 'checked in' },
-    swap_running:       { es: 'cambio en caliente', en: 'hot swap' },
-    swap_paused:        { es: 'cambio (en pausa)', en: 'swap (paused)' },
-    manual_correction:  { es: 'corrección manual', en: 'manual correction' },
+    pre_arm:            () => I18N.t('client.js.modo_pre_arm'),
+    swap_running:       () => I18N.t('client.js.modo_swap_running'),
+    swap_paused:        () => I18N.t('client.js.modo_swap_paused'),
+    manual_correction:  () => I18N.t('client.js.modo_manual_correction'),
   };
 
   function who(d, es) {
@@ -83,7 +83,7 @@
     },
     driver_checkin: (d, es) => {
       const p = d.payload || {};
-      const modeTxt = (MODE_TEXT[p.mode] && MODE_TEXT[p.mode][es ? 'es' : 'en']) || p.mode || '';
+      const modeTxt = (MODE_TEXT[p.mode] && MODE_TEXT[p.mode]()) || p.mode || '';
       return `${I18N.t('client.js.lane')} ${d.lane} — ${d.entityName || ''} (${modeTxt})`;
     },
     lap_assigned: (d, es) => {
@@ -95,7 +95,10 @@
       // `real` = el cruce llegó dentro de la ventana tras el final y va con su
       // tiempo cronometrado; sin él, la vuelta se repuso por contador con la media.
       const real = !!p.real;
-      const base = I18N.t('client.js.v_n_flag_finish_lap_v2_v3', { v: who(d, es), n: n, v2: n > 1 ? 's' : '', v3: real ? 'timed' : 'restored', v4: n > 1 ? n + ' vueltas' : 'vuelta', v5: real ? 'cronometrada' : 'repuesta' });
+      const vars = { v: who(d, es), n: n };
+      const base = real
+        ? (n > 1 ? I18N.t('client.js.bandera_cronometrada_n', vars) : I18N.t('client.js.bandera_cronometrada_1', vars))
+        : (n > 1 ? I18N.t('client.js.bandera_repuesta_n', vars)     : I18N.t('client.js.bandera_repuesta_1', vars));
       return base + ` (${fmtS(p.lapTimeMs)}s${real ? '' : (I18N.t('client.js.avg'))})`;
     },
   };

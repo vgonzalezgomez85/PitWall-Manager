@@ -78,7 +78,7 @@ class TireController {
 
   static race(req, res) {
     const race = Race.findById(parseInt(req.params.id, 10));
-    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
+    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.race_not_found') });
     TireController._renderPage(req, res, race, { kiosk: false });
   }
 
@@ -121,7 +121,7 @@ class TireController {
 
   static logPage(req, res) {
     const race = Race.findById(parseInt(req.params.id, 10));
-    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
+    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.race_not_found') });
     res.render('tires/log', {
       t: req.t,
       race,

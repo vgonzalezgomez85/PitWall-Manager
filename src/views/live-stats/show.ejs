@@ -1,4 +1,4 @@
-<%- include('../partials/header', { pageTitle: race.name + ' — Estadísticas en vivo' }) %>
+<%- include('../partials/header', { pageTitle: t('livestats.titulo', { nombre: race.name }) }) %>
 
 <div class="ls-wrap">
 
@@ -12,24 +12,24 @@
     <div class="ls-bar__title">
       <strong><%= race.name %></strong>
       <% if (isActive) { %>
-        <span class="ls-badge ls-badge--live">EN DIRECTO</span>
+        <span class="ls-badge ls-badge--live"><%= t('livestats.en_directo') %></span>
       <% } %>
     </div>
     <div class="ls-bar__controls" data-lsview="manga">
-      <select id="lsManga" class="ls-select" title="Manga">
+      <select id="lsManga" class="ls-select" title="<%= t('common.manga') %>">
         <% allMangas.forEach(m => { %>
           <option value="<%= m.id %>" <%= m.id === selectedMangaId ? 'selected' : '' %>>
             T<%= m.tandaNumber %> · M<%= m.number %> (<%= m.status %>)
           </option>
         <% }) %>
       </select>
-      <select id="lsEntity" class="ls-select" title="Yo soy…">
+      <select id="lsEntity" class="ls-select" title="<%= t('livestats.yo_soy') %>">
         <option value=""><%= t('show.elige_tu_equipo_piloto') %></option>
         <% entityRows.forEach(e => { %>
           <option value="<%= e.entity_type %>_<%= e.entity_id %>"><%= e.entity_name %><%= e.categoria ? ' - ' + e.categoria : '' %></option>
         <% }) %>
       </select>
-      <label class="ls-toggle" title="Δ y media incluyen vueltas con salida/pit-stop">
+      <label class="ls-toggle" title="<%= t('livestats.toggle_title') %>">
         <input type="checkbox" id="lsIncludeOutliers"> <%= t('show.con_salidas') %>
       </label>
     </div>
@@ -62,32 +62,32 @@
     </div>
     <div class="ls-grid ls-grid--4">
       <div class="ls-card">
-        <div class="ls-card__label">Posición</div>
+        <div class="ls-card__label"><%= t('livestats.posicion') %></div>
         <div class="ls-card__big" id="lsMePos">—</div>
       </div>
       <div class="ls-card">
-        <div class="ls-card__label" id="lsMeLapsLabel">Vueltas manga</div>
+        <div class="ls-card__label" id="lsMeLapsLabel"><%= t('show.vueltas_manga') %></div>
         <div class="ls-card__big" id="lsMeLaps">—</div>
       </div>
       <div class="ls-card">
-        <div class="ls-card__label">Mejor</div>
+        <div class="ls-card__label"><%= t('client.common.mejor') %></div>
         <div class="ls-card__big" id="lsMeBest">—</div>
       </div>
       <div class="ls-card">
-        <div class="ls-card__label">Media</div>
+        <div class="ls-card__label"><%= t('client.common.media') %></div>
         <div class="ls-card__big" id="lsMeAvg">—</div>
       </div>
       <div class="ls-card">
-        <div class="ls-card__label">Δ (consistencia)</div>
+        <div class="ls-card__label"><%= t('livestats.delta_consistencia') %></div>
         <div class="ls-card__big" id="lsMeDelta">—</div>
         <div class="ls-card__hint" id="lsMeDeltaHint">avg - best</div>
       </div>
       <div class="ls-card">
-        <div class="ls-card__label">Salidas / pit-stops</div>
+        <div class="ls-card__label"><%= t('livestats.salidas_pits') %></div>
         <div class="ls-card__big" id="lsMeExits">—</div>
       </div>
       <div class="ls-card">
-        <div class="ls-card__label">📊 Consistencia</div>
+        <div class="ls-card__label"><%= t('livestats.consistencia') %></div>
         <div class="ls-card__big ls-cons__pct" id="lsMeConsistency">—</div>
         <div class="ls-cons__level" id="lsMeConsLevel" hidden>
           <span class="ls-cons__dot"></span><span class="ls-cons__txt">—</span>
@@ -96,12 +96,12 @@
         <div class="ls-card__hint"><%= t('show.variacion_vuelta_a_vuelta') %></div>
       </div>
       <div class="ls-card ls-card--wide" id="lsMeLostCard">
-        <div class="ls-card__label">⏱ Tiempo perdido en salidas</div>
+        <div class="ls-card__label"><%= t('livestats.tiempo_perdido') %></div>
         <div class="ls-card__big" id="lsMeLost">—</div>
-        <div class="ls-card__hint" id="lsMeLostEquiv">≈ — vueltas</div>
+        <div class="ls-card__hint" id="lsMeLostEquiv"><%= t('livestats.aprox_vacio') %></div>
       </div>
       <div class="ls-card ls-card--wide" id="lsMeSectorsCard">
-        <div class="ls-card__label">📈 Tramos (pace por minuto)</div>
+        <div class="ls-card__label"><%= t('livestats.tramos') %></div>
         <div class="ls-sectors" id="lsMeSectors">—</div>
       </div>
     </div>
@@ -171,10 +171,10 @@
             <% if (race.format === 'team') { %><th><%= t('client.common.piloto') %></th><% } %>
             <th>V</th>
             <th title="<%= t('show.vueltas_respecto_al_de_delante_en_la_manga_a') %>"><%= t('show.gap_sig') %></th>
-            <th>Mejor</th>
-            <th>Media</th>
+            <th><%= t('client.common.mejor') %></th>
+            <th><%= t('client.common.media') %></th>
             <th>Δ</th>
-            <th title="<%= t('show.salidas_de_pista_pit_stops_cambios_de_neumatico_2') %>">Salidas</th>
+            <th title="<%= t('show.salidas_de_pista_pit_stops_cambios_de_neumatico_2') %>"><%= t('client.common.salidas') %></th>
             <th><%= t('show.perdido') %></th>
           </tr>
         </thead>
@@ -426,7 +426,6 @@
     }
   }
   function consLabel(level) {
-    const es = LS_LANG === 'es';
     switch (level) {
       case 'excelente': return I18N.t('client.common.excelente');
       case 'buena':     return I18N.t('client.common.buena');
@@ -540,8 +539,8 @@
       ? fmtElapsed(data.remainingMs)
       : (data.mangaStatus === 'finished' ? '00:00' : '--:--');
     $('lsClockMeta').textContent = data.isActive
-      ? `Manga ${data.mangaNumber} en curso · ${data.remainingMangas} mangas pendientes después`
-      : `Manga ${data.mangaNumber} ${data.mangaStatus}`;
+      ? I18N.t('client.livestats.manga_en_curso', { n: data.mangaNumber, p: data.remainingMangas })
+      : I18N.t('client.livestats.manga_estado', { n: data.mangaNumber, estado: ({ finished: I18N.t('client.livestats.estado_finished'), pending: I18N.t('client.livestats.estado_pending'), active: I18N.t('client.livestats.estado_active') })[data.mangaStatus] || data.mangaStatus });
 
     const useAvgKey = includeOutliers ? 'avgAll' : 'avgClean';
     const useDeltaKey = includeOutliers ? 'deltaAll' : 'deltaClean';
@@ -600,37 +599,37 @@
       $('lsMePos').textContent = 'P' + pos;
       if (isProj) {
         // ── Datos de TODA la carrera ─────────────────────────────────────
-        $('lsMeLapsLabel').textContent = '<%= t('show.vueltas_carrera') %>';
+        $('lsMeLapsLabel').textContent = <%- JSON.stringify(t('show.vueltas_carrera')) %>;
         $('lsMeLaps').textContent = me.raceTotalLaps != null ? me.raceTotalLaps : '—';
         $('lsMeBest').textContent = fmtMs(me.raceBestMs);
         const rAvg = includeOutliers ? me.racePaceAllMs : me.racePaceCleanMs;
         $('lsMeAvg').textContent  = fmtMs(rAvg);
         const rDelta = (rAvg != null && me.raceBestMs != null) ? (rAvg - me.raceBestMs) : null;
         $('lsMeDelta').textContent = rDelta != null ? '+' + fmtSec(rDelta) : '—';
-        $('lsMeDeltaHint').textContent = (includeOutliers ? 'media (con salidas)' : 'media limpia') + ' − mejor (carrera)';
-        $('lsMeExits').textContent = `${me.raceExits || 0} salidas · ${me.racePits || 0} pit`;
+        $('lsMeDeltaHint').textContent = includeOutliers ? I18N.t('client.livestats.hint_carrera_con') : I18N.t('client.livestats.hint_carrera_limpia');
+        $('lsMeExits').textContent = I18N.t('client.livestats.salidas_pit', { s: me.raceExits || 0, p: me.racePits || 0 });
         { const c = consOf(me, true); renderMeConsistency(c.pct, c.stdMs, c.level); }
         $('lsMeLostCard').hidden = true;
         $('lsMeSectorsCard').hidden = true;
       } else {
         // ── Datos de la MANGA actual ─────────────────────────────────────
-        $('lsMeLapsLabel').textContent = '<%= t('show.vueltas_manga') %>';
+        $('lsMeLapsLabel').textContent = <%- JSON.stringify(t('show.vueltas_manga')) %>;
         $('lsMeLaps').textContent = me.totalLaps;
         $('lsMeBest').textContent = fmtMs(me.bestMs);
         $('lsMeAvg').textContent  = fmtMs(me[useAvgKey]);
         $('lsMeDelta').textContent = me[useDeltaKey] != null ? '+' + fmtSec(me[useDeltaKey]) : '—';
-        $('lsMeDeltaHint').textContent = includeOutliers ? 'avg (con salidas) − best' : 'avg limpio − best';
-        $('lsMeExits').textContent = `${me.exitCount} salidas · ${me.pitStopCount} pit`;
+        $('lsMeDeltaHint').textContent = includeOutliers ? I18N.t('client.livestats.hint_manga_con') : I18N.t('client.livestats.hint_manga_limpio');
+        $('lsMeExits').textContent = I18N.t('client.livestats.salidas_pit', { s: me.exitCount, p: me.pitStopCount });
         { const c = consOf(me, false); renderMeConsistency(c.pct, c.stdMs, c.level); }
         $('lsMeLostCard').hidden = false;
         $('lsMeSectorsCard').hidden = false;
         $('lsMeLost').textContent  = fmtSec(me.lostMs);
-        $('lsMeLostEquiv').textContent = `≈ ${me.lostLapsEquiv} vueltas perdidas`;
+        $('lsMeLostEquiv').textContent = I18N.t('client.livestats.vueltas_perdidas', { n: me.lostLapsEquiv });
         $('lsMeSectors').innerHTML = me.sectors.map(s => `
           <div class="ls-sector">
             <div class="ls-sector__lbl">${s.label}</div>
             <div class="ls-sector__val">${fmtMs(includeOutliers ? s.avgAll : s.avgClean)}</div>
-            <div class="ls-sector__meta">${s.laps}v · ${s.exits} salidas</div>
+            <div class="ls-sector__meta">${I18N.t('client.livestats.vueltas_salidas', { v: s.laps, s: s.exits })}</div>
           </div>
         `).join('');
       }
@@ -707,8 +706,8 @@
   // ("C3 · P2 · Nombre"), excluyendo al propio piloto. Conserva la selección.
   function populateCompareOptions(data) {
     const mk = e => `<option value="${e.key}">C${e.lane != null ? e.lane : '—'} · P${racePosOf(data, e)} · ${teamPlain(e.entityName)}</option>`;
-    [['lsCompare1', '— Compárate con… —', 'ls_cmp1_'],
-     ['lsCompare2', '— y con… (opcional) —', 'ls_cmp2_']].forEach(([id, ph, lk]) => {
+    [['lsCompare1', I18N.t('client.livestats.comparate'), 'ls_cmp1_'],
+     ['lsCompare2', I18N.t('client.livestats.y_con'), 'ls_cmp2_']].forEach(([id, ph, lk]) => {
       const sel = $(id);
       const want = sel.value || localStorage.getItem(lk + RACE_ID) || '';
       sel.innerHTML = `<option value="">${ph}</option>` +
@@ -731,20 +730,20 @@
     const faster = pace != null && pace < 0;
     const paceTxt = pace != null ? ` (${fmtDiff(pace)}/v)` : '';
     let cls, text;
+    const g = Math.abs(gap);
+    const vars = { v: g === 1 ? I18N.t('client.livestats.una_vuelta') : I18N.t('client.livestats.n_vueltas', { n: g }), p: paceTxt };
     if (gap > 0) {
-      const vv = gap === 1 ? 'vuelta' : 'vueltas';
-      if (faster)        { cls = 'good'; text = `vas ${gap} ${vv} por delante y ruedas más rápido${paceTxt}: abres hueco.`; }
-      else if (pace > 0) { cls = 'warn'; text = `vas ${gap} ${vv} por delante, pero rueda más rápido${paceTxt}: te recorta.`; }
-      else               { cls = 'info'; text = `vas ${gap} ${vv} por delante a ritmo parejo.`; }
+      if (faster)        { cls = 'good'; text = I18N.t('client.livestats.delante_rapido', vars); }
+      else if (pace > 0) { cls = 'warn'; text = I18N.t('client.livestats.delante_lento', vars); }
+      else               { cls = 'info'; text = I18N.t('client.livestats.delante_igual', vars); }
     } else if (gap < 0) {
-      const g = Math.abs(gap), vv = g === 1 ? 'vuelta' : 'vueltas';
-      if (faster)        { cls = 'info'; text = `vas ${g} ${vv} por detrás pero ruedas más rápido${paceTxt}: recortas.`; }
-      else if (pace > 0) { cls = 'bad';  text = `vas ${g} ${vv} por detrás y más lento${paceTxt}: pierdes terreno.`; }
-      else               { cls = 'warn'; text = `vas ${g} ${vv} por detrás a ritmo parejo.`; }
+      if (faster)        { cls = 'info'; text = I18N.t('client.livestats.detras_rapido', vars); }
+      else if (pace > 0) { cls = 'bad';  text = I18N.t('client.livestats.detras_lento', vars); }
+      else               { cls = 'warn'; text = I18N.t('client.livestats.detras_igual', vars); }
     } else {
-      if (faster)        { cls = 'good'; text = `empatados a vueltas y ruedas más rápido${paceTxt}.`; }
-      else if (pace > 0) { cls = 'bad';  text = `empatados a vueltas pero rueda más rápido${paceTxt}.`; }
-      else               { cls = 'info'; text = `empate técnico: mismas vueltas y ritmo parejo.`; }
+      if (faster)        { cls = 'good'; text = I18N.t('client.livestats.empate_rapido', vars); }
+      else if (pace > 0) { cls = 'bad';  text = I18N.t('client.livestats.empate_lento', vars); }
+      else               { cls = 'info'; text = I18N.t('client.livestats.empate_tecnico'); }
     }
     return `<div class="ls-cmp__chip ls-cmp__chip--${cls}"><b>vs ${teamHtml(r.entityName)}:</b> ${text}</div>`;
   }
@@ -781,10 +780,10 @@
     const lapsOf = e => isProj ? (e.raceTotalLaps != null ? e.raceTotalLaps : 0) : e.totalLaps;
     const bestOf = e => isProj ? e.raceBestMs : e.bestMs;
     const avgOf  = e => isProj ? (includeOutliers ? e.racePaceAllMs : e.racePaceCleanMs) : e[avgKey];
-    html += row(isProj ? 'Vueltas carrera' : 'Vueltas', e => lapsOf(e));
-    html += row('Mejor',        e => fmtMs(bestOf(e)));
-    html += row('Media',        e => fmtMs(avgOf(e)));
-    html += row('Consistencia', e => {
+    html += row(isProj ? I18N.t('client.livestats.vueltas_carrera') : I18N.t('client.common.vueltas'), e => lapsOf(e));
+    html += row(I18N.t('client.common.mejor'), e => fmtMs(bestOf(e)));
+    html += row(I18N.t('client.common.media'), e => fmtMs(avgOf(e)));
+    html += row(I18N.t('client.livestats.consistencia'), e => {
       const { pct, stdMs, level } = consOf(e, isProj);
       if (pct == null) return '—';
       const de = consDe(stdMs);
@@ -792,8 +791,8 @@
         `<span class="ls-conscell__dot"></span>${pct}%` +
         (de ? `<span class="ls-conscell__de">${de}</span>` : '') + '</span>';
     });
-    html += row('Última',       e => fmtMs(e.lastLapMs));
-    html += row('Δ vueltas', (e, i) => {
+    html += row(I18N.t('client.livestats.ultima'), e => fmtMs(e.lastLapMs));
+    html += row(I18N.t('client.livestats.delta_vueltas'), (e, i) => {
       if (i === 0) return '—';
       const d = lapsOf(me) - lapsOf(e);
       return (d > 0 ? '+' : '') + d;
@@ -818,8 +817,8 @@
   function renderCmpChart(cols, data) {
     const canvas = $('lsCmpChart');
     if (!canvas || typeof Chart === 'undefined') return;
-    const ES_LAP = '<%= t('client.common.vuelta') %>';
-    const ES_MANGA = '<%= t('common.manga') %>';
+    const ES_LAP = <%- JSON.stringify(t('client.common.vuelta')) %>;
+    const ES_MANGA = <%- JSON.stringify(t('common.manga')) %>;
     // En vista "manga" los gráficos usan la MANGA (lapSeries, X = vuelta); en
     // "proyectada" usan la CARRERA (raceProgress por manga, X = manga).
     const isProj = currentLsView === 'proj';
@@ -838,11 +837,11 @@
           const avg = (rp && rp.avgByName[e.entityName]) || [];
           return mk(e, i, mangas.map((mn, k) => ({ x: mn, y: avg[k] != null ? +(avg[k] / 1000).toFixed(3) : null })));
         });
-        yTitle = '<%= t('show.tiempo_medio_por_manga_s') %>';
+        yTitle = <%- JSON.stringify(t('show.tiempo_medio_por_manga_s')) %>;
       } else {
         datasets = cols.map((e, i) =>
           mk(e, i, (e.lapSeries || []).filter(p => p.n > 1 && !p.x).map(p => ({ x: p.n, y: +(p.t / 1000).toFixed(3) }))));
-        yTitle = '<%= t('show.tiempo_s') %>';
+        yTitle = <%- JSON.stringify(t('show.tiempo_s')) %>;
       }
     } else if (cmpChartMode === 'gap') {
       if (isProj) {
@@ -859,7 +858,7 @@
           });
           return mk(e, i, pts, 0.2);
         });
-        yTitle = '<%= t('show.ventaja_sobre_la_media_s') %>';
+        yTitle = <%- JSON.stringify(t('show.ventaja_sobre_la_media_s')) %>;
       } else {
         let sum = 0, cnt = 0;
         cols.forEach(e => (e.lapSeries || []).forEach(p => { if (p.n > 1 && !p.x) { sum += p.t; cnt++; } }));
@@ -869,7 +868,7 @@
           let cum = 0;
           return mk(e, i, series.map(p => { cum += (ref - p.t) / 1000; return { x: p.n, y: +cum.toFixed(3) }; }));
         });
-        yTitle = '<%= t('show.ventaja_sobre_la_media_s') %>';
+        yTitle = <%- JSON.stringify(t('show.ventaja_sobre_la_media_s')) %>;
       }
     } else { // gaplaps
       if (isProj) {
@@ -883,7 +882,7 @@
             return mk(e, i, mangas.map((mn, k) => ({ x: mn, y: (arr[k] != null && leaderArr[k] != null) ? (arr[k] - leaderArr[k]) : null })), 0.2);
           });
         }
-        yTitle = '<%= t('show.gap_de_vueltas_al_lider_seleccionado') %>';
+        yTitle = <%- JSON.stringify(t('show.gap_de_vueltas_al_lider_seleccionado')) %>;
       } else {
         // Gap REAL de vueltas DENTRO de la manga: en cada momento (minuto) de la
         // manga, cuántas vueltas lleva cada equipo respecto al líder seleccionado
@@ -898,8 +897,8 @@
           const ce = ceByName[e.entityName] || [];
           return mk(e, i, leaderCE.map(lp => ({ x: +(lp.e / 60000).toFixed(2), y: lapsAt(ce, lp.e) - lp.n })), 0.2);
         });
-        xTitle = '<%= t('show.minutos_manga') %>';
-        yTitle = '<%= t('show.gap_de_vueltas_manga') %>';
+        xTitle = <%- JSON.stringify(t('show.minutos_manga')) %>;
+        yTitle = <%- JSON.stringify(t('show.gap_de_vueltas_manga')) %>;
       }
     }
     if (!cmpChart) {
@@ -929,7 +928,6 @@
   // Conmutador de alcance de la consistencia (sin/con salidas y pits). Global:
   // re-renderiza "Mi panel" y la fila de la comparativa con el set elegido.
   function updateConsHint() {
-    const es = LS_LANG === 'es';
     const el = $('lsConsHint');
     if (el) el.textContent = consScope === 'all'
       ? (I18N.t('client.show.incluye_salidas_y_paradas'))
@@ -1122,10 +1120,10 @@
       `<th class="${cls(i)}"><div class="ls-cmp2__name">${teamHtml(c.name)}</div></th>`).join('') + '</tr></thead><tbody>';
     const row = (label, fn) => `<tr><td class="ls-cmp2__lbl">${label}</td>` +
       cols.map((c, i) => `<td class="${cls(i)}">${c.d ? fn(c.d) : '—'}</td>`).join('') + '</tr>';
-    html += row('<%= t('client.common.mejor') %>',   d => fmtMs(d.bestMs));
-    html += row('<%= t('client.common.media') %>',    d => fmtMs(d[avgKey]));
-    html += row('<%= t('client.common.vueltas') %>', d => d.laps);
-    html += row('<%= t('client.common.salidas') %>', d => d.exits);
+    html += row(<%- JSON.stringify(t('client.common.mejor')) %>,   d => fmtMs(d.bestMs));
+    html += row(<%- JSON.stringify(t('client.common.media')) %>,    d => fmtMs(d[avgKey]));
+    html += row(<%- JSON.stringify(t('client.common.vueltas')) %>, d => d.laps);
+    html += row(<%- JSON.stringify(t('client.common.salidas')) %>, d => d.exits);
     html += '</tbody>';
     $('lsLaneTable').innerHTML = html;
   }
@@ -1148,8 +1146,6 @@
     const box = $('lsLaneGridBox');
     if (!box || box.hidden) return;
     const avgKey = ($('lsIncludeOutliers') && $('lsIncludeOutliers').checked) ? 'avgAllMs' : 'avgCleanMs';
-    const esLang = '<%= lang %>' === 'es';
-
     const toneOf = i => 'ls-grid-tone-' + (i % 6);
 
     let thead = '<thead><tr class="ls-grid-lanehead"><th rowspan="2">' +

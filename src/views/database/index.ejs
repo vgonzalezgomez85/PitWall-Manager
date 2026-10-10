@@ -1,6 +1,5 @@
 <%- include('../partials/header', { pageTitle: (t('database.gestion_de_base_de_datos')) }) %>
 <%
-  const es = lang === 'es';
   function humanSize(bytes) {
     if (bytes == null) return '—';
     if (bytes < 1024) return bytes + ' B';

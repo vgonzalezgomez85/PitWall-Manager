@@ -58,7 +58,7 @@ const ImportController = {
   // POST /import/tanda — crea la carrera desde el payload del body (fichero o LAN).
   create(req, res) {
     if (!importAuthorized(req)) {
-      return res.status(403).json({ ok: false, error: 'PIN de importación incorrecto o dispositivo no autorizado.' });
+      return res.status(403).json({ ok: false, error: req.t('tandaimport.pin_incorrecto') });
     }
     try {
       const payload = req.body && req.body.payload ? req.body.payload : req.body;
@@ -66,7 +66,7 @@ const ImportController = {
       res.json({ ok: true, ...result });
     } catch (e) {
       const code = e instanceof TandaImport.TandaImportError ? 400 : 500;
-      res.status(code).json({ ok: false, error: e.message });
+      res.status(code).json({ ok: false, error: e.key ? req.t('tandaimport.' + e.key, e.vars) : e.message });
     }
   },
 };

@@ -27,7 +27,7 @@ class RaceEventController {
 
   static page(req, res) {
     const race = Race.findById(parseInt(req.params.id, 10));
-    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
+    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.race_not_found') });
     const activeManga = Manga.findActive(race.id);
     res.render('races/events', {
       t: req.t,

@@ -267,7 +267,7 @@ if (firstFlagged >= 0) initActive = firstFlagged;
                     <div><%= t('lap-corrections.vlt') %></div>
                     <div><%= t('common.tiempo') %></div>
                     <div class="r"><%= t('lap-corrections.reloj') %></div>
-                    <div class="r">Δ ant.</div>
+                    <div class="r"><%= t('lap-corrections.delta_ant') %></div>
                     <div class="r"><%= t('common.acciones') %></div>
                   </div>
 
@@ -307,13 +307,7 @@ if (firstFlagged >= 0) initActive = firstFlagged;
                           </span>
                         <% } else if (lap.is_flag_lap) { %>
                           <span class="lc-flagtag is-flaglap"
-                                title="<%= lang === 'es'
-                                  ? (lap.is_estimated
-                                      ? 'El cruce que completó justo al caer la bandera: la caja DS lo contó pero su trama no llegó a PitWall. Su tiempo es la media del carril: corrígelo si sabes el real.'
-                                      : 'El cruce que completó justo al caer la bandera, con su tiempo real del DS.')
-                                  : (lap.is_estimated
-                                      ? 'The crossing that completed right as the flag fell: the DS box counted it but its frame never reached PitWall. Its time is the lane average.'
-                                      : 'The crossing that completed right as the flag fell, with its real DS time.') %>">
+                                title="<%= lap.is_estimated ? t('lap-corrections.flag_estimada') : t('lap-corrections.flag_real') %>">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V4M4 4h13l-2.5 4L17 12H4"/></svg>
                             <%= t('lap-corrections.final_de_bandera') %>
                           </span>
@@ -397,7 +391,7 @@ if (firstFlagged >= 0) initActive = firstFlagged;
                            placeholder="s"
                            class="lc-mini-input lc-mini-input--t" required>
                     <span>s</span>
-                    <% if (s.avgMs) { %><span class="lc-insert__hint">(media)</span><% } %>
+                    <% if (s.avgMs) { %><span class="lc-insert__hint"><%= t('lap-corrections.media_paren') %></span><% } %>
                     <button type="submit" class="vt-btn vt-btn--ghost vt-btn--sm" style="margin-left:auto">
                       <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
                       <%= t('common.anadir') %>

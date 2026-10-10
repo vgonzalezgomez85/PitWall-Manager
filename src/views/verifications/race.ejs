@@ -89,7 +89,7 @@
                 ? [v.motor_rpm != null ? v.motor_rpm + ' RPM' : null, v.motor_ums != null ? v.motor_ums + ' uMs' : null].filter(Boolean).join(' · ')
                 : null);
           var pesoCarroceria = (v.peso_inicial != null || v.peso_min != null)
-            ? [v.peso_inicial != null ? v.peso_inicial + ' g' : null, v.peso_min != null ? ('mín ' + v.peso_min + ' g') : null].filter(Boolean).join(' / ')
+            ? [v.peso_inicial != null ? v.peso_inicial + ' g' : null, v.peso_min != null ? (t('verifications.min_abrev') + ' ' + v.peso_min + ' g') : null].filter(Boolean).join(' / ')
             : null;
           var pesoCompleto = (v.peso_inicial_coche != null || v.peso_final_coche != null)
             ? [v.peso_inicial_coche != null ? v.peso_inicial_coche + ' g' : null, v.peso_final_coche != null ? v.peso_final_coche + ' g' : null].filter(Boolean).join(' / ')

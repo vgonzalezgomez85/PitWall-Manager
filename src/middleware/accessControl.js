@@ -213,9 +213,8 @@ function restrictAccess(req, res, next) {
   if (!ipOk) {
     return res.status(403).render('error', {
       t: req.t, code: 403,
-      message: (req.session?.lang === 'en')
-        ? 'Access restricted: this device is not authorized.'
-        : 'Acceso restringido: este dispositivo no está autorizado.',
+      // Sin el middleware de idioma por delante (tests, rutas tempranas) no hay req.t.
+      message: (req.t || require('./i18n').translator(req.session?.lang))('errors.acceso_restringido'),
     });
   }
   if (isPasswordProtectedPath(req.path) && !isLoggedIn(req)) return askForLogin(req, res);

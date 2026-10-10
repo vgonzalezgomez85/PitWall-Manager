@@ -244,14 +244,14 @@ function slotOrder(n){
   const k = i => (i < LANE_SEQ.length && LANE_SEQ[i] > 0) ? [0, LANE_SEQ[i]] : [i < LANE_SEQ.length ? 1 : 2, i];
   return [...Array(n).keys()].sort((a, b) => { const x = k(a), y = k(b); return x[0] - y[0] || x[1] - y[1]; });
 }
-const DRIVER_PH = "<%= t('wizard.driver_name_ph') %>";
-const TEAM_PH   = "<%= t('wizard.team_name_ph') %>";
-const MEMBER_PH = "<%= t('wizard.member_ph') %>";
+const DRIVER_PH = <%- JSON.stringify(t('wizard.driver_name_ph')) %>;
+const TEAM_PH   = <%- JSON.stringify(t('wizard.team_name_ph')) %>;
+const MEMBER_PH = <%- JSON.stringify(t('wizard.member_ph')) %>;
 // Campos opcionales por participante (interruptores de la carrera).
 const SHOW_CAT = <%= race.has_categoria ? 'true' : 'false' %>;
 const SHOW_CAR = <%= race.has_coche ? 'true' : 'false' %>;
-const CAT_PH   = "<%= t('common.categoria_copa') %>";
-const CAR_PH   = "<%= t('common.coche') %>";
+const CAT_PH   = <%- JSON.stringify(t('common.categoria_copa')) %>;
+const CAR_PH   = <%- JSON.stringify(t('common.coche')) %>;
 function attrsHtml(prefix) {
   if (!SHOW_CAT && !SHOW_CAR) return '';
   let h = '<div class="participant-attrs">';
@@ -259,7 +259,7 @@ function attrsHtml(prefix) {
   if (SHOW_CAR) h += `<input class="form-input participant-car" type="text" name="${prefix}[coche]" placeholder="${CAR_PH}" autocomplete="off">`;
   return h + '</div>';
 }
-const OPT_LBL   = "<%= t('wizard.optional') %>";
+const OPT_LBL   = <%- JSON.stringify(t('wizard.optional')) %>;
 
 const ALL_PROFILES = <%- JSON.stringify(
   (profiles || []).map(p => ({ name: p.name, category: p.category }))

@@ -90,7 +90,6 @@ const ExportGuard = {
 
   // Respuesta 409 estándar para un endpoint de exportación bloqueado.
   deny(req, res) {
-    const isEs = ((req.query && req.query.lang) || 'es') === 'es';
     const message = req.t('exportguard.no_se_puede_exportar_a_excel_mientras_hay_una');
     if (res.headersSent) return;
     res.status(409).render('error', { t: req.t, code: 409, message });

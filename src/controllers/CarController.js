@@ -99,7 +99,7 @@ class CarController {
 
   static edit(req, res) {
     const car = Car.findById(parseInt(req.params.id, 10));
-    if (!car) return res.status(404).render('error', { t: req.t, code: 404, message: 'Car not found' });
+    if (!car) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.car_not_found') });
 
     const categories = Category.findAll();
     const lang = req.session?.lang || 'es';
@@ -113,7 +113,7 @@ class CarController {
     const categories = Category.findAll();
     const lang = req.session?.lang || 'es';
 
-    if (!car) return res.status(404).render('error', { t: req.t, code: 404, message: 'Car not found' });
+    if (!car) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.car_not_found') });
 
     if (!brand || !brand.trim()) {
       return res.render('cars/form', {
@@ -167,7 +167,7 @@ class CarController {
   static delete(req, res) {
     const id = parseInt(req.params.id, 10);
     const car = Car.findById(id);
-    if (!car) return res.status(404).render('error', { t: req.t, code: 404, message: 'Car not found' });
+    if (!car) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.car_not_found') });
 
     Car.delete(id);
     res.redirect('/cars');

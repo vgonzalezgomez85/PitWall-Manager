@@ -94,7 +94,8 @@ El schema se inicializa en `src/config/database.js`. No requiere migraciones man
 
 ## Traducciones
 
-La app habla **español** e **inglés**, y está preparada para más idiomas.
+La app habla **español** e **inglés**, y todo su texto sale de un diccionario, así que
+se puede traducir a cualquier idioma. El **italiano** está en marcha.
 
 **¿Quieres traducirla o revisar lo que ya hay?** No hace falta saber programar ni
 usar Git: es rellenar una columna de una hoja de cálculo y mandar el fichero por

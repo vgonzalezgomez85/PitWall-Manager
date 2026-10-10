@@ -41,11 +41,15 @@ const A6   = frame({ 7: 0x00, 8: 0xa6 });
 // Cruce: carril 3 (bit 0x20), 00:08:43:20 BCD = 8,432 s, contador 7.
 const CRUCE = frame({ 10: 0x20, 12: 0x07, 14: 0x00, 15: 0x08, 16: 0x43, 17: 0x20 });
 
+
+// Los campos llevan además su clave de traducción (kKey/vKey): se compara lo decodificado.
+const kv = (fs) => fs.map(({ k, v }) => ({ k, v }));
+
 test('GO: etiqueta y duración en BCD', () => {
   const d = createDecoder();
   const r = d.ds(GO);
   assert.equal(r.kind, 'go');
-  assert.deepEqual(r.fields, [{ k: 'duración', v: '99 min' }]);
+  assert.deepEqual(kv(r.fields), [{ k: 'duración', v: '99 min' }]);
 });
 
 test('el GO de una unidad con clase 0x3A también es un GO', () => {
@@ -55,7 +59,7 @@ test('el GO de una unidad con clase 0x3A también es un GO', () => {
   const d = createDecoder();
   const r = d.ds(frame({ 7: 0x3a, 8: 0xa1, 10: 0x60 }));
   assert.equal(r.kind, 'go');
-  assert.deepEqual(r.fields, [{ k: 'duración', v: '60 min' }]);
+  assert.deepEqual(kv(r.fields), [{ k: 'duración', v: '60 min' }]);
   assert.equal(d.ds(A3).kind, 'started');
 });
 
@@ -92,7 +96,7 @@ test('cruce: carril, tiempo BCD y contador', () => {
   const r = createDecoder().ds(CRUCE);
   assert.equal(r.kind, 'crossing');
   assert.deepEqual(r.lanes, [3]);
-  assert.deepEqual(r.fields, [
+  assert.deepEqual(kv(r.fields), [
     { k: 'carril',   v: '3' },
     { k: 'tiempo',   v: '8.432 s' },
     { k: 'contador', v: '7' },
@@ -128,7 +132,7 @@ test('ráfaga del PL2303: colapsa duplicadas consecutivas', () => {
   const r = createDecoder().ds([...CRUCE, ...CRUCE, ...CRUCE]);
   assert.equal(r.kind, 'burst');
   assert.equal(r.subs.length, 1, 'las 3 son idénticas → queda 1');
-  assert.deepEqual(r.fields, [{ k: 'sub-tramas', v: '3' }, { k: 'descartadas', v: '2' }]);
+  assert.deepEqual(kv(r.fields), [{ k: 'sub-tramas', v: '3' }, { k: 'descartadas', v: '2' }]);
 });
 
 test('ráfaga con carriles distintos NO se colapsa', () => {
@@ -158,7 +162,7 @@ test('heartbeat: el minuto es el byte crudo, no BCD', () => {
   // b[14]=0x12 → 18, no 12. SerialService.js:547 lo lee sin pasar por ds300Byte.
   const r = createDecoder().ds(frame({ 7: 0x00, 8: 0xc0, 14: 0x12 }));
   assert.equal(r.kind, 'heartbeat');
-  assert.deepEqual(r.fields, [{ k: 'minuto', v: '18' }]);
+  assert.deepEqual(kv(r.fields), [{ k: 'minuto', v: '18' }]);
 });
 
 // ── BART ────────────────────────────────────────────────────────────────────
@@ -172,7 +176,7 @@ test('BART LAP: desempaqueta el carril del nibble y lee el tiempo', () => {
   const r = createDecoder().bart(lap);
   assert.equal(r.kind, 'crossing');
   assert.deepEqual(r.lanes, [5]);
-  assert.deepEqual(r.fields, [
+  assert.deepEqual(kv(r.fields), [
     { k: 'carril',  v: '5' },
     { k: 'tiempo',  v: '8.432 s' },
     { k: 'vueltas', v: '12' },
@@ -198,7 +202,7 @@ test('BART STATUS: expone minlap, uptime y carriles que el timing tira', () => {
   const st = [0xa5, 0x20, 0x01, 0x01, ...u16(1500), ...u16(432), 8, ...u16(0), 0x00];
   const r = createDecoder().bart(st);
   assert.equal(r.kind, 'started');
-  assert.deepEqual(r.fields, [
+  assert.deepEqual(kv(r.fields), [
     { k: 'min-lap',  v: '1500 ms' },
     { k: 'uptime',   v: '43.2 s' },
     { k: 'carriles', v: '8' },
@@ -232,4 +236,16 @@ test('trama real capturada del DS por el PL2303', () => {
   const r = createDecoder().ds(bytes);
   assert.equal(r.kind, 'stopped');
   assert.equal(r.len, 21);
+});
+
+test('cada etiqueta y campo lleva su clave del diccionario para traducirse en el navegador', () => {
+  const d = createDecoder();
+  const r = d.ds([0xe0, 0, 0, 0, 0, 0, 0, 0x1b, 0, 0, 0x80, 0, 5, 0, 0, 0x12, 0x34, 0, 0, 0, 0xeb]);
+  assert.equal(r.label, 'Cruce — carril 1', 'la etiqueta sigue en español');
+  assert.equal(r.labelKey, 'client.tramas.cruce');
+  assert.deepEqual(r.labelVars, { l: '1' });
+  assert.equal(r.fields.find(f => f.k === 'carril').kKey, 'client.tramas.f_carril');
+  const es = require('../src/locales/es.json');
+  const get = (k) => k.split('.').reduce((o, x) => (o == null ? o : o[x]), es);
+  assert.equal(typeof get(r.labelKey), 'string', 'la clave existe en el diccionario');
 });

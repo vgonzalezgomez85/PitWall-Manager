@@ -568,7 +568,7 @@
             ${driverHtml}
           </td>
           <td>${catHtml}</td>
-          <td class="td-proj">${r.projectedRaw != null ? r.projectedRaw.toFixed(1).replace('.', ',') + 'v' : '—'}${r.provisional ? '<span class="proj-prov" title="Estimada provisional: aún no se ha fijado la referencia de la 1ª manga" style="color:#d29922;margin-left:3px">*</span>' : ''}</td>
+          <td class="td-proj">${r.projectedRaw != null ? r.projectedRaw.toFixed(1).replace('.', ',') + 'v' : '—'}${r.provisional ? '<span class="proj-prov" title="' + I18N.t('client.lemans.estimada_provisional') + '" style="color:#d29922;margin-left:3px">*</span>' : ''}</td>
           <td class="td-laps" id="laps-${r.id}">${r.totalLaps}</td>
           <td class="td-gap">${gapLabel(r.gap, r.avgLapMs)}</td>
           <td class="td-avg">${r.avgLapMs != null ? formatMs(r.avgLapMs) : '—'}</td>
@@ -600,9 +600,7 @@
 
     function setState(s) {
       const el = document.getElementById('lmState');
-      const map = LANG === 'es'
-        ? { running: 'EN CARRERA', paused: 'PAUSA', finished: 'FINALIZADA' }
-        : { running: 'RACING', paused: 'PAUSED', finished: 'FINISHED' };
+      const map = { running: I18N.t('client.lemans.en_carrera'), paused: I18N.t('client.lemans.pausa'), finished: I18N.t('client.lemans.finalizada') };
       const key = map[s] ? s : 'finished';
       el.textContent = map[key];
       el.className = 'lm-state lm-state--' + key;

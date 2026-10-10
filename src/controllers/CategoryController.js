@@ -57,7 +57,7 @@ class CategoryController {
 
   static edit(req, res) {
     const category = Category.findById(parseInt(req.params.id, 10));
-    if (!category) return res.status(404).render('error', { t: req.t, code: 404, message: 'Category not found' });
+    if (!category) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.category_not_found') });
     const lang = req.session?.lang || 'es';
     res.render('categories/form', { t: req.t, lang, category, error: null });
   }
@@ -68,7 +68,7 @@ class CategoryController {
     const category = Category.findById(id);
     const lang = req.session?.lang || 'es';
 
-    if (!category) return res.status(404).render('error', { t: req.t, code: 404, message: 'Category not found' });
+    if (!category) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.category_not_found') });
     if (!name || !name.trim()) {
       return res.render('categories/form', {
         t: req.t,
@@ -94,7 +94,7 @@ class CategoryController {
   static delete(req, res) {
     const id = parseInt(req.params.id, 10);
     const category = Category.findById(id);
-    if (!category) return res.status(404).render('error', { t: req.t, code: 404, message: 'Category not found' });
+    if (!category) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.category_not_found') });
 
     Category.delete(id);
     res.redirect('/categories');
@@ -104,7 +104,7 @@ class CategoryController {
     const { name, description } = req.body;
 
     if (!name || !name.trim()) {
-      return res.status(400).json({ error: 'Category name is required' });
+      return res.status(400).json({ error: req.t('errors.category_name_required') });
     }
 
     try {
@@ -113,7 +113,7 @@ class CategoryController {
       res.json({ success: true, id: newCategory.id, name: newCategory.name });
     } catch (err) {
       if (err.message.includes('UNIQUE')) {
-        return res.status(400).json({ error: 'Category already exists' });
+        return res.status(400).json({ error: req.t('errors.category_exists') });
       }
       res.status(500).json({ error: err.message || 'Error creating category' });
     }

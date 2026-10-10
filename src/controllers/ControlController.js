@@ -202,7 +202,7 @@ class ControlController {
   // GET /races/:id/shifts — vista histórica por carrera
   static raceHistory(req, res) {
     const race = Race.findById(req.params.id);
-    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.not_found') });
     if (race.type !== 'championship') {
       return res.render('control/race-shifts', { t: req.t, race, notChampionship: true, mangas: [], summary: [] });
     }
@@ -308,7 +308,7 @@ class ControlController {
   // GET /races/:id/shifts/report
   static shiftsReport(req, res) {
     const data = ControlController._reportData(req.params.id);
-    if (!data) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+    if (!data) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.not_found') });
     return ControlController._sendReport(req, res, data);
   }
 
@@ -324,7 +324,7 @@ class ControlController {
     if (!req._exportMode) return res.render('control/shifts-report', locals);
 
     res.render('control/shifts-report', { ...locals, hideNavbar: true }, (err, html) => {
-      if (err) { console.error('[shifts-report] render error:', err.message); return res.status(500).send('Export error'); }
+      if (err) { console.error('[shifts-report] render error:', err.message); return res.status(500).send(req.t('errors.export_error')); }
       const SessionController = require('./SessionController');
       const out = SessionController._inlineForExport(html);
       const slug = String(data.race.name || 'carrera').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
@@ -337,14 +337,13 @@ class ControlController {
   // GET /races/:id/shifts/report.xlsx
   static async shiftsReportExcel(req, res) {
     const data = ControlController._reportData(req.params.id);
-    if (!data) return res.status(404).send('Not found');
+    if (!data) return res.status(404).send(req.t('errors.not_found'));
 
     if (ExportGuard.isMangaLive()) return ExportGuard.deny(req, res);
 
     const { race, reglas, summary } = data;
 
     const ExcelJS = require('exceljs');
-    const isEs = (req.query.lang || 'es') === 'es';
     const wb = new ExcelJS.Workbook();
     wb.creator = 'PitWall';
     const ws = wb.addWorksheet(req.t('common.turnos_2'));
@@ -374,9 +373,8 @@ class ControlController {
                            : (req.t('control.sin_limites_configurados'));
     sub.font = { italic: true, color: { argb: 'FF6E7681' } };
 
-    const cabecera = isEs
-      ? ['Piloto', 'Categoría', 'Tiempo total', 'Turnos', 'Máx turnos', 'Correcciones manuales', 'Estado']
-      : ['Driver', 'Category', 'Total time', 'Stints', 'Max stints', 'Manual fixes', 'Status'];
+    const cabecera = ['xls_piloto', 'xls_categoria', 'xls_tiempo_total', 'xls_turnos', 'xls_max_turnos', 'xls_correcciones', 'xls_estado']
+      .map(k => req.t('shifts-report.' + k));
     const filaCab = ws.addRow([]);            // fila 3 vacía de separación
     filaCab.height = 6;
     const head = ws.addRow(cabecera);

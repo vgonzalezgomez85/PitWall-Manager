@@ -417,7 +417,7 @@ class RaceController {
 
   static show(req, res) {
     const race = Race.findById(req.params.id);
-    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
+    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.race_not_found') });
 
     // Con una manga en curso la ficha SÍ es accesible: muestra el estado y un
     // enlace «Manga N» al directo. (El auto-salto al directo sigue ocurriendo al
@@ -541,7 +541,7 @@ class RaceController {
 
   static editForm(req, res) {
     const race = Race.findById(req.params.id);
-    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
+    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.race_not_found') });
 
     const savedCircuits = Circuit.findAll();
     const circuitCategoryTimes = {};
@@ -564,7 +564,7 @@ class RaceController {
 
   static update(req, res) {
     const race = Race.findById(req.params.id);
-    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
+    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.race_not_found') });
 
     const errors = [];
     const name   = (req.body.name || '').trim();
@@ -716,9 +716,8 @@ class RaceController {
   // Con una manga de esta carrera corriendo no se toca: el cronometraje manda.
 
   static setStatus(req, res) {
-    const es = (res.locals.lang || 'es') === 'es';
     const race = Race.findById(req.params.id);
-    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
+    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.race_not_found') });
     const status = String(req.body.status || '');
     const back = `/races/${race.id}`;
     if (!['pending', 'active', 'finished'].includes(status)) return res.redirect(back);
@@ -731,9 +730,7 @@ class RaceController {
     }
 
     Race.updateStatus(race.id, status);
-    const label = es
-      ? { pending: 'Pendiente', active: 'En curso', finished: 'Completada' }[status]
-      : { pending: 'Pending', active: 'Active', finished: 'Completed' }[status];
+    const label = { pending: req.t('races.status.pending'), active: req.t('races.status.active'), finished: req.t('races.status.completed') }[status];
     let text = req.t('race.estado_cambiado_a_label', { label: label });
     if (status === 'active') {
       const others = Race.findAll().filter(r => r.status === 'active' && String(r.id) !== String(race.id));

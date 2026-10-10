@@ -35,7 +35,6 @@ const EcosystemController = {
   save(req, res) {
     const on = req.body.ecosystem_control_enabled === '1' || req.body.ecosystem_control_enabled === 'on';
     Settings.set('ecosystem_control_enabled', on ? '1' : '0');
-    const isEs = (req.session && req.session.lang) !== 'en';
     req.session.flash = {
       type: 'success',
       text: on

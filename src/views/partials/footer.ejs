@@ -67,7 +67,6 @@
     if (typeof io === 'undefined') return;
     const pill = document.getElementById('footerSerialPill');
     if (!pill) return;
-    const es  = pill.dataset.lang === 'es';
     const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
 
     io().on('serial:status', (data) => {

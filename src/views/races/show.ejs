@@ -1,7 +1,5 @@
 <%
-const statusLabel = lang === 'es'
-  ? { pending: 'Pendiente', active: 'En curso', finished: 'Completada' }[race.status] || race.status
-  : { pending: 'Pending',   active: 'Active',   finished: 'Completed' }[race.status] || race.status;
+const statusLabel = { pending: t('races.status.pending'), active: t('races.status.active'), finished: t('races.status.completed') }[race.status] || race.status;
 const isFinished = race.status === 'finished';
 const polDone    = race.has_pole && poleSession && poleSession.status === 'done';
 // Estado del stepper (3 nodos): Pole → Tandas → Resultados
@@ -278,9 +276,7 @@ function stepState(idx) {
             <span class="rs-tanda__chevron" aria-hidden="true">▸</span>
             <span class="rs-tanda__num"><%= t('common.tanda') %> <%= tanda.number %></span>
             <span class="rs-state rs-state--<%= tanda.status %>">
-              <%= lang === 'es'
-                ? { pending: 'Pendiente', active: 'En curso', finished: 'Finalizada' }[tanda.status]
-                : { pending: 'Pending', active: 'Active', finished: 'Finished' }[tanda.status] %>
+              <%= { pending: t('races.status.pending'), active: t('races.status.active'), finished: t('races.status.finished') }[tanda.status] %>
             </span>
             <span class="rs-tanda__hint">
               <%= tanda.mangas_finished %> / <%= tanda.manga_count %>
@@ -293,11 +289,11 @@ function stepState(idx) {
             <% if (activeManga) { %>
               <a href="/races/<%= race.id %>/mangas/<%= activeManga.id %>/live" class="rs-btn rs-btn--success rs-btn--sm">
                 <span class="rs-live-dot"></span>
-                <%= lang === 'es' ? 'Manga ' + activeManga.number : 'Heat ' + activeManga.number %>
+                <%= t('common.manga') %> <%= activeManga.number %>
               </a>
             <% } else if (nextManga) { %>
               <a href="/races/<%= race.id %>/mangas/<%= nextManga.id %>/live" class="rs-btn rs-btn--success rs-btn--sm">
-                ▶ <%= lang === 'es' ? 'Manga ' + nextManga.number : 'Heat ' + nextManga.number %>
+                ▶ <%= t('common.manga') %> <%= nextManga.number %>
               </a>
             <% } %>
             <% if (tanda.status !== 'active') { %>

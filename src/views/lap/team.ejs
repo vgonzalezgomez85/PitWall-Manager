@@ -12,11 +12,11 @@
   <!-- Capa de oscurecimiento: tras 30s sin tocar, casi negra (simula bajar el
        brillo). Toca la pantalla para volver. La pantalla sigue activa (Wake
        Lock) y la voz sigue cantando. -->
-  <div id="dimOverlay" aria-hidden="true"><span class="dim-hint">Toca para iluminar</span></div>
+  <div id="dimOverlay" aria-hidden="true"><span class="dim-hint"><%= t('lapteam.toca_para_iluminar') %></span></div>
   <div class="wrap">
     <div class="toprow">
       <div class="brand"><span class="dot"></span> PitWall <small>Lap</small></div>
-      <a href="/lap/<%= race.id %>" class="switch-team-btn">Cambiar equipo</a>
+      <a href="/lap/<%= race.id %>" class="switch-team-btn"><%= t('lapteam.cambiar_equipo') %></a>
     </div>
 
     <div class="teamhead">
@@ -31,23 +31,23 @@
     <div id="poleCard" style="display:none"></div>
 
     <div class="voicebar">
-      <button id="voiceToggle" class="audiobtn" type="button" aria-pressed="false">🔇 Voz</button>
-      <button id="voiceCfgBtn" class="audiomode" type="button" title="Ajustes de voz">⚙️</button>
+      <button id="voiceToggle" class="audiobtn" type="button" aria-pressed="false">🔇 <%= t('lapteam.voz') %></button>
+      <button id="voiceCfgBtn" class="audiomode" type="button" title="<%= t('lapteam.ajustes_de_voz') %>">⚙️</button>
     </div>
     <div class="sung" id="lastSung"></div>
 
     <div id="voiceCfg" class="voicecfg" hidden>
-      <div class="vgrp">Básico</div>
-      <label class="vrow"><span>Tiempo de vuelta</span><input type="checkbox" data-k="sayLaps"></label>
-      <label class="vrow"><span>Cambio de posición</span><input type="checkbox" data-k="sayPositionChange"></label>
-      <label class="vrow"><span>Media manga</span><input type="checkbox" data-k="sayHalfManga"></label>
-      <label class="vrow"><span>Último minuto</span><input type="checkbox" data-k="sayLastMinute"></label>
-      <label class="vrow"><span>Últimos 30 s</span><input type="checkbox" data-k="sayLast30s"></label>
-      <label class="vrow"><span>Vueltas ignoradas / asignadas</span><input type="checkbox" data-k="sayGhostEvents"></label>
-      <div class="vgrp">Avanzado · cada N min (0 = off)</div>
-      <label class="vrow"><span>Media de carril</span><input type="number" min="0" max="60" step="1" data-k="sayAveragesEveryMin"></label>
-      <label class="vrow"><span>Gaps con rivales</span><input type="number" min="0" max="60" step="1" data-k="sayGapsEveryMin"></label>
-      <label class="vrow"><span>Media para subir</span><input type="number" min="0" max="60" step="1" data-k="sayCatchUpEveryMin"></label>
+      <div class="vgrp"><%= t('lapteam.basico') %></div>
+      <label class="vrow"><span><%= t('lapteam.tiempo_de_vuelta') %></span><input type="checkbox" data-k="sayLaps"></label>
+      <label class="vrow"><span><%= t('lapteam.cambio_de_posicion') %></span><input type="checkbox" data-k="sayPositionChange"></label>
+      <label class="vrow"><span><%= t('lapteam.media_manga') %></span><input type="checkbox" data-k="sayHalfManga"></label>
+      <label class="vrow"><span><%= t('lapteam.ultimo_minuto') %></span><input type="checkbox" data-k="sayLastMinute"></label>
+      <label class="vrow"><span><%= t('lapteam.ultimos_30_s') %></span><input type="checkbox" data-k="sayLast30s"></label>
+      <label class="vrow"><span><%= t('lapteam.vueltas_ignoradas') %></span><input type="checkbox" data-k="sayGhostEvents"></label>
+      <div class="vgrp"><%= t('lapteam.avanzado') %></div>
+      <label class="vrow"><span><%= t('lapteam.media_de_carril') %></span><input type="number" min="0" max="60" step="1" data-k="sayAveragesEveryMin"></label>
+      <label class="vrow"><span><%= t('lapteam.gaps_con_rivales') %></span><input type="number" min="0" max="60" step="1" data-k="sayGapsEveryMin"></label>
+      <label class="vrow"><span><%= t('lapteam.media_para_subir') %></span><input type="number" min="0" max="60" step="1" data-k="sayCatchUpEveryMin"></label>
       <div class="vnote" id="wakeNote"></div>
     </div>
 
@@ -57,31 +57,31 @@
     </div>
 
     <div class="grid">
-      <div class="stat" id="cardLast"><div class="k">Última vuelta</div><div class="v" id="lastLap">—</div></div>
-      <div class="stat"><div class="k">Mejor vuelta</div><div class="v" id="bestLap">—</div></div>
-      <div class="stat"><div class="k">Vueltas</div><div class="v" id="laps">—</div></div>
-      <div class="stat"><div class="k">Media carrera</div><div class="v" id="avgLap">—</div></div>
-      <div class="stat"><div class="k">Pit stops</div><div class="v" id="pits">—</div></div>
-      <div class="stat"><div class="k">Gap al líder</div><div class="v" id="gapLapsCard">—</div></div>
+      <div class="stat" id="cardLast"><div class="k"><%= t('lapteam.ultima_vuelta') %></div><div class="v" id="lastLap">—</div></div>
+      <div class="stat"><div class="k"><%= t('lapteam.mejor_vuelta') %></div><div class="v" id="bestLap">—</div></div>
+      <div class="stat"><div class="k"><%= t('lapteam.vueltas') %></div><div class="v" id="laps">—</div></div>
+      <div class="stat"><div class="k"><%= t('lapteam.media_carrera') %></div><div class="v" id="avgLap">—</div></div>
+      <div class="stat"><div class="k"><%= t('lapteam.pit_stops') %></div><div class="v" id="pits">—</div></div>
+      <div class="stat"><div class="k"><%= t('lapteam.gap_al_lider') %></div><div class="v" id="gapLapsCard">—</div></div>
     </div>
 
     <div id="projWrap" style="display:none">
-      <div class="section-title">Estimación al final</div>
+      <div class="section-title"><%= t('lapteam.estimacion_al_final') %></div>
       <div class="proj">
-        <div class="p"><div class="k">Posición estimada</div><div class="v" id="projPos">—</div></div>
-        <div class="p"><div class="k">Vueltas proyectadas</div><div class="v" id="projTotal">—</div></div>
+        <div class="p"><div class="k"><%= t('lapteam.posicion_estimada') %></div><div class="v" id="projPos">—</div></div>
+        <div class="p"><div class="k"><%= t('lapteam.vueltas_proyectadas') %></div><div class="v" id="projTotal">—</div></div>
       </div>
     </div>
 
     <div id="stratWrap">
-      <div class="section-title">Estrategia de neumáticos</div>
+      <div class="section-title"><%= t('lapteam.estrategia') %></div>
       <div class="footnote" id="stratStatus" style="margin:0 0 8px;text-align:left">—</div>
 
       <div class="grid">
-        <div class="stat"><div class="k">Juegos usados</div><div class="v" id="stratSetsUsed">—</div></div>
-        <div class="stat"><div class="k">Juegos restantes</div><div class="v" id="stratSetsLeft">—</div></div>
-        <div class="stat"><div class="k">Vueltas en la goma</div><div class="v" id="stratStintLap">—</div></div>
-        <div class="stat"><div class="k">Degradación</div><div class="v sm" id="stratDeg">—</div></div>
+        <div class="stat"><div class="k"><%= t('lapteam.juegos_usados') %></div><div class="v" id="stratSetsUsed">—</div></div>
+        <div class="stat"><div class="k"><%= t('lapteam.juegos_restantes') %></div><div class="v" id="stratSetsLeft">—</div></div>
+        <div class="stat"><div class="k"><%= t('lapteam.vueltas_en_la_goma') %></div><div class="v" id="stratStintLap">—</div></div>
+        <div class="stat"><div class="k"><%= t('lapteam.degradacion') %></div><div class="v sm" id="stratDeg">—</div></div>
       </div>
       <div id="stratConf" style="color:var(--muted);font-size:.72rem;margin-top:6px;text-align:center">—</div>
 
@@ -89,33 +89,33 @@
       <div id="stratPosAdvice" style="margin-top:8px;padding:10px 14px;border-radius:12px;background:var(--card);border:1px solid var(--border);color:var(--accent);font-size:.9rem;text-align:center" hidden></div>
 
       <div id="stratWhatIf" class="proj" style="margin-top:8px" hidden>
-        <div class="p"><div class="k">Si cambias ahora</div><div class="v" id="whatIfChange">—</div></div>
-        <div class="p"><div class="k">Si aguantas</div><div class="v" id="whatIfStay">—</div></div>
+        <div class="p"><div class="k"><%= t('lapteam.si_cambias_ahora') %></div><div class="v" id="whatIfChange">—</div></div>
+        <div class="p"><div class="k"><%= t('lapteam.si_aguantas') %></div><div class="v" id="whatIfStay">—</div></div>
       </div>
 
-      <button id="tireChangeBtn" type="button" class="audiobtn" style="width:100%;margin-top:10px">🛞 Cambié gomas</button>
+      <button id="tireChangeBtn" type="button" class="audiobtn" style="width:100%;margin-top:10px">🛞 <%= t('lapteam.cambie_gomas') %></button>
       <div id="tireControlNote" class="footnote" style="margin-top:8px;text-align:center;color:var(--accent)" hidden>—</div>
 
       <details style="margin-top:12px;color:var(--muted)">
-        <summary style="cursor:pointer;font-size:.8rem;text-transform:uppercase;letter-spacing:.4px">Configuración de estrategia</summary>
+        <summary style="cursor:pointer;font-size:.8rem;text-transform:uppercase;letter-spacing:.4px"><%= t('lapteam.config_estrategia') %></summary>
         <div style="margin-top:6px">
-          <label class="vrow"><span>Nº de juegos disponibles</span><input type="number" min="1" max="20" step="1" id="cfgSetsTotal"></label>
-          <label class="vrow"><span>Coste de parada (s)</span><input type="number" min="0" max="120" step="1" id="cfgPitCostS"></label>
-          <label class="vrow"><span>Cambios mínimos obligatorios</span><input type="number" min="0" max="20" step="1" id="cfgMinChanges"></label>
-          <label class="vrow"><span>Cambios ya realizados</span><input type="number" min="0" max="20" step="1" id="cfgChangesMade"></label>
+          <label class="vrow"><span><%= t('lapteam.n_juegos') %></span><input type="number" min="1" max="20" step="1" id="cfgSetsTotal"></label>
+          <label class="vrow"><span><%= t('lapteam.coste_parada') %></span><input type="number" min="0" max="120" step="1" id="cfgPitCostS"></label>
+          <label class="vrow"><span><%= t('lapteam.cambios_minimos') %></span><input type="number" min="0" max="20" step="1" id="cfgMinChanges"></label>
+          <label class="vrow"><span><%= t('lapteam.cambios_realizados') %></span><input type="number" min="0" max="20" step="1" id="cfgChangesMade"></label>
         </div>
       </details>
     </div>
 
     <div id="trackWrap">
-      <div class="section-title">Seguimiento <span class="trk-note">· mangas terminadas</span></div>
+      <div class="section-title"><%= t('lapteam.seguimiento') %> <span class="trk-note"><%= t('lapteam.mangas_terminadas') %></span></div>
       <div id="trackList"></div>
       <details id="trackPick" class="trk-pick">
-        <summary>Elegir equipos a seguir (hasta <span id="trackMax">5</span>)</summary>
+        <summary><%- t('lapteam.elegir_equipos', { n: '<span id="trackMax">5</span>' }) %></summary>
         <div id="trackCands" class="trk-cands"></div>
         <div class="trk-actions">
           <span id="trackCount" class="trk-note"></span>
-          <button id="trackSave" type="button" class="audiobtn">Guardar</button>
+          <button id="trackSave" type="button" class="audiobtn"><%= t('lapteam.guardar') %></button>
         </div>
       </details>
     </div>
@@ -150,21 +150,17 @@
     // speakTime: igual que la app móvil — centésimas TRUNCADAS, sin "coma".
     // 8739ms → "8 73"; exacto → "N segundos".
     function speakTime(ms){
-      if (ms == null) return 'sin tiempo';
+      if (ms == null) return I18N.t('client.lapteam.sin_tiempo');
       var totalCs = Math.floor(ms / 10);
       var s = Math.floor(totalCs / 100), cs = totalCs % 100;
-      if (cs === 0) return s + ' segundos';
+      if (cs === 0) return I18N.t('client.lapteam.n_segundos', { n: s });
       return s + ' ' + (cs < 10 ? '0' : '') + cs;
     }
     function ordinal(n){
-      switch (n){
-        case 1: return 'primero'; case 2: return 'segundo'; case 3: return 'tercero';
-        case 4: return 'cuarto';  case 5: return 'quinto';  case 6: return 'sexto';
-        case 7: return 'séptimo'; case 8: return 'octavo';  case 9: return 'noveno';
-        case 10: return 'décimo'; default: return 'puesto ' + n;
-      }
+      var ords = I18N.t('client.lapteam.ordinales').split(',');
+      return (n >= 1 && n <= ords.length) ? ords[n - 1] : I18N.t('client.lapteam.puesto_n', { n: n });
     }
-    function lapsPhrase(n){ return n === 1 ? 'una vuelta' : (n + ' vueltas'); }
+    function lapsPhrase(n){ return n === 1 ? I18N.t('client.lapteam.una_vuelta') : I18N.t('client.lapteam.n_vueltas', { n: n }); }
 
     // ── Ajustes de voz (mismos que la app móvil) ─────────────────────────
     var DEF = {
@@ -236,8 +232,8 @@
     function updateWakeNote(){
       var el = document.getElementById('wakeNote'); if (!el) return;
       el.textContent = ('wakeLock' in navigator)
-        ? 'Pantalla siempre activa; a los 30s se oscurece (toca para volver). La voz sigue cantando.'
-        : 'Este navegador no soporta Wake Lock; mantén la pantalla encendida.';
+        ? I18N.t('client.lapteam.wake_si')
+        : I18N.t('client.lapteam.wake_no');
     }
 
     // ── Pantalla siempre activa + oscurecer tras 30s sin tocar ──────────────
@@ -368,8 +364,8 @@
 
     function fmtDeg(d){
       if (d == null) return '—';
-      if (d <= DEG_MIN_MS) return 'sin desgaste';
-      return '+' + (d/1000).toFixed(2).replace('.', ',') + ' s/vuelta';
+      if (d <= DEG_MIN_MS) return I18N.t('client.lapteam.sin_desgaste');
+      return I18N.t('client.lapteam.s_vuelta', { s: (d/1000).toFixed(2).replace('.', ',') });
     }
 
     // Recomendación + capa de posición + what-if. Ver notas de MEJORA 2 (fallback
@@ -411,11 +407,11 @@
       };
 
       if (changesRemaining <= 0){
-        result.recommendation = 'Aguanta hasta el final (sin juegos de repuesto)';
+        result.recommendation = I18N.t('client.lapteam.aguanta_sin_juegos');
         return result;
       }
       if (fit.confidence !== 'ok'){
-        result.recommendation = 'Datos insuficientes (' + fit.n + '/' + MIN_CONFIDENCE_LAPS + ' vueltas limpias)';
+        result.recommendation = I18N.t('client.lapteam.datos_insuficientes', { n: fit.n, min: MIN_CONFIDENCE_LAPS });
         return result;
       }
 
@@ -425,8 +421,8 @@
         var optimalStintLen = Math.max(lStar, perStint);
         var changeIn = Math.round(optimalStintLen - fit.stintLap);
         result.recommendation = (changeIn <= 0)
-          ? 'Ventana abierta: cambia ahora (degradación)'
-          : ('Cambia en ' + changeIn + ' vuelta' + (changeIn === 1 ? '' : 's') + ' (degradación)');
+          ? I18N.t('client.lapteam.ventana_degradacion')
+          : (changeIn === 1 ? I18N.t('client.lapteam.cambia_en_1_degradacion') : I18N.t('client.lapteam.cambia_en_n_degradacion', { n: changeIn }));
 
         if (remainingLaps != null && remainingLaps > 0 && fit.t0 != null){
           var R = remainingLaps;
@@ -443,13 +439,13 @@
             var behindName = myCtx.behindName, behindProj = myCtx.behindProjTotal;
             var advice = null;
             if (aheadProj != null && projStop > aheadProj && projNoStop <= aheadProj){
-              advice = 'Cambia → adelantas a ' + aheadName;
+              advice = I18N.t('client.lapteam.cambia_adelantas', { nombre: aheadName });
             }
             if (!advice && behindProj != null){
-              if (projStop < behindProj && projNoStop >= behindProj) advice = 'Aguanta → si paras te adelanta ' + behindName;
-              else if (projNoStop < behindProj && projStop >= behindProj) advice = 'Cambia → defiendes de ' + behindName;
+              if (projStop < behindProj && projNoStop >= behindProj) advice = I18N.t('client.lapteam.aguanta_te_adelanta', { nombre: behindName });
+              else if (projNoStop < behindProj && projStop >= behindProj) advice = I18N.t('client.lapteam.cambia_defiendes', { nombre: behindName });
             }
-            result.positionAdvice = advice || 'Sin cambio de posición previsto';
+            result.positionAdvice = advice || I18N.t('client.lapteam.sin_cambio_posicion');
           }
         }
       } else {
@@ -458,10 +454,10 @@
           var perStint2 = remainingLaps / (missingMandatory + 1);
           var changeIn2 = Math.round(perStint2 - fit.stintLap);
           result.recommendation = (changeIn2 <= 0)
-            ? 'Ventana abierta: cambia ahora (cambio obligatorio pendiente)'
-            : ('Cambia en ' + changeIn2 + ' vueltas (cambio obligatorio pendiente)');
+            ? I18N.t('client.lapteam.ventana_obligatorio')
+            : I18N.t('client.lapteam.cambia_en_n_obligatorio', { n: changeIn2 });
         } else {
-          result.recommendation = 'Aguanta hasta el final (sin desgaste, cambiar solo resta)';
+          result.recommendation = I18N.t('client.lapteam.aguanta_sin_desgaste');
         }
         if (currentAvgMs && remainingLaps != null){
           var lapsLostFromPit = cfg.pitCostMs / currentAvgMs;
@@ -485,10 +481,10 @@
       if (tc){
         if (elSets){ elSets.value = tc.allowance; elSets.disabled = true; }
         if (elMade){ elMade.value = Math.max(0, tc.used - 1); elMade.disabled = true; }
-        if (btn){ btn.disabled = true; btn.style.opacity = '.5'; btn.title = 'Lo registra la organización'; }
+        if (btn){ btn.disabled = true; btn.style.opacity = '.5'; btn.title = I18N.t('client.lapteam.lo_registra_org'); }
         if (note){
           note.hidden = false;
-          note.textContent = '🛞 Control de la organización: ' + tc.used + ' de ' + tc.allowance + ' juegos entregados';
+          note.textContent = I18N.t('client.lapteam.control_org', { usados: tc.used, total: tc.allowance });
         }
       } else {
         if (elSets) elSets.disabled = false;
@@ -505,12 +501,12 @@
       var live = (lastSnap && lastSnap.live) || {};
       applyTireControl(lastSnap && lastSnap.tireControl);
 
-      set('stratStatus', !live.running ? 'Sin manga en curso' : (myStatus === 'my-turn' ? 'En pista' : 'En descanso'));
+      set('stratStatus', !live.running ? I18N.t('client.lapteam.sin_manga_en_curso') : (myStatus === 'my-turn' ? I18N.t('client.lapteam.en_pista') : I18N.t('client.lapteam.en_descanso')));
       set('stratSetsUsed', r.setsUsedDisplay);
       set('stratSetsLeft', r.setsLeftDisplay);
       set('stratStintLap', r.stintLap || 0);
       set('stratDeg', fmtDeg(r.d));
-      set('stratConf', 'Confianza: ' + r.n + '/' + MIN_CONFIDENCE_LAPS + ' vueltas limpias (' + (r.confidence === 'ok' ? 'ok' : 'baja') + ')');
+      set('stratConf', I18N.t('client.lapteam.confianza', { n: r.n, min: MIN_CONFIDENCE_LAPS, nivel: r.confidence === 'ok' ? 'ok' : I18N.t('client.lapteam.baja') }));
       set('stratReco', r.recommendation);
 
       var posEl = document.getElementById('stratPosAdvice');
@@ -542,7 +538,7 @@
       myStatus = 'my-turn';
 
       // Entrada a tu turno / cambio de manga → "Tu turno, carril N".
-      if (prevMyLane == null || mangaChanged) say('Tu turno, carril ' + me.lane);
+      if (prevMyLane == null || mangaChanged) say(I18N.t('client.lapteam.tu_turno_carril', { n: me.lane }));
       prevMyLane = me.lane; myLane = me.lane;
 
       // OJO: el cambio de POSICIÓN se canta desde render() con la posición
@@ -589,7 +585,7 @@
       var ms = d.lapTimeMs, t = speakTime(ms);
       var isFastest = (d.lapNumber > 1) && (bestLap == null || ms < bestLap);
       if (bestLap == null || ms < bestLap) bestLap = ms;
-      say(isFastest ? ('Vuelta rápida, ' + t) : t);
+      say(isFastest ? I18N.t('client.lapteam.vuelta_rapida', { t: t }) : t);
     }
 
     function tick(){
@@ -601,25 +597,25 @@
       if (isPaused) return;
       var remaining = (remAtSync != null) ? (remAtSync - (Date.now() - syncAt)) : null;
       if (remaining != null && mangaDurationMs > 0){
-        if (!firedHalf    && S.enabled && S.sayHalfManga && remaining <= mangaDurationMs/2 && remaining > 60000){ firedHalf = true; say('Media manga'); }
+        if (!firedHalf    && S.enabled && S.sayHalfManga && remaining <= mangaDurationMs/2 && remaining > 60000){ firedHalf = true; say(I18N.t('client.lapteam.media_manga')); }
         // Críticos: suenan aunque la voz esté en "Sin voz".
-        if (!firedLastMin && S.sayLastMinute && remaining <= 60000 && remaining > 30000){ firedLastMin = true; sayCritical('Último minuto'); }
-        if (!firedLast30  && S.sayLast30s    && remaining <= 30000 && remaining > 0){ firedLast30 = true; sayCritical('Últimos treinta segundos'); }
+        if (!firedLastMin && S.sayLastMinute && remaining <= 60000 && remaining > 30000){ firedLastMin = true; sayCritical(I18N.t('client.lapteam.ultimo_minuto')); }
+        if (!firedLast30  && S.sayLast30s    && remaining <= 30000 && remaining > 0){ firedLast30 = true; sayCritical(I18N.t('client.lapteam.ultimos_30')); }
       }
       if (!S.enabled) return;   // el resto de avisos rutinarios sí respetan el mute
       var minute = Math.floor(Date.now()/1000/60);
       if (S.sayAveragesEveryMin > 0 && minute % S.sayAveragesEveryMin === 0 && lastAvgMin !== minute && myCtx.avgLapMs != null){
-        lastAvgMin = minute; say('Media de carril ' + speakTime(myCtx.avgLapMs));
+        lastAvgMin = minute; say(I18N.t('client.lapteam.media_de_carril', { t: speakTime(myCtx.avgLapMs) }));
       }
       if (S.sayGapsEveryMin > 0 && minute % S.sayGapsEveryMin === 0 && lastGapMin !== minute){
         lastGapMin = minute;
         if (myCtx.gapAheadLaps != null && myCtx.gapAheadLaps <= 2 && myCtx.aheadName)
-          say(myCtx.gapAheadLaps === 0 ? ('A la par con ' + myCtx.aheadName) : ('A ' + lapsPhrase(myCtx.gapAheadLaps) + ' de ' + myCtx.aheadName));
+          say(myCtx.gapAheadLaps === 0 ? I18N.t('client.lapteam.a_la_par_con', { nombre: myCtx.aheadName }) : I18N.t('client.lapteam.a_vueltas_de', { vueltas: lapsPhrase(myCtx.gapAheadLaps), nombre: myCtx.aheadName }));
         if (myCtx.gapBehindLaps != null && myCtx.gapBehindLaps <= 2 && myCtx.behindName)
-          say(myCtx.gapBehindLaps === 0 ? (myCtx.behindName + ', a la par') : ('Tienes a ' + myCtx.behindName + ' a ' + lapsPhrase(myCtx.gapBehindLaps)));
+          say(myCtx.gapBehindLaps === 0 ? I18N.t('client.lapteam.detras_a_la_par', { nombre: myCtx.behindName }) : I18N.t('client.lapteam.tienes_a', { nombre: myCtx.behindName, vueltas: lapsPhrase(myCtx.gapBehindLaps) }));
       }
       if (S.sayCatchUpEveryMin > 0 && minute % S.sayCatchUpEveryMin === 0 && lastCatchMin !== minute && myCtx.avgToCatchMs != null){
-        lastCatchMin = minute; say('Para subir, ' + speakTime(myCtx.avgToCatchMs));
+        lastCatchMin = minute; say(I18N.t('client.lapteam.para_subir', { t: speakTime(myCtx.avgToCatchMs) }));
       }
     }
     setInterval(tick, 1000);
@@ -642,22 +638,22 @@
       var res  = poleUI.snap && poleUI.snap.poleResult;
       if (live){
         card.style.display = '';
-        var html = '<div class="section-title">🏁 Pole en directo</div>';
+        var html = '<div class="section-title">' + I18N.t('client.lapteam.pole_en_directo') + '</div>';
         if (poleUI.myTurnLive){
           html += '<div class="proj" style="margin-bottom:8px">'
             + '<div class="p" style="flex:1 1 100%">'
-            + '<div class="k">' + (poleUI.running ? 'Cronometrando' : '🚦 Tu turno — esperando el GO') + '</div>'
+            + '<div class="k">' + (poleUI.running ? I18N.t('client.lapteam.cronometrando') : I18N.t('client.lapteam.tu_turno_esperando_go')) + '</div>'
             + (poleUI.running ? '<div class="v" style="font-size:1.7rem">' + fmtLap(poleUI.chronoMs) + '</div>' : '')
             + '</div></div>'
             + '<div class="proj">'
-            + '<div class="p"><div class="k">Vueltas</div><div class="v" style="font-size:1.15rem">' + poleUI.lapCount + '</div></div>'
-            + '<div class="p"><div class="k">Tu mejor</div><div class="v" style="font-size:1.15rem">' + fmtLap(poleUI.bestMs) + '</div></div>'
+            + '<div class="p"><div class="k">' + I18N.t('client.lapteam.th_vueltas') + '</div><div class="v" style="font-size:1.15rem">' + poleUI.lapCount + '</div></div>'
+            + '<div class="p"><div class="k">' + I18N.t('client.lapteam.tu_mejor') + '</div><div class="v" style="font-size:1.15rem">' + fmtLap(poleUI.bestMs) + '</div></div>'
             + '</div>';
         } else {
           var head = live.myLapTimeMs != null
-            ? '✓ Ya corriste: ' + fmtLap(live.myLapTimeMs)
-            : '⏳ Pendiente — posición ' + live.myPosition + ' de ' + live.totalEntries + ' en el orden de salida';
-          html += '<div class="proj" style="margin-bottom:8px"><div class="p" style="flex:1 1 100%"><div class="k">Estado</div><div class="v" style="font-size:1rem">' + head + '</div></div></div>';
+            ? I18N.t('client.lapteam.ya_corriste', { t: fmtLap(live.myLapTimeMs) })
+            : I18N.t('client.lapteam.pendiente_posicion', { pos: live.myPosition, total: live.totalEntries });
+          html += '<div class="proj" style="margin-bottom:8px"><div class="p" style="flex:1 1 100%"><div class="k">' + I18N.t('client.lapteam.estado') + '</div><div class="v" style="font-size:1rem">' + head + '</div></div></div>';
         }
         var rows = (live.standings || []).map(function(s){
           return '<div class="p"><div class="k">P' + s.position + '</div><div class="v" style="font-size:1rem">' + s.name + ' · ' + fmtLap(s.lapTimeMs) + '</div></div>';
@@ -667,10 +663,10 @@
       } else if (res){
         card.style.display = '';
         card.innerHTML =
-          '<div class="section-title">🏁 Resultado de la pole</div>' +
-          '<div class="proj"><div class="p"><div class="k">Posición</div><div class="v">P' + res.position +
-          '<small style="font-size:.7rem;color:var(--muted)"> de ' + res.totalEntries + '</small></div></div>' +
-          '<div class="p"><div class="k">Tiempo</div><div class="v">' + (res.lapTimeMs != null ? (res.lapTimeMs/1000).toFixed(3).replace('.', ',') : '—') + '</div></div></div>';
+          '<div class="section-title">' + I18N.t('client.lapteam.resultado_pole') + '</div>' +
+          '<div class="proj"><div class="p"><div class="k">' + I18N.t('client.lapteam.posicion') + '</div><div class="v">P' + res.position +
+          '<small style="font-size:.7rem;color:var(--muted)">' + I18N.t('client.lapteam.de_n', { n: res.totalEntries }) + '</small></div></div>' +
+          '<div class="p"><div class="k">' + I18N.t('client.lapteam.tiempo') + '</div><div class="v">' + (res.lapTimeMs != null ? (res.lapTimeMs/1000).toFixed(3).replace('.', ',') : '—') + '</div></div></div>';
       } else {
         card.style.display = 'none';
         card.innerHTML = '';
@@ -699,10 +695,10 @@
       // si no hay manga viva, cae a la posición por vueltas totales.
       var heroPos = (proj && proj.position != null) ? proj.position : t.position;
       set('pos', heroPos != null ? 'P' + heroPos : '—');
-      set('posOf', snap.teamsTotal ? (' de ' + snap.teamsTotal) : '');
-      if (t.gapLaps > 0) set('gapLeader', t.gapLaps + (t.gapLaps === 1 ? ' vuelta tras el líder' : ' vueltas tras el líder'));
-      else if (t.position === 1) set('gapLeader', '🏁 Líder de la carrera');
-      else set('gapLeader', 'A la par del líder');
+      set('posOf', snap.teamsTotal ? I18N.t('client.lapteam.de_n', { n: snap.teamsTotal }) : '');
+      if (t.gapLaps > 0) set('gapLeader', t.gapLaps === 1 ? I18N.t('client.lapteam.vuelta_tras_lider') : I18N.t('client.lapteam.vueltas_tras_lider', { n: t.gapLaps }));
+      else if (t.position === 1) set('gapLeader', I18N.t('client.lapteam.lider'));
+      else set('gapLeader', I18N.t('client.lapteam.a_la_par_lider'));
 
       var prev = lastLapShown;
       set('lastLap', fmtLap(t.lastLapMs));
@@ -736,17 +732,17 @@
       if (live.running){
         led.classList.add('on');
         var bits = [];
-        if (live.mangaNumber != null) bits.push('Manga ' + live.mangaNumber);
-        if (live.onTrack && live.lane != null) bits.push('Carril ' + live.lane); else bits.push('En descanso');
-        if (live.remainingMs != null) bits.push('quedan ' + fmtClock(live.remainingMs));
+        if (live.mangaNumber != null) bits.push(I18N.t('client.lapteam.manga_n', { n: live.mangaNumber }));
+        if (live.onTrack && live.lane != null) bits.push(I18N.t('client.lapteam.carril_n', { n: live.lane })); else bits.push(I18N.t('client.lapteam.en_descanso'));
+        if (live.remainingMs != null) bits.push(I18N.t('client.lapteam.quedan', { t: fmtClock(live.remainingMs) }));
         set('statusText', bits.join(' · '));
       } else {
         led.classList.add(snap.race.status === 'finished' ? 'off' : '');
-        set('statusText', snap.race.status === 'finished' ? 'Carrera finalizada'
-          : snap.poleLive ? 'Pole en curso'
-          : 'Esperando próxima manga');
+        set('statusText', snap.race.status === 'finished' ? I18N.t('client.lapteam.carrera_finalizada')
+          : snap.poleLive ? I18N.t('client.lapteam.pole_en_curso')
+          : I18N.t('client.lapteam.esperando_manga'));
       }
-      set('foot', 'Actualizado ' + new Date(snap.updatedAt).toLocaleTimeString('es-ES'));
+      set('foot', I18N.t('client.lapteam.actualizado', { h: new Date(snap.updatedAt).toLocaleTimeString(I18N.locale) }));
       renderStrategy();
     }
 
@@ -768,9 +764,9 @@
       }).join('');
       return '<div class="trk-card' + (t.isMe ? ' me' : '') + '">'
         + '<div class="trk-head"><span class="swatch" style="background:' + esc(t.color || 'var(--muted)') + '"></span>'
-        + '<span class="trk-name">' + esc(t.name) + '</span>' + (t.isMe ? '<span class="trk-me">Tú</span>' : '') + '</div>'
-        + '<table class="trk-tbl"><thead><tr><th>Carril</th><th>Vueltas</th><th>Rápida</th><th>Media</th><th>Limpia</th></tr></thead><tbody>'
-        + (lanes || '<tr><td colspan="5" class="trk-empty">Sin mangas terminadas</td></tr>')
+        + '<span class="trk-name">' + esc(t.name) + '</span>' + (t.isMe ? '<span class="trk-me">' + I18N.t('client.lapteam.tu') + '</span>' : '') + '</div>'
+        + '<table class="trk-tbl"><thead><tr><th>' + I18N.t('client.lapteam.th_carril') + '</th><th>' + I18N.t('client.lapteam.th_vueltas') + '</th><th>' + I18N.t('client.lapteam.th_rapida') + '</th><th>' + I18N.t('client.lapteam.th_media') + '</th><th>' + I18N.t('client.lapteam.th_limpia') + '</th></tr></thead><tbody>'
+        + (lanes || '<tr><td colspan="5" class="trk-empty">' + I18N.t('client.lapteam.sin_mangas_terminadas') + '</td></tr>')
         + '</tbody>' + (t.lanes.length ? '<tfoot><tr><td>Total</td><td>' + t.laps + '</td><td>' + fmtLap(t.bestMs) + '</td><td>' + fmtLap(t.avgAllMs) + '</td><td>' + fmtLap(t.avgCleanMs) + '</td></tr></tfoot>' : '')
         + '</table></div>';
     }
@@ -787,7 +783,7 @@
     function trkRender(j){
       TRK = j;
       document.getElementById('trackList').innerHTML = j.teams.map(trkCard).join('')
-        + (j.tracked.length ? '' : '<div class="trk-note trk-hint">Aún no sigues a ningún equipo.</div>');
+        + (j.tracked.length ? '' : '<div class="trk-note trk-hint">' + I18N.t('client.lapteam.no_sigues') + '</div>');
       if (!document.getElementById('trackPick').open) trkDraft = null;
       trkPaintCands();
     }
@@ -833,13 +829,13 @@
     var cfg = document.getElementById('voiceCfg');
     function paintToggle(){
       if (!vBtn) return;
-      vBtn.textContent = (S.enabled ? '🔊' : '🔇') + ' Voz';
+      vBtn.textContent = (S.enabled ? '🔊' : '🔇') + ' ' + I18N.t('client.lapteam.voz');
       vBtn.setAttribute('aria-pressed', S.enabled ? 'true' : 'false');
       vBtn.classList.toggle('on', S.enabled);
     }
     function enableVoice(on){
       S.enabled = on; saveSettings(); paintToggle();
-      if (on){ ensureAudio(); startSilent(); requestWake(); speak('Voz activada'); }
+      if (on){ ensureAudio(); startSilent(); requestWake(); speak(I18N.t('client.lapteam.voz_activada')); }
       // No liberamos el Wake Lock al apagar la voz: la pantalla sigue activa
       // mientras el panel esté abierto (se libera sola al cerrar/ocultar).
       else { stopSilent(); try { window.speechSynthesis.cancel(); } catch(e){} }
@@ -888,7 +884,7 @@
 
       var tireBtn = document.getElementById('tireChangeBtn');
       if (tireBtn) tireBtn.addEventListener('click', function(){
-        if (!window.confirm('¿Confirmas que has cambiado los neumáticos?')) return;
+        if (!window.confirm(I18N.t('client.lapteam.confirm_gomas'))) return;
         STRAT.changesMade = (STRAT.changesMade || 0) + 1;
         if (elMade) elMade.value = STRAT.changesMade;
         saveStrat();
@@ -911,18 +907,18 @@
       // cuando está en pista (igual que el resto de avisos de voz).
       socket.on('lap:ghost', function(d){
         if (!d || !S.sayGhostEvents || myStatus !== 'my-turn' || myLane == null) return;
-        if (d.lane === myLane) sayCritical('Vuelta ignorada');
+        if (d.lane === myLane) sayCritical(I18N.t('client.lapteam.vuelta_ignorada'));
       });
       socket.on('lap:reassigned', function(d){
         if (!d || !S.sayGhostEvents || myStatus !== 'my-turn' || myLane == null) return;
         // La "Vuelta ignorada" del carril origen YA se anunció en lap:ghost al
         // detectar el fantasma; repetirla aquí sería redundante. Solo se anuncia
         // la ASIGNACIÓN al carril que recibe la vuelta.
-        if (d.toLane   === myLane) sayCritical('Vuelta asignada');
+        if (d.toLane   === myLane) sayCritical(I18N.t('client.lapteam.vuelta_asignada'));
       });
       socket.on('manga:started', function(){ resetManga(); isPaused = false; prevMyLane = null; try { socket.emit('standings:request'); } catch(e){} scheduleRefresh(); });
       ['manga:stopped','race_finished','race:finished'].forEach(function(ev){
-        socket.on(ev, function(){ if (myStatus === 'my-turn' && !firedFinish){ firedFinish = true; say('Fin de la manga'); } myStatus = 'rest'; prevMyLane = null; scheduleRefresh(); });
+        socket.on(ev, function(){ if (myStatus === 'my-turn' && !firedFinish){ firedFinish = true; say(I18N.t('client.lapteam.fin_de_manga')); } myStatus = 'rest'; prevMyLane = null; scheduleRefresh(); });
       });
       socket.on('manga:paused', function(){ isPaused = true; scheduleRefresh(); });
 
@@ -934,7 +930,7 @@
         var name = data && data.entryName;
         if (name && name !== poleCurrentName){
           poleCurrentName = name;
-          if (name === TEAM_NAME) { say('Tu turno'); poleMyTurnStart(false); }
+          if (name === TEAM_NAME) { say(I18N.t('client.lapteam.tu_turno')); poleMyTurnStart(false); }
           else if (poleUI.myTurnLive) { poleMyTurnEnd(); }
         }
         scheduleRefresh();
@@ -956,11 +952,11 @@
         poleUI.lapCount = d.lapNumber;
         poleUI.bestMs = d.bestLapMs;
         paintPole();
-        if (S.sayLaps) say(d.improved ? ('Vuelta rápida, ' + speakTime(d.lapTimeMs)) : speakTime(d.lapTimeMs));
+        if (S.sayLaps) say(d.improved ? I18N.t('client.lapteam.vuelta_rapida', { t: speakTime(d.lapTimeMs) }) : speakTime(d.lapTimeMs));
       });
       socket.on('pole:finished', function(d){
         if (d && d.entryName === TEAM_NAME){
-          say('Pole terminada. Mejor vuelta, ' + speakTime(d.bestLapMs));
+          say(I18N.t('client.lapteam.pole_terminada', { t: speakTime(d.bestLapMs) }));
           poleMyTurnEnd();
         }
         scheduleRefresh();

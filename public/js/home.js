@@ -2,7 +2,6 @@
    barra de ventanas abiertas y datos en vivo de la carrera en curso. */
 (function () {
   const MODE_KEY = 'pw:home:openMode';
-  const es = document.documentElement.lang !== 'en';
   const desktop = window.pitwallWindows && typeof window.pitwallWindows.open === 'function';
 
   function getMode() {
@@ -89,7 +88,7 @@
     const titles = list.map(w => w.title).filter(Boolean).join(' · ');
     if (pill) {
       pill.hidden = n === 0;
-      pill.textContent = n + (es ? (n === 1 ? ' ventana abierta' : ' ventanas abiertas') : (n === 1 ? ' open window' : ' open windows'));
+      pill.textContent = n === 1 ? I18N.t('client.home.ventana_abierta', { n }) : I18N.t('client.home.ventanas_abiertas', { n });
       pill.title = titles;
     }
     if (stat) stat.textContent = String(n);

@@ -93,7 +93,7 @@ class LinkController {
       if (req.xhr || (req.get('accept') || '').includes('application/json')) {
         return res.json({ ok: true, role, slaveUrl, token });
       }
-      req.session.flash = { type: 'success', text: (req.session?.lang === 'en') ? 'Link settings saved.' : 'Ajustes del enlace guardados.' };
+      req.session.flash = { type: 'success', text: req.t('link.ajustes_guardados') };
       res.redirect('/link');
     } catch (e) {
       if (req.xhr || (req.get('accept') || '').includes('application/json')) {

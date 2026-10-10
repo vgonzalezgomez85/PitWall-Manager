@@ -52,19 +52,19 @@ const SimController = {
 
   // POST /races/sim/analyze — parsea las tramas y muestra el formulario de confirmación
   analyze(req, res) {
-    if (!req.file) return res.redirect('/races/sim/new?error=' + encodeURIComponent('Sube un fichero de tramas.'));
+    if (!req.file) return res.redirect('/races/sim/new?error=' + encodeURIComponent(req.t('sim.err_sube_fichero')));
     let content;
     try { content = fs.readFileSync(req.file.path, 'utf8'); }
-    catch { return res.redirect('/races/sim/new?error=' + encodeURIComponent('No se pudo leer el fichero.')); }
+    catch { return res.redirect('/races/sim/new?error=' + encodeURIComponent(req.t('sim.err_no_leer'))); }
 
     const fmt = /\.csv$/i.test(req.file.originalname) ? 'csv' : (/\.txt$/i.test(req.file.originalname) ? 'txt' : undefined);
     let parsed;
     try { parsed = dsFrames.parse(content, fmt); }
-    catch (e) { return res.redirect('/races/sim/new?error=' + encodeURIComponent('Tramas no válidas: ' + e.message)); }
+    catch (e) { return res.redirect('/races/sim/new?error=' + encodeURIComponent(req.t('sim.err_no_validas', { msg: e.message }))); }
 
     if (!parsed.frames.length) {
       try { fs.unlinkSync(req.file.path); } catch {}
-      return res.redirect('/races/sim/new?error=' + encodeURIComponent('No se reconoció ninguna trama en el fichero.'));
+      return res.redirect('/races/sim/new?error=' + encodeURIComponent(req.t('sim.err_ninguna')));
     }
 
     // El fichero subido (req.file.filename) queda en _tmp; lo referenciamos por token.
@@ -83,7 +83,7 @@ const SimController = {
     const token = (req.body.token || '').replace(/[^a-f0-9]/gi, '');
     const tmpPath = path.join(TMP_DIR, token);
     if (!token || !fs.existsSync(tmpPath)) {
-      return res.redirect('/races/sim/new?error=' + encodeURIComponent('La sesión de subida caducó, vuelve a subir el fichero.'));
+      return res.redirect('/races/sim/new?error=' + encodeURIComponent(req.t('sim.err_caduco')));
     }
     const content = fs.readFileSync(tmpPath, 'utf8');
     const fmt = req.body.source === 'csv' ? 'csv' : 'txt';
@@ -94,7 +94,7 @@ const SimController = {
     if (req.file) { try { teamNames = splitTeams(fs.readFileSync(req.file.path, 'utf8')); } catch {} }
     if (!teamNames.length) teamNames = splitTeams(req.body.lane_order);
     if (!teamNames.length) {
-      return res.redirect('/races/sim/new?error=' + encodeURIComponent('Indica el orden de carril de los equipos.'));
+      return res.redirect('/races/sim/new?error=' + encodeURIComponent(req.t('sim.err_orden')));
     }
 
     const name = (req.body.name || 'Carrera simulada').trim();
@@ -142,9 +142,10 @@ const SimController = {
     const dryEntities = orderedNames.map(tn => ({ type: 'team', name: tn }));
     const fullSchedule = Manga.buildSchedule(laneSeq, dryEntities, passes, laneRepeat);
     if (fullSchedule.length < parsed.analysis.mangas) {
-      return res.redirect('/races/sim/new?error=' + encodeURIComponent(
-        `Con ${teamNames.length} equipos, ${lanes} carriles, ${rests} descansos, ${passes} pasada(s) y repetir carril ${laneRepeat} `
-        + `se generarían ${fullSchedule.length} manga(s), pero las tramas contienen ${parsed.analysis.mangas}. Ajusta los valores para que cubran al menos esas.`));
+      return res.redirect('/races/sim/new?error=' + encodeURIComponent(req.t('sim.err_no_cubre', {
+        equipos: teamNames.length, carriles: lanes, descansos: rests, pasadas: passes, repetir: laneRepeat,
+        generadas: fullSchedule.length, tramas: parsed.analysis.mangas,
+      })));
     }
 
     // Crear carrera + tanda + equipos + mangas (rotación de PitWall).
@@ -193,9 +194,9 @@ const SimController = {
   // GET /races/:id/sim — panel de control de la simulación
   panel(req, res) {
     const race = Race.findById(req.params.id);
-    if (!race) return res.status(404).render('lap/error', { message: 'Carrera no encontrada.', layout: false });
+    if (!race) return res.status(404).render('lap/error', { message: req.t('lap.carrera_no_encontrada'), layout: false });
     if (!SimController.hasSim(race.id)) {
-      return res.status(400).render('lap/error', { message: 'Esta carrera no es simulada (no tiene tramas).', layout: false });
+      return res.status(400).render('lap/error', { message: req.t('lap.no_es_simulada'), layout: false });
     }
     let meta = {};
     try { meta = JSON.parse(fs.readFileSync(path.join(SIM_DIR, `${race.id}.json`), 'utf8')); } catch {}

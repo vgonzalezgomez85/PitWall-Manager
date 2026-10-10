@@ -1,6 +1,5 @@
 <%- include('../partials/header', { pageTitle }) %>
 <%
-  const es = lang === 'es';
   const withChanges = diffs.filter(d => d.hasChanges).length;
 %>
 
@@ -16,7 +15,7 @@
     <div class="vt-port-pill <%= withChanges ? 'is-sim' : '' %>">
       <span class="dot"></span>
       <%= withChanges
-        ? (es ? (withChanges === 1 ? '1 carrera con cambios' : withChanges + ' carreras con cambios') : (withChanges === 1 ? '1 race with changes' : withChanges + ' races with changes'))
+        ? (withChanges === 1 ? t('catalog-sync.una_carrera_con_cambios') : t('catalog-sync.n_carreras_con_cambios', { n: withChanges }))
         : (t('catalog-sync.todo_al_dia')) %>
     </div>
   </div>
@@ -104,15 +103,14 @@
 
 <script>
 (function () {
-  const ES = <%- JSON.stringify(es) %>;
   const form = document.getElementById('csForm');
   const msg = document.getElementById('csMsg');
   if (form && msg) {
     const update = () => {
       const n = form.querySelectorAll('input[name="race_ids[]"]:checked').length;
       msg.textContent = n === 0
-        ? (ES ? 'Ninguna carrera marcada' : 'No race selected')
-        : ES ? `Se aplicará a ${n} ${n === 1 ? 'carrera' : 'carreras'}` : `Will apply to ${n} ${n === 1 ? 'race' : 'races'}`;
+        ? I18N.t('client.catalog-sync.ninguna_marcada')
+        : n === 1 ? I18N.t('client.catalog-sync.se_aplicara_1') : I18N.t('client.catalog-sync.se_aplicara_n', { n });
       document.getElementById('csApply').disabled = n === 0;
       document.getElementById('csBar').classList.toggle('is-dirty', n > 0);
       document.getElementById('csDot').className = 'st-dot' + (n > 0 ? ' st-dot--warn' : '');

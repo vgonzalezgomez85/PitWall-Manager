@@ -76,7 +76,7 @@ class DiagnosticsController {
 
   static clearBoundary(req, res) {
     TimingService.clearTandaBoundary();
-    if (req.session) req.session.flash = { type: 'success', text: 'Boundary de tanda limpiado.' };
+    if (req.session) req.session.flash = { type: 'success', text: req.t('diagnostico.flash_limite') };
     res.redirect('/diagnostico');
   }
 
@@ -84,9 +84,9 @@ class DiagnosticsController {
     if (TimingService.isRunning) {
       const mid = TimingService.activeMangaId;
       TimingService.cancelManga();
-      if (req.session) req.session.flash = { type: 'success', text: `Manga ${mid} cancelada y vueltas eliminadas.` };
+      if (req.session) req.session.flash = { type: 'success', text: req.t('diagnostico.flash_cancelada', { id: mid }) };
     } else {
-      if (req.session) req.session.flash = { type: 'error', text: 'No hay ninguna manga activa.' };
+      if (req.session) req.session.flash = { type: 'error', text: req.t('diagnostico.flash_sin_activa') };
     }
     res.redirect('/diagnostico');
   }
@@ -99,7 +99,7 @@ class DiagnosticsController {
     // que en realidad seguían vivas (p.ej. la 93 quedó 'completed' con 52
     // mangas por correr). El próximo GO vuelve a auto-buscar desde cero.
     TimingService.clearPendingManga();
-    if (req.session) req.session.flash = { type: 'success', text: 'Pending setup eliminado.' };
+    if (req.session) req.session.flash = { type: 'success', text: req.t('diagnostico.flash_pending') };
     res.redirect('/diagnostico');
   }
 
@@ -107,14 +107,14 @@ class DiagnosticsController {
     const mangaId = parseInt(req.params.mangaId, 10);
     const manga = Manga.findById(mangaId);
     if (!manga) {
-      if (req.session) req.session.flash = { type: 'error', text: `Manga ${mangaId} no encontrada.` };
+      if (req.session) req.session.flash = { type: 'error', text: req.t('diagnostico.flash_no_encontrada', { id: mangaId }) };
       return res.redirect('/diagnostico');
     }
     // Mismo camino tenga o no sesión viva: si la manga se quedó colgada tras un
     // reinicio, sus turnos también se descartan y sus pilotos quedan pre-armados.
     // `force` porque desde diagnóstico también se resetean mangas ya terminadas.
     TimingService.cancelMangaById(mangaId, null, { force: true });
-    if (req.session) req.session.flash = { type: 'success', text: `Manga ${mangaId} reseteada a pending.` };
+    if (req.session) req.session.flash = { type: 'success', text: req.t('diagnostico.flash_reseteada', { id: mangaId }) };
     res.redirect('/diagnostico');
   }
 
@@ -123,9 +123,9 @@ class DiagnosticsController {
       Promise.resolve(SerialService.closeAll?.()).finally(() => {
         setTimeout(() => SerialService.init(), 200);
       });
-      if (req.session) req.session.flash = { type: 'success', text: 'Reconexión del serial iniciada.' };
+      if (req.session) req.session.flash = { type: 'success', text: req.t('diagnostico.flash_reconexion') };
     } catch (err) {
-      if (req.session) req.session.flash = { type: 'error', text: `Error al reconectar: ${err.message}` };
+      if (req.session) req.session.flash = { type: 'error', text: req.t('diagnostico.flash_error_reconectar', { msg: err.message }) };
     }
     res.redirect('/diagnostico');
   }

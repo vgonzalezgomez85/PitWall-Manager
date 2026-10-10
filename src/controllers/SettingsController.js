@@ -146,7 +146,6 @@ class SettingsController {
   // POST /settings/security — contraseña de acceso de la organización.
   static saveSecurity(req, res) {
     const AccessPassword = require('../services/AccessPassword');
-    const es = (req.session && req.session.lang) !== 'en';
     const enabled  = req.body.enabled === '1';
     const password = String(req.body.password || '');
     const confirm  = String(req.body.confirm || '');
@@ -361,7 +360,6 @@ class SettingsController {
 
     // Confirmación visible (flash): así el usuario SABE que se aplicó y con qué
     // fuente/transporte (antes no había feedback → "parece que no aplica").
-    const isEs = (req.session && req.session.lang) !== 'en';
     let src;
     if (serial_mode === 'bart') {
       src = bartTransport === 'ble'

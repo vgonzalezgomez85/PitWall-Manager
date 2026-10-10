@@ -1440,8 +1440,7 @@ function paintFullscreen(on) {
     // En un <svg> la propiedad .hidden no existe: hay que tocar el atributo.
     if (open)  open.toggleAttribute('hidden', on);
     if (close) close.toggleAttribute('hidden', !on);
-    btn.title = on ? (btn.title.includes('Salir') ? btn.title : 'Salir de pantalla completa')
-                   : 'Pantalla completa';
+    btn.title = on ? I18N.t('client.js.salir_pantalla_completa') : I18N.t('client.js.pantalla_completa');
   }
   if (typeof fitLaneCards === 'function') requestAnimationFrame(() => fitLaneCards());
 }
@@ -2301,20 +2300,14 @@ const VOICE_ICON = {
   all:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M15 9a3 3 0 0 1 0 6"/><path d="M18 6a7 7 0 0 1 0 12"/></svg>',
 };
 function voiceLabel() {
-  const isES = LANG === 'es';
   if (voiceMode === 'off')  return I18N.t('client.js.sin_voz');
   if (voiceMode === 'best') return I18N.t('client.js.solo_rapidas');
   return                          I18N.t('client.common.todas');
 }
 function voiceTitle() {
-  if (LANG === 'es') {
-    return voiceMode === 'off'  ? 'Voz desactivada — clic: cantar todas las vueltas' :
-           voiceMode === 'best' ? 'Solo se cantan vueltas rápidas — clic: silenciar' :
-                                  'Se cantan todas las vueltas — clic: solo vueltas rápidas';
-  }
-  return voiceMode === 'off'  ? 'Voice off — click: announce all laps' :
-         voiceMode === 'best' ? 'Only fast laps — click: mute' :
-                                'All laps — click: only fast laps';
+  return voiceMode === 'off'  ? I18N.t('client.js.voz_off_title') :
+         voiceMode === 'best' ? I18N.t('client.js.voz_best_title') :
+                                I18N.t('client.js.voz_all_title');
 }
 function refreshVoiceBtn() {
   const btn = document.getElementById('voiceBtn');

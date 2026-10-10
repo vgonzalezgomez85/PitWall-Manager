@@ -26,7 +26,7 @@
             <%= new Date(s.started_at + 'Z').toLocaleString(localeFor(lang)) %>
           </div>
           <div class="rx-race-card__meta">
-            <span class="rx-race-card__status"><%= s.heats %> <%= lang === 'es' ? (s.heats === 1 ? 'heat' : 'heats') : (s.heats === 1 ? 'heat' : 'heats') %></span>
+            <span class="rx-race-card__status"><%= s.heats %> <%= s.heats === 1 ? t('training.heat') : t('training.heats') %></span>
             <span style="margin-left:.5rem"><%= s.participants %> <%= t('results-index.participantes') %></span>
             <span style="margin-left:.5rem"><%= s.laps %> <%= t('common.vueltas') %></span>
             <% if (s.best_lap_ms) { %>

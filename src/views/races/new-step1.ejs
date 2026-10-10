@@ -1,5 +1,4 @@
 <%
-const es = lang === 'es';
 const isChamp = body.type === 'championship';
 const locked = typeof typeLocked !== 'undefined' && typeLocked && (body.type === 'club' || isChamp);
 const title = locked
@@ -233,7 +232,6 @@ const tirePairs = body.tire_pairs_per_team != null ? body.tire_pairs_per_team : 
 </div>
 
 <script>
-const ES = '<%= lang %>' === 'es';
 const circPills    = document.getElementById('circPills');
 const circCount    = document.getElementById('circuitsCount');
 const circGrid     = document.getElementById('circuitsGrid');

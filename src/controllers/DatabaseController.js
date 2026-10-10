@@ -99,7 +99,7 @@ class DatabaseController {
       console.error('[DatabaseController] backup failed:', err.message);
       try { fs.unlinkSync(tmpPath); } catch {}
       if (!res.headersSent) {
-        res.status(500).render('error', { t: req.t, code: 500, message: 'No se pudo generar la copia de seguridad' });
+        res.status(500).render('error', { t: req.t, code: 500, message: req.t('errors.backup_error') });
       }
     }
   }
@@ -145,7 +145,6 @@ class DatabaseController {
 
   // GET /database/race-export?race=ID — descarga UNA carrera completa (.pwrace).
   static raceExport(req, res) {
-    const es = (req.session?.lang || 'es') === 'es';
     const fail = text => { req.session.flash = { type: 'error', text }; res.redirect('/database'); };
     if (ExportGuard.isMangaLive()) {
       return fail(req.t('database.hay_una_manga_en_marcha_exporta_la_carrera'));
@@ -172,8 +171,7 @@ class DatabaseController {
   // POST /database/race-import — crea la carrera del archivo como carrera NUEVA.
   static raceImport(req, res) {
     raceUpload.single('race_file')(req, res, (err) => {
-      const es = (req.session?.lang || 'es') === 'es';
-      const fail = text => { req.session.flash = { type: 'error', text }; res.redirect('/database'); };
+        const fail = text => { req.session.flash = { type: 'error', text }; res.redirect('/database'); };
       if (err) return fail((req.t('database.no_se_pudo_subir_el_archivo')) + err.message);
       if (!req.file) return fail(req.t('database.selecciona_un_archivo_pwrace'));
       // Miles de inserciones en una transacción: con una manga viva bloquearía
@@ -203,7 +201,7 @@ class DatabaseController {
         if (e.code === 'bad_file') return fail(req.t('database.el_archivo_no_es_una_carrera_exportada_de'));
         if (e.code === 'newer_version') return fail(req.t('database.el_archivo_viene_de_una_version_mas_nueva_de'));
         console.error('[DatabaseController] race import failed:', e);
-        fail(es ? 'No se pudo importar la carrera: ' + escapeHtml(e.message) : 'Could not import the race: ' + escapeHtml(e.message));
+        fail(req.t('database.no_se_pudo_importar_la_carrera', { msg: escapeHtml(e.message) }));
       }
     });
   }

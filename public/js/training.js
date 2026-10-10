@@ -155,9 +155,11 @@ function setStandby(isStandby) {
 
 // ── Lane cards ────────────────────────────────────────────────────────────────
 const grid  = document.getElementById('trainingGrid');
-const TXT = LANG === 'es'
-  ? { laps: 'vlt', best: 'Mejor', avg: 'Media', rec: 'Récord', pace: 'Ritmo', noPace: 'Sin vueltas aún', lap: 'Vuelta', isBest: 'Mejor vuelta' }
-  : { laps: 'lps', best: 'Best',  avg: 'Avg',   rec: 'Record', pace: 'Pace',  noPace: 'No laps yet',     lap: 'Lap',    isBest: 'Best lap' };
+const TXT = {
+  laps: I18N.t('client.training.vlt'), best: I18N.t('client.training.mejor'), avg: I18N.t('client.training.media'),
+  rec: I18N.t('client.training.record'), pace: I18N.t('client.training.ritmo'), noPace: I18N.t('client.training.sin_vueltas'),
+  lap: I18N.t('client.training.vuelta'), isBest: I18N.t('client.training.mejor_vuelta'),
+};
 
 // Último estado recibido por carril (para repintar el gráfico al redimensionar).
 const laneState = new Map();
@@ -453,20 +455,14 @@ const _isCompetition = !!(window.TRAINING_DATA && TRAINING_DATA.isCompetition);
 let voiceMode = localStorage.getItem(VOICE_KEY) || (_isCompetition ? 'off' : 'all');
 
 function voiceLabel() {
-  const isES = LANG === 'es';
   if (voiceMode === 'off')  return I18N.t('client.js.sin_voz');
   if (voiceMode === 'best') return I18N.t('client.js.rapidas');
   return                              I18N.t('client.common.todas');
 }
 function voiceTitle() {
-  if (LANG === 'es') {
-    return voiceMode === 'off'  ? 'Voz desactivada — clic: cantar todas las vueltas' :
-           voiceMode === 'best' ? 'Solo se cantan vueltas rápidas — clic: silenciar' :
-                                  'Se cantan todas las vueltas — clic: solo vueltas rápidas';
-  }
-  return voiceMode === 'off'  ? 'Voice off — click: announce all laps' :
-         voiceMode === 'best' ? 'Only fast laps — click: mute' :
-                                'All laps — click: only fast laps';
+  return voiceMode === 'off'  ? I18N.t('client.js.voz_off_title') :
+         voiceMode === 'best' ? I18N.t('client.js.voz_best_title') :
+                                I18N.t('client.js.voz_all_title');
 }
 function refreshVoiceBtn() {
   const btn = document.getElementById('voiceBtn');

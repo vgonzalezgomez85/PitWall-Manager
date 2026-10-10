@@ -39,7 +39,6 @@ const AuthController = {
     if (!AccessPassword.isEnabled()) return res.redirect(next);
     const ip = reqIp(req);
     const { ok, lockedMs } = AccessPassword.attempt(ip, req.body.password || '', { lockable: !isLocal(ip) });
-    const es = req.session.lang !== 'en';
     if (!ok) {
       const error = lockedMs
         ? (req.t('auth.too_many_attempts_wait_v_s', { v: Math.ceil(lockedMs / 1000) }))

@@ -444,7 +444,6 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
           }
         }
         function consLabel(level) {
-          const es = lang === 'es';
           switch (level) {
             case 'excelente': return t('client.common.excelente');
             case 'buena':     return t('client.common.buena');
@@ -536,13 +535,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
                   <% } %>
                 </td>
                 <td class="matrix-laps matrix-total">
-                  <%= r.total_laps %><% if (r.last_manga_coma > 0) { %><span style="font-size:.6em; color:<%= r.last_manga_coma_manual ? '#58a6ff' : '#8b949e' %>; margin-left:4px; font-weight:normal;" title="<%= lang === 'es'
-                    ? (r.last_manga_coma_manual
-                        ? 'Coma de la última manga CORREGIDA A MANO: fracción de la vuelta en curso al caer la bandera de la última manga. Desempata a igualdad de vueltas (más = iba más adelantado al final).'
-                        : 'Coma de la última manga: fracción de la vuelta en curso al caer la bandera de la última manga. Desempata a igualdad de vueltas (más = iba más adelantado al final).')
-                    : (r.last_manga_coma_manual
-                        ? 'CORRECTED BY HAND — last-heat fraction: fraction of the unfinished lap at the final flag. Breaks ties on equal laps (more = further ahead at the end).'
-                        : 'Last-heat coma: fraction of the unfinished lap at the final flag. Breaks ties on equal laps (more = further ahead at the end).') %>">+<%= r.last_manga_coma.toFixed(2).replace('.', ',') %></span><% } %>
+                  <%= r.total_laps %><% if (r.last_manga_coma > 0) { %><span style="font-size:.6em; color:<%= r.last_manga_coma_manual ? '#58a6ff' : '#8b949e' %>; margin-left:4px; font-weight:normal;" title="<%= r.last_manga_coma_manual ? t('results.coma_manual_title') : t('results.coma_title') %>">+<%= r.last_manga_coma.toFixed(2).replace('.', ',') %></span><% } %>
                 </td>
                 <% if (perOcc) { %>
                   <% occColumns.forEach(col => {
@@ -990,14 +983,14 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
         function wideCard(a) {
           return `
             <div class="adv-card adv-card--wide">
-              <div class="adv-card__label">Evolución por carril</div>
+              <div class="adv-card__label">${I18N.t('client.results.evolucion_carril')}</div>
               <div class="adv-manga-chart"><canvas id="advMangaChart"></canvas></div>
               <div class="adv-mangas">
                 ${(a.perLane || []).map(p => `
                   <div class="adv-manga">
-                    <div class="adv-manga__lbl">Pista ${p.lane}</div>
+                    <div class="adv-manga__lbl">${I18N.t('client.results.pista_n', { n: p.lane })}</div>
                     <div class="adv-manga__val">${fmtMs(includeOutliers ? p.avgAll : p.avgClean)}</div>
-                    <div class="adv-manga__meta">${p.totalLaps}v · ${p.exitCount} salidas</div>
+                    <div class="adv-manga__meta">${I18N.t('client.results.vueltas_salidas', { v: p.totalLaps, s: p.exitCount })}</div>
                   </div>
                 `).join('')}
               </div>
@@ -1011,31 +1004,31 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
           if (!b) {
             panels.innerHTML = `
               <div class="adv-card">
-                <div class="adv-card__label">Total vueltas</div>
+                <div class="adv-card__label">${I18N.t('client.results.total_vueltas')}</div>
                 <div class="adv-card__big">${a.totalLaps}</div>
-                <div class="adv-card__hint">${a.cleanLaps} limpias</div>
+                <div class="adv-card__hint">${I18N.t('client.results.n_limpias', { n: a.cleanLaps })}</div>
               </div>
               <div class="adv-card">
-                <div class="adv-card__label">Mejor vuelta</div>
+                <div class="adv-card__label">${I18N.t('client.results.mejor_vuelta')}</div>
                 <div class="adv-card__big">${fmtMs(a.bestMs)}</div>
               </div>
               <div class="adv-card">
-                <div class="adv-card__label">Media ${includeOutliers ? '(con salidas)' : 'limpia'}</div>
+                <div class="adv-card__label">${includeOutliers ? I18N.t('client.results.media_con_salidas') : I18N.t('client.results.media_limpia')}</div>
                 <div class="adv-card__big">${fmtMs(avg)}</div>
               </div>
               <div class="adv-card">
-                <div class="adv-card__label">Δ consistencia</div>
+                <div class="adv-card__label">${I18N.t('client.results.delta_consistencia')}</div>
                 <div class="adv-card__big">${delta != null ? '+' + fmtSec(delta) : '—'}</div>
                 <div class="adv-card__hint">avg − best</div>
               </div>
               <div class="adv-card">
-                <div class="adv-card__label">Salidas · pit-stops</div>
+                <div class="adv-card__label">${I18N.t('client.results.salidas_pits')}</div>
                 <div class="adv-card__big">${a.exitCount} · ${a.pitStopCount}</div>
               </div>
               <div class="adv-card">
-                <div class="adv-card__label">Tiempo perdido</div>
+                <div class="adv-card__label">${I18N.t('client.results.tiempo_perdido')}</div>
                 <div class="adv-card__big">${fmtSec(a.lostMs)}</div>
-                <div class="adv-card__hint">≈ ${a.lostLapsEquiv} vueltas</div>
+                <div class="adv-card__hint">${I18N.t('client.results.aprox_vueltas', { n: a.lostLapsEquiv })}</div>
               </div>
               ${wideCard(a)}
             `;
@@ -1045,13 +1038,13 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
           const avgB   = getStat(b, 'avg');
           const deltaB = getStat(b, 'delta');
           panels.innerHTML =
-            cmpCard('Total vueltas', a.totalLaps, b.totalLaps, 'higher', a.totalLaps, b.totalLaps) +
-            cmpCard('Mejor vuelta', fmtMs(a.bestMs), fmtMs(b.bestMs), 'lowerMs', a.bestMs, b.bestMs) +
-            cmpCard('Media ' + (includeOutliers ? '(con salidas)' : 'limpia'), fmtMs(avg), fmtMs(avgB), 'lowerMs', avg, avgB) +
-            cmpCard('Δ consistencia', delta != null ? '+' + fmtSec(delta) : '—', deltaB != null ? '+' + fmtSec(deltaB) : '—', 'lowerMs', delta, deltaB) +
-            cmpCard('Salidas', a.exitCount, b.exitCount, 'lower', a.exitCount, b.exitCount) +
+            cmpCard(I18N.t('client.results.total_vueltas'), a.totalLaps, b.totalLaps, 'higher', a.totalLaps, b.totalLaps) +
+            cmpCard(I18N.t('client.results.mejor_vuelta'), fmtMs(a.bestMs), fmtMs(b.bestMs), 'lowerMs', a.bestMs, b.bestMs) +
+            cmpCard(includeOutliers ? I18N.t('client.results.media_con_salidas') : I18N.t('client.results.media_limpia'), fmtMs(avg), fmtMs(avgB), 'lowerMs', avg, avgB) +
+            cmpCard(I18N.t('client.results.delta_consistencia'), delta != null ? '+' + fmtSec(delta) : '—', deltaB != null ? '+' + fmtSec(deltaB) : '—', 'lowerMs', delta, deltaB) +
+            cmpCard(I18N.t('client.results.salidas'), a.exitCount, b.exitCount, 'lower', a.exitCount, b.exitCount) +
             cmpCard('Pit-stops', a.pitStopCount, b.pitStopCount, 'lower', a.pitStopCount, b.pitStopCount) +
-            cmpCard('Tiempo perdido', fmtSec(a.lostMs), fmtSec(b.lostMs), 'lowerMs', a.lostMs, b.lostMs) +
+            cmpCard(I18N.t('client.results.tiempo_perdido'), fmtSec(a.lostMs), fmtSec(b.lostMs), 'lowerMs', a.lostMs, b.lostMs) +
             wideCard(a);
         }
 
@@ -1092,7 +1085,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
                 x: { ticks: { color: '#8b949e' }, grid: { color: '#21262d' } },
                 y: { ticks: { color: '#8b949e', callback: (v) => v.toFixed(2).replace('.', ',') + 's' },
                      grid: { color: '#21262d' },
-                     title: { display: true, text: 'Media por carril', color: '#6e7681' } },
+                     title: { display: true, text: I18N.t('client.results.media_por_carril'), color: '#6e7681' } },
               },
             },
           });
@@ -1217,13 +1210,13 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
       // Manga options
       const mangas = [...new Set(laps.map(l => l.manga))].sort((a,b)=>a-b);
       const prevManga = selManga.value;
-      selManga.innerHTML = '<option value="all">Todas</option>' +
-        mangas.map(m => `<option value="${m}">Manga ${m}</option>`).join('');
+      selManga.innerHTML = '<option value="all">' + I18N.t('client.results.todas') + '</option>' +
+        mangas.map(m => `<option value="${m}">${I18N.t('client.results.manga_n', { n: m })}</option>`).join('');
       if ([...selManga.options].some(o => o.value === prevManga)) selManga.value = prevManga;
       // Driver options
       const drivers = [...new Set(laps.map(l => l.driver).filter(d => d && d !== '—'))].sort();
       const prevDriver = selDriver.value;
-      selDriver.innerHTML = '<option value="all">Todos</option>' +
+      selDriver.innerHTML = '<option value="all">' + I18N.t('client.results.todos') + '</option>' +
         drivers.map(d => `<option value="${d}">${d}</option>`).join('');
       if ([...selDriver.options].some(o => o.value === prevDriver)) selDriver.value = prevDriver;
       selDriver.parentElement.style.display = drivers.length > 0 ? '' : 'none';
@@ -1383,14 +1376,14 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
           scales: {
             x: {
               type: 'linear',
-              title: { display: true, text: PER_OCCURRENCE ? 'Vuelta dentro de la repetición' : 'Vuelta (orden cronológico)', color: '#8b949e' },
+              title: { display: true, text: PER_OCCURRENCE ? I18N.t('client.results.vuelta_repeticion') : I18N.t('client.results.vuelta_cronologico'), color: '#8b949e' },
               ticks: { color: '#8b949e', stepSize: 1 },
               grid:  { color: '#21262d' },
             },
             y: {
               min: yMin, max: yMax,
               title: { display: true,
-                text: mode === 'abs' ? 'Segundos' : 'Δ vs media (s)', color: '#8b949e' },
+                text: mode === 'abs' ? I18N.t('client.results.segundos') : I18N.t('client.results.delta_vs_media'), color: '#8b949e' },
               ticks: { color: '#8b949e' },
               grid:  { color: '#21262d',
                        drawBorder: false,
@@ -1484,13 +1477,13 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
           scales: {
             x: {
               type: 'linear',
-              title: { display: true, text: '<%= t('results.tiempo_de_carrera_min') %>', color: '#8b949e' },
+              title: { display: true, text: <%- JSON.stringify(t('results.tiempo_de_carrera_min')) %>, color: '#8b949e' },
               ticks: { color: '#8b949e' }, grid: { color: '#21262d' },
             },
             y: {
               reverse: true, // P1 at top
               min: 1, max: totalEntities,
-              title: { display: true, text: '<%= t('results.posicion_proyectada') %>', color: '#8b949e' },
+              title: { display: true, text: <%- JSON.stringify(t('results.posicion_proyectada')) %>, color: '#8b949e' },
               ticks: { color: '#8b949e', stepSize: 1, callback: (v) => 'P' + v },
               grid: { color: '#21262d' },
             }
@@ -1589,7 +1582,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
               callbacks: {
                 title: (items) => 'M' + items[0].parsed.x,
                 label: (ctx) => ctx.dataset.label + ': ' + (ctx.parsed.y === 0
-                  ? '<%= t('common.lider') %>'
+                  ? <%- JSON.stringify(t('common.lider')) %>
                   : ctx.parsed.y + ' <%= t('common.vueltas') %>'),
               }
             }
@@ -1598,7 +1591,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
             x: {
               type: 'linear',
               min: 1, max: maxManga,
-              title: { display: true, text: '<%= t('common.manga') %>', color: '#8b949e' },
+              title: { display: true, text: <%- JSON.stringify(t('common.manga')) %>, color: '#8b949e' },
               ticks: { color: '#8b949e', stepSize: 1, precision: 0, callback: (v) => 'M' + v },
               grid: { color: '#21262d' },
             },
@@ -1606,7 +1599,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
               // Líder en 0 (arriba); el resto NEGATIVO (vueltas perdidas) hacia abajo.
               // min "duro" para que el eje encoja al quitar equipos/rango.
               max: 0, min: Math.min(-1, Math.floor(minGap) - 1),
-              title: { display: true, text: '<%= t('results.vueltas_tras_el_lider') %>', color: '#8b949e' },
+              title: { display: true, text: <%- JSON.stringify(t('results.vueltas_tras_el_lider')) %>, color: '#8b949e' },
               // Divisiones del eje Y de 200 en 200.
               ticks: { color: '#8b949e', precision: 0, stepSize: 200, maxTicksLimit: 30 },
               grid: { color: '#21262d' },
@@ -1638,7 +1631,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
     const table    = document.getElementById('gapgridTable');
     const chipsBox = document.getElementById('gapgridEntities');
     if (!table) return;
-    const LBL_TEAM = '<%= t('common.equipo') %>';
+    const LBL_TEAM = <%- JSON.stringify(t('common.equipo')) %>;
     let prevDay = null;
     function timeHeader(m) {
       const iso = mangaTimes[m];

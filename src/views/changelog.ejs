@@ -1,18 +1,18 @@
-<%- include('partials/header', { pageTitle: 'Historial de versiones' }) %>
+<%- include('partials/header', { pageTitle: t('changelog.titulo') }) %>
 <div class="container container--narrow">
 
   <a href="/" class="vt-back-link" style="margin-top:1rem">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-    Inicio
+    <%= t('common.inicio') %>
   </a>
 
   <div class="page-header">
-    <h1 class="page-title">📋 Historial de versiones</h1>
-    <p class="page-subtitle">Versión actual: <b>v<%= appVersion %></b> · v1.0.X correcciones · v1.X.0 funcionalidades · vX.0.0 cambios mayores</p>
+    <h1 class="page-title"><%= t('changelog.h1') %></h1>
+    <p class="page-subtitle"><%- t('changelog.subtitulo', { v: appVersion }) %></p>
   </div>
 
   <% if (!versiones.length) { %>
-    <div class="cl-card"><p class="cl-notas">Aún no hay entradas en el historial.</p></div>
+    <div class="cl-card"><p class="cl-notas"><%= t('changelog.vacio') %></p></div>
   <% } %>
 
   <% versiones.forEach((v, i) => { %>
@@ -20,7 +20,7 @@
       <div class="cl-head">
         <span class="cl-version <%= i === 0 ? 'cl-version--current' : '' %>">v<%= v.version %></span>
         <% if (v.fecha) { %><span class="cl-fecha"><%= v.fecha %></span><% } %>
-        <% if (i === 0) { %><span class="cl-actual">actual</span><% } %>
+        <% if (i === 0) { %><span class="cl-actual"><%= t('changelog.actual') %></span><% } %>
       </div>
       <% v.notas.forEach(n => { %><p class="cl-notas"><%- n %></p><% }) %>
       <% v.secciones.forEach(s => { %>

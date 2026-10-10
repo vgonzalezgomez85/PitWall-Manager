@@ -69,6 +69,69 @@ function unknownBytes(b) {
   return out;
 }
 
+// ── Traducción en el navegador ─────────────────────────────────────────────
+// Las etiquetas se escriben en español (los tests las comprueban así), pero el
+// visor lo puede mirar alguien con la app en inglés o italiano, y el decodificador
+// corre en el servidor para todos a la vez. Se adjunta a cada etiqueta y campo su
+// clave del diccionario (`client.tramas.*`) y sus variables; diagnostico-tramas.js
+// la traduce con I18N.t y, si no hay clave, muestra el español.
+const ETIQUETAS = [
+  [/^Trama corta \(descartada\)$/, 'trama_corta_descartada'],
+  [/^Trama corta$/, 'trama_corta'],
+  [/^Ráfaga ×(\d+) — (\d+) duplicadas? descartadas?$/, 'rafaga', m => ({ n: m[1], d: m[2] })],
+  [/^Latido$/, 'latido'],
+  [/^GO — arranque de manga$/, 'go'],
+  [/^Verde — carrera en marcha$/, 'verde_marcha'],
+  [/^Verde — carrera reanudada$/, 'verde_reanudada'],
+  [/^Verde sin GO pendiente \(el parser la ignora\)$/, 'verde_sin_go'],
+  [/^Semáforo — paso intermedio$/, 'semaforo'],
+  [/^Stop forzado$/, 'stop'],
+  [/^Fin de manga$/, 'fin'],
+  [/^Pausa$/, 'pausa'],
+  [/^Señal de reanudación$/, 'senal_reanudacion'],
+  [/^Control desconocido \((.+)\)$/, 'control_desconocido', m => ({ x: m[1] })],
+  [/^Cruce truncado \(descartado\)$/, 'cruce_truncado'],
+  [/^Cruce filtrado — fuera de rango \((.+)\)$/, 'cruce_fuera_rango', m => ({ t: m[1] })],
+  [/^Cruce filtrado — rebote \((.+)\)$/, 'cruce_rebote', m => ({ t: m[1] })],
+  [/^Cruce filtrado — coche parado \((.+)\)$/, 'cruce_parado', m => ({ t: m[1] })],
+  [/^Cruce — carril (.+)$/, 'cruce', m => ({ l: m[1] })],
+  [/^Estado — (libre|en marcha|pausa|parado)$/, 'estado', m => ({ s: m[1] })],
+  [/^Comando — (.+)$/, 'comando', m => ({ c: m[1] })],
+  [/^Fanout Master→Slaves \(el cliente no la encuadra\)$/, 'fanout'],
+  [/^Tipo desconocido (0x\w+) — resincroniza$/, 'tipo_desconocido_resinc', m => ({ x: m[1] })],
+  [/^Trama sin sincronismo o incompleta$/, 'sin_sincronismo'],
+  [/^Evento (\S+) \((0x\w+)\) — PitWall lo ignora: el interface no manda la carrera$/, 'evento_tictac', m => ({ n: m[1], x: m[2] })],
+  [/^Tipo desconocido (0x\w+)$/, 'tipo_desconocido', m => ({ x: m[1] })],
+  [/^Carril (\d+) fuera de rango \(descartada\)$/, 'carril_fuera', m => ({ l: m[1] })],
+];
+const ESTADOS = { 'libre': 'estado_libre', 'en marcha': 'estado_en_marcha', 'pausa': 'estado_pausa', 'parado': 'estado_parado' };
+const CAMPOS = { 'minuto': 'f_minuto', 'duración': 'f_duracion', 'sub-tramas': 'f_subtramas', 'descartadas': 'f_descartadas',
+  'caja': 'f_caja', 'carril': 'f_carril', 'tiempo': 'f_tiempo', 'contador': 'f_contador', 'vueltas': 'f_vueltas',
+  'carriles': 'f_carriles', 'vuelta': 'f_vuelta', 'reloj': 'f_reloj' };
+const VALORES = { 'primera vuelta': 'v_primera_vuelta', 'sin tiempo (desborde)': 'v_sin_tiempo' };
+
+function traducible(f) {
+  if (!f || typeof f !== 'object') return f;
+  if (typeof f.label === 'string') {
+    for (const [re, clave, vars] of ETIQUETAS) {
+      const m = f.label.match(re);
+      if (!m) continue;
+      f.labelKey = 'client.tramas.' + clave;
+      f.labelVars = vars ? vars(m) : {};
+      if (clave === 'estado') f.labelVars.sKey = 'client.tramas.' + ESTADOS[m[1]];
+      break;
+    }
+  }
+  if (Array.isArray(f.fields)) {
+    for (const fld of f.fields) {
+      if (CAMPOS[fld.k]) fld.kKey = 'client.tramas.' + CAMPOS[fld.k];
+      if (VALORES[fld.v]) fld.vKey = 'client.tramas.' + VALORES[fld.v];
+    }
+  }
+  if (Array.isArray(f.subs)) f.subs.forEach(traducible);
+  return f;
+}
+
 function createDecoder() {
   let pendingGo = false;
   let pendingResume = false;
@@ -339,9 +402,9 @@ function createDecoder() {
   }
 
   return {
-    ds,
-    bart,
-    tictac: tictacFrame,
+    ds:     (bytes, opts) => traducible(ds(bytes, opts)),
+    bart:   (bytes, opts) => traducible(bart(bytes, opts)),
+    tictac: (bytes, opts) => traducible(tictacFrame(bytes, opts)),
     reset() { pendingGo = false; pendingResume = false; tictacClock.clear(); },
   };
 }

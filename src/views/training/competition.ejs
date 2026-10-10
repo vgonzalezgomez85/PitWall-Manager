@@ -277,15 +277,10 @@ function syncDerived() {
   const onTrack  = slots.slice(0, laneCount).filter(n => n.trim()).length;
   const reserves = slots.slice(laneCount).filter(n => n.trim()).length;
   const sum = document.getElementById('tcSummary');
-  if (LANG === 'es') {
-    sum.innerHTML = filled < 2
-      ? 'Añade al menos <b>2 participantes</b> para preparar la sesión.'
-      : `<b>${laneCount}</b> carriles · <b>${onTrack}</b> en pista` + (reserves ? ` · <b>${reserves}</b> en reserva (rotan por turnos)` : '');
-  } else {
-    sum.innerHTML = filled < 2
-      ? 'Add at least <b>2 participants</b> to prepare the session.'
-      : `<b>${laneCount}</b> lanes · <b>${onTrack}</b> on track` + (reserves ? ` · <b>${reserves}</b> in reserve (rotate in)` : '');
-  }
+  sum.innerHTML = filled < 2
+    ? I18N.t('client.competition.anade_2')
+    : I18N.t('client.competition.resumen', { carriles: laneCount, pista: onTrack })
+      + (reserves ? I18N.t('client.competition.resumen_reserva', { n: reserves }) : '');
   document.getElementById('startBtn').disabled = filled < 2;
   refreshCatalogUsedState();
 }
@@ -519,7 +514,7 @@ document.getElementById('seqResetBtn').addEventListener('click', () => { laneSeq
     const lanes = sel.options[sel.selectedIndex]?.dataset?.lanes;
     hint.innerHTML = lanes
       ? `<span class="vt-badge__d"></span> ${lanes} ${I18N.t('client.common.carriles')}`
-      : `<span class="vt-badge__d"></span> ${FALLBACK_LANES} ${I18N.t('client.common.carriles')} (def.)`;
+      : `<span class="vt-badge__d"></span> ${FALLBACK_LANES} ${I18N.t('client.common.carriles')} ${I18N.t('client.competition.def')}`;
     hint.style.display = '';
     // El Pt sigue al circuito, pero sin pisar lo que haya tecleado el usuario.
     const minMs = parseInt(sel.options[sel.selectedIndex]?.dataset?.minMs || '0', 10);

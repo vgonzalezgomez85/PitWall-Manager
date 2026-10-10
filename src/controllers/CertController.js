@@ -33,7 +33,7 @@ class CertController {
       res.setHeader('Content-Disposition', 'attachment; filename="PitWall-CA.crt"');
       res.send(pem);
     } catch (e) {
-      res.status(500).send('No se pudo generar el certificado: ' + e.message);
+      res.status(500).send(req.t('errors.cert_error', { msg: e.message }));
     }
   }
 

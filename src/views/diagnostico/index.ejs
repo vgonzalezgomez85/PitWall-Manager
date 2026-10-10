@@ -1,24 +1,24 @@
-<%- include('../partials/header', { lang, pageTitle: 'Solución de problemas' }) %>
+<%- include('../partials/header', { lang, pageTitle: t('diagnostico.titulo') }) %>
 
 <%
 const boundary = !!timing.tandaBoundary;
 const allOk = link.connected && !boundary && stuck.length === 0;
 const serialKind = link.simulating ? 'warn' : (link.connected ? 'ok' : 'bad');
-const serialText = link.simulating ? 'Simulación' : (link.connected ? 'Conectado' : 'Sin conexión');
+const serialText = link.simulating ? t('client.common.simulacion') : (link.connected ? t('diagnostico.conectado') : t('client.common.sin_conexion'));
 const issues = [];
-if (stuck.length) issues.push({ sec: 'stuck', kind: 'bad', t: stuck.length + (stuck.length === 1 ? ' manga atascada' : ' mangas atascadas'), d: 'Figuran como activas en la base de datos pero no están corriendo.' });
-if (!link.connected && !link.simulating) issues.push({ sec: 'serial', kind: 'bad', t: 'El cronómetro no está conectado', d: 'No llegan cruces. Revisa el cable o reconecta el serial.' });
-if (boundary) issues.push({ sec: 'timing', kind: 'warn', t: 'Límite de tanda activo', d: 'El próximo GO se ignorará hasta limpiarlo.' });
+if (stuck.length) issues.push({ sec: 'stuck', kind: 'bad', t: stuck.length === 1 ? t('diagnostico.manga_atascada_1') : t('diagnostico.mangas_atascadas_n', { n: stuck.length }), d: t('diagnostico.atascadas_d') });
+if (!link.connected && !link.simulating) issues.push({ sec: 'serial', kind: 'bad', t: t('diagnostico.no_conectado'), d: t('diagnostico.no_conectado_d') });
+if (boundary) issues.push({ sec: 'timing', kind: 'warn', t: t('diagnostico.limite_activo'), d: t('diagnostico.limite_activo_d') });
 const navItems = [
-  { key: 'status', label: 'Estado', dot: allOk ? 'ok' : (issues.some(i => i.kind === 'bad') ? 'bad' : 'warn'),
+  { key: 'status', label: t('common.estado'), dot: allOk ? 'ok' : (issues.some(i => i.kind === 'bad') ? 'bad' : 'warn'),
     icon: '<path d="M3 12h4l3-8 4 16 3-8h4"/>' },
-  { key: 'timing', label: 'Cronometraje', dot: boundary || timing.pendingSetup ? 'warn' : (timing.isRunning ? 'ok' : ''),
+  { key: 'timing', label: t('diagnostico.cronometraje'), dot: boundary || timing.pendingSetup ? 'warn' : (timing.isRunning ? 'ok' : ''),
     icon: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5M9 2h6M12 2v3"/>' },
-  { key: 'serial', label: 'Cronómetro', dot: serialKind,
+  { key: 'serial', label: t('diagnostico.cronometro'), dot: serialKind,
     icon: '<path d="M9 2v5M15 2v5M7 7h10v3a5 5 0 0 1-10 0zM12 15v6"/>' },
-  { key: 'stuck', label: 'Mangas atascadas', dot: stuck.length ? 'bad' : '',
+  { key: 'stuck', label: t('diagnostico.mangas_atascadas'), dot: stuck.length ? 'bad' : '',
     icon: '<path d="M10.3 3.8 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.8a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>' },
-  { key: 'conn', label: 'Conexiones', dot: '',
+  { key: 'conn', label: t('diagnostico.conexiones'), dot: '',
     icon: '<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9.5" r="2.3"/><path d="M3 20v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1M16 14a4 4 0 0 1 5 4v1"/>' },
 ];
 const warnIco = '<svg class="dg-warn" viewBox="0 0 24 24"><path d="M10.3 3.8 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.8a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>';
@@ -28,18 +28,18 @@ const warnIco = '<svg class="dg-warn" viewBox="0 0 24 24"><path d="M10.3 3.8 1.8
   <div class="st-top">
     <a href="/" class="vt-back-link">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      Inicio
+      <%= t('common.inicio') %>
     </a>
     <span class="st-top__sep"></span>
-    <h1 class="st-top__h">Solución de problemas</h1>
+    <h1 class="st-top__h"><%= t('diagnostico.titulo') %></h1>
     <span class="st-top__fill"></span>
     <div class="vt-port-pill <%= allOk ? '' : (issues.some(i => i.kind === 'bad') ? 'is-off' : 'is-sim') %>">
-      <span class="dot"></span> <%= allOk ? 'Sin incidencias' : (issues.length === 1 ? '1 incidencia' : issues.length + ' incidencias') %>
+      <span class="dot"></span> <%= allOk ? t('diagnostico.sin_incidencias') : (issues.length === 1 ? t('diagnostico.una_incidencia') : t('diagnostico.n_incidencias', { n: issues.length })) %>
     </div>
   </div>
 
   <div class="st-layout">
-    <nav class="st-nav" aria-label="Secciones">
+    <nav class="st-nav" aria-label="<%= t('diagnostico.secciones') %>">
       <% navItems.forEach(it => { %>
         <button type="button" class="st-nav__item <%= it.key === 'status' ? 'is-active' : '' %>" data-sec="<%= it.key %>">
           <svg viewBox="0 0 24 24"><%- it.icon %></svg>
@@ -48,7 +48,7 @@ const warnIco = '<svg class="dg-warn" viewBox="0 0 24 24"><path d="M10.3 3.8 1.8
         </button>
       <% }) %>
       <div class="st-nav__note">
-        <span><%- warnIco %> Las acciones en rojo borran datos. Todas piden confirmación.</span>
+        <span><%- warnIco %> <%= t('diagnostico.nota_rojo') %></span>
       </div>
     </nav>
 
@@ -57,27 +57,27 @@ const warnIco = '<svg class="dg-warn" viewBox="0 0 24 24"><path d="M10.3 3.8 1.8
       <!-- ══ Estado ══════════════════════════════════════════════════════ -->
       <section class="st-sec is-active" data-sec="status">
         <header class="st-sec__h">
-          <h2>Estado</h2>
-          <p>Cómo está el sistema ahora mismo y qué hay que revisar.</p>
+          <h2><%= t('common.estado') %></h2>
+          <p><%= t('diagnostico.estado_p') %></p>
         </header>
 
         <div class="st-card">
           <div class="db-stats dg-stats">
             <div class="db-stat">
               <div class="dg-stat__v"><span class="st-dot st-dot--<%= serialKind %>"></span><%= serialText %></div>
-              <div class="db-stat__l">Cronómetro</div>
+              <div class="db-stat__l"><%= t('diagnostico.cronometro') %></div>
             </div>
             <div class="db-stat">
-              <div class="dg-stat__v"><span class="st-dot <%= timing.isRunning ? 'st-dot--ok' : 'st-dot--off' %>"></span><%= timing.isRunning ? 'En curso' : 'Parada' %></div>
-              <div class="db-stat__l">Manga</div>
+              <div class="dg-stat__v"><span class="st-dot <%= timing.isRunning ? 'st-dot--ok' : 'st-dot--off' %>"></span><%= timing.isRunning ? t('diagnostico.en_curso') : t('diagnostico.parada') %></div>
+              <div class="db-stat__l"><%= t('common.manga') %></div>
             </div>
             <div class="db-stat">
-              <div class="dg-stat__v"><span class="st-dot <%= boundary ? 'st-dot--warn' : 'st-dot--ok' %>"></span><%= boundary ? 'Bloquea GO' : 'Libre' %></div>
-              <div class="db-stat__l">Límite de tanda</div>
+              <div class="dg-stat__v"><span class="st-dot <%= boundary ? 'st-dot--warn' : 'st-dot--ok' %>"></span><%= boundary ? t('diagnostico.bloquea_go') : t('diagnostico.libre') %></div>
+              <div class="db-stat__l"><%= t('diagnostico.limite_de_tanda') %></div>
             </div>
             <div class="db-stat">
               <div class="dg-stat__v"><span class="st-dot <%= stuck.length ? 'st-dot--bad' : 'st-dot--ok' %>"></span><%= stuck.length %></div>
-              <div class="db-stat__l">Mangas atascadas</div>
+              <div class="db-stat__l"><%= t('diagnostico.mangas_atascadas') %></div>
             </div>
           </div>
         </div>
@@ -87,8 +87,8 @@ const warnIco = '<svg class="dg-warn" viewBox="0 0 24 24"><path d="M10.3 3.8 1.8
             <div class="st-row">
               <span class="dg-ok"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 7"/></svg></span>
               <div class="st-row__txt">
-                <div class="st-row__t">Todo en orden</div>
-                <div class="st-row__d">No hay incidencias detectadas.</div>
+                <div class="st-row__t"><%= t('diagnostico.todo_en_orden') %></div>
+                <div class="st-row__d"><%= t('diagnostico.no_hay_incidencias') %></div>
               </div>
             </div>
           </div>
@@ -101,7 +101,7 @@ const warnIco = '<svg class="dg-warn" viewBox="0 0 24 24"><path d="M10.3 3.8 1.8
                   <span class="st-row__t"><%= i.t %></span>
                   <span class="st-row__d"><%= i.d %></span>
                 </span>
-                <span class="dg-go">Revisar</span>
+                <span class="dg-go"><%= t('diagnostico.revisar') %></span>
                 <svg class="st-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
               </button>
             <% }) %>
@@ -112,34 +112,34 @@ const warnIco = '<svg class="dg-warn" viewBox="0 0 24 24"><path d="M10.3 3.8 1.8
       <!-- ══ Cronometraje ═════════════════════════════════════════════════ -->
       <section class="st-sec" data-sec="timing">
         <header class="st-sec__h">
-          <h2>Cronometraje</h2>
-          <p>La manga que se está cronometrando y lo que espera al próximo GO.</p>
+          <h2><%= t('diagnostico.cronometraje') %></h2>
+          <p><%= t('diagnostico.cronometraje_p') %></p>
         </header>
         <div class="st-card">
           <div class="st-row st-row--wrap">
-            <div class="st-row__txt"><div class="st-row__t">Manga activa</div></div>
+            <div class="st-row__txt"><div class="st-row__t"><%= t('diagnostico.manga_activa') %></div></div>
             <% if (timing.activeMangaLabel) { %>
               <span class="dg-val"><span class="st-dot st-dot--ok"></span><span class="vt-mono"><%= timing.activeMangaLabel %></span></span>
             <% } else { %>
-              <span class="dg-val dg-val--mute">Ninguna</span>
+              <span class="dg-val dg-val--mute"><%= t('diagnostico.ninguna') %></span>
             <% } %>
           </div>
           <div class="st-row st-row--wrap">
             <div class="st-row__txt">
-              <div class="st-row__t">Límite de tanda</div>
-              <div class="st-row__d">Al acabar una tanda, PitWall ignora el GO hasta que se prepara la siguiente.</div>
+              <div class="st-row__t"><%= t('diagnostico.limite_de_tanda') %></div>
+              <div class="st-row__d"><%= t('diagnostico.limite_d') %></div>
             </div>
-            <span class="dg-val"><span class="st-dot <%= boundary ? 'st-dot--warn' : 'st-dot--ok' %>"></span><%= boundary ? 'Activo (bloquea GO)' : 'Libre' %></span>
+            <span class="dg-val"><span class="st-dot <%= boundary ? 'st-dot--warn' : 'st-dot--ok' %>"></span><%= boundary ? t('diagnostico.activo_bloquea') : t('diagnostico.libre') %></span>
           </div>
           <div class="st-row st-row--wrap">
             <div class="st-row__txt">
-              <div class="st-row__t">Preparada para el próximo GO</div>
-              <div class="st-row__d">La manga que arrancará con el próximo GO.</div>
+              <div class="st-row__t"><%= t('diagnostico.preparada') %></div>
+              <div class="st-row__d"><%= t('diagnostico.preparada_d') %></div>
             </div>
             <% if (timing.pendingSetup) { %>
               <span class="dg-val"><span class="st-dot st-dot--warn"></span><span class="vt-mono"><%= timing.pendingSetup.label %></span></span>
             <% } else { %>
-              <span class="dg-val dg-val--mute">Ninguna</span>
+              <span class="dg-val dg-val--mute"><%= t('diagnostico.ninguna') %></span>
             <% } %>
           </div>
         </div>
@@ -147,30 +147,30 @@ const warnIco = '<svg class="dg-warn" viewBox="0 0 24 24"><path d="M10.3 3.8 1.8
         <% if (boundary || timing.isRunning || timing.pendingSetup) { %>
           <div class="st-card">
             <% if (boundary) { %>
-              <form class="st-row st-row--wrap" action="/diagnostico/clear-boundary" method="POST" onsubmit="return confirm('¿Limpiar el boundary de tanda? El próximo GO será aceptado.');">
+              <form class="st-row st-row--wrap" action="/diagnostico/clear-boundary" method="POST" onsubmit="return confirm(<%= JSON.stringify(t('diagnostico.confirm_limite')) %>);">
                 <div class="st-row__txt">
-                  <div class="st-row__t">Limpiar límite de tanda</div>
-                  <div class="st-row__d">El próximo GO se aceptará. No borra nada.</div>
+                  <div class="st-row__t"><%= t('diagnostico.limpiar_limite_t') %></div>
+                  <div class="st-row__d"><%= t('diagnostico.limpiar_limite_d') %></div>
                 </div>
-                <button class="vt-btn vt-btn--ghost" type="submit">Limpiar límite</button>
+                <button class="vt-btn vt-btn--ghost" type="submit"><%= t('diagnostico.limpiar_limite') %></button>
               </form>
             <% } %>
             <% if (timing.isRunning) { %>
-              <form class="st-row st-row--wrap" action="/diagnostico/cancel-active" method="POST" onsubmit="return confirm('¿Cancelar la manga activa? Se ELIMINARÁN todas sus vueltas y volverá a pending.');">
+              <form class="st-row st-row--wrap" action="/diagnostico/cancel-active" method="POST" onsubmit="return confirm(<%= JSON.stringify(t('diagnostico.confirm_cancelar')) %>);">
                 <div class="st-row__txt">
-                  <div class="st-row__t">Cancelar manga activa</div>
-                  <div class="st-row__d dg-danger-d"><%- warnIco %> Borra todas sus vueltas y la deja pendiente.</div>
+                  <div class="st-row__t"><%= t('diagnostico.cancelar_activa_t') %></div>
+                  <div class="st-row__d dg-danger-d"><%- warnIco %> <%= t('diagnostico.cancelar_activa_d') %></div>
                 </div>
-                <button class="vt-btn vt-btn--danger" type="submit">Cancelar manga</button>
+                <button class="vt-btn vt-btn--danger" type="submit"><%= t('diagnostico.cancelar_manga') %></button>
               </form>
             <% } %>
             <% if (timing.pendingSetup && !timing.isRunning) { %>
-              <form class="st-row st-row--wrap" action="/diagnostico/clear-pending" method="POST" onsubmit="return confirm('¿Eliminar el pending setup? El GO quedará sin destino hasta que se vuelva a abrir una vista live.');">
+              <form class="st-row st-row--wrap" action="/diagnostico/clear-pending" method="POST" onsubmit="return confirm(<%= JSON.stringify(t('diagnostico.confirm_pending')) %>);">
                 <div class="st-row__txt">
-                  <div class="st-row__t">Quitar la manga preparada</div>
-                  <div class="st-row__d dg-danger-d"><%- warnIco %> El GO quedará sin destino hasta que abras de nuevo una vista en directo.</div>
+                  <div class="st-row__t"><%= t('diagnostico.quitar_preparada_t') %></div>
+                  <div class="st-row__d dg-danger-d"><%- warnIco %> <%= t('diagnostico.quitar_preparada_d') %></div>
                 </div>
-                <button class="vt-btn vt-btn--danger" type="submit">Quitar</button>
+                <button class="vt-btn vt-btn--danger" type="submit"><%= t('client.common.quitar') %></button>
               </form>
             <% } %>
           </div>
@@ -180,20 +180,20 @@ const warnIco = '<svg class="dg-warn" viewBox="0 0 24 24"><path d="M10.3 3.8 1.8
       <!-- ══ Cronómetro (serial) ══════════════════════════════════════════ -->
       <section class="st-sec" data-sec="serial">
         <header class="st-sec__h">
-          <h2>Cronómetro</h2>
-          <p>La conexión con el cronometraje (o la simulación).</p>
+          <h2><%= t('diagnostico.cronometro') %></h2>
+          <p><%= t('diagnostico.cronometro_p') %></p>
         </header>
         <div class="st-card">
           <div class="st-row st-row--wrap">
-            <div class="st-row__txt"><div class="st-row__t">Estado</div></div>
+            <div class="st-row__txt"><div class="st-row__t"><%= t('common.estado') %></div></div>
             <span class="dg-val"><span class="st-dot st-dot--<%= serialKind %>"></span><%= serialText %></span>
           </div>
           <div class="st-row st-row--wrap">
-            <div class="st-row__txt"><div class="st-row__t">Modo</div></div>
-            <span class="dg-val"><%= link.simulating ? 'Simulación' : 'Serial (USB/RS-232)' %></span>
+            <div class="st-row__txt"><div class="st-row__t"><%= t('common.modo') %></div></div>
+            <span class="dg-val"><%= link.simulating ? t('client.common.simulacion') : t('diagnostico.modo_serial') %></span>
           </div>
           <div class="st-row st-row--wrap st-row--top">
-            <div class="st-row__txt"><div class="st-row__t">Puertos</div></div>
+            <div class="st-row__txt"><div class="st-row__t"><%= t('diagnostico.puertos') %></div></div>
             <div class="st-addrs">
               <% if (link.ports && link.ports.length) { %>
                 <% link.ports.forEach(p => { %><div><%= p %></div><% }) %>
@@ -204,17 +204,17 @@ const warnIco = '<svg class="dg-warn" viewBox="0 0 24 24"><path d="M10.3 3.8 1.8
           </div>
         </div>
         <div class="st-card">
-          <form class="st-row st-row--wrap" action="/diagnostico/reconnect-serial" method="POST" onsubmit="return confirm('¿Forzar reconexión del Serial / Simulación?');">
+          <form class="st-row st-row--wrap" action="/diagnostico/reconnect-serial" method="POST" onsubmit="return confirm(<%= JSON.stringify(t('diagnostico.confirm_reconectar')) %>);">
             <div class="st-row__txt">
-              <div class="st-row__t">Reconectar</div>
-              <div class="st-row__d">Cierra y vuelve a abrir los puertos. No borra nada.</div>
+              <div class="st-row__t"><%= t('diagnostico.reconectar') %></div>
+              <div class="st-row__d"><%= t('diagnostico.reconectar_d') %></div>
             </div>
-            <button class="vt-btn vt-btn--ghost" type="submit">Reconectar serial</button>
+            <button class="vt-btn vt-btn--ghost" type="submit"><%= t('diagnostico.reconectar_serial') %></button>
           </form>
           <a class="st-row st-row--link" href="/diagnostico/tramas">
             <div class="st-row__txt">
-              <div class="st-row__t">Visor de tramas en vivo</div>
-              <div class="st-row__d">Las tramas del cronómetro según llegan.</div>
+              <div class="st-row__t"><%= t('diagnostico.visor') %></div>
+              <div class="st-row__d"><%= t('diagnostico.visor_d') %></div>
             </div>
             <svg class="st-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
           </a>
@@ -224,53 +224,53 @@ const warnIco = '<svg class="dg-warn" viewBox="0 0 24 24"><path d="M10.3 3.8 1.8
       <!-- ══ Mangas atascadas ═════════════════════════════════════════════ -->
       <section class="st-sec" data-sec="stuck">
         <header class="st-sec__h">
-          <h2>Mangas atascadas</h2>
-          <p>Mangas que figuran como activas en la base de datos pero no están corriendo (por ejemplo, tras un cierre inesperado).</p>
+          <h2><%= t('diagnostico.mangas_atascadas') %></h2>
+          <p><%= t('diagnostico.atascadas_p') %></p>
         </header>
         <div class="st-card">
           <% if (stuck.length === 0) { %>
             <div class="st-row">
               <span class="dg-ok"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 7"/></svg></span>
-              <div class="st-row__txt"><div class="st-row__t">No hay mangas atascadas</div></div>
+              <div class="st-row__txt"><div class="st-row__t"><%= t('diagnostico.no_hay_atascadas') %></div></div>
             </div>
           <% } else { %>
             <% stuck.forEach(m => { %>
               <form class="st-row st-row--wrap" action="/diagnostico/reset-manga/<%= m.id %>" method="POST"
-                    onsubmit="return confirm('¿Resetear manga <%= m.id %>? Se eliminarán <%= m.lap_count %> vueltas y volverá a pending.');">
+                    onsubmit="return confirm(<%= JSON.stringify(t('diagnostico.confirm_resetear', { id: m.id, n: m.lap_count })) %>);">
                 <span class="st-dot st-dot--lg st-dot--bad"></span>
                 <div class="st-row__txt">
-                  <div class="st-row__t">Tanda <%= m.tanda_number %> · Manga <%= m.number %> <span class="dg-id">#<%= m.id %></span></div>
+                  <div class="st-row__t"><%= t('common.tanda_2') %> <%= m.tanda_number %> · <%= t('common.manga') %> <%= m.number %> <span class="dg-id">#<%= m.id %></span></div>
                   <div class="st-row__d">
-                    <a href="/races/<%= m.race_id %>">Carrera <%= m.race_id %></a>
-                    · iniciada <span class="vt-mono"><%= m.started_at || '—' %></span>
-                    · <%= m.lap_count %> vueltas
+                    <a href="/races/<%= m.race_id %>"><%= t('diagnostico.carrera_n', { id: m.race_id }) %></a>
+                    · <%= t('diagnostico.iniciada') %> <span class="vt-mono"><%= m.started_at || '—' %></span>
+                    · <%= t('diagnostico.n_vueltas', { n: m.lap_count }) %>
                   </div>
                 </div>
-                <button class="vt-btn vt-btn--danger vt-btn--sm" type="submit">Resetear</button>
+                <button class="vt-btn vt-btn--danger vt-btn--sm" type="submit"><%= t('diagnostico.resetear') %></button>
               </form>
             <% }) %>
           <% } %>
         </div>
         <% if (stuck.length) { %>
-          <div class="st-row__d dg-danger-d dg-note"><%- warnIco %> Resetear borra las vueltas de esa manga y la deja pendiente.</div>
+          <div class="st-row__d dg-danger-d dg-note"><%- warnIco %> <%= t('diagnostico.resetear_nota') %></div>
         <% } %>
       </section>
 
       <!-- ══ Conexiones ═══════════════════════════════════════════════════ -->
       <section class="st-sec" data-sec="conn">
         <header class="st-sec__h">
-          <h2>Conexiones</h2>
-          <p>Dispositivos conectados ahora mismo, sin contar este equipo. Se actualiza solo.</p>
+          <h2><%= t('diagnostico.conexiones') %></h2>
+          <p><%= t('diagnostico.conexiones_p') %></p>
         </header>
         <div class="st-card">
           <div class="db-stats dg-stats--3">
             <div class="db-stat">
               <div class="db-stat__n" id="conn-web"><%= connections.web %></div>
-              <div class="db-stat__l">Navegadores</div>
+              <div class="db-stat__l"><%= t('diagnostico.navegadores') %></div>
             </div>
             <div class="db-stat">
               <div class="db-stat__n" id="conn-mobile"><%= connections.mobile %></div>
-              <div class="db-stat__l">App móvil</div>
+              <div class="db-stat__l"><%= t('diagnostico.app_movil') %></div>
             </div>
             <div class="db-stat">
               <div class="db-stat__n" id="conn-infolap"><%= connections.infolap %></div>

@@ -1,35 +1,35 @@
-<%- include('../partials/header', { pageTitle: 'PINs Lap — ' + race.name }) %>
+<%- include('../partials/header', { pageTitle: t('lap.pins_titulo', { nombre: race.name }) }) %>
 <link rel="stylesheet" href="/css/lap.css">
 
 <div class="wrap wrap--pins">
   <a href="/races/<%= race.id %>" class="vt-back-link" style="margin:0 0 10px">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-    Volver a la carrera
+    <%= t('lap.volver_a_la_carrera') %>
   </a>
 
   <div class="brand"><span class="dot"></span> PitWall <small>Lap · PINs</small></div>
   <h1><%= race.name %></h1>
 
   <% if (!isEndurance) { %>
-    <div class="err">Esta carrera no es por equipos: el cliente Lap solo aplica a carreras de resistencia.</div>
+    <div class="err"><%= t('lap.no_es_por_equipos') %></div>
   <% } else { %>
     <div class="pin-gate">
       <div class="pin-gate__txt">
-        <strong>PIN de acceso</strong>
+        <strong><%= t('lap.pin_de_acceso') %></strong>
         <span class="pin-gate__state pin-gate__state--<%= pinRequired ? 'on' : 'off' %>">
-          <%= pinRequired ? 'Activado' : 'Desactivado' %>
+          <%= pinRequired ? t('lap.activado') : t('lap.desactivado') %>
         </span>
         <p>
           <% if (pinRequired) { %>
-            Cada equipo necesita su PIN para abrir su panel.
+            <%= t('lap.pin_on_d') %>
           <% } else { %>
-            Cualquiera en la red del evento abre el panel de cualquier equipo solo eligiéndolo. Los PINs se conservan por si lo reactivas.
+            <%= t('lap.pin_off_d') %>
           <% } %>
         </p>
       </div>
       <form method="POST" action="/lap/<%= race.id %>/pins/toggle">
         <button class="pin-gate__btn" type="submit">
-          <%= pinRequired ? 'Desactivar PIN' : 'Activar PIN' %>
+          <%= pinRequired ? t('lap.desactivar_pin') : t('lap.activar_pin') %>
         </button>
       </form>
     </div>
@@ -42,7 +42,7 @@
           <span class="pin-name"><%= team.name %></span>
           <span class="pin-code"><%= team.lap_pin || '—' %></span>
           <form method="POST" action="/lap/<%= race.id %>/pins/<%= team.id %>/regenerate" class="pin-form">
-            <button class="pin-regen" type="submit" title="Nuevo PIN">↻</button>
+            <button class="pin-regen" type="submit" title="<%= t('lap.nuevo_pin') %>">↻</button>
           </form>
         </div>
       <% }) %>

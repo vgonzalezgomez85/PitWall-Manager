@@ -137,15 +137,9 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
           // Saltar: 1er salto → al final de la cola (otra oportunidad luego).
           // 2º salto seguido → ya se marca AUSENTE. El texto avisa de cuál toca.
           const skipCount = current ? (current.skip_count || 0) : 0;
-          const skipLabelEs = skipCount === 0 ? 'No se presenta →' : 'Confirmar ausencia →';
-          const skipLabelEn = skipCount === 0 ? 'No-show →' : 'Confirm absent →';
-          const skipConfirmEs = skipCount === 0
-            ? `${current ? current.entity_name : ''} no está en pista. Pasará al final de la cola y tendrá otra oportunidad cuando le vuelva a tocar.`
-            : `${current ? current.entity_name : ''} sigue sin presentarse. Quedará marcado como AUSENTE (0.00) y no tendrá más oportunidades.`;
-          const skipConfirmEn = skipCount === 0
-            ? `${current ? current.entity_name : ''} isn't on track. They'll move to the end of the queue and get another chance later.`
-            : `${current ? current.entity_name : ''} is still not showing up. They'll be marked ABSENT (0.00) with no further chances.`;
-          const skipConfirmMsg = (lang === 'es' ? skipConfirmEs : skipConfirmEn).replace(/'/g, "\\'");
+          const skipLabel = skipCount === 0 ? t('pole-timing.no_se_presenta') : t('pole-timing.confirmar_ausencia');
+          const skipConfirmMsg = t(skipCount === 0 ? 'pole-timing.confirm_salto_1' : 'pole-timing.confirm_salto_2',
+                                   { nombre: current ? current.entity_name : '' }).replace(/'/g, "\\'");
         %>
         <div id="js-btn-idle" class="pole-btn-row" style="display:none">
           <button id="js-btn-start" class="pole-btn-start" onclick="startTiming()">
@@ -183,7 +177,7 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
           <form class="pole-skip-form" action="/races/<%= race.id %>/pole/participant/skip" method="POST"
                 onsubmit="return confirm('<%= skipConfirmMsg %>')">
             <button type="submit" class="pole-btn-skip">
-              ⏭ <%= lang === 'es' ? skipLabelEs : skipLabelEn %>
+              ⏭ <%= skipLabel %>
             </button>
           </form>
         </div>
@@ -244,7 +238,6 @@ const RACE_ID      = '<%= race.id %>';
 const IS_RUNNING   = <%- isTimingRunning ? 'true' : 'false' %>;
 const SOFTWARE_GO  = <%- softwareGo ? 'true' : 'false' %>;
 const DURATION_MS  = <%= durationMs %>;
-const LANG_ES      = '<%= lang %>' === 'es';
 const IS_GUEST     = <%- isGuestAccess ? 'true' : 'false' %>;
 let   poleBestMs   = <%- poleBestMs != null ? poleBestMs : 'null' %>; // tiempo a batir (ms)
 let   poleHolder   = <%- poleHolder ? JSON.stringify(poleHolder.entity_name) : 'null' %>;
@@ -538,7 +531,7 @@ function enterFinished(bestLapMs, lapCount) {
   document.getElementById('js-final-best').textContent = formatMs(bestLapMs);
   const n = lapCount || 0;
   document.getElementById('js-final-laps').textContent =
-    n === 0 ? '' : (n === 1 ? (I18N.t('client.pole-timing.1_vuelta')) : (LANG_ES ? '· ' + n + ' vueltas' : '· ' + n + ' laps'));
+    n === 0 ? '' : (n === 1 ? (I18N.t('client.pole-timing.1_vuelta')) : I18N.t('client.pole-timing.n_vueltas', { n }));
   if (isAutoAdvance()) scheduleAutoAdvance();
 }
 
@@ -729,7 +722,6 @@ if (IS_RUNNING) {
   const tgl   = document.getElementById('omitFirstToggle');
   const state = document.getElementById('omitFirstState');
   if (!tgl) return;
-  const LANG_ES = <%= t('pole-timing.true') %>;
   function paint() { if (state) state.textContent = tgl.checked ? (I18N.t('client.pole-timing.on')) : 'OFF'; }
   paint();
   tgl.addEventListener('change', async () => {

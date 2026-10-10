@@ -2,7 +2,6 @@
 
 <% var _cfg = (typeof linkCfg !== 'undefined' && linkCfg) ? linkCfg : { role:'off', slaveUrl:'', token:'' };
    var _st  = (typeof linkState !== 'undefined' && linkState) ? linkState : { activeMangaId:null, isRunning:false, isPaused:false };
-   var es = lang === 'es';
    var navItems = [
      { key: 'link',   label: t('common.enlace_maestro_esclavo'), dot: _cfg.role === 'off' ? 'off' : 'ok',
        icon: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>' },
@@ -83,14 +82,14 @@
               <div class="st-row__d"><%= t('link.el_mismo_en_los_dos_pcs') %></div>
             </div>
             <input type="text" id="linkToken" class="vt-inp is-mono st-row__ctl st-row__ctl--wide"
-                   placeholder="secreto" autocomplete="off" spellcheck="false" value="<%= _cfg.token %>">
+                   placeholder="<%= t('link.ph_secreto') %>" autocomplete="off" spellcheck="false" value="<%= _cfg.token %>">
           </div>
           <div class="st-row st-row--wrap">
             <div class="st-row__txt">
               <div class="st-row__t st-row__t--sm"><%= t('link.cronometro_de_este_pc') %></div>
               <div class="st-row__d is-mono" id="linkLiveState">
                 <%= _st.activeMangaId != null
-                    ? ('manga ' + _st.activeMangaId + ' · ' + (_st.isRunning ? 'running' : _st.isPaused ? 'paused' : 'idle'))
+                    ? (t('common.manga') + ' ' + _st.activeMangaId + ' · ' + (_st.isRunning ? 'running' : _st.isPaused ? 'paused' : 'idle'))
                     : (t('link.sin_manga_activa')) %>
               </div>
             </div>
@@ -175,37 +174,21 @@
 <script>
 (function () {
   var LANG = <%- JSON.stringify(lang) %>;
-  var T = LANG === 'es'
-    ? {
-        needHost: 'Escribe la dirección del maestro.',
-        searching: 'Buscando…',
-        netErr: 'No se pudo conectar. Revisa la red y la dirección.',
-        noRaces: 'El maestro no tiene carreras.',
-        found: function (n) { return n + (n === 1 ? ' carrera encontrada.' : ' carreras encontradas.'); },
-        create: 'Crear aquí',
-        creating: 'Creando…',
-        created: function (id) { return '✓ Creada (id ' + id + ')'; },
-        exists: function (id) { return 'Ya la tienes (id ' + id + ')'; },
-        needJson: 'Pega el JSON a importar.',
-        badJson: 'El texto no es JSON válido.',
-        importing: 'Importando…',
-        imported: function (id) { return '✓ Importada (id ' + id + ')'; },
-      }
-    : {
-        needHost: 'Enter the master address.',
-        searching: 'Searching…',
-        netErr: 'Could not connect. Check the network and address.',
-        noRaces: 'The master has no races.',
-        found: function (n) { return n + (n === 1 ? ' race found.' : ' races found.'); },
-        create: 'Create here',
-        creating: 'Creating…',
-        created: function (id) { return '✓ Created (id ' + id + ')'; },
-        exists: function (id) { return 'Already present (id ' + id + ')'; },
-        needJson: 'Paste the JSON to import.',
-        badJson: 'The text is not valid JSON.',
-        importing: 'Importing…',
-        imported: function (id) { return '✓ Imported (id ' + id + ')'; },
-      };
+  var T = {
+    needHost: I18N.t('client.link.needHost'),
+    searching: I18N.t('client.link.searching'),
+    netErr: I18N.t('client.link.netErr'),
+    noRaces: I18N.t('client.link.noRaces'),
+    found: function (n) { return n === 1 ? I18N.t('client.link.found_1') : I18N.t('client.link.found_n', { n: n }); },
+    create: I18N.t('client.link.create'),
+    creating: I18N.t('client.link.creating'),
+    created: function (id) { return I18N.t('client.link.created', { id: id }); },
+    exists: function (id) { return I18N.t('client.link.exists', { id: id }); },
+    needJson: I18N.t('client.link.needJson'),
+    badJson: I18N.t('client.link.badJson'),
+    importing: I18N.t('client.link.importing'),
+    imported: function (id) { return I18N.t('client.link.imported', { id: id }); },
+  };
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {

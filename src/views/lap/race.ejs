@@ -4,24 +4,24 @@
 <div class="wrap">
   <a href="/lap" class="vt-back-link" style="margin:0 0 10px">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-    Carreras
+    <%= t('lap.carreras') %>
   </a>
 
   <div class="brand"><span class="dot"></span> PitWall <small>Lap</small></div>
   <h1><%= race.name %></h1>
   <p class="sub">
     <% if (pinRequired) { %>
-      Entra con tu equipo y el PIN que te dio la organización.
+      <%= t('lap.entra_con_pin') %>
     <% } else { %>
-      Elige tu equipo para ver su timing en vivo.
+      <%= t('lap.elige_equipo_timing') %>
     <% } %>
   </p>
 
   <form class="card" method="POST" action="/lap/<%= race.id %>/login">
     <% if (error) { %><div class="err"><%= error %></div><% } %>
-    <label for="teamId">Equipo</label>
+    <label for="teamId"><%= t('lap.equipo') %></label>
     <select id="teamId" name="teamId" required>
-      <option value="" disabled selected>— Elige tu equipo —</option>
+      <option value="" disabled selected><%= t('lap.elige_tu_equipo') %></option>
       <%# `t` es el traductor en las vistas: no se puede usar como variable de bucle. %>
       <% teams.forEach(team => { %>
         <option value="<%= team.id %>"><%= team.name %></option>
@@ -29,17 +29,17 @@
     </select>
 
     <% if (pinRequired) { %>
-      <label for="pin">PIN (4 dígitos)</label>
+      <label for="pin"><%= t('lap.pin_4_digitos') %></label>
       <input class="pin" id="pin" name="pin" inputmode="numeric" pattern="[0-9]*"
              maxlength="4" autocomplete="off" placeholder="••••" required>
     <% } %>
 
-    <button class="btn" type="submit">Entrar</button>
+    <button class="btn" type="submit"><%= t('lap.entrar') %></button>
   </form>
 
   <% if (typeof isAdminAccess !== 'undefined' && isAdminAccess) { %>
     <p class="footnote" style="margin-top:18px">
-      <a href="/lap/<%= race.id %>/pins">Organización · hoja de PINs</a>
+      <a href="/lap/<%= race.id %>/pins"><%= t('lap.hoja_de_pins') %></a>
     </p>
   <% } %>
 </div>

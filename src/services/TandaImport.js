@@ -51,29 +51,34 @@ function asInt(v) {
   return Number.isFinite(n) ? n : NaN;
 }
 
-class TandaImportError extends Error {}
+// Lleva una clave del diccionario (`tandaimport.*`) y sus variables: quien lo
+// muestra lo traduce por CÓDIGO, no por frase. El mensaje en español se queda
+// para los registros y para quien no tenga traductor (p. ej. un test).
+class TandaImportError extends Error {
+  constructor(message, key = null, vars = {}) { super(message); this.key = key; this.vars = vars; }
+}
 
 // Valida el payload y devuelve una versión normalizada (o lanza
 // TandaImportError con un mensaje legible). No toca la BD.
 function validate(payload) {
-  if (!payload || typeof payload !== 'object') throw new TandaImportError('Payload vacío o no es un objeto.');
+  if (!payload || typeof payload !== 'object') throw new TandaImportError('Payload vacío o no es un objeto.', 'payload_vacio');
   if (payload.schema && payload.schema !== SCHEMA) {
-    throw new TandaImportError(`Esquema no soportado: ${payload.schema} (se esperaba ${SCHEMA}).`);
+    throw new TandaImportError(`Esquema no soportado: ${payload.schema} (se esperaba ${SCHEMA}).`, 'esquema', { schema: payload.schema, esperado: SCHEMA });
   }
   const prueba = payload.prueba || {};
   const nombre = String(prueba.nombre || '').trim();
-  if (!nombre) throw new TandaImportError('Falta el nombre de la prueba (prueba.nombre).');
+  if (!nombre) throw new TandaImportError('Falta el nombre de la prueba (prueba.nombre).', 'falta_nombre');
 
   const carriles = asInt(payload.carriles);
   if (!(carriles >= 1 && carriles <= LaneColors.DEFAULT_LANE_COLORS.length)) {
-    throw new TandaImportError(`Nº de carriles inválido: ${payload.carriles}.`);
+    throw new TandaImportError(`Nº de carriles inválido: ${payload.carriles}.`, 'carriles_invalido', { v: payload.carriles });
   }
 
   const formato = String(prueba.formato || 'PAREJAS').toUpperCase();
   const isTeam = formato !== 'INDIVIDUAL';
 
   if (!Array.isArray(payload.tandas) || payload.tandas.length === 0) {
-    throw new TandaImportError('El payload no contiene tandas.');
+    throw new TandaImportError('El payload no contiene tandas.', 'sin_tandas');
   }
 
   // ¿La carrera tiene pole? Con pole, el ORDEN DE CARRIL se decide DESPUÉS de
@@ -83,21 +88,21 @@ function validate(payload) {
 
   const tandas = payload.tandas.map((t, ti) => {
     const equipos = Array.isArray(t.equipos) ? t.equipos : [];
-    if (equipos.length === 0) throw new TandaImportError(`La tanda ${ti + 1} no tiene equipos.`);
+    if (equipos.length === 0) throw new TandaImportError(`La tanda ${ti + 1} no tiene equipos.`, 'tanda_sin_equipos', { n: ti + 1 });
     const seen = new Set();
     let racers = 0;
     const eqs = equipos.map((e, ei) => {
       const enombre = String(e.nombre || '').trim();
-      if (!enombre) throw new TandaImportError(`Equipo sin nombre en la tanda ${ti + 1} (posición ${ei + 1}).`);
+      if (!enombre) throw new TandaImportError(`Equipo sin nombre en la tanda ${ti + 1} (posición ${ei + 1}).`, 'equipo_sin_nombre', { n: ti + 1, pos: ei + 1 });
       // carril_salida 0 = DESCANSO (más equipos que carriles); 1..carriles = carril de carrera.
       const carril = asInt(e.carril_salida) || 0;
       const isRest = carril === 0;
       if (!isRest && !pole) {
         if (!(carril >= 1 && carril <= carriles)) {
-          throw new TandaImportError(`Carril de salida inválido (${e.carril_salida}) para "${enombre}" en la tanda ${ti + 1}.`);
+          throw new TandaImportError(`Carril de salida inválido (${e.carril_salida}) para "${enombre}" en la tanda ${ti + 1}.`, 'carril_salida_invalido', { carril: e.carril_salida, equipo: enombre, n: ti + 1 });
         }
         if (seen.has(carril)) {
-          throw new TandaImportError(`Carril ${carril} repetido en la tanda ${ti + 1} (dos equipos en el mismo carril).`);
+          throw new TandaImportError(`Carril ${carril} repetido en la tanda ${ti + 1} (dos equipos en el mismo carril).`, 'carril_repetido', { carril, n: ti + 1 });
         }
         seen.add(carril);
         racers++;
@@ -108,10 +113,10 @@ function validate(payload) {
     });
     if (!pole) {
       if (racers === 0) {
-        throw new TandaImportError(`La tanda ${ti + 1} no tiene ningún equipo en carril (todos en descanso).`);
+        throw new TandaImportError(`La tanda ${ti + 1} no tiene ningún equipo en carril (todos en descanso).`, 'todos_descanso', { n: ti + 1 });
       }
       if (racers > carriles) {
-        throw new TandaImportError(`La tanda ${ti + 1} tiene ${racers} equipos en carril y solo ${carriles} carriles.`);
+        throw new TandaImportError(`La tanda ${ti + 1} tiene ${racers} equipos en carril y solo ${carriles} carriles.`, 'demasiados', { n: ti + 1, equipos: racers, carriles });
       }
     }
     return { numero: asInt(t.numero) || ti + 1, equipos: eqs };

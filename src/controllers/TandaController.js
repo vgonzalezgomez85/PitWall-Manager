@@ -75,7 +75,7 @@ class TandaController {
   // GET /races/:id/tandas/new
   static newForm(req, res) {
     const race = Race.findById(req.params.id);
-    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
+    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.race_not_found') });
 
     const laneSequence  = Race.getLaneSequence(race);
     const profiles      = DriverProfile.findAll();
@@ -87,7 +87,7 @@ class TandaController {
   // POST /races/:id/tandas
   static create(req, res) {
     const race = Race.findById(req.params.id);
-    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
+    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.race_not_found') });
 
     const laneSequence = Race.getLaneSequence(race);
     const errors = [];
@@ -185,7 +185,7 @@ class TandaController {
   // GET /races/:id/mangas/:mangaId/edit
   static editManga(req, res) {
     const race = Race.findById(req.params.id);
-    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
+    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.race_not_found') });
 
     const manga = Manga.findById(req.params.mangaId);
     if (!manga || manga.status !== 'pending') return res.redirect(`/races/${race.id}`);
@@ -206,7 +206,7 @@ class TandaController {
   // POST /races/:id/mangas/:mangaId/edit
   static updateManga(req, res) {
     const race = Race.findById(req.params.id);
-    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
+    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.race_not_found') });
 
     const manga = Manga.findById(req.params.mangaId);
     if (!manga || manga.status !== 'pending') return res.redirect(`/races/${race.id}`);
@@ -274,7 +274,7 @@ class TandaController {
     const race  = Race.findById(req.params.id);
     const tanda = Tanda.findById(req.params.tandaId);
     if (!race || !tanda || tanda.race_id !== race.id) {
-      return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+      return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.not_found') });
     }
 
     const laneSequence   = Race.getLaneSequence(race);
@@ -300,7 +300,7 @@ class TandaController {
     const race  = Race.findById(req.params.id);
     const tanda = Tanda.findById(req.params.tandaId);
     if (!race || !tanda || tanda.race_id !== race.id) {
-      return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+      return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.not_found') });
     }
 
     const laneSequence   = Race.getLaneSequence(race);

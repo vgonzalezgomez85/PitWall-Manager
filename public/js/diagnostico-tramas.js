@@ -75,6 +75,14 @@
   }
 
   // Tipo de trama → clase de color. El default deja la fila neutra.
+  // La etiqueta llega en español desde el servidor con su clave del diccionario
+  // (ver frameDecoder.js → traducible); aquí se traduce al idioma de quien mira.
+  function etiqueta(f) {
+    if (!f.labelKey) return f.label;
+    const v = Object.assign({}, f.labelVars || {});
+    if (v.sKey) v.s = I18N.t(v.sKey);
+    return I18N.t(f.labelKey, v);
+  }
   const KIND_CLASS = {
     crossing:          'is-crossing',
     go:                'is-go',
@@ -125,12 +133,12 @@
       + (source === 'bart' ? '<span class="vt-frame__src">BART</span>' : '')
       + (source === 'tictac' ? '<span class="vt-frame__src">TicTac</span>' : '')
       + (f.badge ? '<span class="vt-frame__badge">' + esc(f.badge) + '</span>' : '')
-      + '<span class="vt-frame__label">' + esc(f.label || kind) + '</span>';
+      + '<span class="vt-frame__label">' + esc(etiqueta(f) || kind) + '</span>';
 
     if (Array.isArray(f.fields) && f.fields.length) {
       html += '<span class="vt-frame__fields">';
       for (const fld of f.fields) {
-        html += '<span class="vt-frame__f">' + esc(fld.k) + ' <b>' + esc(fld.v) + '</b></span>';
+        html += '<span class="vt-frame__f">' + esc(fld.kKey ? I18N.t(fld.kKey) : fld.k) + ' <b>' + esc(fld.vKey ? I18N.t(fld.vKey) : fld.v) + '</b></span>';
       }
       html += '</span>';
     }
@@ -212,7 +220,7 @@
   // ── Controles ─────────────────────────────────────────────────────────
   btnPause.addEventListener('click', () => {
     paused = !paused;
-    btnPauseTxt.textContent = paused ? 'Reanudar' : 'Pausar';
+    btnPauseTxt.textContent = paused ? I18N.t('client.tramas.reanudar') : I18N.t('client.tramas.pausar');
     list.classList.toggle('is-paused', paused);
     if (statPaused) statPaused.hidden = !paused;
     if (!paused && buffer.length) {   // al reanudar se suelta lo acumulado

@@ -45,13 +45,13 @@ class DriverProfileController {
 
   static editForm(req, res) {
     const profile = DriverProfile.findById(req.params.id);
-    if (!profile) return res.status(404).render('error', { t: req.t, code: 404, message: 'Driver not found' });
+    if (!profile) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.driver_not_found') });
     res.render('drivers/edit', { t: req.t, profile, errors: [], body: {} });
   }
 
   static update(req, res) {
     const profile = DriverProfile.findById(req.params.id);
-    if (!profile) return res.status(404).render('error', { t: req.t, code: 404, message: 'Driver not found' });
+    if (!profile) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.driver_not_found') });
 
     const { name, category } = req.body;
     const errors = [];
@@ -262,7 +262,7 @@ class DriverProfileController {
     try {
       const db = require('../config/database');
       let profile = DriverProfile.findById(req.params.id);
-      if (!profile) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+      if (!profile) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.not_found') });
       profile = DriverProfileController._ensureQR(db, profile);
       let qrDataUrl = null;
       if (profile.qr_code) {

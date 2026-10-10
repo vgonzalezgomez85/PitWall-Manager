@@ -1,4 +1,4 @@
-<%- include('../partials/header', { lang, pageTitle: 'Visor de tramas' }) %>
+<%- include('../partials/header', { lang, pageTitle: t('tramas.titulo') }) %>
 
 <%
 // Descripción de la fuente para el estado vacío: lo que el operador necesita
@@ -6,12 +6,9 @@
 // sale de los circuitos, no de una constante: con BART decir "DS-300" mandaría a
 // buscar el fallo al cable equivocado.
 const circuits = link.circuits || [];
-const anyBart  = circuits.some(c => c.isBart);
-const anyTic   = circuits.some(c => c.isTicTac);
-const anyDs    = circuits.some(c => !c.isBart && !c.isTicTac);
-const srcLabel = link.simulating ? 'Simulación'
-               : [anyDs && 'DS-300', anyBart && 'BART', anyTic && 'TicTac'].filter(Boolean).join(' + ') || 'sin fuente';
-const portList = (link.ports && link.ports.length) ? link.ports.join(' · ') : 'sin puerto';
+const srcLabel = link.simulating ? t('client.common.simulacion')
+               : (circuits.length ? link.label : t('tramas.sin_fuente'));
+const portList = (link.ports && link.ports.length) ? link.ports.join(' · ') : t('tramas.sin_puerto');
 %>
 
 <div class="vt-page">
@@ -19,7 +16,7 @@ const portList = (link.ports && link.ports.length) ? link.ports.join(' · ') : '
 
     <a href="/diagnostico" class="vt-back-link">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      Solución de problemas
+      <%= t('diagnostico.titulo') %>
     </a>
 
     <div class="vt-head" style="align-items:flex-start;justify-content:flex-start;gap:16px;flex-wrap:nowrap">
@@ -27,16 +24,15 @@ const portList = (link.ports && link.ports.length) ? link.ports.join(' · ') : '
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l3-7 4 14 3-7h6"/></svg>
       </div>
       <div>
-        <h1>Visor de tramas</h1>
+        <h1><%= t('tramas.titulo') %></h1>
         <p class="vt-lead">
-          Lo que llega por el cable, byte a byte y en directo. Los bytes atenuados
-          son los que PitWall <strong>no</strong> interpreta.
+          <%- t('tramas.lead') %>
         </p>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
         <span class="vt-badge <%= link.connected ? 'is-ok is-live' : (link.simulating ? 'is-warn' : 'is-bad') %>">
           <span class="vt-badge__d"></span>
-          <%= link.simulating ? 'Simulación' : (link.connected ? srcLabel + ' conectado' : 'Sin señal') %>
+          <%= link.simulating ? t('client.common.simulacion') : (link.connected ? t('tramas.fuente_conectada', { src: srcLabel }) : t('tramas.sin_senal')) %>
         </span>
       </div>
     </div>
@@ -45,28 +41,28 @@ const portList = (link.ports && link.ports.length) ? link.ports.join(' · ') : '
     <div class="vt-frames-bar">
       <button type="button" id="btnPause" class="vt-btn vt-btn--ghost vt-btn--sm">
         <svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg>
-        <span id="btnPauseTxt">Pausar</span>
+        <span id="btnPauseTxt"><%= t('client.tramas.pausar') %></span>
       </button>
       <button type="button" id="btnClear" class="vt-btn vt-btn--ghost vt-btn--sm">
         <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/></svg>
-        Limpiar
+        <%= t('tramas.limpiar') %>
       </button>
 
       <label class="vt-chk">
         <input type="checkbox" id="chkHideHb" checked>
-        Ocultar latidos
+        <%= t('tramas.ocultar_latidos') %>
       </label>
       <label class="vt-chk">
         <input type="checkbox" id="chkOnlyCross">
-        Solo cruces
+        <%= t('tramas.solo_cruces') %>
       </label>
 
       <span class="vt-frames-bar__sep"></span>
 
-      <span class="vt-frames-stat"><b id="statTotal">0</b> tramas</span>
+      <span class="vt-frames-stat"><b id="statTotal">0</b> <%= t('tramas.tramas') %></span>
       <span class="vt-frames-stat"><b id="statRate">0,0</b> /s</span>
       <span class="vt-badge is-neutral" id="statPaused" hidden>
-        <span class="vt-badge__d"></span> En pausa · <span id="statBuffered">0</span> en cola
+        <span class="vt-badge__d"></span> <%= t('tramas.en_pausa') %> <span id="statBuffered">0</span> <%= t('tramas.en_cola') %>
       </span>
     </div>
 
@@ -74,14 +70,13 @@ const portList = (link.ports && link.ports.length) ? link.ports.join(' · ') : '
     <div class="vt-frames hide-hb" id="framesList"
          data-src="<%= srcLabel %>" data-ports="<%= portList %>">
       <div class="vt-frames-empty" id="framesEmpty">
-        <div class="vt-frames-empty__t">Esperando tramas…</div>
-        Fuente: <%= srcLabel %> · <span class="vt-mono"><%= portList %></span>
+        <div class="vt-frames-empty__t"><%= t('tramas.esperando') %></div>
+        <%= t('tramas.fuente') %> <%= srcLabel %> · <span class="vt-mono"><%= portList %></span>
       </div>
     </div>
 
     <p class="vt-note" style="margin-top:10px;color:var(--vt-mute-2)">
-      Solo se decodifica mientras esta página está abierta. Se muestran las últimas
-      500 tramas.
+      <%= t('tramas.nota') %>
     </p>
 
   </div>

@@ -3,6 +3,23 @@
 Documento de trabajo. Estado a **2026-10-10**, tras las versiones v1.51.0 a
 v1.52.3.
 
+> **Actualización v1.54.0 (2026-10-10): los bloques A–E están HECHOS.**
+> Todo el texto visible sale del diccionario (2.266 claves en `es`/`en`/`it`). Las
+> dos decisiones de abajo se tomaron así: **(1)** el inglés de los textos nuevos lo
+> tradujo el asistente (opción b, que revise un nativo); **(2)** el diagnóstico y el
+> visor de tramas **entran**. Verificado: 0 claves sin resolver, 528 scripts
+> compilan, el texto visible en español idéntico al de antes, 536 tests.
+>
+> Lo que queda:
+> - **Traducir el italiano**: 1.629 claves siguen en español provisional. Kit
+>   regenerado en `traducciones/pitwall-it.csv`; hay que avisar al traductor.
+> - **Revisión nativa** del resumen del EULA en italiano y del inglés nuevo.
+> - «Tanda» en inglés no es uniforme en las claves antiguas (Heat / Round / Group).
+> - El kit marca 551 claves «sin uso»: muchas se montan en tiempo de ejecución
+>   (`_admin.layout_` + id, `drivers.categories.` + cat…); antes de borrar ninguna,
+>   comprobarla a mano.
+> - Prueba a mano en los tres idiomas.
+
 El objetivo es que **todo el texto visible de PitWall salga del diccionario** de
 `src/locales/`, para poder traducir la app. El italiano es el primer idioma nuevo;
 el kit para quien traduzca está en [`../traducciones/`](../traducciones/).

@@ -29,7 +29,7 @@ const VerificationController = {
   // POST /import/verificaciones
   create(req, res) {
     if (!ImportController.importAuthorized(req)) {
-      return res.status(403).json({ ok: false, error: 'PIN de importación incorrecto o dispositivo no autorizado.' });
+      return res.status(403).json({ ok: false, error: req.t('tandaimport.pin_incorrecto') });
     }
     try {
       const payload = req.body && req.body.payload ? req.body.payload : req.body;
@@ -44,7 +44,7 @@ const VerificationController = {
   // GET /races/:id/verificaciones
   race(req, res) {
     const race = Race.findById(parseInt(req.params.id, 10));
-    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
+    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.race_not_found') });
     const verifs = Verification.findByRace(race.id);
 
     const porManga = new Map();

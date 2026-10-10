@@ -11,11 +11,10 @@
     <p class="page-subtitle">PitWall · GNU Affero General Public License v3</p>
   </div>
 
-  <%# El EULA solo está redactado en español e inglés, así que su selector lista
-      esos dos y no la lista completa de idiomas de la app: ofrecer italiano aquí
-      llevaría a una página en inglés. Al traducir el texto, añadirlo a esta lista
-      y su bloque de contenido más abajo. %>
-  <% const EULA_LANGS = [['es', 'Español'], ['en', 'English']]; %>
+  <%# El EULA es un texto largo con estructura propia, así que va en un bloque por
+      idioma en vez de en el diccionario. Al añadir un idioma: esta lista y su bloque
+      de contenido más abajo. El que no tenga bloque cae al inglés. %>
+  <% const EULA_LANGS = [['es', 'Español'], ['en', 'English'], ['it', 'Italiano']]; %>
   <div class="eula-lang-switch">
     <% EULA_LANGS.forEach(([code, nombre]) => { %>
       <a href="<%= typeof langUrl !== 'undefined' ? langUrl(code) : '/eula?lang=' + code %>"
@@ -51,6 +50,34 @@
     </ul>
 
     <p style="font-size:.82rem">El nombre «PitWall» y el logotipo no forman parte de la licencia del código.</p>
+
+  <% } else if (lang === 'it') { %>
+
+    <p><strong>PitWall è software libero.</strong> Copyright &copy; 2026 Víctor González Gómez.</p>
+    <p>Questo programma è distribuito sotto la <strong>GNU Affero General Public License, versione 3 (AGPLv3)</strong> o, a tua scelta, qualsiasi versione successiva.</p>
+
+    <h2>Cosa puoi fare</h2>
+    <ul>
+      <li><strong>Usarlo</strong> per qualsiasi scopo, gratuitamente.</li>
+      <li><strong>Studiare</strong> come funziona ed esaminare il codice sorgente.</li>
+      <li><strong>Modificarlo</strong> e adattarlo alle tue esigenze.</li>
+      <li><strong>Ridistribuirlo</strong>, con o senza modifiche.</li>
+    </ul>
+
+    <h2>Cosa devi rispettare</h2>
+    <ul>
+      <li>Qualsiasi versione che <strong>distribuisci o che offri attraverso una rete</strong> (ad esempio, servendola via web) deve essere pubblicata anch'essa sotto la <strong>AGPLv3</strong> e rendere disponibile agli utenti il suo <strong>codice sorgente completo</strong>.</li>
+      <li>Devi conservare gli avvisi di copyright e di licenza.</li>
+      <li>Il software è fornito <strong>SENZA ALCUNA GARANZIA</strong>, nei limiti consentiti dalla legge.</li>
+    </ul>
+
+    <p>Il testo legale completo prevale su questo riassunto. Puoi consultarlo qui:</p>
+    <ul>
+      <li><a href="https://github.com/vgonzalezgomez85/PitWall-Manager" target="_blank" rel="noopener">Codice sorgente di PitWall (GitHub)</a></li>
+      <li><a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener">Testo completo della GNU AGPLv3</a></li>
+    </ul>
+
+    <p style="font-size:.82rem">Il nome «PitWall» e il logo non fanno parte della licenza del codice.</p>
 
   <% } else { %>
 

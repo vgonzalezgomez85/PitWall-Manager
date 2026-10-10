@@ -68,7 +68,7 @@ class PoleController {
   // GET /races/:id/pole/setup  — choose lane, view participant list
   static setup(req, res) {
     const race = Race.findById(req.params.id);
-    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
+    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.race_not_found') });
     if (!race.has_pole) return res.redirect(`/races/${race.id}`);
 
     const session = PoleSession.findByRace(race.id);
@@ -91,7 +91,7 @@ class PoleController {
   // POST /races/:id/pole/start  — set lane, shuffle, begin
   static startPole(req, res) {
     const race = Race.findById(req.params.id);
-    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
+    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.race_not_found') });
 
     const session = PoleSession.findByRace(race.id);
     // Allow start/reset if no participant has been timed yet
@@ -120,7 +120,7 @@ class PoleController {
   // GET /races/:id/pole/timing  — live timing page
   static timing(req, res) {
     const race = Race.findById(req.params.id);
-    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
+    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.race_not_found') });
 
     const session = PoleSession.findByRace(race.id);
     if (!session) return res.redirect(`/races/${race.id}`);
@@ -292,7 +292,7 @@ class PoleController {
   // se marca AUSENTE de verdad (0.00 + is_noshow) y se avanza al siguiente.
   static skipParticipant(req, res) {
     const race = Race.findById(req.params.id);
-    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
+    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.race_not_found') });
 
     const session = PoleSession.findByRace(race.id);
     if (!session || !['in_progress', 'timing'].includes(session.status)) return res.redirect(`/races/${race.id}/pole/results`);
@@ -328,7 +328,7 @@ class PoleController {
   // POST /races/:id/pole/next  — advance to next participant
   static advanceParticipant(req, res) {
     const race = Race.findById(req.params.id);
-    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
+    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.race_not_found') });
 
     const session = PoleSession.findByRace(race.id);
     if (!session || !['in_progress', 'timing'].includes(session.status)) return res.redirect(`/races/${race.id}/pole/results`);
@@ -351,7 +351,7 @@ class PoleController {
   // GET /races/:id/pole/results
   static results(req, res) {
     const race = Race.findById(req.params.id);
-    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
+    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.race_not_found') });
 
     const session = PoleSession.findByRace(race.id);
     if (!session) return res.redirect(`/races/${race.id}`);
@@ -369,7 +369,7 @@ class PoleController {
   // POST /races/:id/pole/times  — edit times after the fact
   static saveTimes(req, res) {
     const race = Race.findById(req.params.id);
-    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
+    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.race_not_found') });
 
     const session = PoleSession.findByRace(race.id);
     if (!session) return res.redirect(`/races/${race.id}`);
@@ -390,7 +390,7 @@ class PoleController {
   // GET /races/:id/pole/lanes
   static laneSelection(req, res) {
     const race = Race.findById(req.params.id);
-    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
+    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.race_not_found') });
 
     const session = PoleSession.findByRace(race.id);
     if (!session || session.status !== 'done') return res.redirect(`/races/${race.id}/pole/results`);
@@ -483,7 +483,7 @@ class PoleController {
   // POST /races/:id/pole/lanes  — create tanda(s) from lane assignments
   static assignLanes(req, res) {
     const race = Race.findById(req.params.id);
-    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Race not found' });
+    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.race_not_found') });
 
     const session = PoleSession.findByRace(race.id);
     if (!session) return res.redirect(`/races/${race.id}`);

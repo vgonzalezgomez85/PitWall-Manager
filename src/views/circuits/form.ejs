@@ -936,7 +936,7 @@ refreshLaneColorGrid();
 
   async function createCategory() {
     const name = input.value.trim();
-    if (!name) { showFeedback('Escribe un nombre primero', true); input.focus(); return; }
+    if (!name) { showFeedback(I18N.t('client.circuits.escribe_nombre'), true); input.focus(); return; }
     btn.disabled = true;
     try {
       const res = await fetch('/api/categories', {
@@ -950,10 +950,10 @@ refreshLaneColorGrid();
       } else {
         addCardToGrid({ id: data.id, name: data.name });
         input.value = '';
-        showFeedback(`Categoría "${data.name}" creada`, false);
+        showFeedback(I18N.t('client.circuits.categoria_creada', { nombre: data.name }), false);
       }
     } catch (e) {
-      showFeedback('Error de red', true);
+      showFeedback(I18N.t('client.circuits.error_red'), true);
     } finally {
       btn.disabled = false;
       input.focus();

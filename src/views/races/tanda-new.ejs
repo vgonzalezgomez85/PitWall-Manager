@@ -312,12 +312,12 @@ function slotLabel(i, total){
   return (I18N.t('client.common.dsc')) + (restIdx > 0 ? restIdx : '');
 }
 function slotColor(i){ const l = i < LANE_SEQ.length ? LANE_SEQ[i] : 0; return l > 0 ? COLORS[(l-1) % COLORS.length] : '#30363d'; }
-const DRIVER_PH = "<%= t('wizard.driver_name_ph') %>";
+const DRIVER_PH = <%- JSON.stringify(t('wizard.driver_name_ph')) %>;
 // Campos opcionales por participante (interruptores de la carrera).
 const SHOW_CAT = <%= race.has_categoria ? 'true' : 'false' %>;
 const SHOW_CAR = <%= race.has_coche ? 'true' : 'false' %>;
-const CAT_PH   = "<%= t('common.categoria_copa') %>";
-const CAR_PH   = "<%= t('common.coche') %>";
+const CAT_PH   = <%- JSON.stringify(t('common.categoria_copa')) %>;
+const CAR_PH   = <%- JSON.stringify(t('common.coche')) %>;
 function attrsHtml(prefix) {
   if (!SHOW_CAT && !SHOW_CAR) return '';
   let h = '<div class="participant-attrs">';
@@ -325,9 +325,9 @@ function attrsHtml(prefix) {
   if (SHOW_CAR) h += `<input class="form-input participant-car" type="text" name="${prefix}[coche]" placeholder="${CAR_PH}" autocomplete="off">`;
   return h + '</div>';
 }
-const TEAM_PH   = "<%= t('wizard.team_name_ph') %>";
-const MEMBER_PH = "<%= t('wizard.member_ph') %>";
-const OPT_LBL   = "<%= t('wizard.optional') %>";
+const TEAM_PH   = <%- JSON.stringify(t('wizard.team_name_ph')) %>;
+const MEMBER_PH = <%- JSON.stringify(t('wizard.member_ph')) %>;
+const OPT_LBL   = <%- JSON.stringify(t('wizard.optional')) %>;
 
 // Flat list of all profiles with their category for the autocomplete
 const ALL_PROFILES = <%- JSON.stringify(

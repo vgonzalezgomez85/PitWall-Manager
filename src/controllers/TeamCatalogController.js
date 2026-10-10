@@ -87,14 +87,14 @@ class TeamCatalogController {
 
   static editForm(req, res) {
     const team = TeamCatalog.findById(req.params.id);
-    if (!team) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+    if (!team) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.not_found') });
     const drivers = db.prepare('SELECT * FROM driver_profiles ORDER BY name ASC').all();
     res.render('teams/form', { t: req.t, team, errors: [], body: team, drivers });
   }
 
   static update(req, res) {
     const team = TeamCatalog.findById(req.params.id);
-    if (!team) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+    if (!team) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.not_found') });
 
     upload.single('car_photo')(req, res, (err) => {
       if (err) req.fileError = err.message;

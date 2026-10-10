@@ -2,10 +2,9 @@
 
 <%
 const CATEGORIES = ['platino','oro','plata','bronce'];
-const CAT_LABELS = {
-  es: { platino: 'Platino', oro: 'Oro', plata: 'Plata', bronce: 'Bronce' },
-  en: { platino: 'Platinum', oro: 'Gold', plata: 'Silver', bronce: 'Bronze' }
-};
+// Nombre de cada categoría en el idioma de la página (antes un mapa es/en que
+// reventaba con cualquier otro idioma).
+const catLabel = (cat) => t('drivers.categories.' + cat);
 const CAT_ICONS = {
   platino: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12l3 6-9 11L3 10z"/><path d="M6 4l3 6h6l3-6M9 10l3 11M15 10l-3 11"/></svg>',
   oro:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="15" r="6"/><path d="M8 4l2 5M16 4l-2 5M7 4h10"/></svg>',
@@ -97,13 +96,13 @@ const CAT_ICONS = {
             <div class="vt-list-section__h">
               <span class="vt-cat-pill vt-cat--<%= cat %>">
                 <span class="vt-cat-dot vt-cat--<%= cat %>"></span>
-                <%= CAT_LABELS[lang][cat] %>
+                <%= catLabel(cat) %>
                 <span class="vt-cat-pill__count"><%= group.length %></span>
               </span>
             </div>
             <div class="vt-list">
               <% group.forEach(p => { %>
-                <div class="vt-list-row" data-search-extra="<%= CAT_LABELS[lang][cat] %>">
+                <div class="vt-list-row" data-search-extra="<%= catLabel(cat) %>">
                   <div class="vt-list-row__main">
                     <span class="vt-cat-dot vt-cat--<%= p.category %>"></span>
                     <span class="vt-list-row__name"><%= p.name %></span>

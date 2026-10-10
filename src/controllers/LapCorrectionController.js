@@ -35,7 +35,7 @@ class LapCorrectionController {
   static show(req, res) {
     const race  = Race.findById(req.params.id);
     const manga = Manga.findById(req.params.mangaId);
-    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.not_found') });
 
     const tanda = Tanda.findById(manga.tanda_id);
     const lanes = Manga.getLanes(manga.id);
@@ -87,7 +87,7 @@ class LapCorrectionController {
   static setComa(req, res) {
     const race  = Race.findById(req.params.id);
     const manga = Manga.findById(req.params.mangaId);
-    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.not_found') });
 
     const redirect = () => res.redirect(`/races/${race.id}/mangas/${manga.id}/corrections`);
     if (manga.race_id !== race.id) return redirect();   // URL de otra carrera: no tocar
@@ -115,7 +115,7 @@ class LapCorrectionController {
   static markGhost(req, res) {
     const race  = Race.findById(req.params.id);
     const manga = Manga.findById(req.params.mangaId);
-    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.not_found') });
 
     Lap.markGhost(parseInt(req.params.lapId));
     corrected(res, race, manga);
@@ -125,7 +125,7 @@ class LapCorrectionController {
   static restore(req, res) {
     const race  = Race.findById(req.params.id);
     const manga = Manga.findById(req.params.mangaId);
-    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.not_found') });
 
     Lap.restore(parseInt(req.params.lapId));
     corrected(res, race, manga);
@@ -135,7 +135,7 @@ class LapCorrectionController {
   static transfer(req, res) {
     const race  = Race.findById(req.params.id);
     const manga = Manga.findById(req.params.mangaId);
-    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.not_found') });
 
     const toLane = parseInt(req.body.to_lane);
     if (!toLane) return res.redirect(`/races/${race.id}/mangas/${manga.id}/corrections`);
@@ -148,7 +148,7 @@ class LapCorrectionController {
   static addManual(req, res) {
     const race  = Race.findById(req.params.id);
     const manga = Manga.findById(req.params.mangaId);
-    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.not_found') });
 
     const lane     = parseInt(req.body.lane);
     const lapTimeS = parseFloat(req.body.lap_time_s);
@@ -168,7 +168,7 @@ class LapCorrectionController {
   static deleteLap(req, res) {
     const race  = Race.findById(req.params.id);
     const manga = Manga.findById(req.params.mangaId);
-    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.not_found') });
 
     Lap.deleteLap(parseInt(req.params.lapId));
     corrected(res, race, manga);
@@ -178,7 +178,7 @@ class LapCorrectionController {
   static editTime(req, res) {
     const race  = Race.findById(req.params.id);
     const manga = Manga.findById(req.params.mangaId);
-    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.not_found') });
 
     const lapTimeS = parseFloat(req.body.lap_time_s);
     if (!isNaN(lapTimeS) && lapTimeS > 0) {

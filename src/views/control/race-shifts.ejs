@@ -146,7 +146,7 @@ const reglas  = { minMs, maxMs, maxRuns, final: true };
                       <td class="is-num is-mono is-name"><%= fmtTime(s.driving_ms) %></td>
                       <td>
                         <% if (s.pre_armed) { %>
-                          <span class="vt-badge is-info"><span class="vt-badge__d"></span>Pre-arme</span>
+                          <span class="vt-badge is-info"><span class="vt-badge__d"></span><%= t('race-shifts.pre_arme') %></span>
                         <% } else if (s.ended_at_ms == null) { %>
                           <span class="vt-badge is-ok is-live"><span class="vt-badge__d"></span><%= t('common.en_curso') %></span>
                         <% } else { %>

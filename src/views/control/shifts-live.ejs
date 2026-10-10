@@ -259,9 +259,7 @@ const teamNameByLane = {};
           <div class="sc-prearm__foot">
             <% if (prearme.complete) { %>
               <span class="sc-prearm__done">
-                <%= lang === 'es'
-                  ? 'Los ' + prearme.total + ' equipos han fichado — listos para el GO'
-                  : 'All ' + prearme.total + ' teams checked in — ready for GO' %>
+                <%= t('shifts-live.todos_fichados', { n: prearme.total }) %>
               </span>
             <% } else { %>
               <span class="sc-prearm__legend">
@@ -614,7 +612,7 @@ async function submitCode(code) {
       bigFeedback('error', text, data.name || '');
     }
   } catch (err) {
-    toast('error', err.message || 'Network error');
+    toast('error', err.message || I18N.t('client.shifts-live.error_red'));
     bigFeedback('error', I18N.t('client.shifts-live.error_de_red'), '');
   } finally {
     updateFocus();
@@ -677,7 +675,7 @@ async function submitFix() {
     } else {
       toast('error', data.error || 'Error');
     }
-  } catch (e) { toast('error', e.message || 'Network error'); }
+  } catch (e) { toast('error', e.message || I18N.t('client.shifts-live.error_red')); }
 }
 document.addEventListener('click', e => {
   const btn = e.target.closest && e.target.closest('.sc-lane__fix');
@@ -726,11 +724,7 @@ async function camApplyFocus() {
     if (adv.length) await track.applyConstraints({ advanced: adv });
     if (camHint) {
       const hasAF = caps.focusMode && caps.focusMode.includes('continuous');
-      camHint.textContent = LANG === 'es'
-        ? (hasAF ? 'Apunta la cámara al QR del piloto'
-                 : 'Cámara de foco fijo: acerca el QR a ~15-20 cm y mantenlo firme')
-        : (hasAF ? 'Point the camera at the pilot QR'
-                 : 'Fixed-focus camera: hold the QR ~15-20 cm away and steady');
+      camHint.textContent = hasAF ? I18N.t('client.shifts-live.camara_af') : I18N.t('client.shifts-live.camara_fija');
     }
   } catch (e) { /* sin soporte de constraints avanzados: ignoramos */ }
 }
@@ -977,8 +971,8 @@ socket.on('driver_checkin', data => {
       const open = fsBtn.querySelector('.sc-fs-open'), close = fsBtn.querySelector('.sc-fs-close');
       if (open)  open.hidden = on;
       if (close) close.hidden = !on;
-      fsBtn.title = on ? '<%= t('shifts-live.salir_de_pantalla_completa') %>'
-                       : '<%= t('common.pantalla_completa') %>';
+      fsBtn.title = on ? <%- JSON.stringify(t('shifts-live.salir_de_pantalla_completa')) %>
+                       : <%- JSON.stringify(t('common.pantalla_completa')) %>;
     });
   }
 

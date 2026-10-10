@@ -47,7 +47,7 @@ const selectedCat = body.category || 'bronce';
               <div class="vt-opt__ico" style="background:rgba(255,255,255,.04)">
                 <span class="vt-cat-dot vt-cat--<%= c.key %>" style="width:18px;height:18px"></span>
               </div>
-              <div class="vt-opt__t vt-cat--<%= c.key %>"><%= lang === 'es' ? c.label_es : c.label_en %></div>
+              <div class="vt-opt__t vt-cat--<%= c.key %>"><%= t('drivers.categories.' + c.key) %></div>
             </label>
           <% }) %>
         </div>

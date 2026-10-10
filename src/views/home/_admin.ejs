@@ -20,7 +20,6 @@ const LAYOUTS = (typeof homeLayouts !== 'undefined') ? homeLayouts : [];
 const BASIC = typeof uiMode !== 'undefined' && uiMode === 'basic';
 %>
 <%
-const es = lang === 'es';
 const ext = '<svg class="hm-ext" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>';
 const fmtClock = (ms) => { if (ms == null) return '--:--'; const s = Math.ceil(ms / 1000); return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
 const typeLabel = (r) => (r.type === 'championship' ? (t('_admin.campeonato')) : 'Club') + ' · ' + (r.format === 'team' ? (t('client.common.equipos')) : (t('_admin.individual')));
@@ -244,7 +243,7 @@ const tile = (it, small) => '<a href="' + it.href + '" class="hm-tile' + (small 
           <span class="hm-badge hm-badge--live"><span class="hm-dot hm-dot--live"></span>&nbsp;<% heroKicker() %></span>
           <div class="hm-hero__name"><%= lv.race.name %></div>
           <div class="hm-hero__sub">
-            <% if (lv.manga) { %><%= t('common.manga') %> <%= lv.position %> <%= es ? 'de' : 'of' %> <%= lv.total %> · <%= t('common.tanda_2') %> <%= lv.manga.tanda_number %> · <% } %><%= t('_admin.queda_2') %> <span class="hm-mono hm-strong-t" id="hmClock"><%= lv.running ? fmtClock(lv.remainingMs) : '--:--' %></span> · <%= t('common.lider') %> <b id="hmLeader"><%= lv.leader || '—' %></b>
+            <% if (lv.manga) { %><%= t('common.manga') %> <%= lv.position %> <%= t('_admin.de') %> <%= lv.total %> · <%= t('common.tanda_2') %> <%= lv.manga.tanda_number %> · <% } %><%= t('_admin.queda_2') %> <span class="hm-mono hm-strong-t" id="hmClock"><%= lv.running ? fmtClock(lv.remainingMs) : '--:--' %></span> · <%= t('common.lider') %> <b id="hmLeader"><%= lv.leader || '—' %></b>
           </div>
           <div class="hm-bar"><div style="width:<%= lv.total ? Math.round(lv.heatsShown / lv.total * 100) : 0 %>%"></div></div>
         </div>
@@ -258,7 +257,7 @@ const tile = (it, small) => '<a href="' + it.href + '" class="hm-tile' + (small 
             <div class="hm-kicker"><span class="hm-dot hm-dot--live"></span><% heroKicker() %></div>
             <div class="hm-hero__name"><%= lv.race.name %></div>
             <div class="hm-hero__sub">
-              <% if (lv.manga) { %><%= t('common.manga') %> <%= lv.position %> <%= es ? 'de' : 'of' %> <%= lv.total %> · <%= t('common.tanda_2') %> <%= lv.manga.tanda_number %> · <% } %><%= typeLabel(lv.race) %>
+              <% if (lv.manga) { %><%= t('common.manga') %> <%= lv.position %> <%= t('_admin.de') %> <%= lv.total %> · <%= t('common.tanda_2') %> <%= lv.manga.tanda_number %> · <% } %><%= typeLabel(lv.race) %>
             </div>
             <div class="hm-bar"><div style="width:<%= lv.total ? Math.round(lv.heatsShown / lv.total * 100) : 0 %>%"></div></div>
           </div>
@@ -448,8 +447,8 @@ const tile = (it, small) => '<a href="' + it.href + '" class="hm-tile' + (small 
         <% LAYOUTS.forEach(function (o) { %>
           <button type="submit" name="layout" value="<%= o.id %>" class="hm-opt<%= o.id === L ? ' is-on' : '' %>" aria-pressed="<%= o.id === L %>">
             <span class="hm-thumb hm-thumb--<%= o.id %>" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
-            <span class="hm-opt__t"><%= es ? o.es : o.en %><% if (o.id === 'ac') { %> <span class="hm-mute">· <%= t('_admin.por_defecto') %></span><% } %></span>
-            <span class="hm-opt__d"><%= es ? o.dEs : o.dEn %></span>
+            <span class="hm-opt__t"><%= t('_admin.layout_' + o.id) %><% if (o.id === 'ac') { %> <span class="hm-mute">· <%= t('_admin.por_defecto') %></span><% } %></span>
+            <span class="hm-opt__d"><%= t('_admin.layout_' + o.id + '_d') %></span>
           </button>
         <% }) %>
       </div>

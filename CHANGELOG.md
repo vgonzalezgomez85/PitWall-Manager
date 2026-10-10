@@ -13,6 +13,20 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.54.0] — 2026-10-10
+
+### Mejorado
+- **Toda la app sale ya del diccionario de idiomas.** Quedaban unos 480 textos fijos en español: el Lap web del móvil entero, el asistente de carrera simulada, la importación de tandas, las estadísticas en directo, los resultados avanzados, el diagnóstico y el visor de tramas, los `confirm()` y avisos del navegador y los mensajes de error del servidor. Ahora todos se traducen, y en inglés salen en inglés. Para el italiano el diccionario completo (2.266 textos) está en el kit de `traducciones/`; los que aún no se han traducido salen en español.
+- **Los errores de la importación de tandas se traducen por código**, no por frase: cambiar el texto en español ya no rompe la traducción.
+- **El EULA se puede leer en italiano** (resumen; pendiente de revisión por un nativo).
+- **Las exportaciones CSV de la manga y el Excel de turnos** ponen las cabeceras en el idioma pedido.
+
+### Corregido
+- **La lista de pilotos daba error en italiano** (`/drivers` con la app en italiano): los nombres de categoría (Platino, Oro, Plata, Bronce) estaban en un mapa con solo español e inglés.
+- **23 textos tenían el español y el inglés cruzados** (el inglés salía con la app en español y al revés): la contraseña incorrecta, varios avisos del directo (vuelta ignorada, salida de pista, pausa, manga recuperada…) y algunos de Ajustes (búsqueda BART, agrupador DS-300, contraseña).
+- **El registro de sucesos de la carrera** mezclaba idiomas en los modos y en la vuelta de bandera.
+- **Textos con apóstrofo** dentro de los scripts de varias pantallas ya no salen como `&#39;`.
+
 ## [1.53.3] — 2026-10-10
 
 ### Corregido

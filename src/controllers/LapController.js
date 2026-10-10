@@ -119,14 +119,14 @@ const LapController = {
   selectRace(req, res) {
     const race = Race.findById(req.params.raceId);
     if (!race || !isEnduranceRace(race)) {
-      return res.status(404).render('lap/error', { message: 'Carrera no encontrada o no es de resistencia.', layout: false });
+      return res.status(404).render('lap/error', { message: req.t('lap.carrera_no_encontrada_resistencia'), layout: false });
     }
     const teams = Team.withLapPins(race.id).map(t => ({ id: t.id, name: t.name, color: t.color }));
     res.render('lap/race', {
       race: { id: race.id, name: race.name, status: race.status },
       teams,
       pinRequired: race.lap_pin_required !== 0,
-      error: req.query.error === '1' ? 'PIN incorrecto. Inténtalo de nuevo.' : null,
+      error: req.query.error === '1' ? req.t('lap.pin_incorrecto') : null,
       layout: false,
     });
   },
@@ -138,7 +138,7 @@ const LapController = {
     const pin    = String(req.body.pin || '').trim();
     const race = Race.findById(raceId);
     if (!race || !isEnduranceRace(race)) {
-      return res.status(404).render('lap/error', { message: 'Carrera no encontrada.', layout: false });
+      return res.status(404).render('lap/error', { message: req.t('lap.carrera_no_encontrada'), layout: false });
     }
 
     // Sin PIN: basta con que el equipo sea de esta carrera.
@@ -175,7 +175,7 @@ const LapController = {
     const race = Race.findById(raceId);
     const team = Team.findById(teamId);
     if (!race || !team || !isEnduranceRace(race) || team.race_id !== raceId) {
-      return res.status(404).render('lap/error', { message: 'Equipo no encontrado.', layout: false });
+      return res.status(404).render('lap/error', { message: req.t('lap.equipo_no_encontrado'), layout: false });
     }
     const snapshot = LapController._buildTeamSnapshot(race, team);
     res.render('lap/team', {
@@ -464,7 +464,7 @@ const LapController = {
   // GET /lap/:raceId/pins  (pública: alcanzable desde la red del evento)
   pinsPage(req, res) {
     const race = Race.findById(req.params.raceId);
-    if (!race) return res.status(404).render('lap/error', { message: 'Carrera no encontrada.', layout: false });
+    if (!race) return res.status(404).render('lap/error', { message: req.t('lap.carrera_no_encontrada'), layout: false });
     const teams = Team.withLapPins(race.id);
     res.render('lap/pins', {
       race: { id: race.id, name: race.name, format: race.format, status: race.status },
@@ -479,7 +479,7 @@ const LapController = {
   togglePin(req, res) {
     const raceId = Number(req.params.raceId);
     const race = Race.findById(raceId);
-    if (!race) return res.status(404).render('lap/error', { message: 'Carrera no encontrada.', layout: false });
+    if (!race) return res.status(404).render('lap/error', { message: req.t('lap.carrera_no_encontrada'), layout: false });
     Race.setLapPinRequired(raceId, race.lap_pin_required === 0);
     res.redirect(`/lap/${raceId}/pins`);
   },

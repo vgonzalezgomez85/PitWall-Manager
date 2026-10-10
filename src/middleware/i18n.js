@@ -88,6 +88,7 @@ function urlEnIdioma(originalUrl, code) {
 // (porque el mismo texto ya se había dado de alta desde el servidor), y con el
 // subárbol a secas salían como clave cruda en pantalla. Y de paso pesa menos.
 let _clavesCliente = null;
+const SECCIONES_ENTERAS = ['client.tramas'];
 function clavesDeCliente() {
   if (_clavesCliente) return _clavesCliente;
   const fs   = require('fs');
@@ -109,6 +110,17 @@ function clavesDeCliente() {
   };
   leer(path.join(raiz, 'src', 'views'),      p => p.endsWith('.ejs'));
   leer(path.join(raiz, 'public', 'js'),      p => p.endsWith('.js'));
+  // Secciones cuyas claves se construyen en tiempo de ejecución y el escaneo no ve:
+  // viajan enteras. `client.tramas`: el visor de tramas recibe del servidor la clave
+  // de cada etiqueta (frameDecoder.js → traducible).
+  for (const seccion of SECCIONES_ENTERAS) {
+    const nodo = seccion.split('.').reduce((o, k) => (o == null ? o : o[k]), locales[DEFAULT_LANG]);
+    (function hojas(o, pre) {
+      for (const [k, v] of Object.entries(o || {})) {
+        if (typeof v === 'string') set.add(`${pre}.${k}`); else hojas(v, `${pre}.${k}`);
+      }
+    })(nodo, seccion);
+  }
   _clavesCliente = set;
   return set;
 }
@@ -154,4 +166,6 @@ module.exports = function i18nMiddleware(req, res, next) {
 };
 
 module.exports.LANGS  = LANGS;
+// Traductor de un idioma concreto (exportaciones que llevan ?lang= en la URL).
+module.exports.translator = makeTranslator;
 module.exports.locales = locales;

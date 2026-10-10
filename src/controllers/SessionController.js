@@ -15,6 +15,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+const { translator } = require('../middleware/i18n');
 const Race           = require('../models/Race');
 const Manga          = require('../models/Manga');
 const Tanda          = require('../models/Tanda');
@@ -85,8 +86,8 @@ class SessionController {
     const race  = Race.findById(req.params.id);
     const manga = Manga.findById(req.params.mangaId);
 
-    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
-    if (manga.race_id !== race.id) return res.status(400).render('error', { t: req.t, code: 400, message: 'Bad request' });
+    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.not_found') });
+    if (manga.race_id !== race.id) return res.status(400).render('error', { t: req.t, code: 400, message: req.t('errors.bad_request') });
 
     if (manga.status !== 'pending') return res.redirect(`/races/${race.id}/mangas/${manga.id}/live`);
 
@@ -144,7 +145,7 @@ class SessionController {
   static pause(req, res) {
     const race  = Race.findById(req.params.id);
     const manga = Manga.findById(req.params.mangaId);
-    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.not_found') });
     if (TimingService.activeMangaId === manga.id) TimingService.pauseManga();
     res.redirect(`/races/${race.id}/mangas/${manga.id}/live`);
   }
@@ -153,7 +154,7 @@ class SessionController {
   static resume(req, res) {
     const race  = Race.findById(req.params.id);
     const manga = Manga.findById(req.params.mangaId);
-    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.not_found') });
     if (TimingService.activeMangaId !== manga.id) return res.redirect(`/races/${race.id}/mangas/${manga.id}/live`);
 
     // Igual que el GO: en BART/sim mostramos el semáforo de reanudación (3s) y
@@ -178,7 +179,7 @@ class SessionController {
   static stop(req, res) {
     const race  = Race.findById(req.params.id);
     const manga = Manga.findById(req.params.mangaId);
-    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.not_found') });
 
     // Con sesión viva o con la manga colgada tras un reinicio del servidor, el
     // resultado debe ser el MISMO stop forzado: vueltas fuera, manga a pending,
@@ -193,7 +194,7 @@ class SessionController {
   static repeat(req, res) {
     const race  = Race.findById(req.params.id);
     const manga = Manga.findById(req.params.mangaId);
-    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.not_found') });
     if (manga.status !== 'finished') return res.redirect(`/races/${race.id}/mangas/${manga.id}/live`);
 
     // Can't repeat while another manga is running
@@ -223,7 +224,7 @@ class SessionController {
   static live(req, res) {
     const race  = Race.findById(req.params.id);
     const manga = Manga.findById(req.params.mangaId);
-    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.not_found') });
 
     const tanda    = Tanda.findById(manga.tanda_id);
     const lanes    = Manga.getLanes(manga.id);
@@ -446,7 +447,7 @@ class SessionController {
   static panel(req, res) {
     const race  = Race.findById(req.params.id);
     const manga = Manga.findById(req.params.mangaId);
-    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.not_found') });
 
     const tanda    = Tanda.findById(manga.tanda_id);
     const lanes    = Manga.getLanes(manga.id);
@@ -650,7 +651,7 @@ class SessionController {
   static tv(req, res) {
     const race  = Race.findById(req.params.id);
     const manga = Manga.findById(req.params.mangaId);
-    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+    if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.not_found') });
 
     const tanda    = Tanda.findById(manga.tanda_id);
     const lanes    = Manga.getLanes(manga.id);
@@ -668,7 +669,7 @@ class SessionController {
   // GET /races/:id/lemans  (Le Mans-style live classification board)
   static lemans(req, res) {
     const race = Race.findById(req.params.id);
-    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.not_found') });
 
     const db   = require('../config/database');
     const lang = req.session?.lang || 'es';
@@ -816,7 +817,7 @@ class SessionController {
   // GET /races/:id/results
   static results(req, res) {
     const race = Race.findById(req.params.id);
-    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+    if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.not_found') });
 
     const laneSequence = Race.getLaneSequence(race);
     const aggregate    = Lap.aggregateByRace(race.id);
@@ -1383,7 +1384,7 @@ class SessionController {
   static _sendResults(req, res, data) {
     if (!req._exportMode) return res.render('races/results', data);
     res.render('races/results', { ...data, hideNavbar: true }, (err, html) => {
-      if (err) { console.error('[export] render error:', err.message); return res.status(500).send('Export error'); }
+      if (err) { console.error('[export] render error:', err.message); return res.status(500).send(req.t('errors.export_error')); }
       const out = SessionController._inlineForExport(html);
       // index.html → se sube tal cual a un repo y GitHub Pages ya lo sirve.
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -1465,7 +1466,7 @@ class SessionController {
   // GET /races/:id/results/xlsx
   static async excel(req, res) {
     const race = Race.findById(req.params.id);
-    if (!race) return res.status(404).send('Not found');
+    if (!race) return res.status(404).send(req.t('errors.not_found'));
 
     // No se exporta con una manga viva (bloquearía el cronometraje).
     if (ExportGuard.isMangaLive()) return ExportGuard.deny(req, res);
@@ -1486,7 +1487,6 @@ class SessionController {
 
   static async _excelBuild(req, res, race, _exp) {
     const aggregate = Lap.aggregateByRace(race.id);
-    const isEs      = (req.query.lang || 'es') === 'es';
 
     // Categoría/copa y coche por participante: columnas opcionales que activa la
     // carrera (interruptores del asistente / editar carrera). Apagadas, el Excel
@@ -1578,7 +1578,7 @@ class SessionController {
     const raceDateRaw = race.finished_at || race.started_at || race.created_at;
     const raceDate = raceDateRaw ? new Date(raceDateRaw) : null;
     const raceDateStr = raceDate
-      ? raceDate.toLocaleString(localeFor(isEs ? 'es' : 'en'), { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+      ? raceDate.toLocaleString(localeFor(req.query.lang || req.lang || 'es'), { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
       : '';
     const titleLabel = req.t('common.carrera');
     const dateLabel  = req.t('session.fecha');
@@ -2272,11 +2272,10 @@ class SessionController {
   // GET /races/:id/results/points.xlsx
   static async pointsExcel(req, res) {
     const race = Race.findById(req.params.id);
-    if (!race) return res.status(404).send('Not found');
+    if (!race) return res.status(404).send(req.t('errors.not_found'));
 
     if (ExportGuard.isMangaLive()) return ExportGuard.deny(req, res);
 
-    const isEs = (req.query.lang || 'es') === 'es';
     const rows = SessionController._buildPointsRanking(race.id);
 
     const fmtMs = (ms) => {
@@ -2329,14 +2328,13 @@ class SessionController {
   // GET /races/:id/results/points.csv
   static pointsCsv(req, res) {
     const race = Race.findById(req.params.id);
-    if (!race) return res.status(404).send('Not found');
+    if (!race) return res.status(404).send(req.t('errors.not_found'));
 
-    const isEs = (req.query.lang || 'es') === 'es';
     const rows = SessionController._buildPointsRanking(race.id);
 
-    const head = isEs
-      ? ['Posicion','Piloto/Equipo','TotalVueltas','MejorVueltaMs','VueltaMediaMs','Mangas','Puntos']
-      : ['Position','DriverTeam','TotalLaps','BestLapMs','AvgLapMs','Heats','Points'];
+    const T = translator(req.query.lang || req.lang);
+    const head = ['csv_posicion', 'csv_entidad', 'csv_total_vueltas', 'csv_mejor_vuelta', 'csv_vuelta_media', 'csv_mangas', 'csv_puntos']
+      .map(k => T('export.' + k));
 
     const esc = (v) => {
       const s = v == null ? '' : String(v);
@@ -2366,7 +2364,7 @@ class SessionController {
   // (la copa puede ir como sufijo: "APR SPORT GT").
   static controlCsv(req, res) {
     const race = Race.findById(req.params.id);
-    if (!race) return res.status(404).send('Not found');
+    if (!race) return res.status(404).send(req.t('errors.not_found'));
 
     // Orden oficial: vueltas DESC, coma DESC, tiempo total ASC (igual que /results)
     const rows = Lap.aggregateByRace(race.id)
@@ -2420,7 +2418,7 @@ class SessionController {
   //   nome       nombre del piloto/equipo, al final y extra, para el emparejado
   static areaCorseCsv(req, res) {
     const race = Race.findById(req.params.id);
-    if (!race) return res.status(404).send('Not found');
+    if (!race) return res.status(404).send(req.t('errors.not_found'));
 
     const sectores = Math.min(1000, Math.max(1, parseInt(req.query.settori, 10) || 100));
     const rows = Lap.aggregateByRace(race.id)

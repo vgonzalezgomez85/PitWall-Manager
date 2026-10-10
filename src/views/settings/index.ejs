@@ -1,7 +1,6 @@
 <%- include('../partials/header', { pageTitle: t('settings.configuracion') }) %>
 
 <%
-const es = lang === 'es';
 const portsList = (connectedPorts || []).map(p => String(p).split('/').pop()).join(' · ');
 const portState = isSimulating ? 'sim' : (connectedPorts && connectedPorts.length > 0 ? 'ok' : 'off');
 const restartChip = '<span class="st-chip st-chip--warn">' + (t('settings.reinicio')) + '</span>';
@@ -399,7 +398,7 @@ const navItems = [
                   <%= t('common.carriles') %>&nbsp;<%= globalLaneStart %>–<%= globalLaneStart + (c.lanes || 8) - 1 %>
                 </span>
                 <% if (multiCircuit) { %>
-                  <button type="button" class="vt-circuit-row__x btn-remove-circuit" data-index="<%= i %>" title="Eliminar">
+                  <button type="button" class="vt-circuit-row__x btn-remove-circuit" data-index="<%= i %>" title="<%= t('client.common.eliminar') %>">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
                   </button>
                 <% } %>
@@ -1184,7 +1183,6 @@ const settingsForm = document.getElementById('settingsForm');
   const pw = document.getElementById('pwNew'), pw2 = document.getElementById('pwConfirm');
   const msgEl = document.getElementById('pwMsg');
   const msg = { set textContent(v) { msgEl.textContent = v; msgEl.parentElement.hidden = !v; } };
-  const ES = LANG === 'es';
   let enabled = sw.classList.contains('is-on');
   const paint = () => {
     sw.classList.toggle('is-on', enabled);
@@ -1377,7 +1375,7 @@ function circuitRowHTML(){
       <div class="vt-circuit-row__num cnum"></div>
       <div class="vt-circuit-row__title cname"></div>
       <span class="vt-circuit-row__lanes-badge circuit-row__lanes-badge">${I18N.t('client.settings.carriles_2')}</span>
-      <button type="button" class="vt-circuit-row__x btn-remove-circuit" title="Eliminar">
+      <button type="button" class="vt-circuit-row__x btn-remove-circuit" title="${I18N.t('client.common.eliminar')}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
       </button>
     </div>

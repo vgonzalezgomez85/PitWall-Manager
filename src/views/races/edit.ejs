@@ -156,21 +156,21 @@
               <%= t('edit.minimo_por_piloto_min') %>
             </label>
             <input class="form-input form-input--sm" type="number" id="driverMinMin" name="driver_min_total_min"
-                   min="0" max="600" step="1" placeholder="0 = sin mínimo" value="<%= rMinMin %>" <%= lockRules ? 'disabled' : '' %>>
+                   min="0" max="600" step="1" placeholder="<%= t('edit.ph_sin_minimo') %>" value="<%= rMinMin %>" <%= lockRules ? 'disabled' : '' %>>
           </div>
           <div>
             <label class="form-label" for="driverMaxMin" style="font-size:.85rem;color:var(--vt-mute,#9aa0a6)">
               <%= t('edit.maximo_por_piloto_min') %>
             </label>
             <input class="form-input form-input--sm" type="number" id="driverMaxMin" name="driver_max_total_min"
-                   min="0" max="600" step="1" placeholder="0 = sin máximo" value="<%= rMaxMin %>" <%= lockRules ? 'disabled' : '' %>>
+                   min="0" max="600" step="1" placeholder="<%= t('edit.ph_sin_maximo') %>" value="<%= rMaxMin %>" <%= lockRules ? 'disabled' : '' %>>
           </div>
           <div>
             <label class="form-label" for="driverMaxRuns" style="font-size:.85rem;color:var(--vt-mute,#9aa0a6)">
               <%= t('edit.maximo_de_turnos_por_piloto') %>
             </label>
             <input class="form-input form-input--sm" type="number" id="driverMaxRuns" name="driver_max_runs"
-                   min="0" max="100" step="1" placeholder="0 = sin máximo" value="<%= rMaxRuns %>" <%= lockRules ? 'disabled' : '' %>>
+                   min="0" max="100" step="1" placeholder="<%= t('edit.ph_sin_maximo') %>" value="<%= rMaxRuns %>" <%= lockRules ? 'disabled' : '' %>>
           </div>
           <div>
             <label class="form-label" for="lockoutS" style="font-size:.85rem;color:var(--vt-mute,#9aa0a6)">
@@ -231,8 +231,8 @@
 <% if (!hasLaps) { %>
 <script>
 const CIRCUIT_CATEGORY_TIMES = <%- JSON.stringify(circuitCategoryTimes || {}) %>;
-const DISABLED_TXT = '<%= t('edit.desactivada') %>';
-const FROM_CAT     = '<%= t('edit.de_la_categoria') %>';
+const DISABLED_TXT = <%- JSON.stringify(t('edit.desactivada')) %>;
+const FROM_CAT     = <%- JSON.stringify(t('edit.de_la_categoria')) %>;
 
 const circuitSelect  = document.getElementById('circuitSelect');
 const categoryWrap   = document.getElementById('categoryWrap');

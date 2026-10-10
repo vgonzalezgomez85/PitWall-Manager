@@ -147,7 +147,7 @@ class CircuitController {
 
   static editForm(req, res) {
     const circuit = Circuit.findById(req.params.id);
-    if (!circuit) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+    if (!circuit) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.not_found') });
     const config = Circuit.getConfig(circuit);
     const categories = Category.findAll();
     const existing = Circuit.getCategoryTimes(circuit.id);
@@ -172,7 +172,7 @@ class CircuitController {
 
   static update(req, res) {
     const circuit = Circuit.findById(req.params.id);
-    if (!circuit) return res.status(404).render('error', { t: req.t, code: 404, message: 'Not found' });
+    if (!circuit) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.not_found') });
 
     const { name, description } = req.body;
     const errors = [];

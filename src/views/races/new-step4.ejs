@@ -142,18 +142,18 @@
 <script>
 const LANG      = "<%= lang %>";
 const COLORS    = <%- JSON.stringify(LANE_COLORS) %>;
-const DRIVER_PH = "<%= t('wizard.driver_name_ph') %>";
-const TEAM_PH   = "<%= t('wizard.team_name_ph') %>";
-const MEMBER_PH = "<%= t('wizard.member_ph') %>";
-const OPT_LBL   = "<%= t('wizard.optional') %>";
+const DRIVER_PH = <%- JSON.stringify(t('wizard.driver_name_ph')) %>;
+const TEAM_PH   = <%- JSON.stringify(t('wizard.team_name_ph')) %>;
+const MEMBER_PH = <%- JSON.stringify(t('wizard.member_ph')) %>;
+const OPT_LBL   = <%- JSON.stringify(t('wizard.optional')) %>;
 
 const ALL_PROFILES = <%- JSON.stringify((profiles || []).map(p => ({ name: p.name, category: p.category }))) %>;
 const CATALOG      = <%- JSON.stringify((teamsCatalog || []).map(ct => ({ id: ct.id, name: ct.name, members: (ct.members || []).map(m => m.name), categoria: ct.categoria || '', coche: ct.coche || '' }))) %>;
 // Campos opcionales por participante (interruptores del asistente): categoría/copa y coche.
 const SHOW_CAT = <%= wizard.has_categoria ? 'true' : 'false' %>;
 const SHOW_CAR = <%= wizard.has_coche ? 'true' : 'false' %>;
-const CAT_PH   = "<%= t('common.categoria_copa') %>";
-const CAR_PH   = "<%= t('common.coche') %>";
+const CAT_PH   = <%- JSON.stringify(t('common.categoria_copa')) %>;
+const CAR_PH   = <%- JSON.stringify(t('common.coche')) %>;
 // HTML de los dos campos para una fila nueva (prefijo: teams[i] / drivers[i]).
 function attrsHtml(prefix) {
   if (!SHOW_CAT && !SHOW_CAR) return '';

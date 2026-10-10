@@ -75,7 +75,6 @@
 (function () {
   var RACE_ID = <%= race.id %>;
   var LANG    = '<%= lang %>';
-  var es = LANG === 'es';
 
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
   function fmtClock(ms){
@@ -89,7 +88,7 @@
   function renderLog(d){
     document.getElementById('logMeta').innerHTML =
       (I18N.t('client.common.dotacion'))+'<b>'+d.allowance+'</b> '+(I18N.t('client.common.juegos_equipo'))+' · '+
-      '<b>'+d.totalChanges+'</b> '+(es? (d.totalChanges===1?'cambio':'cambios') : (d.totalChanges===1?'change':'changes'));
+      '<b>'+d.totalChanges+'</b> '+(d.totalChanges===1 ? I18N.t('client.tires.cambio') : I18N.t('client.tires.cambios'));
 
     var body = document.getElementById('logBody');
     if (!d.groups.length){
