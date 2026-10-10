@@ -284,7 +284,7 @@ function syncDerived() {
   });
   const dupWarn = document.getElementById('dupWarn');
   dupWarn.hidden = dupIdx.size === 0;
-  dupWarn.textContent = LANG === 'es' ? 'Hay nombres repetidos: revisa los resaltados.' : 'Some names are repeated: check the highlighted rows.';
+  dupWarn.textContent = I18N.t('client.competition.hay_nombres_repetidos_revisa_los_resaltados');
 
   const onTrack  = slots.slice(0, laneCount).filter(n => n.trim()).length;
   const reserves = slots.slice(laneCount).filter(n => n.trim()).length;
@@ -314,8 +314,8 @@ function renderSlots() {
     const v = escapeHtml(name);
     const isReserve = i >= laneCount;
     const label = isReserve
-      ? `${LANG === 'es' ? 'Reserva' : 'Reserve'} ${i + 1 - laneCount}`
-      : `${LANG === 'es' ? 'Carril' : 'Lane'} ${i + 1}`;
+      ? `${I18N.t('client.competition.reserva')} ${i + 1 - laneCount}`
+      : `${I18N.t('client.common.carril')} ${i + 1}`;
     const showClear = name || isReserve;
     return `
       <div class="tc-slot-row${isReserve ? ' tc-slot-row--reserve' : ''}" data-idx="${i}">
@@ -324,14 +324,14 @@ function renderSlots() {
         <input type="text" class="vt-inp tc-slot-row__inp" data-idx="${i}"
                maxlength="30" autocomplete="off"
                value="${v}" aria-label="${label}"
-               placeholder="${LANG === 'es' ? 'Nombre del piloto / equipo…' : 'Pilot / team name…'}">
+               placeholder="${I18N.t('client.competition.nombre_del_piloto_equipo')}">
         <span class="tc-slot-row__acts">
           <button type="button" class="vt-icon-btn tc-slot-row__move" data-idx="${i}" data-dir="-1" ${i === 0 ? 'disabled' : ''}
-                  title="${LANG === 'es' ? 'Subir un carril' : 'Move up one lane'}" aria-label="${LANG === 'es' ? 'Subir' : 'Move up'}">${up}</button>
+                  title="${I18N.t('client.competition.subir_un_carril')}" aria-label="${I18N.t('client.competition.subir')}">${up}</button>
           <button type="button" class="vt-icon-btn tc-slot-row__move" data-idx="${i}" data-dir="1" ${i === slots.length - 1 ? 'disabled' : ''}
-                  title="${LANG === 'es' ? 'Bajar un carril' : 'Move down one lane'}" aria-label="${LANG === 'es' ? 'Bajar' : 'Move down'}">${down}</button>
+                  title="${I18N.t('client.competition.bajar_un_carril')}" aria-label="${I18N.t('client.competition.bajar')}">${down}</button>
           <button type="button" class="vt-icon-btn tc-slot-row__clear" data-idx="${i}"
-                  title="${isReserve ? (LANG === 'es' ? 'Quitar' : 'Remove') : (LANG === 'es' ? 'Vaciar' : 'Clear')}" ${showClear ? '' : 'style="visibility:hidden"'}>
+                  title="${isReserve ? (I18N.t('client.common.quitar')) : (I18N.t('client.competition.vaciar'))}" ${showClear ? '' : 'style="visibility:hidden"'}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
           </button>
         </span>
@@ -379,7 +379,7 @@ function filterCatalog() {
   document.getElementById('catalogNone').hidden = shown > 0;
   document.getElementById('catalogCount').textContent = q
     ? `${shown} / ${total}`
-    : `${total} ${LANG === 'es' ? 'equipos' : 'teams'}`;
+    : `${total} ${I18N.t('client.common.equipos')}`;
   return first;
 }
 document.getElementById('catalogSearch')?.addEventListener('input', filterCatalog);
@@ -453,7 +453,7 @@ document.getElementById('shuffleBtn').addEventListener('click', () => {
 });
 document.getElementById('clearAllBtn').addEventListener('click', () => {
   if (!slots.some(s => s.trim())) return;
-  if (!confirm(LANG === 'es' ? '¿Vaciar todos los carriles?' : 'Clear all lanes?')) return;
+  if (!confirm(I18N.t('client.competition.vaciar_todos_los_carriles'))) return;
   slots = [];
   renderSlots();
 });
@@ -481,7 +481,7 @@ function renderLaneSeq() {
   list.innerHTML = laneSeq.map((lane, i) => `
     <div class="tc-seq-chip" draggable="true" data-i="${i}">
       <span class="tc-seq-chip__ord">${i + 1}º</span>
-      <span class="tc-seq-chip__lane">${LANG === 'es' ? 'Carril' : 'Lane'} ${lane}</span>
+      <span class="tc-seq-chip__lane">${I18N.t('client.common.carril')} ${lane}</span>
     </div>`).join('');
   hidden.innerHTML = laneSeq.map(lane => `<input type="hidden" name="lane_sequence[]" value="${lane}">`).join('');
 }
@@ -530,8 +530,8 @@ document.getElementById('seqResetBtn').addEventListener('click', () => { laneSeq
   function update() {
     const lanes = sel.options[sel.selectedIndex]?.dataset?.lanes;
     hint.innerHTML = lanes
-      ? `<span class="vt-badge__d"></span> ${lanes} ${LANG === 'es' ? 'carriles' : 'lanes'}`
-      : `<span class="vt-badge__d"></span> ${FALLBACK_LANES} ${LANG === 'es' ? 'carriles' : 'lanes'} (def.)`;
+      ? `<span class="vt-badge__d"></span> ${lanes} ${I18N.t('client.common.carriles')}`
+      : `<span class="vt-badge__d"></span> ${FALLBACK_LANES} ${I18N.t('client.common.carriles')} (def.)`;
     hint.style.display = '';
     // El Pt sigue al circuito, pero sin pisar lo que haya tecleado el usuario.
     const minMs = parseInt(sel.options[sel.selectedIndex]?.dataset?.minMs || '0', 10);

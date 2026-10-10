@@ -2,6 +2,7 @@
 <html lang="<%= lang %>">
 <head>
   <meta charset="UTF-8">
+<%- include('../partials/i18n-client') %>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>
     <%= t('live-panel.clasificacion_general') %> — <%= race.name %>
@@ -566,13 +567,13 @@
       const s = document.getElementById('panelStatus');
       if (!s) return;
       if (state === 'active')
-        s.innerHTML = `<span class="status-dot status-dot--active"></span><span class="status-text status-text--active">${LANG === 'es' ? 'En carrera' : 'Racing'}</span>`;
+        s.innerHTML = `<span class="status-dot status-dot--active"></span><span class="status-text status-text--active">${I18N.t('client.common.en_carrera')}</span>`;
       else if (state === 'paused')
-        s.innerHTML = `<span class="status-dot status-dot--paused"></span><span class="status-text status-text--paused">${LANG === 'es' ? 'Pausada' : 'Paused'}</span>`;
+        s.innerHTML = `<span class="status-dot status-dot--paused"></span><span class="status-text status-text--paused">${I18N.t('client.common.pausada')}</span>`;
       else if (state === 'finished')
-        s.innerHTML = `<span class="status-text status-text--finished">${LANG === 'es' ? 'Finalizada' : 'Finished'}</span>`;
+        s.innerHTML = `<span class="status-text status-text--finished">${I18N.t('client.common.finalizada_2')}</span>`;
       else
-        s.innerHTML = `<span class="status-text status-text--pending">${LANG === 'es' ? 'En espera' : 'Pending'}</span>`;
+        s.innerHTML = `<span class="status-text status-text--pending">${I18N.t('client.common.en_espera')}</span>`;
     }
     setInterval(() => {
       if (_timerRunning && _remainMs > 0) { _remainMs = Math.max(0, _remainMs - 1000); renderTimer(); }

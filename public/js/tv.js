@@ -106,8 +106,8 @@ function renderTable(standings) {
     const total = getTotalLaps(r.lane, r.lapCount);
     const gap   = leaderTotal - total;
     const gapHtml = i === 0
-      ? `<span class="tv-gap tv-gap--leader">${LANG === 'es' ? 'LÍDER' : 'LEADER'}</span>`
-      : `<span class="tv-gap tv-gap--behind">−${gap} ${LANG === 'es' ? 'vlt' : 'lps'}</span>`;
+      ? `<span class="tv-gap tv-gap--leader">${I18N.t('client.js.lider')}</span>`
+      : `<span class="tv-gap tv-gap--behind">−${gap} ${I18N.t('client.js.vlt')}</span>`;
 
     if (!tr) { tr = document.createElement('tr'); }
     tr.className = 'tv-row';
@@ -199,7 +199,7 @@ if (TV_DATA.isActive) {
     timerEl.textContent = '00:00';
     document.getElementById('tvStatus').className = 'tv-status tv-status--finished';
     document.getElementById('tvStatus').innerHTML =
-      `<span class="tv-status-dot"></span>${LANG === 'es' ? 'FINALIZADA' : 'FINISHED'}`;
+      `<span class="tv-status-dot"></span>${I18N.t('client.common.finalizada')}`;
   });
 
   socket.on('manga:cancelled', () => { location.reload(); });

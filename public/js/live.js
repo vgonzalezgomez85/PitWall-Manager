@@ -480,17 +480,17 @@ function startCountdown(remaining) {
 
     if (!warned60 && remainingMs <= 60000) {
       warned60 = true;
-      announceWarning(LANG === 'es' ? 'Queda 1 minuto' : 'One minute remaining');
+      announceWarning(I18N.t('client.js.queda_1_minuto'));
     }
     if (!warned30 && remainingMs <= 30000) {
       warned30 = true;
-      announceWarning(LANG === 'es' ? 'Quedan 30 segundos' : '30 seconds remaining');
+      announceWarning(I18N.t('client.js.quedan_30_segundos'));
     }
 
     if (remainingMs <= 0) {
       clearInterval(timerInt);
       timerInt = null;
-      statusEl.innerHTML = `<span class="status-text status-text--finished">${LANG === 'es' ? 'Finalizada' : 'Finished'}</span>`;
+      statusEl.innerHTML = `<span class="status-text status-text--finished">${I18N.t('client.common.finalizada_2')}</span>`;
       document.body.classList.add('manga-finished');
       _startSwapRotation();
     }
@@ -567,8 +567,8 @@ function buildCard(lane) {
     const posLabel = lane.finished
       ? 'FINAL'
       : (lane.restPos && lane.restTotal)
-        ? `${LANG === 'es' ? 'Descanso' : 'Rest'} ${lane.restPos}/${lane.restTotal}`
-        : (LANG === 'es' ? 'Descansando' : 'Resting');
+        ? `${I18N.t('client.common.descanso')} ${lane.restPos}/${lane.restTotal}`
+        : (I18N.t('client.js.descansando'));
     const icon = lane.finished ? '🏁' : '💤';
     card.innerHTML = `
       <div class="lane-card__rest-head">
@@ -585,7 +585,7 @@ function buildCard(lane) {
   card.innerHTML = `
     <div class="lane-card__col lane-card__col--name">
       <div class="lane-card__label">
-        <span class="lane-card__track-text">${LANG === 'es' ? 'PISTA' : 'TRACK'}</span>
+        <span class="lane-card__track-text">${I18N.t('client.js.pista')}</span>
         <span class="lane-card__lane-num">${lane.lane}</span>
       </div>
       <div class="lane-card__name-row">
@@ -596,16 +596,16 @@ function buildCard(lane) {
         </span>
         <span class="lane-card__name"><span class="lane-card__name-scroll">${flagHtml(lane.country)}${teamHtml(lane.name, lane.categoria)}</span></span>
         <span class="lane-card__chips">
-          <span class="lane-card__exit" id="card-exit-${lane.lane}" hidden title="${LANG === 'es' ? 'Salidas' : 'Exits'}">
+          <span class="lane-card__exit" id="card-exit-${lane.lane}" hidden title="${I18N.t('client.common.salidas')}">
             ⚠️<span class="lane-card__exit-count" id="card-exit-count-${lane.lane}"></span>
           </span>
           <span class="lane-card__pit" id="card-pit-${lane.lane}" hidden title="Pit-stop">
             🔧<span class="lane-card__pit-count" id="card-pit-count-${lane.lane}"></span><span class="lane-card__pit-total" id="card-pit-total-${lane.lane}"></span>
           </span>
-          <span class="lane-card__tire" id="card-tire-${lane.lane}" hidden title="${LANG === 'es' ? 'Cambios de neumático' : 'Tyre changes'}">
+          <span class="lane-card__tire" id="card-tire-${lane.lane}" hidden title="${I18N.t('client.js.cambios_de_neumatico')}">
             🛞<span class="lane-card__tire-count" id="card-tire-count-${lane.lane}"></span><span class="lane-card__tire-max" id="card-tire-max-${lane.lane}"></span>
           </span>
-          <span class="lane-card__no-driver">${LANG === 'es' ? 'SIN PILOTO' : 'NO DRIVER'}</span>
+          <span class="lane-card__no-driver">${I18N.t('client.js.sin_piloto')}</span>
         </span>
       </div>
       <div class="lane-card__driver-row" id="card-driver-${lane.lane}"></div>
@@ -616,33 +616,33 @@ function buildCard(lane) {
     </div>
 
     <div class="lane-card__col lane-card__col--laps" data-col="vlt">
-      <div class="lane-card__col-label">${LANG === 'es' ? 'VLT' : 'LAP'}</div>
+      <div class="lane-card__col-label">${I18N.t('client.common.vlt')}</div>
       <div class="lane-card__laps" id="card-laps-${lane.lane}">${lane.lapCount ?? 0}</div>
     </div>
 
     <div class="lane-card__col lane-card__col--total" data-col="total">
-      <div class="lane-card__col-label">${LANG === 'es' ? 'Total' : 'Total'}</div>
+      <div class="lane-card__col-label">${I18N.t('client.common.total')}</div>
       <div class="lane-card__col-val" id="card-total-${lane.lane}">${initTotal}</div>
     </div>
 
     <div class="lane-card__col lane-card__col--last" data-col="ultima">
-      <div class="lane-card__col-label">${LANG === 'es' ? 'Última' : 'Last'}</div>
+      <div class="lane-card__col-label">${I18N.t('client.js.ultima')}</div>
       <div class="lane-card__col-val" id="card-last-${lane.lane}">${formatMs(lane.lastLapMs)}</div>
       <span class="lane-card__last-tag" id="card-last-tag-${lane.lane}" hidden></span>
     </div>
 
     <div class="lane-card__col lane-card__col--best" data-col="mejor">
-      <div class="lane-card__col-label">${LANG === 'es' ? 'Mejor' : 'Best'}</div>
+      <div class="lane-card__col-label">${I18N.t('client.common.mejor')}</div>
       <div class="lane-card__col-val lane-card__col-val--best" id="card-best-${lane.lane}">${formatMs(lane.bestLapMs)}</div>
     </div>
 
     <div class="lane-card__col lane-card__col--avg" data-col="media">
-      <div class="lane-card__col-label">${LANG === 'es' ? 'Media' : 'Avg'}</div>
+      <div class="lane-card__col-label">${I18N.t('client.common.media')}</div>
       <div class="lane-card__col-val lane-card__col-val--avg" id="card-avg-${lane.lane}">${formatMs(lane.avgLapMs)}</div>
     </div>
 
     <div class="lane-card__col lane-card__col--delta" data-col="delta">
-      <div class="lane-card__col-label">${LANG === 'es' ? 'Gap V' : 'Gap L'}</div>
+      <div class="lane-card__col-label">${I18N.t('client.common.gap_v')}</div>
       <div class="lane-card__col-val lane-card__col-val--delta" id="card-delta-${lane.lane}">—</div>
     </div>
 
@@ -682,18 +682,18 @@ function appendNextLaneBadge(card, info) {
   if (info && info.rest) {
     badge.className = 'next-lane-badge next-lane-badge--rest';
     const tail = info.total ? `${info.pos}/${info.total}` : '';
-    badge.innerHTML = `<span class="next-lane-arrow">→</span> <strong>${LANG === 'es' ? 'Descanso' : 'Rest'}${tail ? ' ' + tail : ''}</strong>`;
+    badge.innerHTML = `<span class="next-lane-arrow">→</span> <strong>${I18N.t('client.common.descanso')}${tail ? ' ' + tail : ''}</strong>`;
   } else if (info && info.lane != null) {
     badge.className = 'next-lane-badge';
-    badge.innerHTML = `<span class="next-lane-arrow">→</span> ${LANG === 'es' ? 'Carril' : 'Lane'} <strong>${info.lane}</strong>`;
+    badge.innerHTML = `<span class="next-lane-arrow">→</span> ${I18N.t('client.common.carril')} <strong>${info.lane}</strong>`;
   } else {
     // Fallback for legacy emission ('rest' string or bare number)
     if (info === 'rest') {
       badge.className = 'next-lane-badge next-lane-badge--rest';
-      badge.innerHTML = `<span class="next-lane-arrow">→</span> <strong>${LANG === 'es' ? 'Descanso' : 'Rest'}</strong>`;
+      badge.innerHTML = `<span class="next-lane-arrow">→</span> <strong>${I18N.t('client.common.descanso')}</strong>`;
     } else {
       badge.className = 'next-lane-badge';
-      badge.innerHTML = `<span class="next-lane-arrow">→</span> ${LANG === 'es' ? 'Carril' : 'Lane'} <strong>${info}</strong>`;
+      badge.innerHTML = `<span class="next-lane-arrow">→</span> ${I18N.t('client.common.carril')} <strong>${info}</strong>`;
     }
   }
   card.appendChild(badge);
@@ -781,9 +781,9 @@ function paintLastLap(lane) {
   let color = ultColor(ms, s.bestLapMs, s.avgLapMs);
   let tag = null;
   if (ms != null && _pitLapMs[lane] === ms) {
-    color = 'pit'; tag = LANG === 'es' ? 'BOXES' : 'PIT';
+    color = 'pit'; tag = I18N.t('client.js.boxes');
   } else if (ms != null && ms === _raceRecordMs() && _raceBestLaps[lane]?.bestLapMs === ms) {
-    color = 'purple'; tag = LANG === 'es' ? 'RÉCORD CARRERA' : 'RACE RECORD';
+    color = 'purple'; tag = I18N.t('client.js.record_carrera');
   }
   _setLvColor(lastEl, color);
   lastEl.parentElement.classList.toggle('has-tag', !!tag);
@@ -2082,7 +2082,7 @@ function renderBestLaps() {
   // Versión footer ticker (pills horizontales para TV) con paginación 30s
   if (bestLapsFooter) {
     if (rows.length === 0) {
-      bestLapsFooter.innerHTML = `<span class="bl-footer__empty">${LANG === 'es' ? 'Sin vueltas registradas' : 'No laps yet'}</span>`;
+      bestLapsFooter.innerHTML = `<span class="bl-footer__empty">${I18N.t('client.js.sin_vueltas_registradas')}</span>`;
       _bestLapsResetPager();
     } else {
       bestLapsFooter.innerHTML = rows.map((r, i) => {
@@ -2207,7 +2207,7 @@ function addTick(lap) {
   if (!btn) return;
   btn.addEventListener('click', async () => {
     btn.disabled    = true;
-    btn.textContent = LANG === 'es' ? 'Cargando...' : 'Loading...';
+    btn.textContent = I18N.t('client.js.cargando');
     try {
       const r = await fetch(
         `/races/${btn.dataset.raceId}/tandas/${btn.dataset.tandaId}/next-tanda`,
@@ -2302,9 +2302,9 @@ const VOICE_ICON = {
 };
 function voiceLabel() {
   const isES = LANG === 'es';
-  if (voiceMode === 'off')  return isES ? 'Sin voz'      : 'No voice';
-  if (voiceMode === 'best') return isES ? 'Sólo rápidas' : 'Fast only';
-  return                          isES ? 'Todas'        : 'All';
+  if (voiceMode === 'off')  return I18N.t('client.js.sin_voz');
+  if (voiceMode === 'best') return I18N.t('client.js.solo_rapidas');
+  return                          I18N.t('client.common.todas');
 }
 function voiceTitle() {
   if (LANG === 'es') {
@@ -2470,7 +2470,7 @@ function announce(text) {
       if (existing) existing.remove();
       const msg = document.createElement('div');
       msg.className = 'on-track-msg';
-      msg.textContent = LANG === 'es' ? 'En pista' : 'On track';
+      msg.textContent = I18N.t('client.common.en_pista');
       card.appendChild(msg);
       setTimeout(() => msg.remove(), 3000);
     });
@@ -2550,7 +2550,7 @@ function announce(text) {
       if (data?.mangaId && data.mangaId !== RACE_DATA.mangaId) return;
       RACE_DATA.isActive = false;
       if (timerInt) { clearInterval(timerInt); timerInt = null; }
-      statusEl.innerHTML = `<span class="status-text status-text--finished">${LANG === 'es' ? 'Finalizada' : 'Finished'}</span>`;
+      statusEl.innerHTML = `<span class="status-text status-text--finished">${I18N.t('client.common.finalizada_2')}</span>`;
       document.body.classList.add('manga-finished');
       _startSwapRotation();
       timerEl.textContent = '00:00';
@@ -2578,7 +2578,7 @@ function announce(text) {
             : `▶ Tanda ${data.nextTandaNumber}`;
           btn.addEventListener('click', async () => {
             btn.disabled   = true;
-            btn.textContent = LANG === 'es' ? 'Cargando...' : 'Loading...';
+            btn.textContent = I18N.t('client.js.cargando');
             try {
               const r = await fetch(
                 `/races/${RACE_DATA.raceId}/tandas/${RACE_DATA.tandaId}/next-tanda`,
@@ -2619,18 +2619,18 @@ function announce(text) {
         ov = document.createElement('div');
         ov.id = 'pause-overlay';
         ov.className = 'pause-overlay';
-        ov.textContent = LANG === 'es' ? '⏸ PAUSA' : '⏸ PAUSED';
+        ov.textContent = I18N.t('client.js.pausa_2');
         // Dentro de .live-layout (no document.body): así cubre solo las
         // tarjetas y deja los botones de la cabecera clicables.
         (document.querySelector('.live-layout') || document.body).appendChild(ov);
       }
-      if (statusEl) statusEl.innerHTML = `<span class="status-dot status-dot--paused"></span><span class="status-text status-text--paused">${LANG === 'es' ? 'Pausada' : 'Paused'}</span>`;
+      if (statusEl) statusEl.innerHTML = `<span class="status-dot status-dot--paused"></span><span class="status-text status-text--paused">${I18N.t('client.common.pausada')}</span>`;
     });
 
     socket.on('manga:resumed', () => {
       RACE_DATA.isPaused = false;
       document.getElementById('pause-overlay')?.remove();
-      if (statusEl) statusEl.innerHTML = `<span class="status-dot status-dot--active"></span><span class="status-text status-text--active">${LANG === 'es' ? 'En carrera' : 'Racing'}</span>`;
+      if (statusEl) statusEl.innerHTML = `<span class="status-dot status-dot--active"></span><span class="status-text status-text--active">${I18N.t('client.common.en_carrera')}</span>`;
       const hasSema = !!document.getElementById('semaphore-overlay');
       // Quien pulsó RESUME (AJAX) recarga tras el verde para refrescar el botón
       // (RESUME → PAUSE) y el reloj. El resto de clientes reanudan en caliente.
@@ -2659,7 +2659,7 @@ function announce(text) {
         if (paused && !badge) {
           badge = document.createElement('div');
           badge.className = 'lane-pause-badge';
-          badge.textContent = LANG === 'es' ? '⏸ PAUSA' : '⏸ PAUSED';
+          badge.textContent = I18N.t('client.js.pausa_2');
           card.appendChild(badge);
         } else if (!paused && badge) {
           badge.remove();
@@ -2828,8 +2828,8 @@ if (RACE_DATA.isTeam && RACE_DATA.hasQrCheckin) {
       const data = await r.json();
       if (!data.ok) {
         showCheckinToast(data.error === 'driver_not_in_manga'
-          ? (LANG === 'es' ? 'Piloto no asignado a esta manga' : 'Driver not in this heat')
-          : (LANG === 'es' ? 'QR no reconocido' : 'Unknown QR'), 'error');
+          ? (I18N.t('client.js.piloto_no_asignado_a_esta_manga'))
+          : (I18N.t('client.js.qr_no_reconocido')), 'error');
       }
     } catch { /* ignore network errors */ }
   }
@@ -2884,7 +2884,7 @@ if (RACE_DATA.isTeam && RACE_DATA.hasQrCheckin) {
     popup.innerHTML = `
       <div style="background:#161b22;border:1px solid #30363d;border-radius:10px;padding:1.25rem;min-width:260px;max-width:90vw">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
-          <strong style="color:#e6edf3">${LANG === 'es' ? 'Piloto en carril' : 'Driver in lane'} ${lane}</strong>
+          <strong style="color:#e6edf3">${I18N.t('client.js.piloto_en_carril')} ${lane}</strong>
           <button id="closeOverride" class="btn btn--ghost btn--sm">✕</button>
         </div>
         <div style="display:flex;flex-direction:column;gap:.4rem">${members}</div>

@@ -242,7 +242,7 @@ function slotLabel(i, total){
   if (i < LANE_SEQ.length && LANE_SEQ[i] > 0) return LANE_SEQ[i];
   const t = total ?? document.querySelectorAll('.participant-row').length;
   const restIdx = t - i;
-  return (LANG==='es'?'DSC':'REST') + (restIdx > 0 ? restIdx : '');
+  return (I18N.t('client.common.dsc')) + (restIdx > 0 ? restIdx : '');
 }
 function slotColor(i){ const l = i < LANE_SEQ.length ? LANE_SEQ[i] : 0; return l > 0 ? COLORS[(l-1) % COLORS.length] : '#30363d'; }
 // Igual que slotOrder() de la plantilla: posición en pantalla → posición en la secuencia.
@@ -356,11 +356,11 @@ document.getElementById('addDriver')?.addEventListener('click', () => {
   div.className = 'driver-row participant-row'; div.dataset.row = idx;
   div.innerHTML = `<span class="lane-badge participant-badge" style="background:${color}" data-index="${idx}">${slotLabel(idx)}</span>
     <div class="driver-field participant-fields" style="display:flex;flex:1;flex-wrap:wrap;align-items:center;gap:.5rem">
-      <span class="drag-handle" draggable="true" title="${LANG==='es'?'Arrastrar para reordenar':'Drag to reorder'}">⠿</span>
+      <span class="drag-handle" draggable="true" title="${I18N.t('client.tanda-edit.arrastrar_para_reordenar')}">⠿</span>
       <input class="form-input participant-name" type="text" name="drivers[${idx}][name]" placeholder="${DRIVER_PH}" autocomplete="off" style="flex:1">
       ${attrsHtml(`drivers[${idx}]`)}
     </div>
-    <button type="button" class="btn btn--danger btn--sm remove-row" title="${LANG==='es'?'Eliminar':'Remove'}">✕</button>`;
+    <button type="button" class="btn btn--danger btn--sm remove-row" title="${I18N.t('client.common.eliminar')}">✕</button>`;
   grid.appendChild(div);
   div.querySelector('.participant-name').focus();
   renumber('driversGrid');
@@ -379,9 +379,9 @@ document.getElementById('addTeam')?.addEventListener('click', () => {
   block.className = 'team-block participant-row'; block.dataset.row = idx;
   block.innerHTML = `<div class="team-block__header" style="border-left-color:${color}">
     <span class="lane-badge participant-badge" style="background:${color}" data-index="${idx}">${slotLabel(idx)}</span>
-    <span class="drag-handle" draggable="true" title="${LANG==='es'?'Arrastrar para reordenar':'Drag to reorder'}">⠿</span>
+    <span class="drag-handle" draggable="true" title="${I18N.t('client.tanda-edit.arrastrar_para_reordenar')}">⠿</span>
     <input class="form-input team-name-input" type="text" name="teams[${idx}][name]" placeholder="${TEAM_PH}" autocomplete="off">
-    <button type="button" class="btn btn--danger btn--sm remove-row" style="margin-left:.5rem" title="${LANG==='es'?'Eliminar':'Remove'}">✕</button>
+    <button type="button" class="btn btn--danger btn--sm remove-row" style="margin-left:.5rem" title="${I18N.t('client.common.eliminar')}">✕</button>
   </div><div class="team-members">${members}</div>`;
   container.appendChild(block);
   block.querySelector('input').focus();

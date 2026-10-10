@@ -450,8 +450,24 @@ function main() {
   const usadas = clavesExistentes(esDict);
   const claveDe = new Map();
 
+  // Claves que YA existen, indexadas por su par (es,en). Sin esto, un texto que
+  // sale en servidor y en cliente recibiría dos claves distintas según la pasada:
+  // la de servidor ya estaría puesta en su sitio y la de cliente sacaría un `_2`
+  // con el mismo contenido — y el traductor lo traduciría dos veces.
+  const valorEn = (o, clave) => clave.split('.').reduce((x, k) => x?.[k], o);
+  const claveExistente = new Map();
+  for (const k of usadas) {
+    const e = valorEn(esDict, k), i = valorEn(enDict, k);
+    if (typeof e === 'string' && typeof i === 'string') {
+      const par = e + '\u0000' + i;
+      if (!claveExistente.has(par)) claveExistente.set(par, k);
+    }
+  }
+
   for (const k of [...pares.keys()].sort()) {
     const p = pares.get(k);
+    const yaTiene = claveExistente.get(k);
+    if (yaTiene) { claveDe.set(k, yaTiene); continue; }   // mismo par ya dado de alta
     const grupo = p.dominios.size > 1 ? 'common' : [...p.dominios][0];
     const prefijo = p.cliente ? 'client.' : '';
     let base = `${prefijo}${grupo}.${aSlug(p.es)}`;
@@ -489,7 +505,10 @@ function main() {
       const h = lista[i];
       const clave = claveDe.get(h.es + '\u0000' + h.en);
       if (!clave) continue;
-      out = out.slice(0, h.ini) + `t('${clave}')` + out.slice(h.fin);
+      // En el navegador el ayudante es `I18N.t`, no `t`: el JS de cliente ya usa
+      // `t` como variable en una docena de sitios y llamarlo `t()` los rompería.
+      const llamada = h.cliente ? `I18N.t('${clave}')` : `t('${clave}')`;
+      out = out.slice(0, h.ini) + llamada + out.slice(h.fin);
       reemplazos++;
       porDominio[h.dominio] = (porDominio[h.dominio] || 0) + 1;
     }

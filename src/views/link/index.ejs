@@ -351,7 +351,7 @@
 
   if (btnSaveCfg) btnSaveCfg.addEventListener('click', function () {
     btnSaveCfg.disabled = true;
-    setMsg(cfgMsg, LANG === 'es' ? 'Guardando…' : 'Saving…', 'mute');
+    setMsg(cfgMsg, I18N.t('client.link.guardando'), 'mute');
     fetch('/link/config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
@@ -365,14 +365,14 @@
       .then(function (r) {
         btnSaveCfg.disabled = false;
         if (r.status === 200 && r.body.ok) {
-          setMsg(cfgMsg, LANG === 'es' ? '✓ Enlace guardado.' : '✓ Link saved.', 'ok');
+          setMsg(cfgMsg, I18N.t('client.link.enlace_guardado'), 'ok');
         } else {
-          setMsg(cfgMsg, (r.body && r.body.error) ? r.body.error : (LANG === 'es' ? 'No se pudo guardar.' : 'Could not save.'), 'bad');
+          setMsg(cfgMsg, (r.body && r.body.error) ? r.body.error : (I18N.t('client.link.no_se_pudo_guardar')), 'bad');
         }
       })
       .catch(function () {
         btnSaveCfg.disabled = false;
-        setMsg(cfgMsg, LANG === 'es' ? 'No se pudo guardar.' : 'Could not save.', 'bad');
+        setMsg(cfgMsg, I18N.t('client.link.no_se_pudo_guardar'), 'bad');
       });
   });
 

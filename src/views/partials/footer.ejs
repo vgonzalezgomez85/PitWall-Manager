@@ -76,15 +76,15 @@
       let dot, text, detail = '';
 
       if (data.simulating) {
-        dot = 'sim'; text = es ? 'Simulación' : 'Simulation';
+        dot = 'sim'; text = I18N.t('client.common.simulacion');
       } else if (cs.length > 0 && down.length > 0) {
         dot = 'off'; text = `DS-300 ×${cs.length - down.length}/${cs.length}`;
-        detail = (es ? 'sin señal: caja ' : 'no signal: box ') + down.join(', ');
+        detail = (I18N.t('client.common.sin_senal_caja')) + down.join(', ');
       } else if (cs.length > 0) {
         dot = 'ok'; text = `DS-300 ×${cs.length}`;
         detail = cs.map(c => (c.path || '').split('/').pop()).filter(Boolean).join(' · ');
       } else {
-        dot = 'off'; text = es ? 'Sin conexión' : 'Disconnected';
+        dot = 'off'; text = I18N.t('client.common.sin_conexion');
       }
 
       pill.innerHTML = `<span class="status-dot status-dot--${dot}"></span>${esc(text)}` +

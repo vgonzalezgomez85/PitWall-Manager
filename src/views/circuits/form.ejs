@@ -361,7 +361,7 @@
   }
 
   function updateCount() {
-    countLabel.textContent = points.length + ' ' + (LANG === 'es' ? 'puntos' : 'points');
+    countLabel.textContent = points.length + ' ' + (I18N.t('client.form.puntos'));
   }
 
   function sync() {
@@ -594,14 +594,14 @@
   btnClose.addEventListener('click', () => { closed = !closed; draw(); });
   btnClear.addEventListener('click', () => {
     if (points.length === 0) return;
-    if (!confirm(LANG === 'es' ? '¿Borrar todos los puntos del trazado?' : 'Clear all outline points?')) return;
+    if (!confirm(I18N.t('client.form.borrar_todos_los_puntos_del_trazado'))) return;
     points = []; sync(); draw();
   });
 
   // Quitar imagen — SOLO la imagen. Los puntos se conservan: pasamos a
   // modo "lienzo en blanco" para que el trazado siga visible y editable.
   btnRemoveImg.addEventListener('click', () => {
-    if (!confirm(LANG === 'es' ? '¿Quitar la imagen del circuito? (el trazado se conserva)' : 'Remove the circuit image? (outline is kept)')) return;
+    if (!confirm(I18N.t('client.form.quitar_la_imagen_del_circuito_el_trazado_se'))) return;
     img = null;
     blank = true;             // mantener canvas activo con fondo neutro
     imgInput.value = '__CLEAR__';

@@ -175,7 +175,7 @@ window.Tires = (function () {
   }
 
   function whenLabel(ch){
-    var manga = ch.manga_number != null ? (es?'Manga ':'Heat ')+ch.manga_number : (es?'sin manga':'no heat');
+    var manga = ch.manga_number != null ? (I18N.t('client.common.manga'))+ch.manga_number : (I18N.t('client.race.sin_manga'));
     var time  = ch.race_elapsed_ms != null ? fmtClock(ch.race_elapsed_ms) : '—';
     return manga + ' · ' + time;
   }
@@ -190,13 +190,13 @@ window.Tires = (function () {
       card.setAttribute('data-team', tm.id);
       var zero = tm.available <= 0 ? ' tire-card__big--zero' : '';
       card.innerHTML =
-        '<button type="button" class="tire-pencil" title="'+(es?'Historial / editar':'History / edit')+'" data-pencil="'+tm.id+'">✏️</button>' +
+        '<button type="button" class="tire-pencil" title="'+(I18N.t('client.race.historial_editar'))+'" data-pencil="'+tm.id+'">✏️</button>' +
         '<div class="tire-card__name"><span class="tire-card__colordot" style="background:'+esc(tm.color||'#888')+'"></span>'+esc(tm.name)+'</div>' +
         '<div class="tire-card__nums">' +
-          '<div class="tire-card__num"><span class="tire-card__big'+zero+'">'+tm.available+'</span><span class="tire-card__lbl">'+(es?'Disponibles':'Available')+'</span></div>' +
-          '<div class="tire-card__num"><span class="tire-card__used">'+tm.used+'</span><span class="tire-card__lbl">'+(es?'Usados':'Used')+'</span></div>' +
+          '<div class="tire-card__num"><span class="tire-card__big'+zero+'">'+tm.available+'</span><span class="tire-card__lbl">'+(I18N.t('client.common.disponibles'))+'</span></div>' +
+          '<div class="tire-card__num"><span class="tire-card__used">'+tm.used+'</span><span class="tire-card__lbl">'+(I18N.t('client.race.usados'))+'</span></div>' +
         '</div>' +
-        '<div class="tire-card__hint">👆 '+(es?'Toca para entregar un juego':'Tap to hand out a set')+'</div>';
+        '<div class="tire-card__hint">👆 '+(I18N.t('client.race.toca_para_entregar_un_juego'))+'</div>';
       grid.appendChild(card);
     });
   }
@@ -206,9 +206,9 @@ window.Tires = (function () {
     if (!el || !ctx) return;
     if (ctx.mangaNumber != null){
       var clk = ctx.live && ctx.raceElapsedMs != null ? ' · <span class="tire-ctx__clock">'+fmtClock(ctx.raceElapsedMs)+'</span>' : '';
-      el.innerHTML = '<span class="tire-ctx__dot'+(ctx.live?' tire-ctx__dot--live':'')+'"></span>'+(es?'Manga ':'Heat ')+ctx.mangaNumber+clk;
+      el.innerHTML = '<span class="tire-ctx__dot'+(ctx.live?' tire-ctx__dot--live':'')+'"></span>'+(I18N.t('client.common.manga'))+ctx.mangaNumber+clk;
     } else {
-      el.innerHTML = '<span class="tire-ctx__dot"></span>'+(es?'Sin manga en curso':'No heat running');
+      el.innerHTML = '<span class="tire-ctx__dot"></span>'+(I18N.t('client.race.sin_manga_en_curso'));
     }
   }
 
@@ -242,18 +242,18 @@ window.Tires = (function () {
       var tm = d.team || { name:'', used:0, available:0 };
       document.getElementById('histTitle').textContent = tm.name;
       document.getElementById('histMeta').innerHTML =
-        (es?'Dotación ':'Allowance ')+d.allowance+' · '+(es?'usados ':'used ')+'<b>'+tm.used+'</b> · '+(es?'disponibles ':'available ')+'<b>'+tm.available+'</b>';
+        (I18N.t('client.common.dotacion'))+d.allowance+' · '+(I18N.t('client.race.usados_2'))+'<b>'+tm.used+'</b> · '+(I18N.t('client.race.disponibles'))+'<b>'+tm.available+'</b>';
       var list = document.getElementById('histList');
       if (!d.changes.length){
-        list.innerHTML = '<div class="tire-empty-hist">'+(es?'Sin cambios registrados todavía.':'No changes recorded yet.')+'</div>';
+        list.innerHTML = '<div class="tire-empty-hist">'+(I18N.t('client.race.sin_cambios_registrados_todavia'))+'</div>';
         return;
       }
       list.innerHTML = d.changes.map(function(ch){
         return '<div class="tire-row" data-ch="'+ch.id+'">' +
           '<div class="tire-row__when">'+esc(whenLabel(ch))+(ch.note?' <span class="tire-row__note">'+esc(ch.note)+'</span>':'')+'</div>' +
           '<div class="tire-row__btns">' +
-            '<button class="tire-mini" type="button" onclick="Tires.editRow('+ch.id+','+(ch.manga_number!=null?ch.manga_number:'null')+','+(ch.race_elapsed_ms!=null?ch.race_elapsed_ms:'null')+',this)">'+(es?'Editar':'Edit')+'</button>' +
-            '<button class="tire-mini tire-mini--danger" type="button" onclick="Tires.delRow('+ch.id+')">'+(es?'Borrar':'Delete')+'</button>' +
+            '<button class="tire-mini" type="button" onclick="Tires.editRow('+ch.id+','+(ch.manga_number!=null?ch.manga_number:'null')+','+(ch.race_elapsed_ms!=null?ch.race_elapsed_ms:'null')+',this)">'+(I18N.t('actions.edit'))+'</button>' +
+            '<button class="tire-mini tire-mini--danger" type="button" onclick="Tires.delRow('+ch.id+')">'+(I18N.t('client.common.borrar'))+'</button>' +
           '</div></div>';
       }).join('');
     });
@@ -265,12 +265,12 @@ window.Tires = (function () {
     var tt = elapsedMs!=null?fmtClock(elapsedMs):'';
     row.innerHTML =
       '<div class="tire-row__when" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">' +
-        '<input class="w-manga" style="width:64px" type="number" min="1" value="'+mm+'" id="e_m_'+id+'" placeholder="'+(es?'manga':'heat')+'">' +
+        '<input class="w-manga" style="width:64px" type="number" min="1" value="'+mm+'" id="e_m_'+id+'" placeholder="'+(I18N.t('client.race.manga'))+'">' +
         '<input class="w-time" style="width:86px" type="text" value="'+tt+'" id="e_t_'+id+'" placeholder="mm:ss">' +
       '</div>' +
       '<div class="tire-row__btns">' +
-        '<button class="tire-mini" type="button" onclick="Tires.saveRow('+id+')">'+(es?'Guardar':'Save')+'</button>' +
-        '<button class="tire-mini" type="button" onclick="Tires.loadHist('+curTeam+')">'+(es?'Cancelar':'Cancel')+'</button>' +
+        '<button class="tire-mini" type="button" onclick="Tires.saveRow('+id+')">'+(I18N.t('actions.save'))+'</button>' +
+        '<button class="tire-mini" type="button" onclick="Tires.loadHist('+curTeam+')">'+(I18N.t('actions.cancel'))+'</button>' +
       '</div>';
   }
 
@@ -283,7 +283,7 @@ window.Tires = (function () {
   }
 
   function delRow(id){
-    if (!window.confirm(es?'¿Borrar este cambio? Devuelve el juego a disponibles.':'Delete this change? Returns the set to available.')) return;
+    if (!window.confirm(I18N.t('client.race.borrar_este_cambio_devuelve_el_juego_a'))) return;
     fetch('/races/'+RACE_ID+'/tires/change/'+id+'/delete', { method:'POST' })
       .then(function(r){return r.json();}).then(function(d){ if(d.ok){ apply(d); loadHist(curTeam); } });
   }

@@ -160,7 +160,7 @@ function readOrder() {
 function updatePreview() {
   const order = readOrder();
   seqInput.value = order.join(',');
-  const restLabel = LANG === 'es' ? 'DSC' : 'REST';
+  const restLabel = I18N.t('client.common.dsc');
   preview.textContent = order.map(n => n === 0 ? restLabel : n).join(' → ');
   list.querySelectorAll('.seq-arrow').forEach((el, i) => {
     el.textContent = i < order.length - 1 ? '→' : '';
@@ -204,8 +204,8 @@ function makeRestEl() {
   item.dataset.lane = '0';
   item.innerHTML = `
     <span class="seq-handle">⠿</span>
-    <span class="seq-dot seq-dot--rest">${LANG === 'es' ? 'DSC' : 'REST'}</span>
-    <button type="button" class="seq-remove" title="${LANG === 'es' ? 'Quitar' : 'Remove'}">✕</button>
+    <span class="seq-dot seq-dot--rest">${I18N.t('client.common.dsc')}</span>
+    <button type="button" class="seq-remove" title="${I18N.t('client.common.quitar')}">✕</button>
     <span class="seq-arrow"></span>`;
   return item;
 }

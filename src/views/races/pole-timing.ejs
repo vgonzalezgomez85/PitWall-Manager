@@ -306,10 +306,10 @@ function renderTower() {
       isLive ? 'pole-tower-row--running' : ''
     ].filter(Boolean).join(' ');
     const nameSuffix = isP1
-      ? ' <span class="pole-tower-fastest">' + (LANG_ES ? 'Vuelta rápida' : 'Fast lap') + '</span>'
+      ? ' <span class="pole-tower-fastest">' + (I18N.t('client.common.vuelta_rapida')) + '</span>'
       : '';
     const liveTag = isLive
-      ? ' <span class="pole-tower-livetag">' + (LANG_ES ? '● En pista' : '● On track') + '</span>'
+      ? ' <span class="pole-tower-livetag">' + (I18N.t('client.pole-timing.en_pista')) + '</span>'
       : '';
     rows.push(`
       <div class="${cls}">
@@ -318,7 +318,7 @@ function renderTower() {
         <div class="pole-tower-time">
           ${fmtSeconds3(e.bestLapMs)}
           ${isP1
-            ? '<span class="pole-tower-gap">' + (LANG_ES ? 'Líder' : 'Leader') + '</span>'
+            ? '<span class="pole-tower-gap">' + (I18N.t('client.common.lider')) + '</span>'
             : '<span class="pole-tower-gap">+' + (gapMs / 1000).toFixed(3) + '</span>'}
         </div>
       </div>`);
@@ -326,7 +326,7 @@ function renderTower() {
 
   if (currentNoTime) {
     const liveMs = window._currentLiveMs ?? null;
-    const liveTxt = liveMs != null ? fmtSeconds3(liveMs) : (LANG_ES ? 'En pista' : 'On track');
+    const liveTxt = liveMs != null ? fmtSeconds3(liveMs) : (I18N.t('client.common.en_pista'));
     rows.push(`
       <div class="pole-tower-row pole-tower-row--running">
         <div class="pole-tower-pos">●</div>
@@ -350,7 +350,7 @@ function renderTower() {
       <div class="pole-tower-row pole-tower-row--pending">
         <div class="pole-tower-pos">—</div>
         <div class="pole-tower-name">${teamHtml(e.name, e.categoria)}</div>
-        <div class="pole-tower-time">${LANG_ES ? 'Ausente' : 'No-show'}</div>
+        <div class="pole-tower-time">${I18N.t('client.common.ausente')}</div>
       </div>`);
   });
 
@@ -409,9 +409,9 @@ function renderOrder() {
               : e.isDone    ? 'pole-bcast-row pole-bcast-row--done'
               :               'pole-bcast-row';
     const tag = e.isCurrent
-      ? '<span class="pole-bcast-tag pole-bcast-tag--now">' + (LANG_ES ? '● En pista' : '● On track') + '</span>'
+      ? '<span class="pole-bcast-tag pole-bcast-tag--now">' + (I18N.t('client.pole-timing.en_pista')) + '</span>'
       : e.isDone
-      ? '<span class="pole-bcast-tag pole-bcast-tag--done">✓ ' + (LANG_ES ? 'Hecho' : 'Done') + '</span>'
+      ? '<span class="pole-bcast-tag pole-bcast-tag--done">✓ ' + (I18N.t('client.pole-timing.hecho')) + '</span>'
       : '';
     return '<div class="' + cls + '">'
       + '<span class="pole-bcast-pos">' + (i + 1) + '</span>'
@@ -461,14 +461,14 @@ function enterIdle() {
   clearAutoAdvance();
   show('js-btn-idle'); hide('js-btn-running'); hide('js-btn-finished'); show('js-btn-skip-row');
   hide('js-chrono-wrap'); hide('js-countdown-wrap'); hide('js-finished-result');
-  setStateSub(LANG_ES ? 'Preparado' : 'Ready');
+  setStateSub(I18N.t('client.pole-timing.preparado'));
 }
 function enterStandby() {
   state = 'standby';
   clearAutoAdvance();
   hide('js-btn-idle'); show('js-btn-running'); hide('js-btn-finished'); show('js-btn-skip-row');
   hide('js-chrono-wrap'); hide('js-countdown-wrap'); hide('js-laps-wrap'); hide('js-finished-result');
-  setStateSub(LANG_ES ? '⏳ Esperando GO del DS-300…' : '⏳ Waiting for DS-300 GO…');
+  setStateSub(I18N.t('client.pole-timing.esperando_go_del_ds_300'));
   // Limpiar historial al entrar en standby (nuevo intento)
   const list = document.getElementById('js-laps-list');
   if (list) list.innerHTML = '';
@@ -478,25 +478,25 @@ function enterRunning() {
   clearAutoAdvance();
   hide('js-btn-idle'); show('js-btn-running'); hide('js-btn-finished'); hide('js-btn-skip-row');
   show('js-chrono-wrap'); show('js-countdown-wrap'); show('js-laps-wrap'); hide('js-finished-result');
-  setStateSub(LANG_ES ? 'Cronometrando vuelta' : 'Timing lap');
+  setStateSub(I18N.t('client.pole-timing.cronometrando_vuelta'));
   setCountdown(DURATION_MS);
   updateChrono(0);
 }
 function enterPaused() {
   state = 'paused';
   hide('js-btn-skip-row');
-  setStateSub(LANG_ES ? '⏸ Pausa' : '⏸ Paused');
+  setStateSub(I18N.t('client.pole-timing.pausa'));
 }
 function enterFinished(bestLapMs, lapCount) {
   state = 'finished';
   hide('js-btn-idle'); hide('js-btn-running'); show('js-btn-finished'); hide('js-btn-skip-row');
   hide('js-chrono-wrap');
   show('js-finished-result');
-  setStateSub(LANG_ES ? 'Intento terminado' : 'Attempt finished');
+  setStateSub(I18N.t('client.pole-timing.intento_terminado'));
   document.getElementById('js-final-best').textContent = formatMs(bestLapMs);
   const n = lapCount || 0;
   document.getElementById('js-final-laps').textContent =
-    n === 0 ? '' : (n === 1 ? (LANG_ES ? '· 1 vuelta' : '· 1 lap') : (LANG_ES ? '· ' + n + ' vueltas' : '· ' + n + ' laps'));
+    n === 0 ? '' : (n === 1 ? (I18N.t('client.pole-timing.1_vuelta')) : (LANG_ES ? '· ' + n + ' vueltas' : '· ' + n + ' laps'));
   if (isAutoAdvance()) scheduleAutoAdvance();
 }
 
@@ -508,14 +508,14 @@ function isAutoAdvance() { return localStorage.getItem(AUTO_ADVANCE_KEY) === '1'
 function clearAutoAdvance() {
   if (autoAdvanceTimer) { clearTimeout(autoAdvanceTimer); autoAdvanceTimer = null; }
   const label = document.getElementById('js-btn-next-label');
-  if (label) label.textContent = LANG_ES ? 'Siguiente piloto →' : 'Next pilot →';
+  if (label) label.textContent = I18N.t('client.pole-timing.siguiente_piloto');
 }
 function scheduleAutoAdvance() {
   clearAutoAdvance();
   let secsLeft = AUTO_ADVANCE_SECONDS;
   const label = document.getElementById('js-btn-next-label');
   const tick = () => {
-    if (label) label.textContent = (LANG_ES ? 'Siguiente piloto en ' : 'Next pilot in ') + secsLeft + 's…';
+    if (label) label.textContent = (I18N.t('client.pole-timing.siguiente_piloto_en')) + secsLeft + 's…';
     if (secsLeft <= 0) {
       autoAdvanceTimer = null;
       const form = document.getElementById('js-next-form');
@@ -551,7 +551,7 @@ function updateChrono(currentLapMs) {
     cls = diff <= 0 ? 'pole-chrono--ahead' : 'pole-chrono--behind';
     dtxt = (diff <= 0 ? '−' : '+') + (Math.abs(diff) / 1000).toFixed(3) + ' vs pole';
   } else {
-    dtxt = LANG_ES ? 'Sin referencia' : 'No reference';
+    dtxt = I18N.t('client.pole-timing.sin_referencia');
   }
   if (el) el.className = 'pole-chrono ' + cls;
   if (delta) {
@@ -610,7 +610,7 @@ socket.on('pole:started', (data) => {
 socket.on('pole:paused',  () => { if (state === 'running') enterPaused(); });
 socket.on('pole:resumed', () => {
   if (document.getElementById('semaphore-overlay')) semaphoreGo(null);
-  if (state === 'paused') { state = 'running'; setStateSub(LANG_ES ? 'Cronometrando vuelta' : 'Timing lap'); }
+  if (state === 'paused') { state = 'running'; setStateSub(I18N.t('client.pole-timing.cronometrando_vuelta')); }
 });
 socket.on('pole:aborted', () => {
   document.getElementById('js-final-laps') && (document.getElementById('js-final-laps').textContent = '');
@@ -640,7 +640,7 @@ socket.on('pole:lap', ({ lapNumber, lapTimeMs, bestLapMs, improved }) => {
     const row = document.createElement('div');
     row.className = 'pole-lap-row' + (improved ? ' pole-lap-row--best' : '');
     row.innerHTML =
-      '<span class="pole-lap-num">' + (LANG_ES ? 'Vuelta' : 'Lap') + ' ' + lapNumber + '</span>' +
+      '<span class="pole-lap-num">' + (I18N.t('client.common.vuelta')) + ' ' + lapNumber + '</span>' +
       '<span class="pole-lap-time">' + fmtSeconds3(lapTimeMs) + (improved ? ' ★' : '') + '</span>';
     list.prepend(row);
   }
@@ -690,7 +690,7 @@ if (IS_RUNNING) {
   const state = document.getElementById('omitFirstState');
   if (!tgl) return;
   const LANG_ES = <%= t('pole-timing.true') %>;
-  function paint() { if (state) state.textContent = tgl.checked ? (LANG_ES ? 'ON' : 'ON') : 'OFF'; }
+  function paint() { if (state) state.textContent = tgl.checked ? (I18N.t('client.pole-timing.on')) : 'OFF'; }
   paint();
   tgl.addEventListener('change', async () => {
     paint();

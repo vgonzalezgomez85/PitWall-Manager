@@ -88,21 +88,21 @@
 
   function renderLog(d){
     document.getElementById('logMeta').innerHTML =
-      (es?'Dotación ':'Allowance ')+'<b>'+d.allowance+'</b> '+(es?'juegos/equipo':'sets/team')+' · '+
+      (I18N.t('client.common.dotacion'))+'<b>'+d.allowance+'</b> '+(I18N.t('client.common.juegos_equipo'))+' · '+
       '<b>'+d.totalChanges+'</b> '+(es? (d.totalChanges===1?'cambio':'cambios') : (d.totalChanges===1?'change':'changes'));
 
     var body = document.getElementById('logBody');
     if (!d.groups.length){
-      body.innerHTML = '<div class="tlog-empty"><p>'+(es?'Todavía no hay mangas.':'No heats yet.')+'</p></div>';
+      body.innerHTML = '<div class="tlog-empty"><p>'+(I18N.t('client.log.todavia_no_hay_mangas'))+'</p></div>';
       return;
     }
 
     var cards = d.groups.map(function(g){
-      var title = g.mangaNumber!=null ? (es?'Manga ':'Heat ')+g.mangaNumber : (es?'Sin manga':'No heat');
+      var title = g.mangaNumber!=null ? (I18N.t('client.common.manga'))+g.mangaNumber : (I18N.t('client.common.sin_manga'));
 
       if (!g.changes.length){
         return '<div class="tlog-m tlog-m--empty"><div class="tlog-m__h">'+esc(title)+
-          '<span class="tlog-m__none">'+(es?'sin cambios':'no changes')+'</span></div></div>';
+          '<span class="tlog-m__none">'+(I18N.t('client.log.sin_cambios'))+'</span></div></div>';
       }
 
       var rows = g.changes.map(function(ch){
@@ -112,7 +112,7 @@
           '<span class="tlog-dot" style="background:'+esc(ch.team_color||'#888')+'"></span>' +
           '<span class="tlog-team">'+esc(ch.team_name||('#'+ch.team_id)) +
             (ch.note?' <span class="tlog-note">· '+esc(ch.note)+'</span>':'') + '</span>' +
-          '<span class="tlog-set'+over+'">'+(es?'juego ':'set ')+ch.set_number+(d.allowance>0?('/'+d.allowance):'')+'</span>' +
+          '<span class="tlog-set'+over+'">'+(I18N.t('client.log.juego'))+ch.set_number+(d.allowance>0?('/'+d.allowance):'')+'</span>' +
           '<span class="tlog-time">'+time+'</span>' +
         '</div>';
       }).join('');

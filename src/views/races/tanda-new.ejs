@@ -319,7 +319,7 @@ function slotLabel(i, total){
   if (i < LANE_SEQ.length && LANE_SEQ[i] > 0) return LANE_SEQ[i];
   const t = total ?? document.querySelectorAll('.participant-row').length;
   const restIdx = t - i;
-  return (LANG==='es'?'DSC':'REST') + (restIdx > 0 ? restIdx : '');
+  return (I18N.t('client.common.dsc')) + (restIdx > 0 ? restIdx : '');
 }
 function slotColor(i){ const l = i < LANE_SEQ.length ? LANE_SEQ[i] : 0; return l > 0 ? COLORS[(l-1) % COLORS.length] : '#30363d'; }
 const DRIVER_PH = "<%= t('wizard.driver_name_ph') %>";
@@ -506,7 +506,7 @@ document.getElementById('addDriver')?.addEventListener('click', () => {
       ${attrsHtml(`drivers[${idx}]`)}
     </div>
     <button type="button" class="btn btn--danger btn--sm remove-row"
-      title="${LANG === 'es' ? 'Eliminar' : 'Remove'}">✕</button>`;
+      title="${I18N.t('client.common.eliminar')}">✕</button>`;
   grid.appendChild(div);
   div.querySelector('.participant-name').focus();
   // Relabel existing rest slots since total just increased
@@ -648,9 +648,9 @@ if (document.getElementById('teamAssignUI')) {
     btn.dataset.rest = restCounter++;
     btn.dataset.ci = ci;
     btn.innerHTML =
-      `<span class="tanda-rest-remove" title="${LANG === 'es' ? 'Quitar descanso' : 'Remove rest'}">✕</span>` +
+      `<span class="tanda-rest-remove" title="${I18N.t('client.tanda-new.quitar_descanso')}">✕</span>` +
       `<span class="tanda-lane-num">💤</span>` +
-      `<span class="tanda-rest-label">${LANG === 'es' ? 'DSC extra' : 'REST extra'}</span>` +
+      `<span class="tanda-rest-label">${I18N.t('client.tanda-new.dsc_extra')}</span>` +
       `<span class="tanda-lane-owner"></span>`;
     // Va tras los descansos ya presentes del circuito, antes del primer carril.
     const firstLane = slots.querySelector('.tanda-lane-btn:not(.tanda-lane-btn--rest)');
@@ -808,41 +808,41 @@ if (document.getElementById('teamAssignUI')) {
   modal.style.cssText = 'display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.6);align-items:center;justify-content:center';
   modal.innerHTML = `
     <div style="background:#161b22;border:1px solid #30363d;border-radius:10px;padding:1.5rem;width:420px;max-width:96vw;max-height:90vh;overflow-y:auto">
-      <h3 style="margin:0 0 1rem;color:#e6edf3">${LANG === 'es' ? 'Nuevo equipo' : 'New team'}</h3>
+      <h3 style="margin:0 0 1rem;color:#e6edf3">${I18N.t('client.common.nuevo_equipo')}</h3>
       <div class="form-group">
-        <label class="form-label">${LANG === 'es' ? 'Nombre del equipo' : 'Team name'}</label>
+        <label class="form-label">${I18N.t('client.common.nombre_del_equipo')}</label>
         <input id="modalTeamName" class="form-input" type="text" autocomplete="off"
-               placeholder="${LANG === 'es' ? 'Ej: Red Racers' : 'e.g. Red Racers'}">
+               placeholder="${I18N.t('client.common.ej_red_racers')}">
       </div>
       <div class="form-group">
-        <label class="form-label">${LANG === 'es' ? 'País (opcional)' : 'Country (optional)'}</label>
+        <label class="form-label">${I18N.t('client.tanda-new.pais_opcional')}</label>
         <div style="position:relative">
           <div id="modalFlagBtn" class="form-input" style="cursor:pointer;display:flex;align-items:center;gap:.6rem;user-select:none">
             <span id="modalFlagDisplay" style="font-size:1.2rem">🌐</span>
-            <span id="modalFlagLabel" style="flex:1;color:#8b949e;font-size:.9rem">${LANG === 'es' ? 'Selecciona...' : 'Select...'}</span>
+            <span id="modalFlagLabel" style="flex:1;color:#8b949e;font-size:.9rem">${I18N.t('client.tanda-new.selecciona')}</span>
             <span style="color:#8b949e;font-size:.75rem">▼</span>
           </div>
           <input type="hidden" id="modalCountryVal">
           <div id="modalFlagDrop" style="display:none;position:absolute;bottom:calc(100% + 4px);left:0;right:0;z-index:10;background:#161b22;border:1px solid #30363d;border-radius:8px;box-shadow:0 -4px 16px rgba(0,0,0,.5);overflow:hidden">
             <div style="padding:.4rem">
               <input id="modalFlagSearch" class="form-input form-input--sm" type="text"
-                     placeholder="${LANG === 'es' ? 'Buscar...' : 'Search...'}" autocomplete="off" style="width:100%">
+                     placeholder="${I18N.t('client.tanda-new.buscar')}" autocomplete="off" style="width:100%">
             </div>
             <ul id="modalFlagList" style="margin:0;padding:0 0 .3rem;list-style:none;max-height:160px;overflow-y:auto"></ul>
           </div>
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">${LANG === 'es' ? 'Pilotos' : 'Drivers'}</label>
+        <label class="form-label">${I18N.t('client.common.pilotos')}</label>
         <div id="modalMembersList" style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:.5rem"></div>
         <button type="button" id="modalAddMember" class="btn btn--ghost btn--sm">
-          + ${LANG === 'es' ? 'Añadir piloto' : 'Add driver'}
+          + ${I18N.t('client.common.anadir_piloto')}
         </button>
       </div>
       <div id="modalError" style="display:none;color:#f85149;font-size:.85rem;margin-bottom:.75rem"></div>
       <div style="display:flex;gap:.5rem;justify-content:flex-end">
-        <button type="button" id="modalCancel" class="btn btn--ghost">${LANG === 'es' ? 'Cancelar' : 'Cancel'}</button>
-        <button type="button" id="modalSave" class="btn btn--primary">${LANG === 'es' ? 'Crear equipo' : 'Create team'}</button>
+        <button type="button" id="modalCancel" class="btn btn--ghost">${I18N.t('actions.cancel')}</button>
+        <button type="button" id="modalSave" class="btn btn--primary">${I18N.t('client.common.crear_equipo')}</button>
       </div>
     </div>`;
   document.body.appendChild(modal);
@@ -856,13 +856,13 @@ if (document.getElementById('teamAssignUI')) {
     row.innerHTML = `
       <div style="flex:1;position:relative">
         <input type="text" class="form-input modal-member-name"
-               placeholder="${LANG === 'es' ? 'Nombre piloto' : 'Driver name'}"
+               placeholder="${I18N.t('client.common.nombre_piloto')}"
                value="${name.replace(/"/g,'&quot;')}" autocomplete="off">
         <input type="hidden" class="modal-member-driver-id" value="${driverId || ''}">
         <ul class="modal-ac-drop" style="display:none;position:absolute;top:calc(100% + 2px);left:0;right:0;background:#161b22;border:1px solid #30363d;border-radius:6px;margin:0;padding:0;list-style:none;z-index:200;max-height:160px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.4)"></ul>
       </div>
       <span class="modal-member-linked" style="font-size:.9rem;visibility:${driverId ? 'visible' : 'hidden'}">🔗</span>
-      <button type="button" class="btn btn--danger btn--sm modal-member-remove" title="${LANG === 'es' ? 'Quitar' : 'Remove'}">✕</button>`;
+      <button type="button" class="btn btn--danger btn--sm modal-member-remove" title="${I18N.t('client.common.quitar')}">✕</button>`;
     document.getElementById('modalMembersList').appendChild(row);
 
     const input   = row.querySelector('.modal-member-name');
@@ -921,7 +921,7 @@ if (document.getElementById('teamAssignUI')) {
     document.getElementById('modalTeamName').value = '';
     document.getElementById('modalCountryVal').value = '';
     document.getElementById('modalFlagDisplay').textContent = '🌐';
-    document.getElementById('modalFlagLabel').textContent = LANG === 'es' ? 'Selecciona...' : 'Select...';
+    document.getElementById('modalFlagLabel').textContent = I18N.t('client.tanda-new.selecciona');
     document.getElementById('modalFlagLabel').style.color = '#8b949e';
     document.getElementById('modalError').style.display = 'none';
     document.getElementById('modalFlagDrop').style.display = 'none';
@@ -985,7 +985,7 @@ if (document.getElementById('teamAssignUI')) {
     const country = document.getElementById('modalCountryVal').value || null;
     const errEl   = document.getElementById('modalError');
     if (name.length < 2) {
-      errEl.textContent = LANG === 'es' ? 'El nombre es obligatorio (mín. 2 caracteres).' : 'Name is required (min 2 chars).';
+      errEl.textContent = I18N.t('client.tanda-new.el_nombre_es_obligatorio_min_2_caracteres');
       errEl.style.display = '';
       return;
     }
@@ -996,7 +996,7 @@ if (document.getElementById('teamAssignUI')) {
       }))
       .filter(m => m.name);
     if (members.length === 0) {
-      errEl.textContent = LANG === 'es' ? 'Añade al menos un piloto.' : 'Add at least one driver.';
+      errEl.textContent = I18N.t('client.tanda-new.anade_al_menos_un_piloto');
       errEl.style.display = '';
       return;
     }
@@ -1027,7 +1027,7 @@ if (document.getElementById('teamAssignUI')) {
       catalogList.appendChild(card);
       closeModal();
     } catch(err) {
-      errEl.textContent = LANG === 'es' ? 'Error al crear el equipo.' : 'Error creating team.';
+      errEl.textContent = I18N.t('client.tanda-new.error_al_crear_el_equipo');
       errEl.style.display = '';
     } finally {
       document.getElementById('modalSave').disabled = false;

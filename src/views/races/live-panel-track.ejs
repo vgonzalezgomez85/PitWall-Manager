@@ -2,6 +2,7 @@
 <html lang="<%= lang %>">
 <head>
   <meta charset="UTF-8">
+<%- include('../partials/i18n-client') %>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>
     <%= t('live-panel-track.minimapa') %> — <%= race.name %>
@@ -302,12 +303,12 @@
       // Cabecera con controles (solo si hay más de 1 circuito mostramos nº)
       const hd = document.createElement('div');
       hd.className = 'tk-cell__hd';
-      const label = N > 1 ? `Circuito ${idx + 1}` : (LANG === 'es' ? 'Circuito' : 'Track');
+      const label = N > 1 ? `Circuito ${idx + 1}` : (I18N.t('client.live-panel-track.circuito'));
       hd.innerHTML = `<span class="tk-cell__n">${label}</span><span class="tk-cell__sp"></span>`;
       const rotBtn  = document.createElement('span');
-      rotBtn.className = 'tk-cell__btn'; rotBtn.title = LANG==='es'?'Girar 90°':'Rotate 90°'; rotBtn.textContent = '⟳';
+      rotBtn.className = 'tk-cell__btn'; rotBtn.title = I18N.t('client.live-panel-track.girar_90'); rotBtn.textContent = '⟳';
       const flipBtn = document.createElement('span');
-      flipBtn.className = 'tk-cell__btn' + (circ.flip ? ' on' : ''); flipBtn.title = LANG==='es'?'Espejo':'Mirror'; flipBtn.textContent = '⇄';
+      flipBtn.className = 'tk-cell__btn' + (circ.flip ? ' on' : ''); flipBtn.title = I18N.t('client.live-panel-track.espejo'); flipBtn.textContent = '⇄';
       hd.appendChild(rotBtn); hd.appendChild(flipBtn);
       cell.appendChild(hd);
       grid.appendChild(cell);

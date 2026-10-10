@@ -2,6 +2,7 @@
 <html lang="<%= lang %>">
 <head>
   <meta charset="UTF-8">
+<%- include('../partials/i18n-client') %>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>
     <%= t('live-panel-fastest.vueltas_rapidas') %> — <%= race.name %>
@@ -180,7 +181,7 @@
         .sort((a, b) => a.bestLapMs - b.bestLapMs);
 
       if (rows.length === 0) {
-        pfBody.innerHTML = `<div class="pf-empty">${LANG === 'es' ? 'Sin vueltas registradas todavía' : 'No laps recorded yet'}</div>`;
+        pfBody.innerHTML = `<div class="pf-empty">${I18N.t('client.live-panel-fastest.sin_vueltas_registradas_todavia')}</div>`;
         return;
       }
 

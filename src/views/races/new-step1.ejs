@@ -248,7 +248,7 @@ const categoryIdEl   = document.getElementById('categoryId');
 // Map<circuitId, [{ category_id, category_name, min_lap_ms }]>
 const CIRCUIT_CATEGORY_TIMES = <%- JSON.stringify(circuitCategoryTimes || {}) %>;
 
-const fmtS = (ms) => (ms / 1000).toFixed(2).replace('.', ES ? ',' : '.') + ' s';
+const fmtS = (ms) => (ms / 1000).toFixed(2).replace('.', I18N.t('client.wizard.txt')) + ' s';
 function getActiveCount() { return parseInt(circCount.value, 10); }
 
 function updateTotal() {
@@ -272,9 +272,9 @@ function renderFacts(opt) {
   const config = JSON.parse(opt.dataset.config || '[]');
   const lanes = parseInt(opt.dataset.lanes, 10) || config.reduce((a, b) => a + b, 0);
   const minMs = parseInt(minLapInput.value * 1000, 10) || 0;
-  const parts = [`<b>${lanes}</b> ${ES ? 'carriles' : 'lanes'}`];
-  if (config.length > 1) parts.push(`${config.length} ${ES ? 'circuitos' : 'circuits'} (${config.join(' + ')})`);
-  parts.push(minMs > 0 ? `${ES ? 'vuelta mínima' : 'min lap'} <b>${fmtS(minMs)}</b>` : (ES ? 'sin vuelta mínima' : 'no min lap'));
+  const parts = [`<b>${lanes}</b> ${I18N.t('client.common.carriles')}`];
+  if (config.length > 1) parts.push(`${config.length} ${I18N.t('client.wizard.circuitos')} (${config.join(' + ')})`);
+  parts.push(minMs > 0 ? `${I18N.t('client.wizard.vuelta_minima')} <b>${fmtS(minMs)}</b>` : (I18N.t('client.wizard.sin_vuelta_minima')));
   factsEl.innerHTML = parts.join('<span class="nr-dot">·</span>');
 }
 
@@ -360,13 +360,13 @@ function refreshSummary() {
   const lanes  = parseInt(totalDisplay.textContent, 10) || 0;
   const passes = parseInt(document.getElementById('passes').value, 10) || 1;
   const rep    = parseInt(document.getElementById('laneRepeat').value, 10) || 1;
-  const parts = [name ? `<b>${esc(name)}</b>` : (ES ? '<i>sin nombre</i>' : '<i>no name</i>')];
-  if (type) parts.push(type === 'championship' ? (ES ? 'Resistencia' : 'Endurance') : 'Sprint');
-  parts.push(`${lanes} ${ES ? 'carriles' : 'lanes'}`);
-  parts.push(pole ? (ES ? 'con pole' : 'with pole') : (ES ? 'sin pole' : 'no pole'));
+  const parts = [name ? `<b>${esc(name)}</b>` : (I18N.t('client.wizard.i_sin_nombre_i'))];
+  if (type) parts.push(type === 'championship' ? (I18N.t('client.common.resistencia')) : 'Sprint');
+  parts.push(`${lanes} ${I18N.t('client.common.carriles')}`);
+  parts.push(pole ? (I18N.t('client.wizard.con_pole')) : (I18N.t('client.wizard.sin_pole')));
   const more = [];
-  if (passes > 1) more.push(`${passes} ${ES ? 'pasadas' : 'passes'}`);
-  if (rep > 1) more.push(`${ES ? 'carril ×' : 'lane ×'}${rep}`);
+  if (passes > 1) more.push(`${passes} ${I18N.t('client.wizard.pasadas')}`);
+  if (rep > 1) more.push(`${I18N.t('client.wizard.carril')}${rep}`);
   document.getElementById('moreSummary').textContent = more.join(' · ');
   document.getElementById('nrSummary').innerHTML = parts.concat(more).join(' · ');
 }
@@ -376,8 +376,8 @@ document.getElementById('nrForm').addEventListener('change', refreshSummary);
 document.getElementById('nrForm').addEventListener('submit', (e) => {
   const problems = [];
   const nameEl = document.getElementById('name');
-  if (!nameEl.value.trim()) problems.push([nameEl, ES ? 'Ponle un nombre a la carrera.' : 'Give the race a name.']);
-  if (!currentType()) problems.push([document.querySelector('input[name="type"]'), ES ? 'Elige el tipo de carrera.' : 'Choose the race type.']);
+  if (!nameEl.value.trim()) problems.push([nameEl, I18N.t('client.wizard.ponle_un_nombre_a_la_carrera')]);
+  if (!currentType()) problems.push([document.querySelector('input[name="type"]'), I18N.t('client.wizard.elige_el_tipo_de_carrera')]);
   if (!circuitIdEl.value) {
     for (let i = 1; i <= getActiveCount(); i++) {
       const inp = document.getElementById('circLanes_' + i);

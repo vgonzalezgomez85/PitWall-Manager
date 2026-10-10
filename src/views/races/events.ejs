@@ -117,7 +117,7 @@
     }).filter(function (g) { return g.items.length > 0; });
 
     if (!groups.length){
-      body.innerHTML = '<div class="evlog-empty"><div class="evlog-empty__ic">🗒️</div><p>'+(es?'Todavía no hay sucesos.':'No events yet.')+'</p></div>';
+      body.innerHTML = '<div class="evlog-empty"><div class="evlog-empty__ic">🗒️</div><p>'+(I18N.t('client.events.todavia_no_hay_sucesos'))+'</p></div>';
       return;
     }
 
@@ -131,8 +131,8 @@
     }
 
     var cards = groups.map(function(g){
-      var title = g.mangaNumber==null ? (es?'Sin manga':'No heat')
-        : (d.multiTanda && g.tandaNumber!=null ? (es?'Tanda ':'Group ')+g.tandaNumber+' · ' : '') + (es?'Manga ':'Heat ')+g.mangaNumber;
+      var title = g.mangaNumber==null ? (I18N.t('client.common.sin_manga'))
+        : (d.multiTanda && g.tandaNumber!=null ? (I18N.t('client.events.tanda'))+g.tandaNumber+' · ' : '') + (I18N.t('client.common.manga'))+g.mangaNumber;
       var when = g.startedAtMs != null ? '<span class="evlog-m__when">'+esc(fmtWhen(g.startedAtMs))+'</span>' : '';
       var key = groupKey(g);
       var isOpen = !!expanded[key];

@@ -1,0 +1,30 @@
+<%#
+  Diccionario para el JavaScript del navegador.
+
+  El `t()` del servidor no existe en el navegador, así que las vistas que llevan
+  `<script>` necesitan su propia copia. Se inyectan SOLO las claves `client.*`
+  (ahora mismo 238, unos 8 KB): el diccionario entero viajaría en cada página y
+  esto se sirve por LAN a móviles.
+
+  El ayudante se llama `I18N.t` y no `t` a propósito: en el JS de cliente ya hay
+  doce sitios que declaran su propio `t` (bucles y temporales) y llamar `t()` a
+  esto rompería esos ficheros — pasó con el `t()` de servidor y costó un 500.
+
+  Va en su propio partial y no en `header.ejs` porque trece vistas (directo, TV,
+  Le Mans, Lap, QR, paneles) son autónomas y no incluyen el header.
+%>
+<script>
+(function () {
+  var D = <%- JSON.stringify(typeof i18nClient !== 'undefined' ? i18nClient : {}).replace(/</g, '\\u003c') %>;
+  window.I18N = {
+    t: function (clave, vars) {
+      var o = D, partes = String(clave).split('.');
+      for (var i = 0; i < partes.length && o != null; i++) o = o[partes[i]];
+      if (typeof o !== 'string') return clave;
+      return o.replace(/\{\{(\w+)\}\}/g, function (_, n) {
+        return (vars && vars[n] != null) ? vars[n] : '';
+      });
+    }
+  };
+})();
+</script>

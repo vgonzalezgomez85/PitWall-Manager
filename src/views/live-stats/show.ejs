@@ -428,10 +428,10 @@
   function consLabel(level) {
     const es = LS_LANG === 'es';
     switch (level) {
-      case 'excelente': return es ? 'Excelente' : 'Excellent';
-      case 'buena':     return es ? 'Buena'     : 'Good';
-      case 'irregular': return es ? 'Irregular' : 'Irregular';
-      case 'erratica':  return es ? 'Errática'  : 'Erratic';
+      case 'excelente': return I18N.t('client.common.excelente');
+      case 'buena':     return I18N.t('client.common.buena');
+      case 'irregular': return I18N.t('client.common.irregular');
+      case 'erratica':  return I18N.t('client.common.erratica');
       default:          return '—';
     }
   }
@@ -932,8 +932,8 @@
     const es = LS_LANG === 'es';
     const el = $('lsConsHint');
     if (el) el.textContent = consScope === 'all'
-      ? (es ? 'incluye salidas y paradas' : 'includes exits & pit-stops')
-      : (es ? 'solo vueltas limpias' : 'clean laps only');
+      ? (I18N.t('client.show.incluye_salidas_y_paradas'))
+      : (I18N.t('client.show.solo_vueltas_limpias'));
   }
   document.querySelectorAll('#lsConsModes .ls-cmode').forEach(btn => {
     btn.classList.toggle('is-active', btn.dataset.consscope === consScope);
@@ -1153,16 +1153,16 @@
     const toneOf = i => 'ls-grid-tone-' + (i % 6);
 
     let thead = '<thead><tr class="ls-grid-lanehead"><th rowspan="2">' +
-      (esLang ? 'Equipo/Piloto' : 'Team/Driver') + '</th><th rowspan="2">' +
-      (esLang ? 'Categoría' : 'Category') + '</th><th rowspan="2">' +
-      (esLang ? 'Vueltas totales' : 'Total laps') + '</th>';
-    LANES_LIST.forEach((ln, i) => { thead += `<th colspan="6" class="${toneOf(i)}">${esLang ? 'Carril' : 'Lane'} ${ln}</th>`; });
+      (I18N.t('client.show.equipo_piloto')) + '</th><th rowspan="2">' +
+      (I18N.t('client.common.categoria')) + '</th><th rowspan="2">' +
+      (I18N.t('client.show.vueltas_totales')) + '</th>';
+    LANES_LIST.forEach((ln, i) => { thead += `<th colspan="6" class="${toneOf(i)}">${I18N.t('client.common.carril')} ${ln}</th>`; });
     thead += '</tr><tr class="ls-grid-subhead">';
     LANES_LIST.forEach((ln, i) => {
       const tn = toneOf(i);
-      thead += `<th class="${tn}">${esLang ? 'Piloto' : 'Driver'}</th><th class="${tn}">${esLang ? 'Vueltas' : 'Laps'}</th>` +
+      thead += `<th class="${tn}">${I18N.t('client.common.piloto')}</th><th class="${tn}">${I18N.t('client.common.vueltas')}</th>` +
                `<th class="${tn}">VR</th><th class="${tn}">VM</th>` +
-               `<th class="${tn}">${esLang ? 'Salidas' : 'Exits'}</th><th class="${tn}">${esLang ? 'Pit-stops' : 'Pit stops'}</th>`;
+               `<th class="${tn}">${I18N.t('client.common.salidas')}</th><th class="${tn}">${I18N.t('client.show.pit_stops')}</th>`;
     });
     thead += '</tr></thead>';
 

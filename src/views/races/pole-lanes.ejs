@@ -158,7 +158,7 @@ function render() {
   // Bolsa
   const libres = unassigned();
   poolPills.innerHTML = libres.map(e => pillHTML(e.name)).join('') ||
-    `<span class="pole-pool__empty">${LANG === 'es' ? '✓ Todos colocados' : '✓ All placed'}</span>`;
+    `<span class="pole-pool__empty">${I18N.t('client.pole-lanes.todos_colocados')}</span>`;
   poolCount.textContent = libres.length;
 
   // Un carril

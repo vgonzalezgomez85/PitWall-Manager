@@ -345,8 +345,8 @@
         mangas.forEach(function (m) {
           var o = document.createElement('option');
           o.value = m.tanda + ':' + m.manga;
-          o.textContent = (es ? 'Tanda ' : 'Round ') + m.tanda + ' · ' + (es ? 'Manga ' : 'Heat ') + m.manga +
-                          ' (' + (m.status || '—') + ', ' + m.laps + (es ? ' vueltas)' : ' laps)');
+          o.textContent = (I18N.t('client.compare.tanda')) + m.tanda + ' · ' + (I18N.t('client.common.manga')) + m.manga +
+                          ' (' + (m.status || '—') + ', ' + m.laps + (I18N.t('client.compare.vueltas'));
           elManga.appendChild(o);
         });
         elManga.disabled = false;
@@ -427,8 +427,8 @@
     document.getElementById('cmpMetaLine').textContent =
       (data.dsSource ? data.dsSource + ' · ' : '') +
       T.dsRef + ' ↔ ' + T.bart + '  ·  ' +
-      (es ? 'Tanda ' : 'Round ') + data.tanda + ' · ' + (es ? 'Manga ' : 'Heat ') + data.manga +
-      '  ·  ' + (es ? 'tol ' : 'tol ') + tol + ' ms' +
+      (I18N.t('client.compare.tanda')) + data.tanda + ' · ' + (I18N.t('client.common.manga')) + data.manga +
+      '  ·  ' + (I18N.t('client.compare.tol')) + tol + ' ms' +
       (elSwap.checked ? '  ·  swap' : '');
 
     var s = '';
@@ -450,7 +450,7 @@
       tr.className = 'cmp-lane-row';
       tr.setAttribute('data-idx', idx);
       var modeCls = ln.mode === 'same' ? 'is-same' : 'is-diff';
-      var modeLbl = ln.mode === 'same' ? (es ? 'mismo' : 'same') : (es ? 'distinto' : 'diff');
+      var modeLbl = ln.mode === 'same' ? (I18N.t('client.compare.mismo')) : (I18N.t('client.compare.distinto'));
       var missCls = ln.missCount > 0 ? ' cmp-num-bad' : '';
       var phCls   = ln.phantomCount > 0 ? ' cmp-num-warn' : '';
       var rmaxCls = ln.residualMaxMs > tol ? ' cmp-num-bad' : (ln.residualMeanMs > tol * 0.5 ? ' cmp-num-warn' : '');

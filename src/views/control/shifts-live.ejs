@@ -511,9 +511,9 @@ function setLed(state, text) {
 }
 function updateFocus() {
   if (document.activeElement === input) {
-    setLed('ready', LANG === 'es' ? 'Listo para escanear' : 'Ready to scan');
+    setLed('ready', I18N.t('client.shifts-live.listo_para_escanear'));
   } else {
-    setLed('warn', LANG === 'es' ? 'Pulsa para reactivar el lector' : 'Click to reactivate scanner');
+    setLed('warn', I18N.t('client.shifts-live.pulsa_para_reactivar_el_lector'));
   }
 }
 input.addEventListener('focus', updateFocus);
@@ -580,7 +580,7 @@ function bigFeedback(kind, title, sub) {
 async function submitCode(code) {
   code = (code || '').trim();
   if (!code) return;
-  setLed('busy', LANG === 'es' ? 'Procesando…' : 'Processing…');
+  setLed('busy', I18N.t('client.shifts-live.procesando'));
   try {
     const res = await fetch(`/races/${RACE_ID}/mangas/${MANGA_ID}/checkin`, {
       method: 'POST',
@@ -590,30 +590,30 @@ async function submitCode(code) {
     const data = await res.json().catch(() => ({}));
     if (res.ok && data.ok) {
       const modeLabel = {
-        pre_arm: LANG === 'es' ? 'Pre-armado' : 'Pre-armed',
-        swap_running: LANG === 'es' ? 'Cambio en marcha' : 'Live swap',
-        swap_paused: LANG === 'es' ? 'Cambio en pausa' : 'Swap on pause',
-      }[data.mode] || (LANG === 'es' ? 'Asignado' : 'Assigned');
-      toast('ok', `${modeLabel}: ${data.driverName} → ${LANG === 'es' ? 'Carril' : 'Lane'} ${data.lane}`);
-      bigFeedback('ok', data.driverName, `${LANG === 'es' ? 'Carril' : 'Lane'} ${data.lane} · ${modeLabel}`);
+        pre_arm: I18N.t('client.shifts-live.pre_armado'),
+        swap_running: I18N.t('client.shifts-live.cambio_en_marcha'),
+        swap_paused: I18N.t('client.shifts-live.cambio_en_pausa'),
+      }[data.mode] || (I18N.t('client.shifts-live.asignado'));
+      toast('ok', `${modeLabel}: ${data.driverName} → ${I18N.t('client.common.carril')} ${data.lane}`);
+      bigFeedback('ok', data.driverName, `${I18N.t('client.common.carril')} ${data.lane} · ${modeLabel}`);
       // Marca de que el fichaje salió de ESTA estación: el eco por socket no
       // debe recargar la página hasta que el check verde termine (ver abajo).
       window._lastLocalCheckin = Date.now();
     } else {
       const errMap = {
-        unknown_qr:                LANG === 'es' ? 'QR desconocido' : 'Unknown QR',
-        team_resting:              LANG === 'es' ? 'Equipo descansando — no puede fichar' : 'Team resting — cannot check in',
-        driver_not_in_manga:       LANG === 'es' ? 'El piloto no está en esta manga' : 'Driver not in this manga',
-        not_championship_race:     LANG === 'es' ? 'No es carrera de campeonato' : 'Not a championship race',
-        not_team_race:             LANG === 'es' ? 'No es carrera por equipos' : 'Not a team race',
-        ambiguous_team:            LANG === 'es' ? 'Ambigüedad — usa override manual' : 'Ambiguous — use manual override',
-        manga_active_but_not_timing: LANG === 'es' ? 'Manga activa pero sin sesión de timing' : 'Manga active but no timing session',
-        manga_active_but_not_running: LANG === 'es' ? 'Manga activa pero ni running ni paused' : 'Manga active but neither running nor paused',
-        manga_status_invalid:      LANG === 'es' ? 'Estado de manga inválido' : 'Invalid manga status',
+        unknown_qr:                I18N.t('client.shifts-live.qr_desconocido'),
+        team_resting:              I18N.t('client.shifts-live.equipo_descansando_no_puede_fichar'),
+        driver_not_in_manga:       I18N.t('client.shifts-live.el_piloto_no_esta_en_esta_manga'),
+        not_championship_race:     I18N.t('client.shifts-live.no_es_carrera_de_campeonato'),
+        not_team_race:             I18N.t('client.shifts-live.no_es_carrera_por_equipos'),
+        ambiguous_team:            I18N.t('client.shifts-live.ambiguedad_usa_override_manual'),
+        manga_active_but_not_timing: I18N.t('client.shifts-live.manga_activa_pero_sin_sesion_de_timing'),
+        manga_active_but_not_running: I18N.t('client.shifts-live.manga_activa_pero_ni_running_ni_paused'),
+        manga_status_invalid:      I18N.t('client.shifts-live.estado_de_manga_invalido'),
         change_locked_final_minutes: LANG === 'es'
           ? `Bloqueado — quedan ${fmtTime(data.remainingMs)} del final`
           : `Locked — ${fmtTime(data.remainingMs)} left`,
-        missing_params: LANG === 'es' ? 'Faltan datos' : 'Missing params',
+        missing_params: I18N.t('client.shifts-live.faltan_datos'),
       };
       const text = errMap[data.error] || (data.error || 'Error');
       toast('error', text + (data.name ? ` (${data.name})` : ''));
@@ -621,7 +621,7 @@ async function submitCode(code) {
     }
   } catch (err) {
     toast('error', err.message || 'Network error');
-    bigFeedback('error', LANG === 'es' ? 'Error de red' : 'Network error', '');
+    bigFeedback('error', I18N.t('client.shifts-live.error_de_red'), '');
   } finally {
     updateFocus();
   }
@@ -658,8 +658,8 @@ function clockToMs(str) {
 }
 function openFix(lane) {
   const pilots = (TEAM_PILOTS && TEAM_PILOTS[lane]) || [];
-  if (!pilots.length) { toast('error', LANG === 'es' ? 'Sin pilotos en este carril' : 'No drivers on this lane'); return; }
-  fixTitle.textContent = (LANG === 'es' ? 'Corregir · ' : 'Fix · ') + (TEAM_NAMES[lane] || ('L' + lane));
+  if (!pilots.length) { toast('error', I18N.t('client.shifts-live.sin_pilotos_en_este_carril')); return; }
+  fixTitle.textContent = (I18N.t('client.shifts-live.corregir')) + (TEAM_NAMES[lane] || ('L' + lane));
   fixPilot.innerHTML = pilots.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
   fixTime.value = msToClock(MANGA_DURATION_MS || 0);
   fixModal.hidden = false;
@@ -669,7 +669,7 @@ function closeFix() { fixModal.hidden = true; refocus(); }
 async function submitFix() {
   const driverId = parseInt(fixPilot.value, 10);
   const ms = clockToMs(fixTime.value);
-  if (!driverId || !Number.isFinite(ms) || ms <= 0) { toast('error', LANG === 'es' ? 'Tiempo no válido' : 'Invalid time'); return; }
+  if (!driverId || !Number.isFinite(ms) || ms <= 0) { toast('error', I18N.t('client.shifts-live.tiempo_no_valido')); return; }
   try {
     const res = await fetch(`/races/${RACE_ID}/mangas/${MANGA_ID}/correct-time`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -677,7 +677,7 @@ async function submitFix() {
     });
     const data = await res.json().catch(() => ({}));
     if (res.ok && data.ok) {
-      toast('ok', `${LANG === 'es' ? 'Tiempo añadido' : 'Time added'}: ${data.driverName} +${msToClock(ms)}`);
+      toast('ok', `${I18N.t('client.shifts-live.tiempo_anadido')}: ${data.driverName} +${msToClock(ms)}`);
       closeFix();
       setTimeout(() => location.reload(), 400);
     } else {
@@ -748,7 +748,7 @@ function camFlash() {
 
 async function camStart(deviceId) {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    camSetStatus(LANG === 'es' ? 'Cámara no disponible en este navegador' : 'Camera not available in this browser');
+    camSetStatus(I18N.t('client.shifts-live.camara_no_disponible_en_este_navegador'));
     return;
   }
   if (!window.isSecureContext) {
@@ -757,7 +757,7 @@ async function camStart(deviceId) {
     // seguro al mismo control, en el mismo host y el puerto configurado.
     if (HTTPS_INFO && HTTPS_INFO.enabled && location.protocol === 'http:') {
       const secure = 'https://' + location.hostname + ':' + HTTPS_INFO.port + location.pathname + location.search;
-      camSetStatus(LANG === 'es' ? 'La cámara necesita HTTPS' : 'Camera needs HTTPS');
+      camSetStatus(I18N.t('client.shifts-live.la_camara_necesita_https'));
       const hint = document.getElementById('scCamHint');
       if (hint) {
         hint.innerHTML = (LANG === 'es'
@@ -782,7 +782,7 @@ async function camStart(deviceId) {
     camStream = await navigator.mediaDevices.getUserMedia({ video: videoCfg });
     camVideo.srcObject = camStream;
     await camVideo.play();
-    camSetStatus(LANG === 'es' ? 'Escaneando…' : 'Scanning…');
+    camSetStatus(I18N.t('client.shifts-live.escaneando'));
     // Autoenfoque continuo (+ exposición/balance auto) si la cámara lo soporta.
     await camApplyFocus();
     // Con permiso ya concedido, los labels de las cámaras están disponibles.
@@ -797,11 +797,11 @@ async function camStart(deviceId) {
     camLoop();
   } catch (err) {
     const map = {
-      NotAllowedError:  LANG === 'es' ? 'Permiso de cámara denegado' : 'Camera permission denied',
-      NotFoundError:    LANG === 'es' ? 'No se encontró ninguna cámara' : 'No camera found',
-      NotReadableError: LANG === 'es' ? 'La cámara está en uso por otra app' : 'Camera is in use by another app',
+      NotAllowedError:  I18N.t('client.shifts-live.permiso_de_camara_denegado'),
+      NotFoundError:    I18N.t('client.shifts-live.no_se_encontro_ninguna_camara'),
+      NotReadableError: I18N.t('client.shifts-live.la_camara_esta_en_uso_por_otra_app'),
     };
-    camSetStatus(map[err.name] || ((LANG === 'es' ? 'Error de cámara: ' : 'Camera error: ') + (err.message || err.name)));
+    camSetStatus(map[err.name] || ((I18N.t('client.shifts-live.error_de_camara')) + (err.message || err.name)));
   }
 }
 
@@ -921,7 +921,7 @@ socket.on('tick', data => {
   const remEl = document.getElementById('scRemaining');
   if (remEl && data.remainingMs != null) {
     const locked = data.remainingMs <= LOCKOUT_MS && data.remainingMs > 0;
-    remEl.textContent = (LANG === 'es' ? 'Restante: ' : 'Remaining: ') + fmtTime(data.remainingMs);
+    remEl.textContent = (I18N.t('client.shifts-live.restante')) + fmtTime(data.remainingMs);
     remEl.classList.toggle('sc-locked', locked);
   }
 });

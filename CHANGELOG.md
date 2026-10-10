@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.51.1] — 2026-10-10
+
+### Mejorado
+- **Los textos que pinta el navegador salen ya del diccionario.** El directo, la pantalla de TV, Lap, los paneles y el entrenamiento construyen buena parte de lo que se ve desde JavaScript, y esos 297 textos seguían con ternarios de idioma. Ahora usan el mismo diccionario que el resto de la app: se acabó la última vía por la que un idioma nuevo se quedaba a medias. El diccionario viaja en la página (5,8 KB, solo las claves que esa pantalla necesita). Lo que se ve en español e inglés **no cambia**.
+
 ## [1.51.0] — 2026-10-10
 
 ### Añadido

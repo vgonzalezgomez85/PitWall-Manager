@@ -45,31 +45,31 @@
 
   function who(d, es) {
     if (!d.lane) return '';
-    return `${es ? 'Carril' : 'Lane'} ${d.lane}` + (d.entityName ? ` (${d.entityName})` : '');
+    return `${I18N.t('client.js.lane')} ${d.lane}` + (d.entityName ? ` (${d.entityName})` : '');
   }
   function circuitSuffix(d, es, mc) {
-    return (mc && d.circuit != null) ? ` — ${es ? 'Circuito' : 'Circuit'} ${d.circuit + 1}` : '';
+    return (mc && d.circuit != null) ? ` — ${I18N.t('client.js.circuit')} ${d.circuit + 1}` : '';
   }
 
   const TEXT = {
     go:     (d, es, mc) => 'GO' + circuitSuffix(d, es, mc),
-    pause:  (d, es, mc) => (es ? 'Pausa' : 'Paused') + circuitSuffix(d, es, mc),
+    pause:  (d, es, mc) => (I18N.t('client.js.paused')) + circuitSuffix(d, es, mc),
     resume: (d, es, mc) => {
-      const base = (es ? 'Reanudado' : 'Resumed') + circuitSuffix(d, es, mc);
+      const base = (I18N.t('client.js.resumed')) + circuitSuffix(d, es, mc);
       const pausedMs = (d.payload || {}).pausedMs;
       if (!pausedMs) return base;
       return base + (es ? ` (tras ${fmtSecShort(pausedMs)}s de pausa)` : ` (after ${fmtSecShort(pausedMs)}s paused)`);
     },
-    stop:   (d, es) => (es ? 'Fin de manga' : 'Heat finished') + (d.mangaNumber ? ' ' + d.mangaNumber : ''),
-    cancel: (d, es) => (es ? 'Manga cancelada' : 'Heat cancelled') + (d.mangaNumber ? ' ' + d.mangaNumber : ''),
+    stop:   (d, es) => (I18N.t('client.js.heat_finished')) + (d.mangaNumber ? ' ' + d.mangaNumber : ''),
+    cancel: (d, es) => (I18N.t('client.js.heat_cancelled')) + (d.mangaNumber ? ' ' + d.mangaNumber : ''),
     recovered: (d, es) => {
       const outageMs = (d.payload || {}).outageMs || 0;
-      return (es ? 'Manga recuperada tras corte de ' : 'Heat recovered after a ') + fmtSecShort(outageMs) + 's';
+      return (I18N.t('client.js.heat_recovered_after_a')) + fmtSecShort(outageMs) + 's';
     },
     ghost_lap: (d, es) => {
       const p = d.payload || {};
       const w = who(d, es);
-      return `${w}${w ? ' — ' : ''}${es ? 'vuelta ignorada' : 'lap ignored'}: ${fmtS(p.lapTimeMs)}s < ${es ? 'mínimo' : 'min'} ${fmtS(p.ptMs)}s`;
+      return `${w}${w ? ' — ' : ''}${I18N.t('client.js.lap_ignored')}: ${fmtS(p.lapTimeMs)}s < ${I18N.t('client.js.min')} ${fmtS(p.ptMs)}s`;
     },
     lap_reassigned: (d, es) => {
       const p = d.payload || {};
@@ -80,16 +80,16 @@
     },
     retro_exit: (d, es) => {
       const p = d.payload || {};
-      const kind = p.isPitStop ? 'pit-stop' : (es ? 'salida' : 'off-track');
-      return `${who(d, es)} — ${es ? '1ª vuelta reclasificada como' : '1st lap reclassified as'} ${kind} (${fmtS(p.lapTimeMs)}s)`;
+      const kind = p.isPitStop ? 'pit-stop' : (I18N.t('client.js.off_track'));
+      return `${who(d, es)} — ${I18N.t('client.js.1st_lap_reclassified_as')} ${kind} (${fmtS(p.lapTimeMs)}s)`;
     },
     driver_checkin: (d, es) => {
       const p = d.payload || {};
       const modeTxt = (MODE_TEXT[p.mode] && MODE_TEXT[p.mode][es ? 'es' : 'en']) || p.mode || '';
-      return `${es ? 'Carril' : 'Lane'} ${d.lane} — ${d.entityName || ''} (${modeTxt})`;
+      return `${I18N.t('client.js.lane')} ${d.lane} — ${d.entityName || ''} (${modeTxt})`;
     },
     lap_assigned: (d, es) => {
-      return `${who(d, es)} — ${es ? 'vuelta' : 'lap'} ${d.lapNumber || ''}: ${fmtS(d.lapTimeMs)}s`;
+      return `${who(d, es)} — ${I18N.t('client.js.lap')} ${d.lapNumber || ''}: ${fmtS(d.lapTimeMs)}s`;
     },
     flag_lap: (d, es) => {
       const p = d.payload || {};
@@ -100,7 +100,7 @@
       const base = es
         ? `${who(d, es)} — ${n > 1 ? n + ' vueltas' : 'vuelta'} de final de bandera ${real ? 'cronometrada' : 'repuesta'}`
         : `${who(d, es)} — ${n} flag-finish lap${n > 1 ? 's' : ''} ${real ? 'timed' : 'restored'}`;
-      return base + ` (${fmtS(p.lapTimeMs)}s${real ? '' : (es ? ' media' : ' avg')})`;
+      return base + ` (${fmtS(p.lapTimeMs)}s${real ? '' : (I18N.t('client.js.avg'))})`;
     },
   };
 

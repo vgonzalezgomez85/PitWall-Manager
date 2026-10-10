@@ -335,14 +335,14 @@ function makeMemberRow(name = '', driverId = '') {
   row.innerHTML = `
     <div style="flex:1;position:relative">
       <input type="text" name="member_name[]" class="form-input member-name-input"
-             placeholder="${LANG === 'es' ? 'Nombre piloto' : 'Driver name'}"
+             placeholder="${I18N.t('client.common.nombre_piloto')}"
              value="${name.replace(/"/g, '&quot;')}" autocomplete="off">
       <input type="hidden" name="member_driver_id[]" class="member-driver-id" value="${driverId}">
       <ul class="ac-dropdown" style="display:none"></ul>
     </div>
     <span class="member-linked" style="visibility:${driverId ? 'visible' : 'hidden'}">🔗</span>
     <button type="button" class="btn btn--danger btn--sm member-remove"
-            title="${LANG === 'es' ? 'Quitar' : 'Remove'}">✕</button>`;
+            title="${I18N.t('client.common.quitar')}">✕</button>`;
   return row;
 }
 

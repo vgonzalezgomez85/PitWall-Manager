@@ -83,11 +83,11 @@ function updateTimer() {
     timerEl.textContent = formatElapsed(remaining);
     if (!warned60 && remaining > 0 && remaining <= 60000) {
       warned60 = true;
-      announceWarning(LANG === 'es' ? 'Queda 1 minuto' : 'One minute remaining');
+      announceWarning(I18N.t('client.js.queda_1_minuto'));
     }
     if (!warned30 && remaining > 0 && remaining <= 30000) {
       warned30 = true;
-      announceWarning(LANG === 'es' ? 'Quedan 30 segundos' : '30 seconds remaining');
+      announceWarning(I18N.t('client.js.quedan_30_segundos'));
     }
   } else {
     timerEl.textContent = formatElapsed(elapsedMs);
@@ -147,8 +147,8 @@ function setStandby(isStandby) {
   const statusEl = document.getElementById('tr-status');
   if (statusEl) {
     statusEl.innerHTML = isStandby
-      ? `<span class="tr-standby-badge">${LANG === 'es' ? 'Esperando GO…' : 'Waiting for GO…'}</span>`
-      : `${TRAINING_DATA.lanes.length} ${LANG === 'es' ? 'carriles activos' : 'active lanes'}`;
+      ? `<span class="tr-standby-badge">${I18N.t('client.common.esperando_go')}</span>`
+      : `${TRAINING_DATA.lanes.length} ${I18N.t('client.common.carriles_activos')}`;
   }
   updateTimer();
 }
@@ -454,9 +454,9 @@ let voiceMode = localStorage.getItem(VOICE_KEY) || (_isCompetition ? 'off' : 'al
 
 function voiceLabel() {
   const isES = LANG === 'es';
-  if (voiceMode === 'off')  return isES ? 'Sin voz'  : 'No voice';
-  if (voiceMode === 'best') return isES ? 'Rápidas'  : 'Fast';
-  return                              isES ? 'Todas'    : 'All';
+  if (voiceMode === 'off')  return I18N.t('client.js.sin_voz');
+  if (voiceMode === 'best') return I18N.t('client.js.rapidas');
+  return                              I18N.t('client.common.todas');
 }
 function voiceTitle() {
   if (LANG === 'es') {
@@ -544,7 +544,7 @@ socket.on('training:circuit_state', ({ status, lanes }) => {
     if (paused && !badge) {
       badge = document.createElement('div');
       badge.className = 'tr-pause-badge';
-      badge.textContent = LANG === 'es' ? 'PAUSA' : 'PAUSED';
+      badge.textContent = I18N.t('client.js.pausa');
       card.appendChild(badge);
     } else if (!paused && badge) {
       badge.remove();
@@ -571,7 +571,7 @@ socket.on('training:lap', (data) => {
 
   const time = formatMsForSpeech(data.lapTimeMs);
   const prefix = voiceMode === 'best' && isLaneBest
-    ? (LANG === 'es' ? 'Vuelta rápida, ' : 'Fast lap, ')
+    ? (I18N.t('client.js.vuelta_rapida'))
     : '';
   const text = LANG === 'es'
     ? `${prefix}carril ${data.lane}, ${time}`
@@ -629,7 +629,7 @@ socket.on('competition:heat', ({ heat, resting }) => {
   if (statusEl && heat) {
     const heatLabel = LANG === 'es' ? `Tanda ${heat}` : `Heat ${heat}`;
     const sub = statusEl.querySelector('.tr-standby-badge');
-    if (sub) sub.textContent = `${heatLabel} — ${LANG === 'es' ? 'Esperando GO…' : 'Waiting for GO…'}`;
+    if (sub) sub.textContent = `${heatLabel} — ${I18N.t('client.common.esperando_go')}`;
   }
   renderRestingBar(resting || []);
 });

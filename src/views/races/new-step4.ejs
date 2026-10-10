@@ -290,7 +290,7 @@ function memberRowHtml(idx, m, value) {
   return `<div class="member-row"><span class="member-num">${m+1}</span>`
     + `<input class="form-input participant-name" type="text" name="teams[${idx}][members][]"`
     + ` placeholder="${MEMBER_PH} ${m+1}${m>0?' ('+OPT_LBL+')':''}" value="${escAttr(value)}" autocomplete="off">`
-    + `<button type="button" class="btn btn--danger btn--sm member-remove" tabindex="-1" title="${LANG==='es'?'Quitar piloto':'Remove driver'}">✕</button></div>`;
+    + `<button type="button" class="btn btn--danger btn--sm member-remove" tabindex="-1" title="${I18N.t('client.wizard.quitar_piloto')}">✕</button></div>`;
 }
 
 // Renumera las filas de piloto (1..N) y refresca placeholders dentro de un bloque.
@@ -321,7 +321,7 @@ function appendTeamBlock(name, memberNames) {
     </div>
     ${attrsHtml(`teams[${idx}]`)}
     <div class="team-members">${members}</div>
-    <button type="button" class="btn btn--ghost btn--sm add-member" style="margin-top:.4rem">+ ${LANG==='es'?'Añadir piloto':'Add driver'}</button>`;
+    <button type="button" class="btn btn--ghost btn--sm add-member" style="margin-top:.4rem">+ ${I18N.t('client.common.anadir_piloto')}</button>`;
   container.appendChild(block);
   return block;
 }

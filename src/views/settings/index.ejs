@@ -899,8 +899,8 @@ function updateBartBadges(){
     const lanes = parseInt(row.querySelector('.bart-lanes-input')?.value || '8', 10) || 8;
     const badge = row.querySelector('.bart-lanes-badge');
     const title = row.querySelector('.bname');
-    if (title) title.textContent = (LANG === 'es' ? 'Master ' : 'Master ') + (idx + 1);
-    if (badge) badge.textContent = (LANG === 'es' ? 'Carriles ' : 'Lanes ') + offset + '–' + (offset + lanes - 1);
+    if (title) title.textContent = (I18N.t('client.settings.master')) + (idx + 1);
+    if (badge) badge.textContent = (I18N.t('client.settings.carriles')) + offset + '–' + (offset + lanes - 1);
     offset += lanes;
   });
 }
@@ -914,27 +914,27 @@ function bartRowHTML(idx){
       <div class="vt-circuit-row__num bnum"></div>
       <div class="vt-circuit-row__title bname"></div>
       <span class="vt-circuit-row__lanes-badge bart-lanes-badge"></span>
-      <button type="button" class="vt-circuit-row__x btn-remove-bart" title="${LANG === 'es' ? 'Eliminar' : 'Remove'}">
+      <button type="button" class="vt-circuit-row__x btn-remove-bart" title="${I18N.t('client.common.eliminar')}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
       </button>
     </div>
     <div class="vt-fields vt-fields--2 circuit-row__body">
       <div class="vt-field">
-        <label>${LANG === 'es' ? 'Nombre BLE del Master' : 'Master BLE name'}</label>
+        <label>${I18N.t('client.settings.nombre_ble_del_master')}</label>
         <input class="vt-inp is-mono bart-name-input" type="text" name="bart_master_name" placeholder="BART_TRACK${idx + 1}" value="">
       </div>
       <div class="vt-field">
-        <label>${LANG === 'es' ? 'Nº de carriles' : 'Lanes'}</label>
+        <label>${I18N.t('client.settings.n_de_carriles')}</label>
         <input class="vt-inp is-mono bart-lanes-input" type="number" name="bart_master_lanes" min="2" max="32" value="8">
       </div>
     </div>
     <div class="vt-fields vt-fields--2 bart-tcp-fields" style="margin-top:14px;${tcpHidden}">
       <div class="vt-field">
-        <label>${LANG === 'es' ? 'Host del puente' : 'Bridge host'}</label>
+        <label>${I18N.t('client.settings.host_del_puente')}</label>
         <input class="vt-inp is-mono" type="text" name="bart_master_host" placeholder="127.0.0.1" value="127.0.0.1">
       </div>
       <div class="vt-field">
-        <label>${LANG === 'es' ? 'Puerto' : 'Port'}</label>
+        <label>${I18N.t('client.settings.puerto')}</label>
         <input class="vt-inp is-mono" type="number" name="bart_master_port" min="1" max="65535" value="9300">
       </div>
     </div>`;
@@ -1023,10 +1023,10 @@ const settingsForm = document.getElementById('settingsForm');
       });
       if (!r.ok) throw new Error(r.status);
       saved = PWLaneColors.values(grid).join(',');
-      msg.textContent = LANG === 'es' ? 'Guardados ✓' : 'Saved ✓';
+      msg.textContent = I18N.t('client.settings.guardados');
     } catch {
       saveBtn.disabled = false;
-      msg.textContent = LANG === 'es' ? 'No se han podido guardar' : 'Could not save';
+      msg.textContent = I18N.t('client.settings.no_se_han_podido_guardar');
     }
   });
 })();
@@ -1046,10 +1046,10 @@ const settingsForm = document.getElementById('settingsForm');
         });
         if (!r.ok) throw new Error(r.status);
         saved = sel.value;
-        msg.textContent = LANG === 'es' ? 'Guardado ✓' : 'Saved ✓';
+        msg.textContent = I18N.t('client.settings.guardado');
       } catch {
         sel.value = saved;
-        msg.textContent = LANG === 'es' ? 'No se ha podido guardar' : 'Could not save';
+        msg.textContent = I18N.t('client.settings.no_se_ha_podido_guardar');
       }
     });
   });
@@ -1064,10 +1064,10 @@ const settingsForm = document.getElementById('settingsForm');
         });
         if (!r.ok) throw new Error(r.status);
         saved = inp.value;
-        msg.textContent = LANG === 'es' ? 'Guardado ✓' : 'Saved ✓';
+        msg.textContent = I18N.t('client.settings.guardado');
       } catch {
         inp.value = saved;
-        msg.textContent = LANG === 'es' ? 'No se ha podido guardar (0 a 10 s)' : 'Could not save (0 to 10 s)';
+        msg.textContent = I18N.t('client.settings.no_se_ha_podido_guardar_0_a_10_s');
       }
     });
   });
@@ -1097,7 +1097,7 @@ const settingsForm = document.getElementById('settingsForm');
       body: new URLSearchParams(body),
     });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok || !d.ok) throw new Error(d.error || (ES ? 'No se ha podido guardar' : 'Could not save'));
+    if (!r.ok || !d.ok) throw new Error(d.error || (I18N.t('client.settings.no_se_ha_podido_guardar')));
     return d;
   }
   sw.addEventListener('click', async () => {
@@ -1106,12 +1106,12 @@ const settingsForm = document.getElementById('settingsForm');
         await send({ enabled: '0' });
         enabled = false; paint();
         fields.hidden = false;
-        msg.textContent = ES ? 'Contraseña desactivada ✓' : 'Password disabled ✓';
+        msg.textContent = I18N.t('client.settings.contrasena_desactivada');
       } catch (e) { msg.textContent = e.message; }
     } else {
       fields.hidden = false;
       pw.focus();
-      msg.textContent = ES ? 'Escribe la contraseña y pulsa «Activar».' : 'Type the password and press "Enable".';
+      msg.textContent = I18N.t('client.settings.escribe_la_contrasena_y_pulsa_activar');
     }
   });
   document.getElementById('pwChange').addEventListener('click', () => { fields.hidden = false; pw.focus(); });
@@ -1122,8 +1122,8 @@ const settingsForm = document.getElementById('settingsForm');
       enabled = true; paint();
       pw.value = pw2.value = '';
       fields.hidden = true;
-      msg.textContent = changed ? (ES ? 'Contraseña cambiada ✓' : 'Password changed ✓')
-                                : (ES ? 'Contraseña activada ✓ Este navegador sigue dentro hasta que pulses «Bloquear» en el inicio o «Cerrar sesión» aquí; a partir de ahí Sistema y Catálogo piden la contraseña.' : 'Password enabled ✓ This browser stays signed in until you press "Lock" on the home page or "Sign out" here; from then on System and Catalog ask for the password.');
+      msg.textContent = changed ? (I18N.t('client.settings.contrasena_cambiada'))
+                                : (I18N.t('client.settings.contrasena_activada_este_navegador_sigue_dentro'));
     } catch (e) { msg.textContent = e.message; }
   });
 })();
@@ -1137,8 +1137,8 @@ function updateSaveBar(){
   document.getElementById('stBar').classList.toggle('is-dirty', changed);
   document.getElementById('stBarDot').className = 'st-dot' + (changed ? ' st-dot--warn' : '');
   document.getElementById('stBarMsg').textContent = changed
-    ? (LANG === 'es' ? 'Cambios sin guardar' : 'Unsaved changes')
-    : (LANG === 'es' ? 'Sin cambios' : 'No changes');
+    ? (I18N.t('client.settings.cambios_sin_guardar'))
+    : (I18N.t('client.settings.sin_cambios'));
   document.getElementById('stBarRestart').hidden = !restart;
   document.getElementById('stDiscard').hidden = !changed;
 }
@@ -1157,8 +1157,8 @@ function updateLaneBadges(){
     const lanes = parseInt(row.querySelector('.circuit-lanes-input')?.value || '8', 10);
     const badge = row.querySelector('.circuit-row__lanes-badge');
     const title = row.querySelector('.vt-circuit-row__title');
-    if (title) title.textContent = (LANG === 'es' ? 'Circuito ' : 'Circuit ') + (idx + 1);
-    if (badge) badge.textContent = (LANG === 'es' ? 'Carriles ' : 'Lanes ') + offset + '–' + (offset + lanes - 1);
+    if (title) title.textContent = (I18N.t('client.settings.circuito')) + (idx + 1);
+    if (badge) badge.textContent = (I18N.t('client.settings.carriles')) + offset + '–' + (offset + lanes - 1);
     offset += lanes;
   });
 }
@@ -1194,7 +1194,7 @@ document.querySelectorAll('.js-baud-field').forEach(wireBaudFields);
 function renumberCircuitRows(){
   document.querySelectorAll('.circuit-row').forEach((row, i) => {
     const num = row.querySelector('.cnum'); if (num) num.textContent = i + 1;
-    const title = row.querySelector('.cname'); if (title) title.textContent = (LANG === 'es' ? 'Circuito ' : 'Circuit ') + (i + 1);
+    const title = row.querySelector('.cname'); if (title) title.textContent = (I18N.t('client.settings.circuito')) + (i + 1);
   });
 }
 
@@ -1247,7 +1247,7 @@ const portOptions = Array.from(document.querySelectorAll('select.port-select opt
   .filter((o,i,a) => a.findIndex(x => x.value === o.value) === i && o.value)
   .map(o => `<option value="${o.value}">${o.textContent.trim()}</option>`).join('');
 
-const circuitRefOptions = `<option value="">— ${LANG === 'es' ? 'Manual' : 'Manual'} —</option>` +
+const circuitRefOptions = `<option value="">— ${I18N.t('client.common.manual')} —</option>` +
   Array.from(document.querySelector('.circuit-ref-select')?.options || [])
     .filter(o => o.value)
     .map(o => `<option value="${o.value}" data-lanes="${o.dataset.lanes}" data-config='${o.dataset.config || ''}'>${o.textContent.trim()}</option>`)
@@ -1259,24 +1259,24 @@ function circuitRowHTML(){
     <div class="vt-circuit-row__h">
       <div class="vt-circuit-row__num cnum"></div>
       <div class="vt-circuit-row__title cname"></div>
-      <span class="vt-circuit-row__lanes-badge circuit-row__lanes-badge">${LANG === 'es' ? 'Carriles ?' : 'Lanes ?'}</span>
+      <span class="vt-circuit-row__lanes-badge circuit-row__lanes-badge">${I18N.t('client.settings.carriles_2')}</span>
       <button type="button" class="vt-circuit-row__x btn-remove-circuit" title="Eliminar">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
       </button>
     </div>
-    <div class="vt-group-lbl">${LANG === 'es' ? 'Conexión serie' : 'Serial connection'}</div>
+    <div class="vt-group-lbl">${I18N.t('client.settings.conexion_serie')}</div>
     <div class="vt-fields vt-fields--3 circuit-row__body">
       <div class="vt-field circuit-row__field circuit-row__field--port">
-        <label>${LANG === 'es' ? 'Puerto' : 'Port'}</label>
+        <label>${I18N.t('client.settings.puerto')}</label>
         <div class="vt-selw"><select class="port-select" name="circuit_port">
-          <option value="">— ${LANG === 'es' ? 'seleccionar' : 'select'} —</option>${portOptions}
+          <option value="">— ${I18N.t('client.settings.seleccionar')} —</option>${portOptions}
         </select></div>
         <button type="button" class="port-manual-toggle" aria-expanded="false">
           <svg class="port-manual-toggle__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
-          <span>${LANG === 'es' ? 'Escribir el path a mano' : 'Type the path manually'}</span>
+          <span>${I18N.t('client.settings.escribir_el_path_a_mano')}</span>
         </button>
         <input class="vt-inp is-mono port-manual is-hidden" type="text" style="margin-top:7px;font-size:13px"
-          placeholder="${LANG === 'es' ? 'p. ej. /dev/ttys003' : 'e.g. COM3'}">
+          placeholder="${I18N.t('client.settings.p_ej_dev_ttys003')}">
       </div>
       <div class="vt-field circuit-row__field circuit-row__field--baud js-baud-field">
         <label>Baud rate</label>
@@ -1285,16 +1285,16 @@ function circuitRowHTML(){
         </select></div>
         <button type="button" class="port-manual-toggle baud-manual-toggle" aria-expanded="false">
           <svg class="port-manual-toggle__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
-          <span>${LANG === 'es' ? 'Escribir a mano' : 'Type manually'}</span>
+          <span>${I18N.t('client.settings.escribir_a_mano')}</span>
         </button>
         <input class="vt-inp is-mono baud-manual is-hidden" type="number" min="300" max="921600" step="1"
-          placeholder="${LANG === 'es' ? 'p. ej. 57600' : 'e.g. 57600'}" value="57600" style="margin-top:7px;font-size:13px">
+          placeholder="${I18N.t('client.settings.p_ej_57600')}" value="57600" style="margin-top:7px;font-size:13px">
       </div>
     </div>
     <details class="vt-adv circuit-row__adv">
       <summary>
         <svg class="vt-adv__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
-        ${LANG === 'es' ? 'Opciones avanzadas del puerto' : 'Advanced port options'}
+        ${I18N.t('client.settings.opciones_avanzadas_del_puerto')}
       </summary>
       <div class="vt-adv__body vt-fields vt-fields--3">
         <div class="vt-field circuit-row__field">
@@ -1302,7 +1302,7 @@ function circuitRowHTML(){
           <div class="vt-selw"><select name="circuit_databits"><option value="7">7</option><option value="8" selected>8</option></select></div>
         </div>
         <div class="vt-field circuit-row__field">
-          <label>${LANG === 'es' ? 'Paridad' : 'Parity'}</label>
+          <label>${I18N.t('client.settings.paridad')}</label>
           <div class="vt-selw"><select name="circuit_parity"><option value="none" selected>none</option><option value="even">even</option><option value="odd">odd</option></select></div>
         </div>
         <div class="vt-field circuit-row__field">
@@ -1310,20 +1310,20 @@ function circuitRowHTML(){
           <div class="vt-selw"><select name="circuit_stopbits"><option value="1" selected>1</option><option value="2">2</option></select></div>
         </div>
         <div class="vt-field circuit-row__field">
-          <label>${LANG === 'es' ? 'Control de flujo' : 'Flow control'}</label>
+          <label>${I18N.t('client.settings.control_de_flujo')}</label>
           <div class="vt-selw"><select name="circuit_flow"><option value="none" selected>none</option><option value="rtscts">rtscts</option><option value="xonxoff">xonxoff</option></select></div>
         </div>
       </div>
     </details>
     <div class="vt-divider"></div>
-    <div class="vt-group-lbl">${LANG === 'es' ? 'Asignación de carriles' : 'Lane assignment'}</div>
+    <div class="vt-group-lbl">${I18N.t('client.common.asignacion_de_carriles')}</div>
     <div class="vt-fields vt-fields--2">
       <div class="vt-field circuit-row__field circuit-row__field--circuit">
-        <label>${LANG === 'es' ? 'Circuito' : 'Circuit'}</label>
+        <label>${I18N.t('client.common.circuito')}</label>
         <div class="vt-selw"><select class="circuit-ref-select" name="circuit_ref">${circuitRefOptions}</select></div>
       </div>
       <div class="vt-field circuit-row__field circuit-row__field--lanes">
-        <label>${LANG === 'es' ? 'Nº de carriles' : 'Lanes'}</label>
+        <label>${I18N.t('client.settings.n_de_carriles')}</label>
         <input class="vt-inp is-mono circuit-lanes-input" type="number" name="circuit_lanes" min="2" max="8" value="8">
         <input type="hidden" class="circuit-sub-input" name="circuit_sub" value="">
       </div>
@@ -1359,13 +1359,13 @@ async function refreshPortsHandler(e) {
   const btn = e.currentTarget;
   const originalHTML = btn.innerHTML;
   btn.disabled = true;
-  btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v5h-5"/></svg>' + (LANG === 'es' ? 'Buscando…' : 'Searching…');
+  btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v5h-5"/></svg>' + (I18N.t('client.settings.buscando'));
   try {
     const res = await fetch('/api/settings/ports');
     const { ports } = await res.json();
     document.querySelectorAll('.port-select').forEach(sel => {
       const current = sel.value;
-      const opts = '<option value="">— ' + (LANG === 'es' ? 'seleccionar' : 'select') + ' —</option>' +
+      const opts = '<option value="">— ' + (I18N.t('client.settings.seleccionar')) + ' —</option>' +
         ports.map(p => `<option value="${p.path}"${p.path === current ? ' selected' : ''}>${p.path}${p.manufacturer ? ' — ' + p.manufacturer : ''}</option>`).join('');
       let extra = '';
       if (current && !ports.find(p => p.path === current)) extra = `<option value="${current}" selected>${current}</option>`;
@@ -1374,7 +1374,7 @@ async function refreshPortsHandler(e) {
     btn.innerHTML = '✓ ' + (LANG === 'es' ? `${ports.length} puertos` : `${ports.length} ports`);
     setTimeout(() => { btn.innerHTML = originalHTML; btn.disabled = false; }, 1500);
   } catch (err) {
-    btn.innerHTML = '✗ ' + (LANG === 'es' ? 'Error' : 'Error');
+    btn.innerHTML = '✗ ' + (I18N.t('client.common.error'));
     setTimeout(() => { btn.innerHTML = originalHTML; btn.disabled = false; }, 2000);
   }
 }
@@ -1397,17 +1397,17 @@ function tunnelRender(s) {
   dot.className = 'st-dot st-dot--lg st-dot--' + dotKind;
   setNavDot('web', dotKind);
   state.textContent = s.installing
-    ? (LANG === 'es' ? 'Descargando cloudflared…' : 'Downloading cloudflared…')
+    ? (I18N.t('client.settings.descargando_cloudflared'))
     : s.running
-      ? (LANG === 'es' ? 'Túnel en marcha' : 'Tunnel running')
-      : (LANG === 'es' ? 'Túnel parado' : 'Tunnel stopped');
+      ? (I18N.t('client.settings.tunel_en_marcha'))
+      : (I18N.t('client.settings.tunel_parado'));
   url.innerHTML = s.publicUrl
     ? `<a href="${s.publicUrl}" target="_blank" rel="noopener">${s.publicUrl}</a>`
-    : (s.running && s.mode === 'quick' ? (LANG === 'es' ? 'Esperando URL… (tarda unos segundos)' : 'Waiting for URL… (takes a few seconds)') : '');
+    : (s.running && s.mode === 'quick' ? (I18N.t('client.settings.esperando_url_tarda_unos_segundos')) : '');
   inst.style.display = (!s.binaryFound && !s.installing) ? '' : 'none';
   document.getElementById('tunnelStartBtn').style.display = s.binaryFound ? '' : 'none';
   let h = '';
-  if (s.installing) h = LANG === 'es' ? '⏳ Descargando el binario oficial de Cloudflare (~20 MB)…' : '⏳ Downloading the official Cloudflare binary (~20 MB)…';
+  if (s.installing) h = I18N.t('client.settings.descargando_el_binario_oficial_de_cloudflare_20');
   else if (s.installError) h = '⚠️ ' + s.installError;
   else if (!s.binaryFound) h = LANG === 'es'
     ? 'cloudflared no está instalado. Pulsa «Instalar cloudflared» (se descarga de Cloudflare a la carpeta de datos de PitWall, sin permisos de administrador) o instálalo tú: brew install cloudflared.'
@@ -1437,13 +1437,13 @@ async function tunnelAction(op) {
 async function tunnelInstall() {
   const btn = document.getElementById('tunnelInstallBtn');
   btn.disabled = true;
-  document.getElementById('tunnelState').textContent = LANG === 'es' ? 'Descargando cloudflared…' : 'Downloading cloudflared…';
-  document.getElementById('tunnelHint').textContent = LANG === 'es' ? '⏳ Descargando el binario oficial de Cloudflare (~20 MB)…' : '⏳ Downloading the official Cloudflare binary (~20 MB)…';
+  document.getElementById('tunnelState').textContent = I18N.t('client.settings.descargando_cloudflared');
+  document.getElementById('tunnelHint').textContent = I18N.t('client.settings.descargando_el_binario_oficial_de_cloudflare_20');
   try {
     const r = await fetch('/tunnel/install', { method: 'POST' });
     tunnelRender(await r.json());
   } catch {
-    document.getElementById('tunnelHint').textContent = LANG === 'es' ? '⚠️ Error de red durante la descarga.' : '⚠️ Network error during download.';
+    document.getElementById('tunnelHint').textContent = I18N.t('client.settings.error_de_red_durante_la_descarga');
   }
   btn.disabled = false;
 }
