@@ -42,7 +42,7 @@ function formatMsForSpeech(ms) {
   const mins = Math.floor(totalSec / 60);
   const hStr = String(hundredths).padStart(2, '0');
   if (mins > 0) return `${mins}:${String(secs).padStart(2,'0')}.${hStr}`;
-  return LANG === 'es' ? `${secs} con ${hStr}` : `${secs} ${hStr}`;
+  return I18N.t('client.js.secs_con_hstr', { secs: secs, hStr: hStr });
 }
 
 function formatElapsed(ms) {
@@ -573,9 +573,7 @@ socket.on('training:lap', (data) => {
   const prefix = voiceMode === 'best' && isLaneBest
     ? (I18N.t('client.js.vuelta_rapida'))
     : '';
-  const text = LANG === 'es'
-    ? `${prefix}carril ${data.lane}, ${time}`
-    : `${prefix}lane ${data.lane}, ${time}`;
+  const text = I18N.t('client.js.prefix_carril_v_time', { prefix: prefix, v: data.lane, time: time });
   announce(text);
 });
 
@@ -627,7 +625,7 @@ socket.on('competition:heat', ({ heat, resting }) => {
   heatNumber = heat;
   const statusEl = document.getElementById('tr-status');
   if (statusEl && heat) {
-    const heatLabel = LANG === 'es' ? `Tanda ${heat}` : `Heat ${heat}`;
+    const heatLabel = I18N.t('client.js.tanda_heat', { heat: heat });
     const sub = statusEl.querySelector('.tr-standby-badge');
     if (sub) sub.textContent = `${heatLabel} — ${I18N.t('client.common.esperando_go')}`;
   }

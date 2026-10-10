@@ -185,22 +185,18 @@ class DatabaseController {
         const result = RaceArchive.importRace(RaceArchive.parseFile(req.file.buffer));
         const name = escapeHtml(result.name);
         const circuitNote = result.circuitCreated
-          ? (es ? ` Se ha creado el circuito «${escapeHtml(result.circuitName)}».` : ` Circuit "${escapeHtml(result.circuitName)}" was created.`)
+          ? (req.t('database.se_ha_creado_el_circuito_v', { v: escapeHtml(result.circuitName) }))
           : '';
         req.session.flash = {
           type: 'success',
-          text: (es
-            ? `Carrera «<a href="/races/${result.raceId}">${name}</a>» importada (${result.laps.toLocaleString('es-ES')} vueltas).`
-            : `Race "<a href="/races/${result.raceId}">${name}</a>" imported (${result.laps.toLocaleString('en-US')} laps).`) + circuitNote,
+          text: (req.t('database.carrera_a_href_races_v_name_a_importada_v2', { v: result.raceId, name: name, v2: result.laps.toLocaleString('es-ES'), v3: result.laps.toLocaleString('en-US') })) + circuitNote,
         };
         res.redirect('/database');
       } catch (e) {
         if (e.code === 'exists') {
           req.session.flash = {
             type: 'error',
-            text: es
-              ? `Esta carrera ya está en este PC: <a href="/races/${e.existingId}">${escapeHtml(e.existingName)}</a>.`
-              : `This race is already on this PC: <a href="/races/${e.existingId}">${escapeHtml(e.existingName)}</a>.`,
+            text: req.t('database.esta_carrera_ya_esta_en_este_pc_a_href_races_v', { v: e.existingId, v2: escapeHtml(e.existingName) }),
           };
           return res.redirect('/database');
         }

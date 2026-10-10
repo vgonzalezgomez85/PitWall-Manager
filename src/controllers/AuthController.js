@@ -42,7 +42,7 @@ const AuthController = {
     const es = req.session.lang !== 'en';
     if (!ok) {
       const error = lockedMs
-        ? (es ? `Demasiados intentos. Espera ${Math.ceil(lockedMs / 1000)} s.` : `Too many attempts. Wait ${Math.ceil(lockedMs / 1000)} s.`)
+        ? (req.t('auth.too_many_attempts_wait_v_s', { v: Math.ceil(lockedMs / 1000) }))
         : (req.t('auth.wrong_password'));
       return render(req, res, { error, status: 401 });
     }

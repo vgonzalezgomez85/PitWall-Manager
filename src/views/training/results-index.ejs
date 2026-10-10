@@ -23,7 +23,7 @@
       <% sessions.forEach(s => { %>
         <a href="/training/competition/results/<%= encodeURIComponent(s.session_id) %>" class="rx-race-card">
           <div class="rx-race-card__name">
-            <%= new Date(s.started_at + 'Z').toLocaleString(lang === 'es' ? 'es-ES' : 'en-GB') %>
+            <%= new Date(s.started_at + 'Z').toLocaleString(localeFor(lang)) %>
           </div>
           <div class="rx-race-card__meta">
             <span class="rx-race-card__status"><%= s.heats %> <%= lang === 'es' ? (s.heats === 1 ? 'heat' : 'heats') : (s.heats === 1 ? 'heat' : 'heats') %></span>

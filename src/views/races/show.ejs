@@ -151,7 +151,7 @@ function stepState(idx) {
           subSkipped: t('show.no_configurada') },
         { state: stepState(1), title: t('show.tandas'),
           subDone: tandas.length + (t('show.anadidas')),
-          subCurrent: lang === 'es' ? `Próximo paso · ${tandas.length} añadidas` : `Next · ${tandas.length} added`,
+          subCurrent: t('show.proximo_paso_v_anadidas', { v: tandas.length }),
           subLocked: t('show.tras_la_pole') },
         { state: stepState(2), title: t('common.resultados'),
           subDone: t('client.common.disponibles'),

@@ -158,7 +158,7 @@ class SettingsController {
     }
     if (password || !AccessPassword.hasPassword()) {
       if (password.length < AccessPassword.MIN_LENGTH) {
-        return fail(es ? `La contraseña necesita al menos ${AccessPassword.MIN_LENGTH} caracteres.` : `The password needs at least ${AccessPassword.MIN_LENGTH} characters.`);
+        return fail(req.t('settings.the_password_needs_at_least_v_characters', { v: AccessPassword.MIN_LENGTH }));
       }
       if (password !== confirm) return fail(req.t('settings.the_two_passwords_do_not_match'));
       AccessPassword.setPassword(password);
@@ -365,15 +365,15 @@ class SettingsController {
     let src;
     if (serial_mode === 'bart') {
       src = bartTransport === 'ble'
-        ? (isEs ? `BART (BLE) — buscando "${bartName}"…` : `BART (BLE) — searching "${bartName}"…`)
-        : (isEs ? `BART (TCP ${bartHost}:${bartPort})` : `BART (TCP ${bartHost}:${bartPort})`);
+        ? (req.t('settings.bart_ble_searching_bartname', { bartName: bartName }))
+        : (req.t('settings.bart_tcp_barthost_bartport', { bartHost: bartHost, bartPort: bartPort }));
     } else if (serial_mode === 'serial') {
       const labels = [...new Set(circuits.map(c => modelInfo(c.model).label))].join(' + ');
-      src = isEs ? `${labels} (${circuits.length} circuito${circuits.length === 1 ? '' : 's'})` : `${labels} (${circuits.length} circuit${circuits.length === 1 ? '' : 's'})`;
+      src = req.t('settings.labels_v_circuit_v2', { labels: labels, v: circuits.length, v2: circuits.length === 1 ? '' : 's' });
     } else if (serial_mode === 'tictac') {
       src = `TicTac (${ttTransport === 'usb' ? 'USB' : (ttPort || '—')})`;
     } else if (serial_mode === 'serial_agg') {
-      src = isEs ? `DS-300 agrupador (${aggBoxes} caja${aggBoxes === 1 ? '' : 's'} · ${aggBoxes * 8} carriles)` : `DS-300 aggregator (${aggBoxes} box${aggBoxes === 1 ? '' : 'es'} · ${aggBoxes * 8} lanes)`;
+      src = req.t('settings.ds_300_aggregator_aggboxes_box_v_v2_lanes', { aggBoxes: aggBoxes, v: aggBoxes === 1 ? '' : 'es', v2: aggBoxes * 8, v3: aggBoxes === 1 ? '' : 's' });
     } else {
       src = req.t('settings.simulation');
     }

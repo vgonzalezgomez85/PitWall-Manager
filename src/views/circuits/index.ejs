@@ -56,7 +56,7 @@
               if (!Array.isArray(cfg) || cfg.length === 0) cfg = [c.lanes_count];
               const cfgLabel = cfg.join(' + ');
               const created = c.created_at
-                ? new Date(c.created_at.replace(' ', 'T') + 'Z').toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US')
+                ? new Date(c.created_at.replace(' ', 'T') + 'Z').toLocaleDateString(localeFor(lang))
                 : '—';
             %>
               <tr>

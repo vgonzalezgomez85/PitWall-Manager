@@ -81,9 +81,7 @@
       <% if (race.format === 'individual') { %>
 
         <p class="form-hint" style="margin-bottom:1.25rem">
-          <%= lang === 'es'
-            ? `Hasta ${laneSequence.length} pilotos por manga. Puedes dejar carriles vacíos, o añadir más pilotos para rotaciones con descanso.`
-            : `Up to ${laneSequence.length} drivers per heat. You can leave lanes empty, or add more drivers for rotation with rest slots.` %>
+          <%= t('tanda-new.hasta_v_pilotos_por_manga_puedes_dejar_carriles', { v: laneSequence.length }) %>
         </p>
 
         <%
@@ -439,9 +437,7 @@ function updateRestInfo() {
   const total = container.querySelectorAll('.participant-row').length;
   const info  = document.getElementById('restInfo');
   if (total > LANES) {
-    document.getElementById('restInfoText').textContent = LANG === 'es'
-      ? `Con ${total} participantes y ${LANES} carriles: ${total - LANES} descansarán por manga. Ciclo = ${total} mangas.`
-      : `With ${total} participants and ${LANES} lanes: ${total - LANES} will rest per heat. Cycle = ${total} heats.`;
+    document.getElementById('restInfoText').textContent = I18N.t('client.common.con_total_participantes_y_lanes_carriles_v', { total: total, LANES: LANES, v: total - LANES });
     info.style.display = '';
   } else {
     info.style.display = 'none';
@@ -577,9 +573,7 @@ if (document.getElementById('teamAssignUI')) {
     const total = lanes + restSlots;
     if (restSlots > 0) {
       restInfoEl.style.display = '';
-      restInfoEl.textContent = LANG === 'es'
-        ? `Con ${total} equipos y ${lanes} carriles: ${restSlots} descansarán por manga. Ciclo = ${total} mangas.`
-        : `With ${total} teams and ${lanes} lanes: ${restSlots} will rest per heat. Cycle = ${total} heats.`;
+      restInfoEl.textContent = I18N.t('client.tanda-new.con_total_equipos_y_lanes_carriles_restslots', { total: total, lanes: lanes, restSlots: restSlots });
     } else {
       restInfoEl.style.display = 'none';
     }

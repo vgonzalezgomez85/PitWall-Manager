@@ -65,9 +65,7 @@
 
         <p class="form-hint" style="margin-bottom:1.25rem">
           <% if (canRestructure) { %>
-            <%= lang === 'es'
-              ? `Mínimo ${laneSequence.length} pilotos. Añade más para rotaciones con descanso.`
-              : `Minimum ${laneSequence.length} drivers. Add more for rotation with rest slots.` %>
+            <%= t('tanda-edit.minimo_v_pilotos_anade_mas_para_rotaciones_con', { v: laneSequence.length }) %>
           <% } else { %>
             <%= t('tanda-edit.modifica_los_nombres_de_los_pilotos') %>
           <% } %>
@@ -130,9 +128,7 @@
 
         <p class="form-hint" style="margin-bottom:1.25rem">
           <% if (canRestructure) { %>
-            <%= lang === 'es'
-              ? `Mínimo ${laneSequence.length} equipos. Añade más para rotaciones con descanso.`
-              : `Minimum ${laneSequence.length} teams. Add more for rotation with rest slots.` %>
+            <%= t('tanda-edit.minimo_v_equipos_anade_mas_para_rotaciones_con', { v: laneSequence.length }) %>
           <% } else { %>
             <%= t('tanda-edit.modifica_los_nombres_de_los_equipos_y_pilotos') %>
           <% } %>
@@ -310,9 +306,7 @@ function updateRestInfo() {
   const total = container.querySelectorAll('.participant-row').length;
   const info  = document.getElementById('restInfo');
   if (total > LANES) {
-    document.getElementById('restInfoText').textContent = LANG === 'es'
-      ? `Con ${total} participantes y ${LANES} carriles: ${total - LANES} descansarán por manga. Ciclo = ${total} mangas.`
-      : `With ${total} participants and ${LANES} lanes: ${total - LANES} will rest per heat. Cycle = ${total} heats.`;
+    document.getElementById('restInfoText').textContent = I18N.t('client.common.con_total_participantes_y_lanes_carriles_v', { total: total, LANES: LANES, v: total - LANES });
     info.style.display = '';
   } else { info.style.display = 'none'; }
 }

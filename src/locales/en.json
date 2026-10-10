@@ -85,14 +85,17 @@
     "title": "Slot Timer Pro"
   },
   "auth": {
+    "too_many_attempts_wait_v_s": "Demasiados intentos. Espera {{v}} s.",
     "wrong_password": "Contraseña incorrecta."
   },
   "car": {
+    "created_coches_creados": "{{created}} cars created",
     "el_modelo_es_requerido": "Model is required",
     "error_actualizando_coche": "Error updating car",
     "error_creando_coche": "Error creating car",
     "la_categoria_es_requerida": "Category is required",
-    "la_marca_es_requerida": "Brand is required"
+    "la_marca_es_requerida": "Brand is required",
+    "updated_coches_actualizados": "{{updated}} cars updated"
   },
   "cars": {
     "anade_tu_primer_coche_al_catalogo": "Add your first car to the catalog.",
@@ -116,7 +119,12 @@
     "vuelca_los_cambios_del_a_href_teams_catalogo_de": "Pushes <a href=\"/teams\">team-catalog</a> changes (drivers and country) into races that <b>have not started any heat yet</b>, without going through “Edit heat group”. Matches teams by name and makes the roster <b>identical to the catalog</b>: adds and removes drivers. Does not touch the grid or add/remove teams."
   },
   "catalogsync": {
-    "no_has_seleccionado_ninguna_carrera": "No race selected."
+    "added_piloto_s_anadido_s": "{{added}} driver(s) added",
+    "catalogo_sincronizado_en_done_carrera_s": "Catalog synced on {{done}} race(s): ",
+    "country_pais_es_actualizado_s": "{{country}} country field(s) updated",
+    "no_has_seleccionado_ninguna_carrera": "No race selected.",
+    "no_se_pudo_sincronizar_v": " Could not sync: {{v}}.",
+    "removed_piloto_s_quitado_s": "{{removed}} driver(s) removed"
   },
   "categories": {
     "categorias_de_carrera": "Race categories",
@@ -169,6 +177,7 @@
       "carriles_activos": "active lanes",
       "categoria": "Category",
       "circuito": "Circuit",
+      "con_total_participantes_y_lanes_carriles_v": "With {{total}} participants and {{LANES}} lanes: {{v}} will rest per heat. Cycle = {{total}} heats.",
       "crear_equipo": "Create team",
       "descanso": "Rest",
       "disponibles": "Available",
@@ -245,6 +254,7 @@
     },
     "js": {
       "1st_lap_reclassified_as": "1ª vuelta reclasificada como",
+      "after_v_s_paused": " (tras {{v}}s de pausa)",
       "avg": " media",
       "boxes": "PIT",
       "cambios_de_neumatico": "Tyre changes",
@@ -252,6 +262,7 @@
       "circuit": "Circuito",
       "close": "Cerrar ",
       "descansando": "Resting",
+      "ghost_lap_from_lane_v_reassigned_to_lane_v2": "Vuelta fantasma del carril {{v}} reasignada al carril {{v2}}",
       "heat_cancelled": "Manga cancelada",
       "heat_finished": "Fin de manga",
       "heat_recovered_after_a": "Manga recuperada tras corte de ",
@@ -267,19 +278,28 @@
       "piloto_en_carril": "Driver in lane",
       "piloto_no_asignado_a_esta_manga": "Driver not in this heat",
       "pista": "TRACK",
+      "prefix_carril_v_time": "{{prefix}}lane {{v}}, {{time}}",
       "qr_no_reconocido": "Unknown QR",
       "queda_1_minuto": "One minute remaining",
       "quedan_30_segundos": "30 seconds remaining",
       "rapidas": "Fast",
       "record_carrera": "RACE RECORD",
       "resumed": "Reanudado",
+      "secs_con_hstr": "{{secs}} {{hStr}}",
       "show": "Traer",
       "sin_piloto": "NO DRIVER",
       "sin_voz": "No voice",
       "sin_vueltas_registradas": "No laps yet",
       "solo_rapidas": "Fast only",
+      "tanda_heat": "Heat {{heat}}",
+      "tanda_v": "▶ Tanda {{v}}",
       "ultima": "Last",
+      "v_n_flag_finish_lap_v2_v3": "{{v}} — {{v4}} de final de bandera {{v5}}",
+      "v_time": "{{v}}, {{time}}",
+      "v_vuelta_rapida_time": "{{v}}, fast lap, {{time}}",
       "vlt": "lps",
+      "vuelta_asignada_pista_tolane": "Lap assigned to lane {{toLane}}",
+      "vuelta_ignorada_pista_lane": "Lap ignored lane {{lane}}",
       "vuelta_rapida": "Fast lap, ",
       "window": "Ventana"
     },
@@ -371,11 +391,13 @@
       "tictac_no_detectado": "Not detected: plug the interface in via USB",
       "tictac_sin_modulo": "USB reading is not available in this installation",
       "tunel_en_marcha": "Tunnel running",
-      "tunel_parado": "Tunnel stopped"
+      "tunel_parado": "Tunnel stopped",
+      "v_puertos": "{{v}} ports"
     },
     "shifts-live": {
       "ambiguedad_usa_override_manual": "Ambiguous — use manual override",
       "asignado": "Assigned",
+      "bloqueado_quedan_v_del_final": "Locked — {{v}} left",
       "camara_no_disponible_en_este_navegador": "Camera not available in this browser",
       "cambio_en_marcha": "Live swap",
       "cambio_en_pausa": "Swap on pause",
@@ -421,6 +443,7 @@
       "anade_al_menos_un_piloto": "Add at least one driver.",
       "asigna_al_menos_un_equipo_a_un_carril": "Assign at least one team to a lane.",
       "buscar": "Search...",
+      "con_total_equipos_y_lanes_carriles_restslots": "With {{total}} teams and {{lanes}} lanes: {{restSlots}} will rest per heat. Cycle = {{total}} heats.",
       "dsc_extra": "REST extra",
       "el_nombre_es_obligatorio_min_2_caracteres": "Name is required (min 2 chars).",
       "error_al_crear_el_equipo": "Error creating team.",
@@ -432,6 +455,7 @@
       "carril": "lane ×",
       "circuitos": "circuits",
       "con_pole": "with pole",
+      "el_circuito_i_debe_tener_entre_2_y_8_carriles": "Circuit {{i}} must have 2 to 8 lanes.",
       "elige_el_tipo_de_carrera": "Choose the race type.",
       "i_sin_nombre_i": "<i>no name</i>",
       "pasadas": "passes",
@@ -558,6 +582,7 @@
     "sin_equipos": "No teams",
     "sincronizar_carrera": "Sync race",
     "sincronizar_catalogo": "Sync catalog",
+    "skipped_omitidos": "{{skipped}} skipped",
     "tanda": "Heat",
     "tanda_2": "Round",
     "tiempo": "Time",
@@ -651,6 +676,7 @@
     "cancelar_importacion": "Cancel import",
     "cancelar_la_importacion_pendiente_no_se_aplicara": "Cancel the pending import? It will not be applied.",
     "carrera_a_exportar": "Race to export",
+    "carrera_a_href_races_v_name_a_importada_v2": "Race \"<a href=\"/races/{{v}}\">{{name}}</a>\" imported ({{v3}} laps).",
     "copia_cargada_cierra_pitwall_por_completo_y": "Backup uploaded. Fully close PitWall and reopen it to apply it — until then you still see the current data. The current data is backed up automatically before applying it.",
     "copia_de_seguridad": "Backup",
     "descarga_un_archivo_db_con_todos_los_datos": "Downloads a .db file with all your data: races, teams, drivers, circuits and settings. Use it to move to another PC or as a backup. Safe to run even during a race.",
@@ -660,6 +686,7 @@
     "el_archivo_viene_de_una_version_mas_nueva_de": "The file comes from a newer PitWall version. Update this PC and try again.",
     "en_curso": "running",
     "esa_carrera_no_existe": "That race does not exist.",
+    "esta_carrera_ya_esta_en_este_pc_a_href_races_v": "This race is already on this PC: <a href=\"/races/{{v}}\">{{v2}}</a>.",
     "esto_reemplazara_todos_los_datos_actuales_la": "This will replace ALL current data the next time you open PitWall. Continue?",
     "exp_imp_carrera": "Export / import race",
     "exportar": "Export",
@@ -686,13 +713,19 @@
     "resumen": "Summary",
     "se_anade_como_carrera_nueva_y_se_aplica_al": "Added as a new race, instantly; your races are not touched. If its circuit does not exist here, it is created.",
     "se_aplica_al_cerrar_pitwall_por_completo_y": "It is applied when you fully close and reopen PitWall.",
+    "se_ha_creado_el_circuito_v": " Circuit \"{{v}}\" was created.",
     "selecciona_un_archivo_db": "Select a .db file.",
     "selecciona_un_archivo_pwrace": "Select a .pwrace file.",
     "subir_copia": "Upload backup",
     "sustituir_todos_los_datos_de_este_pc_por_los_de": "Replace all data on this PC with a backup.",
     "sustituye_todos_los_datos_de_este_pc_por_los_de": "Replaces ALL data on this PC with a PitWall .db file (from this or another install).",
     "terminada": "finished",
-    "toda_la_base_de_datos_en_un_archivo_para": "The whole database in one file, to keep it or move it to another PC."
+    "toda_la_base_de_datos_en_un_archivo_para": "The whole database in one file, to keep it or move it to another PC.",
+    "v_subida_el_v2_se_aplicara_al_cerrar_pitwall": "{{v}}, uploaded {{v3}}. It will be applied the next time you fully close and reopen PitWall."
+  },
+  "driverprofile": {
+    "created_pilotos_creados": "{{created}} drivers created",
+    "updated_pilotos_actualizados": "{{updated}} drivers updated"
   },
   "drivers": {
     "anade_tu_primer_piloto_para_empezar": "Add your first driver to get started.",
@@ -1168,6 +1201,7 @@
     "especificaciones": "Specs",
     "esta_carrera_no_lleva_control_de_neumaticos": "This race has no tyre control",
     "esta_pagina_se_activara_automaticamente_cuando": "This page activates automatically when an endurance race with tyre control starts.",
+    "estado_cambiado_a_label": "Status changed to “{{label}}”.",
     "fotos_de_verificacion": "Verification photos",
     "hay_una_manga_de_esta_carrera_en_marcha_parala": "A heat of this race is running. Stop it before changing the status.",
     "kiosco_carrera_activa": "Kiosk (active race)",
@@ -1182,6 +1216,7 @@
     "no_hay_fotos_registradas": "No photos recorded.",
     "no_hay_ninguna_carrera_de_resistencia_activa": "No active endurance race",
     "nota": "Note",
+    "ojo_tambien_esta_en_curso_v_el_siguiente_go_del": " Note: “{{v2}}” is also active. The next DS GO goes to the first pending heat of any active race.",
     "opcional": "optional",
     "peso_carroceria": "Body weight",
     "peso_completo": "Full weight",
@@ -1351,6 +1386,8 @@
     "automatica_recomendado": "Automatic (recommended)",
     "avanzado_timing_del_parser_ds_300": "Advanced: DS-300 parser timing",
     "avanzado_todo": "Advanced (everything)",
+    "bart_ble_searching_bartname": "BART (BLE) — buscando \"{{bartName}}\"…",
+    "bart_tcp_barthost_bartport": "BART (TCP {{bartHost}}:{{bartPort}})",
     "basico_el_inicio_solo_muestra_entreno_libre": "Basic: home only shows free practice, sprint race, results, categories, scenarios and settings. Advanced: every shortcut. Saved instantly.",
     "buscar_puertos": "Refresh ports",
     "buscar_puertos_com": "Search COM ports",
@@ -1391,6 +1428,7 @@
     "direcciones_ahora": "Addresses now",
     "directo": "direct",
     "dominio_publico": "Public hostname",
+    "ds_300_aggregator_aggboxes_box_v_v2_lanes": "DS-300 agrupador ({{aggBoxes}} caja{{v3}} · {{v2}} carriles)",
     "ds_300_agrupador": "DS-300 aggregator",
     "el_escaner_qr_del_control_de_pilotos_usa_la": "The driver-control QR scanner uses the camera, which browsers only allow over HTTPS on phones/tablets connecting by IP. PitWall serves HTTPS with its own certificate, alongside normal HTTP.",
     "en": "Under",
@@ -1416,6 +1454,7 @@
     "ips_o_rangos_permitidos": "Allowed IPs or ranges",
     "la_app_movil_de_tic_tac_slot_infolap_se_conecta": "The Tic Tac Slot Infolap mobile app connects to PitWall and receives live laps. Opens UDP :4441.",
     "la_coma_la_fraccion_de_vuelta_de_cada_coche_al": "The fraction (each car’s partial lap when the flag falls) is calculated automatically. Turn this on to fix it by hand, per lane, in the corrections screen of a finished heat; a corrected fraction wins tie-breaks on equal laps. Saved instantly.",
+    "labels_v_circuit_v2": "{{labels}} ({{v}} circuito{{v2}})",
     "las_10_mejores_de_mejor_a_peor": "Best 10 (best first)",
     "las_10_ultimas_la_mas_reciente_arriba": "Last 10 (newest first)",
     "las_10_vueltas_que_muestra_cada_carril_en_la": "The 10 laps each lane shows in the practice \"With history\" view. Saved instantly; an open practice picks it up on reload.",
@@ -1460,6 +1499,7 @@
     "sin_interfaces_de_red_detectadas": "No network interfaces detected.",
     "solo_este_equipo_localhost_y_las_ips_de_la": "Only this machine (localhost) and the listed IPs. The mobile app and Infolap keep receiving live laps.",
     "tcp_emulador_puente": "TCP (emulator / bridge)",
+    "the_password_needs_at_least_v_characters": "La contraseña necesita al menos {{v}} caracteres.",
     "the_two_passwords_do_not_match": "Las dos contraseñas no coinciden.",
     "tictac_conexion": "Connection",
     "tictac_conexion_serie": "Serial port (emulator or bridge)",
@@ -1530,6 +1570,7 @@
   },
   "shifts-report": {
     "al_90_del_max": "At 90% of max",
+    "atencion_manuales_turno_s_con_tiempo": "Note: {{manuales}} shift(s) with time entered manually by staff. Flagged in the table.",
     "bajo_minimo": "UNDER MIN",
     "cronologia_de_turnos_por_manga": "Shift timeline per heat",
     "entro": "In",
@@ -1610,6 +1651,7 @@
     "perdido_total": "Lost Total",
     "pines_lap": "Lap PINs",
     "pole_position": "Pole Position",
+    "proximo_paso_v_anadidas": "Next · {{v}} added",
     "rival_1": "Rival 1",
     "rival_2_opcional": "Rival 2 (optional)",
     "sal_pit_total": "Exits/Pit Total",
@@ -1645,6 +1687,8 @@
     "editar_tanda_2": "Edit Heat Group",
     "esta_tanda_ya_tiene_mangas_iniciadas_solo": "This round already has heats in progress. You can only rename — adding or removing participants is not allowed.",
     "guardar_cambios_se_regenerara_la_programacion": "Save changes? The heat schedule will be regenerated.",
+    "minimo_v_equipos_anade_mas_para_rotaciones_con": "Minimum {{v}} teams. Add more for rotation with rest slots.",
+    "minimo_v_pilotos_anade_mas_para_rotaciones_con": "Minimum {{v}} drivers. Add more for rotation with rest slots.",
     "modifica_los_nombres_de_los_equipos_y_pilotos": "Edit team and driver names.",
     "modifica_los_nombres_de_los_pilotos": "Edit driver names.",
     "modo_solo_renombrar": "Rename-only mode"
@@ -1658,6 +1702,7 @@
     "el_carril_libre_va_cambiando_cada_manga_para": "the free lane changes every heat so everyone runs on the same lanes.",
     "el_hueco_rota": "The gap rotates",
     "equipos_disponibles": "Available teams",
+    "hasta_v_pilotos_por_manga_puedes_dejar_carriles": "Up to {{v}} drivers per heat. You can leave lanes empty, or add more drivers for rotation with rest slots.",
     "los_carriles_de_mayor_numero_quedan_siempre": "the highest-numbered lanes stay empty; nobody runs on them.",
     "no_hay_equipos_crea_uno": "No teams. Create one.",
     "nueva_tanda": "New Heat Group",
@@ -1666,7 +1711,11 @@
     "sobran_los_ultimos": "Leave the last ones free"
   },
   "teamcatalog": {
-    "falta_la_columna_nombre_en_la_cabecera": "Missing \"name\" column in header"
+    "created_equipos_creados": "{{created}} teams created",
+    "falta_la_columna_nombre_en_la_cabecera": "Missing \"name\" column in header",
+    "pilotscreated_pilotos_creados": "{{pilotsCreated}} drivers created",
+    "pilotslinked_pilotos_enlazados": "{{pilotsLinked}} drivers linked",
+    "updated_equipos_actualizados": "{{updated}} teams updated"
   },
   "teams": {
     "b_cabecera_obligatoria_b_columnas_reconocidas": "<b>Header required.</b> Recognized columns (free order): <b>name</b> (required), <b>category</b>, <b>car</b>, <b>country</b> (just the name — flag auto-added), <b>notes</b>, <b>drivers</b> (list separated by \"|\"). Each driver is looked up in the database by name: if it exists, linked to the team; if not, auto-created as bronze and shown in /drivers so you can adjust the category. Accepts \",\" or \";\" as separator. Quote cells that contain commas.",

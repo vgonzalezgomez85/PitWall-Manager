@@ -309,6 +309,47 @@ function aSlug(texto) {
   return s || 'txt';
 }
 
+// ── Ramas con plantilla ───────────────────────────────────────────────────
+//
+// `lang === 'es' ? `${n} coches creados` : `${n} cars created`` — la rama no es
+// un literal sino una plantilla con huecos. Aquí se convierten a
+// `t('clave', { n })`, con el texto guardado como `{{n}} coches creados`.
+//
+// ESTO FALTABA: la cosechadora solo miraba ramas entre comillas, así que estos
+// ternarios no se convertían NI SE REPORTABAN — se los saltaba en silencio, y
+// llegué a dar por hecho que no quedaba ninguno. Eran 99.
+function partirPlantilla(cuerpo) {
+  // Devuelve { texto con {{hueco}}, exprs: [fuente de cada hueco] }
+  let texto = '', i = 0;
+  const exprs = [];
+  while (i < cuerpo.length) {
+    if (cuerpo[i] === '$' && cuerpo[i + 1] === '{') {
+      let prof = 1, j = i + 2;
+      while (j < cuerpo.length && prof > 0) {
+        if (cuerpo[j] === '{') prof++;
+        else if (cuerpo[j] === '}') prof--;
+        if (prof > 0) j++;
+      }
+      exprs.push(cuerpo.slice(i + 2, j));
+      texto += '\u0000';                 // marca de hueco, se resuelve después
+      i = j + 1;
+      continue;
+    }
+    texto += cuerpo[i++];
+  }
+  return { texto, exprs };
+}
+
+// Nombre para el hueco: si la expresión es un identificador se usa tal cual (así
+// el texto queda legible y `{{n}}` se entiende); si no, uno posicional.
+function nombreHueco(expr, usados) {
+  let n = /^[A-Za-z_$][\w$]*$/.test(expr.trim()) ? expr.trim() : 'v';
+  let base = n, i = 2;
+  while (usados.has(n)) n = base + (i++);
+  usados.add(n);
+  return n;
+}
+
 // El literal de origen puede traer escapes (`'PC\'s'`), y al diccionario tiene
 // que ir el TEXTO, no el literal: si se cuela el backslash, la página acaba
 // pintando `PC\&#39;s`. Ya pasó y se vio en el arnés de instantáneas.
@@ -397,6 +438,43 @@ function analizarFichero(fichero) {
     });
   };
 
+  // Ramas con plantilla: `… ? `${n} coches creados` : `${n} cars created``
+  const intentarPlantilla = (m, cuerpoA, cuerpoB, aEsEspañol) => {
+    const ini = m.index, fin = ini + m[0].length;
+    if (!enCodigo[ini] || !enJs[ini]) return;
+    for (let k = ini; k < fin; k++) if (!enJs[k]) return;
+
+    const pEs = partirPlantilla(aEsEspañol ? cuerpoA : cuerpoB);
+    const pEn = partirPlantilla(aEsEspañol ? cuerpoB : cuerpoA);
+
+    // El mismo texto de expresión comparte nombre en los dos idiomas, para que
+    // `{{n}}` sea el mismo hueco en español y en inglés.
+    const nombres = new Map(), usados = new Set();
+    const conNombres = (p) => {
+      let out = '', k = 0;
+      for (const ch of p.texto) {
+        if (ch !== '\u0000') { out += ch; continue; }
+        const expr = p.exprs[k++];
+        let nom = nombres.get(expr);
+        if (!nom) { nom = nombreHueco(expr, usados); nombres.set(expr, nom); }
+        out += '{{' + nom + '}}';
+      }
+      return out;
+    };
+    const es = desescapar(conNombres(pEs));
+    const en = desescapar(conNombres(pEn));
+    if (esTecnico(es, en)) return;
+
+    hallazgos.push({
+      ini, fin, es, en,
+      vars: [...nombres.entries()].map(([expr, nom]) => ({ nom, expr })),
+      cliente: !!enCliente[ini],
+      req: esReq,
+      dominio,
+      linea: src.slice(0, ini).split('\n').length,
+    });
+  };
+
   let m;
   reComp.lastIndex = 0;
   while ((m = reComp.exec(src))) {
@@ -408,6 +486,17 @@ function analizarFichero(fichero) {
   while ((m = reBool.exec(src))) {
     if (!alias.has(m[1])) continue;                           // no es un alias conocido
     intentar(m, m[3], m[5], alias.get(m[1]));
+  }
+
+  const reTpl = /\b([A-Za-z_$][\w$]*)\s*(===|!==)\s*(['"])(es|en)\3\s*\?\s*`([^`]*)`\s*:\s*`([^`]*)`/g;
+  while ((m = reTpl.exec(src))) {
+    const esPrimero = (m[2] === '===' && m[4] === 'es') || (m[2] === '!==' && m[4] === 'en');
+    intentarPlantilla(m, m[5], m[6], esPrimero);
+  }
+  const reTplBool = /\b([A-Za-z_$][\w$]*)\s*\?\s*`([^`]*)`\s*:\s*`([^`]*)`/g;
+  while ((m = reTplBool.exec(src))) {
+    if (!alias.has(m[1])) continue;
+    intentarPlantilla(m, m[2], m[3], alias.get(m[1]));
   }
 
   // ¿El fichero declara su propio `t`? En las vistas `t` es el traductor, así que
@@ -534,9 +623,12 @@ function main() {
       if (!clave) continue;
       // En el navegador el ayudante es `I18N.t`, no `t`: el JS de cliente ya usa
       // `t` como variable en una docena de sitios y llamarlo `t()` los rompería.
-      const llamada = h.cliente ? `I18N.t('${clave}')`
-                    : h.req     ? `req.t('${clave}')`
-                    :             `t('${clave}')`;
+      const fn = h.cliente ? 'I18N.t' : h.req ? 'req.t' : 't';
+      // Con huecos: `t('clave', { n: created, m: skipped })`
+      const vars = h.vars && h.vars.length
+        ? ', { ' + h.vars.map(v => `${v.nom}: ${v.expr}`).join(', ') + ' }'
+        : '';
+      const llamada = `${fn}('${clave}'${vars})`;
       out = out.slice(0, h.ini) + llamada + out.slice(h.fin);
       reemplazos++;
       porDominio[h.dominio] = (porDominio[h.dominio] || 0) + 1;

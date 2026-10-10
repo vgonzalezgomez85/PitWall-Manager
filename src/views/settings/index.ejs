@@ -1493,7 +1493,7 @@ async function refreshPortsHandler(e) {
       if (current && !ports.find(p => p.path === current)) extra = `<option value="${current}" selected>${current}</option>`;
       sel.innerHTML = opts + extra;
     });
-    btn.innerHTML = '✓ ' + (LANG === 'es' ? `${ports.length} puertos` : `${ports.length} ports`);
+    btn.innerHTML = '✓ ' + (I18N.t('client.settings.v_puertos', { v: ports.length }));
     setTimeout(() => { btn.innerHTML = originalHTML; btn.disabled = false; }, 1500);
   } catch (err) {
     btn.innerHTML = '✗ ' + (I18N.t('client.common.error'));

@@ -42,7 +42,7 @@
             <div class="ls-race-card__meta">
               <span class="ls-race-card__status ls-race-card__status--<%= r.status %>"><%= r.status %></span>
               <% if (r.created_at) { %>
-                <span style="margin-left:.5rem"><%= new Date(r.created_at).toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-GB') %></span>
+                <span style="margin-left:.5rem"><%= new Date(r.created_at).toLocaleDateString(localeFor(lang)) %></span>
               <% } %>
             </div>
           </a>

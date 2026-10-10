@@ -302,9 +302,9 @@ class CarController {
     });
 
     const parts = [];
-    if (created > 0) parts.push(lang === 'es' ? `${created} coches creados`      : `${created} cars created`);
-    if (updated > 0) parts.push(lang === 'es' ? `${updated} coches actualizados` : `${updated} cars updated`);
-    if (skipped > 0) parts.push(lang === 'es' ? `${skipped} omitidos`             : `${skipped} skipped`);
+    if (created > 0) parts.push(req.t('car.created_coches_creados', { created: created }));
+    if (updated > 0) parts.push(req.t('car.updated_coches_actualizados', { updated: updated }));
+    if (skipped > 0) parts.push(req.t('common.skipped_omitidos', { skipped: skipped }));
     req.session.flash = {
       type: (created + updated) > 0 ? 'success' : 'error',
       text: parts.join(' · ') || (req.t('client.settings.sin_cambios')),

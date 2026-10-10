@@ -1,7 +1,7 @@
 <%- include('../partials/header', { pageTitle: (t('common.resultados')) }) %>
 <%
 const es = lang === 'es';
-const fmtDate = (s) => s ? new Date(s).toLocaleDateString(es ? 'es-ES' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+const fmtDate = (s) => s ? new Date(s).toLocaleDateString(localeFor(lang), { day: 'numeric', month: 'short', year: 'numeric' }) : '';
 const fmtLap = (ms) => {
   if (ms == null) return '—';
   const m = Math.floor(ms / 60000), s = ((ms % 60000) / 1000).toFixed(3);

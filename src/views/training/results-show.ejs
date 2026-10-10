@@ -21,7 +21,7 @@
     <div>
       <h1 class="page-title">🎯 <%= t('results-show.entreno_competitivo') %></h1>
       <p style="color:#8b949e; margin-top:.3rem">
-        <% if (startedAt) { %><%= new Date(startedAt + 'Z').toLocaleString(lang === 'es' ? 'es-ES' : 'en-GB') %> · <% } %>
+        <% if (startedAt) { %><%= new Date(startedAt + 'Z').toLocaleString(localeFor(lang)) %> · <% } %>
         <%= byHeat.size %> <%= byHeat.size === 1 ? 'heat' : 'heats' %>
       </p>
     </div>

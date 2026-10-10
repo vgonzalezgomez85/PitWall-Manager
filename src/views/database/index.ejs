@@ -9,11 +9,11 @@
     while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
     return n.toFixed(n < 10 ? 1 : 0).replace('.', ',') + ' ' + u[i];
   }
-  const fmt = n => n == null ? '—' : Number(n).toLocaleString(es ? 'es-ES' : 'en-US');
+  const fmt = n => n == null ? '—' : Number(n).toLocaleString(localeFor(lang));
   const fmtDate = v => {
     if (!v) return '';
     const d = new Date(String(v).replace(' ', 'T') + (/[zZ]|[+-]\d\d:?\d\d$/.test(String(v)) ? '' : 'Z'));
-    return isNaN(d) ? '' : d.toLocaleDateString(es ? 'es-ES' : 'en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+    return isNaN(d) ? '' : d.toLocaleDateString(localeFor(lang), { day: '2-digit', month: 'short', year: 'numeric' });
   };
   const navItems = [
     { key: 'summary', label: t('database.resumen'), dot: '',
@@ -178,9 +178,7 @@
               <div class="st-row__txt">
                 <div class="st-row__t st-row__t--sm"><%= t('database.hay_una_copia_pendiente_de_aplicar') %></div>
                 <div class="st-row__d">
-                  <%= es
-                    ? `${humanSize(pendingRestore.sizeBytes)}, subida el ${pendingRestore.uploadedAt.toLocaleString('es-ES')}. Se aplicará al cerrar PitWall por completo y volver a abrirlo.`
-                    : `${humanSize(pendingRestore.sizeBytes)}, uploaded ${pendingRestore.uploadedAt.toLocaleString('en-US')}. It will be applied the next time you fully close and reopen PitWall.` %>
+                  <%= t('database.v_subida_el_v2_se_aplicara_al_cerrar_pitwall', { v: humanSize(pendingRestore.sizeBytes), v2: pendingRestore.uploadedAt.toLocaleString('es-ES'), v3: pendingRestore.uploadedAt.toLocaleString('en-US') }) %>
                 </div>
               </div>
               <form action="/database/restore/cancel" method="POST"

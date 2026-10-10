@@ -85,14 +85,17 @@
     "title": "Slot Timer Pro"
   },
   "auth": {
+    "too_many_attempts_wait_v_s": "Too many attempts. Wait {{v}} s.",
     "wrong_password": "Wrong password."
   },
   "car": {
+    "created_coches_creados": "{{created}} coches creados",
     "el_modelo_es_requerido": "El modelo es requerido",
     "error_actualizando_coche": "Error actualizando coche",
     "error_creando_coche": "Error creando coche",
     "la_categoria_es_requerida": "La categoría es requerida",
-    "la_marca_es_requerida": "La marca es requerida"
+    "la_marca_es_requerida": "La marca es requerida",
+    "updated_coches_actualizados": "{{updated}} coches actualizados"
   },
   "cars": {
     "anade_tu_primer_coche_al_catalogo": "Añade tu primer coche al catálogo.",
@@ -116,7 +119,12 @@
     "vuelca_los_cambios_del_a_href_teams_catalogo_de": "Vuelca los cambios del <a href=\"/teams\">catálogo de equipos</a> (pilotos y país) a las carreras que <b>todavía no han arrancado ninguna manga</b>, sin pasar por «Editar tanda». Empareja equipos por nombre y deja la plantilla <b>idéntica al catálogo</b>: añade y quita pilotos. No toca la parrilla ni añade o quita equipos."
   },
   "catalogsync": {
-    "no_has_seleccionado_ninguna_carrera": "No has seleccionado ninguna carrera."
+    "added_piloto_s_anadido_s": "{{added}} piloto(s) añadido(s)",
+    "catalogo_sincronizado_en_done_carrera_s": "Catálogo sincronizado en {{done}} carrera(s): ",
+    "country_pais_es_actualizado_s": "{{country}} país(es) actualizado(s)",
+    "no_has_seleccionado_ninguna_carrera": "No has seleccionado ninguna carrera.",
+    "no_se_pudo_sincronizar_v": " No se pudo sincronizar: {{v}}.",
+    "removed_piloto_s_quitado_s": "{{removed}} piloto(s) quitado(s)"
   },
   "categories": {
     "categorias_de_carrera": "Categorías de carrera",
@@ -169,6 +177,7 @@
       "carriles_activos": "carriles activos",
       "categoria": "Categoría",
       "circuito": "Circuito",
+      "con_total_participantes_y_lanes_carriles_v": "Con {{total}} participantes y {{LANES}} carriles: {{v}} descansarán por manga. Ciclo = {{total}} mangas.",
       "crear_equipo": "Crear equipo",
       "descanso": "Descanso",
       "disponibles": "Disponibles",
@@ -245,6 +254,7 @@
     },
     "js": {
       "1st_lap_reclassified_as": "1st lap reclassified as",
+      "after_v_s_paused": " (after {{v}}s paused)",
       "avg": " avg",
       "boxes": "BOXES",
       "cambios_de_neumatico": "Cambios de neumático",
@@ -252,6 +262,7 @@
       "circuit": "Circuit",
       "close": "Close ",
       "descansando": "Descansando",
+      "ghost_lap_from_lane_v_reassigned_to_lane_v2": "Ghost lap from lane {{v}} reassigned to lane {{v2}}",
       "heat_cancelled": "Heat cancelled",
       "heat_finished": "Heat finished",
       "heat_recovered_after_a": "Heat recovered after a ",
@@ -267,19 +278,28 @@
       "piloto_en_carril": "Piloto en carril",
       "piloto_no_asignado_a_esta_manga": "Piloto no asignado a esta manga",
       "pista": "PISTA",
+      "prefix_carril_v_time": "{{prefix}}carril {{v}}, {{time}}",
       "qr_no_reconocido": "QR no reconocido",
       "queda_1_minuto": "Queda 1 minuto",
       "quedan_30_segundos": "Quedan 30 segundos",
       "rapidas": "Rápidas",
       "record_carrera": "RÉCORD CARRERA",
       "resumed": "Resumed",
+      "secs_con_hstr": "{{secs}} con {{hStr}}",
       "show": "Show",
       "sin_piloto": "SIN PILOTO",
       "sin_voz": "Sin voz",
       "sin_vueltas_registradas": "Sin vueltas registradas",
       "solo_rapidas": "Sólo rápidas",
+      "tanda_heat": "Tanda {{heat}}",
+      "tanda_v": "▶ Tanda {{v}}",
       "ultima": "Última",
+      "v_n_flag_finish_lap_v2_v3": "{{v}} — {{n}} flag-finish lap{{v2}} {{v3}}",
+      "v_time": "{{v}}, {{time}}",
+      "v_vuelta_rapida_time": "{{v}}, vuelta rápida, {{time}}",
       "vlt": "vlt",
+      "vuelta_asignada_pista_tolane": "Vuelta asignada pista {{toLane}}",
+      "vuelta_ignorada_pista_lane": "Vuelta ignorada pista {{lane}}",
       "vuelta_rapida": "Vuelta rápida, ",
       "window": "Window"
     },
@@ -371,11 +391,13 @@
       "tictac_no_detectado": "No se detecta: conecta el interface por USB",
       "tictac_sin_modulo": "Lectura USB no disponible en esta instalación",
       "tunel_en_marcha": "Túnel en marcha",
-      "tunel_parado": "Túnel parado"
+      "tunel_parado": "Túnel parado",
+      "v_puertos": "{{v}} puertos"
     },
     "shifts-live": {
       "ambiguedad_usa_override_manual": "Ambigüedad — usa override manual",
       "asignado": "Asignado",
+      "bloqueado_quedan_v_del_final": "Bloqueado — quedan {{v}} del final",
       "camara_no_disponible_en_este_navegador": "Cámara no disponible en este navegador",
       "cambio_en_marcha": "Cambio en marcha",
       "cambio_en_pausa": "Cambio en pausa",
@@ -421,6 +443,7 @@
       "anade_al_menos_un_piloto": "Añade al menos un piloto.",
       "asigna_al_menos_un_equipo_a_un_carril": "Asigna al menos un equipo a un carril.",
       "buscar": "Buscar...",
+      "con_total_equipos_y_lanes_carriles_restslots": "Con {{total}} equipos y {{lanes}} carriles: {{restSlots}} descansarán por manga. Ciclo = {{total}} mangas.",
       "dsc_extra": "DSC extra",
       "el_nombre_es_obligatorio_min_2_caracteres": "El nombre es obligatorio (mín. 2 caracteres).",
       "error_al_crear_el_equipo": "Error al crear el equipo.",
@@ -432,6 +455,7 @@
       "carril": "carril ×",
       "circuitos": "circuitos",
       "con_pole": "con pole",
+      "el_circuito_i_debe_tener_entre_2_y_8_carriles": "El circuito {{i}} debe tener entre 2 y 8 carriles.",
       "elige_el_tipo_de_carrera": "Elige el tipo de carrera.",
       "i_sin_nombre_i": "<i>sin nombre</i>",
       "pasadas": "pasadas",
@@ -558,6 +582,7 @@
     "sin_equipos": "Sin equipos",
     "sincronizar_carrera": "Sincronizar carrera",
     "sincronizar_catalogo": "Sincronizar catálogo",
+    "skipped_omitidos": "{{skipped}} omitidos",
     "tanda": "Tanda",
     "tanda_2": "Tanda",
     "tiempo": "Tiempo",
@@ -651,6 +676,7 @@
     "cancelar_importacion": "Cancelar importación",
     "cancelar_la_importacion_pendiente_no_se_aplicara": "¿Cancelar la importación pendiente? No se aplicará.",
     "carrera_a_exportar": "Carrera a exportar",
+    "carrera_a_href_races_v_name_a_importada_v2": "Carrera «<a href=\"/races/{{v}}\">{{name}}</a>» importada ({{v2}} vueltas).",
     "copia_cargada_cierra_pitwall_por_completo_y": "Copia cargada. Cierra PitWall por completo y vuelve a abrirlo para aplicarla — hasta entonces sigues viendo los datos actuales. Se guarda automáticamente una copia de seguridad de los datos actuales antes de aplicarla.",
     "copia_de_seguridad": "Copia de seguridad",
     "descarga_un_archivo_db_con_todos_los_datos": "Descarga un archivo .db con todos los datos: carreras, equipos, pilotos, circuitos y ajustes. Sirve para pasarlo a otro PC o como respaldo. Se puede hacer aunque haya una carrera en curso.",
@@ -660,6 +686,7 @@
     "el_archivo_viene_de_una_version_mas_nueva_de": "El archivo viene de una versión más nueva de PitWall. Actualiza este PC e inténtalo de nuevo.",
     "en_curso": "en curso",
     "esa_carrera_no_existe": "Esa carrera no existe.",
+    "esta_carrera_ya_esta_en_este_pc_a_href_races_v": "Esta carrera ya está en este PC: <a href=\"/races/{{v}}\">{{v2}}</a>.",
     "esto_reemplazara_todos_los_datos_actuales_la": "Esto reemplazará TODOS los datos actuales la próxima vez que abras PitWall. ¿Continuar?",
     "exp_imp_carrera": "Exp. / Imp. carrera",
     "exportar": "Exportar",
@@ -686,13 +713,19 @@
     "resumen": "Resumen",
     "se_anade_como_carrera_nueva_y_se_aplica_al": "Se añade como carrera nueva y se aplica al momento; tus carreras no se tocan. Si su circuito no existe aquí, se crea.",
     "se_aplica_al_cerrar_pitwall_por_completo_y": "Se aplica al cerrar PitWall por completo y volver a abrirlo.",
+    "se_ha_creado_el_circuito_v": " Se ha creado el circuito «{{v}}».",
     "selecciona_un_archivo_db": "Selecciona un archivo .db.",
     "selecciona_un_archivo_pwrace": "Selecciona un archivo .pwrace.",
     "subir_copia": "Subir copia",
     "sustituir_todos_los_datos_de_este_pc_por_los_de": "Sustituir todos los datos de este PC por los de una copia de seguridad.",
     "sustituye_todos_los_datos_de_este_pc_por_los_de": "Sustituye TODOS los datos de este PC por los de un archivo .db de PitWall (de esta u otra instalación).",
     "terminada": "terminada",
-    "toda_la_base_de_datos_en_un_archivo_para": "Toda la base de datos en un archivo, para guardarla o pasarla a otro PC."
+    "toda_la_base_de_datos_en_un_archivo_para": "Toda la base de datos en un archivo, para guardarla o pasarla a otro PC.",
+    "v_subida_el_v2_se_aplicara_al_cerrar_pitwall": "{{v}}, subida el {{v2}}. Se aplicará al cerrar PitWall por completo y volver a abrirlo."
+  },
+  "driverprofile": {
+    "created_pilotos_creados": "{{created}} pilotos creados",
+    "updated_pilotos_actualizados": "{{updated}} pilotos actualizados"
   },
   "drivers": {
     "anade_tu_primer_piloto_para_empezar": "Añade tu primer piloto para empezar.",
@@ -1168,6 +1201,7 @@
     "especificaciones": "Especificaciones",
     "esta_carrera_no_lleva_control_de_neumaticos": "Esta carrera no lleva control de neumáticos",
     "esta_pagina_se_activara_automaticamente_cuando": "Esta página se activará automáticamente cuando arranque una carrera con control de neumáticos.",
+    "estado_cambiado_a_label": "Estado cambiado a «{{label}}».",
     "fotos_de_verificacion": "Fotos de verificación",
     "hay_una_manga_de_esta_carrera_en_marcha_parala": "Hay una manga de esta carrera en marcha. Párala antes de cambiar el estado.",
     "kiosco_carrera_activa": "Kiosco (carrera activa)",
@@ -1182,6 +1216,7 @@
     "no_hay_fotos_registradas": "No hay fotos registradas.",
     "no_hay_ninguna_carrera_de_resistencia_activa": "No hay ninguna carrera de resistencia activa",
     "nota": "Nota",
+    "ojo_tambien_esta_en_curso_v_el_siguiente_go_del": " Ojo: también está en curso «{{v}}». El siguiente GO del DS va a la primera manga pendiente de cualquier carrera en curso.",
     "opcional": "opcional",
     "peso_carroceria": "Peso carrocería",
     "peso_completo": "Peso completo",
@@ -1351,6 +1386,8 @@
     "automatica_recomendado": "Automática (recomendado)",
     "avanzado_timing_del_parser_ds_300": "Avanzado: timing del parser DS-300",
     "avanzado_todo": "Avanzado (todo)",
+    "bart_ble_searching_bartname": "BART (BLE) — searching \"{{bartName}}\"…",
+    "bart_tcp_barthost_bartport": "BART (TCP {{bartHost}}:{{bartPort}})",
     "basico_el_inicio_solo_muestra_entreno_libre": "Básico: el inicio solo muestra entreno libre, carrera sprint, resultados, categorías, escenarios y ajustes. Avanzado: todos los accesos. Se guarda al momento.",
     "buscar_puertos": "Buscar puertos",
     "buscar_puertos_com": "Buscar puertos COM",
@@ -1391,6 +1428,7 @@
     "direcciones_ahora": "Direcciones ahora",
     "directo": "directo",
     "dominio_publico": "Dominio público",
+    "ds_300_aggregator_aggboxes_box_v_v2_lanes": "DS-300 aggregator ({{aggBoxes}} box{{v}} · {{v2}} lanes)",
     "ds_300_agrupador": "DS-300 agrupador",
     "el_escaner_qr_del_control_de_pilotos_usa_la": "El escáner QR del control de pilotos usa la cámara, y el navegador solo la deja usar por HTTPS en los móviles y tablets que entran por la IP. PitWall sirve HTTPS con un certificado propio, en paralelo al HTTP normal.",
     "en": "En",
@@ -1416,6 +1454,7 @@
     "ips_o_rangos_permitidos": "IPs o rangos permitidos",
     "la_app_movil_de_tic_tac_slot_infolap_se_conecta": "La app móvil de Tic Tac Slot Infolap se conecta a PitWall y recibe vueltas en directo. Abre UDP :4441.",
     "la_coma_la_fraccion_de_vuelta_de_cada_coche_al": "La coma (la fracción de vuelta de cada coche al caer la bandera) se calcula sola. Actívalo para poder corregirla a mano por carril en la pantalla de correcciones de una manga cerrada; la coma corregida manda en el desempate a igualdad de vueltas. Se guarda al momento.",
+    "labels_v_circuit_v2": "{{labels}} ({{v}} circuit{{v2}})",
     "las_10_mejores_de_mejor_a_peor": "Las 10 mejores (de mejor a peor)",
     "las_10_ultimas_la_mas_reciente_arriba": "Las 10 últimas (la más reciente arriba)",
     "las_10_vueltas_que_muestra_cada_carril_en_la": "Las 10 vueltas que muestra cada carril en la vista «Con historial» de los entrenos. Se guarda al momento; en un entreno abierto se aplica al recargar.",
@@ -1460,6 +1499,7 @@
     "sin_interfaces_de_red_detectadas": "Sin interfaces de red detectadas.",
     "solo_este_equipo_localhost_y_las_ips_de_la": "Solo este equipo (localhost) y las IPs de la lista. La app móvil e Infolap siguen recibiendo el vuelta a vuelta.",
     "tcp_emulador_puente": "TCP (emulador / puente)",
+    "the_password_needs_at_least_v_characters": "The password needs at least {{v}} characters.",
     "the_two_passwords_do_not_match": "The two passwords do not match.",
     "tictac_conexion": "Conexión",
     "tictac_conexion_serie": "Puerto serie (emulador o puente)",
@@ -1530,6 +1570,7 @@
   },
   "shifts-report": {
     "al_90_del_max": "Al 90% del máx.",
+    "atencion_manuales_turno_s_con_tiempo": "Atención: {{manuales}} turno(s) con tiempo introducido manualmente por el staff. Van marcados en la tabla.",
     "bajo_minimo": "BAJO MÍNIMO",
     "cronologia_de_turnos_por_manga": "Cronología de turnos por manga",
     "entro": "Entró",
@@ -1610,6 +1651,7 @@
     "perdido_total": "Perdido Total",
     "pines_lap": "Pines Lap",
     "pole_position": "Pole Position",
+    "proximo_paso_v_anadidas": "Próximo paso · {{v}} añadidas",
     "rival_1": "Rival 1",
     "rival_2_opcional": "Rival 2 (opcional)",
     "sal_pit_total": "Sal./Pit Total",
@@ -1645,6 +1687,8 @@
     "editar_tanda_2": "Editar Tanda",
     "esta_tanda_ya_tiene_mangas_iniciadas_solo": "Esta tanda ya tiene mangas iniciadas. Solo puedes cambiar los nombres — no añadir ni eliminar participantes.",
     "guardar_cambios_se_regenerara_la_programacion": "¿Guardar cambios? Se regenerará la programación de mangas.",
+    "minimo_v_equipos_anade_mas_para_rotaciones_con": "Mínimo {{v}} equipos. Añade más para rotaciones con descanso.",
+    "minimo_v_pilotos_anade_mas_para_rotaciones_con": "Mínimo {{v}} pilotos. Añade más para rotaciones con descanso.",
     "modifica_los_nombres_de_los_equipos_y_pilotos": "Modifica los nombres de los equipos y pilotos.",
     "modifica_los_nombres_de_los_pilotos": "Modifica los nombres de los pilotos.",
     "modo_solo_renombrar": "Modo solo renombrar"
@@ -1658,6 +1702,7 @@
     "el_carril_libre_va_cambiando_cada_manga_para": "el carril libre va cambiando cada manga para que todos pasen por los mismos carriles.",
     "el_hueco_rota": "El hueco rota",
     "equipos_disponibles": "Equipos disponibles",
+    "hasta_v_pilotos_por_manga_puedes_dejar_carriles": "Hasta {{v}} pilotos por manga. Puedes dejar carriles vacíos, o añadir más pilotos para rotaciones con descanso.",
     "los_carriles_de_mayor_numero_quedan_siempre": "los carriles de mayor número quedan siempre vacíos; nadie corre por ellos.",
     "no_hay_equipos_crea_uno": "No hay equipos. Crea uno.",
     "nueva_tanda": "Nueva Tanda",
@@ -1666,7 +1711,11 @@
     "sobran_los_ultimos": "Sobran los últimos"
   },
   "teamcatalog": {
-    "falta_la_columna_nombre_en_la_cabecera": "Falta la columna \"nombre\" en la cabecera"
+    "created_equipos_creados": "{{created}} equipos creados",
+    "falta_la_columna_nombre_en_la_cabecera": "Falta la columna \"nombre\" en la cabecera",
+    "pilotscreated_pilotos_creados": "{{pilotsCreated}} pilotos creados",
+    "pilotslinked_pilotos_enlazados": "{{pilotsLinked}} pilotos enlazados",
+    "updated_equipos_actualizados": "{{updated}} equipos actualizados"
   },
   "teams": {
     "b_cabecera_obligatoria_b_columnas_reconocidas": "<b>Cabecera obligatoria.</b> Columnas reconocidas (orden libre): <b>nombre</b> (obligatorio), <b>categoria</b>, <b>coche</b>, <b>pais</b> (escribe el nombre: España, Francia, Reino Unido… — la bandera se añade automáticamente), <b>notas</b>, <b>pilotos</b> (lista separada por \"|\"). Cada piloto se busca en tu base de datos por nombre: si existe, se enlaza al equipo; si no existe, se crea automáticamente como bronce y aparece en /pilotos para que le ajustes la categoría. Acepta separador \",\" o \";\". Si una celda lleva comas dentro, envuélvela en comillas.",

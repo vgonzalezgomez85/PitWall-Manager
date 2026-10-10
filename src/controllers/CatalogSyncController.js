@@ -62,18 +62,14 @@ class CatalogSyncController {
     }
 
     const parts = [];
-    if (added)   parts.push(lang === 'es' ? `${added} piloto(s) añadido(s)`   : `${added} driver(s) added`);
-    if (removed) parts.push(lang === 'es' ? `${removed} piloto(s) quitado(s)` : `${removed} driver(s) removed`);
-    if (country) parts.push(lang === 'es' ? `${country} país(es) actualizado(s)` : `${country} country field(s) updated`);
+    if (added)   parts.push(req.t('catalogsync.added_piloto_s_anadido_s', { added: added }));
+    if (removed) parts.push(req.t('catalogsync.removed_piloto_s_quitado_s', { removed: removed }));
+    if (country) parts.push(req.t('catalogsync.country_pais_es_actualizado_s', { country: country }));
     if (parts.length === 0) parts.push(req.t('client.log.sin_cambios'));
 
-    let text = (lang === 'es'
-      ? `Catálogo sincronizado en ${done} carrera(s): `
-      : `Catalog synced on ${done} race(s): `) + parts.join(', ') + '.';
+    let text = (req.t('catalogsync.catalogo_sincronizado_en_done_carrera_s', { done: done })) + parts.join(', ') + '.';
     if (failed.length) {
-      text += lang === 'es'
-        ? ` No se pudo sincronizar: ${failed.join(', ')}.`
-        : ` Could not sync: ${failed.join(', ')}.`;
+      text += req.t('catalogsync.no_se_pudo_sincronizar_v', { v: failed.join(', ') });
     }
 
     req.session.flash = { type: failed.length ? 'error' : 'success', text };

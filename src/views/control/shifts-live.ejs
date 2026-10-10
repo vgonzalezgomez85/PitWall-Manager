@@ -606,9 +606,7 @@ async function submitCode(code) {
         manga_active_but_not_timing: I18N.t('client.shifts-live.manga_activa_pero_sin_sesion_de_timing'),
         manga_active_but_not_running: I18N.t('client.shifts-live.manga_activa_pero_ni_running_ni_paused'),
         manga_status_invalid:      I18N.t('client.shifts-live.estado_de_manga_invalido'),
-        change_locked_final_minutes: LANG === 'es'
-          ? `Bloqueado — quedan ${fmtTime(data.remainingMs)} del final`
-          : `Locked — ${fmtTime(data.remainingMs)} left`,
+        change_locked_final_minutes: I18N.t('client.shifts-live.bloqueado_quedan_v_del_final', { v: fmtTime(data.remainingMs) }),
         missing_params: I18N.t('client.shifts-live.faltan_datos'),
       };
       const text = errMap[data.error] || (data.error || 'Error');

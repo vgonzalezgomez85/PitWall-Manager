@@ -2353,7 +2353,7 @@ function formatMsForSpeech(ms) {
   const hStr = String(hundredths).padStart(2, '0');
   if (mins > 0) return `${mins}:${String(secs).padStart(2,'0')}.${hStr}`;
   // Spoken as "12 con 45" (ES) / "12 45" (EN) — sounds natural for lap times
-  return LANG === 'es' ? `${secs} con ${hStr}` : `${secs} ${hStr}`;
+  return I18N.t('client.js.secs_con_hstr', { secs: secs, hStr: hStr });
 }
 
 function drainSpeech() {
@@ -2504,13 +2504,11 @@ function announce(text) {
         const isLaneBest = lap.lapNumber > 1 && lap.lapTimeMs === lap.bestLapMs;
         if (voiceMode === 'all') {
           const time = formatMsForSpeech(lap.lapTimeMs);
-          const text = LANG === 'es' ? `${lap.name}, ${time}` : `${lap.name}, ${time}`;
+          const text = I18N.t('client.js.v_time', { v: lap.name, time: time });
           announce(text);
         } else if (voiceMode === 'best' && isLaneBest) {
           const time = formatMsForSpeech(lap.lapTimeMs);
-          const text = LANG === 'es'
-            ? `${lap.name}, vuelta rápida, ${time}`
-            : `${lap.name}, fast lap, ${time}`;
+          const text = I18N.t('client.js.v_vuelta_rapida_time', { v: lap.name, time: time });
           announce(text);
         }
       }
@@ -2523,7 +2521,7 @@ function announce(text) {
     // "Queda 1 minuto" / "Quedan 30 segundos"), por eso usan announceWarning y no
     // announce (que respeta el mute).
     socket.on('lap:ghost', ({ lane }) => {
-      announceWarning(LANG === 'es' ? `Vuelta ignorada pista ${lane}` : `Lap ignored lane ${lane}`);
+      announceWarning(I18N.t('client.js.vuelta_ignorada_pista_lane', { lane: lane }));
     });
 
     // Reasignación: cuando el carril que se saltó la vuelta cruza y se CERTIFICA,
@@ -2531,7 +2529,7 @@ function announce(text) {
     // fantasma (evento lap:ghost), así que aquí solo se anuncia la ASIGNACIÓN —
     // repetir "ignorada" sería redundante.
     socket.on('lap:reassigned', ({ toLane }) => {
-      announceWarning(LANG === 'es' ? `Vuelta asignada pista ${toLane}` : `Lap assigned to lane ${toLane}`);
+      announceWarning(I18N.t('client.js.vuelta_asignada_pista_tolane', { toLane: toLane }));
     });
 
     // Retroactive crash: lap 1 turned out to be an exit once we saw lap 2.
@@ -2573,9 +2571,7 @@ function announce(text) {
           const btn = document.createElement('button');
           btn.id        = 'next-tanda-btn';
           btn.className = 'lbtn lbtn--go';
-          btn.innerHTML = LANG === 'es'
-            ? `▶ Tanda ${data.nextTandaNumber}`
-            : `▶ Tanda ${data.nextTandaNumber}`;
+          btn.innerHTML = I18N.t('client.js.tanda_v', { v: data.nextTandaNumber });
           btn.addEventListener('click', async () => {
             btn.disabled   = true;
             btn.textContent = I18N.t('client.js.cargando');
@@ -2590,7 +2586,7 @@ function announce(text) {
               }
             } catch {
               btn.disabled   = false;
-              btn.textContent = LANG === 'es' ? `▶ Tanda ${data.nextTandaNumber}` : `▶ Tanda ${data.nextTandaNumber}`;
+              btn.textContent = I18N.t('client.js.tanda_v', { v: data.nextTandaNumber });
             }
           });
           actions.prepend(btn);

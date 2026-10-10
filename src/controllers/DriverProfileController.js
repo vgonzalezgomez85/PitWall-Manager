@@ -205,9 +205,9 @@ class DriverProfileController {
     });
 
     const parts = [];
-    if (created > 0) parts.push(lang === 'es' ? `${created} pilotos creados`     : `${created} drivers created`);
-    if (updated > 0) parts.push(lang === 'es' ? `${updated} pilotos actualizados`: `${updated} drivers updated`);
-    if (skipped > 0) parts.push(lang === 'es' ? `${skipped} omitidos`             : `${skipped} skipped`);
+    if (created > 0) parts.push(req.t('driverprofile.created_pilotos_creados', { created: created }));
+    if (updated > 0) parts.push(req.t('driverprofile.updated_pilotos_actualizados', { updated: updated }));
+    if (skipped > 0) parts.push(req.t('common.skipped_omitidos', { skipped: skipped }));
     req.session.flash = {
       type: (created + updated) > 0 ? 'success' : 'error',
       text: parts.join(' · ') || (req.t('client.settings.sin_cambios')),

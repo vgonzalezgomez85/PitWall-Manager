@@ -13,6 +13,12 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.52.3] — 2026-10-10
+
+### Mejorado
+- **Los textos con números dentro salen ya del diccionario.** Los que llevan un dato en medio («12 coches creados», «Vuelta ignorada pista 5») tenían el texto repartido alrededor del número, y por eso se habían quedado fuera. Ahora van al diccionario con un hueco —`{{n}} coches creados`— que se rellena al pintarlo. Eran 52, casi todos avisos de importación y de la voz del directo.
+- **Las fechas y las horas usan un solo formato por idioma.** Cada pantalla llevaba su locale escrito a mano, y estaban mezclados: en inglés unas usaban formato británico (día/mes) y otras americano (mes/día). Ahora salen de un único sitio (`src/utils/locale.js`), que es lo que permitirá añadir el italiano. **Ojo para quien use la app en inglés**: las pantallas que enseñaban la fecha al estilo americano pasan al británico, que era el que usaba la mayoría.
+
 ## [1.52.2] — 2026-10-10
 
 ### Mejorado

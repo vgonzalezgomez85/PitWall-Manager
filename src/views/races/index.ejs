@@ -6,7 +6,7 @@ const ST = {
   'active':     { color: 'var(--vt-green)', live: true,  label: t('races.status.active') },
   'finished':   { color: 'var(--vt-blue)',  live: false, label: t('races.status.completed') },
 };
-const fmtDate = (s) => new Date(s).toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-GB');
+const fmtDate = (s) => new Date(s).toLocaleDateString(localeFor(lang));
 const counts = {
   todas: races.length,
   pending: races.filter(r => r.status === 'pending').length,

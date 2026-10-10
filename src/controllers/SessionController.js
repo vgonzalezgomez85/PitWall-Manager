@@ -29,6 +29,7 @@ const TimingService  = require('../services/TimingService');
 const RaceEventLog   = require('../services/RaceEventLog');
 const ExportGuard    = require('../services/ExportGuard');
 const { robustConsistency, MIN_CONSISTENCY_LAPS } = require('../lib/consistency');
+const { localeFor } = require('../utils/locale');
 
 const LaneColors = require('../services/LaneColors');
 
@@ -1575,7 +1576,7 @@ class SessionController {
     const raceDateRaw = race.finished_at || race.started_at || race.created_at;
     const raceDate = raceDateRaw ? new Date(raceDateRaw) : null;
     const raceDateStr = raceDate
-      ? raceDate.toLocaleString(isEs ? 'es-ES' : 'en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+      ? raceDate.toLocaleString(localeFor(isEs ? 'es' : 'en'), { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
       : '';
     const titleLabel = req.t('common.carrera');
     const dateLabel  = req.t('session.fecha');

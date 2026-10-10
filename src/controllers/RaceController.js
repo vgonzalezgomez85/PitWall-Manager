@@ -734,13 +734,11 @@ class RaceController {
     const label = es
       ? { pending: 'Pendiente', active: 'En curso', finished: 'Completada' }[status]
       : { pending: 'Pending', active: 'Active', finished: 'Completed' }[status];
-    let text = es ? `Estado cambiado a «${label}».` : `Status changed to “${label}”.`;
+    let text = req.t('race.estado_cambiado_a_label', { label: label });
     if (status === 'active') {
       const others = Race.findAll().filter(r => r.status === 'active' && String(r.id) !== String(race.id));
       if (others.length) {
-        text += es
-          ? ` Ojo: también está en curso «${others.map(r => r.name).join('», «')}». El siguiente GO del DS va a la primera manga pendiente de cualquier carrera en curso.`
-          : ` Note: “${others.map(r => r.name).join('”, “')}” is also active. The next DS GO goes to the first pending heat of any active race.`;
+        text += req.t('race.ojo_tambien_esta_en_curso_v_el_siguiente_go_del', { v: others.map(r => r.name).join('», «'), v2: others.map(r => r.name).join('”, “') });
       }
     }
     req.session.flash = { type: 'success', text };

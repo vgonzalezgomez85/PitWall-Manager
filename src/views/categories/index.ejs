@@ -48,7 +48,7 @@
           <tbody>
             <% categories.forEach(cat => {
               const created = cat.created_at
-                ? new Date(cat.created_at.replace(' ', 'T') + 'Z').toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US')
+                ? new Date(cat.created_at.replace(' ', 'T') + 'Z').toLocaleDateString(localeFor(lang))
                 : '—';
             %>
               <tr>

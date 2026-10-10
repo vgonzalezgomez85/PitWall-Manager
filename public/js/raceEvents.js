@@ -58,7 +58,7 @@
       const base = (I18N.t('client.js.resumed')) + circuitSuffix(d, es, mc);
       const pausedMs = (d.payload || {}).pausedMs;
       if (!pausedMs) return base;
-      return base + (es ? ` (tras ${fmtSecShort(pausedMs)}s de pausa)` : ` (after ${fmtSecShort(pausedMs)}s paused)`);
+      return base + (I18N.t('client.js.after_v_s_paused', { v: fmtSecShort(pausedMs) }));
     },
     stop:   (d, es) => (I18N.t('client.js.heat_finished')) + (d.mangaNumber ? ' ' + d.mangaNumber : ''),
     cancel: (d, es) => (I18N.t('client.js.heat_cancelled')) + (d.mangaNumber ? ' ' + d.mangaNumber : ''),
@@ -73,9 +73,7 @@
     },
     lap_reassigned: (d, es) => {
       const p = d.payload || {};
-      const base = es
-        ? `Vuelta fantasma del carril ${p.fromLane} reasignada al carril ${p.toLane}`
-        : `Ghost lap from lane ${p.fromLane} reassigned to lane ${p.toLane}`;
+      const base = I18N.t('client.js.ghost_lap_from_lane_v_reassigned_to_lane_v2', { v: p.fromLane, v2: p.toLane });
       return base + (d.entityName ? ` (${d.entityName})` : '') + ` — ${fmtS(p.lapTimeMs)}s`;
     },
     retro_exit: (d, es) => {
@@ -97,9 +95,7 @@
       // `real` = el cruce llegó dentro de la ventana tras el final y va con su
       // tiempo cronometrado; sin él, la vuelta se repuso por contador con la media.
       const real = !!p.real;
-      const base = es
-        ? `${who(d, es)} — ${n > 1 ? n + ' vueltas' : 'vuelta'} de final de bandera ${real ? 'cronometrada' : 'repuesta'}`
-        : `${who(d, es)} — ${n} flag-finish lap${n > 1 ? 's' : ''} ${real ? 'timed' : 'restored'}`;
+      const base = I18N.t('client.js.v_n_flag_finish_lap_v2_v3', { v: who(d, es), n: n, v2: n > 1 ? 's' : '', v3: real ? 'timed' : 'restored', v4: n > 1 ? n + ' vueltas' : 'vuelta', v5: real ? 'cronometrada' : 'repuesta' });
       return base + ` (${fmtS(p.lapTimeMs)}s${real ? '' : (I18N.t('client.js.avg'))})`;
     },
   };

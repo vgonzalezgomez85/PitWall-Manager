@@ -376,11 +376,11 @@ class TeamCatalogController {
     });
 
     const parts = [];
-    if (created > 0) parts.push(lang === 'es' ? `${created} equipos creados`        : `${created} teams created`);
-    if (updated > 0) parts.push(lang === 'es' ? `${updated} equipos actualizados`   : `${updated} teams updated`);
-    if (pilotsLinked  > 0) parts.push(lang === 'es' ? `${pilotsLinked} pilotos enlazados` : `${pilotsLinked} drivers linked`);
-    if (pilotsCreated > 0) parts.push(lang === 'es' ? `${pilotsCreated} pilotos creados`  : `${pilotsCreated} drivers created`);
-    if (skipped       > 0) parts.push(lang === 'es' ? `${skipped} omitidos`               : `${skipped} skipped`);
+    if (created > 0) parts.push(req.t('teamcatalog.created_equipos_creados', { created: created }));
+    if (updated > 0) parts.push(req.t('teamcatalog.updated_equipos_actualizados', { updated: updated }));
+    if (pilotsLinked  > 0) parts.push(req.t('teamcatalog.pilotslinked_pilotos_enlazados', { pilotsLinked: pilotsLinked }));
+    if (pilotsCreated > 0) parts.push(req.t('teamcatalog.pilotscreated_pilotos_creados', { pilotsCreated: pilotsCreated }));
+    if (skipped       > 0) parts.push(req.t('common.skipped_omitidos', { skipped: skipped }));
     req.session.flash = {
       type: (created + updated) > 0 ? 'success' : 'error',
       text: parts.join(' · ') || (req.t('client.settings.sin_cambios')),

@@ -590,7 +590,7 @@
     // ── Cabecera: reloj del sistema, manga X/total, estado y countdown ─────────
     function tickClock() {
       document.getElementById('lmClock').textContent =
-        new Date().toLocaleTimeString(LANG === 'es' ? 'es-ES' : 'en-GB', { hour12: false });
+        new Date().toLocaleTimeString(I18N.locale, { hour12: false });
     }
     tickClock(); setInterval(tickClock, 1000);
 

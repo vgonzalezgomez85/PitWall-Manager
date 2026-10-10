@@ -382,7 +382,7 @@ document.getElementById('nrForm').addEventListener('submit', (e) => {
     for (let i = 1; i <= getActiveCount(); i++) {
       const inp = document.getElementById('circLanes_' + i);
       const v = parseInt(inp.value, 10);
-      if (!(v >= 2 && v <= 8)) { problems.push([inp, ES ? `El circuito ${i} debe tener entre 2 y 8 carriles.` : `Circuit ${i} must have 2 to 8 lanes.`]); break; }
+      if (!(v >= 2 && v <= 8)) { problems.push([inp, I18N.t('client.wizard.el_circuito_i_debe_tener_entre_2_y_8_carriles', { i: i })]); break; }
     }
   }
   document.querySelectorAll('.nr-err').forEach(el => el.remove());

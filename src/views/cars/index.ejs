@@ -87,7 +87,7 @@
           <tbody>
             <% cars.forEach(car => {
               const created = car.created_at
-                ? new Date(car.created_at.replace(' ', 'T') + 'Z').toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US')
+                ? new Date(car.created_at.replace(' ', 'T') + 'Z').toLocaleDateString(localeFor(lang))
                 : '—';
             %>
               <tr>

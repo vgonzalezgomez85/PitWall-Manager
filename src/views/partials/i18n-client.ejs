@@ -17,6 +17,10 @@
 (function () {
   var D = <%- JSON.stringify(typeof i18nClient !== 'undefined' ? i18nClient : {}).replace(/</g, '\\u003c') %>;
   window.I18N = {
+    // Locale BCP-47 de la página, para `toLocaleDateString`/`Intl` en el
+    // navegador. El idioma de la página no cambia mientras se ve, así que basta
+    // con resolverlo una vez aquí (el servidor no puede: `Intl` es del navegador).
+    locale: <%- JSON.stringify(typeof localeFor !== 'undefined' ? localeFor(lang) : 'es-ES') %>,
     t: function (clave, vars) {
       var o = D, partes = String(clave).split('.');
       for (var i = 0; i < partes.length && o != null; i++) o = o[partes[i]];

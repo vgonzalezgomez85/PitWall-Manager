@@ -87,9 +87,7 @@ function etiqueta(c) {
 
     <% if (manuales > 0) { %>
       <p class="sr-manual" style="margin:10px 0 0">
-        <%= es
-          ? `Atención: ${manuales} turno(s) con tiempo introducido manualmente por el staff. Van marcados en la tabla.`
-          : `Note: ${manuales} shift(s) with time entered manually by staff. Flagged in the table.` %>
+        <%= t('shifts-report.atencion_manuales_turno_s_con_tiempo', { manuales: manuales }) %>
       </p>
     <% } %>
 
