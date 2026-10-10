@@ -263,7 +263,11 @@ function normalizar(html) {
     .replace(/\b\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}\b/g, '<FECHA>')
     .replace(/\b\d{2}\/\d{2}\/\d{4},? \d{2}:\d{2}(:\d{2})?\b/g, '<FECHA>')
     .replace(/\?v=\d+/g, '?v=0')                       // cache-busting de CSS/JS
-    .replace(/socket\.io[^"']*/g, 'socket.io')
+    // Solo la ruta del transporte (`/socket.io/?EIO=4&transport=…`), que lleva
+    // un id que cambia en cada conexión. Antes esto era `socket\.io[^"']*` y se
+    // comía CUALQUIER texto que mencionara socket.io — incluidos comentarios de
+    // dentro de los <script>, que quedaban mutilados en la captura.
+    .replace(/\/socket\.io\/[^"'\s]*/g, '/socket.io/…')
     .replace(/\s+$/gm, '');
 }
 
