@@ -13,6 +13,16 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.53.3] — 2026-10-10
+
+### Corregido
+- **Más de 60 textos del navegador salían como clave cruda** (`client.pole-timing.on`, `client.shifts-live.…`). Los textos que pinta el navegador viajan en un diccionario que el servidor arma buscando en las pantallas las claves que usan, y esa búsqueda no reconocía las secciones con guion en el nombre. Afectaba a la pantalla de **Control de pilotos** (33 textos), a la de **nueva tanda** (11), a la **pole** (16) y a los paneles del directo. Ya se detectan, y un test comprueba que toda clave que pide el navegador existe y llega.
+- **Con TicTac o BART, las vueltas repuestas ya no pueden salir como récord en los entrenamientos.** Una vuelta repuesta tras perderse un cruce lleva un tiempo estimado; el entrenamiento libre y el de competición la contaban como una vuelta medida y podía quedar como mejor tiempo. Ahora las ignoran, como la pole. Con un DS pasa lo mismo si se pierde un cruce por un corte del cable.
+
+### Mejorado
+- **Los textos ya no dan por hecho que el cronometraje es un DS-300.** El aviso «Sin señal del DS-300» del directo pasa a «Sin señal del cronometraje», la pole espera «el GO del DS», y los textos de Ajustes y de Diagnóstico hablan de «DS» o del cronometraje en general. Con un TicTac o un BART conectado ya no mandan a buscar el fallo al aparato equivocado.
+- **Los manuales llevan las capturas nuevas:** Fuente de datos (con las tarjetas «DS» y «TicTac») y el cronometraje de la pole con el botón GO.
+
 ## [1.53.2] — 2026-10-10
 
 ### Mejorado

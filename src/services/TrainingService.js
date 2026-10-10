@@ -193,8 +193,9 @@ class TrainingServiceClass {
     this._pausedCircuits.clear();
     this._startedAt = Date.now();
 
-    this._handler = ({ lane, lapTimeMs, circuit }) => {
+    this._handler = ({ lane, lapTimeMs, circuit, missed }) => {
       if (!this._active || lapTimeMs == null) return;
+      if (missed) return;   // vuelta repuesta (estimada): su tiempo es una media, no puede ser un récord
       if (this._pausedCircuits.has(circuit || 0)) return;   // circuito pausado → ignora su cruce
       const ld = this._laneData.get(lane);
       if (!ld) return;

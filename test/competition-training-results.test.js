@@ -204,3 +204,21 @@ test('cada sesión se lista por separado y se puede borrar', () => {
   assert.equal(quedan.length, 1);
   assert.equal(quedan[0].session_id, s2);
 });
+
+// Una vuelta repuesta tras perderse un cruce (TicTac, DS) lleva un tiempo ESTIMADO: no es
+// una vuelta medida, así que no entra en el heat ni puede ser la mejor vuelta.
+test('la vuelta repuesta (estimada) no cuenta ni puede ser la mejor vuelta del heat', () => {
+  CompetitionService.setup(PARTICIPANTES, 2, [1, 2]);
+  const sessionId = CompetitionService.sessionId;
+
+  SerialService.emit('race_go', { durationMs: 60_000 });
+  SerialService.emit('race_started');
+  SerialService.emit('lane_crossing', { lane: 1, lapTimeMs: 12_000, circuit: 0 });
+  SerialService.emit('lane_crossing', { lane: 1, lapTimeMs: 8_000, circuit: 0, missed: true });
+  SerialService.emit('lane_crossing', { lane: 1, lapTimeMs: 12_400, circuit: 0 });
+  SerialService.emit('race_finished');
+
+  const c1 = CompetitionTrainingResult.getHeats(sessionId).find(f => f.lane === 1);
+  assert.equal(c1.lap_count, 2, 'solo las dos vueltas medidas');
+  assert.equal(c1.best_lap_ms, 12_000, 'una estimada de 8 s no puede ser la mejor');
+});

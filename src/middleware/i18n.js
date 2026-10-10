@@ -101,7 +101,9 @@ function clavesDeCliente() {
       if (e.isDirectory()) leer(p, filtro);
       else if (filtro(p)) {
         const src = fs.readFileSync(p, 'utf8');
-        for (const m of src.matchAll(/I18N\.t\(\s*'([\w.]+)'/g)) set.add(m[1]);
+        // El guion va en la clase: hay secciones como `client.pole-timing.*`; sin él sus
+        // claves no viajaban al navegador y salían crudas en pantalla.
+        for (const m of src.matchAll(/I18N\.t\(\s*'([\w.-]+)'/g)) set.add(m[1]);
       }
     }
   };

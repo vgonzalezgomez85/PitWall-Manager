@@ -301,3 +301,24 @@ test('una vuelta repuesta sin vueltas reales previas tampoco puede ser la mejor 
   assert.equal(ld.lapCount, 3);
   assert.ok(!ld.bestLapMs, 'ninguna estimada compite por la mejor vuelta');
 });
+
+// ── Entrenamiento libre: GO/STOP de PitWall y vueltas repuestas ─────────────────
+const TrainingService = require('../src/services/TrainingService');
+
+test('entrenamiento libre con TicTac: la vuelta repuesta (estimada) no cuenta ni es récord', () => {
+  TrainingService.resetSession();
+  TrainingService.prepare(2);
+  assert.equal(TrainingService.isStandby, true, 'la pantalla de entreno queda lista para el GO de PitWall');
+  TrainingService._activate();
+  try {
+    SerialService.emit('lane_crossing', { lane: 1, lapTimeMs: 12000, circuit: 0 });
+    SerialService.emit('lane_crossing', { lane: 1, lapTimeMs: 8000, circuit: 0, missed: true });
+    SerialService.emit('lane_crossing', { lane: 1, lapTimeMs: 12500, circuit: 0 });
+    const ld = TrainingService._laneData.get(1);
+    assert.equal(ld.count, 2, 'solo las dos vueltas medidas');
+    assert.equal(ld.laps[0], 12000, 'una estimada de 8 s no puede ser la mejor');
+    assert.equal(TrainingService._sessionRecords.get(1), 12000);
+  } finally {
+    TrainingService.resetSession();
+  }
+});

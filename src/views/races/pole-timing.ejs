@@ -507,7 +507,7 @@ function enterStandby() {
   clearAutoAdvance();
   hide('js-btn-idle'); show('js-btn-running'); hide('js-btn-finished'); show('js-btn-skip-row');
   hide('js-chrono-wrap'); hide('js-countdown-wrap'); hide('js-laps-wrap'); hide('js-finished-result');
-  setStateSub(I18N.t(SOFTWARE_GO ? 'client.pole-timing.pulsa_go_para_empezar' : 'client.pole-timing.esperando_go_del_ds_300'));
+  setStateSub(SOFTWARE_GO ? I18N.t('client.pole-timing.pulsa_go_para_empezar') : I18N.t('client.pole-timing.esperando_go_del_ds_300'));
   // Limpiar historial al entrar en standby (nuevo intento)
   const list = document.getElementById('js-laps-list');
   if (list) list.innerHTML = '';

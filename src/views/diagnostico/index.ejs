@@ -8,7 +8,7 @@ const serialText = link.simulating ? 'Simulación' : (link.connected ? 'Conectad
 const issues = [];
 if (stuck.length) issues.push({ sec: 'stuck', kind: 'bad', t: stuck.length + (stuck.length === 1 ? ' manga atascada' : ' mangas atascadas'), d: 'Figuran como activas en la base de datos pero no están corriendo.' });
 if (!link.connected && !link.simulating) issues.push({ sec: 'serial', kind: 'bad', t: 'El cronómetro no está conectado', d: 'No llegan cruces. Revisa el cable o reconecta el serial.' });
-if (boundary) issues.push({ sec: 'timing', kind: 'warn', t: 'Límite de tanda activo', d: 'El próximo GO del DS-300 se ignorará hasta limpiarlo.' });
+if (boundary) issues.push({ sec: 'timing', kind: 'warn', t: 'Límite de tanda activo', d: 'El próximo GO se ignorará hasta limpiarlo.' });
 const navItems = [
   { key: 'status', label: 'Estado', dot: allOk ? 'ok' : (issues.some(i => i.kind === 'bad') ? 'bad' : 'warn'),
     icon: '<path d="M3 12h4l3-8 4 16 3-8h4"/>' },
@@ -134,7 +134,7 @@ const warnIco = '<svg class="dg-warn" viewBox="0 0 24 24"><path d="M10.3 3.8 1.8
           <div class="st-row st-row--wrap">
             <div class="st-row__txt">
               <div class="st-row__t">Preparada para el próximo GO</div>
-              <div class="st-row__d">La manga que arrancará cuando el DS-300 dé la salida.</div>
+              <div class="st-row__d">La manga que arrancará con el próximo GO.</div>
             </div>
             <% if (timing.pendingSetup) { %>
               <span class="dg-val"><span class="st-dot st-dot--warn"></span><span class="vt-mono"><%= timing.pendingSetup.label %></span></span>
@@ -147,10 +147,10 @@ const warnIco = '<svg class="dg-warn" viewBox="0 0 24 24"><path d="M10.3 3.8 1.8
         <% if (boundary || timing.isRunning || timing.pendingSetup) { %>
           <div class="st-card">
             <% if (boundary) { %>
-              <form class="st-row st-row--wrap" action="/diagnostico/clear-boundary" method="POST" onsubmit="return confirm('¿Limpiar el boundary de tanda? El próximo GO del DS-300 será aceptado.');">
+              <form class="st-row st-row--wrap" action="/diagnostico/clear-boundary" method="POST" onsubmit="return confirm('¿Limpiar el boundary de tanda? El próximo GO será aceptado.');">
                 <div class="st-row__txt">
                   <div class="st-row__t">Limpiar límite de tanda</div>
-                  <div class="st-row__d">El próximo GO del DS-300 se aceptará. No borra nada.</div>
+                  <div class="st-row__d">El próximo GO se aceptará. No borra nada.</div>
                 </div>
                 <button class="vt-btn vt-btn--ghost" type="submit">Limpiar límite</button>
               </form>
@@ -165,7 +165,7 @@ const warnIco = '<svg class="dg-warn" viewBox="0 0 24 24"><path d="M10.3 3.8 1.8
               </form>
             <% } %>
             <% if (timing.pendingSetup && !timing.isRunning) { %>
-              <form class="st-row st-row--wrap" action="/diagnostico/clear-pending" method="POST" onsubmit="return confirm('¿Eliminar el pending setup? El GO del DS-300 quedará sin destino hasta que se vuelva a abrir una vista live.');">
+              <form class="st-row st-row--wrap" action="/diagnostico/clear-pending" method="POST" onsubmit="return confirm('¿Eliminar el pending setup? El GO quedará sin destino hasta que se vuelva a abrir una vista live.');">
                 <div class="st-row__txt">
                   <div class="st-row__t">Quitar la manga preparada</div>
                   <div class="st-row__d dg-danger-d"><%- warnIco %> El GO quedará sin destino hasta que abras de nuevo una vista en directo.</div>
@@ -181,7 +181,7 @@ const warnIco = '<svg class="dg-warn" viewBox="0 0 24 24"><path d="M10.3 3.8 1.8
       <section class="st-sec" data-sec="serial">
         <header class="st-sec__h">
           <h2>Cronómetro</h2>
-          <p>La conexión con el DS-300 (o la simulación).</p>
+          <p>La conexión con el cronometraje (o la simulación).</p>
         </header>
         <div class="st-card">
           <div class="st-row st-row--wrap">
