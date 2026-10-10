@@ -13,6 +13,16 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.53.2] — 2026-10-10
+
+### Mejorado
+- **La vuelta de bandera se cuenta igual con todos los dispositivos.** La ventana de «Espera de cruces tras el final» (Ajustes → Preferencias) ya solo la usaban los DS y el TicTac; ahora también BART y la simulación: el coche que cruza la meta justo después de acabar el tiempo suma esa vuelta con su tiempo real. Con 0 en Ajustes se apaga para todos. Con BART y TicTac no hay reposición por contador (como sí hay con el DS), así que un cruce fuera de la ventana no suma.
+- **El TicTac repone las vueltas de cruces que no llegan.** Si se pierde un cruce (un corte del USB, una trama que no llega), la vuelta ya no desaparece: se cuenta para el total. Como del aparato solo se conoce la hora de dos cruces recibidos, el tiempo de cada vuelta perdida es desconocido: las vueltas del tramo salen **marcadas como estimadas** con el ritmo típico del carril (mediana de sus últimas vueltas reales), así que no deforman la media ni pueden salir como mejor vuelta, y se pueden revisar o borrar en las correcciones. Solo se repone con tres pruebas a la vez: el número de vuelta del aparato salta, el contador de secuencia de sus tramas confirma que faltaron tramas, y el tiempo cuadra con las vueltas que faltan; si no, se cuenta una vuelta normal. En la pole las vueltas repuestas se ignoran. Comprobado con la captura real del club: ni una reposición falsa, y quitando una trama se detecta el hueco. Una vuelta de salida o de parada de un carril con muy pocas vueltas de referencia hace que, por prudencia, no se reponga.
+- **Los textos nuevos del TicTac y de la pole con GO manual están traducidos al italiano** (modelo de DS, estado de detección, botones GO/PAUSE, etc.).
+
+### Corregido
+- **Los instaladores de Windows, Linux y macOS podían llevar el lector USB del TicTac de otra plataforma.** `npm run dist:*` limpiaba entre plataformas el módulo de SQLite pero no `node-hid`, así que se reutilizaba el binario de la plataforma anterior y la lectura USB no habría cargado. Ahora se limpian los dos y se vuelven a reconstruir para desarrollo al terminar. Comprobado con compilaciones de Linux x64, Windows x64 y macOS x64 y arm64: cada instalador lleva el binario de su plataforma.
+
 ## [1.53.1] — 2026-10-10
 
 ### Mejorado

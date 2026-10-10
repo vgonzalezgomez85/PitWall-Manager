@@ -1102,9 +1102,9 @@ class TimingServiceClass {
   // cruzan seguidos. Ahora, al terminar el circuito se abre una ventana por carril
   // (`late_crossing_grace_ms`) en la que UN cruce cuenta como vuelta de bandera con
   // su tiempo real. La reconciliación por contador sigue de red de seguridad.
+  // Igual para todos los dispositivos (DS, BART, TicTac y simulación): 0 en Ajustes lo apaga.
   _lateEnabled() {
-    if (TimingServiceClass.lateCrossingGraceMs() <= 0) return false;
-    return !SerialService.getLinkStatus().simulating && !SerialService.isBart;
+    return TimingServiceClass.lateCrossingGraceMs() > 0;
   }
 
   // Suelta el oyente de cruces al cerrar la manga — salvo que haya ventanas de vuelta
@@ -1831,7 +1831,8 @@ class TimingServiceClass {
     ld.firstRealLapDone = true;
     ld.resumeWarmup = false;
     let bestImproved = false;
-    if (!isWarmup) {
+    // Una vuelta repuesta (estimada) nunca compite por mejor vuelta: su tiempo es una media.
+    if (!isWarmup && !missed) {
       if (!ld.bestLapMs || lapTimeMs < ld.bestLapMs) { ld.bestLapMs = lapTimeMs; bestImproved = true; }
       if (!ld.raceBestLapMs || lapTimeMs < ld.raceBestLapMs) {
         ld.raceBestLapMs  = lapTimeMs;

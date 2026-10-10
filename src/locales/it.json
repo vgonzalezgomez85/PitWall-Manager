@@ -338,7 +338,7 @@
       "siguiente_piloto": "Siguiente piloto →",
       "siguiente_piloto_en": "Siguiente piloto en ",
       "sin_referencia": "Sin referencia",
-      "pulsa_go_para_empezar": "Pulsa GO para empezar"
+      "pulsa_go_para_empezar": "Premi GO per iniziare"
     },
     "race": {
       "borrar_este_cambio_devuelve_el_juego_a": "¿Borrar este cambio? Devuelve el juego a disponibles.",
@@ -388,9 +388,9 @@
       "puerto": "Puerto",
       "seleccionar": "seleccionar",
       "sin_cambios": "Sin cambios",
-      "tictac_detectado": "TicTacSlot detectado por USB",
-      "tictac_no_detectado": "No se detecta: conecta el interface por USB",
-      "tictac_sin_modulo": "Lectura USB no disponible en esta instalación",
+      "tictac_detectado": "TicTacSlot rilevato via USB",
+      "tictac_no_detectado": "Non rilevato: collega l'interfaccia via USB",
+      "tictac_sin_modulo": "Lettura USB non disponibile in questa installazione",
       "tunel_en_marcha": "Túnel en marcha",
       "tunel_parado": "Túnel parado",
       "v_puertos": "{{v}} puertos"
@@ -1076,8 +1076,8 @@
     "vueltas_proyectadas_respecto_al_primer": "Vueltas proyectadas respecto al primer clasificado",
     "vueltas_rapidas": "VUELTAS RÁPIDAS",
     "vueltas_reales_acumuladas": "Vueltas reales acumuladas",
-    "arrancar_manga_tictac": "Arrancar manga (TicTac)",
-    "parar_manga_tictac": "Parar manga (TicTac)"
+    "arrancar_manga_tictac": "Avvia manche (TicTac)",
+    "parar_manga_tictac": "Ferma manche (TicTac)"
   },
   "live-panel": {
     "clasificacion_general": "Clasificación General",
@@ -1452,7 +1452,7 @@
     "instalar_certificado_guia": "Instalar certificado (guía)",
     "instalar_cloudflared": "Instalar cloudflared",
     "integraciones": "Integraciones",
-    "interface_tictacslot_cuentavueltas": "Interface TicTacSlot (Cuentavueltas) por USB, se detecta solo.",
+    "interface_tictacslot_cuentavueltas": "Interfaccia TicTacSlot (Cuentavueltas) via USB: si rileva da sola.",
     "interfaz_de_red": "Interfaz de red",
     "ips_o_rangos_permitidos": "IPs o rangos permitidos",
     "la_app_movil_de_tic_tac_slot_infolap_se_conecta": "La app móvil de Tic Tac Slot Infolap se conecta a PitWall y recibe vueltas en directo. Abre UDP :4441.",
@@ -1504,11 +1504,11 @@
     "tcp_emulador_puente": "TCP (emulador / puente)",
     "the_password_needs_at_least_v_characters": "The password needs at least {{v}} characters.",
     "the_two_passwords_do_not_match": "The two passwords do not match.",
-    "tictac_conexion": "Conexión",
-    "tictac_conexion_serie": "Puerto serie (emulador o puente)",
-    "tictac_conexion_usb": "USB (automática)",
-    "tictac_estado": "Estado",
-    "tictac_explicacion": "El interface TicTacSlot se conecta por USB y PitWall lo detecta solo: basta con enchufarlo (si se desenchufa, se vuelve a enganchar al reconectarlo). El aparato solo manda cruces: no tiene señal de GO, pausa ni fin. «Puerto serie» sirve para el emulador o el puente hid-bridge.js. En macOS puede pedir permiso de «Monitorización de entrada».",
+    "tictac_conexion": "Connessione",
+    "tictac_conexion_serie": "Porta seriale (emulatore o bridge)",
+    "tictac_conexion_usb": "USB (automatica)",
+    "tictac_estado": "Stato",
+    "tictac_explicacion": "L'interfaccia TicTacSlot si collega via USB e PitWall la rileva da solo: basta collegarla (se viene scollegata, si riaggancia quando la ricolleghi). Il dispositivo invia solo i passaggi sulla linea: non ha segnale di GO, pausa né fine. «Porta seriale» serve per l'emulatore o per il bridge hid-bridge.js. Su macOS potrebbe chiedere il permesso «Monitoraggio input».",
     "tiempo_durante_el_que_al_terminar_la_manga_un": "Tiempo durante el que, al terminar la manga, un coche que cruza la meta cuenta como vuelta de bandera con su tiempo real. Con las mismas vueltas gana quien cruzó antes. 0 lo desactiva (la vuelta se repone con el tiempo medio). Se guarda al momento y se aplica desde la siguiente manga.",
     "todas_las_interfaces_recomendado": "Todas las interfaces (recomendado)",
     "todas_lo_hace_accesible_por_cable_y_wifi_a_la": "«Todas» lo hace accesible por cable y WiFi a la vez; elige una para limitarlo a esa red.",

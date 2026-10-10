@@ -76,9 +76,9 @@ beforeEach(async () => {
   SerialService._connections = [conn];
 });
 
-function cruceTrama({ lane = 1, lap = 1, min = 0, ms = 0 }) {
+function cruceTrama({ lane = 1, lap = 1, min = 0, ms = 0, seq = 0 }) {
   const b = Buffer.alloc(16);
-  b[0] = 0xc0; b[2] = 0x1b; b[4] = lane;
+  b[0] = 0xc0; b[1] = seq; b[2] = 0x1b; b[4] = lane;
   b.writeUInt16BE(lap, 5); b.writeUInt16BE(min, 7); b.writeUInt16BE(ms, 9);
   return b;
 }
@@ -202,4 +202,102 @@ test('el stop forzado cierra la manga y la fuente TicTac sigue viva', () => {
   TimingService.stopManga(true);
   assert.equal(TimingService.session, null);
   assert.doesNotThrow(() => aparato(1, 0, 3000));
+});
+
+// ── La vuelta de bandera es igual para todos los dispositivos ───────────────────
+const Settings = require('../src/models/Settings');
+
+function cruceDirecto(lane, lapTimeMs) {
+  SerialService.emit('lane_crossing', { lane, timestamp: Date.now(), lapTimeMs, circuit: 0 });
+}
+const vueltasBandera = (mangaId, lane) =>
+  db.prepare('SELECT * FROM laps WHERE manga_id = ? AND lane = ? AND is_flag_lap = 1').all(mangaId, lane);
+
+function conFuente(conexiones, simulando, fn) {
+  const link = SerialService.getLinkStatus;
+  SerialService._connections = conexiones;
+  SerialService.getLinkStatus = () => ({ ...link(), simulating: simulando });
+  try { return fn(); } finally { SerialService.getLinkStatus = link; }
+}
+
+function finalConCruce() {
+  const e = unEquipo();
+  darGo(e, 60 * 60000);
+  const c = TimingService.session.circuits[0];
+  c.startTime = Date.now() - 60 * 60000;
+  cruceDirecto(1, null);
+  cruceDirecto(1, 12000);
+  TimingService.finishCircuit(0);
+  cruceDirecto(1, 11800);                       // el coche cruza la meta tras la bandera
+  return e;
+}
+
+test('bandera con BART: el cruce tras el final cuenta con su tiempo real', () => {
+  conFuente([{ connected: true, isBart: true }], false, () => {
+    const e = finalConCruce();
+    const f = vueltasBandera(e.mangaId, 1);
+    assert.equal(f.length, 1);
+    assert.equal(f[0].lap_time_ms, 11800);
+  });
+});
+
+test('bandera con simulación: el cruce tras el final cuenta con su tiempo real', () => {
+  conFuente([], true, () => {
+    const e = finalConCruce();
+    const f = vueltasBandera(e.mangaId, 1);
+    assert.equal(f.length, 1);
+    assert.equal(f[0].lap_time_ms, 11800);
+  });
+});
+
+test('bandera: con la ventana a 0 en Ajustes ningún dispositivo la usa', () => {
+  Settings.setMany({ late_crossing_grace_ms: '0' });
+  conFuente([{ connected: true, isBart: true }], false, () => {
+    const e = finalConCruce();
+    assert.equal(vueltasBandera(e.mangaId, 1).length, 0);
+  });
+});
+
+// ── Reposición de vueltas perdidas, en el motor real ─────────────────────────────
+const pasaSeq = (o) => conn._onData(cruceTrama(o));
+
+test('un cruce perdido del TicTac suma sus vueltas, estimadas, sin deformar la media ni la mejor vuelta', async () => {
+  const e = unEquipo();
+  darGo(e, 60 * 60000);
+  pasaSeq({ seq: 1, lap: 1, ms: 1000 });                 // salida
+  pasaSeq({ seq: 2, lap: 2, ms: 13000 });                // 12,0 s
+  pasaSeq({ seq: 3, lap: 3, ms: 24500 });                // 11,5 s ← mejor vuelta real
+  const ld = TimingService.session.laneMap[1];
+  assert.equal(ld.lapCount, 3);
+  const mejorAntes = ld.bestLapMs;
+
+  pasaSeq({ seq: 5, lap: 5, ms: 48500 });                // falta el cruce de la vuelta 4: 24 s para 2
+  assert.equal(ld.lapCount, 5, 'las dos vueltas del tramo cuentan para el total');
+  assert.equal(ld.bestLapMs, mejorAntes, 'una estimada no puede ser la mejor vuelta');
+
+  await new Promise(r => setImmediate(r));               // la vuelta de salida se persiste en setImmediate
+  const filas = db.prepare('SELECT lap_number, lap_time_ms, is_estimated FROM laps WHERE manga_id = ? AND lane = 1 ORDER BY lap_number').all(e.mangaId);
+  assert.deepEqual(filas.map(f => f.lap_number), [1, 2, 3, 4, 5]);
+  assert.deepEqual(filas.map(f => f.is_estimated), [0, 0, 0, 1, 1], 'las repuestas quedan marcadas para revisarlas');
+  assert.equal(filas[3].lap_time_ms, 11750, 'la media de las vueltas reales (12,0 y 11,5)');
+});
+
+test('un salto del contador sin trama perdida NO añade vueltas en el motor', () => {
+  const e = unEquipo();
+  darGo(e, 60 * 60000);
+  pasaSeq({ seq: 1, lap: 1, ms: 1000 });
+  pasaSeq({ seq: 2, lap: 2, ms: 13000 });
+  pasaSeq({ seq: 3, lap: 9, ms: 25000 });
+  assert.equal(TimingService.session.laneMap[1].lapCount, 3);
+  assert.equal(db.prepare('SELECT COUNT(*) c FROM laps WHERE manga_id = ? AND is_estimated = 1').get(e.mangaId).c, 0);
+});
+
+test('una vuelta repuesta sin vueltas reales previas tampoco puede ser la mejor vuelta', () => {
+  const e = unEquipo();
+  darGo(e, 60 * 60000);
+  pasaSeq({ seq: 1, lap: 1, ms: 1000 });
+  pasaSeq({ seq: 3, lap: 3, ms: 21000 });                // 20 s para 2 vueltas, sin media previa: 10 s estimadas
+  const ld = TimingService.session.laneMap[1];
+  assert.equal(ld.lapCount, 3);
+  assert.ok(!ld.bestLapMs, 'ninguna estimada compite por la mejor vuelta');
 });

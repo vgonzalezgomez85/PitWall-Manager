@@ -217,3 +217,16 @@ test('endpoint pausa y reanudar con TicTac', async () => {
   assert.equal(PoleTimingService.isPaused, false);
   Object.defineProperty(PoleController, 'SEMAPHORE_MS', { get: () => 3000, configurable: true });
 });
+
+test('la pole ignora las vueltas repuestas (estimadas): no cuentan ni pueden ser la mejor', () => {
+  const e = escenario();
+  preparar(e);
+  PoleTimingService.go();
+  const espaciado = (min, ms) => { PoleTimingService.session.lastCrossing -= 10000; cruce(min, ms); };
+  espaciado(0, 9000);
+  espaciado(0, 21500);                                   // 12,5 s
+  const antes = PoleTimingService.session.lapCount;
+  SerialService.emit('lane_crossing', { lane: 1, timestamp: Date.now(), lapTimeMs: 8000, missed: true });
+  assert.equal(PoleTimingService.session.lapCount, antes);
+  assert.equal(PoleTimingService.currentBestLap, 12500, 'una estimada de 8 s no puede ser la mejor');
+});

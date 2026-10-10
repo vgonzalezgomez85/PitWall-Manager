@@ -96,8 +96,9 @@ class PoleTimingServiceClass {
     this._pendingDurationMs = null;
 
     // El handler queda registrado pero solo cuenta vueltas cuando _active && !_paused
-    this._lapHandler = ({ lane, timestamp, lapTimeMs }) => {
+    this._lapHandler = ({ lane, timestamp, lapTimeMs, missed }) => {
       if (lane !== poleLane) return;
+      if (missed) return;   // vuelta repuesta (estimada): no es un cruce real, no puede ser la mejor
       if (!this._active || this._paused) return;
       this._onCrossing(timestamp, lapTimeMs);
     };

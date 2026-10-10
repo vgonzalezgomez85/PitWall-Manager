@@ -41,6 +41,8 @@ const HID_PID         = 0x0001;
 const HID_USAGE_PAGE  = 0xffa0;   // página de uso propietaria del TicTacSlot
 const USB_SCAN_MS     = 2000;     // cada cuánto se busca el aparato mientras no está enganchado
 const RAW_LOG_MAX     = 2000;
+const RECENT_LAPS     = 9;        // vueltas reales recientes por carril para el ritmo típico (mediana)
+const MAX_GAP_FILL    = 50;       // más vueltas de salto que esto = el aparato reinició su contador, no un hueco
 const BUF_MAX         = 4096;     // tope del buffer de troceado: ante basura sin sincronismo no crece
 
 // `node-hid` es un módulo nativo opcional: si no se pudo instalar o compilar, la
@@ -87,6 +89,15 @@ class TicTacConnection {
     // la hora de llegada al PC solo marca el instante del cruce.
     this._lastClockByLane = new Map();
     this._lastLapByLane   = new Map();
+
+    // Reposición de vueltas perdidas. El nº de vuelta del aparato solo no basta: no se
+    // sabe cuándo lo reinicia él. Se exige además que el contador de secuencia de las
+    // tramas (+1 por trama, de todos los carriles) haya saltado: una trama que no
+    // llegó. Sin trama perdida, un salto de vuelta es un reinicio del contador.
+    this._lastSeq         = null;
+    this._lostFrames      = 0;               // tramas que no llegaron, acumuladas
+    this._lostAtLane      = new Map();       // `_lostFrames` en el último cruce de cada carril
+    this._recentByLane    = new Map();       // últimas vueltas REALES por carril (las repuestas no entran)
 
     this._hid            = null;   // dispositivo HID abierto (modo USB)
     this._usbScanTimer   = null;
@@ -254,6 +265,8 @@ class TicTacConnection {
   sendStart() {
     this._lastClockByLane.clear();
     this._lastLapByLane.clear();
+    this._lostAtLane.clear();
+    this._recentByLane.clear();
   }
 
   // Con la manga viva, una vuelta larguísima es una vuelta (p. ej. el primer cruce
@@ -265,12 +278,32 @@ class TicTacConnection {
   // criterio que el DS): sin la referencia de reloj, el primer cruce tras el corte
   // saldría sin tiempo de vuelta.
   exportLaneState() {
-    return { lastClock: new Map(this._lastClockByLane), lastLap: new Map(this._lastLapByLane) };
+    return {
+      lastClock: new Map(this._lastClockByLane), lastLap: new Map(this._lastLapByLane),
+      lastSeq: this._lastSeq, lostFrames: this._lostFrames,
+      lostAtLane: new Map(this._lostAtLane),
+      recent: new Map([...this._recentByLane].map(([k, v]) => [k, [...v]])),
+    };
   }
   importLaneState(s) {
     if (!s || !s.lastClock) return;
     this._lastClockByLane = new Map(s.lastClock);
     this._lastLapByLane   = new Map(s.lastLap || []);
+    this._lastSeq         = s.lastSeq ?? null;
+    this._lostFrames      = s.lostFrames || 0;
+    this._lostAtLane      = new Map(s.lostAtLane || []);
+    this._recentByLane    = new Map([...(s.recent || [])].map(([k, v]) => [k, [...v]]));
+  }
+
+  // Tramas que no llegaron entre la anterior y esta, según el contador de secuencia.
+  // La misma trama repetida, o un salto hacia atrás (reordenación o el aparato se
+  // reinició), no cuentan como pérdida.
+  _trackSeq(seq) {
+    if (this._lastSeq != null) {
+      const jump = (seq - this._lastSeq - 1 + 256) % 256;
+      if (jump > 0 && jump < 128) this._lostFrames += jump;
+    }
+    this._lastSeq = seq;
   }
 
   _onData(chunk) {
@@ -299,6 +332,7 @@ class TicTacConnection {
   _processFrame(frame, ts) {
     const d = P.decodificar(frame);
     if (!d) return;
+    this._trackSeq(d.seq);
 
     if (d.tipo === 'evento') {
       DebugLogger.log('tictac_evento', { circuit: this._circuitIndex + 1, codigo: d.codigo, nombre: d.nombre });
@@ -316,12 +350,8 @@ class TicTacConnection {
     const prevClock  = this._lastClockByLane.get(d.lane);
     const prevLap    = this._lastLapByLane.get(d.lane);
 
-    // El nº de vuelta del aparato solo avisa de huecos (no se sabe cuándo lo reinicia
-    // el propio aparato). No se rellenan vueltas fantasma: sería inventar tiempos.
-    if (prevLap != null && d.lap > prevLap + 1) {
-      console.warn(`[TicTac C${this._circuitIndex + 1}] Carril ${globalLane}: salto de vuelta ${prevLap} → ${d.lap}`);
-      DebugLogger.log('tictac_hueco', { circuit: this._circuitIndex + 1, lane: globalLane, prev: prevLap, now: d.lap });
-    }
+    const lostSince = this._lostFrames - (this._lostAtLane.get(d.lane) ?? this._lostFrames);
+    this._lostAtLane.set(d.lane, this._lostFrames);
     this._lastLapByLane.set(d.lane, d.lap);
 
     // Primer cruce, o tanto tiempo desde el anterior que es otra manga/coche parado:
@@ -343,8 +373,60 @@ class TicTacConnection {
     if (lapTimeMs < MIN_CROSSING_MS) return;
 
     this._lastClockByLane.set(d.lane, d.clockMs);
+
+    // ¿Se perdió algún cruce de este carril? Ver _repone().
+    const perdidas = prevLap != null ? d.lap - prevLap - 1 : 0;
+    if (perdidas > 0 && this._repone({ lane: d.lane, globalLane, perdidas, lapTimeMs, lostSince, ts })) return;
+
+    this._recentByLane.set(d.lane, [...(this._recentByLane.get(d.lane) || []), lapTimeMs].slice(-RECENT_LAPS));
     console.log(`[TicTac C${this._circuitIndex + 1}] Lane ${d.lane} → global ${globalLane} — ${lapTimeMs.toFixed(1)}ms`);
     this._onCrossing({ lane: globalLane, timestamp: ts, lapTimeMs });
+  }
+
+  _ritmoTipico(lane) {
+    const v = this._recentByLane.get(lane);
+    if (!v || v.length === 0) return null;
+    const o = [...v].sort((a, b) => a - b);
+    const m = o.length >> 1;
+    return o.length % 2 ? o[m] : (o[m - 1] + o[m]) / 2;
+  }
+
+  /**
+   * Repone las vueltas de cruces que no llegaron. Se hace solo con tres pruebas a la vez:
+   *   1. el nº de vuelta del aparato saltó (`perdidas` > 0, y no más de MAX_GAP_FILL);
+   *   2. el contador de secuencia confirma que faltaron tramas desde el último cruce del
+   *      carril (`lostSince` >= `perdidas`): sin esto el salto es un reinicio del contador;
+   *   3. el tiempo cuadra: las `perdidas + 1` vueltas caben en lo transcurrido, a un ritmo
+   *      cercano a la media del carril.
+   * Del aparato solo se sabe la hora de dos cruces recibidos, no el tiempo de cada vuelta
+   * perdida, así que TODAS las vueltas del tramo se emiten como estimadas (`missed`) con el
+   * ritmo típico del carril (mediana de sus últimas vueltas reales). Así cuentan para el total sin deformar la media ni poder colarse como
+   * mejor vuelta. Devuelve false si no se cumple alguna prueba (se cuenta una vuelta normal).
+   */
+  _repone({ lane, globalLane, perdidas, lapTimeMs, lostSince, ts }) {
+    const log = (accion, extra = {}) => {
+      console.warn(`[TicTac C${this._circuitIndex + 1}] Carril ${globalLane}: faltan ${perdidas} cruce(s), ${accion}`);
+      DebugLogger.log('tictac_hueco', { circuit: this._circuitIndex + 1, lane: globalLane, perdidas, lostSince, lapTimeMs, accion, ...extra });
+    };
+    if (perdidas > MAX_GAP_FILL) { log('salto demasiado grande: reinicio del contador, no se repone'); return false; }
+    if (lostSince < perdidas)    { log('el contador de secuencia no muestra tramas perdidas: no se repone'); return false; }
+
+    const vueltas = perdidas + 1;
+    const porVuelta = lapTimeMs / vueltas;
+    // Ritmo típico = mediana de las últimas vueltas reales: una salida o una parada (40 s en
+    // una vuelta de 12) no la mueve, como sí movería a una media.
+    const tipico = this._ritmoTipico(lane);
+    const plausible = tipico != null
+      ? porVuelta >= tipico * 0.5 && porVuelta <= tipico * 1.8
+      : porVuelta >= 1000;
+    if (!plausible) { log('el tiempo no cuadra con las vueltas que faltan: no se repone'); return false; }
+
+    const estimado = Math.round(tipico != null ? tipico : porVuelta);
+    log(`se reponen ${vueltas} vueltas estimadas a ${estimado} ms`);
+    for (let i = 0; i < vueltas; i++) {
+      this._onCrossing({ lane: globalLane, timestamp: ts, lapTimeMs: estimado, missed: true });
+    }
+    return true;
   }
 }
 
