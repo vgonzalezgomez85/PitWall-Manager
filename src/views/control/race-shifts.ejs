@@ -50,9 +50,7 @@ const reglas  = { minMs, maxMs, maxRuns, final: true };
       <div class="vt-empty" style="margin-top:32px">
         <div class="vt-empty__t"><%= t('race-shifts.no_aplica') %></div>
         <p style="color:var(--vt-mute);margin:6px 0 0">
-          <%= lang === 'es'
-            ? 'Solo las carreras de tipo campeonato registran turnos de pilotos.'
-            : 'Only championship races track driver shifts.' %>
+          <%= t('race-shifts.solo_las_carreras_de_tipo_campeonato_registran') %>
         </p>
       </div>
     <% } else { %>

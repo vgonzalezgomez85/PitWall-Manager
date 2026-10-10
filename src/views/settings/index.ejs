@@ -155,9 +155,7 @@ const navItems = [
           <div>
             <h3><%= t('settings.cronometro_bart_ble') %></h3>
             <p class="vt-sub__p">
-              <%= lang === 'es'
-                ? 'Cada Master BART (p. ej. BART_TRACK1, BART_TRACK2…) es un aparato independiente que hay que emparejar por separado — no comparten carriles entre sí. Añade una fila por cada Master físico; los carriles se numeran de forma global en el orden de la lista.'
-                : 'Each BART Master (e.g. BART_TRACK1, BART_TRACK2…) is an independent device that must be paired separately — they don\'t share lanes with each other. Add one row per physical Master; lanes are numbered globally in list order.' %>
+              <%= t('settings.cada_master_bart_p_ej_bart_track1_bart_track2') %>
             </p>
           </div>
           <div class="vt-sub__actions">
@@ -230,9 +228,7 @@ const navItems = [
           <div>
             <h3><%= t('settings.ds_300_agrupador') %></h3>
             <p class="vt-sub__p">
-              <%= lang === 'es'
-                ? 'Un aparato agrupa varias cajas DS-300 y las entrega por un único puerto COM. PitWall separa las cajas por su identificador de trama (byte 4) y numera los carriles de forma global: caja 1 → 1–8, caja 2 → 9–16, y así sucesivamente.'
-                : 'A device aggregates several DS-300 boxes and delivers them over one COM port. PitWall separates boxes by their frame id (byte 4) and numbers lanes globally: box 1 → 1–8, box 2 → 9–16, and so on.' %>
+              <%= t('settings.un_aparato_agrupa_varias_cajas_ds_300_y_las') %>
             </p>
           </div>
           <div class="vt-sub__actions">
@@ -301,9 +297,7 @@ const navItems = [
           </div>
         </div>
         <div class="vt-hint" style="margin-top:10px">
-          <%= lang === 'es'
-            ? 'Las cajas deben estar direccionadas en orden (1, 2, 3…) en el agrupador. 8N1, igual que un DS-300 suelto.'
-            : 'Boxes must be addressed in order (1, 2, 3…) on the aggregator. 8N1, same as a standalone DS-300.' %>
+          <%= t('settings.las_cajas_deben_estar_direccionadas_en_orden_1') %>
         </div>
       </div>
 
@@ -379,9 +373,7 @@ const navItems = [
           <div>
             <h3><%= t('settings.circuitos_ds_300') %></h3>
             <p class="vt-sub__p">
-              <%= lang === 'es'
-                ? 'Cada DS-300 controla un circuito independiente. Los carriles se numeran de forma global.'
-                : 'Each DS-300 controls one independent circuit. Lanes are numbered globally.' %>
+              <%= t('settings.cada_ds_300_controla_un_circuito_independiente') %>
             </p>
           </div>
           <div class="vt-sub__actions">
@@ -566,9 +558,7 @@ const navItems = [
               <input class="vt-inp is-mono" type="number" name="serial_frame_gap_ms" min="10" max="500" value="<%= cfg.serial_frame_gap_ms || 75 %>">
             </div>
             <div class="vt-hint">
-              <%= lang === 'es'
-                ? 'Silencio (ms) entre bytes que separa dos tramas. Por defecto 75. Bájalo si tu DS encadena tramas muy rápido (Tic-Tac usa ~1).'
-                : 'Silence (ms) between bytes that separates two frames. Default 75. Lower it if your DS chains frames fast.' %>
+              <%= t('settings.silencio_ms_entre_bytes_que_separa_dos_tramas') %>
             </div>
           </div>
         </details>
@@ -1542,9 +1532,7 @@ function tunnelRender(s) {
   let h = '';
   if (s.installing) h = I18N.t('client.settings.descargando_el_binario_oficial_de_cloudflare_20');
   else if (s.installError) h = '⚠️ ' + s.installError;
-  else if (!s.binaryFound) h = LANG === 'es'
-    ? 'cloudflared no está instalado. Pulsa «Instalar cloudflared» (se descarga de Cloudflare a la carpeta de datos de PitWall, sin permisos de administrador) o instálalo tú: brew install cloudflared.'
-    : 'cloudflared is not installed. Click “Install cloudflared” (downloaded from Cloudflare into PitWall\'s data folder, no admin rights) or install it yourself: brew install cloudflared.';
+  else if (!s.binaryFound) h = I18N.t('client.settings.cloudflared_no_esta_instalado_pulsa_instalar');
   else if (s.lastError) h = '⚠️ ' + s.lastError;
   hint.textContent = h;
   document.getElementById('tunnelHintRow').hidden = !h;

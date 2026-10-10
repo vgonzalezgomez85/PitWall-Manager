@@ -146,9 +146,7 @@
             <div class="st-row__txt">
               <div class="st-row__t"><%= t('database.copia_de_seguridad') %></div>
               <div class="st-row__d">
-                <%= es
-                  ? 'Descarga un archivo .db con todos los datos: carreras, equipos, pilotos, circuitos y ajustes. Sirve para pasarlo a otro PC o como respaldo. Se puede hacer aunque haya una carrera en curso.'
-                  : 'Downloads a .db file with all your data: races, teams, drivers, circuits and settings. Use it to move to another PC or as a backup. Safe to run even during a race.' %>
+                <%= t('database.descarga_un_archivo_db_con_todos_los_datos') %>
               </div>
             </div>
             <a href="/database/backup" class="vt-btn vt-btn--primary"><%= t('database.descargar_copia') %></a>
@@ -169,9 +167,7 @@
             <div class="st-row__txt">
               <div class="st-row__t"><%= t('database.importar_copia') %></div>
               <div class="st-row__d">
-                <%= es
-                  ? 'Sustituye TODOS los datos de este PC por los de un archivo .db de PitWall (de esta u otra instalación).'
-                  : 'Replaces ALL data on this PC with a PitWall .db file (from this or another install).' %>
+                <%= t('database.sustituye_todos_los_datos_de_este_pc_por_los_de') %>
               </div>
             </div>
           </div>

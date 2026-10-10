@@ -48,9 +48,7 @@
           <%= t('cars.importar_coches_desde_csv') %>
         </div>
         <p class="vt-hint" style="margin-bottom:12px">
-          <%= lang === 'es'
-            ? 'CSV con cabecera: marca,modelo,categoria,descripcion (descripción opcional). Las categorías inexistentes se crean automáticamente.'
-            : 'CSV with header: brand,model,category,description (description optional). Missing categories are created automatically.' %>
+          <%= t('cars.csv_con_cabecera_marca_modelo_categoria') %>
         </p>
         <form action="/cars/import/preview" method="POST" id="csv-form">
           <input type="hidden" name="csv_content" id="csv-content-input">

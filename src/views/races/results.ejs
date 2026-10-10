@@ -785,9 +785,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
         <canvas id="progChart"></canvas>
       </div>
       <p class="prog-hint">
-        <%= lang === 'es'
-          ? 'Incluye todas las vueltas (incluyendo salidas y pit-stops). Los puntos rojos son salidas, los naranjas son pit-stops.'
-          : 'Includes every lap (exits and pit-stops too). Red dots = exits, orange = pit-stops.' %>
+        <%= t('results.incluye_todas_las_vueltas_incluyendo_salidas_y') %>
       </p>
     </div>
 
@@ -824,9 +822,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
         <canvas id="positionsChart"></canvas>
       </div>
       <p class="prog-hint">
-        <%= lang === 'es'
-          ? 'Cada línea muestra la posición de un equipo/piloto a lo largo de la carrera. P1 está arriba. El eje X es el orden cronológico de las vueltas (cada cruce es un punto).'
-          : 'Each line shows a team/driver position throughout the race. P1 is at the top. X axis is chronological lap order (each crossing is a point).' %>
+        <%= t('results.cada_linea_muestra_la_posicion_de_un_equipo') %>
       </p>
     </div>
 
@@ -850,9 +846,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
         <canvas id="gapChart"></canvas>
       </div>
       <p class="prog-hint">
-        <%= lang === 'es'
-          ? 'Vueltas que cada equipo/piloto lleva por detrás del líder a lo largo de la carrera. El líder va en 0 (arriba); cuanto más abajo, más vueltas perdidas.'
-          : 'Laps each team/driver is behind the leader through the race. The leader stays at 0 (top); lower = more laps down.' %>
+        <%= t('results.vueltas_que_cada_equipo_piloto_lleva_por_detras') %>
       </p>
     </div>
     <script id="gapData" type="application/json"><%- JSON.stringify(gapData || {}) %></script>
@@ -868,9 +862,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
         <table class="gapgrid" id="gapgridTable"></table>
       </div>
       <p class="prog-hint">
-        <%= lang === 'es'
-          ? 'Vueltas tras el líder al cierre de cada manga (0 = líder). Elige 2–4 equipos para ver el gap ENTRE ellos. Borde dorado = hubo pit-stop en esa manga.'
-          : 'Laps behind the leader at each heat close (0 = leader). Pick 2–4 teams to see the gap BETWEEN them. Gold border = pit-stop in that heat.' %>
+        <%= t('results.vueltas_tras_el_lider_al_cierre_de_cada_manga_0') %>
       </p>
     </div>
 
@@ -1736,9 +1728,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
           <%= t('common.correccion_de_vueltas') %>
         </h2>
         <p class="form-hint" style="margin-bottom:1rem">
-          <%= lang === 'es'
-            ? 'Elimina vueltas fantasma, transfiere vueltas entre carriles o añade vueltas manualmente.'
-            : 'Remove ghost laps, transfer laps between lanes, or add laps manually.' %>
+          <%= t('results.elimina_vueltas_fantasma_transfiere_vueltas') %>
         </p>
         <div style="display:flex;flex-direction:column;gap:.5rem">
           <%# El bucle se llamaba `t`, que es justo el nombre del traductor en las

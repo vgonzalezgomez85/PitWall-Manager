@@ -51,9 +51,7 @@ const poleHolderName = timedEntries.length > 0 ? timedEntries[0].entity_name : n
 
     <% if (!allTimed) { %>
       <div class="pole-warn">
-        ⚠️ <%= lang === 'es'
-          ? 'Hay participantes sin tiempo registrado. Puedes editar los tiempos antes de continuar.'
-          : 'Some participants have no recorded time. You can edit times before continuing.' %>
+        ⚠️ <%= t('pole-results.hay_participantes_sin_tiempo_registrado_puedes') %>
       </div>
     <% } %>
 

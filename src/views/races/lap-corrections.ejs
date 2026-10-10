@@ -90,9 +90,7 @@ if (firstFlagged >= 0) initActive = firstFlagged;
 
       <% if (totalEstimated > 0) { %>
         <span class="lc-meta-pill" style="color:#c792ea;border-color:rgba(199,146,234,.35)"
-              title="<%= lang === 'es'
-                ? 'La caja DS las contó pero PitWall no las vio (cable fuera o proceso caído). Su tiempo es la media del carril: revísalas y corrígelas o bórralas si no ocurrieron.'
-                : 'The DS box counted them but PitWall never saw them (link outage). Their time is the lane average.' %>">
+              title="<%= t('lap-corrections.la_caja_ds_las_conto_pero_pitwall_no_las_vio') %>">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" style="width:14px;height:14px"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
           <b><%= totalEstimated %></b> <%= t('lap-corrections.vueltas_repuestas_estimadas') %>
         </span>
@@ -100,9 +98,7 @@ if (firstFlagged >= 0) initActive = firstFlagged;
 
       <% if (totalFlagLap > 0) { %>
         <span class="lc-meta-pill" style="color:#58a6ff;border-color:rgba(88,166,255,.35)"
-              title="<%= lang === 'es'
-                ? 'El cruce que completó justo al caer la bandera. Si su trama llegó a PitWall va con su tiempo real; si no, se repuso con la media del carril.'
-                : 'The crossing that completed right as the flag fell. If its frame reached PitWall it carries its real time; otherwise it was restored with the lane average.' %>">
+              title="<%= t('lap-corrections.el_cruce_que_completo_justo_al_caer_la_bandera') %>">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M4 21V4M4 4h13l-2.5 4L17 12H4"/></svg>
           <b><%= totalFlagLap %></b> <%= t('lap-corrections.vueltas_de_final_de_bandera') %>
         </span>
@@ -226,9 +222,7 @@ if (firstFlagged >= 0) initActive = firstFlagged;
                     <div class="lc-coma">
                       <span class="lc-coma__lbl"
                             title="<%= decidesTie[s.info.lane] === false
-                              ? (lang === 'es'
-                                  ? 'Esta manga no es la última que corrió esta entidad: corregir su coma no cambia el desempate (solo la coma acumulada de referencia).'
-                                  : 'This is not the last heat this entry raced: correcting its fraction does not change the tie-break (only the reference sum).')
+                              ? (t('lap-corrections.esta_manga_no_es_la_ultima_que_corrio_esta_2'))
                               : (t('lap-corrections.fraccion_de_vuelta_al_caer_la_bandera_de_esta')) %>"><%= t('lap-corrections.coma') %></span>
                       <form class="lc-coma__form" action="/races/<%= race.id %>/mangas/<%= manga.id %>/corrections/coma" method="POST">
                         <input type="hidden" name="lane" value="<%= s.info.lane %>">
@@ -325,9 +319,7 @@ if (firstFlagged >= 0) initActive = firstFlagged;
                           </span>
                         <% } else if (lap.is_estimated) { %>
                           <span class="lc-flagtag is-est"
-                                title="<%= lang === 'es'
-                                  ? 'La caja DS contó esta vuelta pero PitWall no la vio (cable fuera o proceso caído). Su tiempo es la media del carril: corrígelo si sabes el real.'
-                                  : 'The DS box counted this lap but PitWall never saw it (link outage). Its time is the lane average.' %>">
+                                title="<%= t('lap-corrections.la_caja_ds_conto_esta_vuelta_pero_pitwall_no_la') %>">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
                             <%= t('lap-corrections.estimada') %>
                           </span>

@@ -353,7 +353,9 @@ function analizarFichero(fichero) {
     if (!enJs[ini])      return no('fuera de un bloque JS (HTML)');
     if (!enCodigo[ini])  return no('dentro de una cadena o comentario');
     for (let k = ini; k < fin; k++) if (!enJs[k]) return no('cruza fuera del bloque JS');
-    if (m[0].includes('\n')) return no('multilínea');
+    // Los ternarios partidos en varias líneas también se convierten: el reemplazo
+    // los deja en una sola y, dentro de `<%= %>`, eso da el mismo HTML exacto.
+    // Antes se dejaban para hacerlos a mano y eran 96.
 
     const esBruto = aEsEspañol ? ramaA : ramaB;
     const enBruto = aEsEspañol ? ramaB : ramaA;

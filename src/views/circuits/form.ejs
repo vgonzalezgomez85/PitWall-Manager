@@ -81,9 +81,7 @@
         <%= t('form.secuencia_de_carriles_rotacion') %>
       </label>
       <p class="form-hint" style="margin-bottom:.5rem">
-        <%= lang === 'es'
-          ? 'Arrastra para reordenar. Esta secuencia determina la rotación de pilotos entre mangas. Cualquier carrera asignada a este circuito la heredará automáticamente.'
-          : 'Drag to reorder. This sequence drives the lane rotation between heats. Any race assigned to this circuit inherits it.' %>
+        <%= t('form.arrastra_para_reordenar_esta_secuencia') %>
       </p>
       <div id="seqLanes" class="seq-lanes-edit" style="display:flex;flex-wrap:wrap;gap:.5rem;padding:.6rem;background:#000000;border:1px solid #21262d;border-radius:6px;min-height:3.5rem"></div>
       <input type="hidden" name="lane_sequence" id="laneSequenceInput" value="<%= body.lane_sequence || '' %>">
@@ -99,9 +97,7 @@
         </button>
       </div>
       <p class="form-hint" style="margin-top:.4rem">
-        <%= lang === 'es'
-          ? 'Los descansos (DSC) se usan cuando una carrera tiene más pilotos que carriles. Arrástralos a la posición donde quieras que ocurra el reposo dentro de la rotación.'
-          : 'Rest slots (DSC) apply when a race has more drivers than lanes. Drag them where you want the rest to happen within the rotation.' %>
+        <%= t('form.los_descansos_dsc_se_usan_cuando_una_carrera') %>
       </p>
     </div>
 
@@ -132,9 +128,7 @@
         </button>
       </div>
       <p class="form-hint" style="margin-top:.4rem">
-        <%= lang === 'es'
-          ? 'Sin marcar, el circuito usa los colores globales de Configuración → Preferencias. Márcalo para que la pantalla coincida con los colores pintados en esta pista.'
-          : 'Unchecked, the circuit uses the global colors from Settings → Preferences. Check it to match the colors painted on this track.' %>
+        <%= t('form.sin_marcar_el_circuito_usa_los_colores_globales') %>
       </p>
     </div>
 
@@ -150,9 +144,7 @@
         <span class="form-hint">s</span>
       </div>
       <p class="form-hint" style="margin-top:.35rem">
-        <%= lang === 'es'
-          ? 'Se usa cuando una carrera no tiene tiempo específico para su categoría. Vueltas más rápidas se marcarán automáticamente como fantasma. Dejar vacío para desactivar.'
-          : 'Used when a race has no category-specific time. Faster laps will be auto-marked as ghost. Leave empty to disable.' %>
+        <%= t('form.se_usa_cuando_una_carrera_no_tiene_tiempo') %>
       </p>
     </div>
 
@@ -161,9 +153,7 @@
         <%= t('form.vueltas_minimas_por_categoria_opcional') %>
       </label>
       <p class="form-hint" style="margin-bottom:.6rem">
-        <%= lang === 'es'
-          ? 'Sobrescribe el tiempo por defecto cuando la carrera pertenece a una categoría concreta. Deja vacío para usar el valor por defecto.'
-          : 'Overrides the default time when the race belongs to a specific category. Leave empty to use the default.' %>
+        <%= t('form.sobrescribe_el_tiempo_por_defecto_cuando_la') %>
       </p>
 
       <div id="categoryGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.6rem">
@@ -214,9 +204,7 @@
         🗺 <%= t('form.trazado_del_circuito_minimapa') %>
       </summary>
       <p class="form-hint" style="margin:.4rem 0 .8rem">
-        <%= lang === 'es'
-          ? 'Sube una foto cenital del circuito y clicka sobre el trazado para marcar puntos. Se conectarán con líneas para mostrar la posición estimada de los coches en la vista de carrera.'
-          : 'Upload an overhead photo and click along the track to mark points. They are connected to estimate car positions during a race.' %>
+        <%= t('form.sube_una_foto_cenital_del_circuito_y_clicka') %>
       </p>
 
       <input type="file" id="trackImageInput" accept="image/*" style="position:absolute;left:-9999px">
@@ -251,13 +239,10 @@
       </div>
 
       <p class="form-hint" style="margin-top:.5rem; font-size:.8rem; line-height:1.55">
-        <%= lang === 'es' ? '<b>Click izquierdo</b>: añadir punto · Si haces click <b>sobre la línea</b>, el punto se inserta entre los dos puntos vecinos · <b>Click derecho</b> sobre un punto: borrarlo · <b>Arrastrar</b> un punto: moverlo · El primer punto (verde) marca la salida.'
-          : '<b>Left click</b>: add point · Clicking <b>on the line</b> inserts a point between the two neighbors · <b>Right click</b> on a point: delete · <b>Drag</b> a point: move · The first point (green) marks the start.' %>
+        <%= t('form.b_click_izquierdo_b_anadir_punto_si_haces_click') %>
       </p>
       <p class="form-hint" style="margin-top:.3rem; font-size:.8rem; line-height:1.55">
-        <%= lang === 'es'
-          ? '💡 Para curvas: pulsa <b>"Vista suave"</b> para ver cómo se redondearán los puntos. Con 3-4 puntos por curva basta. O usa <b>"Trazar a mano alzada"</b> y arrastra el ratón siguiendo el trazado.'
-          : '💡 For curves: hit <b>"Smooth preview"</b> to see how points get rounded — 3-4 points per curve are enough. Or use <b>"Free-hand trace"</b> and drag along the track.' %>
+        <%= t('form.para_curvas_pulsa_b_vista_suave_b_para_ver_como') %>
       </p>
 
       <!-- ── Sentido del circuito ─────────────────────────────────────── -->
@@ -295,9 +280,7 @@
           </label>
         </div>
         <p class="form-hint" style="margin-top:.5rem">
-          <%= lang === 'es'
-            ? 'Indica en qué sentido recorren los coches el trazado. La simulación del minimapa mueve las bolitas siguiendo este sentido.'
-            : 'Sets the direction cars travel along the outline. The minimap animation follows this direction.' %>
+          <%= t('form.indica_en_que_sentido_recorren_los_coches_el') %>
         </p>
       </div>
 

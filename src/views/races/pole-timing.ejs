@@ -74,9 +74,7 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
 
     <!-- ── Cambio de piloto: manual (por defecto) o automático ─────────── -->
     <div class="pole-omit">
-      <label class="pole-omit-switch" title="<%= lang === 'es'
-              ? 'Si está activo, al terminar un intento se pasa solo al siguiente piloto tras una breve cuenta atrás'
-              : 'When on, the next pilot loads automatically after a short countdown once an attempt finishes' %>">
+      <label class="pole-omit-switch" title="<%= t('pole-timing.si_esta_activo_al_terminar_un_intento_se_pasa') %>">
         <input type="checkbox" id="autoAdvanceToggle">
         <span class="pole-omit-track"><span class="pole-omit-thumb"></span></span>
       </label>
@@ -580,9 +578,7 @@ async function startTiming() {
 }
 
 async function stopTiming() {
-  if (!confirm(LANG_ES
-    ? '¿Reiniciar la pole de este piloto? Se descartará el tiempo de este intento.'
-    : 'Restart this pilot\'s pole? Current attempt time will be discarded.')) return;
+  if (!confirm(I18N.t('client.pole-timing.reiniciar_la_pole_de_este_piloto_se_descartara'))) return;
   const btn = document.getElementById('js-btn-stop');
   if (btn) btn.disabled = true;
   try {

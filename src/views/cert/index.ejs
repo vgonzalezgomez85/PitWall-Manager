@@ -9,16 +9,12 @@
   <div class="page-header">
     <h1 class="page-title">🔒 <%= t('cert.certificado_de_pitwall') %></h1>
     <p style="color:#8b949e; margin-top:.3rem">
-      <%= lang === 'es'
-        ? 'Instala este certificado en el dispositivo para que el escáner QR del control de pilotos abra la cámara SIN el aviso de «conexión no privada». Solo hace falta hacerlo una vez por dispositivo.'
-        : 'Install this certificate on the device so the driver-control QR scanner opens the camera WITHOUT the “connection not private” warning. Only needed once per device.' %>
+      <%= t('cert.instala_este_certificado_en_el_dispositivo_para') %>
     </p>
   </div>
 
   <div class="ct-note-box">
-    <%= lang === 'es'
-      ? 'No es imprescindible: sin instalarlo, la cámara también funciona aceptando el aviso una vez. Instalar el certificado solo quita ese aviso.'
-      : 'Not mandatory: without it, the camera still works by accepting the warning once. Installing the certificate just removes that warning.' %>
+    <%= t('cert.no_es_imprescindible_sin_instalarlo_la_camara') %>
   </div>
 
   <div style="margin:1.2rem 0;text-align:center">
@@ -55,9 +51,7 @@
   </ol>
 
   <div class="ct-note-box" style="margin-top:1.5rem">
-    <%= lang === 'es'
-      ? 'Este certificado es la autoridad raíz local de PitWall. Es público (no contiene ninguna clave privada) y solo sirve para que los dispositivos confíen en el HTTPS de este servidor en tu red. Coteja la huella SHA-256 con la que aparece en Ajustes → HTTPS local si quieres asegurarte de que es la de tu PitWall.'
-      : 'This certificate is PitWall’s local root authority. It is public (contains no private key) and only makes devices trust this server’s HTTPS on your network. Cross-check the SHA-256 fingerprint against the one under Settings → Local HTTPS if you want to be sure it is your PitWall’s.' %>
+    <%= t('cert.este_certificado_es_la_autoridad_raiz_local_de') %>
   </div>
 </div>
 

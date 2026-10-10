@@ -254,9 +254,7 @@ function stepState(idx) {
         <% if (race.has_pole && poleSession && poleSession.status !== 'done') { %>
           <div class="rs-empty__t"><%= t('show.completa_la_pole_primero') %></div>
           <div class="rs-empty__s">
-            <%= lang === 'es'
-              ? 'Tienes que terminar la sesión de Pole Position antes de poder añadir tandas.'
-              : 'You need to finish the Pole Position session before adding heats.' %>
+            <%= t('show.tienes_que_terminar_la_sesion_de_pole_position') %>
           </div>
           <a href="/races/<%= race.id %>/pole/<%= poleSession.status === 'in_progress' ? 'timing' : 'setup' %>" class="rs-btn rs-btn--primary">
             <span>🏁</span> <%= t('show.ir_a_pole_position') %>
@@ -264,9 +262,7 @@ function stepState(idx) {
         <% } else { %>
           <div class="rs-empty__t"><%= t('show.aun_no_hay_tandas') %></div>
           <div class="rs-empty__s">
-            <%= lang === 'es'
-              ? 'Cada <b>tanda</b> es una ronda donde los pilotos rotan por los carriles según el orden de arriba. Añade la primera para empezar a cronometrar.'
-              : 'Each <b>heat group</b> is a round where pilots rotate through lanes following the order above. Add the first to start timing.' %>
+            <%= t('show.cada_b_tanda_b_es_una_ronda_donde_los_pilotos') %>
           </div>
           <a href="/races/<%= race.id %>/tandas/new" class="rs-btn rs-btn--primary">
             <span>+</span> <%= t('show.anadir_tanda_1') %>

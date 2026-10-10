@@ -66,9 +66,7 @@
         <% if ((teamsCatalog || []).length) { %>
           <div style="margin-bottom:1.25rem">
             <div class="form-hint" style="margin-bottom:.5rem">
-              <%= lang === 'es'
-                ? '📋 Toca un equipo del catálogo para añadirlo con sus pilotos. Si no existe, créalo a mano más abajo.'
-                : '📋 Tap a catalog team to add it with its drivers. If it doesn\'t exist, add it manually below.' %>
+              <%= t('wizard.toca_un_equipo_del_catalogo_para_anadirlo_con') %>
             </div>
             <div id="catalogPicker" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.4rem;max-height:220px;overflow-y:auto;padding:.6rem;border:1px solid #30363d;border-radius:8px;background:#0d1117">
               <% teamsCatalog.forEach(ct => { %>

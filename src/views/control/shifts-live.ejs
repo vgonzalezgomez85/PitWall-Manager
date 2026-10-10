@@ -176,9 +176,7 @@ const teamNameByLane = {};
       <div class="vt-empty" style="margin-top:32px">
         <div class="vt-empty__t"><%= t('shifts-live.esperando_carrera') %></div>
         <p style="color:var(--vt-mute);margin:6px 0 0">
-          <%= lang === 'es'
-            ? 'Esta vista se activa cuando hay una carrera de tipo campeonato con una manga preparada o en marcha.'
-            : 'This view activates when there is a championship race with a manga prepared or running.' %>
+          <%= t('shifts-live.esta_vista_se_activa_cuando_hay_una_carrera_de') %>
         </p>
       </div>
     <% } else { %>
@@ -452,9 +450,7 @@ const teamNameByLane = {};
             <span id="scFixTitle"><%= t('shifts-live.corregir_tiempo') %></span>
             <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="scFixClose">✕</button>
           </div>
-          <p class="sc-fix-hint"><%= lang === 'es'
-            ? 'Añade tiempo a un piloto que corrió pero no se fichó por QR.'
-            : 'Add time to a driver who raced but was not checked in by QR.' %></p>
+          <p class="sc-fix-hint"><%= t('shifts-live.anade_tiempo_a_un_piloto_que_corrio_pero_no_se') %></p>
           <label class="sc-fix-lbl"><%= t('client.common.piloto') %></label>
           <select id="scFixPilot" class="sc-fix-select"></select>
           <label class="sc-fix-lbl"><%= t('shifts-live.tiempo_a_anadir_min_seg') %></label>
@@ -760,15 +756,11 @@ async function camStart(deviceId) {
       camSetStatus(I18N.t('client.shifts-live.la_camara_necesita_https'));
       const hint = document.getElementById('scCamHint');
       if (hint) {
-        hint.innerHTML = (LANG === 'es'
-          ? 'La cámara solo funciona por HTTPS. Abre esta misma pantalla en modo seguro: '
-          : 'The camera only works over HTTPS. Open this same screen in secure mode: ')
+        hint.innerHTML = (I18N.t('client.shifts-live.la_camara_solo_funciona_por_https_abre_esta'))
           + '<a href="' + secure + '" style="color:#58a6ff;font-weight:600">' + secure + '</a>';
       }
     } else {
-      camSetStatus(LANG === 'es'
-        ? 'La cámara necesita HTTPS o localhost. Actívalo en Ajustes → HTTPS local.'
-        : 'Camera needs HTTPS or localhost. Enable it in Settings → Local HTTPS.');
+      camSetStatus(I18N.t('client.shifts-live.la_camara_necesita_https_o_localhost_activalo'));
     }
     return;
   }

@@ -214,9 +214,7 @@
             <div id="restInfoTeams" class="alert" style="display:none;background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.25);color:#58a6ff;margin-bottom:.75rem;font-size:.85rem">
             </div>
             <p class="form-hint" id="pickHint" style="margin-bottom:.6rem">
-              <%= lang === 'es'
-                ? 'Selecciona un equipo de la izquierda y pulsa un carril o descanso (o arrástralo). Pulsa uno asignado para liberarlo.'
-                : 'Select a team on the left and click a lane or rest (or drag it). Click an assigned one to free it.' %>
+              <%= t('tanda-new.selecciona_un_equipo_de_la_izquierda_y_pulsa_un') %>
             </p>
             <%
               // Carriles agrupados por circuito, en orden NUMÉRICO (como pole-lanes).
@@ -275,26 +273,20 @@
           <%= t('tanda-new.carriles_sin_participante') %>
         </span>
         <p class="form-hint" style="margin:0 0 .7rem">
-          <%= lang === 'es'
-            ? 'Si hay menos participantes que carriles, ¿qué hacer con los carriles que quedan libres?'
-            : 'If there are fewer participants than lanes, what should happen with the free lanes?' %>
+          <%= t('tanda-new.si_hay_menos_participantes_que_carriles_que') %>
         </p>
         <label style="display:flex;gap:.55rem;align-items:flex-start;margin-bottom:.5rem;cursor:pointer">
           <input type="radio" name="empty_lane_mode" value="fixed" checked style="margin-top:.2rem">
           <span>
             <strong><%= t('tanda-new.sobran_los_ultimos') %></strong>
-            — <%= lang === 'es'
-                 ? 'los carriles de mayor número quedan siempre vacíos; nadie corre por ellos.'
-                 : 'the highest-numbered lanes stay empty; nobody runs on them.' %>
+            — <%= t('tanda-new.los_carriles_de_mayor_numero_quedan_siempre') %>
           </span>
         </label>
         <label style="display:flex;gap:.55rem;align-items:flex-start;cursor:pointer">
           <input type="radio" name="empty_lane_mode" value="rotate" style="margin-top:.2rem">
           <span>
             <strong><%= t('tanda-new.el_hueco_rota') %></strong>
-            — <%= lang === 'es'
-                 ? 'el carril libre va cambiando cada manga para que todos pasen por los mismos carriles.'
-                 : 'the free lane changes every heat so everyone runs on the same lanes.' %>
+            — <%= t('tanda-new.el_carril_libre_va_cambiando_cada_manga_para') %>
           </span>
         </label>
       </div>
@@ -770,9 +762,7 @@ if (document.getElementById('teamAssignUI')) {
         e.preventDefault();
         if (pickHint) {
           pickHint.style.color = '#f85149';
-          pickHint.textContent = LANG === 'es'
-            ? 'Asigna al menos un equipo a un carril.'
-            : 'Assign at least one team to a lane.';
+          pickHint.textContent = I18N.t('client.tanda-new.asigna_al_menos_un_equipo_a_un_carril');
         }
         laneGrid.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }

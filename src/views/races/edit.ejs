@@ -33,9 +33,7 @@
         <input class="form-input" type="text" style="max-width:22rem" disabled
                value="<%= cur.name || ('#' + race.circuit_id) %>">
         <p class="form-hint" style="color:#e0a106;margin-top:.5rem">
-          🔒 <%= lang === 'es'
-            ? 'No se puede cambiar el escenario: la carrera ya tiene vueltas registradas.'
-            : 'The scenario cannot be changed: the race already has recorded laps.' %>
+          🔒 <%= t('edit.no_se_puede_cambiar_el_escenario_la_carrera_ya') %>
         </p>
       </div>
     <% } else if (!hasLaps) { %>
@@ -73,9 +71,7 @@
         </p>
 
         <p class="form-hint" style="color:#e0a106;margin-top:.5rem">
-          ⚠️ <%= lang === 'es'
-            ? 'Asignar o cambiar el escenario reajusta el número de carriles y la secuencia de salida. Las tandas pendientes se regeneran al guardar.'
-            : 'Assigning or changing the scenario readjusts the lane count and starting sequence. Pending heats are regenerated on save.' %>
+          ⚠️ <%= t('edit.asignar_o_cambiar_el_escenario_reajusta_el') %>
         </p>
       </div>
     <% } %>
@@ -93,9 +89,7 @@
           <span class="form-hint">s</span>
         </div>
         <p class="form-hint" style="margin-top:.5rem">
-          <%= lang === 'es'
-            ? 'Los cruces más rápidos que este tiempo se descartan como rebotes. Vacío = desactivada. Se aplica desde la siguiente manga.'
-            : 'Crossings faster than this are discarded as bounces. Empty = disabled. Applies from the next heat.' %>
+          <%= t('edit.los_cruces_mas_rapidos_que_este_tiempo_se') %>
         </p>
       </div>
 
@@ -103,9 +97,7 @@
       <div class="form-group">
         <label class="form-label"><%= t('common.secuencia_de_carriles') %></label>
         <p class="form-hint" style="margin:.2rem 0 .8rem">
-          <%= lang === 'es'
-            ? 'Orden de rotación de salida. Arrastra para reordenar carriles y descansos (💤). No cambia su número.'
-            : 'Starting rotation order. Drag to reorder lanes and rests (💤). Count unchanged.' %>
+          <%= t('edit.orden_de_rotacion_de_salida_arrastra_para') %>
           <% if (restCount > 0) { %>
             <strong style="color:#8fb6ff">· <%= restCount %> <%= t('edit.descanso_s') %></strong>
           <% } %>
@@ -127,9 +119,7 @@
         </div>
         <input type="hidden" name="lane_sequence" id="laneSeqInput" value="<%= JSON.stringify(laneSequence || []) %>">
         <p class="form-hint" style="margin-top:.6rem">
-          ↻ <%= lang === 'es'
-            ? 'Las tandas pendientes (sin mangas corridas) se regeneran automáticamente con el nuevo orden al guardar. Las que ya tengan mangas corridas se mantienen.'
-            : 'Pending heats (no completed mangas) are regenerated automatically with the new order on save. Heats with completed mangas are kept.' %>
+          ↻ <%= t('edit.las_tandas_pendientes_sin_mangas_corridas_se') %>
         </p>
       </div>
     </div>
@@ -148,9 +138,7 @@
 
       <% if (lockRules) { %>
         <p class="form-hint" style="color:#e0a106;margin:.2rem 0 1rem">
-          🔒 <%= lang === 'es'
-            ? 'Las reglas de turnos y los neumáticos no se pueden cambiar: ya se ha corrido alguna manga de esta carrera.'
-            : 'Driver-shift rules and tyre allowance cannot be changed: a heat of this race has already been run.' %>
+          🔒 <%= t('edit.las_reglas_de_turnos_y_los_neumaticos_no_se') %>
         </p>
       <% } %>
 
@@ -160,9 +148,7 @@
           <%= t('edit.reglas_de_turnos_por_piloto') %>
         </label>
         <p class="form-hint" style="margin:.2rem 0 .8rem">
-          <%= lang === 'es'
-            ? 'Cada piloto se identifica por QR; el contador suma sus minutos en TODAS las mangas de la carrera.'
-            : 'Each driver scans a QR; the counter sums their minutes across ALL heats of the race.' %>
+          <%= t('edit.cada_piloto_se_identifica_por_qr_el_contador') %>
         </p>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem">
           <div>
@@ -205,9 +191,7 @@
           <%= t('common.neumaticos_por_equipo') %>
         </label>
         <p class="form-hint" style="margin:.2rem 0 .6rem">
-          <%= lang === 'es'
-            ? 'Pares de neumáticos (2 ruedas) que se suministran a CADA equipo para toda la carrera; igual para todos. Es la base del control de cambios de neumáticos.'
-            : 'Pairs of tyres (2 wheels) supplied to EACH team for the whole race; the same for all. It is the basis of the tyre-change control.' %>
+          <%= t('edit.pares_de_neumaticos_2_ruedas_que_se_suministran') %>
         </p>
         <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
           <input class="form-input form-input--sm" type="number" id="tirePairs" name="tire_pairs_per_team"
@@ -222,9 +206,7 @@
     <div class="form-group">
       <label class="form-label"><%= t('common.categoria_y_coche_opcional') %></label>
       <p class="form-hint" style="margin:.2rem 0 .6rem">
-        <%= lang === 'es'
-          ? 'Actívalos para poder anotar la categoría/copa y el coche de cada equipo o piloto en la tanda. Son opcionales: rellenarlos no es obligatorio. La categoría se ve en el directo; ambos salen en el Excel.'
-          : 'Turn them on to record each team’s or driver’s category/cup and car in the heat group. Optional: filling them in is not required. The category shows in the live view; both appear in the Excel.' %>
+        <%= t('edit.activalos_para_poder_anotar_la_categoria_copa_y') %>
       </p>
       <div style="display:flex;gap:1.4rem;flex-wrap:wrap">
         <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">

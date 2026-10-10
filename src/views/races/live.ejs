@@ -191,12 +191,8 @@
        El texto lo compone live.js a partir de `down`: con 3 cajas hay que ver de
        un vistazo CUÁL se ha caído, no solo que algo va mal. -->
   <div id="serialBanner" class="serial-banner" hidden
-       data-msg-all="<%= lang === 'es'
-         ? 'Sin señal del DS-300. Las vueltas que ocurran ahora no se registrarán.'
-         : 'No signal from DS-300. Laps occurring now will not be recorded.' %>"
-       data-msg-some="<%= lang === 'es'
-         ? 'Sin señal de {cajas}. Las vueltas que ocurran ahora en esos carriles no se registrarán.'
-         : 'No signal from {cajas}. Laps occurring now on those lanes will not be recorded.' %>"
+       data-msg-all="<%= t('live.sin_senal_del_ds_300_las_vueltas_que_ocurran') %>"
+       data-msg-some="<%= t('live.sin_senal_de_cajas_las_vueltas_que_ocurran') %>"
        data-box-label="<%= t('live.caja') %>">
     <span class="serial-banner__icon">⚠️</span>
     <span id="serialBannerText" class="serial-banner__text"></span>

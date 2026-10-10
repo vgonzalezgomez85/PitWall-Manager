@@ -55,9 +55,7 @@
           <% categories.forEach(cat => { %><option value="<%= cat.name %>"><% }) %>
         </datalist>
         <p class="vt-hint">
-          <%= lang === 'es'
-            ? 'Categoría a la que pertenece este coche. Escribe el nombre o selecciona una existente.'
-            : 'Category this car belongs to. Type a name or select an existing one.' %>
+          <%= t('form.categoria_a_la_que_pertenece_este_coche_escribe') %>
         </p>
       </div>
 

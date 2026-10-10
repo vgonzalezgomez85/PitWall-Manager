@@ -27,9 +27,7 @@
     <div class="alert" style="background:rgba(255,152,0,.08);border:1px solid rgba(255,152,0,.3);color:#ff9800;margin-bottom:1.25rem">
       <strong>⚠ <%= t('tanda-edit.modo_solo_renombrar') %></strong><br>
       <span style="font-size:.88rem">
-        <%= lang === 'es'
-          ? 'Esta tanda ya tiene mangas iniciadas. Solo puedes cambiar los nombres — no añadir ni eliminar participantes.'
-          : 'This round already has heats in progress. You can only rename — adding or removing participants is not allowed.' %>
+        <%= t('tanda-edit.esta_tanda_ya_tiene_mangas_iniciadas_solo') %>
       </span>
     </div>
   <% } %>

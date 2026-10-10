@@ -10,9 +10,7 @@
   <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/edit" method="POST" class="form-card">
 
     <p class="form-hint" style="margin-bottom:1.25rem">
-      <%= lang === 'es'
-        ? 'Reasigna quién va en cada carril y quién descansa.'
-        : 'Reassign who goes in each lane and who rests.' %>
+      <%= t('manga-edit.reasigna_quien_va_en_cada_carril_y_quien') %>
     </p>
 
     <%

@@ -83,9 +83,7 @@
     </div>
   <% } else if (!wizard.has_pole) { %>
     <p class="form-hint" style="margin-bottom:2rem">
-      <%= lang === 'es'
-        ? 'Los participantes se añaden al crear cada tanda, no ahora.'
-        : 'Participants are added when creating each heat group, not now.' %>
+      <%= t('confirm.los_participantes_se_anaden_al_crear_cada_tanda') %>
     </p>
   <% } %>
 

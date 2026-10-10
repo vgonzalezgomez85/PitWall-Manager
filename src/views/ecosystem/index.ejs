@@ -18,9 +18,7 @@
   <div class="st-solo">
     <header class="st-sec__h">
       <h2><%= t('ecosystem.puente_con_pitwall_control') %></h2>
-      <p><%= es
-        ? 'Controla si PitWall Control puede conectarse a este Manager por la red local para enviarnos información.'
-        : 'Controls whether PitWall Control can connect to this Manager over the local network to send us information.' %></p>
+      <p><%= t('ecosystem.controla_si_pitwall_control_puede_conectarse_a') %></p>
     </header>
 
     <form method="POST" action="/ecosystem" class="st-card">
@@ -31,9 +29,7 @@
         <div class="st-row__txt">
           <div class="st-row__t"><%= t('ecosystem.permitir_que_pitwall_control_se_conecte') %></div>
           <div class="st-row__d">
-            <%= es
-              ? 'Activado: Control puede enviarnos tandas por la red (con PIN) y leer los resultados de cada tanda. Desactivado: se rechaza cualquier conexión de Control desde otro dispositivo de la red. Este equipo y las IPs permitidas en Configuración no se ven afectados.'
-              : 'Enabled: Control can send us rounds over the network (with a PIN) and read per-round results. Disabled: any connection from Control on another network device is rejected. This machine and the allowlisted IPs in Settings are not affected.' %>
+            <%= t('ecosystem.activado_control_puede_enviarnos_tandas_por_la') %>
           </div>
         </div>
         <button type="button" class="vt-switch <%= enabled ? 'is-on' : '' %>" id="ecoSwitch" role="switch" aria-checked="<%= !!enabled %>" aria-label="<%= t('ecosystem.permitir_que_pitwall_control_se_conecte') %>"></button>
@@ -47,9 +43,7 @@
 
     <header class="st-sec__h eco-gap">
       <h2><%= t('ecosystem.pin_de_emparejamiento') %></h2>
-      <p><%= es
-        ? 'Cuando Control se conecta desde otro dispositivo de la red, tiene que introducir este PIN.'
-        : 'When Control connects from another device on the network, it has to enter this PIN.' %></p>
+      <p><%= t('ecosystem.cuando_control_se_conecta_desde_otro') %></p>
     </header>
 
     <div class="st-card">

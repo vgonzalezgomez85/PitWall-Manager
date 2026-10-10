@@ -24,9 +24,7 @@
   <div class="st-solo">
     <header class="st-sec__h">
       <h2><%= t('catalog-sync.del_catalogo_a_las_carreras') %></h2>
-      <p><%- es
-        ? 'Vuelca los cambios del <a href="/teams">catálogo de equipos</a> (pilotos y país) a las carreras que <b>todavía no han arrancado ninguna manga</b>, sin pasar por «Editar tanda». Empareja equipos por nombre y deja la plantilla <b>idéntica al catálogo</b>: añade y quita pilotos. No toca la parrilla ni añade o quita equipos.'
-        : 'Pushes <a href="/teams">team-catalog</a> changes (drivers and country) into races that <b>have not started any heat yet</b>, without going through “Edit heat group”. Matches teams by name and makes the roster <b>identical to the catalog</b>: adds and removes drivers. Does not touch the grid or add/remove teams.' %></p>
+      <p><%- t('catalog-sync.vuelca_los_cambios_del_a_href_teams_catalogo_de') %></p>
     </header>
 
     <% if (diffs.length === 0) { %>

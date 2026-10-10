@@ -42,9 +42,7 @@ const poleHolderName = entries[0]?.entity_name || '';
     </div>
 
     <p class="pole-lanes-hint">
-      <%= lang === 'es'
-        ? 'Arrastra cada piloto de la bolsa a un carril (o toca el piloto y luego el carril). Toca un piloto ya colocado para devolverlo a la bolsa. «+ descanso» añade plazas de descanso.'
-        : 'Drag each entrant from the pool onto a lane (or tap the entrant then the lane). Tap a placed entrant to send it back to the pool. “+ rest” adds rest slots.' %>
+      <%= t('pole-lanes.arrastra_cada_piloto_de_la_bolsa_a_un_carril_o') %>
     </p>
 
     <!-- ── Nº de tandas ───────────────────────────────────────────────── -->
@@ -52,9 +50,7 @@ const poleHolderName = entries[0]?.entity_name || '';
       <label for="numTandas"><%= t('pole-lanes.n_de_tandas') %></label>
       <input type="number" id="numTandas" min="1" max="<%= entries.length %>" value="1" inputmode="numeric">
       <span class="pole-tandas-hint">
-        <%= lang === 'es'
-          ? 'Reparte los clasificados en las tandas que quieras (de tamaño libre); en cada una colocas a cada piloto en su carril de salida.'
-          : 'Split the field into as many groups as you want (any size); in each, place every entrant on its starting lane.' %>
+        <%= t('pole-lanes.reparte_los_clasificados_en_las_tandas_que') %>
       </span>
     </div>
 

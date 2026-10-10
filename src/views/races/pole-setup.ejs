@@ -40,9 +40,7 @@
       <input type="hidden" name="entry_order" id="entryOrderInput"
              value="<%= entries.map(e => e.id).join(',') %>">
       <p class="form-hint" style="margin-top:.6rem">
-        <%= lang === 'es'
-          ? 'Arrastra un participante para reordenarlo, o pulsa 🎲 para barajar. El orden actual será el de salida en la pole.'
-          : 'Drag a participant to reorder it, or press 🎲 to shuffle. The current order will be used for the pole start.' %>
+        <%= t('pole-setup.arrastra_un_participante_para_reordenarlo_o') %>
       </p>
     </div>
 
@@ -53,9 +51,7 @@
           <%= t('common.carril_de_pole') %>
         </label>
         <p class="form-hint" style="margin-bottom:.75rem">
-          <%= lang === 'es'
-            ? 'Todos los participantes harán su vuelta clasificatoria por este carril.'
-            : 'All participants will run their qualifying lap on this lane.' %>
+          <%= t('pole-setup.todos_los_participantes_haran_su_vuelta') %>
         </p>
         <%
           let _cfg = []; try { _cfg = JSON.parse(race.circuits_config || '[]'); } catch (e) {}

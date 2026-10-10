@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.52.1] — 2026-10-10
+
+### Mejorado
+- **Ya no queda ningún ternario de idioma en el código.** Los 96 últimos —los que estaban partidos en varias líneas y se iban a hacer a mano— pasan también al diccionario: son los textos largos de ayuda y de aviso (los avisos de la importación de coches, las descripciones de los escenarios, las condiciones de la pole). Con esto **todo el texto de la app sale del mismo diccionario**, que es lo que permite traducirla de verdad. Lo que se ve en español y en inglés no cambia: verificado con las 148 pantallas.
+
 ## [1.52.0] — 2026-10-10
 
 ### Añadido

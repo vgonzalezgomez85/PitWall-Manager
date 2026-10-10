@@ -43,9 +43,7 @@
         <svg class="st-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
       </a>
       <div class="st-nav__note">
-        <span><%= es
-          ? 'El esclavo (BART) descarga la carrera del maestro (DS) para que ambos tengan el mismo calendario.'
-          : 'The slave (BART) downloads the race from the master (DS) so both share the same schedule.' %></span>
+        <span><%= t('link.el_esclavo_bart_descarga_la_carrera_del_maestro') %></span>
       </div>
     </nav>
 
@@ -55,9 +53,7 @@
       <section class="st-sec is-active" data-sec="link">
         <header class="st-sec__h">
           <h2><%= t('common.enlace_maestro_esclavo') %></h2>
-          <p><%= es
-            ? 'El maestro (DS) reenvía el estado de carrera al esclavo (BART), que replica GO, pausa y stop sin operador. Con el rol en «Off», PitWall funciona como siempre.'
-            : 'The master (DS) forwards the race state to the slave (BART), which replays GO, pause and stop with no operator. With role "Off", PitWall behaves as usual.' %></p>
+          <p><%= t('link.el_maestro_ds_reenvia_el_estado_de_carrera_al') %></p>
         </header>
 
         <form id="linkCfgForm" class="st-card" onsubmit="return false">
@@ -146,9 +142,7 @@
       <section class="st-sec" data-sec="file">
         <header class="st-sec__h">
           <h2><%= t('link.desde_fichero') %></h2>
-          <p><%= es
-            ? 'Plan B sin red: pega el JSON exportado del maestro (ruta /link/races/ID/export.json).'
-            : 'Plan B without network: paste the JSON exported from the master (/link/races/ID/export.json).' %></p>
+          <p><%= t('link.plan_b_sin_red_pega_el_json_exportado_del') %></p>
         </header>
         <div class="st-card">
           <div class="st-row st-row--wrap st-row--top lk-json">

@@ -17,16 +17,12 @@
     </div>
 
     <p class="vt-sub" style="margin:-6px 0 10px;color:var(--vt-mute);max-width:78ch;line-height:1.55">
-      <%= lang === 'es'
-        ? 'Compara la detección de vueltas de dos sistemas (DS-300 vs BART) sobre la MISMA manga, para validar el sistema nuevo.'
-        : 'Compares lap detection from two systems (DS-300 vs BART) over the SAME heat, to validate the new system.' %>
+      <%= t('compare.compara_la_deteccion_de_vueltas_de_dos_sistemas') %>
     </p>
 
     <div class="cmp-note" style="margin-bottom:20px">
       <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M12 9v4M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>
-      <span><%= lang === 'es'
-        ? 'Aviso: si un lado va en modo simulación con datos aleatorios, las diferencias no son reales.'
-        : 'Warning: if one side runs in simulation mode with random data, the differences are not real.' %></span>
+      <span><%= t('compare.aviso_si_un_lado_va_en_modo_simulacion_con') %></span>
     </div>
 
     <!-- ── Controles ───────────────────────────────────────────────── -->
@@ -77,9 +73,7 @@
       </div>
 
       <p class="cmp-help">
-        <%= lang === 'es'
-          ? 'En «mismo punto» se comparan los instantes de cruce (hasta ~1 s de hueco físico). En «distintos puntos» se comparan los tiempos de vuelta y se excluye la vuelta de salida.'
-          : 'In “same point” crossing instants are compared (up to ~1 s of physical gap). In “different points” lap times are compared and the out lap is excluded.' %>
+        <%= t('compare.en_mismo_punto_se_comparan_los_instantes_de') %>
       </p>
 
       <div style="display:flex;align-items:center;gap:14px;margin-top:16px;flex-wrap:wrap">

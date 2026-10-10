@@ -22,9 +22,7 @@
   <% if (errors.length > 0) { %>
     <div class="alert alert--error">
       <p>
-        <%= lang === 'es'
-          ? 'La secuencia debe contener cada carril exactamente una vez (más los descansos opcionales).'
-          : 'The sequence must contain each lane exactly once (plus optional rest slots).' %>
+        <%= t('wizard.la_secuencia_debe_contener_cada_carril') %>
       </p>
     </div>
   <% } %>
