@@ -50,13 +50,15 @@
     </div>
 
     <div class="live-header__actions">
-      <%# GO/STOP manual: solo cuando SlotTime inicia la carrera (simulación o BART).
+      <%# GO/STOP manual: solo cuando SlotTime inicia la carrera (simulación, BART o TicTac).
           En DS-300 manda la caja → no se muestra. %>
-      <% if (isSimulating || isBart) { %>
-        <% const goTitle   = isBart ? (t('live.arrancar_manga_bart'))
-                                    : (t('live.arrancar_simulacion')); %>
-        <% const stopTitle = isBart ? (t('live.parar_manga_bart'))
-                                    : (t('live.parar_simulacion')); %>
+      <% if (softwareGo) { %>
+        <% const goTitle   = isBart   ? (t('live.arrancar_manga_bart'))
+                           : isTicTac ? (t('live.arrancar_manga_tictac'))
+                                      : (t('live.arrancar_simulacion')); %>
+        <% const stopTitle = isBart   ? (t('live.parar_manga_bart'))
+                           : isTicTac ? (t('live.parar_manga_tictac'))
+                                      : (t('live.parar_simulacion')); %>
         <%# Duración por defecto: el 99 es el placeholder → ofrecer 10 min. %>
         <% const defaultDur = (race.manga_duration_minutes && race.manga_duration_minutes !== 99) ? race.manga_duration_minutes : 10; %>
         <%# Manga terminada: no hay caja que dé el siguiente GO, así que se ofrece

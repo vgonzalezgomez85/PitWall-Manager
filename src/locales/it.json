@@ -337,7 +337,8 @@
       "reiniciar_la_pole_de_este_piloto_se_descartara": "¿Reiniciar la pole de este piloto? Se descartará el tiempo de este intento.",
       "siguiente_piloto": "Siguiente piloto →",
       "siguiente_piloto_en": "Siguiente piloto en ",
-      "sin_referencia": "Sin referencia"
+      "sin_referencia": "Sin referencia",
+      "pulsa_go_para_empezar": "Pulsa GO para empezar"
     },
     "race": {
       "borrar_este_cambio_devuelve_el_juego_a": "¿Borrar este cambio? Devuelve el juego a disponibles.",
@@ -1074,7 +1075,9 @@
     "vueltas_proyectadas_al_final_de_la_carrera": "Vueltas proyectadas al final de la carrera",
     "vueltas_proyectadas_respecto_al_primer": "Vueltas proyectadas respecto al primer clasificado",
     "vueltas_rapidas": "VUELTAS RÁPIDAS",
-    "vueltas_reales_acumuladas": "Vueltas reales acumuladas"
+    "vueltas_reales_acumuladas": "Vueltas reales acumuladas",
+    "arrancar_manga_tictac": "Arrancar manga (TicTac)",
+    "parar_manga_tictac": "Parar manga (TicTac)"
   },
   "live-panel": {
     "clasificacion_general": "Clasificación General",

@@ -113,7 +113,7 @@ class SessionController {
       try { require('../config/database').prepare('UPDATE races SET manga_duration_minutes=? WHERE id=?').run(durMin, race.id); } catch {}
     }
 
-    const softwareGo = SerialService.isBart || SerialService.isSimulating;
+    const softwareGo = SerialService.softwareGo;
 
     const doStart = () => {
       TimingService.startManga(manga, race, lanes, teams, drivers, durationMs);
@@ -158,7 +158,7 @@ class SessionController {
 
     // Igual que el GO: en BART/sim mostramos el semáforo de reanudación (3s) y
     // reanudamos al ponerse verde — mismo flujo que la trama de resume del DS-300.
-    const softwareGo = SerialService.isBart || SerialService.isSimulating;
+    const softwareGo = SerialService.softwareGo;
     const SEMAPHORE_MS = 3000;
     if (softwareGo && req.body.semaphore !== '0') {
       SocketService.emit('race:semaphore');
@@ -434,10 +434,12 @@ class SessionController {
 
     const isSimulating = SerialService.isSimulating;
     const isBart       = SerialService.isBart;
+    const isTicTac     = SerialService.isTicTac;
+    const softwareGo   = SerialService.softwareGo;
     const isPaused     = TimingService.isPaused && isActive;
     const liveOrder = require('../models/Settings').get('live_order', 'projected') === 'laps' ? 'laps' : 'projected';
 
-    res.render('races/live', { t: req.t, liveOrder, race, manga, tanda, lanes, laps, isActive, standings, projection, prevLapsByLane, totalMangas, totalTandas, totalRaceMs, effectiveMangaDurationMs, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, allParticipants, nextLaneByLane, nextMangaInfo, nextPendingMangaId, raceOver, isSimulating, isBart, isPaused });
+    res.render('races/live', { t: req.t, liveOrder, race, manga, tanda, lanes, laps, isActive, standings, projection, prevLapsByLane, totalMangas, totalTandas, totalRaceMs, effectiveMangaDurationMs, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, allParticipants, nextLaneByLane, nextMangaInfo, nextPendingMangaId, raceOver, isSimulating, isBart, isTicTac, softwareGo, isPaused });
   }
 
   // GET /races/:id/mangas/:mangaId/panel/:type  (standalone popup)

@@ -7,12 +7,10 @@
 // buscar el fallo al cable equivocado.
 const circuits = link.circuits || [];
 const anyBart  = circuits.some(c => c.isBart);
-const anyDs    = circuits.some(c => !c.isBart);
+const anyTic   = circuits.some(c => c.isTicTac);
+const anyDs    = circuits.some(c => !c.isBart && !c.isTicTac);
 const srcLabel = link.simulating ? 'Simulación'
-               : anyBart && anyDs ? 'DS-300 + BART'
-               : anyBart          ? 'BART'
-               : anyDs            ? 'DS-300'
-               :                    'sin fuente';
+               : [anyDs && 'DS-300', anyBart && 'BART', anyTic && 'TicTac'].filter(Boolean).join(' + ') || 'sin fuente';
 const portList = (link.ports && link.ports.length) ? link.ports.join(' · ') : 'sin puerto';
 %>
 

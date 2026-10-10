@@ -31,9 +31,9 @@
     </div>
 
     <div class="training-header__actions">
-      <%# Controles cuando PitWall inicia la sesión (simulación o BART). En
+      <%# Controles cuando PitWall inicia la sesión (simulación, BART o TicTac). En
           DS-300 manda la caja, así que no se muestran. %>
-      <% const _swGo  = (typeof isSimulating !== 'undefined' && isSimulating) || (typeof isBart !== 'undefined' && isBart); %>
+      <% const _swGo  = (typeof softwareGo !== 'undefined' && softwareGo) || (typeof isSimulating !== 'undefined' && isSimulating) || (typeof isBart !== 'undefined' && isBart); %>
       <% const _paused = typeof isPaused !== 'undefined' && isPaused; %>
       <% const _mode  = (typeof heatNumber !== 'undefined' && heatNumber !== null) ? 'competition' : 'free'; %>
       <% if (_swGo && standby) { %>

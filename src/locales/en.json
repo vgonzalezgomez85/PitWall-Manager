@@ -337,7 +337,8 @@
       "reiniciar_la_pole_de_este_piloto_se_descartara": "Restart this pilot's pole? Current attempt time will be discarded.",
       "siguiente_piloto": "Next pilot →",
       "siguiente_piloto_en": "Next pilot in ",
-      "sin_referencia": "No reference"
+      "sin_referencia": "No reference",
+      "pulsa_go_para_empezar": "Press GO to start"
     },
     "race": {
       "borrar_este_cambio_devuelve_el_juego_a": "Delete this change? Returns the set to available.",
@@ -1074,7 +1075,9 @@
     "vueltas_proyectadas_al_final_de_la_carrera": "Projected laps at end of race",
     "vueltas_proyectadas_respecto_al_primer": "Projected laps behind the leader",
     "vueltas_rapidas": "FASTEST LAPS",
-    "vueltas_reales_acumuladas": "Actual laps so far"
+    "vueltas_reales_acumuladas": "Actual laps so far",
+    "arrancar_manga_tictac": "Start heat (TicTac)",
+    "parar_manga_tictac": "Stop heat (TicTac)"
   },
   "live-panel": {
     "clasificacion_general": "Overall Standings",

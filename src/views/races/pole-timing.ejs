@@ -153,6 +153,22 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
           </button>
         </div>
 
+        <%# GO / PAUSE / REANUDAR dados por PitWall: solo con BART, TicTac o simulación.
+            Con una caja DS manda la caja y estos botones no existen. %>
+        <% if (softwareGo) { %>
+        <div id="js-btn-sw" class="pole-btn-row" style="display:none">
+          <button id="js-btn-go" class="pole-btn-start" onclick="swCommand('go')" style="display:none">
+            <span class="pole-btn-tri">▶</span> GO
+          </button>
+          <button id="js-btn-pause" class="pole-btn-skip" onclick="swCommand('pause')" style="display:none">
+            ⏸ PAUSE
+          </button>
+          <button id="js-btn-resume" class="pole-btn-start" onclick="swCommand('resume')" style="display:none">
+            <span class="pole-btn-tri">▶</span> <%= t('live.reanudar') %>
+          </button>
+        </div>
+        <% } %>
+
         <div id="js-btn-running" class="pole-btn-row" style="display:none">
           <button id="js-btn-stop" class="pole-btn-stop" onclick="stopTiming()">
             ⏹ <%= t('common.parar') %>
@@ -226,6 +242,7 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
 <script>
 const RACE_ID      = '<%= race.id %>';
 const IS_RUNNING   = <%- isTimingRunning ? 'true' : 'false' %>;
+const SOFTWARE_GO  = <%- softwareGo ? 'true' : 'false' %>;
 const DURATION_MS  = <%= durationMs %>;
 const LANG_ES      = '<%= lang %>' === 'es';
 const IS_GUEST     = <%- isGuestAccess ? 'true' : 'false' %>;
@@ -454,8 +471,31 @@ function setStateSub(text) {
   if (el) el.textContent = text;
 }
 
+// GO / PAUSE / REANUDAR de PitWall (solo existen con BART, TicTac o simulación).
+function showSw(which) {
+  if (!SOFTWARE_GO) return;
+  const row = document.getElementById('js-btn-sw');
+  if (!row) return;
+  for (const id of ['go', 'pause', 'resume']) {
+    const b = document.getElementById('js-btn-' + id);
+    if (b) { b.style.display = id === which ? '' : 'none'; b.disabled = false; }
+  }
+  row.style.display = which ? '' : 'none';
+}
+async function swCommand(name) {
+  const btn = document.getElementById('js-btn-' + name);
+  if (btn) btn.disabled = true;
+  try {
+    const r = await fetch('/races/' + RACE_ID + '/pole/participant/' + name, { method: 'POST' });
+    if (!r.ok) throw new Error(name + ' failed');
+  } catch (e) {
+    if (btn) btn.disabled = false;
+  }
+}
+
 function enterIdle() {
   state = 'idle';
+  showSw(null);
   clearAutoAdvance();
   show('js-btn-idle'); hide('js-btn-running'); hide('js-btn-finished'); show('js-btn-skip-row');
   hide('js-chrono-wrap'); hide('js-countdown-wrap'); hide('js-finished-result');
@@ -463,16 +503,18 @@ function enterIdle() {
 }
 function enterStandby() {
   state = 'standby';
+  showSw('go');
   clearAutoAdvance();
   hide('js-btn-idle'); show('js-btn-running'); hide('js-btn-finished'); show('js-btn-skip-row');
   hide('js-chrono-wrap'); hide('js-countdown-wrap'); hide('js-laps-wrap'); hide('js-finished-result');
-  setStateSub(I18N.t('client.pole-timing.esperando_go_del_ds_300'));
+  setStateSub(I18N.t(SOFTWARE_GO ? 'client.pole-timing.pulsa_go_para_empezar' : 'client.pole-timing.esperando_go_del_ds_300'));
   // Limpiar historial al entrar en standby (nuevo intento)
   const list = document.getElementById('js-laps-list');
   if (list) list.innerHTML = '';
 }
 function enterRunning() {
   state = 'running';
+  showSw('pause');
   clearAutoAdvance();
   hide('js-btn-idle'); show('js-btn-running'); hide('js-btn-finished'); hide('js-btn-skip-row');
   show('js-chrono-wrap'); show('js-countdown-wrap'); show('js-laps-wrap'); hide('js-finished-result');
@@ -482,11 +524,13 @@ function enterRunning() {
 }
 function enterPaused() {
   state = 'paused';
+  showSw('resume');
   hide('js-btn-skip-row');
   setStateSub(I18N.t('client.pole-timing.pausa'));
 }
 function enterFinished(bestLapMs, lapCount) {
   state = 'finished';
+  showSw(null);
   hide('js-btn-idle'); hide('js-btn-running'); show('js-btn-finished'); hide('js-btn-skip-row');
   hide('js-chrono-wrap');
   show('js-finished-result');
@@ -606,7 +650,7 @@ socket.on('pole:started', (data) => {
 socket.on('pole:paused',  () => { if (state === 'running') enterPaused(); });
 socket.on('pole:resumed', () => {
   if (document.getElementById('semaphore-overlay')) semaphoreGo(null);
-  if (state === 'paused') { state = 'running'; setStateSub(I18N.t('client.pole-timing.cronometrando_vuelta')); }
+  if (state === 'paused') { state = 'running'; showSw('pause'); setStateSub(I18N.t('client.pole-timing.cronometrando_vuelta')); }
 });
 socket.on('pole:aborted', () => {
   document.getElementById('js-final-laps') && (document.getElementById('js-final-laps').textContent = '');

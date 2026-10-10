@@ -13,6 +13,12 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.53.0] — 2026-10-10
+
+### Añadido
+- **Con el interface TicTac, PitWall dirige la carrera.** El aparato solo manda cruces (sin GO, pausa, stop ni fin), así que ahora esas señales las genera PitWall: en el directo y en el entrenamiento aparecen los botones GO (con semáforo y duración), PAUSE/RESUME y STOP, igual que con BART o la simulación. Al dar el GO cada carril empieza de cero (el primer cruce cuenta como vuelta de salida), la pausa descuenta su duración del primer cruce posterior, y la manga se cierra **justo al agotar el tiempo**; la vuelta de bandera cuenta si el cruce cae dentro de la ventana de «cruce de bandera» de Ajustes, igual que con el resto de dispositivos. Probado con el emulador de principio a fin (manga de 1 minuto con pausa y reanudación, 12 vueltas por carril a ~5,0 s); **no probado con el aparato físico**.
+- **La pole position también se puede gestionar con BART, TicTac o simulación.** Antes solo arrancaba con el GO de una caja DS, así que con estas fuentes el piloto se quedaba esperando un GO que nunca llegaba. Ahora la pantalla de pole muestra **GO** (con el mismo semáforo de 3 s que el directo), **PAUSE** y **REANUDAR**; la pole termina sola al agotar el tiempo y guarda la mejor vuelta, y STOP, «Saltar» y «Siguiente piloto» funcionan como siempre. Con una caja DS no cambia nada: manda la caja y los botones nuevos no aparecen. Probado con el emulador (pole de 1 minuto con pausa).
+
 ## [1.52.3] — 2026-10-10
 
 ### Mejorado

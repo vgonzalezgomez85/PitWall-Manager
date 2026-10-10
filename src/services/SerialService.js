@@ -1235,6 +1235,17 @@ class SerialServiceClass extends EventEmitter {
   // vista live para mostrar el botón GO/STOP, igual que en simulación. En DS-300
   // manda la caja → no aplica.
   get isBart()         { return this._connections.some(c => c && c.isBart); }
+  // Interface TicTac: solo manda cruces, sin GO/pausa/stop/fin. No es BART (el
+  // aparato no se pausa: sigue contando, y la compensación de pausa del DS aplica).
+  get isTicTac()       { return this._connections.some(c => c && c.isTicTac); }
+  // Fuentes en las que SlotTime da el GO (semáforo + arranque de todos los
+  // circuitos) y muestra GO/PAUSE/STOP: BART, simulación y TicTac. En DS-300 manda
+  // la caja.
+  get softwareGo()     { return this.isBart || this.isSimulating || this.isTicTac; }
+  // Fuentes que NO avisan del fin de manga: lo cierra el temporizador de PitWall,
+  // justo al agotar el tiempo (el respaldo de 30 s de silencio es para el DS, que
+  // manda su propia señal de fin).
+  get endsByTimer()    { return this.isSimulating || this.isTicTac; }
   // True si alguna conexión es un agrupador (varias cajas DS en un puerto). En
   // ese caso hay UNA sola señal de GO/fin/pausa para TODOS los circuitos que
   // cubre (como en simulación/BART), así que app.js opera sobre todos a la vez.
@@ -1285,6 +1296,7 @@ class SerialServiceClass extends EventEmitter {
     const circuits = this._connections.map((c, i) => ({
       circuit:         i + 1,
       isBart:          !!c.isBart,
+      isTicTac:        !!c.isTicTac,
       path:            c.path ?? null,
       connected:       simulating ? true : !!c.connected,
       lastHeartbeatTs: c.lastHeartbeatTs ?? null,

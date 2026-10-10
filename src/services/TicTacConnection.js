@@ -23,9 +23,10 @@
 // emulador (emulador-tictac) o su puente hid-bridge.js, que reenvían las tramas a
 // un PTY.
 //
-// Esta conexión SOLO LEE. El aparato no manda GO, pausa, stop ni fin: esas señales
-// las generará PitWall (fase siguiente). Las tramas de evento (0x1C) que llegaran
-// se muestran en el visor y se ignoran.
+// El aparato solo manda cruces: no manda GO, pausa, stop ni fin. Esas señales las
+// genera PitWall (SerialService.softwareGo), y de este lado solo hace falta saber
+// cuándo empieza una manga (sendStart) y si hay una viva (setExternalRaceState).
+// Las tramas de evento (0x1C) que llegaran se muestran en el visor y se ignoran.
 const { performance } = require('perf_hooks');
 const DebugLogger  = require('./DebugLogger');
 const FrameMonitor = require('./FrameMonitor');
@@ -80,6 +81,7 @@ class TicTacConnection {
     this._connected = false;       // false hasta abrir el puerto de verdad
     this._rawLog    = [];
     this._buf       = Buffer.alloc(0);
+    this._mangaActive = false;     // lo dice TimingService, no el aparato
 
     // Estado por carril. El reloj del aparato es la referencia del tiempo de vuelta;
     // la hora de llegada al PC solo marca el instante del cruce.
@@ -244,6 +246,21 @@ class TicTacConnection {
     this._onLinkChange(this._circuitIndex, connected);
   }
 
+  // GO de PitWall: cada carril empieza de cero. El reloj del aparato no se reinicia
+  // al arrancar la manga, así que sin esto el primer cruce traería la vuelta desde
+  // el último cruce de antes (el calentamiento, la manga anterior). Con la
+  // referencia borrada sale «sin tiempo» y TimingService lo cuenta como la vuelta de
+  // salida desde el GO, igual que el primer cruce de un DS.
+  sendStart() {
+    this._lastClockByLane.clear();
+    this._lastLapByLane.clear();
+  }
+
+  // Con la manga viva, una vuelta larguísima es una vuelta (p. ej. el primer cruce
+  // tras una pausa de varios minutos, que TimingService corrige restando la pausa).
+  // Fuera de una manga, un silencio de > 240 s es otra sesión: cruce «primero».
+  setExternalRaceState(running) { this._mangaActive = !!running; }
+
   // Los contadores por carril sobreviven a una reconexión por ajustes (mismo
   // criterio que el DS): sin la referencia de reloj, el primer cruce tras el corte
   // saldría sin tiempo de vuelta.
@@ -312,7 +329,7 @@ class TicTacConnection {
     let lapTimeMs = null;
     if (prevClock != null) {
       const dt = P.deltaReloj(prevClock, d.clockMs);
-      if (dt <= MAX_LAP_MS) lapTimeMs = dt;
+      if (dt <= MAX_LAP_MS || this._mangaActive) lapTimeMs = dt;
     }
 
     if (lapTimeMs === null) {

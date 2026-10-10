@@ -18,6 +18,8 @@
 const Race               = require('../models/Race');
 const PoleSession        = require('../models/PoleSession');
 const PoleTimingService  = require('../services/PoleTimingService');
+const SerialService      = require('../services/SerialService');
+const SocketService      = require('../services/SocketService');
 const Driver             = require('../models/Driver');
 const Team               = require('../models/Team');
 const Tanda              = require('../models/Tanda');
@@ -59,6 +61,9 @@ function parseTimeMs(str) {
 }
 
 class PoleController {
+  // Mismo semáforo que el directo (SessionController.start): la pole arranca al ponerse verde.
+  static get SEMAPHORE_MS() { return 3000; }
+
 
   // GET /races/:id/pole/setup  — choose lane, view participant list
   static setup(req, res) {
@@ -158,6 +163,7 @@ class PoleController {
       t: req.t, race, session, entries, current, next, done,
       LANE_COLORS: LaneColors.forRace(race), isTimingRunning, durationMs, poleBestMs, poleHolder,
       omitFirstCrossing: PoleTimingService.omitFirstCrossing,
+      softwareGo: SerialService.softwareGo,  // BART/TicTac/simulación: PitWall da el GO, no la caja
       poleLocked: timedEntries.length > 0,   // ya hay tiempos → no se puede cambiar la regla
     });
   }
@@ -212,6 +218,62 @@ class PoleController {
     });
 
     res.json({ ok: true, entryName: current.entity_name, durationMs });
+  }
+
+  // Arranque de la pole dado por PitWall (BART, TicTac, simulación): el equivalente
+  // al GO de la caja DS. Mismo semáforo de 3 s que el directo, y la pole arranca al
+  // ponerse verde. La reanudación tras una pausa lo repite.
+  static _softwareCommand(req, res, comando) {
+    if (!SerialService.softwareGo) return res.status(409).json({ ok: false, error: 'not_software_go' });
+    const race = Race.findById(req.params.id);
+    if (!race) return res.status(404).json({ ok: false, error: 'race_not_found' });
+    const session = PoleSession.findByRace(race.id);
+    if (!session || !['in_progress', 'timing'].includes(session.status)) return res.status(400).json({ ok: false, error: 'not_in_progress' });
+    return comando(race, session);
+  }
+
+  // POST /races/:id/pole/participant/go
+  static goParticipant(req, res) {
+    return PoleController._softwareCommand(req, res, (race, session) => {
+      const entries = PoleSession.getEntriesOrdered(session.id);
+      const current = entries[session.current_idx];
+      if (!current) return res.status(400).json({ ok: false, error: 'no_current_entry' });
+
+      // El GET /pole/timing ya lo deja en standby; si no (p. ej. tras un stop), se arma aquí.
+      if (PoleTimingService.currentEntryId !== current.id) {
+        PoleTimingService.start({
+          poleSessionId: session.id, entryId: current.id, entryName: current.entity_name,
+          poleLane: session.lane, durationMs: (race.manga_duration_minutes || 5) * 60000,
+          minLapMs: race.min_lap_ms || 0,
+        });
+      }
+      if (!PoleTimingService.isStandby) return res.status(409).json({ ok: false, error: 'not_standby' });
+
+      const entryId = current.id;
+      SocketService.emit('race:semaphore');
+      setTimeout(() => {
+        // Si en estos 3 s se paró, se saltó o cambió de piloto, el GO ya no vale.
+        if (PoleTimingService.isStandby && PoleTimingService.currentEntryId === entryId) PoleTimingService.go();
+      }, PoleController.SEMAPHORE_MS);
+      res.json({ ok: true, semaphore: true });
+    });
+  }
+
+  // POST /races/:id/pole/participant/pause
+  static pauseParticipant(req, res) {
+    return PoleController._softwareCommand(req, res, () => {
+      res.json({ ok: PoleTimingService.pause() });
+    });
+  }
+
+  // POST /races/:id/pole/participant/resume
+  static resumeParticipant(req, res) {
+    return PoleController._softwareCommand(req, res, () => {
+      if (!PoleTimingService.isPaused) return res.json({ ok: false });
+      SocketService.emit('race:semaphore');
+      setTimeout(() => PoleTimingService.resume(), PoleController.SEMAPHORE_MS);
+      res.json({ ok: true, semaphore: true });
+    });
   }
 
   // POST /races/:id/pole/participant/stop  — stop forzado (aborta sin guardar

@@ -58,24 +58,8 @@ class PoleTimingServiceClass {
       this._activate();
     });
 
-    SerialService.on('race_paused', () => {
-      if (this._active && !this._paused) {
-        this._paused   = true;
-        this._pausedAt = Date.now();
-        SocketService.emit('pole:paused');
-        console.log('[PoleTimingService] Paused');
-      }
-    });
-
-    SerialService.on('race_resumed', () => {
-      if (this._active && this._paused) {
-        this._totalPausedMs += Date.now() - this._pausedAt;
-        this._pausedAt = null;
-        this._paused   = false;
-        SocketService.emit('pole:resumed');
-        console.log('[PoleTimingService] Resumed');
-      }
-    });
+    SerialService.on('race_paused',  () => this._pauseState());
+    SerialService.on('race_resumed', () => this._resumeState());
 
     // Stop manual/forzado del DS-300 → abortamos la pole de este piloto (sin
     // guardar tiempo) y lo re-armamos EN EL ACTO (mismo tick, sin async de por
@@ -121,6 +105,50 @@ class PoleTimingServiceClass {
 
     SocketService.emit('pole:standby', { entryName, poleLane });
     console.log(`[PoleTimingService] Standby — esperando GO para "${entryName}" carril ${poleLane}`);
+  }
+
+  // GO / pausa / reanudar dados por PitWall (fuentes sin caja DS: BART, TicTac,
+  // simulación). Con un DS manda la caja y llegan por race_go/race_paused/…; el
+  // estado que se toca es el mismo, así que ambos caminos terminan igual.
+  // sendStart va ANTES de activar: con TicTac borra la referencia de reloj de los
+  // carriles para que el primer cruce sea el de salida, y con BART arma el Master.
+  go() {
+    if (!this._standby || this._active || !this.session) return false;
+    this._paused = false;
+    try { SerialService.sendStart(); } catch {}
+    this._activate();
+    return true;
+  }
+
+  pause() {
+    if (!this._pauseState()) return false;
+    try { SerialService.sendPause(); } catch {}
+    return true;
+  }
+
+  resume() {
+    if (!this._resumeState()) return false;
+    try { SerialService.sendResume(); } catch {}
+    return true;
+  }
+
+  _pauseState() {
+    if (!this._active || this._paused) return false;
+    this._paused   = true;
+    this._pausedAt = Date.now();
+    SocketService.emit('pole:paused');
+    console.log('[PoleTimingService] Paused');
+    return true;
+  }
+
+  _resumeState() {
+    if (!this._active || !this._paused) return false;
+    this._totalPausedMs += Date.now() - this._pausedAt;
+    this._pausedAt = null;
+    this._paused   = false;
+    SocketService.emit('pole:resumed');
+    console.log('[PoleTimingService] Resumed');
+    return true;
   }
 
   _activate() {
@@ -209,6 +237,7 @@ class PoleTimingServiceClass {
   finish(auto = false) {
     if (!this.session) return null;
     this._teardown();
+    try { SerialService.sendStop(); } catch {}   // para el Master BART; no-op en DS/TicTac
     const { entryId, entryName, bestLapMs, lapCount } = this.session;
     PoleSession.updateEntryTime(entryId, bestLapMs ?? null);
     SocketService.emit('pole:finished', { entryName, bestLapMs, lapCount, auto });
@@ -222,6 +251,7 @@ class PoleTimingServiceClass {
   abort() {
     if (!this.session) return null;
     this._teardown();
+    try { SerialService.sendStop(); } catch {}   // para el Master BART; no-op en DS/TicTac
     const { entryName } = this.session;
     SocketService.emit('pole:aborted', { entryName });
     console.log(`[PoleTimingService] Aborted "${entryName}" — sin tiempo guardado, listo para reintentar`);
