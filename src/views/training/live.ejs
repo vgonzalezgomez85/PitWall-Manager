@@ -116,11 +116,8 @@
     </div>
   </header>
 
-  <% if (typeof raceWillStealGo !== 'undefined' && raceWillStealGo) { %>
-    <div class="flash flash--error" style="margin:10px 0">
-      <%= t('live.hay_una_carrera_activa_el_go_ira_a_la_carrera') %>
-    </div>
-  <% } %>
+  <%# Lo pinta training.js con el dueño del GO (GoOwnerService) y lo refresca con «go:owner». %>
+  <div id="goOwnerBanner" class="flash flash--error go-owner-banner" hidden style="margin:10px 0"></div>
 
   <!-- ── Lane cards ────────────────────────────────────────────────────────── -->
   <div class="training-grid" id="trainingGrid" style="--lanes: <%= lanes.length %>; --cols: <%= Math.min(8, lanes.length) %>"></div>
@@ -182,7 +179,8 @@
       isCompetition:  typeof heatNumber !== 'undefined' && heatNumber !== null,
       sessionRecords: typeof sessionRecords !== 'undefined' ? sessionRecords : {},
       historyMode:    typeof historyMode !== 'undefined' ? historyMode : 'recent',
-      lanes:          lanes
+      lanes:          lanes,
+      goOwner:        typeof goOwner !== 'undefined' ? goOwner : null
     }) %>;
     const LANG = "<%= lang %>";
   </script>

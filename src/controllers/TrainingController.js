@@ -23,6 +23,7 @@ const SocketService       = require('../services/SocketService');
 const Settings            = require('../models/Settings');
 const Circuit             = require('../models/Circuit');
 const CompetitionResult   = require('../models/CompetitionTrainingResult');
+const GoOwnerService      = require('../services/GoOwnerService');
 
 // Suma de carriles de TODOS los circuitos configurados (DS-300 o BART); 0 si no aplica.
 function serialLaneTotal() {
@@ -37,16 +38,14 @@ function serialLaneTotal() {
   return 0;
 }
 
-// ¿Hay una carrera activa con manga pendiente? Si la hay, el GO del DS/sim la
-// arranca a ella (prioridad) y NO al entreno → conviene avisar en la vista.
-function raceWillStealGo() {
-  try {
-    const db = require('../config/database');
-    return !!db.prepare(
-      `SELECT 1 FROM races r JOIN mangas m ON m.race_id = r.id
-       WHERE r.status = 'active' AND m.status = 'pending' LIMIT 1`
-    ).get();
-  } catch { return false; }
+// Entrar al entreno en el ordenador de la pista le da el GO, salvo que la
+// carrera lo esté usando de verdad (manga en marcha, tanda a medias) o haya
+// pole. Solo al ENTRAR (/training/free, iniciar competición): las recargas
+// solas de la pantalla de entreno no le quitan el GO a una carrera pedida
+// después. Desde otro equipo de la red (TV, móvil) solo se mira.
+function cedeIfLocal(req) {
+  const { isLocal, reqIp } = require('../middleware/accessControl');
+  if (isLocal(reqIp(req))) GoOwnerService.cedeToTraining('se abre el entreno');
 }
 
 function lanesFromSettings() {
@@ -87,9 +86,10 @@ class TrainingController {
     }
     // If the DS-300 is already mid-manga (someone pressed GO before opening
     // this view), skip standby and start recording immediately so the user
-    // doesn't have to press GO again. Excepción: si hay una manga oficial
-    // corriendo, ese GO pertenece a la carrera — training no debe enganchar.
-    if (!TrainingService.isActive && SerialService.isDSRunning() && !TimingService.isBusy) {
+    // doesn't have to press GO again. Excepción: si el GO es de la carrera o de
+    // la pole, training no debe enganchar.
+    cedeIfLocal(req);
+    if (!TrainingService.isActive && SerialService.isDSRunning() && !GoOwnerService.trainingYields()) {
       TrainingService.activate();
       console.log('[TrainingController] /training/free entered with DS already running → auto-activated');
     }
@@ -153,6 +153,7 @@ class TrainingController {
       : (circuit ? circuit.min_lap_ms || 0 : 0);
 
     CompetitionService.setup(participants, numLanes, laneSequence, minLapMs);
+    cedeIfLocal(req);
     res.redirect('/training/competition/live');
   }
 
@@ -172,7 +173,7 @@ class TrainingController {
       isTicTac:     SerialService.isTicTac,
       softwareGo:   SerialService.softwareGo,
       isPaused:     CompetitionService.isPaused,
-      raceWillStealGo: raceWillStealGo(),
+      goOwner:         GoOwnerService.publicState(),
       historyMode:     historyMode(),
     });
   }
@@ -327,7 +328,7 @@ class TrainingController {
       isTicTac:       SerialService.isTicTac,
       softwareGo:     SerialService.softwareGo,
       isPaused:       TrainingService.isPaused,
-      raceWillStealGo: raceWillStealGo(),
+      goOwner:         GoOwnerService.publicState(),
       historyMode:     historyMode(),
     });
   }

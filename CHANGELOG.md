@@ -13,6 +13,21 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.57.0] — 2026-10-11
+
+### Mejorado
+- **Quién se lleva el GO de la caja: una sola regla.** El GO es del **entreno** salvo que una carrera lo pida (abrir el directo de la manga que toca, «▶ Tanda N», «Repetir», «Recuperar el GO»), haya una **tanda a medias** o una **pole** en marcha. La carrera solo arranca si además hay un directo abierto en el ordenador de la pista. Si la carrera no puede arrancar, el GO es del entreno: ya no se pierde.
+- **Al acabar una tanda el GO vuelve al entreno solo**, aunque el directo se haya quedado abierto. Para seguir la carrera hay que pulsar «▶ Tanda N» (también tras reiniciar PitWall).
+- **Entrar al entreno** desde el ordenador de la pista le da el GO, salvo con manga en marcha, tanda a medias o pole.
+- **Aviso del entreno** solo cuando el GO no es suyo, con el motivo y, si se puede, el botón **Ceder el GO al entreno**. Sustituye al aviso fijo «Hay una carrera activa…».
+- **Franja en el directo** cuando el GO no es de esa carrera, con **Recuperar el GO** (o «pulsa ▶ Tanda N» al acabar una tanda).
+- La app de escritorio abre el entreno al arrancar salvo que el GO sea de una carrera o de una pole.
+
+### Corregido
+- **Al acabar una tanda el GO del DS no arrancaba nada** (ni la carrera ni el entreno) hasta reiniciar PitWall.
+- **Mirar la ficha de una carrera preparada dejaba el entreno sin GO**: preparaba su manga 1 sin avisar.
+- **El entreno de competición podía arrancar a la vez que una manga oficial o una pole** con el mismo GO.
+
 ## [1.56.2] — 2026-10-11
 
 ### Corregido

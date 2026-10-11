@@ -112,6 +112,7 @@ if (SettingsModel.get('infolap_enabled', '0') === '1') {
 // ── DS hardware GO/STOP ────────────────────────────────────────────────────────
 const TimingService  = require('./services/TimingService');
 const TrainingService = require('./services/TrainingService');
+const GoOwnerService  = require('./services/GoOwnerService');
 
 // ── Worker de stats (proyección de carrera en un hilo aparte) ──────────────────
 // Saca del event loop el cálculo caro de la proyección (~100 ms) para que no
@@ -156,10 +157,8 @@ SerialService.on('race_go', ({ durationMs }) => {
   // ~3s de cuenta atrás antes de que se abra la pista → el event loop se
   // libera antes del primer cruce).
   try { require('./services/ExportGuard').abortAll(); } catch {}
-  if (TimingService._tandaBoundary) {
-    console.log('[DS-300] GO ignored — tanda boundary, waiting for user to start next tanda');
-    return;
-  }
+  // Con límite de tanda el GO no es de la carrera, pero sí del entreno: el
+  // semáforo se muestra igual (race_started ya ignora la carrera).
   _pendingGoDurationMs = durationMs || null;
   emitSemaphoreOnce('go');
 });
@@ -188,16 +187,16 @@ SerialService.on('race_started', ({ circuit } = {}) => {
     console.log('[DS-300] STARTED ignored — tanda boundary, waiting for user to start next tanda');
     return;
   }
-  // Race manga only starts when a localhost client is on the live view.
-  // Training keeps working regardless (above autostart emit).
-  // EXCEPCIÓN: en una carrera simulada el GO viene del reproductor (no de una
-  // caja DS real), así que no exigimos un navegador en la vista en vivo.
-  if (!SerialService._simReplay && !SocketService.hasLocalLiveViewer()) {
-    console.log('[DS-300] GO ignored for race — no localhost client on live view');
+  // La misma regla que usa el entreno para apartarse (GoOwnerService): si la
+  // carrera no es la dueña, este GO es del entreno (ya arrancado arriba).
+  const go = GoOwnerService.decide();
+  if (go.owner !== 'race') {
+    console.log(`[DS-300] GO para ${go.owner === 'pole' ? 'la pole' : 'el entreno'}, no para la carrera (${go.reason || 'sin carrera pedida'})`);
     return;
   }
 
   let setup = TimingService._pendingSetup;
+  if (setup && go.raceId != null && setup.race.id !== go.raceId) setup = null;
 
   // Auto-find first pending manga if none registered (e.g. after server restart)
   if (!setup) {
@@ -207,7 +206,7 @@ SerialService.on('race_started', ({ circuit } = {}) => {
     const Driver = require('./models/Driver');
     const db     = require('./config/database');
 
-    const races = Race.findAll().filter(r => r.status === 'active');
+    const races = Race.findAll().filter(r => r.status === 'active' && (go.raceId == null || r.id === go.raceId));
     for (const race of races) {
       const manga = Manga.findFirstPending(race.id);
       if (!manga) continue;

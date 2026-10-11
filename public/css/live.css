@@ -1354,6 +1354,18 @@ body:not(:has(.live-lanes--vertical)) .lane-card__col--laps .lane-card__laps.is-
   animation: serial-pulse 1.6s ease-in-out infinite;
 }
 .serial-banner[hidden] { display: none; }
+.go-strip {
+  display: flex; align-items: center; gap: .75rem;
+  background: #2d2209; color: #fbbf24; padding: .55rem 1.1rem;
+  font-weight: 600; font-size: .95rem; border-bottom: 1px solid #5c4410;
+}
+.go-strip[hidden] { display: none; }
+.go-strip__text { flex: 1; }
+.go-strip__btn {
+  padding: .3rem .9rem; border-radius: 6px; border: 0; cursor: pointer;
+  background: #fbbf24; color: #1a1305; font: inherit; font-weight: 700;
+}
+.go-strip__btn:disabled { opacity: .6; cursor: default; }
 .serial-banner__icon { font-size: 1.3rem; }
 .serial-banner__text { flex: 1; }
 .serial-banner__since { font-weight: 400; opacity: .85; font-variant-numeric: tabular-nums; }

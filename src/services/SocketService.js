@@ -139,14 +139,16 @@ module.exports = {
 
       // ── Race-live viewer presence tracking (localhost only) ───────────────
       let counted = false;
+      // Un directo abierto o cerrado puede cambiar el dueño del GO.
+      const goOwnerChanged = () => setImmediate(() => { try { require('./GoOwnerService').notify(); } catch {} });
       socket.on('race:live:join', () => {
-        if (local && !counted) { counted = true; localLiveViewers++; }
+        if (local && !counted) { counted = true; localLiveViewers++; goOwnerChanged(); }
       });
       socket.on('race:live:leave', () => {
-        if (counted) { counted = false; localLiveViewers = Math.max(0, localLiveViewers - 1); }
+        if (counted) { counted = false; localLiveViewers = Math.max(0, localLiveViewers - 1); goOwnerChanged(); }
       });
       socket.on('disconnect', () => {
-        if (counted) { counted = false; localLiveViewers = Math.max(0, localLiveViewers - 1); }
+        if (counted) { counted = false; localLiveViewers = Math.max(0, localLiveViewers - 1); goOwnerChanged(); }
         leaveFrames();
         setImmediate(() => this._emitConnections());
       });

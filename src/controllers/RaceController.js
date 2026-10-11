@@ -459,16 +459,8 @@ class RaceController {
 
     const poleSession = race.has_pole ? PoleSession.findByRace(race.id) : null;
 
-    // Pre-register the first pending manga so DS-300 GO can start it from this page
-    if (!TimingService.isRunning) {
-      const firstPending = tandasWithMangas.flatMap(t => t.mangas).find(m => m.status === 'pending');
-      if (firstPending) {
-        const teams   = Team.findByTanda(firstPending.tanda_id);
-        const drivers = Driver.findByTanda(firstPending.tanda_id);
-        const lanes   = Manga.getLanes(firstPending.id);
-        TimingService.setPendingManga(firstPending, race, lanes, teams, drivers);
-      }
-    }
+    // La ficha ya no prepara la manga 1 para el GO: solo mirarla dejaba el
+    // entreno sin GO. La carrera pide el GO al abrir el directo (GoOwnerService).
 
     const isSim = require('fs').existsSync(
       require('path').join(require('../lib/simPaths').SIM_DIR, `${race.id}.json`));

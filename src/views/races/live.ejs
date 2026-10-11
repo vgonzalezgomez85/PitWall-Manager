@@ -189,6 +189,9 @@
     </div>
   </header>
 
+  <%# «El GO no es de este directo»: lo pinta live.js con el dueño del GO (GoOwnerService). %>
+  <div id="goStrip" class="go-strip" hidden></div>
+
   <!-- DS-300 link-down banner (hidden until socket fires serial:status).
        El texto lo compone live.js a partir de `down`: con 3 cajas hay que ver de
        un vistazo CUÁL se ha caído, no solo que algo va mal. -->
@@ -372,6 +375,9 @@
       nextLaneByLane: nextLaneByLane || {},
       nextMangaInfo:  nextMangaInfo  || null,
       raceOver:       typeof raceOver !== 'undefined' && raceOver,
+      goStrip:        typeof goStrip !== 'undefined' && goStrip,
+      nextTandaNumber: typeof nextTanda !== 'undefined' && nextTanda ? nextTanda.number : null,
+      goOwner:        typeof goOwner !== 'undefined' ? goOwner : null,
     }) %>;
     RACE_DATA.allParticipants = <%- JSON.stringify(allParticipants) %>;
     const LANG = "<%= lang %>";

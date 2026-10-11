@@ -123,14 +123,27 @@ router.get('/api/home/state', (req, res) => {
 });
 
 // La app de escritorio lo consulta al arrancar antes de abrir sola el entreno
-// libre: con una carrera o una pole en curso, el próximo GO es de la carrera.
+// libre: no lo abre si el GO es de una carrera o de una pole (GoOwnerService).
 router.get('/api/windows/startup', (req, res) => {
-  const db = require('../config/database');
-  const TimingService = require('../services/TimingService');
-  const activeRace = db.prepare("SELECT 1 FROM races WHERE status = 'active' LIMIT 1").get();
-  let pole = null;
-  try { pole = db.prepare("SELECT 1 FROM pole_sessions WHERE status = 'in_progress' LIMIT 1").get(); } catch (_) {}
-  res.json({ busy: !!(activeRace || pole || TimingService.isBusy) });
+  res.json({ busy: require('../services/GoOwnerService').publicState().claimed });
+});
+
+// Dueño del próximo GO: aviso del entreno y franja del directo.
+router.get('/api/go-owner', (req, res) => {
+  res.json(require('../services/GoOwnerService').publicState());
+});
+router.post('/api/go-owner/claim', (req, res) => {
+  const GoOwnerService = require('../services/GoOwnerService');
+  const raceId = parseInt(req.body?.raceId, 10);
+  const race   = Number.isFinite(raceId) ? require('../models/Race').findById(raceId) : null;
+  if (!race || race.status !== 'active') return res.status(404).json({ error: 'not_found' });
+  GoOwnerService.claimRace(race.id, 'recuperar el GO desde el directo');
+  res.json(GoOwnerService.publicState());
+});
+router.post('/api/go-owner/cede', (req, res) => {
+  const GoOwnerService = require('../services/GoOwnerService');
+  const ok = GoOwnerService.cedeToTraining('ceder el GO desde el entreno');
+  res.status(ok ? 200 : 409).json(GoOwnerService.publicState());
 });
 
 router.get('/', (req, res) => {

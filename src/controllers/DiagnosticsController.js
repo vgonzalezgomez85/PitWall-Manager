@@ -99,6 +99,7 @@ class DiagnosticsController {
     // que en realidad seguían vivas (p.ej. la 93 quedó 'completed' con 52
     // mangas por correr). El próximo GO vuelve a auto-buscar desde cero.
     TimingService.clearPendingManga();
+    require('../services/GoOwnerService').release('quitar la manga preparada');
     if (req.session) req.session.flash = { type: 'success', text: req.t('diagnostico.flash_pending') };
     res.redirect('/diagnostico');
   }

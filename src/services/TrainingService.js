@@ -20,6 +20,8 @@ const SocketService = require('./SocketService');
 const Settings      = require('../models/Settings');
 const Circuit       = require('../models/Circuit');
 const TimingService = require('./TimingService');
+// Diferido: GoOwnerService lee TimingService/PoleTimingService al decidir.
+const GoOwner = () => require('./GoOwnerService');
 
 const LaneColors = require('./LaneColors');
 const { pushBest } = require('../utils/bestLaps');
@@ -73,13 +75,13 @@ class TrainingServiceClass {
     // t+3134ms) para que la cuenta atrás comience exactamente cuando la
     // corriente se enciende. Los récords de carril (_sessionRecords) se
     // PRESERVAN entre GOs — solo se borran con el botón "Reset" manual.
-    // El "auto" de training (engancharse a un GO del DS-300) solo aplica
-    // cuando NO hay una manga oficial corriendo. Si TimingService está en
-    // mitad de una carrera, el mismo GO del DS pertenece a esa manga y
-    // training debe quedarse fuera para no registrar datos en paralelo.
+    // El "auto" de training (engancharse a un GO del DS-300) solo aplica si el
+    // GO no es de la carrera ni de la pole (GoOwnerService, la misma regla que
+    // usa app.js para arrancar la manga). El límite de tanda ya no aparta al
+    // entreno: al acabar una tanda el GO es suyo.
     SerialService.on('race_go', ({ durationMs }) => {
       if (this._active) return;
-      if (TimingService.isBusy) return;
+      if (GoOwner().trainingYields()) return;
       this._pendingDurationMs = durationMs;
       this._pausedCircuits.clear();
       this.prepare(lanesFromSettings());
@@ -88,7 +90,7 @@ class TrainingServiceClass {
 
     SerialService.on('race_started', () => {
       if (this._active) return;
-      if (TimingService.isBusy) return;
+      if (GoOwner().trainingYields()) return;
       this._pausedCircuits.clear();
       if (this._pendingDurationMs != null) {
         this._durationMs = this._pendingDurationMs;
@@ -104,11 +106,11 @@ class TrainingServiceClass {
     // o si training ni siquiera está activo/en standby — si no, cada pausa de
     // una carrera real generaba también un `training:circuit_state` fantasma.
     SerialService.on('race_paused',  ({ circuit } = {}) => {
-      if (!this.isReady || TimingService.isBusy) return;
+      if (!this.isReady || TimingService.activeMangaId != null) return;
       this._setCircuitPaused(circuit || 0, true);
     });
     SerialService.on('race_resumed', ({ circuit } = {}) => {
-      if (!this.isReady || TimingService.isBusy) return;
+      if (!this.isReady || TimingService.activeMangaId != null) return;
       this._setCircuitPaused(circuit || 0, false);
     });
     // Forced stop: data stays on screen, cleared on next GO (records survive)

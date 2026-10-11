@@ -27,6 +27,7 @@ const DriverShift    = require('../models/DriverShift');
 const SocketService  = require('../services/SocketService');
 const SerialService  = require('../services/SerialService');
 const TimingService  = require('../services/TimingService');
+const GoOwnerService = require('../services/GoOwnerService');
 const RaceEventLog   = require('../services/RaceEventLog');
 const ExportGuard    = require('../services/ExportGuard');
 const { robustConsistency, MIN_CONSISTENCY_LAPS } = require('../lib/consistency');
@@ -216,6 +217,7 @@ class SessionController {
 
     // Clear the tanda boundary so the hardware GO is accepted again.
     TimingService.clearTandaBoundary();
+    GoOwnerService.claimRace(race.id, `repetir la manga ${manga.number}`);
 
     res.redirect(`/races/${race.id}/mangas/${manga.id}/live`);
   }
@@ -246,6 +248,9 @@ class SessionController {
       prevLapsByLane[l.lane] = Lap.raceCountByEntity(race.id, manga.id, l.team_id, l.driver_id);
     });
 
+    const { isLocal, reqIp } = require('../middleware/accessControl');
+    const localReq = isLocal(reqIp(req));
+
     // Pre-register this manga so DS hardware GO button can start it
     if (manga.status === 'pending' && !TimingService.isRunning) {
       const teams   = Team.findByTanda(manga.tanda_id);
@@ -259,6 +264,9 @@ class SessionController {
       ).get(manga.tanda_id);
       if (!hasFinishedInTanda) TimingService.clearTandaBoundary();
       TimingService.setPendingManga(manga, race, lanes, teams, drivers);
+      // Abrir en el ordenador de la pista el directo de la manga que toca correr
+      // es pedir el GO para la carrera. Desde la TV o un móvil solo se mira.
+      if (localReq) GoOwnerService.claimRace(race.id, `directo de la manga ${manga.number}`);
     }
 
     const totalMangas = Manga.findByTanda(manga.tanda_id).length;
@@ -440,7 +448,12 @@ class SessionController {
     const isPaused     = TimingService.isPaused && isActive;
     const liveOrder = require('../models/Settings').get('live_order', 'projected') === 'laps' ? 'laps' : 'projected';
 
-    res.render('races/live', { t: req.t, liveOrder, race, manga, tanda, lanes, laps, isActive, standings, projection, prevLapsByLane, totalMangas, totalTandas, totalRaceMs, effectiveMangaDurationMs, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, allParticipants, nextLaneByLane, nextMangaInfo, nextPendingMangaId, raceOver, isSimulating, isBart, isTicTac, softwareGo, isPaused });
+    // Franja «el GO no es de este directo»: solo en el ordenador de la pista y
+    // si a la carrera le queda algo por correr.
+    const goStrip = localReq && race.status === 'active' && !!Manga.findFirstPending(race.id);
+    const goOwner = goStrip ? GoOwnerService.publicState() : null;
+
+    res.render('races/live', { t: req.t, liveOrder, goStrip, goOwner, race, manga, tanda, lanes, laps, isActive, standings, projection, prevLapsByLane, totalMangas, totalTandas, totalRaceMs, effectiveMangaDurationMs, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, allParticipants, nextLaneByLane, nextMangaInfo, nextPendingMangaId, raceOver, isSimulating, isBart, isTicTac, softwareGo, isPaused });
   }
 
   // GET /races/:id/mangas/:mangaId/panel/:type  (standalone popup)
@@ -2718,6 +2731,7 @@ class SessionController {
 
     TimingService.setPendingManga(manga, race, lanes, teams, drivers);
     TimingService._tandaBoundary = false;
+    GoOwnerService.claimRace(race.id, `tanda ${nextTanda.number}`);
 
     return res.json({ ok: true, mangaId: manga.id, tandaId: nextTanda.id, tandaNumber: nextTanda.number });
   }

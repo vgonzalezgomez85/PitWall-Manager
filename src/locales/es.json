@@ -333,7 +333,13 @@
       "voz_best_title": "Solo se cantan vueltas rápidas — clic: silenciar",
       "voz_all_title": "Se cantan todas las vueltas — clic: solo vueltas rápidas",
       "salir_pantalla_completa": "Salir de pantalla completa",
-      "pantalla_completa": "Pantalla completa"
+      "pantalla_completa": "Pantalla completa",
+      "go_lo_tiene_el_entreno": "El GO lo tiene el entreno: este directo no arrancará la carrera.",
+      "go_lo_tiene_la_pole": "El GO lo tiene la pole de «{{race}}»: este directo no arrancará la carrera.",
+      "go_lo_tiene_otra_carrera": "El GO lo tiene «{{race}}»: este directo no arrancará esta carrera.",
+      "go_entreno_pulsa_tanda": "El GO lo tiene el entreno. Para seguir la carrera, pulsa «▶ Tanda {{n}}».",
+      "go_entreno_prepara_tanda": "El GO lo tiene el entreno. Para seguir la carrera, prepara la siguiente tanda.",
+      "recuperar_el_go": "Recuperar el GO"
     },
     "link": {
       "enlace_guardado": "✓ Enlace guardado.",
@@ -553,7 +559,13 @@
       "ritmo": "Ritmo",
       "sin_vueltas": "Sin vueltas aún",
       "vuelta": "Vuelta",
-      "mejor_vuelta": "Mejor vuelta"
+      "mejor_vuelta": "Mejor vuelta",
+      "go_manga_en_marcha": "Hay una manga de «{{race}}» en marcha: el GO es de la carrera.",
+      "go_tanda_a_medias": "La tanda {{n}} de «{{race}}» está a medias: el próximo GO arrancará su siguiente manga.",
+      "go_directo_abierto": "El directo de «{{race}}» está abierto en este ordenador: el próximo GO arrancará la carrera, no el entreno.",
+      "go_pole": "Hay una pole en marcha en «{{race}}»: el próximo GO es de la pole.",
+      "go_carrera_simulada": "Se está reproduciendo una carrera simulada: el GO es de la carrera.",
+      "go_ceder": "Ceder el GO al entreno"
     },
     "link-compare": {
       "loading": "Cargando…",
@@ -1418,7 +1430,6 @@
     "filas_horizontales": "Filas horizontales",
     "gap_v": "GAP V",
     "gap_v_t": "Gap V.T.",
-    "hay_una_carrera_activa_el_go_ira_a_la_carrera": "Hay una carrera activa: el GO irá a la carrera, no al entreno. Ciérrala en Solución de problemas → “Limpiar pendiente”, o complétala desde la carrera.",
     "media": "MEDIA",
     "mejor": "MEJOR",
     "minimapa_del_circuito_ventana": "Minimapa del circuito (ventana)",

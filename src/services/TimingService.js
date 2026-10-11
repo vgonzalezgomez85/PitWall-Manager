@@ -335,6 +335,7 @@ class TimingServiceClass {
     DebugLogger.startMangaLog(manga, race);
     DebugLogger.log('manga', { event: 'start', mangaNumber: manga.number, durationMs: sessionDurationMs, activeLanes });
     SocketService.emit('manga:started', { mangaId: manga.id, ...this.getStandings() });
+    require('./GoOwnerService').claimRace(race.id, `arranca la manga ${manga.number}`);
     console.log(`[TimingService] Manga ${manga.number} started @ ${Date.now()} — ${activeLanes.length} active lanes — ${race.manga_duration_minutes}min`);
     this._logEvent('go', { raceId: race.id, mangaId: manga.id, mangaNumber: manga.number, circuit: startCircuitIndex });
 
@@ -1078,6 +1079,9 @@ class TimingServiceClass {
       // rompería la cadena de mangas de toda la carrera.
       this.session = null;
       this._activeShiftsByLane = {};
+      // Fin de tanda: el GO vuelve al entreno aunque el directo siga abierto.
+      const GoOwner = require('./GoOwnerService');
+      if (isTandaEnd) GoOwner.release('fin de la tanda'); else GoOwner.notify();
     }
 
     // Reconciliación diferida del cruce "en la bandera": esperamos ~1.5 s a que
@@ -1537,6 +1541,7 @@ class TimingServiceClass {
       this.invalidateStandingsCaches();
       this.session = null;
       this._activeShiftsByLane = {};
+      require('./GoOwnerService').notify();
     }
   }
 
@@ -2376,11 +2381,6 @@ class TimingServiceClass {
   // pausa cuenta porque el DS sigue conectado y puede reanudar en cualquier
   // momento). Lo usa ExportGuard para bloquear las exportaciones a Excel.
   get isMangaLive()   { return this.isRunning || this.isPaused; }
-  // True si hay una manga armada esperando el GO del DS-300, o una manga
-  // en curso. Útil para que TrainingService no enganche cruces durante una
-  // carrera oficial, ya que el listener de race_started del training puede
-  // dispararse antes que el de TimingService.startManga.
-  get isBusy()        { return this.isRunning || this.isPaused || this._pendingSetup != null || this._tandaBoundary === true; }
   get activeMangaId() { return this.session?.manga?.id ?? null; }
   get activeRaceId()  { return this.session?.race?.id ?? null; }
 

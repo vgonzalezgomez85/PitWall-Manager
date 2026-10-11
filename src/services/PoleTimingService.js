@@ -105,6 +105,7 @@ class PoleTimingServiceClass {
     SerialService.on('lane_crossing', this._lapHandler);
 
     SocketService.emit('pole:standby', { entryName, poleLane });
+    require('./GoOwnerService').notify();
     console.log(`[PoleTimingService] Standby — esperando GO para "${entryName}" carril ${poleLane}`);
   }
 
@@ -291,6 +292,7 @@ class PoleTimingServiceClass {
     this._pausedAt = null;
     this._totalPausedMs = 0;
     this._pendingDurationMs = null;
+    setImmediate(() => { try { require('./GoOwnerService').notify(); } catch {} });
   }
 
   get isRunning()       { return this._active; }

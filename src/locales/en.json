@@ -333,7 +333,13 @@
       "voz_best_title": "Only fast laps — click: mute",
       "voz_all_title": "All laps — click: only fast laps",
       "salir_pantalla_completa": "Exit full screen",
-      "pantalla_completa": "Full screen"
+      "pantalla_completa": "Full screen",
+      "go_lo_tiene_el_entreno": "Training has the GO: this live view will not start the race.",
+      "go_lo_tiene_la_pole": "The pole session of “{{race}}” has the GO: this live view will not start the race.",
+      "go_lo_tiene_otra_carrera": "“{{race}}” has the GO: this live view will not start this race.",
+      "go_entreno_pulsa_tanda": "Training has the GO. To continue the race, press “▶ Round {{n}}”.",
+      "go_entreno_prepara_tanda": "Training has the GO. To continue the race, prepare the next round.",
+      "recuperar_el_go": "Take back the GO"
     },
     "link": {
       "enlace_guardado": "✓ Link saved.",
@@ -553,7 +559,13 @@
       "ritmo": "Pace",
       "sin_vueltas": "No laps yet",
       "vuelta": "Lap",
-      "mejor_vuelta": "Best lap"
+      "mejor_vuelta": "Best lap",
+      "go_manga_en_marcha": "A heat of “{{race}}” is running: GO belongs to the race.",
+      "go_tanda_a_medias": "Round {{n}} of “{{race}}” is half-run: the next GO will start its next heat.",
+      "go_directo_abierto": "The live view of “{{race}}” is open on this computer: the next GO will start the race, not training.",
+      "go_pole": "A pole session of “{{race}}” is in progress: the next GO belongs to the pole.",
+      "go_carrera_simulada": "A simulated race is being replayed: GO belongs to the race.",
+      "go_ceder": "Give GO to training"
     },
     "link-compare": {
       "loading": "Loading…",
@@ -1418,7 +1430,6 @@
     "filas_horizontales": "Horizontal rows",
     "gap_v": "GAP L",
     "gap_v_t": "Gap L.T.",
-    "hay_una_carrera_activa_el_go_ira_a_la_carrera": "A race is active: GO will start the race, not training. Close it in Troubleshooting → “Clear pending”, or complete it from the race.",
     "media": "AVG",
     "mejor": "BEST",
     "minimapa_del_circuito_ventana": "Track minimap (window)",

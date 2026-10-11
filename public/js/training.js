@@ -549,6 +549,45 @@ socket.on('training:circuit_state', ({ status, lanes }) => {
   });
 });
 
+// ── Dueño del GO ─────────────────────────────────────────────────────────────
+// Solo se avisa cuando el próximo GO NO es del entreno, con el motivo real.
+function goOwnerText(st) {
+  const race = st.raceName || '';
+  if (st.reason === 'manga_running') return I18N.t('client.training.go_manga_en_marcha', { race });
+  if (st.reason === 'tanda_half')    return I18N.t('client.training.go_tanda_a_medias', { race, n: st.tandaNumber });
+  if (st.reason === 'claimed')       return I18N.t('client.training.go_directo_abierto', { race });
+  if (st.reason === 'pole')          return I18N.t('client.training.go_pole', { race });
+  if (st.reason === 'sim_replay')    return I18N.t('client.training.go_carrera_simulada');
+  return '';
+}
+function renderGoOwner(st) {
+  const el = document.getElementById('goOwnerBanner');
+  if (!el) return;
+  if (!st || st.owner === 'training') { el.hidden = true; el.textContent = ''; return; }
+  el.textContent = goOwnerText(st);
+  if (st.canCede) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'go-owner-cede';
+    btn.textContent = I18N.t('client.training.go_ceder');
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      try {
+        const r = await fetch('/api/go-owner/cede', { method: 'POST' });
+        renderGoOwner(await r.json());
+      } catch { btn.disabled = false; }
+    });
+    el.appendChild(document.createTextNode(' '));
+    el.appendChild(btn);
+  }
+  el.hidden = false;
+}
+renderGoOwner(TRAINING_DATA.goOwner);
+socket.on('go:owner', renderGoOwner);
+socket.on('connect', () => {
+  fetch('/api/go-owner').then(r => r.json()).then(renderGoOwner).catch(() => {});
+});
+
 socket.on('training:data', (lanes) => {
   lanes.forEach(lane => updateCard(lane));
 });

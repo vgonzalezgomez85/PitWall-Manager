@@ -52,6 +52,9 @@ class CompetitionTrainingServiceClass {
 
     SerialService.on('race_started', () => {
       if (!this.isReady) return;
+      // Un heat en marcha sigue con su GO (otro circuito); uno en standby solo
+      // arranca si el GO no es de la carrera ni de la pole.
+      if (!this._active && require('./GoOwnerService').trainingYields()) return;
       this._pausedCircuits.clear();
       if (this._pendingDurationMs != null) {
         this._durationMs = this._pendingDurationMs;

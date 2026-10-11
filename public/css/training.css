@@ -307,6 +307,11 @@
 
 .flash { padding: .6rem 1rem; border-radius: 8px; font-size: .9rem; margin: .5rem 1rem; }
 .flash--error { background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.4); color: #fca5a5; }
+.go-owner-cede {
+  margin-left: .6rem; padding: .3rem .8rem; border-radius: 6px; cursor: pointer;
+  background: #fca5a5; color: #1a0d0d; border: 0; font: inherit; font-weight: 700;
+}
+.go-owner-cede:disabled { opacity: .6; cursor: default; }
 
 /* ── Selector de vista (modal) ────────────────────────────────────────── */
 .vp-overlay {

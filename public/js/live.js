@@ -2376,6 +2376,53 @@ function announce(text) {
   socket.on('connect', () => socket.emit('race:live:join'));
   window.addEventListener('beforeunload', () => socket.emit('race:live:leave'));
 
+  // Franja «el GO no es de este directo» (solo en el ordenador de la pista y si
+  // a la carrera le queda algo por correr: RACE_DATA.goStrip).
+  function renderGoStrip(st) {
+    const el = document.getElementById('goStrip');
+    if (!el || !RACE_DATA.goStrip || !st) return;
+    const mine = st.raceId === RACE_DATA.raceId || st.reason === 'sim_replay';
+    // `no_live_viewer` de esta carrera: el join de este directo aún no ha llegado.
+    if (mine && (st.owner === 'race' || st.reason === 'no_live_viewer')) { el.hidden = true; return; }
+    const race = st.raceName || '';
+    // Fin de tanda: el GO vuelve con «▶ Tanda N», no con «Recuperar».
+    const atTandaEnd = RACE_DATA.nextTandaNumber != null || (mine && st.reason === 'tanda_boundary');
+    let text, canClaim = false;
+    if (st.owner === 'training' && atTandaEnd) {
+      text = RACE_DATA.nextTandaNumber != null
+        ? I18N.t('client.js.go_entreno_pulsa_tanda', { n: RACE_DATA.nextTandaNumber })
+        : I18N.t('client.js.go_entreno_prepara_tanda');
+    }
+    else if (st.owner === 'training') { text = I18N.t('client.js.go_lo_tiene_el_entreno'); canClaim = true; }
+    else if (st.owner === 'pole') { text = I18N.t('client.js.go_lo_tiene_la_pole', { race }); }
+    else { text = I18N.t('client.js.go_lo_tiene_otra_carrera', { race }); canClaim = st.reason === 'claimed'; }
+    el.textContent = '';
+    const span = document.createElement('span');
+    span.className = 'go-strip__text';
+    span.textContent = text;
+    el.appendChild(span);
+    if (canClaim) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'go-strip__btn';
+      btn.textContent = I18N.t('client.js.recuperar_el_go');
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        try {
+          const r = await fetch('/api/go-owner/claim', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ raceId: RACE_DATA.raceId }),
+          });
+          renderGoStrip(await r.json());
+        } catch { btn.disabled = false; }
+      });
+      el.appendChild(btn);
+    }
+    el.hidden = false;
+  }
+  renderGoStrip(RACE_DATA.goOwner);
+  socket.on('go:owner', renderGoStrip);
+
   // Cambios de neumático: repinta los badges 🛞 en cuanto el control registra
   // una entrega o edición. Vale con la manga activa o en espera.
   socket.on('tires:changed', (d) => {
