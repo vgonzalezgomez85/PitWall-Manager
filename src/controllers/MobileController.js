@@ -17,6 +17,8 @@
  */
 const TimingService     = require('../services/TimingService');
 const TrainingService   = require('../services/TrainingService');
+const CompetitionTrainingService = require('../services/CompetitionTrainingService');
+const CompetitionTrainingResult  = require('../models/CompetitionTrainingResult');
 const PoleTimingService = require('../services/PoleTimingService');
 const PoleSession       = require('../models/PoleSession');
 const Race       = require('../models/Race');
@@ -30,6 +32,21 @@ const db = require('../config/database');
 const SNAPSHOT_TTL_MS    = 1000;
 const SNAPSHOT_MAX_RACES = 8;
 const _snapshotCache = new Map();   // raceId → { ts, mut, value }
+
+// Entreno que la app móvil puede seguir ahora mismo: el de competición si
+// está montado (en marcha o en standby entre heats: el piloto se conecta
+// mientras espera su turno) y, si no, el libre cuando está en marcha.
+function entrenoEnCurso() {
+  if (CompetitionTrainingService.isReady) return CompetitionTrainingService;
+  if (TrainingService.isActive) return TrainingService;
+  return null;
+}
+
+// `created_at` de SQLite es UTC sin zona ('YYYY-MM-DD HH:MM:SS'): lo servimos
+// en ISO para que la app no tenga que adivinar la zona.
+function isoUtc(sqliteDate) {
+  return sqliteDate ? `${String(sqliteDate).replace(' ', 'T')}Z` : null;
+}
 
 const MobileController = {
   // GET /api/mobile/session
@@ -72,16 +89,16 @@ const MobileController = {
       });
     }
 
-    if (TrainingService.isActive) {
-      const lanes = TrainingService.getLanes();
-      const participants = lanes.map(l => ({
+    const entreno = entrenoEnCurso();
+    if (entreno) {
+      const participants = entreno.getLanes().map(l => ({
         lane:  l.lane,
-        name:  `Carril ${l.lane}`,
+        name:  l.participantName || `Carril ${l.lane}`,
         color: l.color || '#22c55e',
       }));
       return res.json({
         type:         'training',
-        name:         'Entrenamiento',
+        name:         entreno === CompetitionTrainingService ? 'Entreno de competición' : 'Entrenamiento',
         participants,
       });
     }
@@ -432,20 +449,85 @@ const MobileController = {
   // conecta para ofrecer entrenamiento si no hay carrera activa (o como
   // alternativa).
   training(req, res) {
-    const active = TrainingService.isActive;
-    const lanes = active ? TrainingService.getLanes() : [];
+    // Sirve tanto el entreno libre como el de competición (heats con rotación
+    // de carriles): los dos emiten los mismos `training:*` por socket.
+    const entreno = entrenoEnCurso();
+    const active = !!entreno;
+    const lanes = active ? entreno.getLanes() : [];
+    const competition = entreno === CompetitionTrainingService;
     return res.json({
       active,
-      startedAt:  TrainingService.startedAt,
-      durationMs: TrainingService.durationMs,
+      competition,
+      heat:       competition ? entreno.heatNumber : null,
+      // Solo en competición: todos los participantes (también los que descansan).
+      participants: competition ? entreno.getRoster() : [],
+      startedAt:  (entreno || TrainingService).startedAt,
+      durationMs: (entreno || TrainingService).durationMs,
       lanes: lanes.map(l => ({
         lane:   l.lane,
+        participantName: l.participantName ?? null,
         color:  l.color,
         count:  l.count,
         avgMs:  l.avgMs,
         bestMs: l.bestMs,
         lastMs: l.lastMs,
       })),
+    });
+  },
+
+  // GET /api/mobile/competition-trainings
+  //
+  // Entrenos de competición ya guardados, el más reciente primero, para que la
+  // app los descargue y los consulte sin conexión. La sesión que está montada
+  // ahora mismo no sale hasta que se cierre: aún le faltan heats.
+  competitionTrainings(req, res) {
+    const enCurso = CompetitionTrainingService.isReady ? CompetitionTrainingService.sessionId : null;
+    const sessions = CompetitionTrainingResult.listSessions()
+      .filter(s => s.session_id !== enCurso)
+      .map(s => ({
+        id:           s.session_id,
+        startedAt:    isoUtc(s.started_at),
+        heats:        s.heats,
+        participants: s.participants,
+        laps:         s.laps || 0,
+        bestLapMs:    s.best_lap_ms ?? null,
+      }));
+    return res.json({ sessions });
+  },
+
+  // GET /api/mobile/competition-trainings/:id
+  //
+  // Una sesión completa: clasificación (más vueltas; a igualdad, mejor vuelta)
+  // y, heat a heat, lo que hizo cada carril.
+  competitionTrainingShow(req, res) {
+    const id = req.params.id;
+    const rows = CompetitionTrainingResult.getHeats(id);
+    if (rows.length === 0) return res.status(404).json({ error: 'session_not_found' });
+
+    const porHeat = new Map();
+    for (const r of rows) {
+      if (!porHeat.has(r.heat_number)) porHeat.set(r.heat_number, []);
+      porHeat.get(r.heat_number).push({
+        lane:        r.lane,
+        name:        r.participant_name,
+        bestLapMs:   r.best_lap_ms ?? null,
+        avgLapMs:    r.avg_lap_ms ?? null,
+        laps:        r.lap_count || 0,
+      });
+    }
+
+    return res.json({
+      id,
+      startedAt: isoUtc(rows[0].created_at),
+      standings: CompetitionTrainingResult.getStandings(id).map((s, i) => ({
+        pos:       i + 1,
+        name:      s.participant_name,
+        heats:     s.heats,
+        laps:      s.laps || 0,
+        bestLapMs: s.best_lap_ms ?? null,
+        avgLapMs:  s.avg_lap_ms ?? null,
+      })),
+      heats: [...porHeat].map(([heat, lanes]) => ({ heat, lanes })),
     });
   },
 

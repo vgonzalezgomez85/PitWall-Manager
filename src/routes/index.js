@@ -495,6 +495,8 @@ router.post('/api/serial/close', async (req, res) => {
 // de la genérica `:id` para que Express las matchee primero.
 router.get('/api/mobile/session',            MobileController.session);
 router.get('/api/mobile/training',           MobileController.training);
+router.get('/api/mobile/competition-trainings',     MobileController.competitionTrainings);
+router.get('/api/mobile/competition-trainings/:id',  MobileController.competitionTrainingShow);
 router.get('/api/mobile/races/current',      MobileController.racesCurrent);
 router.get('/api/mobile/races/active',       MobileController.racesActive);
 router.get('/api/mobile/races',              MobileController.racesList);

@@ -353,6 +353,21 @@ class CompetitionTrainingServiceClass {
   get startedAt()   { return this._startedAt; }
   get durationMs()  { return this._durationMs; }
 
+  // Todos los participantes de la sesión con el carril que ocupan en el heat
+  // actual (null = descansa). La app móvil sigue al participante por nombre,
+  // porque rota de carril en cada heat.
+  getRoster() {
+    const laneOf = new Map();
+    for (const [lane, ld] of this._laneMap) {
+      if (ld.participantIdx !== null) laneOf.set(ld.participantIdx, lane);
+    }
+    return this._participants.map((p, i) => ({
+      name:  p.name,
+      color: p.color ?? null,
+      lane:  laneOf.get(i) ?? null,
+    }));
+  }
+
   getLanes() {
     const lanes = [];
     for (const [lane, ld] of this._laneMap) {

@@ -13,6 +13,21 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.56.1] — 2026-10-11
+
+### Mejorado
+- **`GET /api/mobile/training` lista todos los participantes del entreno de competición**, también los que descansan en el heat actual, con el carril que ocupan (`null` si descansan). La app móvil los sigue por nombre: en competición los equipos rotan de carril en cada heat y antes la app se quedaba fija en el carril elegido.
+
+## [1.56.0] — 2026-10-11
+
+### Añadido
+- **Los entrenos de competición se pueden descargar a la app móvil.** Dos endpoints nuevos: `GET /api/mobile/competition-trainings` (sesiones guardadas, la más reciente primero; la que está montada ahora no sale hasta que se cierre) y `GET /api/mobile/competition-trainings/:id` (clasificación de la sesión y, heat a heat, mejor vuelta, media y vueltas de cada carril). La app los guarda en el móvil para consultarlos sin conexión.
+
+## [1.55.2] — 2026-10-11
+
+### Corregido
+- **La app móvil no veía el entreno de competición.** Al conectarse a PitWall solo ofrecía el entreno libre: `GET /api/mobile/training` y `GET /api/mobile/session` miraban solo `TrainingService` y nunca `CompetitionTrainingService`, así que con un entreno de competición en marcha la app decía «sin actividad». Ahora lo ofrecen igual que el libre, también en standby entre heats (el piloto se conecta mientras espera su turno), y `/training` añade `competition`, `heat` y el `participantName` de cada carril.
+
 ## [1.55.1] — 2026-10-10
 
 ### Mejorado
