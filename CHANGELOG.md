@@ -13,6 +13,19 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.58.0] — 2026-10-11
+
+### Añadido
+- **Resultados → pestaña «Pilotos»** (resistencias por equipos con fichaje QR): qué hizo cada piloto dentro de su equipo — tiempo al volante, mangas, vueltas, vueltas por hora al volante, mejor vuelta, media, consistencia, salidas y pit-stops. Vista **por equipo** (en el orden de la clasificación, con la mejor vuelta de cada equipo resaltada) y **todos los pilotos** en una tabla que se ordena pulsando las columnas. Las vueltas de los pilotos suman exactamente las del equipo, con las mismas reglas que el total. Si el fichaje no cubrió toda la carrera, lo dice («Fichaje QR: 6 de 24 mangas») y esas vueltas salen como «Sin fichar». También en los resultados públicos y en la exportación HTML.
+- **Excel: hoja «Pilotos»** con los mismos datos.
+
+### Mejorado
+- Las **exportaciones** de resultados (Excel, puntos, Control, area-corse, GitHub) van en un único menú **Exportar**, con lo que hace cada una a la vista. El PDF sigue aparte.
+
+### Corregido
+- **Progresión: el piloto de cada vuelta podía salir equivocado** con relevos a mitad de manga: la hora del fichaje se leía como hora local en vez de UTC, y se buscaba por carril (en la 24 h de Llinars el turno quedó a veces apuntado al carril de la manga siguiente). Ahora usa el mismo reparto que la pestaña Pilotos: por manga y equipo, con la hora real del cruce.
+- Ponía «1 tandas».
+
 ## [1.57.2] — 2026-10-11
 
 ### Corregido

@@ -1,5 +1,20 @@
 <%- include('../partials/header', { pageTitle: (t('common.resultados')) + ' — ' + race.name }) %>
 <style>
+/* ── Menú «Exportar» ── */
+.vt-page details.exp-menu { position: relative; margin: 0; padding: 0; border: 0; }
+.vt-page .exp-menu > summary { list-style: none; cursor: pointer; color: var(--vt-text); font-size: 13px; font-weight: 600; }
+.exp-menu > summary::-webkit-details-marker { display: none; }
+.exp-menu__list {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 50; width: 340px;
+  background: var(--vt-panel, #0d1117); border: 1px solid var(--vt-border-2); border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0,0,0,.5); padding: 6px;
+}
+.exp-menu__item { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border-radius: 7px; color: var(--vt-text); text-decoration: none; }
+.exp-menu__item:hover { background: var(--vt-surface-2); text-decoration: none; }
+.exp-menu__item svg { flex: 0 0 18px; width: 18px; height: 18px; margin-top: 2px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.exp-menu__item b { display: block; font-weight: 600; font-size: .88rem; }
+.exp-menu__item small { display: block; color: var(--vt-mute); font-size: .76rem; line-height: 1.3; margin-top: 2px; }
+
 /* ── Race fastest lap banner ── */
 .race-best-banner {
   display: flex; align-items: center; gap: 1rem;
@@ -265,32 +280,40 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
       </p>
     </div>
     <div class="vt-head__actions">
-      <span class="vt-badge is-info"><span class="vt-badge__d"></span><%= tandas.length %> <%= t('results.tandas') %></span>
+      <span class="vt-badge is-info"><span class="vt-badge__d"></span><%= tandas.length %> <%= t(tandas.length === 1 ? 'results.tanda' : 'results.tandas') %></span>
       <% if (!_publicView) { %>
-      <a href="/races/<%= race.id %>/results/xlsx?lang=<%= lang %>" class="vt-btn vt-btn--ghost vt-btn--sm" title="<%= t('results.exportar_a_excel') %>">
-        <svg viewBox="0 0 24 24"><path d="M14 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13l3 3 3-3M12 16V9"/></svg>
-        Excel
-      </a>
-      <a href="/races/<%= race.id %>/results/points.xlsx?lang=<%= lang %>" class="vt-btn vt-btn--ghost vt-btn--sm" title="<%= t('results.exportar_puntos_de_clasificacion_excel') %>">
-        <svg viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v6a5 5 0 0 1-10 0z"/><path d="M7 5H4.5A1.5 1.5 0 0 0 3 6.5 3.5 3.5 0 0 0 6.5 10M17 5h2.5A1.5 1.5 0 0 1 21 6.5 3.5 3.5 0 0 1 17.5 10"/></svg>
-        <%= t('results.puntos_xlsx') %>
-      </a>
-      <a href="/races/<%= race.id %>/results/points.csv?lang=<%= lang %>" class="vt-btn vt-btn--ghost vt-btn--sm" title="<%= t('results.exportar_puntos_csv') %>">
-        <svg viewBox="0 0 24 24"><path d="M14 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
-        <%= t('results.puntos_csv') %>
-      </a>
-      <a href="/races/<%= race.id %>/results/control.csv" class="vt-btn vt-btn--ghost vt-btn--sm" title="<%= t('results.exportar_para_pitwall_control_csv_tictacslot') %>">
-        <svg viewBox="0 0 24 24"><path d="M14 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M8 13h8M8 17h5"/></svg>
-        Control
-      </a>
-      <a href="/races/<%= race.id %>/results/areacorse.csv" class="vt-btn vt-btn--ghost vt-btn--sm" title="<%= t('results.exportar_para_area_corse_it_csv_de_resultados') %>">
-        <svg viewBox="0 0 24 24"><path d="M14 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M8 13h8M8 17h5"/></svg>
-        area-corse
-      </a>
-      <a href="/races/<%= race.id %>/results/export.html" class="vt-btn vt-btn--ghost vt-btn--sm" title="<%= t('results.descarga_un_index_html_autocontenido_para') %>">
-        <svg viewBox="0 0 24 24"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
-        <%= t('results.exportar_para_github') %>
-      </a>
+      <details class="exp-menu">
+        <summary class="vt-btn vt-btn--ghost vt-btn--sm">
+          <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+          <%= t('results.exportar') %> ▾
+        </summary>
+        <div class="exp-menu__list" role="menu">
+          <a href="/races/<%= race.id %>/results/xlsx?lang=<%= lang %>" class="exp-menu__item" role="menuitem">
+            <svg viewBox="0 0 24 24"><path d="M14 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13l3 3 3-3M12 16V9"/></svg>
+            <span><b>Excel</b><small><%= t('results.exportar_a_excel') %></small></span>
+          </a>
+          <a href="/races/<%= race.id %>/results/points.xlsx?lang=<%= lang %>" class="exp-menu__item" role="menuitem">
+            <svg viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v6a5 5 0 0 1-10 0z"/><path d="M7 5H4.5A1.5 1.5 0 0 0 3 6.5 3.5 3.5 0 0 0 6.5 10M17 5h2.5A1.5 1.5 0 0 1 21 6.5 3.5 3.5 0 0 1 17.5 10"/></svg>
+            <span><b><%= t('results.puntos_xlsx') %></b><small><%= t('results.exportar_puntos_de_clasificacion_excel') %></small></span>
+          </a>
+          <a href="/races/<%= race.id %>/results/points.csv?lang=<%= lang %>" class="exp-menu__item" role="menuitem">
+            <svg viewBox="0 0 24 24"><path d="M14 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
+            <span><b><%= t('results.puntos_csv') %></b><small><%= t('results.exportar_puntos_csv') %></small></span>
+          </a>
+          <a href="/races/<%= race.id %>/results/control.csv" class="exp-menu__item" role="menuitem">
+            <svg viewBox="0 0 24 24"><path d="M14 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M8 13h8M8 17h5"/></svg>
+            <span><b>Control</b><small><%= t('results.exportar_para_pitwall_control_csv_tictacslot') %></small></span>
+          </a>
+          <a href="/races/<%= race.id %>/results/areacorse.csv" class="exp-menu__item" role="menuitem">
+            <svg viewBox="0 0 24 24"><path d="M14 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M8 13h8M8 17h5"/></svg>
+            <span><b>area-corse</b><small><%= t('results.exportar_para_area_corse_it_csv_de_resultados') %></small></span>
+          </a>
+          <a href="/races/<%= race.id %>/results/export.html" class="exp-menu__item" role="menuitem">
+            <svg viewBox="0 0 24 24"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+            <span><b><%= t('results.exportar_para_github') %></b><small><%= t('results.descarga_un_index_html_autocontenido_para') %></small></span>
+          </a>
+        </div>
+      </details>
       <% } %>
       <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" onclick="window.print()" title="<%= t('results.guardar_como_pdf') %>">
         <svg viewBox="0 0 24 24"><path d="M6 9V4h12v5M6 18H4a1 1 0 0 1-1-1v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a1 1 0 0 1-1 1h-2M6 14h12v7H6z"/></svg>
@@ -348,10 +371,19 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
       <button class="results-tab" data-tab="advanced">
         <%= t('results.estadisticas_avanzadas') %>
       </button>
+      <% if (typeof driverStats !== 'undefined' && driverStats) { %>
+      <button class="results-tab" data-tab="drivers"><%= t('results.pilotos') %></button>
+      <% } %>
       <% if (typeof pole !== 'undefined' && pole) { %>
       <button class="results-tab" data-tab="pole">Pole</button>
       <% } %>
     </div>
+
+    <% if (typeof driverStats !== 'undefined' && driverStats) { %>
+    <div class="results-panel" id="tab-drivers">
+      <%- include('_drivers-panel', { driverStats }) %>
+    </div>
+    <% } %>
 
     <% if (typeof pole !== 'undefined' && pole) { %>
     <div class="results-panel" id="tab-pole">
@@ -1755,6 +1787,13 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
 </div>
 
 <script>
+  // Menú «Exportar»: se cierra al pulsar fuera o al elegir una opción.
+  document.addEventListener('click', (e) => {
+    document.querySelectorAll('.exp-menu[open]').forEach(m => {
+      if (!m.contains(e.target) || e.target.closest('.exp-menu__item')) m.removeAttribute('open');
+    });
+  });
+
   document.querySelectorAll('.results-tab').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.results-tab').forEach(b => b.classList.remove('active'));

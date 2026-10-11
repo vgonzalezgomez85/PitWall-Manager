@@ -1739,7 +1739,10 @@
     "vueltas_tras_el_lider": "Vueltas tras el líder",
     "vueltas_tras_el_lider_al_cierre_de_cada_manga_0": "Vueltas tras el líder al cierre de cada manga (0 = líder). Elige 2–4 equipos para ver el gap ENTRE ellos. Borde dorado = hubo pit-stop en esa manga.",
     "coma_manual_title": "Virgola dell'ultima manche CORRETTA A MANO: frazione del giro in corso alla caduta della bandiera dell'ultima manche. Fa da spareggio a parità di giri (di più = era più avanti alla fine).",
-    "coma_title": "Virgola dell'ultima manche: frazione del giro in corso alla caduta della bandiera dell'ultima manche. Fa da spareggio a parità di giri (di più = era più avanti alla fine)."
+    "coma_title": "Virgola dell'ultima manche: frazione del giro in corso alla caduta della bandiera dell'ultima manche. Fa da spareggio a parità di giri (di più = era più avanti alla fine).",
+    "pilotos": "Pilotos",
+    "tanda": "tanda",
+    "exportar": "Exportar"
   },
   "results-index": {
     "buscar_carrera_equipo_o_piloto": "Buscar carrera, equipo o piloto…",
@@ -2538,5 +2541,26 @@
   },
   "verifications": {
     "min_abrev": "min"
+  },
+  "_drivers-panel": {
+    "titulo": "Pilotos por equipo",
+    "fichaje_cubre": "Fichaje QR: {{n}} de {{m}} mangas",
+    "piloto_de_cada_vuelta": "Piloto tomado de cada vuelta (sin fichajes QR)",
+    "nota_sin_fichar": "Las vueltas de las mangas sin fichaje no se pueden asignar a nadie: cuentan para el equipo como «Sin fichar».",
+    "por_equipo": "Por equipo",
+    "todos": "Todos los pilotos",
+    "al_volante": "Al volante",
+    "mangas": "Mangas",
+    "vph": "V/h",
+    "vph_title": "Vueltas por hora al volante",
+    "mejor": "Mejor",
+    "media": "Media",
+    "const": "Const.",
+    "const_title": "Consistencia sin salidas, la misma que en la Comparativa",
+    "salidas": "Salidas",
+    "pits": "Pits",
+    "sin_fichar": "Sin fichar",
+    "ordenar": "Pulsa el nombre de una columna para ordenar.",
+    "piloto": "Piloto"
   }
 }

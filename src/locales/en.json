@@ -1739,7 +1739,10 @@
     "vueltas_tras_el_lider": "Laps behind leader",
     "vueltas_tras_el_lider_al_cierre_de_cada_manga_0": "Laps behind the leader at each heat close (0 = leader). Pick 2–4 teams to see the gap BETWEEN them. Gold border = pit-stop in that heat.",
     "coma_manual_title": "CORRECTED BY HAND — last-heat fraction: fraction of the unfinished lap at the final flag. Breaks ties on equal laps (more = further ahead at the end).",
-    "coma_title": "Last-heat coma: fraction of the unfinished lap at the final flag. Breaks ties on equal laps (more = further ahead at the end)."
+    "coma_title": "Last-heat coma: fraction of the unfinished lap at the final flag. Breaks ties on equal laps (more = further ahead at the end).",
+    "pilotos": "Drivers",
+    "tanda": "round",
+    "exportar": "Export"
   },
   "results-index": {
     "buscar_carrera_equipo_o_piloto": "Search race, team or driver…",
@@ -2538,5 +2541,26 @@
   },
   "verifications": {
     "min_abrev": "min"
+  },
+  "_drivers-panel": {
+    "titulo": "Drivers by team",
+    "fichaje_cubre": "QR check-in: {{n}} of {{m}} heats",
+    "piloto_de_cada_vuelta": "Driver taken from each lap (no QR check-ins)",
+    "nota_sin_fichar": "Laps from heats without check-ins cannot be assigned to anyone: they count for the team as “Not checked in”.",
+    "por_equipo": "By team",
+    "todos": "All drivers",
+    "al_volante": "Driving time",
+    "mangas": "Heats",
+    "vph": "L/h",
+    "vph_title": "Laps per hour of driving",
+    "mejor": "Best",
+    "media": "Average",
+    "const": "Cons.",
+    "const_title": "Consistency without exits, same as in Comparison",
+    "salidas": "Exits",
+    "pits": "Pits",
+    "sin_fichar": "Not checked in",
+    "ordenar": "Click a column name to sort.",
+    "piloto": "Driver"
   }
 }

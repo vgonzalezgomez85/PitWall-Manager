@@ -1111,7 +1111,7 @@ class SessionController {
     const progressionRows = db.prepare(`
       SELECT l.id, l.lane, l.lap_number, l.lap_time_ms, l.elapsed_ms,
              l.team_id, l.driver_id, l.is_exit, l.is_pit_stop,
-             l.manga_id, m.number AS manga_number, m.started_at AS manga_started_at,
+             l.manga_id, m.number AS manga_number, l.timestamp,
              d.name AS lap_driver_name
       FROM laps l
       JOIN mangas m ON m.id = l.manga_id
@@ -1121,33 +1121,19 @@ class SessionController {
       ORDER BY t.number ASC, m.number ASC, l.lane ASC, l.lap_number ASC
     `).all(race.id);
 
-    // For team races, resolve which driver was driving each lap from driver_shifts
-    let shiftsByMangaLane = {};
+    // Quién conducía cada vuelta (carreras por equipos): el mismo reparto que la
+    // pestaña de pilotos (lib/driverStats), por (manga, equipo) y con hora UTC.
+    let resolveDriver = (row) => row.lap_driver_name || null;
     if (race.format === 'team') {
-      const shifts = db.prepare(`
-        SELECT manga_id, lane, driver_name, started_at
-        FROM driver_shifts WHERE race_id = ?
-        ORDER BY manga_id, lane, started_at ASC
-      `).all(race.id);
-      shifts.forEach(s => {
-        const k = `${s.manga_id}_${s.lane}`;
-        if (!shiftsByMangaLane[k]) shiftsByMangaLane[k] = [];
-        shiftsByMangaLane[k].push({ driver: s.driver_name, ts: new Date(s.started_at).getTime() });
+      const { makeDriverResolver, sqliteUtcMs } = require('../lib/driverStats');
+      const resolver = makeDriverResolver(db.prepare(`
+        SELECT manga_id, team_id, driver_name, started_at_ms
+        FROM driver_shifts WHERE race_id = ? AND team_id IS NOT NULL
+      `).all(race.id));
+      resolveDriver = (row) => resolver({
+        manga_id: row.manga_id, team_id: row.team_id,
+        driver_name: row.lap_driver_name, ts_ms: sqliteUtcMs(row.timestamp),
       });
-    }
-    function resolveDriver(row) {
-      if (row.lap_driver_name) return row.lap_driver_name;
-      if (race.format !== 'team') return null;
-      const k = `${row.manga_id}_${row.lane}`;
-      const shifts = shiftsByMangaLane[k];
-      if (!shifts || shifts.length === 0) return null;
-      const mangaStart = new Date(row.manga_started_at).getTime();
-      const lapTs = mangaStart + (row.elapsed_ms || 0);
-      let driver = shifts[0].driver;
-      for (const s of shifts) {
-        if (s.ts <= lapTs) driver = s.driver; else break;
-      }
-      return driver;
     }
 
     const progressionByEntity = {};
@@ -1387,8 +1373,48 @@ class SessionController {
       advancedStats,
       perOccurrence, occColumns,
       pole,
+      driverStats: SessionController._driverStatsForRace(race, results),
       publicView: !!req._publicResults,
     });
+  }
+
+  // Pilotos dentro de cada equipo (resistencias): cuánto condujo cada uno y qué
+  // hizo, en el orden de la clasificación. null si la carrera no es por equipos o
+  // no hay con qué saber quién conducía (ni fichajes ni vueltas con piloto).
+  static _driverStatsForRace(race, results) {
+    if (race.format !== 'team') return null;
+    const db = require('../config/database');
+    const hasShifts = db.prepare(
+      'SELECT 1 FROM driver_shifts WHERE race_id = ? AND driving_ms > 0 LIMIT 1'
+    ).get(race.id);
+    const hasLapDrivers = !hasShifts && db.prepare(
+      'SELECT 1 FROM laps WHERE race_id = ? AND team_id IS NOT NULL AND driver_id IS NOT NULL LIMIT 1'
+    ).get(race.id);
+    if (!hasShifts && !hasLapDrivers) return null;
+
+    const { buildDriverStats, sqliteUtcMs } = require('../lib/driverStats');
+    const laps = db.prepare(`
+      SELECT l.manga_id, l.lane, l.team_id, l.lap_number, l.lap_time_ms, l.timestamp,
+             l.is_exit, l.is_pit_stop, l.is_warmup, l.is_estimated, d.name AS driver_name
+      FROM laps l
+      LEFT JOIN drivers d ON d.id = l.driver_id
+      WHERE l.race_id = ? AND l.is_ghost = 0 AND l.manga_id IS NOT NULL AND l.team_id IS NOT NULL
+    `).all(race.id);
+    for (const l of laps) l.ts_ms = sqliteUtcMs(l.timestamp);
+    const shifts = db.prepare(`
+      SELECT manga_id, lane, team_id, driver_name, started_at_ms, driving_ms
+      FROM driver_shifts WHERE race_id = ? AND team_id IS NOT NULL
+    `).all(race.id);
+
+    const stats = buildDriverStats({ laps, shifts, minLapMs: race.min_lap_ms || 0 });
+    const teams = results
+      .filter(r => r.entity_type === 'team')
+      .map((r, i) => {
+        const t = stats.teams.get(r.entity_id) || { drivers: [], unassigned: null };
+        return { position: i + 1, teamId: r.entity_id, name: r.entity_name, color: r.color,
+                 totalLaps: r.total_laps, drivers: t.drivers, unassigned: t.unassigned };
+      });
+    return { teams, mangasWithShifts: stats.mangasWithShifts, mangasRaced: stats.mangasRaced, fromShifts: !!hasShifts };
   }
 
   // Renderiza la vista de resultados. En modo export devuelve un HTML
@@ -1706,6 +1732,42 @@ class SessionController {
         if (pl.exit_count > 0) row.getCell(7).font = { color: { argb: COL.exit }, bold: true };
       });
     });
+
+    // ── Hoja «Pilotos» (resistencias por equipos con fichaje) ───────────────
+    const driverStats = SessionController._driverStatsForRace(race, aggregate);
+    if (driverStats) {
+      const sP = wb.addWorksheet(req.t('results.pilotos'));
+      sP.columns = [{ width: 5 }, { width: 26 }, { width: 26 }, { width: 11 }, { width: 8 }, { width: 9 },
+                    { width: 8 }, { width: 11 }, { width: 11 }, { width: 9 }, { width: 9 }, { width: 7 }];
+      addRaceHeader(sP, 12);
+      if (driverStats.fromShifts && driverStats.mangasWithShifts < driverStats.mangasRaced) {
+        const note = sP.addRow([req.t('_drivers-panel.fichaje_cubre', { n: driverStats.mangasWithShifts, m: driverStats.mangasRaced })
+          + '. ' + req.t('_drivers-panel.nota_sin_fichar')]);
+        note.getCell(1).font = { italic: true, color: { argb: 'FF6E7681' } };
+      }
+      const pHead = sP.addRow(['#', req.t('common.equipo'), req.t('_drivers-panel.piloto'), req.t('_drivers-panel.al_volante'),
+        req.t('_drivers-panel.mangas'), req.t('client.common.vueltas'), req.t('_drivers-panel.vph'), req.t('_drivers-panel.mejor'),
+        req.t('_drivers-panel.media'), req.t('_drivers-panel.const'), req.t('_drivers-panel.salidas'), req.t('_drivers-panel.pits')]);
+      pHead.height = 22;
+      pHead.eachCell(c => Object.assign(c, headerStyle));
+      sP.views = [{ state: 'frozen', ySplit: pHead.number }];
+      const fmtDrive = (ms) => {
+        if (!ms) return '';
+        const min = Math.round(ms / 60000);
+        return Math.floor(min / 60) + ':' + String(min % 60).padStart(2, '0');
+      };
+      driverStats.teams.forEach(tm => {
+        const rows = tm.unassigned ? [...tm.drivers, { ...tm.unassigned, name: req.t('_drivers-panel.sin_fichar') }] : tm.drivers;
+        rows.forEach(d => {
+          const row = sP.addRow([tm.position, tm.name, d.name, fmtDrive(d.drivingMs), d.mangas || '', d.laps,
+            d.lapsPerHour != null ? Math.round(d.lapsPerHour * 10) / 10 : '', fmtMs(d.bestMs),
+            d.avgMs != null ? fmtMs(Math.round(d.avgMs)) : '', fmtPct(d.consistency), d.exits || 0, d.pits || 0]);
+          row.eachCell(c => c.border = thinBorder);
+          row.getCell(7).numFmt = '0.0';
+          if (!tm.drivers.includes(d)) row.eachCell(c => c.font = { italic: true, color: { argb: 'FF6E7681' } });
+        });
+      });
+    }
 
     // ── Sheet 4 — Comparativa (PDF style with colors) ───────────────────────
     const laneSeq = (Race.getLaneSequence(race) || []).filter(l => l > 0);
