@@ -64,7 +64,11 @@ class GoOwnerService {
       const Pole = require('./PoleTimingService');
       if (!Pole.session || !(Pole.isStandby || Pole.isRunning || Pole.isPaused)) return null;
       const db = require('../config/database');
-      const row = db.prepare('SELECT race_id FROM pole_sessions WHERE id = ?').get(Pole.session.poleSessionId);
+      // Solo una sesión viva: al pasar del último piloto sin GO, la pole se
+      // cierra en la BD pero el servicio puede seguir armado en memoria.
+      const row = db.prepare(
+        "SELECT race_id FROM pole_sessions WHERE id = ? AND status IN ('in_progress', 'timing')"
+      ).get(Pole.session.poleSessionId);
       return row ? row.race_id : null;
     } catch { return null; }
   }

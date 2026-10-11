@@ -1255,7 +1255,7 @@
     "sigue_el_cronometraje_de_la_pole_en_directo": "Sigue el cronometraje de la pole en directo.",
     "sigue_el_timing_de_tu_equipo_en_directo_desde": "Sigue el timing de tu equipo en directo desde el móvil.",
     "sigue_tu_carrera_y_comparate_con_tus_rivales_en": "Sigue tu carrera y compárate con tus rivales en tiempo real.",
-    "entreno_no_abierto_carrera_en_curso": "No se ha abierto el entrenamiento libre al arrancar porque hay una carrera o una pole en curso."
+    "entreno_no_abierto_carrera_en_curso": "No se ha abierto el entrenamiento libre al arrancar porque el próximo GO es de una carrera con una tanda a medias o de una pole."
   },
   "import-preview": {
     "accion": "Acción",
@@ -1935,7 +1935,7 @@
     "ventana_pantalla": "Pantalla",
     "ventana_modo": "Cómo se abre",
     "ventana_abrir_al_iniciar": "Abrir al iniciar PitWall",
-    "ventana_abrir_al_iniciar_d": "No se abre si hay una carrera o una pole en curso: el próximo GO es de la carrera."
+    "ventana_abrir_al_iniciar_d": "No se abre si el próximo GO es de una carrera (con una tanda a medias) o de una pole."
   },
   "shifts-live": {
     "a_punto": "A punto",

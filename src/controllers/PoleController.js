@@ -335,6 +335,9 @@ class PoleController {
 
     // Si la pole sigue corriendo, finalizar persistiendo la mejor vuelta
     if (PoleTimingService.isRunning) PoleTimingService.finish(false);
+    // Armado sin GO (nadie llegó a salir): se desarma. Si no, al pasar del
+    // último la pole quedaba esperando un GO y se enganchaba al siguiente.
+    else if (PoleTimingService.isStandby) PoleTimingService.abort();
 
     const entries = PoleSession.getEntriesOrdered(session.id);
     const nextIdx = session.current_idx + 1;

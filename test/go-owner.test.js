@@ -158,3 +158,17 @@ test('una carrera pedida que ya no tiene nada que correr no se queda el GO', () 
   db.prepare(`UPDATE races SET status = 'finished' WHERE id = ?`).run(raceId);
   assert.equal(GoOwner.decide().owner, 'training');
 });
+
+test('una pole ya cerrada en la BD no se queda el GO aunque el servicio siga armado', () => {
+  const Pole = require('../src/services/PoleTimingService');
+  const sid = db.prepare(`INSERT INTO pole_sessions (race_id, status) VALUES (?, 'in_progress')`).run(raceId).lastInsertRowid;
+  const prev = { session: Pole.session, standby: Pole._standby };
+  Pole.session = { poleSessionId: sid }; Pole._standby = true;
+  try {
+    assert.equal(GoOwner.decide().owner, 'pole');
+    db.prepare(`UPDATE pole_sessions SET status = 'done' WHERE id = ?`).run(sid);
+    assert.equal(GoOwner.decide().owner, 'training');
+  } finally {
+    Pole.session = prev.session; Pole._standby = prev.standby;
+  }
+});

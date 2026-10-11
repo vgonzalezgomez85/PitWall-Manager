@@ -1255,7 +1255,7 @@
     "sigue_el_cronometraje_de_la_pole_en_directo": "Sigue el cronometraje de la pole en directo.",
     "sigue_el_timing_de_tu_equipo_en_directo_desde": "Sigue el timing de tu equipo en directo desde el móvil.",
     "sigue_tu_carrera_y_comparate_con_tus_rivales_en": "Sigue tu carrera y compárate con tus rivales en tiempo real.",
-    "entreno_no_abierto_carrera_en_curso": "Le prove libere non sono state aperte all'avvio perché c'è una gara o una pole in corso."
+    "entreno_no_abierto_carrera_en_curso": "Le prove libere non sono state aperte all'avvio perché il prossimo GO è di una gara con una tanda a metà o di una pole."
   },
   "import-preview": {
     "accion": "Acción",
@@ -1935,7 +1935,7 @@
     "ventana_pantalla": "Schermo",
     "ventana_modo": "Come si apre",
     "ventana_abrir_al_iniciar": "Apri all'avvio di PitWall",
-    "ventana_abrir_al_iniciar_d": "Non si apre se c'è una gara o una pole in corso: il prossimo GO è della gara."
+    "ventana_abrir_al_iniciar_d": "Non si apre se il prossimo GO è di una gara (con una tanda a metà) o di una pole."
   },
   "shifts-live": {
     "a_punto": "A punto",

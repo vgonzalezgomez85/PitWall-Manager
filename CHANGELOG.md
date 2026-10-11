@@ -13,6 +13,13 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.57.2] — 2026-10-11
+
+### Corregido
+- **La pole terminada podía engancharse al siguiente GO.** Al pasar del último piloto sin haber dado GO, la pole se cerraba pero seguía esperando un GO: el siguiente arrancaba a la vez esa pole fantasma y la manga (o se quedaba el GO del entreno). Ahora «Siguiente» la desarma, y una pole cerrada ya no cuenta como dueña del GO.
+- **Textos del arranque del entreno** (aviso del inicio y Ajustes → Ventanas y pantallas): ya no dicen que basta con una carrera en curso para no abrirlo; no se abre si el próximo GO es de una carrera con una tanda a medias o de una pole.
+- Kit de traducción (`traducciones/`) regenerado con los textos nuevos.
+
 ## [1.57.1] — 2026-10-11
 
 ### Corregido

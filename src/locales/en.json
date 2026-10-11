@@ -1255,7 +1255,7 @@
     "sigue_el_cronometraje_de_la_pole_en_directo": "Follow the live pole timing.",
     "sigue_el_timing_de_tu_equipo_en_directo_desde": "Follow your team timing live from your phone.",
     "sigue_tu_carrera_y_comparate_con_tus_rivales_en": "Follow your race and compare with rivals in real time.",
-    "entreno_no_abierto_carrera_en_curso": "Free practice was not opened at startup because a race or a pole is in progress."
+    "entreno_no_abierto_carrera_en_curso": "Free practice was not opened at startup because the next GO belongs to a race with a round half-run or to a pole session."
   },
   "import-preview": {
     "accion": "Action",
@@ -1935,7 +1935,7 @@
     "ventana_pantalla": "Screen",
     "ventana_modo": "How it opens",
     "ventana_abrir_al_iniciar": "Open when PitWall starts",
-    "ventana_abrir_al_iniciar_d": "It does not open if a race or a pole is in progress: the next GO belongs to the race."
+    "ventana_abrir_al_iniciar_d": "It does not open if the next GO belongs to a race (with a round half-run) or to a pole session."
   },
   "shifts-live": {
     "a_punto": "Near",
