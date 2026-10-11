@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.56.2] — 2026-10-11
+
+### Corregido
+- **La pole no cantaba los tiempos.** La pantalla de cronometraje de la pole no tenía voz (solo el directo y el entreno). Ahora canta cada vuelta del piloto en pista: «Nueva pole, 11 con 85» si bate la pole, «Mejor vuelta, …» si mejora la suya y, si no, solo el tiempo. Interruptor **Cantar tiempos** en la barra superior, activo por defecto y recordado en cada navegador (también para los invitados).
+
 ## [1.56.1] — 2026-10-11
 
 ### Mejorado

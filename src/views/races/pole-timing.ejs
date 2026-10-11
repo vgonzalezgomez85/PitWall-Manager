@@ -83,6 +83,16 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
     </div>
     <% } %>
 
+    <!-- ── Voz: cantar el tiempo de cada vuelta (preferencia local del navegador) ── -->
+    <div class="pole-omit">
+      <label class="pole-omit-switch" title="<%= t('pole-timing.si_esta_activo_se_cantan_los_tiempos') %>">
+        <input type="checkbox" id="voiceToggle">
+        <span class="pole-omit-track"><span class="pole-omit-thumb"></span></span>
+      </label>
+      <span class="pole-omit-text"><%= t('pole-timing.cantar_tiempos') %></span>
+      <span id="voiceState" class="pole-omit-state"></span>
+    </div>
+
     </div><!-- /.pole-topbar -->
 
     <!-- ── Grid principal ────────────────────────────────────────────── -->
@@ -270,6 +280,33 @@ function fmtDelta(ms) {
   const sign = ms >= 0 ? '+' : '−';
   return sign + (Math.abs(ms) / 1000).toFixed(3);
 }
+// ── Voz ──────────────────────────────────────────────────────────────────
+const POLE_VOICE_KEY = 'pitwall.pole.voice';
+let voiceOn = (() => { try { return localStorage.getItem(POLE_VOICE_KEY) !== '0'; } catch { return true; } })();
+const speechQueue = [];
+let   speechBusy  = false;
+function formatMsForSpeech(ms) {
+  const totalSec = Math.floor(ms / 1000);
+  const hStr = String(Math.floor((ms % 1000) / 10)).padStart(2, '0');
+  const secs = totalSec % 60, mins = Math.floor(totalSec / 60);
+  if (mins > 0) return `${mins}:${String(secs).padStart(2, '0')}.${hStr}`;
+  return I18N.t('client.js.secs_con_hstr', { secs, hStr });
+}
+function drainSpeech() {
+  if (!speechQueue.length) { speechBusy = false; return; }
+  speechBusy = true;
+  const utt = new SpeechSynthesisUtterance(speechQueue.shift());
+  utt.lang  = I18N.locale;
+  utt.rate  = 1.15;
+  utt.onend = utt.onerror = drainSpeech;
+  window.speechSynthesis.speak(utt);
+}
+function announce(text) {
+  if (!window.speechSynthesis || !voiceOn) return;
+  speechQueue.push(text);
+  if (!speechBusy) drainSpeech();
+}
+
 function show(id) { const el = document.getElementById(id); if (el) el.style.display = ''; }
 function hide(id) { const el = document.getElementById(id); if (el) el.style.display = 'none'; }
 
@@ -662,6 +699,12 @@ socket.on('pole:tick', ({ remainingMs, currentLapMs }) => {
 });
 
 socket.on('pole:lap', ({ lapNumber, lapTimeMs, bestLapMs, improved }) => {
+  // Antes de updateEntryTime: comparar contra la pole que había ANTES de esta vuelta.
+  const isNewPole = improved && (poleBestMs == null || bestLapMs < poleBestMs);
+  const time = formatMsForSpeech(lapTimeMs);
+  announce(isNewPole ? I18N.t('client.pole-timing.voz_nueva_pole', { time })
+         : improved  ? I18N.t('client.pole-timing.voz_mejor_vuelta', { time })
+         :             time);
   const bestEl = document.getElementById('js-best-val');
   if (bestEl) bestEl.textContent = formatMs(bestLapMs);
   if (improved && currentEntryName) updateEntryTime(currentEntryName, bestLapMs);
@@ -714,6 +757,22 @@ if (IS_RUNNING) {
     paint();
     if (tgl.checked && state === 'finished') scheduleAutoAdvance();
     else clearAutoAdvance();
+  });
+})();
+
+// ── Toggle: cantar tiempos (preferencia local del navegador, activo por defecto) ──
+(function () {
+  const tgl   = document.getElementById('voiceToggle');
+  const label = document.getElementById('voiceState');
+  if (!tgl) return;
+  function paint() { if (label) label.textContent = tgl.checked ? 'ON' : 'OFF'; }
+  tgl.checked = voiceOn;
+  paint();
+  tgl.addEventListener('change', () => {
+    voiceOn = tgl.checked;
+    try { localStorage.setItem(POLE_VOICE_KEY, voiceOn ? '1' : '0'); } catch {}
+    if (!voiceOn) { speechQueue.length = 0; window.speechSynthesis?.cancel(); speechBusy = false; }
+    paint();
   });
 })();
 

@@ -385,7 +385,9 @@
       "siguiente_piloto_en": "Next pilot in ",
       "sin_referencia": "No reference",
       "pulsa_go_para_empezar": "Press GO to start",
-      "n_vueltas": "· {{n}} laps"
+      "n_vueltas": "· {{n}} laps",
+      "voz_mejor_vuelta": "Best lap, {{time}}",
+      "voz_nueva_pole": "New pole, {{time}}"
     },
     "race": {
       "borrar_este_cambio_devuelve_el_juego_a": "Delete this change? Returns the set to available.",
@@ -1559,7 +1561,9 @@
     "no_se_presenta": "No-show →",
     "confirmar_ausencia": "Confirm absent →",
     "confirm_salto_1": "{{nombre}} isn't on track. They'll move to the end of the queue and get another chance later.",
-    "confirm_salto_2": "{{nombre}} is still not showing up. They'll be marked ABSENT (0.00) with no further chances."
+    "confirm_salto_2": "{{nombre}} is still not showing up. They'll be marked ABSENT (0.00) with no further chances.",
+    "cantar_tiempos": "Announce times",
+    "si_esta_activo_se_cantan_los_tiempos": "When on, the lap time of the driver on track is read out loud on every lap"
   },
   "qr-all": {
     "imprimir_todos": "Print all",

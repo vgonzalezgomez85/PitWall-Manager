@@ -385,7 +385,9 @@
       "siguiente_piloto_en": "Siguiente piloto en ",
       "sin_referencia": "Sin referencia",
       "pulsa_go_para_empezar": "Pulsa GO para empezar",
-      "n_vueltas": "· {{n}} vueltas"
+      "n_vueltas": "· {{n}} vueltas",
+      "voz_mejor_vuelta": "Mejor vuelta, {{time}}",
+      "voz_nueva_pole": "Nueva pole, {{time}}"
     },
     "race": {
       "borrar_este_cambio_devuelve_el_juego_a": "¿Borrar este cambio? Devuelve el juego a disponibles.",
@@ -1559,7 +1561,9 @@
     "no_se_presenta": "No se presenta →",
     "confirmar_ausencia": "Confirmar ausencia →",
     "confirm_salto_1": "{{nombre}} no está en pista. Pasará al final de la cola y tendrá otra oportunidad cuando le vuelva a tocar.",
-    "confirm_salto_2": "{{nombre}} sigue sin presentarse. Quedará marcado como AUSENTE (0.00) y no tendrá más oportunidades."
+    "confirm_salto_2": "{{nombre}} sigue sin presentarse. Quedará marcado como AUSENTE (0.00) y no tendrá más oportunidades.",
+    "cantar_tiempos": "Cantar tiempos",
+    "si_esta_activo_se_cantan_los_tiempos": "Si está activo, se canta en voz alta el tiempo de cada vuelta del piloto en pista"
   },
   "qr-all": {
     "imprimir_todos": "Imprimir todos",
