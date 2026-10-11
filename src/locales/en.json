@@ -1615,7 +1615,7 @@
     "no_hay_fotos_registradas": "No photos recorded.",
     "no_hay_ninguna_carrera_de_resistencia_activa": "No active endurance race",
     "nota": "Note",
-    "ojo_tambien_esta_en_curso_v_el_siguiente_go_del": " Note: “{{v2}}” is also active. The next DS GO goes to the first pending heat of any active race.",
+    "ojo_tambien_esta_en_curso_v_el_siguiente_go_del": " Note: “{{v2}}” is also active. The DS GO goes to the race whose live view of the heat to run you open on the track computer (or the one with a round half-run).",
     "opcional": "optional",
     "peso_carroceria": "Body weight",
     "peso_completo": "Full weight",

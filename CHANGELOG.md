@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.57.1] — 2026-10-11
+
+### Corregido
+- **El aviso al poner una segunda carrera «En curso» ya no es cierto desde la v1.57.0**: decía que el GO del DS va a la primera manga pendiente de cualquier carrera en curso. Ahora dice que lo coge la carrera cuyo directo de la manga que toca abras en el ordenador de la pista (o la que tenga una tanda a medias).
+
 ## [1.57.0] — 2026-10-11
 
 ### Mejorado

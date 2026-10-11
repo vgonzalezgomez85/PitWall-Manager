@@ -1615,7 +1615,7 @@
     "no_hay_fotos_registradas": "No hay fotos registradas.",
     "no_hay_ninguna_carrera_de_resistencia_activa": "No hay ninguna carrera de resistencia activa",
     "nota": "Nota",
-    "ojo_tambien_esta_en_curso_v_el_siguiente_go_del": " Ojo: también está en curso «{{v}}». El siguiente GO del DS va a la primera manga pendiente de cualquier carrera en curso.",
+    "ojo_tambien_esta_en_curso_v_el_siguiente_go_del": " Ojo: también está en curso «{{v}}». El GO del DS lo coge la carrera cuyo directo de la manga que toca abras en el ordenador de la pista (o la que tenga una tanda a medias).",
     "opcional": "opcional",
     "peso_carroceria": "Peso carrocería",
     "peso_completo": "Peso completo",
