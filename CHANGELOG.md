@@ -13,6 +13,12 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.60.1] — 2026-10-12
+
+### Corregido
+- **La pestaña «Pilotos» se quedaba con el nombre viejo**: su columna decía «Const.» mientras el resto de la app ya decía «Consistencia». Ahora también ahí —con su ayuda, que explica el cálculo nuevo— y en la hoja «Pilotos» del Excel.
+- **«Δ consistencia» pasa a llamarse «Δ media-mejor»** en las estadísticas del directo y en las estadísticas avanzadas de resultados: la etiqueta engañaba, porque ese número es la media menos la mejor vuelta (el margen de ritmo), no una diferencia de consistencia.
+
 ## [1.60.0] — 2026-10-12
 
 ### Mejorado
