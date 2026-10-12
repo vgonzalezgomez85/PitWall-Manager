@@ -1924,7 +1924,7 @@
     "varias_cajas_ds_por_un_solo_puerto_com": "Varias cajas DS por un solo puerto COM.",
     "visor_de_tramas_en_vivo": "Visor de tramas en vivo",
     "vuelta_media_ms": "Vuelta media (ms)",
-    "vueltas_reales_a_igualdad_menos_tiempo_total": "Vueltas reales (a igualdad, menos tiempo total)",
+    "vueltas_reales_a_igualdad_menos_tiempo_total": "Vueltas reales (a igualdad, desempate de la clasificación: coma)",
     "ventanas_y_pantallas": "Ventanas y pantallas",
     "ventanas_intro": "En qué pantalla y cómo se abre cada ventana. Se guarda en este ordenador y se aplica al abrirla.",
     "ventanas_solo_escritorio": "Solo en la app de escritorio de PitWall: el navegador no puede colocar ventanas en otra pantalla.",

@@ -1924,7 +1924,7 @@
     "varias_cajas_ds_por_un_solo_puerto_com": "Several DS boxes over one COM port.",
     "visor_de_tramas_en_vivo": "Live frame viewer",
     "vuelta_media_ms": "Avg lap time (ms)",
-    "vueltas_reales_a_igualdad_menos_tiempo_total": "Actual laps (ties: lower total time)",
+    "vueltas_reales_a_igualdad_menos_tiempo_total": "Actual laps (ties: standings tie-break, by comma)",
     "ventanas_y_pantallas": "Windows and screens",
     "ventanas_intro": "Which screen each window opens on, and how. Saved on this computer and applied when the window opens.",
     "ventanas_solo_escritorio": "Desktop app only: a browser cannot place windows on another screen.",

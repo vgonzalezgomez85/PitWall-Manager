@@ -13,6 +13,12 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.59.1] — 2026-10-12
+
+### Corregido
+- **Directo con «Orden del directo» en «Vueltas reales»**: a igualdad de vueltas, las tarjetas y filas desempataban por menor tiempo total e ignoraban la **coma**, así que salían en distinto orden que la clasificación estimada y los resultados. Ahora aplican el **mismo desempate** que la clasificación: en la manga en curso, delante quien cruzó antes; si no, manda la coma corregida a mano, después quien cruzó antes en la misma manga final y, por último, la coma de la última manga.
+- El texto del ajuste lo dice: «Vueltas reales (a igualdad, desempate de la clasificación: coma)».
+
 ## [1.59.0] — 2026-10-12
 
 ### Añadido

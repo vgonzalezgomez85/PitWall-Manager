@@ -1590,6 +1590,30 @@ function posClass(pos) {
 
 let prevLaneGap = {};
 
+// Desempate a igualdad de vueltas reales (Ajustes → «Orden del directo» =
+// vueltas): la misma regla que resultados y la clasificación estimada
+// (src/utils/tieBreak.js). En la manga en curso manda quien cruzó antes; si no,
+// la última manga cerrada: coma corregida a mano > instante del cruce > coma.
+function lapsTieBreak(a, b) {
+  if (!a.isRest && !b.isRest) {
+    const ca = mangaCrossMs[a.lane], cb = mangaCrossMs[b.lane];
+    if (ca != null && cb != null && ca !== cb) return ca - cb;
+  }
+  const pa = (RACE_DATA.allParticipants || []).find(p => p.entity_name === a.name);
+  const pb = (RACE_DATA.allParticipants || []).find(p => p.entity_name === b.name);
+  if (pa && pb) {
+    if (!pa.last_manga_coma_manual && !pb.last_manga_coma_manual
+        && pa.last_manga_id != null && pa.last_manga_id === pb.last_manga_id
+        && pa.last_manga_cross_ms != null && pb.last_manga_cross_ms != null
+        && pa.last_manga_cross_ms !== pb.last_manga_cross_ms) {
+      return pa.last_manga_cross_ms - pb.last_manga_cross_ms;
+    }
+    const byComa = (pb.last_manga_coma || 0) - (pa.last_manga_coma || 0);
+    if (byComa) return byComa;
+  }
+  return (a.totalTimeMs ?? Infinity) - (b.totalTimeMs ?? Infinity);
+}
+
 function sortCards(rows) {
   // Equipos que descansan ESTA manga: no corren, pero tienen vueltas totales
   // acumuladas. Se integran en la clasificación por sus vueltas totales para
@@ -1618,7 +1642,7 @@ function sortCards(rows) {
 
   const sorted = [...rows.filter(r => !r.isRest), ...restRows].sort((a, b) =>
     hasGlobal ? (posOf(a) - posOf(b))
-              : (totalOf(b) - totalOf(a) || (a.totalTimeMs ?? Infinity) - (b.totalTimeMs ?? Infinity)));
+              : (totalOf(b) - totalOf(a) || lapsTieBreak(a, b)));
 
   // FLIP: mide la posición de cada tarjeta ANTES de tocar su `order` (ver
   // más abajo) para poder deslizarla a la nueva en vez de que salte de golpe.
