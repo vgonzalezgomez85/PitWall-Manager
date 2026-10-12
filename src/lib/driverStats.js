@@ -32,8 +32,8 @@
 //   · vueltas: todas las no fantasma (salidas y pit-stops incluidos);
 //   · mejor: sin salidas, sin cruce de salida, desde la vuelta 2 y sin repuestas;
 //   · media: sin cruce de salida (con salidas/pits, como la media del equipo);
-//   · consistencia: la de la Comparativa (sin salidas, desde la vuelta 2, ≥ Pt).
-const { robustConsistency, MIN_CONSISTENCY_LAPS } = require('./consistency');
+//   · consistencia: la de la Comparativa (sin salidas ni estimadas, vuelta 2+, ≥ Pt).
+const { stintConsistency } = require('./consistency');
 
 // Margen del cruce: la hora de la vuelta se guarda al segundo y la del turno al ms.
 const TS_SLACK_MS = 999;
@@ -89,7 +89,7 @@ function buildDriverStats({ laps, shifts, minLapMs = 0 }) {
     let a = team.get(name);
     if (!a) {
       a = { name, drivingMs: 0, mangas: new Set(), laps: 0, bestMs: null,
-            sumMs: 0, nAvg: 0, clean: [], exits: 0, pits: 0 };
+            sumMs: 0, nAvg: 0, cleanStints: new Map(), exits: 0, pits: 0 };
       team.set(name, a);
     }
     return a;
@@ -115,14 +115,18 @@ function buildDriverStats({ laps, shifts, minLapMs = 0 }) {
     if (!l.is_warmup) { a.sumMs += l.lap_time_ms; a.nAvg++; }
     const bestable = !l.is_exit && !l.is_warmup && !l.is_estimated && l.lap_number > 1;
     if (bestable && (a.bestMs == null || l.lap_time_ms < a.bestMs)) a.bestMs = l.lap_time_ms;
-    if (!l.is_exit && !l.is_warmup && l.lap_number > 1 && l.lap_time_ms >= minLapMs) a.clean.push(l.lap_time_ms);
+    if (!l.is_exit && !l.is_estimated && !l.is_warmup && l.lap_number > 1 && l.lap_time_ms >= minLapMs) {
+      let st = a.cleanStints.get(l.manga_id);
+      if (!st) { st = []; a.cleanStints.set(l.manga_id, st); }
+      st.push(l.lap_time_ms);
+    }
   }
 
   const teams = new Map();
   for (const [teamId, byName] of acc) {
     const out = { drivers: [], unassigned: null };
     for (const a of byName.values()) {
-      const c = robustConsistency(a.clean, MIN_CONSISTENCY_LAPS);
+      const c = stintConsistency(a.cleanStints.values());
       const row = {
         name:        a.name,
         drivingMs:   a.drivingMs,

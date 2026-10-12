@@ -51,15 +51,6 @@
   <!-- ── Panel del piloto (modo B) ──────────────────────────────────────── -->
   <section class="ls-section" id="lsMeSection" data-lsview="manga proj" hidden>
     <h2 class="ls-section__title">🏁 <span id="lsMeName">—</span></h2>
-    <!-- Conmutador de alcance de la consistencia (global: tarjeta + comparativa) -->
-    <div class="ls-consmode-bar">
-      <span class="ls-consmode-bar__lbl">📊 <%= t('show.consistencia') %></span>
-      <div class="ls-consmode" id="lsConsModes" role="group" aria-label="<%= t('show.alcance_de_la_consistencia') %>">
-        <button type="button" class="ls-cmode is-active" data-consscope="clean"><%= t('show.sin_salidas') %></button>
-        <button type="button" class="ls-cmode" data-consscope="all"><%= t('show.con_salidas') %></button>
-      </div>
-      <span class="ls-consmode-bar__hint" id="lsConsHint"></span>
-    </div>
     <div class="ls-grid ls-grid--4">
       <div class="ls-card">
         <div class="ls-card__label"><%= t('livestats.posicion') %></div>
@@ -372,12 +363,6 @@
   .ls-cons__level.is-bad  .ls-cons__txt { color:#f85149 }
   .ls-cons__de { color:#8b949e; font-weight:600 }
   .ls-cons__de::before { content:'· ' }
-  /* Conmutador de alcance de consistencia (sin/con salidas y pits) */
-  .ls-consmode-bar { display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; margin:0 0 .9rem }
-  .ls-consmode-bar__lbl { color:#8b949e; font-size:.75rem; text-transform:uppercase; letter-spacing:.05em; font-weight:600 }
-  .ls-consmode { display:inline-flex; gap:6px }
-  .ls-consmode-bar__hint { color:#6e7681; font-size:.78rem }
-  @media (max-width:640px){ .ls-consmode-bar__hint { flex-basis:100%; margin-top:-.2rem } }
   /* Consistencia en la tabla comparativa: punto + % (+DE opcional) */
   .ls-cmp2 .ls-conscell { display:inline-flex; align-items:center; gap:.3rem; white-space:nowrap }
   .ls-cmp2 .ls-conscell__dot { width:8px; height:8px; border-radius:50%; flex:0 0 auto; background:#6e7681 }
@@ -440,26 +425,13 @@
     return '±' + (stdMs / 1000).toFixed(2).replace('.', ',') + ' s';
   }
 
-  // Alcance de consistencia: 'clean' = solo vueltas limpias (por defecto),
-  // 'all' = incluye salidas y pit-stops. Un único conmutador global que afecta
-  // tanto a la tarjeta de "Mi panel" como a la fila de la comparativa.
-  let consScope = 'clean';
-  try { consScope = localStorage.getItem('ls-cons-scope') === 'all' ? 'all' : 'clean'; } catch (e) {}
-
-  // Devuelve {pct, stdMs, level} de una entidad según el alcance elegido y la
-  // vista (manga → consistency*/consistencyAll*; proyectada → raceConsistency*/
-  // raceConsistencyAll*). Maneja null en ambas variantes.
+  // Devuelve {pct, stdMs, level} de una entidad: de manga (consistency*) o de
+  // carrera (raceConsistency*). Null si no hay muestra suficiente.
   function consOf(e, isProj) {
     if (!e) return { pct: null, stdMs: null, level: null };
-    const all = consScope === 'all';
-    if (isProj) {
-      return all
-        ? { pct: e.raceConsistencyAll, stdMs: e.raceConsistencyAllStdMs, level: e.raceConsistencyAllLevel }
-        : { pct: e.raceConsistency,    stdMs: e.raceConsistencyStdMs,    level: e.raceConsistencyLevel };
-    }
-    return all
-      ? { pct: e.consistencyAll, stdMs: e.consistencyAllStdMs, level: e.consistencyAllLevel }
-      : { pct: e.consistency,    stdMs: e.consistencyStdMs,    level: e.consistencyLevel };
+    return isProj
+      ? { pct: e.raceConsistency,    stdMs: e.raceConsistencyStdMs,    level: e.raceConsistencyLevel }
+      : { pct: e.consistency,        stdMs: e.consistencyStdMs,        level: e.consistencyLevel };
   }
 
   // Initialise UI from localStorage
@@ -924,27 +896,6 @@
       cmpChart.update();
     }
   }
-
-  // Conmutador de alcance de la consistencia (sin/con salidas y pits). Global:
-  // re-renderiza "Mi panel" y la fila de la comparativa con el set elegido.
-  function updateConsHint() {
-    const el = $('lsConsHint');
-    if (el) el.textContent = consScope === 'all'
-      ? (I18N.t('client.show.incluye_salidas_y_paradas'))
-      : (I18N.t('client.show.solo_vueltas_limpias'));
-  }
-  document.querySelectorAll('#lsConsModes .ls-cmode').forEach(btn => {
-    btn.classList.toggle('is-active', btn.dataset.consscope === consScope);
-    btn.addEventListener('click', () => {
-      consScope = btn.dataset.consscope;
-      try { localStorage.setItem('ls-cons-scope', consScope); } catch (e) {}
-      document.querySelectorAll('#lsConsModes .ls-cmode')
-        .forEach(b => b.classList.toggle('is-active', b === btn));
-      updateConsHint();
-      if (latestData) render(latestData);
-    });
-  });
-  updateConsHint();
 
   // Conmutador de modo de la gráfica de la comparativa.
   document.querySelectorAll('#lsCmpModes .ls-cmode').forEach(btn => {

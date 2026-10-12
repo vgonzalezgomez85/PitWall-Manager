@@ -83,7 +83,6 @@ function norm(b) {
   return {
     raceByKey: m2o(b.raceByKey),
     raceConsByKey: m2o(b.raceConsByKey),
-    raceConsAllByKey: m2o(b.raceConsAllByKey),
     raceExitTimesByKey: m2o(b.raceExitTimesByKey),
     raceProgress: b.raceProgress,
   };

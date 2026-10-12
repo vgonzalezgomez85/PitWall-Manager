@@ -498,9 +498,7 @@
     },
     "show": {
       "equipo_piloto": "Equipo/Piloto",
-      "incluye_salidas_y_paradas": "incluye salidas y paradas",
       "pit_stops": "Pit-stops",
-      "solo_vueltas_limpias": "solo vueltas limpias",
       "vueltas_totales": "Vueltas totales"
     },
     "tanda-edit": {
@@ -1692,7 +1690,7 @@
     "completa_al_menos_una_manga_para_ver_el_resto": "Completa al menos una manga para ver el resto de resultados.",
     "completa_al_menos_una_manga_para_ver_resultados": "Completa al menos una manga para ver resultados.",
     "con_salidas_pit_stops": "Con salidas/pit-stops",
-    "const_sin": "Const. sin",
+    "const_sin": "Consistencia",
     "delta_vs_media": "Delta vs media",
     "descarga_un_index_html_autocontenido_para": "Descarga un index.html autocontenido para publicar en GitHub Pages",
     "desde_manga": "Desde manga",
@@ -2037,7 +2035,6 @@
   "show": {
     "actualizar_desde_catalogo": "Actualizar desde catálogo",
     "al_finalizar": "Al finalizar",
-    "alcance_de_la_consistencia": "Alcance de la consistencia",
     "anadidas": " añadidas",
     "anadir_tanda_1": "Añadir Tanda 1",
     "asignar_carriles": "Asignar carriles",
@@ -2059,7 +2056,6 @@
     "completar_carrera": "Completar carrera",
     "con_salidas": "Con salidas",
     "configuracion_elige_el_carril_y_arranca": "⏱ Configuración — elige el carril y arranca",
-    "consistencia": "Consistencia",
     "continuar": "Continuar",
     "descansa": "descansa",
     "descansa_en_la_manga_en_curso": "Descansa en la manga en curso",
@@ -2100,7 +2096,6 @@
     "salidas_de_pista_pit_stops_cambios_de_neumatico_2": "Salidas de pista / pit-stops / cambios de neumático 🛞 en esta manga",
     "sesion_en_curso": "⏱ Sesión en curso",
     "sin_pole": "Sin Pole",
-    "sin_salidas": "Sin salidas",
     "sobre_la_media": "Sobre la media",
     "sucesos": "Sucesos",
     "tandas": "Tandas",

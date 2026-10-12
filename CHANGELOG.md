@@ -13,6 +13,15 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.60.0] — 2026-10-12
+
+### Mejorado
+- **La consistencia ahora distingue de verdad.** Antes medía tu *variación* (el clásico coeficiente de variación) y salía entre 96% y 99% casi para todo el pelotón; además, una sola vuelta de tráfico desmadraba el número y las mangas se mezclaban entre sí. Ahora mide **qué porcentaje de tus vueltas limpias caen dentro del ±1,5% de tu tiempo típico (la mediana) de esa manga**: «el 85% de mis vueltas fueron a mi ritmo, el 15% se me fue». Se calcula **manga a manga** (cambiar de coche o de carril no cuenta como inconsistencia) y se agrega por vueltas, así que es robusta: una vuelta loca se queda fuera de la banda y no te estropea el número. Cuenta vueltas limpias de la 2ª en adelante (sin cruce de salida, sin salidas ni pits, sin fantasmas y sin repuestas automáticas).
+- **Los niveles van con la nueva escala**: **excelente** desde 90%, **buena** desde 75%, **irregular** desde 60% y **errática** por debajo. Se acabó el «96 en todo el pelotón».
+- **El ±DE en segundos es ahora robusto.** Junto al % sigues viendo el dato de apoyo (*±0,13 s*), pero calculado para que **una vuelta mala aislada no lo infle**: es lo que de verdad oscilas, vuelta a vuelta, respecto a tu ritmo de esa manga.
+- **En los resultados la fila se llama «Consistencia»** (antes «Const. sin») en la pantalla y en el Excel (hoja «Comparativa»). La web y el Excel usan la misma cifra que las estadísticas en vivo, en la manga y en la clasificación proyectada.
+- **Fuera el conmutador «Sin salidas / Con salidas»** de la vista de estadísticas en vivo: con la métrica nueva solo hace falta un número, siempre sobre vueltas limpias. En el JSON de `/race-stats/:id/json` desaparecen los campos `consistencyAll*` y `raceConsistencyAll*` — aviso por si algún cliente externo (la app PitWall Lap, p. ej.) los leyera.
+
 ## [1.59.1] — 2026-10-12
 
 ### Corregido

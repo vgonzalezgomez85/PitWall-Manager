@@ -32,8 +32,7 @@
 //    build(raceId, { db, minLapMs, consistency }) → {
 //      raceByKey:          Map<key, {entity_name,total_laps,pace_all_ms,
 //                                    pace_clean_ms,best_ms,exits,pits,mangas_raced}>
-//      raceConsByKey:      Map<key, {pct,stdMs,level,meanMs,...}>  (ritmo puro)
-//      raceConsAllByKey:   Map<key, {...}>                         (regularidad)
+//      raceConsByKey:      Map<key, {pct,stdMs,medMs,level,n,stints}>
 //      raceExitTimesByKey: Map<key, number[]>
 //      raceProgress:       { mangas:number[], byName:{}, avgByName:{} }
 //    }
@@ -42,7 +41,7 @@
 
 function build(raceId, deps = {}) {
   const db = deps.db || require('../config/database');
-  const { robustConsistency, MIN_CONSISTENCY_LAPS } =
+  const { stintConsistency } =
     deps.consistency || require('../lib/consistency');
   // Numérico y saneado: se interpola en el SQL igual que hacía el controlador.
   const ml = Math.max(0, parseInt(deps.minLapMs, 10) || 0);
@@ -71,46 +70,41 @@ function build(raceId, deps = {}) {
   const raceByKey = new Map();
   raceWide.forEach(r => raceByKey.set(r.key, r));
 
-  // ── Consistencia race-wide ROBUSTA (CV filtrado sobre mediana/MAD, en JS) ──
-  // Una sola query trae las vueltas elegibles CON su flag is_exit; en memoria se
-  // parten en dos muestras por entidad: SIN salidas (ritmo puro, con filtro de
-  // incidentes) y CON salidas (regularidad real del stint, sin filtro).
+  // ── Consistencia race-wide (banda ±1.5% por manga, en JS) ──────────────────
+  // Una sola query trae las vueltas elegibles (sin salidas ni estimadas) CON su
+  // manga; en memoria se agrupan por entidad → manga y se llama a
+  // stintConsistency. Los tiempos de salidas/pits se recogen aparte (perdido total).
   const eligibleLapRows = db.prepare(`
     SELECT
       CASE WHEN l.team_id IS NOT NULL THEN 'team_' || l.team_id ELSE 'driver_' || l.driver_id END AS key,
       l.lap_time_ms AS t,
+      l.manga_id AS manga_id,
       l.is_exit AS is_exit
     FROM laps l
     JOIN mangas m ON m.id = l.manga_id
     JOIN tandas t ON t.id = m.tanda_id
     WHERE t.race_id = ?
-      AND l.is_ghost = 0 AND l.is_warmup = 0
+      AND l.is_ghost = 0 AND l.is_warmup = 0 AND l.is_estimated = 0
       AND l.lap_number > 1 AND l.lap_time_ms >= ${ml}
   `).all(raceId);
-  const raceCleanByKey = new Map();      // SIN salidas/pits
-  const raceAllByKey   = new Map();      // CON salidas/pits
+  const raceStintsByKey = new Map();     // key → Map(manga_id → [t]) sin salidas/estimadas
   const raceExitTimesByKey = new Map();  // solo los tiempos de salidas/pits (perdido total)
   for (const r of eligibleLapRows) {
-    let all = raceAllByKey.get(r.key);
-    if (!all) { all = []; raceAllByKey.set(r.key, all); }
-    all.push(r.t);
-    if (!r.is_exit) {
-      let cln = raceCleanByKey.get(r.key);
-      if (!cln) { cln = []; raceCleanByKey.set(r.key, cln); }
-      cln.push(r.t);
-    } else {
+    if (r.is_exit) {
       let ex = raceExitTimesByKey.get(r.key);
       if (!ex) { ex = []; raceExitTimesByKey.set(r.key, ex); }
       ex.push(r.t);
+      continue;
     }
+    let stints = raceStintsByKey.get(r.key);
+    if (!stints) { stints = new Map(); raceStintsByKey.set(r.key, stints); }
+    let st = stints.get(r.manga_id);
+    if (!st) { st = []; stints.set(r.manga_id, st); }
+    st.push(r.t);
   }
-  const raceConsByKey    = new Map();  // SIN
-  const raceConsAllByKey = new Map();  // CON
-  for (const [key, times] of raceCleanByKey) {
-    raceConsByKey.set(key, robustConsistency(times, MIN_CONSISTENCY_LAPS));
-  }
-  for (const [key, times] of raceAllByKey) {
-    raceConsAllByKey.set(key, robustConsistency(times, MIN_CONSISTENCY_LAPS, { filterIncidents: false }));
+  const raceConsByKey = new Map();
+  for (const [key, stints] of raceStintsByKey) {
+    raceConsByKey.set(key, stintConsistency(stints.values()));
   }
 
   // ── Progreso de carrera: vueltas acumuladas y media limpia manga a manga ───
@@ -142,7 +136,7 @@ function build(raceId, deps = {}) {
     });
   });
 
-  return { raceByKey, raceConsByKey, raceConsAllByKey, raceExitTimesByKey, raceProgress };
+  return { raceByKey, raceConsByKey, raceExitTimesByKey, raceProgress };
 }
 
 module.exports = { build };

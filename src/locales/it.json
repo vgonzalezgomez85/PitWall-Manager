@@ -498,9 +498,7 @@
     },
     "show": {
       "equipo_piloto": "Team/Pilota",
-      "incluye_salidas_y_paradas": "include partenze e soste",
       "pit_stops": "Pit-stop",
-      "solo_vueltas_limpias": "solo giri puliti",
       "vueltas_totales": "Giri totali"
     },
     "tanda-edit": {
@@ -1692,7 +1690,7 @@
     "completa_al_menos_una_manga_para_ver_el_resto": "Completa almeno una manche per vedere il resto dei risultati.",
     "completa_al_menos_una_manga_para_ver_resultados": "Completa almeno una manche per vedere i risultati.",
     "con_salidas_pit_stops": "Con uscite/pit-stop",
-    "const_sin": "Cost. senza",
+    "const_sin": "Consistenza",
     "delta_vs_media": "Delta vs media",
     "descarga_un_index_html_autocontenido_para": "Scarica un index.html autocontenuto da pubblicare su GitHub Pages",
     "desde_manga": "Dalla manche",
@@ -2037,7 +2035,6 @@
   "show": {
     "actualizar_desde_catalogo": "Aggiorna dal catalogo",
     "al_finalizar": "Alla conclusione",
-    "alcance_de_la_consistencia": "Ambito della consistenza",
     "anadidas": " aggiunte",
     "anadir_tanda_1": "Aggiungi batteria 1",
     "asignar_carriles": "Assegna corsie",
@@ -2059,7 +2056,6 @@
     "completar_carrera": "Concludi gara",
     "con_salidas": "Con partenze",
     "configuracion_elige_el_carril_y_arranca": "⏱ Configurazione — scegli la corsia e parti",
-    "consistencia": "Consistenza",
     "continuar": "Continua",
     "descansa": "riposa",
     "descansa_en_la_manga_en_curso": "Riposa nella manche in corso",
@@ -2100,7 +2096,6 @@
     "salidas_de_pista_pit_stops_cambios_de_neumatico_2": "Uscite di pista / pit-stop / cambi gomme 🛞 in questa manche",
     "sesion_en_curso": "⏱ Sessione in corso",
     "sin_pole": "Senza Pole",
-    "sin_salidas": "Senza partenze",
     "sobre_la_media": "Sopra la media",
     "sucesos": "Eventi",
     "tandas": "Batterie",

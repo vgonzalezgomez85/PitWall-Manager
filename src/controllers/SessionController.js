@@ -30,7 +30,7 @@ const TimingService  = require('../services/TimingService');
 const GoOwnerService = require('../services/GoOwnerService');
 const RaceEventLog   = require('../services/RaceEventLog');
 const ExportGuard    = require('../services/ExportGuard');
-const { robustConsistency, MIN_CONSISTENCY_LAPS } = require('../lib/consistency');
+const { stintConsistency } = require('../lib/consistency');
 const { localeFor } = require('../utils/locale');
 
 const LaneColors = require('../services/LaneColors');
@@ -842,21 +842,15 @@ class SessionController {
       perLane: Lap.perLaneByEntity(race.id, row.entity_id, row.entity_type)
     }));
 
-    // ── Consistencia (misma métrica que live-stats) ───────────────────────────
-    // Dos niveles, ambos con robustConsistency de ../lib/consistency:
-    //   A) POR CELDA (entidad × carril): la parrilla agrupa por carril
-    //      (GROUP BY l.lane en perLaneByEntity; en "repetir carril" una celda
-    //      puede abarcar >1 manga del mismo carril), así que la consistencia de
-    //      la celda se calcula sobre las vueltas elegibles de esa entidad en ese
-    //      carril. Variante SIN salidas/pits (ritmo puro): is_exit=0 + filtro
-    //      incidentes.
-    //   B) DE CARRERA (por entidad): dos variantes como en live-stats —
-    //      SIN (is_exit=0 + filtro incidentes) y CON (todas, incluye is_exit,
-    //      sin filtro). Se agrega por ENTIDAD (team_id / driver_id), lo que en
-    //      resistencia equivale al NOMBRE (una entidad = un nombre; en equipos
-    //      duplicados por tanda comparten team_id).
-    // Filtro de elegibilidad idéntico al de live-stats: !is_ghost && !is_warmup
-    // && lap_number>1 && lap_time_ms >= min_lap_ms.
+    // ── Consistencia (misma métrica que live-stats: banda ±1.5% por manga) ────
+    //   A) POR CELDA (entidad × carril): vueltas de esa entidad en ese carril
+    //      agrupadas por manga (la parrilla agrupa por carril; en "repetir
+    //      carril" una celda puede abarcar >1 manga del mismo carril).
+    //   B) DE CARRERA (por entidad): todas sus mangas juntas.
+    // Se agrega por ENTIDAD (team_id / driver_id), lo que en resistencia
+    // equivale al NOMBRE (en equipos duplicados por tanda comparten team_id).
+    // Muestra: vueltas limpias de ritmo — sin salidas/pits, sin estimadas —
+    // desde la vuelta 2 y ≥ min_lap_ms (igual que live-stats).
     {
       const dbc = require('../config/database');
       const minLap = race.min_lap_ms || 0;
@@ -865,62 +859,50 @@ class SessionController {
           CASE WHEN l.team_id IS NOT NULL THEN 'team_'||l.team_id ELSE 'driver_'||l.driver_id END AS key,
           l.lane AS lane,
           l.manga_id AS manga_id,
-          l.lap_time_ms AS t,
-          l.is_exit AS is_exit
+          l.lap_time_ms AS t
         FROM laps l
         JOIN mangas m ON m.id = l.manga_id
         JOIN tandas tt ON tt.id = m.tanda_id
         WHERE tt.race_id = ?
-          AND l.is_ghost = 0 AND l.is_warmup = 0
+          AND l.is_ghost = 0 AND l.is_warmup = 0 AND l.is_estimated = 0
+          AND l.is_exit = 0
           AND l.lap_number > 1 AND l.lap_time_ms >= ${minLap}
       `).all(race.id);
 
-      // Acumuladores: por (key,lane) SIN; por (key,lane,manga) SIN (para las
-      // celdas por-ocurrencia); por key SIN y CON.
-      const cellClean     = new Map();   // `${key}|${lane}` -> [t]  (SIN salidas)
-      const cellMangaClean = new Map();  // `${key}|${lane}|${manga_id}` -> [t]  (SIN salidas)
-      const raceClean = new Map();   // key -> [t]  (SIN salidas)
-      const raceAll   = new Map();   // key -> [t]  (CON salidas/pits)
+      // Acumuladores por celda (key|lane) y por entidad, agrupando por manga.
+      const NO_STINTS = new Map();
+      const cellStints = new Map();  // `${key}|${lane}` -> Map(manga_id -> [t])
+      const raceStints = new Map();  // key -> Map(manga_id -> [t])
       for (const r of eligibleRows) {
-        let all = raceAll.get(r.key);
-        if (!all) { all = []; raceAll.set(r.key, all); }
-        all.push(r.t);
-        if (!r.is_exit) {
-          let rc = raceClean.get(r.key);
-          if (!rc) { rc = []; raceClean.set(r.key, rc); }
-          rc.push(r.t);
-          const ck = `${r.key}|${r.lane}`;
-          let cc = cellClean.get(ck);
-          if (!cc) { cc = []; cellClean.set(ck, cc); }
-          cc.push(r.t);
-          const cmk = `${r.key}|${r.lane}|${r.manga_id}`;
-          let cmc = cellMangaClean.get(cmk);
-          if (!cmc) { cmc = []; cellMangaClean.set(cmk, cmc); }
-          cmc.push(r.t);
-        }
+        let rs = raceStints.get(r.key);
+        if (!rs) { rs = new Map(); raceStints.set(r.key, rs); }
+        let rst = rs.get(r.manga_id);
+        if (!rst) { rst = []; rs.set(r.manga_id, rst); }
+        rst.push(r.t);
+        const ck = `${r.key}|${r.lane}`;
+        let cs = cellStints.get(ck);
+        if (!cs) { cs = new Map(); cellStints.set(ck, cs); }
+        let cst = cs.get(r.manga_id);
+        if (!cst) { cst = []; cs.set(r.manga_id, cst); }
+        cst.push(r.t);
       }
       // Expuesto al bloque per-ocurrencia (más abajo) para no re-consultar.
-      results._cellMangaClean = cellMangaClean;
+      results._cellStints = cellStints;
 
       results.forEach(r => {
         const key = r.entity_type === 'team' ? `team_${r.entity_id}` : `driver_${r.entity_id}`;
-        // A) por celda/carril (SIN)
+        // A) por celda/carril
         (r.perLane || []).forEach(pl => {
-          const c = robustConsistency(cellClean.get(`${key}|${pl.lane}`) || [], MIN_CONSISTENCY_LAPS);
+          const c = stintConsistency((cellStints.get(`${key}|${pl.lane}`) || NO_STINTS).values());
           pl.consistency      = c ? c.pct   : null;
           pl.consistencyLevel = c ? c.level : null;
           pl.consistencyStdMs = c ? c.stdMs : null;
         });
-        // B) de carrera (SIN)
-        const cs = robustConsistency(raceClean.get(key) || [], MIN_CONSISTENCY_LAPS);
+        // B) de carrera
+        const cs = stintConsistency((raceStints.get(key) || NO_STINTS).values());
         r.raceConsistency      = cs ? cs.pct   : null;
         r.raceConsistencyLevel = cs ? cs.level : null;
         r.raceConsistencyStdMs = cs ? cs.stdMs : null;
-        // B) de carrera (CON salidas/pits, sin filtro de incidentes)
-        const ca = robustConsistency(raceAll.get(key) || [], MIN_CONSISTENCY_LAPS, { filterIncidents: false });
-        r.raceConsistencyAll      = ca ? ca.pct   : null;
-        r.raceConsistencyAllLevel = ca ? ca.level : null;
-        r.raceConsistencyAllStdMs = ca ? ca.stdMs : null;
       });
     }
 
@@ -935,7 +917,7 @@ class SessionController {
     const perOccurrence = (race.passes > 1) || (race.lane_repeat > 1);
     let occColumns = null;
     if (perOccurrence) {
-      const cellMangaClean = results._cellMangaClean || new Map();
+      const cellStints = results._cellStints || new Map();
       // Nº de ocurrencias por carril, derivado de los datos (max entre entidades).
       const occCountByLane = new Map();
       results.forEach(r => {
@@ -955,8 +937,8 @@ class SessionController {
           if (K > prev) occCountByLane.set(lane, K);
           laneRows.forEach((row, i) => {
             const occ = i + 1;
-            const c = robustConsistency(
-              cellMangaClean.get(`${key}|${lane}|${row.manga_id}`) || [], MIN_CONSISTENCY_LAPS);
+            const laneStints = cellStints.get(`${key}|${lane}`);
+            const c = stintConsistency([laneStints && laneStints.get(row.manga_id)]);
             const cell = {
               lane,
               occ,
@@ -1839,12 +1821,11 @@ class SessionController {
                             : (r.perLane.find(pl => pl.lane === col.lane) || null);
     }
 
-    // ── Consistencia (misma métrica que en la web, results ~809-874) ──────────
+    // ── Consistencia (misma métrica que en la web: banda ±1.5% por manga) ─────
     // perLaneByEntity/perLaneMangaByEntity no traen consistencia: se calcula
-    // aquí sobre las vueltas elegibles de la carrera (SIN salidas/pits, filtro
-    // de incidentes por defecto): por celda (entidad×carril), por celda de
-    // ocurrencia (entidad×carril×manga, solo en modo ocurrencia) y de carrera
-    // (por entidad).
+    // aquí sobre las vueltas limpias de la carrera (sin salidas/pits, sin
+    // estimadas): por celda (entidad×carril), por celda de ocurrencia
+    // (entidad×carril×manga, solo en modo ocurrencia) y de carrera (por entidad).
     {
       const dbc = require('../config/database');
       const minLap = race.min_lap_ms || 0;
@@ -1853,47 +1834,48 @@ class SessionController {
           CASE WHEN l.team_id IS NOT NULL THEN 'team_'||l.team_id ELSE 'driver_'||l.driver_id END AS key,
           l.lane AS lane,
           l.manga_id AS manga_id,
-          l.lap_time_ms AS t,
-          l.is_exit AS is_exit
+          l.lap_time_ms AS t
         FROM laps l
         JOIN mangas m ON m.id = l.manga_id
         JOIN tandas tt ON tt.id = m.tanda_id
         WHERE tt.race_id = ?
-          AND l.is_ghost = 0 AND l.is_warmup = 0
+          AND l.is_ghost = 0 AND l.is_warmup = 0 AND l.is_estimated = 0
+          AND l.is_exit = 0
           AND l.lap_number > 1 AND l.lap_time_ms >= ${minLap}
       `).all(race.id);
 
-      const cellClean = new Map();       // `${key}|${lane}` -> [t]  (SIN salidas)
-      const cellMangaClean = new Map();  // `${key}|${lane}|${manga_id}` -> [t]  (SIN salidas)
-      const raceClean  = new Map();  // key -> [t]  (SIN salidas)
+      const cellStints = new Map();  // `${key}|${lane}` -> Map(manga_id -> [t])
+      const raceStints = new Map();  // key -> Map(manga_id -> [t])
       for (const row of eligibleRows) {
-        if (row.is_exit) continue;
-        let rc = raceClean.get(row.key);
-        if (!rc) { rc = []; raceClean.set(row.key, rc); }
-        rc.push(row.t);
+        let rs = raceStints.get(row.key);
+        if (!rs) { rs = new Map(); raceStints.set(row.key, rs); }
+        let rst = rs.get(row.manga_id);
+        if (!rst) { rst = []; rs.set(row.manga_id, rst); }
+        rst.push(row.t);
         const ck = `${row.key}|${row.lane}`;
-        let cc = cellClean.get(ck);
-        if (!cc) { cc = []; cellClean.set(ck, cc); }
-        cc.push(row.t);
-        const cmk = `${row.key}|${row.lane}|${row.manga_id}`;
-        let cmc = cellMangaClean.get(cmk);
-        if (!cmc) { cmc = []; cellMangaClean.set(cmk, cmc); }
-        cmc.push(row.t);
+        let cs = cellStints.get(ck);
+        if (!cs) { cs = new Map(); cellStints.set(ck, cs); }
+        let cst = cs.get(row.manga_id);
+        if (!cst) { cst = []; cs.set(row.manga_id, cst); }
+        cst.push(row.t);
       }
 
       entityData.forEach(r => {
         const key = r.entity_type === 'team' ? `team_${r.entity_id}` : `driver_${r.entity_id}`;
         (r.perLane || []).forEach(pl => {
-          const c = robustConsistency(cellClean.get(`${key}|${pl.lane}`) || [], MIN_CONSISTENCY_LAPS);
+          const stints = cellStints.get(`${key}|${pl.lane}`);
+          const c = stintConsistency(stints ? stints.values() : []);
           pl.consistency = c ? c.pct : null;
         });
         if (perOccurrence && r.occByKey) {
           Object.values(r.occByKey).forEach(cell => {
-            const c = robustConsistency(cellMangaClean.get(`${key}|${cell.lane}|${cell.manga_id}`) || [], MIN_CONSISTENCY_LAPS);
+            const stints = cellStints.get(`${key}|${cell.lane}`);
+            const c = stintConsistency([stints && stints.get(cell.manga_id)]);
             cell.consistency = c ? c.pct : null;
           });
         }
-        const cs = robustConsistency(raceClean.get(key) || [], MIN_CONSISTENCY_LAPS);
+        const stints = raceStints.get(key);
+        const cs = stintConsistency(stints ? stints.values() : []);
         r.raceConsistency = cs ? cs.pct : null;
       });
     }

@@ -498,9 +498,7 @@
     },
     "show": {
       "equipo_piloto": "Team/Driver",
-      "incluye_salidas_y_paradas": "includes exits & pit-stops",
       "pit_stops": "Pit stops",
-      "solo_vueltas_limpias": "clean laps only",
       "vueltas_totales": "Total laps"
     },
     "tanda-edit": {
@@ -1692,7 +1690,7 @@
     "completa_al_menos_una_manga_para_ver_el_resto": "Complete at least one heat to see the rest of the results.",
     "completa_al_menos_una_manga_para_ver_resultados": "Complete at least one heat to see results.",
     "con_salidas_pit_stops": "With exits/pit-stops",
-    "const_sin": "Const. clean",
+    "const_sin": "Consistency",
     "delta_vs_media": "Delta vs avg",
     "descarga_un_index_html_autocontenido_para": "Download a self-contained index.html to publish on GitHub Pages",
     "desde_manga": "From heat",
@@ -2037,7 +2035,6 @@
   "show": {
     "actualizar_desde_catalogo": "Update from catalog",
     "al_finalizar": "When finished",
-    "alcance_de_la_consistencia": "Consistency scope",
     "anadidas": " added",
     "anadir_tanda_1": "Add Heat 1",
     "asignar_carriles": "Assign lanes",
@@ -2059,7 +2056,6 @@
     "completar_carrera": "Complete race",
     "con_salidas": "With exits",
     "configuracion_elige_el_carril_y_arranca": "⏱ Setup — pick lane and start",
-    "consistencia": "Consistency",
     "continuar": "Continue",
     "descansa": "resting",
     "descansa_en_la_manga_en_curso": "Resting in the current heat",
@@ -2100,7 +2096,6 @@
     "salidas_de_pista_pit_stops_cambios_de_neumatico_2": "Track exits / pit-stops / tire changes 🛞 in this heat",
     "sesion_en_curso": "⏱ Session in progress",
     "sin_pole": "No Pole",
-    "sin_salidas": "Without exits",
     "sobre_la_media": "Vs average",
     "sucesos": "Events",
     "tandas": "Heats",

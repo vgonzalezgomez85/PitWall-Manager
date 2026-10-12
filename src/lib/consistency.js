@@ -15,30 +15,47 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-// ── Consistencia de carrera (métrica compartida) ────────────────────────────
-// Métrica de consistencia definitiva de PitWall (coincide con TicTac): CV
-// clásico con desviación típica MUESTRAL (n−1) sobre la muestra ya filtrada de
-// incidentes. Extraída aquí desde LiveStatsController para reutilizarla también
-// en la página de Resultados. Comportamiento IDÉNTICO: no cambiar fórmula ni
-// umbrales sin verificar contra datos reales (24h Modena / tramas DS-300).
+// ── Consistencia de ritmo (métrica compartida) ──────────────────────────────
+// % de vueltas limpias que caen dentro de ±WINDOW de la mediana de SU MANGA.
+// Sustituye al antiguo CV (100 − CV·100), que daba 96–99 para todo el pelotón
+// (no discriminaba) y era frágil: una vuelta de tráfico desmadraba la media+DE.
+//
+// Por qué así (validado con las carreras reales del club — RESISLEMANS 1,
+// 24H Llinars, 24h Modena — y la Llinars simulada):
+//   · POR MANGA: la mediana y la banda se calculan dentro de cada stint, así
+//     que un coche/carril distinto en otra manga no cuenta como "inconsistencia".
+//   · BANDA ±1.5%: robusta por construcción (una vuelta loca no entra y ya
+//     está — no hace falta filtrar incidentes por MAD) e interpretable:
+//     "X% de tus vueltas dentro del ±1.5% de tu ritmo de esa manga".
+//   · LA DE (σ* robusta, 1.4826·MAD) se mantiene como cifra de apoyo en ms
+//     ("±0,13 s"): es lo que un piloto entiende, pero sin romperse con un lío.
+//
+// Las vueltas que llegan aquí ya vienen limpias por el llamante: sin warmup,
+// sin salidas/pits (is_exit), sin fantasmas y sin estimadas, y ≥ min_lap_ms.
 
-// Umbrales de nivel de consistencia sobre el CV clásico (fracción, no %).
-// Calibrados con la 24h Modena (ver informe): sobre CV por manga filtrado,
-// reparten el pelotón real (~59% excelente, ~35% buena, ~5% irregular) y
-// siguen teniendo sentido para carreras de club, más ruidosas.
-//   cvR < 1.5%          → 'excelente'
-//   1.5% ≤ cvR < 2.5%   → 'buena'
-//   2.5% ≤ cvR < 4.0%   → 'irregular'
-//   cvR ≥ 4.0%          → 'erratica'
+// Media ventana de la banda sobre la mediana del stint (fracción, no %).
+const CONSISTENCY_WINDOW = 0.015;
+
+// Una manga con menos vueltas que esto no cuenta (con 2 no hay dispersión).
+const MIN_STINT_LAPS = 3;
+
+// Mínimo de vueltas válidas (entre todas las mangas que cuentan) para dar valor.
+const MIN_CONSISTENCY_LAPS = 3;
+
+// Umbrales de nivel sobre el % de la banda (mayor = más consistente).
+// Calibrados con las carreras de referencia: reparten un pelotón real de club
+// (~15-20% excelente, ~40% buena, ~25-30% irregular, resto errática) y dejan
+// los extremos para quien de verdad destaca o se sale del ritmo. Ojo: pistas
+// cortas (Modena, 10 s/vuelta) tienden a valores más bajos que las largas.
 const CONSISTENCY_LEVELS = [
-  { max: 0.015, level: 'excelente' },
-  { max: 0.025, level: 'buena'     },
-  { max: 0.040, level: 'irregular' },
-  { max: Infinity, level: 'erratica' },
+  { min: 90, level: 'excelente' },
+  { min: 75, level: 'buena'     },
+  { min: 60, level: 'irregular' },
+  { min: -Infinity, level: 'erratica' },
 ];
-function consistencyLevel(cv) {
-  if (cv == null || !Number.isFinite(cv)) return null;
-  for (const b of CONSISTENCY_LEVELS) if (cv < b.max) return b.level;
+function consistencyLevel(pct) {
+  if (pct == null || !Number.isFinite(pct)) return null;
+  for (const b of CONSISTENCY_LEVELS) if (pct >= b.min) return b.level;
   return 'erratica';
 }
 
@@ -50,76 +67,48 @@ function median(arr) {
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 }
 
-// Filtra vueltas-incidente (salidas no marcadas, cruces perdidos, tráfico
-// puntual) ANTES de aplicar el CV clásico. Estimador ROBUSTO por MAD:
-//   MAD  = mediana(|tᵢ − mediana|)
-//   σ*   = 1.4826 · MAD   (aprox. de la desviación típica robusta)
-//   descarta |tᵢ − mediana| > 3.5·σ*   (≈ 3.5σ, cola muy improbable)
-//   refuerzo: descarta tᵢ > mediana·1.5 (una vuelta a >150% del ritmo NO es
-//             ritmo real: es un incidente aunque MAD sea grande).
-// El filtro NO cambia la fórmula: solo saca la muestra sucia; sobre lo que
-// queda se aplica el CV clásico de TicTac (misma cifra en datos limpios).
-function filterIncidentLaps(times) {
-  if (!times || times.length < 2) return times || [];
-  const med = median(times);
-  if (med == null || med <= 0) return times;
-  const mad = median(times.map(t => Math.abs(t - med)));
-  const robustStd = 1.4826 * mad;
-  const madThreshold = 3.5 * robustStd;   // 0 si MAD=0 (muestra idéntica)
-  const hardCap = med * 1.5;
-  return times.filter(t => {
-    if (t > hardCap) return false;
-    if (madThreshold > 0 && Math.abs(t - med) > madThreshold) return false;
-    return true;
-  });
-}
-
-// Métrica de consistencia definitiva (coincide con TicTac): CV clásico con
-// desviación típica MUESTRAL (n−1), aplicado sobre la muestra ya filtrada de
-// incidentes. Devuelve { pct, stdMs, meanMs, cv, level, n } o null si, tras el
-// filtrado, quedan menos de `minN` vueltas (fiabilidad insuficiente).
-//   media = Σt/n
-//   var   = Σ(t−media)² / (n−1)     ← MUESTRAL
-//   DE    = √var
-//   CV    = DE / media
-//   consistencia% = clamp(100 − CV·100, 0, 100)
-// Opción { filterIncidents }: por defecto true (variante SIN salidas/pits, ritmo
-// puro → descarta incidentes por MAD). Con false NO se filtra: se usa la muestra
-// tal cual (variante CON salidas/pits → regularidad REAL del stint, cuentan pits
-// e incidentes no marcados). Misma fórmula CV muestral y mismo `consistencyLevel`.
-// Mínimo de vueltas (tras filtrar) para mostrar consistencia. 3 es el suelo
-// razonable: con menos no hay dispersión que medir. Ojo: de las vueltas de una
-// manga se descartan la 1ª cruzada y la de calentamiento, así que 3 elegibles ≈
-// 5 vueltas dadas. Con menos → null ("—") hasta acumular más.
-const MIN_CONSISTENCY_LAPS = 3;
-function robustConsistency(times, minN = MIN_CONSISTENCY_LAPS, { filterIncidents = true } = {}) {
-  const clean = filterIncidents ? filterIncidentLaps(times) : (times || []);
-  const n = clean.length;
-  if (n < minN) return null;
-  const mean = clean.reduce((a, b) => a + b, 0) / n;
-  if (mean <= 0) return null;
-  const variance = n > 1
-    ? clean.reduce((a, b) => a + (b - mean) * (b - mean), 0) / (n - 1)
-    : 0;
-  const std = Math.sqrt(variance);
-  const cv  = std / mean;
-  // pct con 1 decimal (p.ej. 97.6): coincide con TicTac (97.57 → 97.6) y sigue
-  // renderizándose bien con `+ '%'` en la vista. clamp [0,100].
+// stints: iterable de arrays de tiempos (ms), un array por MANGA. Devuelve
+// { pct, stdMs, medMs, level, n, stints } o null si no hay muestra suficiente.
+//   pct    = % de vueltas dentro de ±WINDOW·mediana de su manga (1 decimal)
+//   stdMs  = σ* robusta (1.4826·MAD) por manga, media ponderada por vueltas
+//   medMs  = mediana de todas las vueltas contadas (tiempo típico)
+//   n      = vueltas contadas · stints = mangas que cuentan
+function stintConsistency(stints, { window = CONSISTENCY_WINDOW, minStintLaps = MIN_STINT_LAPS } = {}) {
+  let inBand = 0, n = 0, stintsCounted = 0;
+  let stdSum = 0;
+  const all = [];
+  for (const laps of stints || []) {
+    if (!laps || laps.length < minStintLaps) continue;
+    const med = median(laps);
+    if (med == null || med <= 0) continue;
+    stintsCounted++;
+    const devs = [];
+    for (const t of laps) {
+      devs.push(Math.abs(t - med));
+      if (Math.abs(t - med) <= window * med) inBand++;
+    }
+    stdSum += 1.4826 * median(devs) * laps.length;
+    n += laps.length;
+    for (const t of laps) all.push(t);
+  }
+  if (!stintsCounted || n < MIN_CONSISTENCY_LAPS) return null;
+  const pct = Math.round(inBand / n * 1000) / 10;
   return {
-    pct:    Math.max(0, Math.min(100, Math.round((100 - cv * 100) * 10) / 10)),
-    stdMs:  Math.round(std),
-    meanMs: Math.round(mean),
-    cv,
-    level:  consistencyLevel(cv),
+    pct,
+    stdMs: Math.round(stdSum / n),
+    medMs: Math.round(median(all)),
+    level: consistencyLevel(pct),
     n,
+    stints: stintsCounted,
   };
 }
 
 module.exports = {
+  CONSISTENCY_WINDOW,
   CONSISTENCY_LEVELS,
   consistencyLevel,
   median,
-  filterIncidentLaps,
+  MIN_STINT_LAPS,
   MIN_CONSISTENCY_LAPS,
-  robustConsistency,
+  stintConsistency,
 };
