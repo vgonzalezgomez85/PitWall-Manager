@@ -104,6 +104,7 @@ class SettingsController {
       trainingHistoryMode: cfg.training_history_mode === 'best' ? 'best' : 'recent',
       manualComa:          cfg.manual_coma === 'manual' ? 'manual' : 'auto',
       lateCrossingGraceMs: require('../services/TimingService').constructor.lateCrossingGraceMs(),
+      clubBrand:           require('../services/ClubBrand').get(),
       passwordEnabled:     require('../services/AccessPassword').isEnabled(),
       passwordOverridden:  process.env.PITWALL_DISABLE_PASSWORD === '1',
     });
@@ -141,6 +142,33 @@ class SettingsController {
       require('../services/TimingService').invalidateStandingsCaches();
     }
     res.json({ ok: true, key, value });
+  }
+
+  // POST /settings/club — nombre y logo del club. `logo` ausente = no tocarlo.
+  static saveClub(req, res) {
+    const ClubBrand = require('../services/ClubBrand');
+    const body = req.body || {};
+    try {
+      const b = ClubBrand.save({
+        enabled: body.enabled === true || body.enabled === '1',
+        name:    body.name,
+        logo:    typeof body.logo === 'string' ? body.logo : undefined,
+      });
+      res.json({ ok: true, enabled: b.enabled, name: b.name, hasLogo: !!b.logo });
+    } catch (e) {
+      if (e.code !== 'invalid_logo') throw e;
+      res.status(400).json({ ok: false, error: req.t('settings.club_logo_no_valido') });
+    }
+  }
+
+  // GET /club/logo — pública: la piden la TV, los QR y los resultados públicos.
+  static clubLogo(req, res) {
+    const ClubBrand = require('../services/ClubBrand');
+    const img = ClubBrand.parseDataUri(ClubBrand.get().logo);
+    if (!img) return res.status(404).end();
+    res.setHeader('Content-Type', 'image/' + img.extension);
+    res.setHeader('Cache-Control', req.query.v ? 'public, max-age=31536000, immutable' : 'no-cache');
+    res.end(img.buffer);
   }
 
   // POST /settings/security — contraseña de acceso de la organización.

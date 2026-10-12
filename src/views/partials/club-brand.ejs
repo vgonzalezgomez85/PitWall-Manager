@@ -1,0 +1,30 @@
+<%#
+  Banda del club para documentos (resultados, informe de turnos, QR): logo y
+  nombre del club a la izquierda y la marca de PitWall a la derecha, que sale
+  siempre. No pinta nada si el club está apagado en Ajustes → Preferencias.
+  En una exportación HTML autocontenida (`inlineClubLogo`) el logo va incrustado.
+%><% const _cb = typeof clubBrand === 'function' ? clubBrand() : null; if (_cb) {
+  const _src = (typeof inlineClubLogo !== 'undefined' && inlineClubLogo) ? _cb.logoDataUri : _cb.logoUrl; %>
+<style>
+  .club-brand { display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 10px 0 12px; margin-bottom: 14px; border-bottom: 1px solid currentColor;
+    border-bottom-color: rgba(128,128,128,.35); }
+  .club-brand__club { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .club-brand__logo { height: 56px; max-width: 200px; object-fit: contain; flex-shrink: 0; }
+  .club-brand__name { font-size: 1.35rem; font-weight: 700; line-height: 1.15; overflow-wrap: anywhere; }
+  .club-brand__pw { display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+    font-size: .8rem; font-weight: 700; letter-spacing: .08em; opacity: .7; }
+  .club-brand__pw svg { width: 22px; height: 22px; }
+  @media print { .club-brand { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+<div class="club-brand">
+  <div class="club-brand__club">
+    <% if (_src) { %><img class="club-brand__logo" src="<%= _src %>" alt="<%= _cb.name %>"><% } %>
+    <% if (_cb.name) { %><span class="club-brand__name"><%= _cb.name %></span><% } %>
+  </div>
+  <div class="club-brand__pw">
+    <svg viewBox="0 0 100 100" aria-hidden="true"><rect x="6" y="6" width="88" height="88" rx="22" ry="22" fill="none" stroke="currentColor" stroke-width="6.5"/><polyline points="30,34 51,50 30,66" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><rect x="56" y="58" width="17" height="11" rx="3" fill="#F0404C"/></svg>
+    <span>PitWall</span>
+  </div>
+</div>
+<% } %>

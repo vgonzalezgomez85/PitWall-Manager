@@ -34,6 +34,7 @@ const { robustConsistency, MIN_CONSISTENCY_LAPS } = require('../lib/consistency'
 const { localeFor } = require('../utils/locale');
 
 const LaneColors = require('../services/LaneColors');
+const { addClubBand } = require('../utils/excelClubBand');
 
 // Podio y mejor vuelta de cada carrera finalizada para /results. La página es
 // pública y se abre también con una carrera en marcha: recalcular todas cuesta
@@ -1422,7 +1423,7 @@ class SessionController {
   // si no, render normal.
   static _sendResults(req, res, data) {
     if (!req._exportMode) return res.render('races/results', data);
-    res.render('races/results', { ...data, hideNavbar: true }, (err, html) => {
+    res.render('races/results', { ...data, hideNavbar: true, inlineClubLogo: true }, (err, html) => {
       if (err) { console.error('[export] render error:', err.message); return res.status(500).send(req.t('errors.export_error')); }
       const out = SessionController._inlineForExport(html);
       // index.html → se sube tal cual a un repo y GitHub Pages ya lo sirve.
@@ -1631,6 +1632,7 @@ class SessionController {
     const subLine  = subParts.join('   ·   ');
 
     function addRaceHeader(ws, cols) {
+      addClubBand(wb, ws, cols);
       // ── Banda de título (oscura) con el logo de PitWall a la derecha ──────
       const r1 = ws.addRow([race.name]);
       r1.height = 40;
@@ -2367,6 +2369,7 @@ class SessionController {
     wb.created = new Date();
     const ws = wb.addWorksheet(req.t('session.puntos'));
     ws.columns = [{ width: 5 }, { width: 30 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 10 }, { width: 12 }];
+    if (addClubBand(wb, ws, 7, { pitwallLogo: true })) ws.addRow([]).height = 6;
 
     const hdr = ws.addRow(['#', req.t('tv.piloto_equipo'),
                            req.t('session.total_vueltas'),

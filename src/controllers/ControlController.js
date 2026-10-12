@@ -33,6 +33,7 @@ const db            = require('../config/database');
 const { evaluate }  = require('../utils/shiftCompliance');
 const { fmtHmsFijo } = require('../utils/duration');
 const Settings      = require('../models/Settings');
+const { addClubBand } = require('../utils/excelClubBand');
 
 // HTTPS local para la cámara: si está activado, el kiosco puede ofrecer el
 // enlace seguro cuando se abre por HTTP en un dispositivo de la red (donde el
@@ -323,7 +324,7 @@ class ControlController {
     const locals = { t: req.t, ...data };
     if (!req._exportMode) return res.render('control/shifts-report', locals);
 
-    res.render('control/shifts-report', { ...locals, hideNavbar: true }, (err, html) => {
+    res.render('control/shifts-report', { ...locals, hideNavbar: true, inlineClubLogo: true }, (err, html) => {
       if (err) { console.error('[shifts-report] render error:', err.message); return res.status(500).send(req.t('errors.export_error')); }
       const SessionController = require('./SessionController');
       const out = SessionController._inlineForExport(html);
@@ -357,14 +358,15 @@ class ControlController {
       right:  { style: 'thin', color: { argb: COL.border } },
     };
 
-    ws.mergeCells('A1:G1');
-    const titulo = ws.getCell('A1');
-    titulo.value = `${race.name} — ${req.t('shifts-report.informe_de_turnos_de_piloto')}`;
-    titulo.font = { bold: true, size: 14 };
-    ws.getRow(1).height = 22;
+    addClubBand(wb, ws, 7, { pitwallLogo: true });
+    const filaTitulo = ws.addRow([`${race.name} — ${req.t('shifts-report.informe_de_turnos_de_piloto')}`]);
+    ws.mergeCells(filaTitulo.number, 1, filaTitulo.number, 7);
+    filaTitulo.getCell(1).font = { bold: true, size: 14 };
+    filaTitulo.height = 22;
 
-    ws.mergeCells('A2:G2');
-    const sub = ws.getCell('A2');
+    const filaSub = ws.addRow([]);
+    ws.mergeCells(filaSub.number, 1, filaSub.number, 7);
+    const sub = filaSub.getCell(1);
     const lim = [];
     if (reglas.minMs)   lim.push(`${req.t('control.min')} ${fmtHmsFijo(reglas.minMs)}`);
     if (reglas.maxMs)   lim.push(`${req.t('control.max')} ${fmtHmsFijo(reglas.maxMs)}`);
@@ -375,7 +377,7 @@ class ControlController {
 
     const cabecera = ['xls_piloto', 'xls_categoria', 'xls_tiempo_total', 'xls_turnos', 'xls_max_turnos', 'xls_correcciones', 'xls_estado']
       .map(k => req.t('shifts-report.' + k));
-    const filaCab = ws.addRow([]);            // fila 3 vacía de separación
+    const filaCab = ws.addRow([]);            // fila vacía de separación
     filaCab.height = 6;
     const head = ws.addRow(cabecera);
     head.eachCell(c => {

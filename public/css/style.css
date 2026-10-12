@@ -4396,3 +4396,10 @@ a.st-nav__item:hover { text-decoration: none; }
 }
 .lc-swatch[hidden] { display: none; }
 .lc-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; align-items: center; }
+.club-logo { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.club-logo__box {
+  display: grid; place-items: center; width: 96px; height: 64px; padding: 6px;
+  border: 1px dashed var(--vt-border-2); border-radius: 9px; background: #fff;
+}
+.club-logo__box img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.club-logo__box .st-row__d { color: #57606a; font-size: .75rem; text-align: center; }

@@ -658,6 +658,42 @@ const navItems = [
               </div>
             </div>
           </div>
+          <div class="st-card" id="clubCard">
+            <div class="st-row">
+              <div class="st-row__txt">
+                <div class="st-row__t"><%= t('settings.club_titulo') %></div>
+                <div class="st-row__d"><%= t('settings.club_descripcion') %></div>
+              </div>
+              <button type="button" class="vt-switch <%= clubBrand.enabled ? 'is-on' : '' %>" id="clubSwitch" role="switch" aria-checked="<%= clubBrand.enabled %>" aria-label="<%= t('settings.club_usar') %>"></button>
+            </div>
+            <div class="st-row st-row--wrap">
+              <div class="st-row__txt">
+                <div class="st-row__t st-row__t--sm"><%= t('settings.club_nombre') %></div>
+              </div>
+              <input type="text" class="vt-inp st-row__ctl st-row__ctl--wide" id="clubName" maxlength="80" value="<%= clubBrand.name %>" placeholder="<%= t('settings.club_nombre_ph') %>" aria-label="<%= t('settings.club_nombre') %>">
+            </div>
+            <div class="st-row st-row--wrap">
+              <div class="st-row__txt">
+                <div class="st-row__t st-row__t--sm"><%= t('settings.club_logo') %></div>
+                <div class="st-row__d"><%= t('settings.club_logo_d') %></div>
+              </div>
+              <div class="club-logo st-row__ctl st-row__ctl--wide">
+                <div class="club-logo__box" id="clubLogoBox">
+                  <img id="clubLogoImg" alt="" <%- clubBrand.logo ? `src="/club/logo?v=${clubBrand.version}"` : 'hidden' %>>
+                  <span id="clubLogoEmpty" class="st-row__d" <%= clubBrand.logo ? 'hidden' : '' %>><%= t('settings.club_sin_logo') %></span>
+                </div>
+                <input type="file" id="clubLogoFile" accept="image/*" hidden>
+                <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="clubLogoPick"><%= t('settings.club_elegir_logo') %></button>
+                <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" id="clubLogoRemove" <%= clubBrand.logo ? '' : 'hidden' %>><%= t('settings.club_quitar_logo') %></button>
+              </div>
+            </div>
+            <div class="st-row st-row--wrap" style="display:block">
+              <div class="lc-actions" style="margin-top:0">
+                <button type="button" class="vt-btn vt-btn--primary vt-btn--sm" id="clubSave" disabled><%= t('actions.save') %></button>
+                <span class="st-row__d" id="clubMsg" role="status"></span>
+              </div>
+            </div>
+          </div>
         </section>
 
         <!-- ══ Ventanas y pantallas (solo app de escritorio) ═══════════════ -->
@@ -1223,6 +1259,80 @@ const settingsForm = document.getElementById('settingsForm');
         msg.textContent = I18N.t('client.settings.no_se_ha_podido_guardar_0_a_10_s');
       }
     });
+  });
+})();
+
+/* ── Nombre y logo del club ── */
+(function () {
+  const sw = document.getElementById('clubSwitch');
+  if (!sw) return;
+  const nameEl = document.getElementById('clubName');
+  const img = document.getElementById('clubLogoImg');
+  const empty = document.getElementById('clubLogoEmpty');
+  const file = document.getElementById('clubLogoFile');
+  const removeBtn = document.getElementById('clubLogoRemove');
+  const saveBtn = document.getElementById('clubSave');
+  const msg = document.getElementById('clubMsg');
+  const MAX_SIDE = 512;
+  let logo; // undefined = sin cambios, '' = quitar, data URI = nuevo
+  const dirty = () => { saveBtn.disabled = false; msg.textContent = ''; };
+  const showLogo = (src) => {
+    img.hidden = !src; empty.hidden = !!src; removeBtn.hidden = !src;
+    if (src) img.src = src; else img.removeAttribute('src');
+  };
+
+  sw.addEventListener('click', () => {
+    const on = sw.classList.toggle('is-on');
+    sw.setAttribute('aria-checked', on ? 'true' : 'false');
+    dirty();
+  });
+  nameEl.addEventListener('input', dirty);
+  document.getElementById('clubLogoPick').addEventListener('click', () => file.click());
+  removeBtn.addEventListener('click', () => { logo = ''; showLogo(null); dirty(); });
+
+  // Se reduce y se pasa a PNG aquí: cualquier formato que pinte el navegador
+  // (también SVG/WebP) acaba en algo que el Excel puede incrustar.
+  file.addEventListener('change', () => {
+    const f = file.files && file.files[0];
+    file.value = '';
+    if (!f) return;
+    const url = URL.createObjectURL(f);
+    const im = new Image();
+    im.onload = () => {
+      const w0 = im.naturalWidth || MAX_SIDE, h0 = im.naturalHeight || MAX_SIDE;
+      const k = Math.min(1, MAX_SIDE / Math.max(w0, h0));
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(w0 * k));
+      c.height = Math.max(1, Math.round(h0 * k));
+      c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      let out = c.toDataURL('image/png');
+      if (out.length > 1300000) out = c.toDataURL('image/jpeg', 0.9);
+      logo = out; showLogo(out); dirty();
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); msg.textContent = I18N.t('client.settings.club_logo_no_se_puede_leer'); };
+    im.src = url;
+  });
+
+  saveBtn.addEventListener('click', async () => {
+    saveBtn.disabled = true;
+    const body = { enabled: sw.classList.contains('is-on') ? '1' : '0', name: nameEl.value };
+    if (logo !== undefined) body.logo = logo;
+    try {
+      const r = await fetch('/settings/club', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: JSON.stringify(body),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.ok) throw new Error(d.error || I18N.t('client.settings.no_se_ha_podido_guardar'));
+      logo = undefined;
+      nameEl.value = d.name;
+      msg.textContent = I18N.t('client.settings.guardado');
+    } catch (e) {
+      saveBtn.disabled = false;
+      msg.textContent = e.message;
+    }
   });
 })();
 

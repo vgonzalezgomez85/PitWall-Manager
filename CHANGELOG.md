@@ -13,6 +13,15 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.59.0] — 2026-10-12
+
+### Añadido
+- **Nombre y logo del club** (Ajustes → Preferencias): escribe el nombre del club, sube su logo (PNG, JPG, SVG o WebP; se reduce solo) y activa el interruptor. Salen junto al logo de PitWall en los **Excel** de resultados, puntos y turnos de piloto, en los **resultados** (pantalla, imprimir/PDF y exportación HTML), en el **informe de turnos**, en la cabecera de la **pantalla de TV** y en los **QR** de pilotos y equipos. Los CSV no cambian.
+- El logo se guarda en la base de datos, así que entra en las **copias de seguridad** y funciona igual en la app de escritorio.
+
+### Mejorado
+- **La app ya está en italiano.** Traducción de **Emanuele Palena** — ¡grazie mille! Pasan al italiano 1.569 textos; solo siguen en español los añadidos después de su traducción (los avisos de quién tiene el GO, el panel de pilotos y el nombre y logo del club).
+
 ## [1.58.0] — 2026-10-11
 
 ### Añadido

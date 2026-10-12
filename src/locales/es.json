@@ -455,7 +455,8 @@
       "pantalla_no_conectada": "Pantalla {{n}} · no conectada",
       "modo_normal": "Ventana",
       "modo_maximizada": "Maximizada",
-      "modo_completa": "Pantalla completa"
+      "modo_completa": "Pantalla completa",
+      "club_logo_no_se_puede_leer": "No se ha podido leer esa imagen."
     },
     "shifts-live": {
       "ambiguedad_usa_override_manual": "Ambigüedad — usa override manual",
@@ -1938,7 +1939,18 @@
     "ventana_pantalla": "Pantalla",
     "ventana_modo": "Cómo se abre",
     "ventana_abrir_al_iniciar": "Abrir al iniciar PitWall",
-    "ventana_abrir_al_iniciar_d": "No se abre si el próximo GO es de una carrera (con una tanda a medias) o de una pole."
+    "ventana_abrir_al_iniciar_d": "No se abre si el próximo GO es de una carrera (con una tanda a medias) o de una pole.",
+    "club_titulo": "Nombre y logo del club",
+    "club_descripcion": "Con esto activado salen en las exportaciones (Excel, PDF y HTML), en la pantalla de TV y en los QR, junto al logo de PitWall.",
+    "club_usar": "Usar el nombre y el logo del club",
+    "club_nombre": "Nombre del club",
+    "club_nombre_ph": "Ej.: Club Slot Llinars",
+    "club_logo": "Logo",
+    "club_logo_d": "PNG, JPG, SVG o WebP. Se reduce a 512 px al subirlo.",
+    "club_sin_logo": "Sin logo",
+    "club_elegir_logo": "Elegir logo…",
+    "club_quitar_logo": "Quitar logo",
+    "club_logo_no_valido": "El logo no es válido o pesa demasiado (máx. 1 MB)."
   },
   "shifts-live": {
     "a_punto": "A punto",

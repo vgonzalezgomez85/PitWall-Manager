@@ -16,11 +16,16 @@
 
   <!-- ── Header ────────────────────────────────────────────────────────────── -->
   <header class="tv-header">
-    <div class="tv-header__left">
-      <div class="tv-race-name"><%= race.name %></div>
-      <div class="tv-manga-tag">
-        <% if (tanda) { %><%= t('common.tanda_2') %> <%= tanda.number %> · <% } %>
-        <%= t('common.manga') %> #<%= manga.number %>
+    <% const _club = typeof clubBrand === 'function' ? clubBrand() : null; %>
+    <div class="tv-header__brand">
+      <% if (_club && _club.logoUrl) { %><img class="tv-club-logo" src="<%= _club.logoUrl %>" alt=""><% } %>
+      <div class="tv-header__left">
+        <% if (_club && _club.name) { %><div class="tv-club-name"><%= _club.name %></div><% } %>
+        <div class="tv-race-name"><%= race.name %></div>
+        <div class="tv-manga-tag">
+          <% if (tanda) { %><%= t('common.tanda_2') %> <%= tanda.number %> · <% } %>
+          <%= t('common.manga') %> #<%= manga.number %>
+        </div>
       </div>
     </div>
 

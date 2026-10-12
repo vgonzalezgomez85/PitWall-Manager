@@ -50,9 +50,12 @@ src/
     PoleTimingService.js  — Cronometraje para sesión de pole position
     LicenseService.js     — Validación de licencia de producto
     LaneColors.js         — Colores de carril: circuito (`circuits.lane_colors`) → global (`settings.lane_colors`) → fábrica. En vistas: `laneColorsFor(race)`, `laneInk(hex)`
+    ClubBrand.js          — Nombre y logo del club (Ajustes → Preferencias): `settings.club_brand_enabled/club_name/club_logo/club_logo_ver`. El logo va en la BD como data URI PNG/JPEG (máx. 1 MB; entra en las copias y Electron no puede escribir en `public/`, que va en el asar). `active()` = marca a pintar o null; la sirve `GET /club/logo` (pública). En vistas: `partials/club-brand.ejs`. El logo de PitWall sale siempre
   lib/
     dsModels.js           — Familia DS PURA: modelos, baud por defecto, cómo se lee el carril (DS-200 distinto) y qué es una trama de control
     tictacProtocol.js     — Trama HID de 16 bytes del TicTac PURA (reloj = min·60000 + ms + décimas, NO 24 bits lineales; tiempo de vuelta = resta de relojes por carril)
+  utils/
+    excelClubBand.js      — `addClubBand(wb, ws, cols, {pitwallLogo})`: banda del club arriba de una hoja ExcelJS (resultados, puntos, turnos). Los CSV no llevan marca
   views/                  — Plantillas EJS
   locales/                — es.json / en.json / it.json (diccionario único)
   middleware/

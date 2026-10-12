@@ -470,6 +470,8 @@ router.get( '/api/settings/tictac-devices', SettingsController.tictacDevices);
 router.post('/settings/lane-colors', SettingsController.saveLaneColors);
 router.post('/settings/prefs',       SettingsController.savePrefs);
 router.post('/settings/security',    SettingsController.saveSecurity);
+router.post('/settings/club',        SettingsController.saveClub);
+router.get( '/club/logo',            SettingsController.clubLogo);
 router.get( '/api/settings/ports', SettingsController.listPorts);
 
 // ── Certificado de la CA (HTTPS local para la cámara del escáner QR) ─────────

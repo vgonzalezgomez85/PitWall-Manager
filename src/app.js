@@ -74,6 +74,8 @@ app.locals.globalLaneColors = () => LaneColors.global();
 app.locals.trainingLaneColors = () => LaneColors.forTraining();
 app.locals.laneInk          = LaneColors.ink;
 app.locals.defaultLaneColors = LaneColors.DEFAULT_LANE_COLORS;
+// Nombre y logo del club (null si está apagado) para exportaciones, TV y QR.
+app.locals.clubBrand = () => require('./services/ClubBrand').active();
 
 const server = http.createServer(app);
 

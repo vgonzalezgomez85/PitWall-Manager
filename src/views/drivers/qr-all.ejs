@@ -26,6 +26,7 @@
     .qr-name  { font-size: .85rem; font-weight: 700; text-align: center; word-break: break-word; }
     .qr-cat   { font-size: .7rem; color: #666; }
     .qr-img   { display: block; width: 120px; height: 120px; }
+    .qr-club  { display: block; height: 26px; max-width: 110px; object-fit: contain; }
     .qr-code  { font-family: monospace; font-size: .6rem; color: #aaa; }
     .no-print { padding: .75rem 0; display: flex; gap: .75rem; justify-content: center; margin-bottom: 1rem; }
     button { padding: .45rem 1.1rem; border-radius: 6px; border: 1px solid #ccc; cursor: pointer; font-size: .9rem; }
@@ -42,12 +43,16 @@
     <button onclick="window.close()"><%= t('common.cerrar') %></button>
   </div>
 
+  <%- include('../partials/club-brand') %>
+  <% const _club = typeof clubBrand === 'function' ? clubBrand() : null; const _clubLogo = _club && _club.logoUrl; %>
+
   <% if (items.length === 0) { %>
     <p style="color:#888"><%= t('qr-all.no_hay_pilotos_con_qr') %></p>
   <% } else { %>
     <div class="grid">
       <% items.forEach(p => { %>
         <div class="qr-card">
+          <% if (_clubLogo) { %><img class="qr-club" src="<%= _clubLogo %>" alt=""><% } %>
           <% if (p.qrDataUrl) { %>
             <img class="qr-img" src="<%= p.qrDataUrl %>" alt="QR">
           <% } else { %>

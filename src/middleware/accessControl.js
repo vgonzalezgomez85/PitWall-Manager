@@ -111,6 +111,8 @@ function isPublicPath(p) {
       // necesitan bajarlo para instalarlo y que la cámara vaya sin aviso. Es un
       // certificado público (sin clave privada), seguro de exponer.
       || p === '/cert' || p === '/cert/ca'
+      // Logo del club: lo muestran los resultados públicos y la TV.
+      || p === '/club/logo'
       // Control de pilotos en directo (kiosco de turnos): solo LECTURA para
       // invitado, la vista oculta sus propios botones de acción (escaneo,
       // corrección) con `isGuestAccess` — los POST de checkin/correct-time

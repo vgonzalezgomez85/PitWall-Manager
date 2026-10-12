@@ -32,6 +32,7 @@
     .qr-name  { font-size: .8rem; font-weight: 700; text-align: center; word-break: break-word; }
     .qr-cat   { font-size: .65rem; color: #666; }
     .qr-img   { display: block; width: 110px; height: 110px; }
+    .qr-club  { display: block; height: 26px; max-width: 110px; object-fit: contain; }
     .qr-code  { font-family: monospace; font-size: .55rem; color: #aaa; }
     .qr-warn  { width: 110px; height: 110px; display: grid; place-items: center; color: #a00; font-size: .65rem; text-align: center; border: 1px dashed #ccc; border-radius: 6px; padding: .3rem; }
     .no-print { padding: .75rem 0; display: flex; gap: .75rem; justify-content: center; margin-bottom: 1rem; }
@@ -49,6 +50,9 @@
     <button onclick="window.close()"><%= t('common.cerrar') %></button>
   </div>
 
+  <%- include('../partials/club-brand') %>
+  <% const _club = typeof clubBrand === 'function' ? clubBrand() : null; const _clubLogo = _club && _club.logoUrl; %>
+
   <% if (groups.length === 0) { %>
     <p style="color:#888"><%= t('qr-by-team.no_hay_equipos') %></p>
   <% } else { %>
@@ -64,6 +68,7 @@
           <div class="grid">
             <% g.items.forEach(p => { %>
               <div class="qr-card">
+                <% if (_clubLogo) { %><img class="qr-club" src="<%= _clubLogo %>" alt=""><% } %>
                 <% if (p.qrDataUrl) { %>
                   <img class="qr-img" src="<%= p.qrDataUrl %>" alt="QR">
                 <% } else { %>

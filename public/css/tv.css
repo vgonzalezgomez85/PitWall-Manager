@@ -20,6 +20,13 @@ html, body { width: 100%; height: 100%; overflow: hidden; }
   height: 12vh;
 }
 
+.tv-header__brand { display: flex; align-items: center; gap: 1.2vw; min-width: 0; }
+.tv-club-logo { height: 9vh; max-width: 14vw; object-fit: contain; flex-shrink: 0; }
+.tv-club-name {
+  font-family: 'Rajdhani', sans-serif; font-size: 2.6vh; font-weight: 700;
+  color: #e6edf3; letter-spacing: .04em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .tv-header__left { display: flex; flex-direction: column; gap: .2vh; min-width: 0; }
 .tv-race-name {
   font-family: 'Rajdhani', sans-serif; font-size: 2.4vh; font-weight: 700;
