@@ -326,8 +326,8 @@ test('Excel: con los interruptores, categoría y coche salen junto al nombre', a
   assert.equal(fila1[2], 'LMGT3');
   assert.equal(fila1[3], 'Ferrari 296');
 
-  // La comparativa mantiene alineadas sus columnas de carril.
-  const s4 = wb.getWorksheet('Comparativa');
+  // La hoja Resultados mantiene alineadas sus columnas de carril.
+  const s4 = wb.getWorksheet('Resultados');
   const h4 = filaCabecera(s4, 'Equipo / Piloto');
   assert.deepEqual(h4.values.slice(1, 7), ['#', 'Equipo / Piloto', 'Categoría', 'Coche', 'Vueltas', 'Pista 1']);
   // Y los datos de la pista 1 siguen en su columna (offsets bien desplazados).

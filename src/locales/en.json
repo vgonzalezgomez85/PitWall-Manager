@@ -783,7 +783,6 @@
       "vueltas_salidas": "{{v}} laps · {{s}} exits"
     },
     "results": {
-      "evolucion_carril": "Evolution by lane",
       "pista_n": "Lane {{n}}",
       "vueltas_salidas": "{{v}} laps · {{s}} exits",
       "total_vueltas": "Total laps",
@@ -803,7 +802,9 @@
       "vuelta_repeticion": "Lap within the repeat",
       "vuelta_cronologico": "Lap (chronological order)",
       "segundos": "Seconds",
-      "delta_vs_media": "Δ vs average (s)"
+      "delta_vs_media": "Δ vs average (s)",
+      "vueltas_una_salida": "{{v}} laps · 1 exit",
+      "pit_stops": "Pit stops"
     },
     "circuits": {
       "escribe_nombre": "Type a name first",
@@ -1681,12 +1682,12 @@
   },
   "results": {
     "activa": "Active",
-    "cada_linea_muestra_la_posicion_de_un_equipo": "Each line shows a team/driver position throughout the race. P1 is at the top. X axis is chronological lap order (each crossing is a point).",
+    "cada_linea_muestra_la_posicion_de_un_equipo": "Each line shows a team/driver’s position over the race. P1 is at the top. The X axis is race time: each point is the end of a heat, with the position projected to the end of the race.",
     "carril_de_inicio": "Starting lane",
     "carril_de_la_vuelta_rapida": "Fast lap lane",
     "comparar_con": "Compare with:",
     "comparar_equipos_elige_2_4_vacio_todos_vs_lider": "Compare teams (pick 2–4; empty = all vs leader)",
-    "comparativa": "Comparison",
+    "tab_resultados": "Results",
     "completa_al_menos_una_manga_para_ver_el_resto": "Complete at least one heat to see the rest of the results.",
     "completa_al_menos_una_manga_para_ver_resultados": "Complete at least one heat to see results.",
     "con_salidas_pit_stops": "With exits/pit-stops",
@@ -1741,7 +1742,25 @@
     "coma_title": "Last-heat coma: fraction of the unfinished lap at the final flag. Breaks ties on equal laps (more = further ahead at the end).",
     "pilotos": "Drivers",
     "tanda": "round",
-    "exportar": "Export"
+    "exportar": "Export",
+    "dest_titulo": "Highlights",
+    "dest_mas_regular": "Most consistent",
+    "dest_pct_consistencia": "{{pct}} consistency",
+    "dest_rapido_pista": "Fastest on each lane",
+    "dest_rapido_pista_hint": "Best clean average (min. {{n}} laps)",
+    "dest_mejor_manga": "Best heat",
+    "dest_n_vueltas": "{{n}} laps",
+    "dest_tanda_manga": "Round {{t}} · Heat {{m}} · Lane {{p}}",
+    "dest_manga": "Heat {{m}} · Lane {{p}}",
+    "dest_racha": "Longest run without exits",
+    "dest_n_seguidas": "{{n}} laps in a row",
+    "dest_menos_salidas": "Fewest exits",
+    "dest_ninguna_salida": "No exits",
+    "dest_una_salida": "1 exit",
+    "dest_n_salidas": "{{n}} exits",
+    "dest_y_mas": "and {{n}} more",
+    "dest_remontada_pole": "Biggest climb from the pole",
+    "dest_pole_hint": "P{{from}} in qualifying → P{{to}} at the finish"
   },
   "results-index": {
     "buscar_carrera_equipo_o_piloto": "Search race, team or driver…",

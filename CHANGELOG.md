@@ -13,6 +13,16 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.61.0] — 2026-10-14
+
+### Añadido
+- **«Destacados» en los resultados**: un bloque con las conclusiones de una línea sacadas de datos que ya existían — más regular, mejor manga, racha más larga sin salidas, menos salidas, mayor remontada desde la pole y más rápido en cada pista. No hay nada nuevo que registrar ni cronometrar.
+- **Categoría y coche desde PitWall Control**: al importar una tanda, la carrera hereda los interruptores «activar categoría» y «activar coche», y cada participante llega con su categoría/copa y su coche (desde las verificaciones). En los resultados, bajo el nombre de cada participante, sale «Categoría: … · Coche: …» cuando la carrera los tiene activados.
+
+### Mejorado
+- **La pestaña «Comparativa» se llama ahora «Resultados»** (en la pantalla y en la hoja del Excel), un nombre más claro para la matriz de clasificación.
+- **Comparación A/B por pista**: al comparar dos participantes en las estadísticas avanzadas, cada pista muestra la media de ambos (antes solo del primero). La tarjeta ancha pasa de «Evolución por carril» a «Media por carril», que es lo que enseña de verdad, y el eje Y del gráfico se titula «Segundos».
+
 ## [1.60.1] — 2026-10-12
 
 ### Corregido

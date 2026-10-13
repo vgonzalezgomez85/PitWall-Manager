@@ -783,7 +783,6 @@
       "vueltas_salidas": "{{v}} giri · {{s}} uscite"
     },
     "results": {
-      "evolucion_carril": "Evoluzione per corsia",
       "pista_n": "Corsia {{n}}",
       "vueltas_salidas": "{{v}} giri · {{s}} uscite",
       "total_vueltas": "Giri totali",
@@ -803,7 +802,9 @@
       "vuelta_repeticion": "Giro all'interno della ripetizione",
       "vuelta_cronologico": "Giro (ordine cronologico)",
       "segundos": "Secondi",
-      "delta_vs_media": "Δ vs media (s)"
+      "delta_vs_media": "Δ vs media (s)",
+      "vueltas_una_salida": "{{v}} giri · 1 uscita",
+      "pit_stops": "Pit-stop"
     },
     "circuits": {
       "escribe_nombre": "Scrivi prima un nome",
@@ -1681,12 +1682,12 @@
   },
   "results": {
     "activa": "Attiva",
-    "cada_linea_muestra_la_posicion_de_un_equipo": "Ogni linea mostra la posizione di un team/pilota lungo la gara. P1 è in alto. L'asse X è l'ordine cronologico dei giri (ogni passaggio è un punto).",
+    "cada_linea_muestra_la_posicion_de_un_equipo": "Ogni linea mostra la posizione di una squadra/pilota lungo la gara. P1 è in alto. L’asse X è il tempo di gara: ogni punto è la fine di una manche, con la posizione proiettata a fine gara.",
     "carril_de_inicio": "Corsia di partenza",
     "carril_de_la_vuelta_rapida": "Corsia del giro veloce",
     "comparar_con": "Confronta con:",
     "comparar_equipos_elige_2_4_vacio_todos_vs_lider": "Confronta team (scegli 2–4; vuoto = tutti vs leader)",
-    "comparativa": "Confronto",
+    "tab_resultados": "Risultati",
     "completa_al_menos_una_manga_para_ver_el_resto": "Completa almeno una manche per vedere il resto dei risultati.",
     "completa_al_menos_una_manga_para_ver_resultados": "Completa almeno una manche per vedere i risultati.",
     "con_salidas_pit_stops": "Con uscite/pit-stop",
@@ -1741,7 +1742,25 @@
     "coma_title": "Virgola dell'ultima manche: frazione del giro in corso alla caduta della bandiera dell'ultima manche. Fa da spareggio a parità di giri (di più = era più avanti alla fine).",
     "pilotos": "Pilotos",
     "tanda": "tanda",
-    "exportar": "Exportar"
+    "exportar": "Exportar",
+    "dest_titulo": "In evidenza",
+    "dest_mas_regular": "Più regolare",
+    "dest_pct_consistencia": "{{pct}} di consistenza",
+    "dest_rapido_pista": "Più veloce su ogni corsia",
+    "dest_rapido_pista_hint": "Miglior media pulita (min. {{n}} giri)",
+    "dest_mejor_manga": "Miglior manche",
+    "dest_n_vueltas": "{{n}} giri",
+    "dest_tanda_manga": "Batteria {{t}} · Manche {{m}} · Corsia {{p}}",
+    "dest_manga": "Manche {{m}} · Corsia {{p}}",
+    "dest_racha": "Serie più lunga senza uscite",
+    "dest_n_seguidas": "{{n}} giri di fila",
+    "dest_menos_salidas": "Meno uscite",
+    "dest_ninguna_salida": "Nessuna uscita",
+    "dest_una_salida": "1 uscita",
+    "dest_n_salidas": "{{n}} uscite",
+    "dest_y_mas": "e altri {{n}}",
+    "dest_remontada_pole": "Maggior rimonta dalla pole",
+    "dest_pole_hint": "P{{from}} in pole → P{{to}} all’arrivo"
   },
   "results-index": {
     "buscar_carrera_equipo_o_piloto": "Cerca gara, team o pilota…",

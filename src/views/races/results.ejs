@@ -27,6 +27,23 @@
 .race-best-banner__value strong { font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; }
 .race-best-banner__meta { margin-left: .75rem; font-size: .9rem; opacity: .85; }
 
+/* ── Destacados (bajo la vuelta rápida) ── */
+.race-hl { margin-bottom: 1.25rem; }
+.race-hl__title { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: #8b949e; margin-bottom: .5rem; }
+.race-hl__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: .7rem; }
+.race-hl__card { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: .8rem 1rem; min-width: 0; }
+.race-hl__card--lanes { grid-column: span 2; }
+.race-hl__label { color: #8b949e; font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; }
+.race-hl__name { color: #e6edf3; font-weight: 700; font-size: 1.05rem; margin-top: .2rem; overflow-wrap: anywhere; }
+.race-hl__more { color: #8b949e; font-weight: 400; font-size: .85rem; }
+.race-hl__meta { color: #8b949e; font-size: .8rem; margin-top: .15rem; font-variant-numeric: tabular-nums; }
+.race-hl__lanes { list-style: none; margin: .4rem 0 .2rem; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: .3rem .8rem; }
+.race-hl__lanes .lane-pill { width: 1.4rem; height: 1.4rem; font-size: .72rem; flex: none; }
+.race-hl__lanes li { display: flex; align-items: center; gap: .5rem; min-width: 0; }
+.race-hl__lname { color: #e6edf3; font-weight: 600; font-size: .9rem; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.race-hl__ltime { color: #c9d1d9; font-family: 'Share Tech Mono', monospace; font-size: .85rem; }
+@media (max-width: 640px) { .race-hl__card--lanes { grid-column: auto; } }
+
 /* ── Barra de scroll horizontal espejo, sobre la cabecera de la parrilla ── */
 .grid-topscroll {
   overflow-x: auto; overflow-y: hidden;
@@ -79,6 +96,11 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
    completo: parte en varias líneas si la columna es estrecha. */
 .matrix-driver {
   display: block; margin-top: 2px; font-size: .6rem; line-height: 1.15;
+  font-weight: 500; color: #8b949e; text-transform: none; letter-spacing: 0;
+}
+/* Categoría y coche del participante (solo si la carrera los activa). */
+.matrix-catcar {
+  display: block; margin-top: 4px; font-size: .72rem; line-height: 1.3;
   font-weight: 500; color: #8b949e; text-transform: none; letter-spacing: 0;
 }
 /* Posición por vueltas dentro del carril, entre paréntesis junto al nº de vueltas */
@@ -198,6 +220,9 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
     border: 2px solid #b45309; box-shadow: none; border-radius: 8px;
   }
   .race-best-banner__label, .race-best-banner__meta { color: #555 !important; opacity: 1; }
+  .race-hl__card { background: #fff !important; border: 1px solid #ccc; }
+  .race-hl__name, .race-hl__lname, .race-hl__ltime { color: #000 !important; }
+  .race-hl__label, .race-hl__meta, .race-hl__title, .race-hl__more { color: #555 !important; }
 
   /* Matriz comparativa en claro */
   .matrix-wrapper { overflow: visible; border: none; background: #fff !important; border-radius: 0; }
@@ -210,6 +235,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
   .matrix-lane__label { color: #555; }
   .matrix-occ__label { color: #555; }
   .matrix-driver { color: #333 !important; }
+  .matrix-catcar { color: #555 !important; }
   .matrix-occ__ord { color: #000 !important; }
   .matrix-occ--group-start, thead .matrix-occ--group-start {
     box-shadow: none; border-left: 2px solid #999 !important;
@@ -356,7 +382,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
     <!-- Tab nav -->
     <div class="results-tabs">
       <button class="results-tab active" data-tab="matrix">
-        <%= t('results.comparativa') %>
+        <%= t('results.tab_resultados') %>
       </button>
       <button class="results-tab" data-tab="progression">
         <%= t('results.progresion') %>
@@ -510,6 +536,67 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
         </div>
       <% } %>
 
+      <% if (typeof highlights !== 'undefined' && highlights) { const h = highlights; %>
+        <section class="race-hl">
+          <div class="race-hl__title"><%= t('results.dest_titulo') %></div>
+          <div class="race-hl__grid">
+            <% if (h.mostConsistent) { %>
+              <div class="race-hl__card">
+                <div class="race-hl__label"><%= t('results.dest_mas_regular') %></div>
+                <div class="race-hl__name"><%= h.mostConsistent.name %></div>
+                <div class="race-hl__meta"><%= t('results.dest_pct_consistencia', { pct: fmtPct(h.mostConsistent.pct) }) %></div>
+              </div>
+            <% } %>
+            <% if (h.bestManga) { const bm = h.bestManga; %>
+              <div class="race-hl__card">
+                <div class="race-hl__label"><%= t('results.dest_mejor_manga') %></div>
+                <div class="race-hl__name"><%= bm.name %></div>
+                <div class="race-hl__meta">
+                  <%= t('results.dest_n_vueltas', { n: bm.laps }) %> ·
+                  <%= bm.multiTanda ? t('results.dest_tanda_manga', { t: bm.tanda, m: bm.manga, p: bm.lane }) : t('results.dest_manga', { m: bm.manga, p: bm.lane }) %>
+                </div>
+              </div>
+            <% } %>
+            <% if (h.longestStreak) { %>
+              <div class="race-hl__card">
+                <div class="race-hl__label"><%= t('results.dest_racha') %></div>
+                <div class="race-hl__name"><%= h.longestStreak.name %></div>
+                <div class="race-hl__meta"><%= t('results.dest_n_seguidas', { n: h.longestStreak.laps }) %></div>
+              </div>
+            <% } %>
+            <% if (h.fewestExits) { const fe = h.fewestExits; %>
+              <div class="race-hl__card">
+                <div class="race-hl__label"><%= t('results.dest_menos_salidas') %></div>
+                <div class="race-hl__name"><%= fe.names.join(', ') %><% if (fe.more) { %> <span class="race-hl__more"><%= t('results.dest_y_mas', { n: fe.more }) %></span><% } %></div>
+                <div class="race-hl__meta"><%= fe.count === 0 ? t('results.dest_ninguna_salida') : (fe.count === 1 ? t('results.dest_una_salida') : t('results.dest_n_salidas', { n: fe.count })) %></div>
+              </div>
+            <% } %>
+            <% if (h.poleGain) { %>
+              <div class="race-hl__card">
+                <div class="race-hl__label"><%= t('results.dest_remontada_pole') %></div>
+                <div class="race-hl__name"><%= h.poleGain.name %></div>
+                <div class="race-hl__meta"><%= t('results.dest_pole_hint', { from: h.poleGain.from, to: h.poleGain.to }) %></div>
+              </div>
+            <% } %>
+            <% if (h.laneKings.length) { %>
+              <div class="race-hl__card race-hl__card--lanes">
+                <div class="race-hl__label"><%= t('results.dest_rapido_pista') %></div>
+                <ul class="race-hl__lanes">
+                  <% h.laneKings.forEach(k => { const lc = LANE_COLORS[k.lane - 1] || '#8b949e'; %>
+                    <li>
+                      <span class="lane-pill" style="background:<%= lc %>;color:<%= laneInk(lc) %>"><%= k.lane %></span>
+                      <span class="race-hl__lname"><%= k.name %></span>
+                      <span class="race-hl__ltime"><%= fmtSec(k.avgMs) %></span>
+                    </li>
+                  <% }) %>
+                </ul>
+                <div class="race-hl__meta"><%= t('results.dest_rapido_pista_hint', { n: h.minLaneLaps }) %></div>
+              </div>
+            <% } %>
+          </div>
+        </section>
+      <% } %>
+
       <div class="grid-topscroll" id="matrixTopScroll" aria-hidden="true"><div class="grid-topscroll__inner"></div></div>
       <div class="matrix-wrapper" id="matrixWrapper">
         <table class="matrix-table">
@@ -566,6 +653,13 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
                   <strong><%= r.entity_name %></strong>
                   <% if (startLane) { %>
                     <span class="start-lane-tag" title="<%= t('results.carril_de_inicio') %>"><%= t('results.sale') %> P<%= startLane %></span>
+                  <% } %>
+                  <% if (race.has_categoria || race.has_coche) { %>
+                    <span class="matrix-catcar">
+                      <% if (race.has_categoria) { %><span><%= t('client.common.categoria') %>: <%= r.categoria || '—' %></span><% } %>
+                      <% if (race.has_categoria && race.has_coche) { %> · <% } %>
+                      <% if (race.has_coche) { %><span><%= t('common.coche') %>: <%= r.coche || '—' %></span><% } %>
+                    </span>
                   <% } %>
                 </td>
                 <td class="matrix-laps matrix-total">
@@ -1012,21 +1106,34 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
             </div>`;
         }
 
-        // Tarjeta ancha con el gráfico de evolución por carril + mini-tarjetas
-        // (entidad A; el gráfico ya superpone A y B).
-        function wideCard(a) {
+        function lapsExits(p) {
+          return p.exitCount === 1
+            ? I18N.t('client.results.vueltas_una_salida', { v: p.totalLaps })
+            : I18N.t('client.results.vueltas_salidas', { v: p.totalLaps, s: p.exitCount });
+        }
+
+        // Tarjeta ancha con la media por carril (gráfico) + mini-tarjetas por
+        // pista; con comparación, cada mini-tarjeta lleva también la de B.
+        function wideCard(a, b) {
+          const bByLane = new Map(((b && b.perLane) || []).map(p => [p.lane, p]));
+          const laneAvg = p => fmtMs(includeOutliers ? p.avgAll : p.avgClean);
           return `
             <div class="adv-card adv-card--wide">
-              <div class="adv-card__label">${I18N.t('client.results.evolucion_carril')}</div>
+              <div class="adv-card__label">${I18N.t('client.results.media_por_carril')}</div>
               <div class="adv-manga-chart"><canvas id="advMangaChart"></canvas></div>
               <div class="adv-mangas">
-                ${(a.perLane || []).map(p => `
+                ${(a.perLane || []).map(p => {
+                  const bp = bByLane.get(p.lane);
+                  return `
                   <div class="adv-manga">
                     <div class="adv-manga__lbl">${I18N.t('client.results.pista_n', { n: p.lane })}</div>
-                    <div class="adv-manga__val">${fmtMs(includeOutliers ? p.avgAll : p.avgClean)}</div>
-                    <div class="adv-manga__meta">${I18N.t('client.results.vueltas_salidas', { v: p.totalLaps, s: p.exitCount })}</div>
-                  </div>
-                `).join('')}
+                    <div class="adv-manga__val${b ? ' adv-cmp-a' : ''}">${laneAvg(p)}</div>
+                    <div class="adv-manga__meta">${lapsExits(p)}</div>
+                    ${b ? `
+                    <div class="adv-manga__val adv-cmp-b">${bp ? laneAvg(bp) : '—'}</div>
+                    <div class="adv-manga__meta">${bp ? lapsExits(bp) : ''}</div>` : ''}
+                  </div>`;
+                }).join('')}
               </div>
             </div>`;
         }
@@ -1053,7 +1160,6 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
               <div class="adv-card">
                 <div class="adv-card__label">${I18N.t('client.results.delta_consistencia')}</div>
                 <div class="adv-card__big">${delta != null ? '+' + fmtSec(delta) : '—'}</div>
-                <div class="adv-card__hint">avg − best</div>
               </div>
               <div class="adv-card">
                 <div class="adv-card__label">${I18N.t('client.results.salidas_pits')}</div>
@@ -1062,7 +1168,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
               <div class="adv-card">
                 <div class="adv-card__label">${I18N.t('client.results.tiempo_perdido')}</div>
                 <div class="adv-card__big">${fmtSec(a.lostMs)}</div>
-                <div class="adv-card__hint">${I18N.t('client.results.aprox_vueltas', { n: a.lostLapsEquiv })}</div>
+                <div class="adv-card__hint">${I18N.t('client.results.aprox_vueltas', { n: String(a.lostLapsEquiv).replace('.', ',') })}</div>
               </div>
               ${wideCard(a)}
             `;
@@ -1077,9 +1183,9 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
             cmpCard(includeOutliers ? I18N.t('client.results.media_con_salidas') : I18N.t('client.results.media_limpia'), fmtMs(avg), fmtMs(avgB), 'lowerMs', avg, avgB) +
             cmpCard(I18N.t('client.results.delta_consistencia'), delta != null ? '+' + fmtSec(delta) : '—', deltaB != null ? '+' + fmtSec(deltaB) : '—', 'lowerMs', delta, deltaB) +
             cmpCard(I18N.t('client.results.salidas'), a.exitCount, b.exitCount, 'lower', a.exitCount, b.exitCount) +
-            cmpCard('Pit-stops', a.pitStopCount, b.pitStopCount, 'lower', a.pitStopCount, b.pitStopCount) +
+            cmpCard(I18N.t('client.results.pit_stops'), a.pitStopCount, b.pitStopCount, 'lower', a.pitStopCount, b.pitStopCount) +
             cmpCard(I18N.t('client.results.tiempo_perdido'), fmtSec(a.lostMs), fmtSec(b.lostMs), 'lowerMs', a.lostMs, b.lostMs) +
-            wideCard(a);
+            wideCard(a, b);
         }
 
         // Gráfico de evolución de la media POR CARRIL (entidad + comparada).
@@ -1119,7 +1225,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
                 x: { ticks: { color: '#8b949e' }, grid: { color: '#21262d' } },
                 y: { ticks: { color: '#8b949e', callback: (v) => v.toFixed(2).replace('.', ',') + 's' },
                      grid: { color: '#21262d' },
-                     title: { display: true, text: I18N.t('client.results.media_por_carril'), color: '#6e7681' } },
+                     title: { display: true, text: I18N.t('client.results.segundos'), color: '#6e7681' } },
               },
             },
           });

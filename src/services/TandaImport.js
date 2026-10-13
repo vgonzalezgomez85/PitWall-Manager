@@ -86,6 +86,10 @@ function validate(payload) {
   // así que el carril_salida del payload se ignora y no se valida.
   const pole = payload.pole === true || payload.pole === 1 || payload.pole === '1';
 
+  // Flags de carrera: ¿activar la categoría/copa y el coche por participante?
+  const hasCategoria = payload.has_categoria === true || payload.has_categoria === 1 || payload.has_categoria === '1';
+  const hasCoche = payload.has_coche === true || payload.has_coche === 1 || payload.has_coche === '1';
+
   const tandas = payload.tandas.map((t, ti) => {
     const equipos = Array.isArray(t.equipos) ? t.equipos : [];
     if (equipos.length === 0) throw new TandaImportError(`La tanda ${ti + 1} no tiene equipos.`, 'tanda_sin_equipos', { n: ti + 1 });
@@ -109,7 +113,7 @@ function validate(payload) {
       }
       const descanso = asInt(e.descanso) || 0;
       const pilotos = Array.isArray(e.pilotos) ? e.pilotos.map(p => String(p || '').trim()).filter(Boolean) : [];
-      return { nombre: enombre, copa: e.copa != null ? String(e.copa) : null, carril, isRest, descanso, pilotos };
+      return { nombre: enombre, copa: e.copa != null ? String(e.copa) : null, coche: e.coche != null ? String(e.coche) : null, carril, isRest, descanso, pilotos };
     });
     if (!pole) {
       if (racers === 0) {
@@ -122,7 +126,7 @@ function validate(payload) {
     return { numero: asInt(t.numero) || ti + 1, equipos: eqs };
   });
 
-  return { nombre, sede: prueba.sede ? String(prueba.sede) : null, carriles, isTeam, pole, tandas };
+  return { nombre, sede: prueba.sede ? String(prueba.sede) : null, carriles, isTeam, pole, hasCategoria, hasCoche, tandas };
 }
 
 // Crea la carrera completa a partir del payload. Devuelve { raceId, url, ... }.
@@ -139,7 +143,9 @@ function createFromPayload(payload) {
     const raceId = Race.create({
       name: v.nombre, type, format, lanes_count: v.carriles,
       lane_sequence: laneSeqRace, manga_duration_minutes: mangaMin,
-      circuits: [v.carriles], has_pole: v.pole ? 1 : 0, min_lap_ms: minLapMs,
+      circuits: [v.carriles], has_pole: v.pole ? 1 : 0,
+      has_categoria: v.hasCategoria ? 1 : 0, has_coche: v.hasCoche ? 1 : 0,
+      min_lap_ms: minLapMs,
     });
 
     let teamCount = 0;
@@ -148,7 +154,7 @@ function createFromPayload(payload) {
     const crear = (tandaId, eq, colorSeed) => {
       const color = palette[((colorSeed % palette.length) + palette.length) % palette.length];
       if (v.isTeam) {
-        const teamId = Team.create({ race_id: raceId, tanda_id: tandaId, name: eq.nombre, lane: 0, color });
+        const teamId = Team.create({ race_id: raceId, tanda_id: tandaId, name: eq.nombre, lane: 0, color, categoria: v.hasCategoria ? eq.copa : null, coche: v.hasCoche ? eq.coche : null });
         eq.pilotos.forEach((p, i) => Driver.create({
           race_id: raceId, tanda_id: tandaId, team_id: teamId, name: p, lane: null, car_number: i + 1,
         }));
@@ -159,6 +165,7 @@ function createFromPayload(payload) {
       const driverId = Driver.create({
         race_id: raceId, tanda_id: tandaId, team_id: null, name: eq.nombre,
         lane: eq.carril || null, car_number: eq.carril || null,
+        categoria: v.hasCategoria ? eq.copa : null, coche: v.hasCoche ? eq.coche : null,
       });
       teamCount++;
       return { id: driverId, type: 'driver', name: eq.nombre };
@@ -182,6 +189,7 @@ function createFromPayload(payload) {
             entityType,
             entityName: eq.nombre,
             membersJson: eq.pilotos.length ? JSON.stringify(eq.pilotos) : null,
+            categoria: v.hasCategoria ? eq.copa : null, coche: v.hasCoche ? eq.coche : null,
           });
         }
       }

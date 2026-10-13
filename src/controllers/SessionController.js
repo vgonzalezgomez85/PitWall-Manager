@@ -31,6 +31,7 @@ const GoOwnerService = require('../services/GoOwnerService');
 const RaceEventLog   = require('../services/RaceEventLog');
 const ExportGuard    = require('../services/ExportGuard');
 const { stintConsistency } = require('../lib/consistency');
+const { buildRaceHighlights } = require('../lib/raceHighlights');
 const { localeFor } = require('../utils/locale');
 
 const LaneColors = require('../services/LaneColors');
@@ -1094,7 +1095,7 @@ class SessionController {
     const progressionRows = db.prepare(`
       SELECT l.id, l.lane, l.lap_number, l.lap_time_ms, l.elapsed_ms,
              l.team_id, l.driver_id, l.is_exit, l.is_pit_stop,
-             l.manga_id, m.number AS manga_number, l.timestamp,
+             l.manga_id, m.number AS manga_number, t.number AS tanda_number, l.timestamp,
              d.name AS lap_driver_name
       FROM laps l
       JOIN mangas m ON m.id = l.manga_id
@@ -1349,8 +1350,30 @@ class SessionController {
       }
     }
 
+    const advByKey = new Map(advancedStats.map(a => [a.key, a]));
+    const highlights = buildRaceHighlights({
+      entities: results.map(r => {
+        const key = `${r.entity_type}_${r.entity_id}`;
+        const a = advByKey.get(key);
+        return {
+          key, name: r.entity_name,
+          consistency: r.raceConsistency, consistencyStdMs: r.raceConsistencyStdMs,
+          exitCount: a ? a.exitCount : null,
+          perLane: a ? a.perLane.map(p => ({ lane: p.lane, avgClean: p.avgClean, cleanLaps: p.cleanLaps })) : [],
+        };
+      }),
+      laps: progressionRows.map(row => ({
+        key: row.team_id ? `team_${row.team_id}` : `driver_${row.driver_id}`,
+        mangaId: row.manga_id, tanda: row.tanda_number, manga: row.manga_number, lane: row.lane,
+        isExit: !!row.is_exit, isPitStop: !!row.is_pit_stop,
+      })),
+      pole: pole ? pole.rows : null,
+      multiTanda: tandas.length > 1,
+    });
+
     return SessionController._sendResults(req, res, {
       t: req.t, race, results, laneSequence, tandas, LANE_COLORS: LaneColors.forRace(race),
+      highlights,
       raceBestLapMs, raceBestEntity, raceBestLane, startLaneByEntity,
       progressionByEntity, positionData, gapData, mangaTimes,
       advancedStats,
@@ -1896,10 +1919,10 @@ class SessionController {
       if (startLaneByEntity[key] == null) startLaneByEntity[key] = r.lane;
     });
 
-    const s4 = wb.addWorksheet(req.t('results.comparativa'), {
+    const s4 = wb.addWorksheet(req.t('results.tab_resultados'), {
       properties: { outlineProperties: { summaryBelow: false, summaryRight: false } }
     });
-    // Que "Comparativa" sea la PRIMERA pestaña (y la que se abre) aunque se cree
+    // Que "Resultados" sea la PRIMERA pestaña (y la que se abre) aunque se cree
     // la 4ª. El resto conserva su orden (orderNo por defecto es el de creación).
     s4.orderNo = 0;
     wb.views = [{ activeTab: 0, firstSheet: 0 }];

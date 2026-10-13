@@ -783,7 +783,6 @@
       "vueltas_salidas": "{{v}}v · {{s}} salidas"
     },
     "results": {
-      "evolucion_carril": "Evolución por carril",
       "pista_n": "Pista {{n}}",
       "vueltas_salidas": "{{v}}v · {{s}} salidas",
       "total_vueltas": "Total vueltas",
@@ -803,7 +802,9 @@
       "vuelta_repeticion": "Vuelta dentro de la repetición",
       "vuelta_cronologico": "Vuelta (orden cronológico)",
       "segundos": "Segundos",
-      "delta_vs_media": "Δ vs media (s)"
+      "delta_vs_media": "Δ vs media (s)",
+      "vueltas_una_salida": "{{v}}v · 1 salida",
+      "pit_stops": "Pit-stops"
     },
     "circuits": {
       "escribe_nombre": "Escribe un nombre primero",
@@ -1681,12 +1682,12 @@
   },
   "results": {
     "activa": "Activa",
-    "cada_linea_muestra_la_posicion_de_un_equipo": "Cada línea muestra la posición de un equipo/piloto a lo largo de la carrera. P1 está arriba. El eje X es el orden cronológico de las vueltas (cada cruce es un punto).",
+    "cada_linea_muestra_la_posicion_de_un_equipo": "Cada línea muestra la posición de un equipo/piloto a lo largo de la carrera. P1 está arriba. El eje X es el tiempo de carrera: cada punto es el cierre de una manga, con la posición proyectada al final de la carrera.",
     "carril_de_inicio": "Carril de inicio",
     "carril_de_la_vuelta_rapida": "Carril de la vuelta rápida",
     "comparar_con": "Comparar con:",
     "comparar_equipos_elige_2_4_vacio_todos_vs_lider": "Comparar equipos (elige 2–4; vacío = todos vs líder)",
-    "comparativa": "Comparativa",
+    "tab_resultados": "Resultados",
     "completa_al_menos_una_manga_para_ver_el_resto": "Completa al menos una manga para ver el resto de resultados.",
     "completa_al_menos_una_manga_para_ver_resultados": "Completa al menos una manga para ver resultados.",
     "con_salidas_pit_stops": "Con salidas/pit-stops",
@@ -1741,7 +1742,25 @@
     "coma_title": "Coma de la última manga: fracción de la vuelta en curso al caer la bandera de la última manga. Desempata a igualdad de vueltas (más = iba más adelantado al final).",
     "pilotos": "Pilotos",
     "tanda": "tanda",
-    "exportar": "Exportar"
+    "exportar": "Exportar",
+    "dest_titulo": "Destacados",
+    "dest_mas_regular": "Más regular",
+    "dest_pct_consistencia": "{{pct}} de consistencia",
+    "dest_rapido_pista": "Más rápido en cada pista",
+    "dest_rapido_pista_hint": "Mejor media limpia (mín. {{n}} vueltas)",
+    "dest_mejor_manga": "Mejor manga",
+    "dest_n_vueltas": "{{n}} vueltas",
+    "dest_tanda_manga": "Tanda {{t}} · Manga {{m}} · Pista {{p}}",
+    "dest_manga": "Manga {{m}} · Pista {{p}}",
+    "dest_racha": "Racha más larga sin salidas",
+    "dest_n_seguidas": "{{n}} vueltas seguidas",
+    "dest_menos_salidas": "Menos salidas",
+    "dest_ninguna_salida": "Ninguna salida",
+    "dest_una_salida": "1 salida",
+    "dest_n_salidas": "{{n}} salidas",
+    "dest_y_mas": "y {{n}} más",
+    "dest_remontada_pole": "Mayor remontada desde la pole",
+    "dest_pole_hint": "P{{from}} en la pole → P{{to}} al final"
   },
   "results-index": {
     "buscar_carrera_equipo_o_piloto": "Buscar carrera, equipo o piloto…",
