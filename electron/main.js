@@ -201,6 +201,20 @@ function createWindow(query = '') {
   mainWindow.setMenuBarVisibility(false);
   trackFullScreen(mainWindow);
   mainWindow.loadURL(`http://127.0.0.1:${PORT}/${query}`);
+  // Modo «abrir aquí»: lo que tiene pantalla asignada no se carga en la
+  // principal (el operador la perdería) sino aparte, en su pantalla.
+  const toPlaced = (e, url, redirect) => {
+    if (!placementFor(url)) return;
+    e.preventDefault();
+    const target = new URL(url).href;
+    openOrFocusNamed(target, placedWindowName(target));
+    // Redirección tras un POST (p. ej. «Empezar» la pole): la principal se
+    // quedaría en un formulario ya enviado; mejor la página de la carrera.
+    const race = redirect && new URL(target).pathname.match(/^\/races\/(\d+)\//);
+    if (race) mainWindow.loadURL(`http://127.0.0.1:${PORT}/races/${race[1]}`);
+  };
+  mainWindow.webContents.on('will-navigate', (e, url) => toPlaced(e, url, false));
+  mainWindow.webContents.on('will-redirect', (e, url) => toPlaced(e, url, true));
   mainWindow.on('close', e => { if (!app.isQuiting) { e.preventDefault(); mainWindow.hide(); } });
   mainWindow.on('closed', () => { mainWindow = null; });
 }
@@ -278,8 +292,20 @@ app.on('web-contents-created', (_e, contents) => {
     win.setMenuBarVisibility(false);
     trackFullScreen(win);
     const place = placementFor(details.url);
+    placedType.set(win, placement.classify(details.url));
     if (place) showPlaced(win, place);
     else if (!win.isVisible()) win.show();
+  });
+  // El directo casi nunca se abre directamente: la ventana de la carrera o del
+  // asistente navega a /live al dar el GO. Sin esto se quedaba donde estaba.
+  contents.on('did-navigate', (_ev, url) => {
+    const win = BrowserWindow.fromWebContents(contents);
+    if (!win || win === mainWindow || win.isDestroyed()) return;
+    const type = placement.classify(url);
+    if (!type || placedType.get(win) === type) return;
+    placedType.set(win, type);
+    const place = placementFor(url);
+    if (place) movePlaced(win, place);
   });
 });
 
@@ -333,6 +359,28 @@ function showPlaced(win, place) {
   };
   win.once('ready-to-show', go);
   setTimeout(go, 3000);
+}
+
+// Tipo de ventana para el que ya se aplicó la regla: recargar o pasar de una
+// manga a la siguiente no vuelve a mover una ventana que el operador recolocó.
+const placedType = new WeakMap();
+
+// Ventana ya visible que cambia de tipo. A pantalla completa no se puede mover
+// de monitor: primero se sale y luego se coloca.
+function movePlaced(win, place) {
+  let done = false;
+  const go = () => {
+    if (done || win.isDestroyed()) return;
+    done = true;
+    if (win.isMaximized()) win.unmaximize();
+    win.setBounds(place.bounds);
+    if (place.mode === 'maximized') win.maximize();
+    else if (place.mode === 'fullscreen') win.setFullScreen(true);
+  };
+  if (!win.isFullScreen()) return go();
+  win.once('leave-full-screen', () => setTimeout(go, 100));
+  setTimeout(go, 1500);
+  win.setFullScreen(false);
 }
 
 ipcMain.handle('pitwall:screens', () =>
@@ -430,15 +478,27 @@ ipcMain.handle('pitwall:open-window', (_e, url, name) => {
   if (typeof url !== 'string' || typeof name !== 'string') return false;
   const target = new URL(url, `http://127.0.0.1:${PORT}`).href;
   if (!isAppUrl(target)) return false;
-  let win = namedWindows.get(name);
+  openOrFocusNamed(target, name);
+  return true;
+});
+
+function openOrFocusNamed(target, name) {
+  const win = namedWindows.get(name);
   if (win && !win.isDestroyed()) {
     if (!sameSection(win.webContents.getURL(), target)) win.loadURL(target);
     bringToFront(win);
-    return true;
+    return;
   }
   openNamedWindow(target, name);
-  return true;
-});
+}
+
+// Mismos nombres que da el inicio (data-win), para no duplicar la ventana.
+function placedWindowName(target) {
+  const type = placement.classify(target);
+  if (type === 'training') return 'pw-training';
+  const race = new URL(target).pathname.match(/^\/races\/(\d+)\//);
+  return `pw-${type}` + (race ? `-${race[1]}` : '');
+}
 
 function openNamedWindow(target, name) {
   const place = placementFor(target);
@@ -449,6 +509,7 @@ function openNamedWindow(target, name) {
   windowNames.set(win.id, name);
   const id = win.id;
   win.on('closed', () => { namedWindows.delete(name); windowNames.delete(id); });
+  placedType.set(win, placement.classify(target));
   win.loadURL(target);
   if (place) showPlaced(win, place);
 }

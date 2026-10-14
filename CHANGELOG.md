@@ -13,6 +13,13 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.61.1] — 2026-10-14
+
+### Corregido
+- **El botón «Carreras» vuelve al modo básico**: el inicio en básico solo enseñaba entreno libre, carrera sprint y resultados, y para abrir una carrera ya creada había que buscarla en la tabla. Ahora sale entre «Carrera sprint» y «Resultados», con el contador de carreras en curso.
+- **Ventanas por pantalla (app de escritorio)**: el directo, la pole, la TV, Le Mans y el entreno se abrían en la pantalla 1 aunque en Ajustes → Ventanas y pantallas tuvieran otra asignada. La regla solo se aplicaba al crear la ventana, y el directo casi siempre llega navegando (la ventana de la carrera pasa a /live al dar el GO). Ahora se aplica también al navegar: la ventana salta a su pantalla y modo, saliendo antes de pantalla completa si hace falta.
+- **Con el inicio en «abrir aquí»**, esas mismas páginas ya no se cargan en la ventana principal cuando tienen pantalla asignada: se abren aparte, en su pantalla, y la principal se queda para el operador.
+
 ## [1.61.0] — 2026-10-14
 
 ### Añadido

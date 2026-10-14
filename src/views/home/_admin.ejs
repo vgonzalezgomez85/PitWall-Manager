@@ -54,10 +54,11 @@ const RACE_ENDURANCE = { href: '/races/new?type=championship', label: t('_admin.
 const TRAIN_FREE     = { href: '/training/free', label: t('common.entreno_libre'), icon: 'clock', a: '#38bdf8', desc: t('_admin.vueltas_por_carril_sin_equipos') };
 const TRAIN_COMP     = { href: '/training/competition', label: t('common.entreno_de_competicion'), icon: 'people', a: '#0ea5e9', desc: t('_admin.equipos_con_rotacion_por_tandas') };
 const RESULTS        = { href: '/results', label: t('common.resultados'), icon: 'trophy', a: '#f6c90e', desc: t('_admin.carreras_finalizadas') };
+const RACES          = { href: '/races', label: t('common.carreras'), icon: 'flag', a: '#ef4651', desc: t('_admin.crear_gestionar_y_lanzar_mangas') };
 const LAP            = { href: '/lap', label: 'Lap', icon: 'phone', a: '#58a6ff', desc: t('_admin.pins_y_timing_del_equipo_en_el_movil'), adv: true };
 const groups = [
   { id: 'comp', title: t('_admin.competicion'), items: [
-    { href: '/races', label: t('common.carreras'), icon: 'flag', a: '#ef4651', badge: inProgressRaces > 0 ? inProgressRaces : null, adv: true },
+    Object.assign({}, RACES, { badge: inProgressRaces > 0 ? inProgressRaces : null }),
     RACE_SPRINT, RACE_ENDURANCE, TRAIN_FREE, TRAIN_COMP,
     { href: '/training/competition/results', label: t('common.resultados_de_entrenos'), icon: 'list', a: '#38bdf8', adv: true },
     { href: '/race-stats', label: t('common.estadisticas_en_vivo'), icon: 'chart', a: '#22c55e', adv: true },
@@ -84,8 +85,8 @@ const groups = [
 ];
 const forMode = (items) => BASIC ? items.filter(it => !it.adv) : items;
 groups.forEach(g => { g.items = forMode(g.items); });
-// Básico: Competición con solo tres botones y en este orden (petición del club).
-const BASIC_COMP = [TRAIN_FREE, RACE_SPRINT, RESULTS];
+// Básico: Competición con solo estos botones y en este orden (petición del club).
+const BASIC_COMP = [TRAIN_FREE, RACE_SPRINT, Object.assign({}, RACES, { badge: inProgressRaces > 0 ? inProgressRaces : null }), RESULTS];
 if (BASIC) groups[0].items = BASIC_COMP;
 // Con contraseña y sin haber entrado: Sistema y Catálogo la piden al pulsarlos.
 const LOCKED = typeof pwLocked !== 'undefined' && pwLocked;
@@ -506,14 +507,13 @@ const tile = (it, small) => '<a href="' + it.href + '" class="hm-tile' + (small 
     <% if (L === 'a') { %>
       <% hero('full') %>
       <% bigCards(BASIC ? BASIC_COMP : [
-        { href: '/races', label: t('common.carreras'), icon: 'flag', a: '#ef4651', desc: t('_admin.crear_gestionar_y_lanzar_mangas') },
+        RACES,
         RACE_SPRINT, RACE_ENDURANCE, TRAIN_FREE, TRAIN_COMP, RESULTS, LAP,
       ], groups[0].title) %>
       <div class="hm-cols">
         <% catalogRows() %>
         <% systemChips() %>
       </div>
-      <%# En básico no hay botón «Carreras»: las ya creadas se abren desde aquí. %>
       <% if (BASIC) { racesTable(); } %>
     <% } else if (L === 'c') { %>
       <% hero('strip') %>
