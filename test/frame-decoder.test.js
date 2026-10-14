@@ -155,17 +155,17 @@ test('tiempo fuera de rango se marca como filtrado', () => {
   assert.equal(r.kind, 'crossing_filtered');
 });
 
-test('ráfaga del PL2303: colapsa duplicadas consecutivas', () => {
-  const r = createDecoder().ds([...CRUCE, ...CRUCE, ...CRUCE]);
-  assert.equal(r.kind, 'burst');
-  assert.equal(r.subs.length, 1, 'las 3 son idénticas → queda 1');
-  assert.deepEqual(kv(r.fields), [{ k: 'sub-tramas', v: '3' }, { k: 'descartadas', v: '2' }]);
+test('retransmisión: se marca como descartada', () => {
+  const r = createDecoder().ds(CRUCE, { retransmission: true });
+  assert.equal(r.kind, 'duplicate');
+  assert.equal(r.labelKey, 'client.tramas.retransmision');
 });
 
-test('ráfaga con carriles distintos NO se colapsa', () => {
-  const otro = frame({ 7: 0x1b, 10: 0x10, 12: 0x07, 15: 0x08, 16: 0x43, 17: 0x20 });   // carril 4
-  const r = createDecoder().ds([...CRUCE, ...otro]);
-  assert.equal(r.subs.length, 2, 'cruces simultáneos de carriles distintos son reales');
+test('bytes que no forman trama: se enseñan como descartados', () => {
+  const r = createDecoder().ds([0x1b, 0xa9, 0x00, 0x04, 0x00]);
+  assert.equal(r.kind, 'resync');
+  assert.equal(r.labelKey, 'client.tramas.sin_trama');
+  assert.deepEqual(r.labelVars, { n: '5' });
 });
 
 test('modo agrupador: b[4] desplaza el carril global', () => {

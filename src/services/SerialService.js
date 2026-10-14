@@ -22,40 +22,18 @@ const EventEmitter = require('events');
 const Settings     = require('../models/Settings');
 const DebugLogger  = require('./DebugLogger');
 const FrameMonitor = require('./FrameMonitor');
-const { DEFAULT_MODEL, normalizeModel, modelInfo, isControlFrame, isCrossingFrame, checksumOk, goDurationMs, crossingLanes } = require('../lib/dsModels');
+const { DEFAULT_MODEL, normalizeModel, modelInfo } = require('../lib/dsModels');
+const { decodeFrame, sameBytes, createFrameSplitter } = require('../lib/dsProtocol');
 
 // Fixed offset so performance.now() (relative) maps to epoch ms (float, ~0.01ms precision)
 const _PERF_OFFSET = Date.now() - performance.now();
 
 const REPLAY_FILE = path.join(__dirname, '../data/RegistroCarrera.txt');
 
-// DS-300 protocol: frame-based — baud rate configured per circuit in DB (Settings)
-//
-// Each crossing event = 1 frame of ~19 bytes.
-// Frame boundaries are detected by silence gaps > FRAME_GAP_MS between bytes.
-// Lane identity is encoded in byte index 10 (0-based) using a non-sequential bitmask.
+// Familia DS: tramas de 21 bytes (0xE0 … 0xEB) por puerto serie, a la velocidad
+// configurada por circuito. Cómo se separan y qué dicen lo decide el lector
+// común, src/lib/dsProtocol.js (el mismo del visor y de las carreras simuladas).
 
-// FRAME_GAP_MS can be overridden via Settings ("serial_frame_gap_ms") so the
-// operator can tune the parser without redeploying — useful when a particular
-// DS-300 unit emits frames with different timing.
-const FRAME_GAP_MS_DEFAULT = 75;
-let   FRAME_GAP_MS         = FRAME_GAP_MS_DEFAULT;
-const DS_FRAME_LEN = 21;       // un frame DS-300 = 21 bytes fijos (0xe0 … 0xeb)
-
-// Posiciones de las tramas completas (0xe0 … 0xeb a 21 bytes) dentro de un
-// buffer, saltando los fragmentos que no encajan.
-function ds300FrameOffsets(buf) {
-  const offsets = [];
-  for (let i = 0; i + DS_FRAME_LEN <= buf.length; ) {
-    if (buf[i] === 0xe0 && buf[i + DS_FRAME_LEN - 1] === 0xeb) {
-      offsets.push(i);
-      i += DS_FRAME_LEN;
-    } else {
-      i++;
-    }
-  }
-  return offsets;
-}
 const MIN_CROSSING_MS = 500;   // minimum ms between two crossings on the same lane
 // Las vueltas más largas SE CUENTAN (la caja las cuenta); solo no alimentan la
 // media del carril con la que se reponen vueltas perdidas.
@@ -64,14 +42,6 @@ const MAX_LAP_MS      = 240000;
 // DS-300 emits a heartbeat frame every 60s while a manga is running (byte7=0x00 byte8=0xC0).
 // If we don't see one for HEARTBEAT_TIMEOUT_MS, the DS is probably unplugged or off.
 const HEARTBEAT_TIMEOUT_MS = 75000;
-
-// DS-300 lap time is encoded in bytes 14-17 (0-based) as decimal-in-hex:
-//   byte14 = minutes, byte15 = seconds, byte16 = hundredths, byte17 = ten-thousandths
-//   e.g. 0x13 → read hex digits as decimal → 13 seconds
-//   If any nibble is A-F → first crossing (no previous reference), no valid time.
-function ds300Byte(b) {
-  return ((b >> 4) <= 9 && (b & 0xF) <= 9) ? parseInt(b.toString(16), 10) : null;
-}
 
 /**
  * El contador de vueltas del DS (byte12) es BCD de un byte: cuenta MÓDULO 100.
@@ -104,15 +74,7 @@ function absLapCount(byte12, prevAbs, esperadas = null) {
   return Math.max(prevAbs, abs);
 }
 
-function readLapTimeMs(frame) {
-  if (frame.length < 18) return null;
-  const mins  = ds300Byte(frame[14]);
-  const secs  = ds300Byte(frame[15]);
-  const cents = ds300Byte(frame[16]); // centésimas → × 10 ms
-  const dmils = ds300Byte(frame[17]); // diezmilésimas → × 0.1 ms
-  if (mins === null || secs === null || cents === null || dmils === null) return null;
-  return mins * 60000 + secs * 1000 + cents * 10 + dmils * 0.1;
-}
+const _hex = (bytes) => Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(' ');
 
 // DS-300 frame: lane identity is encoded in byte index 10 (0-based).
 // Non-sequential bitmask — order matters.
@@ -139,10 +101,10 @@ class CircuitConnection {
     this._onLinkChange     = onLinkChange || (() => {});
     this._port          = null;
     this._rawLog        = [];
-    this._frameBuf      = [];
-    this._frameStartTs  = null;
-    this._lastByteTs    = null;
-    this._flushTimer    = null;
+    // Lector de tramas del flujo de bytes (guarda la cola de una trama partida) y
+    // última trama aceptada por caja, para reconocer las retransmisiones.
+    this._splitter       = createFrameSplitter();
+    this._lastFrameByBox = new Map();
     this._raceState     = null;
     this._mangaActive   = false;  // lo dice TimingService, no las tramas (ver setExternalRaceState)
     this._watchdogTimer = null;
@@ -203,10 +165,8 @@ class CircuitConnection {
 
     const { SerialPort } = require('serialport');
     if (this._port) await new Promise(r => this._port.close(r));
-    if (this._flushTimer) { clearTimeout(this._flushTimer); this._flushTimer = null; }
-    this._frameBuf     = [];
-    this._frameStartTs = null;
-    this._lastByteTs   = null;
+    this._splitter.reset();
+    this._lastFrameByBox.clear();
 
     // macOS pseudo-terminals reject non-standard baud rates (IOSSIOSPEED).
     // Fall back to 57600 for virtual ports — the actual rate is irrelevant there.
@@ -454,66 +414,13 @@ class CircuitConnection {
         );
       } catch {}
     }
-
-    // Cancel any pending silence-flush — we just got more bytes
-    if (this._flushTimer) { clearTimeout(this._flushTimer); this._flushTimer = null; }
-
-    for (const byte of chunk) {
-      const gap = this._lastByteTs !== null && (now - this._lastByteTs) > FRAME_GAP_MS;
-
-      if (gap) {
-        // Gap detected mid-chunk: flush whatever was buffered before this chunk
-        this._flushFrameBuf();
-        this._frameBuf     = [byte];
-        this._frameStartTs = now;
-      } else {
-        if (this._frameBuf.length === 0) this._frameStartTs = now;
-        this._frameBuf.push(byte);
-      }
-
-      this._lastByteTs = now;
+    // Los bytes tal y como llegan, con sus cortes: con esto una sesión del club
+    // se puede reproducir exactamente igual que pasó.
+    if (DebugLogger.isEnabled()) {
+      DebugLogger.log('serial_raw', { circuit: this._circuitIndex + 1, hex: _hex(chunk), ts: now });
     }
 
-    // Flush the frame after FRAME_GAP_MS of silence — don't wait for the next frame
-    this._flushTimer = setTimeout(() => {
-      this._flushTimer = null;
-      this._flushFrameBuf();
-    }, FRAME_GAP_MS + 5);
-  }
-
-  /**
-   * Procesa lo que haya en el buffer y lo VACÍA, pase lo que pase.
-   *
-   * El `finally` no es decorativo: si `_processFrame` lanza, el buffer se quedaba
-   * con los bytes malos y el parser los reprocesaba en bucle. Como el proceso
-   * sobrevive (hay un `uncaughtException` global), esa caja —8 carriles— dejaba
-   * de registrar cruces el resto de la manga sin que nadie se enterara.
-   */
-  _flushFrameBuf() {
-    if (this._frameBuf.length === 0) return;
-    const frame = this._frameBuf;
-    const ts    = this._frameStartTs;
-    // Visor de tramas en vivo. Aquí, y no en _processFrame, porque este es el
-    // punto de entrada de nivel superior: el de-merge se llama a sí mismo por
-    // recursión y desde ahí veríamos cada sub-trama duplicada. Además así el
-    // visor recibe la ráfaga tal y como vino por el cable. No debe poder tumbar
-    // el cronometraje: si falla, se ignora.
-    try {
-      FrameMonitor.push('ds300', this._circuitIndex + 1, frame, ts, {
-        boxesPerPort: this._boxesPerPort,
-        laneOffset:   this._laneOffset,
-        model:        this._model,
-      });
-    } catch {}
-    try {
-      this._processFrame(frame, ts);
-    } catch (err) {
-      console.error(`[DS-300 C${this._circuitIndex + 1}] Frame descartado por error de parseo:`, err.message);
-      DebugLogger.log('ds_frame_error', { circuit: this._circuitIndex + 1, bytes: frame.length, error: err.message });
-    } finally {
-      this._frameBuf     = [];
-      this._frameStartTs = null;
-    }
+    this._processFrame(chunk, now);
   }
 
   // Manga nueva: la caja reinicia sus contadores por carril. Si se arrastraran
@@ -539,121 +446,92 @@ class CircuitConnection {
     else if (newState === 'finished') this._onFinish();
   }
 
-  _logResync(frame, frames) {
-    const discarded = frame.length - frames * DS_FRAME_LEN;
-    console.warn(`[DS-300 C${this._circuitIndex + 1}] Bloque desalineado (${frame.length} bytes): ${frames} trama(s) rescatada(s), ${discarded} byte(s) descartado(s)`);
+  _logResync({ bytes, ts }) {
+    console.warn(`[DS C${this._circuitIndex + 1}] ${bytes.length} byte(s) sin trama descartado(s)`);
+    this._monitor(bytes, ts);
     if (!DebugLogger.isEnabled()) return;
-    const hex = Array.from(frame).map(b => b.toString(16).padStart(2, '0')).join(' ');
-    DebugLogger.log('frame_resync', { circuit: this._circuitIndex + 1, bytes: frame.length, frames, discarded, hex });
+    DebugLogger.log('frame_resync', { circuit: this._circuitIndex + 1, discarded: bytes.length, hex: _hex(bytes) });
   }
 
-  _processFrame(frame, ts) {
-    if (frame.length < 2) return;
+  // Visor de tramas en vivo. No debe poder tumbar el cronometraje.
+  _monitor(bytes, ts, extra = {}) {
+    try {
+      FrameMonitor.push('ds300', this._circuitIndex + 1, bytes, ts, {
+        boxesPerPort: this._boxesPerPort,
+        laneOffset:   this._laneOffset,
+        model:        this._model,
+        ...extra,
+      });
+    } catch {}
+  }
 
-    // ── De-merge de ráfagas ─────────────────────────────────────────────────
-    // El DS-300 emite frames de 21 bytes (0xe0 … 0xeb). Cuando varios carriles
-    // cruzan casi a la vez (GO, pista corta) el DS los manda seguidos y, como
-    // llegan a < FRAME_GAP_MS unos de otros, _onData los concatena en un solo
-    // buffer. Antes solo se leía el PRIMER cruce y se perdía el resto (root
-    // cause de la pérdida de vueltas). Aquí re-separamos el buffer en frames de
-    // 21 bytes y procesamos cada uno.
-    if (frame.length > DS_FRAME_LEN) {
-      const offsets = ds300FrameOffsets(frame);
-      if (offsets.length * DS_FRAME_LEN !== frame.length) {
-        // Bloque DESALINEADO: el corte por silencio partió una trama y el buffer
-        // empieza por la cola de la anterior (ráfagas del arranque, RESISLEMANS 1).
-        // Leerlo entero como UNA trama tomaba el carril y el byte12 de bytes
-        // cualquiera (0xAA de relleno → carriles 1,3,5,7): cruces inventados, las
-        // tramas reales de dentro perdidas y, por el contador falso, una ráfaga
-        // de ~97 cruces de relleno. Se rescatan las tramas completas de dentro.
-        this._logResync(frame, offsets.length);
-        if (offsets.length === 0) return;
+  /**
+   * Entrada de bytes del DS: puerto serie, carrera simulada (feedFrame) o tests.
+   * Pueden llegar de cualquier forma —sueltos, varias tramas pegadas, una trama
+   * partida en dos lecturas—: el lector común saca las tramas completas y la cola
+   * sin cerrar espera a la siguiente llamada.
+   *
+   * Cada trama va en su try: si una lanza (un listener de 'lane_crossing', por
+   * ejemplo), las demás se procesan igual y el fallo queda registrado.
+   */
+  _processFrame(bytes, ts) {
+    const { frames, discarded } = this._splitter.push(bytes, ts);
+    for (const d of discarded) this._logResync(d);
+    for (const { frame, ts: frameTs } of frames) {
+      // El DS manda cada trama 2-3 veces. Con varias cajas por puerto, cada una
+      // lleva su propia secuencia en byte[1].
+      const box = this._boxesPerPort > 1 ? frame[4] : 0;
+      const dup = sameBytes(this._lastFrameByBox.get(box), frame);
+      this._monitor(frame, frameTs, dup ? { retransmission: true } : {});
+      if (dup) {
+        DebugLogger.log('frame_dedup', { circuit: this._circuitIndex + 1, seq: frame[1] });
+        continue;
       }
-      let collapsed = 0;
-      for (let i = 0; i < offsets.length; i++) {
-        const off = offsets[i];
-        // Colapsa RETRANSMISIONES: algunos DS/adaptadores entregan la MISMA
-        // trama repetida dentro de una ráfaga (bytes idénticos). Un cruce real
-        // cambia el carril (laneByte) o el contador de vuelta (byte12), así que
-        // dos sub-tramas byte-idénticas CONSECUTIVAS son la misma vuelta
-        // duplicada → se procesa una sola vez. Los cruces simultáneos de
-        // carriles DISTINTOS tienen laneByte distinto: NO se colapsan (que es
-        // justo lo que el de-merge está para recuperar).
-        if (i > 0) {
-          const prev = offsets[i - 1];
-          let same = true;
-          for (let k = 0; k < DS_FRAME_LEN; k++) {
-            if (frame[off + k] !== frame[prev + k]) { same = false; break; }
-          }
-          if (same) { collapsed++; continue; }
-        }
-        this._processFrame(frame.slice(off, off + DS_FRAME_LEN), ts);
+      this._lastFrameByBox.set(box, frame);
+      try {
+        this._handleFrame(frame, frameTs);
+      } catch (err) {
+        console.error(`[DS C${this._circuitIndex + 1}] Trama descartada por error:`, err.message);
+        DebugLogger.log('ds_frame_error', { circuit: this._circuitIndex + 1, error: err.message });
       }
-      if (collapsed > 0) {
-        const n = offsets.length;
-        console.log(`[DS-300 C${this._circuitIndex + 1}] De-merge: ${collapsed}/${n} sub-tramas duplicadas descartadas (retransmisión)`);
-        DebugLogger.log('frame_dedup', { circuit: this._circuitIndex + 1, total: n, collapsed });
-      }
-      return;
     }
+  }
 
-    // Un fragmento suelto (la cola de una trama partida) no empieza por 0xE0: su
-    // byte 10 no es el carril. Parsearlo inventaba cruces.
-    if (frame[0] !== 0xe0) {
-      this._logResync(frame, 0);
-      return;
-    }
-
+  _handleFrame(frame, ts) {
     if (DebugLogger.isEnabled()) {
-      const hex = Array.from(frame).map(b => b.toString(16).padStart(2, '0')).join(' ');
-      const b7 = frame[7], b8 = frame[8];
-      DebugLogger.log('frame', { circuit: this._circuitIndex + 1, len: frame.length, hex, b7, b8, frame_ts: ts });
-    }
-
-    // Ruido en la línea (más probable a 4800 baudios): una trama con el checksum
-    // mal puede traer cualquier carril o evento. TicTacSlot también la descarta.
-    if (!checksumOk(frame)) {
-      console.warn(`[DS C${this._circuitIndex + 1}] Checksum incorrecto — trama descartada`);
-      DebugLogger.log('ds_checksum', { circuit: this._circuitIndex + 1 });
-      return;
+      DebugLogger.log('frame', { circuit: this._circuitIndex + 1, len: frame.length, hex: _hex(frame), b7: frame[7], b8: frame[8], frame_ts: ts });
     }
 
     // Any well-formed frame means the DS is alive; refresh the watchdog.
     this._pingAlive();
 
-    // ── Heartbeat frame (DS sends one every 60s while running) ────────────────
-    // Signature: frame[8]=0xC0 en una trama de evento. Byte 14 = minute counter.
-    const evento = !isCrossingFrame(frame);
-    if (frame.length >= 15 && evento && frame[8] === 0xC0) {
-      const minute = frame[14];
+    const d = decodeFrame(this._model, frame);
+
+    // ── Latido (DS-300, cada 60 s con la carrera corriendo). Minuto en byte[14].
+    if (d.type === 'heartbeat') {
       this._lastHeartbeatTs = ts;
-      console.log(`[DS-300 C${this._circuitIndex + 1}] ♥ heartbeat (min ${minute})`);
+      console.log(`[DS-300 C${this._circuitIndex + 1}] ♥ heartbeat (min ${d.minute})`);
       // El latido SOLO llega con la carrera corriendo: es la prueba de que la
       // caja sigue viva y de en qué minuto va. La rehidratación se apoya en él.
-      this._onHeartbeat(minute, ts);
+      this._onHeartbeat(d.minute, ts);
       const SocketService = require('./SocketService');
-      SocketService.emit('serial:heartbeat', { circuit: this._circuitIndex + 1, minute, ts });
+      SocketService.emit('serial:heartbeat', { circuit: this._circuitIndex + 1, minute: d.minute, ts });
       return;
     }
 
-    const laneByte = frame.length >= 11 ? frame[10] : 0;
-
-    // ── Real DS-300 GO sequence (3 frames, deltas +2500ms / +2953ms from t1):
-    //    Trama 1: byte8=0xA1, duración en byte[9..11]  → store duration, latch pending start
-    //    Trama 2: byte8=0xA2                            → semaphore step 2 (intermediate)
-    //    Trama 3: byte8=0xA3                            → current ON, race starts (countdown)
-    // La clase de la trama 1 (byte[7]) cambia según la caja: 0x3E en el DS-300,
-    // 0x3A en unidades de club, 0x3B en el GO por vueltas. Como TicTacSlot, vale
-    // cualquiera que no sea un cruce; la duración solo se lee de las conocidas.
-    if (frame.length >= 11 && evento && frame[8] === 0xa1) {
-      const durMs = goDurationMs(frame);
+    // ── Secuencia de GO (3 tramas, +2500 ms / +2953 ms desde la 1ª):
+    //    0xA1 → duración y latch del arranque · 0xA2 → paso del semáforo ·
+    //    0xA3 → corriente en pista, empieza la manga.
+    // La clase de la 0xA1 cambia según la caja (0x3E DS-300, 0x3A club, 0x3B por
+    // vueltas); vale cualquiera, y la duración solo viene en las conocidas.
+    if (d.type === 'go') {
       this._resetLaneState();
       // Reset cached race state so the next transition to 'running' actually
       // fires the callback. Some DS-300 units don't emit 0xA4/0xA7 between
       // mangas, so without this reset _raceState stays 'running' and the new
       // GO is silently ignored by _setRaceState's same-state short-circuit.
       this._raceState = null;
-      this._onGoSignal(durMs || 0);
+      this._onGoSignal(d.durationMs || 0);
       this._pendingGoStart = true;
       if (this._goFallbackTimer) clearTimeout(this._goFallbackTimer);
       // Fallback: if trama 3 never arrives, start race anyway after 5s
@@ -666,9 +544,8 @@ class CircuitConnection {
       return;
     }
 
-    // Trama 3 (0xA3) is shared by GO and Resume sequences. Whoever has a
-    // pending latch (go or resume) gets resolved here.
-    if (frame.length >= 9 && evento && frame[8] === 0xa3) {
+    // El verde 0xA3 cierra el GO o la reanudación que esté pendiente.
+    if (d.type === 'green') {
       if (this._pendingGoStart) {
         this._pendingGoStart = false;
         if (this._goFallbackTimer) { clearTimeout(this._goFallbackTimer); this._goFallbackTimer = null; }
@@ -692,68 +569,39 @@ class CircuitConnection {
       return;
     }
 
-    // Trama 2 (0xA2) is consumed silently for state machine, but used to drive
-    // the on-screen semaphore in real time so it matches the physical DS lights.
-    if ((this._pendingGoStart || this._pendingResumeStart) && frame.length >= 9 && evento && frame[8] === 0xa2) {
-      this._onSemaphoreStep();
+    // 0xA2 no cambia el estado, pero mueve el semáforo de la pantalla al ritmo de
+    // las luces del DS. Sin GO ni reanudación pendiente no significa nada.
+    if (d.type === 'semaphore') {
+      if (this._pendingGoStart || this._pendingResumeStart) this._onSemaphoreStep();
       return;
     }
 
-    // ── Control frame (no lane crossing) ──────────────────────────────────────
-    if (isControlFrame(this._model, frame)) {
-      // Forced stop: byte8=0xa7
-      if (frame[8] === 0xa7) {
-        this._setRaceState('stopped');
-        return;
-      }
-      // Normal end (time expired): byte8=0xa4
-      if (frame[8] === 0xa4) {
-        this._setRaceState('finished');
-        return;
-      }
-      // Pause: single frame B8=0xA5 → state changes immediately.
-      if (frame[8] === 0xa5) {
-        this._setRaceState('paused');
-        return;
-      }
-      // Resume: 3-frame sequence (0xA6 → 0xA2 → 0xA3), same shape as GO. Don't
-      // flip state on 0xA6 — wait until trama 3 (0xA3) arrives so the resume
-      // event coincides with the DS-300 actually unlocking the track current.
-      // Fallback after 5s in case trama 3 never arrives. We also fire
-      // _onResumeSignal so the UI can show a semaphore animation during the
-      // ~3s wait (identical to the GO countdown).
-      if (frame[8] === 0xa6) {
-        this._pendingResumeStart = true;
-        this._onResumeSignal();
-        if (this._resumeFallbackTimer) clearTimeout(this._resumeFallbackTimer);
-        this._resumeFallbackTimer = setTimeout(() => {
-          if (this._pendingResumeStart) {
-            this._pendingResumeStart = false;
-            this._setRaceState('resumed');
-          }
-        }, 5000);
-        return;
-      }
+    if (d.type === 'stop')   { this._setRaceState('stopped');  return; }
+    if (d.type === 'finish') { this._setRaceState('finished'); return; }
+    if (d.type === 'pause')  { this._setRaceState('paused');   return; }
+
+    // Reanudación: 0xA6 → 0xA2 → 0xA3, como el GO. El estado cambia con el verde,
+    // que es cuando vuelve la corriente; 0xA6 solo arma el latch y el semáforo
+    // de la pantalla. Fallback de 5 s por si el verde no llega.
+    if (d.type === 'resume_signal') {
+      this._pendingResumeStart = true;
+      this._onResumeSignal();
+      if (this._resumeFallbackTimer) clearTimeout(this._resumeFallbackTimer);
+      this._resumeFallbackTimer = setTimeout(() => {
+        if (this._pendingResumeStart) {
+          this._pendingResumeStart = false;
+          this._setRaceState('resumed');
+        }
+      }, 5000);
       return;
     }
 
-    // ── Lane crossing ──────────────────────────────────────────────────────────
-    // Un frame de cruce necesita al menos hasta el byte 17 (el tiempo de vuelta).
-    // Si un tirón de cable o un pico de latencia USB lo parte a 11-12 bytes,
-    // `ds300Byte(frame[12])` reventaba con `undefined.toString()`. Descartarlo es
-    // lo correcto: un cruce sin tiempo de vuelta no es un cruce, y la
-    // reconciliación de fin de manga lo repone si de verdad ocurrió.
-    if (frame.length < 18) {
-      console.warn(`[DS-300 C${this._circuitIndex + 1}] Frame de cruce truncado (${frame.length} bytes) — descartado`);
-      DebugLogger.log('ds_frame_truncado', { circuit: this._circuitIndex + 1, bytes: frame.length });
-      return;
-    }
+    if (d.type !== 'crossing') return;
 
-    // Read lap time directly from DS-300 frame bytes 14-17.
-    // null → first crossing (bytes contain non-decimal nibbles, no previous reference).
-    const lapTimeMs = readLapTimeMs(frame);
-    // B12 = lap counter (BCD). DS-300 increments it monotonically per lane within a manga.
-    const lapCounter = ds300Byte(frame[12]);
+    // ── Cruce. Tiempo de vuelta de la caja (null = primer cruce, sin referencia)
+    // y contador de vueltas del carril (byte12, BCD, módulo 100).
+    const lapTimeMs  = d.lapMs;
+    const lapCounter = d.counter;
 
     // Agrupador: varias cajas DS comparten el puerto y cada una numera sus
     // carriles 1..8 en byte[10]. byte[4] identifica la caja (0x01, 0x02, …), así
@@ -761,13 +609,14 @@ class CircuitConnection {
     // todo queda EXACTAMENTE igual que antes (byte[4] ni se mira).
     let boxOffset = 0;
     if (this._boxesPerPort > 1) {
-      const boxId = frame.length > 4 ? frame[4] : 1;          // 1-based (0x01, 0x02, …)
+      const boxId = frame[4];                                  // 1-based (0x01, 0x02, …)
       const idx   = Math.min(this._boxesPerPort - 1, Math.max(0, boxId - 1));
       boxOffset   = idx * 8;
     }
 
-    const lanes = crossingLanes(this._model, frame);
+    const lanes = d.lanes;
     if (lanes.length === 0) {
+      const laneByte = frame[10];
       console.warn(`[DS C${this._circuitIndex + 1}] ${modelInfo(this._model).label}: byte de carril 0x${laneByte.toString(16)} no válido — trama descartada`);
       DebugLogger.log('ds_lane_invalido', { circuit: this._circuitIndex + 1, model: this._model, laneByte });
       return;
@@ -781,10 +630,10 @@ class CircuitConnection {
       const laneKey    = boxOffset + localLane;
       const globalLane = laneKey + this._laneOffset;
 
-      // Retransmisión partida entre dos bloques: el colapso de duplicados del
-      // de-merge solo ve las copias dentro del MISMO bloque. Un cruce nuevo
-      // siempre sube el byte12, así que mismo byte12 y mismo tiempo que la
-      // última trama de este carril es la misma vuelta otra vez.
+      // Segunda red contra retransmisiones (la primera, en _processFrame, solo
+      // compara con la última trama de la caja): un cruce nuevo siempre sube el
+      // byte12, así que mismo byte12 y mismo tiempo que la última trama de este
+      // carril es la misma vuelta otra vez.
       const sig = `${frame[12]}:${frame[14]}:${frame[15]}:${frame[16]}:${frame[17]}`;
       if (this._lastSigByLane.get(laneKey) === sig) {
         DebugLogger.log('frame_repeat', { circuit: this._circuitIndex + 1, lane: globalLane, lapCounter, lapTimeMs });
@@ -862,11 +711,6 @@ class SerialServiceClass extends EventEmitter {
   // ── Startup ──────────────────────────────────────────────────────────────
 
   init() {
-    // Refresh tunable parser params from Settings on every (re)init.
-    const fg = parseInt(Settings.get('serial_frame_gap_ms', String(FRAME_GAP_MS_DEFAULT)), 10);
-    FRAME_GAP_MS = (Number.isFinite(fg) && fg >= 10 && fg <= 500) ? fg : FRAME_GAP_MS_DEFAULT;
-    console.log(`[SerialService] FRAME_GAP_MS = ${FRAME_GAP_MS} ms`);
-
     const mode = Settings.get('serial_mode', 'simulation');
     // 'serial' (DS-300), 'serial_agg' (agrupador: varias cajas DS en un único
     // puerto, de-multiplexadas por byte[4]) y 'bart' (BLE vía puente) comparten
@@ -1052,8 +896,8 @@ class SerialServiceClass extends EventEmitter {
         // Antes este catch era silencioso: una excepción en CUALQUIER listener
         // de 'lane_crossing' (TimingService, SessionRecovery, InfolapServer…)
         // se tragaba aquí sin dejar rastro y ese cruce simulado desaparecía sin
-        // registrarse ni como vuelta válida ni como fantasma. Mismo criterio
-        // que _flushFrameBuf (hardware real): que falle a la vista, no en silencio.
+        // registrarse ni como vuelta válida ni como fantasma. Que falle a la
+        // vista, no en silencio.
         console.error(`[SerialService] Trama simulada descartada por error (circuito ${circuitIdx}):`, err.message);
         DebugLogger.log('ds_frame_error', { circuit: circuitIdx, sim: true, error: err.message });
       }

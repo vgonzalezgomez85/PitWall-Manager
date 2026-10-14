@@ -201,7 +201,7 @@ class SettingsController {
   }
 
   static async save(req, res) {
-    const { serial_mode, sim_lanes, sim_avg_ms, serial_frame_gap_ms, debug_mode, infolap_enabled,
+    const { serial_mode, sim_lanes, sim_avg_ms, debug_mode, infolap_enabled,
             access_restrict_enabled, access_allowlist } = req.body;
     const debugOn   = debug_mode      === '1' || debug_mode      === 'on' || debug_mode      === 'true';
     const infolapOn = infolap_enabled === '1' || infolap_enabled === 'on' || infolap_enabled === 'true';
@@ -265,10 +265,6 @@ class SettingsController {
     // Training circuit is derived from the first DS-300 that references a saved
     // circuit. Falls back to '' (none) if no DS-300 has one assigned.
     const trainingCircuitId = (circuits.find(c => c.circuit_id) || {}).circuit_id || '';
-
-    // Clamp parser tuning: invalid values fall back to default 75
-    const fg = parseInt(serial_frame_gap_ms, 10);
-    const fgClean = (Number.isFinite(fg) && fg >= 10 && fg <= 500) ? fg : 75;
 
     // BART source: uno o varios Master independientes (BART_TRACK1, BART_TRACK2…),
     // cada uno con su propio nombre/host/puerto. El fabricante documenta este
@@ -343,7 +339,6 @@ class SettingsController {
       sim_lanes:            sim_lanes   || '6',
       sim_avg_ms:           sim_avg_ms  || '12000',
       training_circuit_id:  String(trainingCircuitId),
-      serial_frame_gap_ms:  String(fgClean),
       debug_mode:           debugOn ? '1' : '0',
       infolap_enabled:      infolapOn ? '1' : '0',
       // Orden de tarjetas/filas del directo: clasificación estimada o vueltas reales.

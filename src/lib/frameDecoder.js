@@ -30,15 +30,14 @@
 //   dec.reset()
 // Frame = { kind, label, badge, fields: [{k, v}], lanes: [n], unknown: [i] }
 
-const { isControlFrame, isCrossingFrame, checksumOk, goDurationMs, crossingLanes, LANE_BITS } = require('./dsModels');
+const { checksumOk, LANE_BITS } = require('./dsModels');
+const { decodeFrame, bcd, lapTimeMs: readLapTimeMs, DS_FRAME_LEN } = require('./dsProtocol');
 const tictac = require('./tictacProtocol');
 
-const DS_FRAME_LEN = 21;
 const MIN_CROSSING_MS = 500;
 const MAX_LAP_MS = 240000;
 
 // Decimal-en-hex (BCD): 0x57 → 57. null si algún nibble > 9.
-const bcd = b => (((b >> 4) <= 9 && (b & 0xF) <= 9) ? parseInt(b.toString(16), 10) : null);
 
 const hex = b => b.toString(16).padStart(2, '0');
 
@@ -59,16 +58,6 @@ function fmtDur(ms) {
   return (h ? `${h} h ` : '') + `${m} min` + (r ? ` ${r} s` : '');
 }
 
-// Tiempo de vuelta: bytes 14-17 en decimal-en-hex.
-//   14 = minutos · 15 = segundos · 16 = centésimas · 17 = diezmilésimas
-// Si cualquiera trae un nibble A-F → null = primer cruce de la manga.
-function readLapTimeMs(b) {
-  if (b.length < 18) return null;
-  const m = bcd(b[14]), s = bcd(b[15]), c = bcd(b[16]), d = bcd(b[17]);
-  if (m == null || s == null || c == null || d == null) return null;
-  return m * 60000 + s * 1000 + c * 10 + d * 0.1;
-}
-
 function unknownBytes(b) {
   const out = [];
   for (let i = 0; i < b.length; i++) if (!DS_READ_BYTES.has(i)) out.push(i);
@@ -84,7 +73,8 @@ function unknownBytes(b) {
 const ETIQUETAS = [
   [/^Trama corta \(descartada\)$/, 'trama_corta_descartada'],
   [/^Trama corta$/, 'trama_corta'],
-  [/^Ráfaga ×(\d+) — (\d+) duplicadas? descartadas?$/, 'rafaga', m => ({ n: m[1], d: m[2] })],
+  [/^Bytes sin trama \((\d+), descartados\)$/, 'sin_trama', m => ({ n: m[1] })],
+  [/^Retransmisión \(descartada\)$/, 'retransmision'],
   [/^Latido$/, 'latido'],
   [/^GO — arranque de manga$/, 'go'],
   [/^Verde — carrera en marcha$/, 'verde_marcha'],
@@ -97,7 +87,6 @@ const ETIQUETAS = [
   [/^Pausa$/, 'pausa'],
   [/^Señal de reanudación$/, 'senal_reanudacion'],
   [/^Control desconocido \((.+)\)$/, 'control_desconocido', m => ({ x: m[1] })],
-  [/^Cruce truncado \(descartado\)$/, 'cruce_truncado'],
   [/^Cruce filtrado — fuera de rango \((.+)\)$/, 'cruce_fuera_rango', m => ({ t: m[1] })],
   [/^Cruce filtrado — rebote \((.+)\)$/, 'cruce_rebote', m => ({ t: m[1] })],
   [/^Cruce filtrado — coche parado \((.+)\)$/, 'cruce_parado', m => ({ t: m[1] })],
@@ -112,8 +101,7 @@ const ETIQUETAS = [
   [/^Carril (\d+) fuera de rango \(descartada\)$/, 'carril_fuera', m => ({ l: m[1] })],
 ];
 const ESTADOS = { 'libre': 'estado_libre', 'en marcha': 'estado_en_marcha', 'pausa': 'estado_pausa', 'parado': 'estado_parado' };
-const CAMPOS = { 'minuto': 'f_minuto', 'duración': 'f_duracion', 'sub-tramas': 'f_subtramas', 'descartadas': 'f_descartadas',
-  'caja': 'f_caja', 'carril': 'f_carril', 'tiempo': 'f_tiempo', 'contador': 'f_contador', 'vueltas': 'f_vueltas',
+const CAMPOS = { 'minuto': 'f_minuto', 'duración': 'f_duracion', 'caja': 'f_caja', 'carril': 'f_carril', 'tiempo': 'f_tiempo', 'contador': 'f_contador', 'vueltas': 'f_vueltas',
   'carriles': 'f_carriles', 'vuelta': 'f_vuelta', 'reloj': 'f_reloj' };
 const VALORES = { 'primera vuelta': 'v_primera_vuelta', 'sin tiempo (desborde)': 'v_sin_tiempo' };
 
@@ -146,8 +134,12 @@ function createDecoder() {
   // mismo carril, así que el decodificador lleva la última lectura por carril.
   const tictacClock = new Map();
 
-  // Decodifica UNA trama DS-300 ya ensamblada.
-  // opts.boxesPerPort > 1 ⇒ modo agrupador: b[4] es el id de caja (1..4).
+  // Decodifica lo que le pasa SerialService: una trama completa (21 bytes, con el
+  // checksum bien) o los bytes que el lector común descartó. Qué significa cada
+  // trama lo dice dsProtocol.decodeFrame, el mismo que usa el cronometraje; aquí
+  // solo se le pone nombre. El latch del GO solo distingue etiquetas.
+  //   opts.boxesPerPort > 1 ⇒ modo agrupador: b[4] es el id de caja (1..4).
+  //   opts.retransmission   ⇒ copia de la trama anterior, descartada.
   function ds(bytes, opts = {}) {
     const b = Array.from(bytes);
     const boxes = opts.boxesPerPort || 1;
@@ -157,102 +149,57 @@ function createDecoder() {
     if (b.length < 2) {
       return { ...base, kind: 'short', badge: '?', label: 'Trama corta (descartada)' };
     }
-
-    // Ráfaga de retransmisión del PL2303: N sub-tramas de 21 bytes pegadas.
-    if (b.length > DS_FRAME_LEN && b.length % DS_FRAME_LEN === 0) {
-      const n = b.length / DS_FRAME_LEN;
-      let wellFormed = true;
-      for (let i = 0; i < n; i++) {
-        if (b[i * DS_FRAME_LEN] !== 0xe0 || b[i * DS_FRAME_LEN + 20] !== 0xeb) { wellFormed = false; break; }
-      }
-      if (wellFormed) {
-        const subs = [];
-        let collapsed = 0;
-        for (let i = 0; i < n; i++) {
-          const sub = b.slice(i * DS_FRAME_LEN, (i + 1) * DS_FRAME_LEN);
-          const prev = i > 0 ? b.slice((i - 1) * DS_FRAME_LEN, i * DS_FRAME_LEN) : null;
-          if (prev && sub.every((x, j) => x === prev[j])) { collapsed++; continue; }
-          subs.push(ds(sub, opts));
-        }
-        return {
-          ...base,
-          kind: 'burst',
-          badge: '⊘',
-          label: `Ráfaga ×${n} — ${collapsed} duplicada${collapsed === 1 ? '' : 's'} descartada${collapsed === 1 ? '' : 's'}`,
-          fields: [{ k: 'sub-tramas', v: String(n) }, { k: 'descartadas', v: String(collapsed) }],
-          subs,
-        };
-      }
+    const completa = b.length === DS_FRAME_LEN && b[0] === 0xe0 && b[20] === 0xeb;
+    if (completa && !checksumOk(b)) {
+      return { ...base, unknown: unknownBytes(b), kind: 'bad_checksum', badge: '✗', label: 'Checksum incorrecto (descartada)' };
+    }
+    if (!completa) {
+      return { ...base, kind: 'resync', badge: '⊘', label: `Bytes sin trama (${b.length}, descartados)` };
+    }
+    if (opts.retransmission) {
+      return { ...base, unknown: unknownBytes(b), kind: 'duplicate', badge: '⊘', label: 'Retransmisión (descartada)' };
     }
 
-    const b8 = b[8];
     const unknown = unknownBytes(b);
-    const evento = !isCrossingFrame(b);
+    const d = decodeFrame(opts.model, b);
 
-    if (!checksumOk(b)) {
-      return { ...base, unknown, kind: 'bad_checksum', badge: '✗', label: 'Checksum incorrecto (descartada)' };
+    switch (d.type) {
+      case 'heartbeat':
+        return { ...base, unknown, kind: 'heartbeat', badge: '♥',
+                 label: 'Latido', fields: [{ k: 'minuto', v: String(d.minute) }] };
+      case 'go':
+        pendingGo = true;
+        pendingResume = false;
+        return { ...base, unknown, kind: 'go', badge: '▶',
+                 label: 'GO — arranque de manga',
+                 fields: [{ k: 'duración', v: d.durationMs == null ? '—' : fmtDur(d.durationMs) }] };
+      case 'green':
+        if (pendingGo)     { pendingGo = false;     return { ...base, unknown, kind: 'started', badge: '🟢', label: 'Verde — carrera en marcha' }; }
+        if (pendingResume) { pendingResume = false; return { ...base, unknown, kind: 'resumed', badge: '🟢', label: 'Verde — carrera reanudada' }; }
+        return { ...base, unknown, kind: 'started', badge: '🟢', label: 'Verde sin aviso previo — arranca o reanuda' };
+      case 'semaphore':
+        if (pendingGo || pendingResume) return { ...base, unknown, kind: 'semaphore', badge: '🟡', label: 'Semáforo — paso intermedio' };
+        return { ...base, unknown, kind: 'ignored', badge: '·', label: `Control desconocido (b8=0x${hex(b[8])})` };
+      case 'stop':   return { ...base, unknown, kind: 'stopped',  badge: '⏹', label: 'Stop forzado' };
+      case 'finish': return { ...base, unknown, kind: 'finished', badge: '🏁', label: 'Fin de manga' };
+      case 'pause':  return { ...base, unknown, kind: 'paused',   badge: '⏸', label: 'Pausa' };
+      case 'resume_signal':
+        pendingResume = true;
+        return { ...base, unknown, kind: 'resume_signal', badge: '⏵', label: 'Señal de reanudación' };
+      case 'event':
+        return { ...base, unknown, kind: 'ignored', badge: '·', label: `Control desconocido (b8=0x${hex(b[8])})` };
     }
 
-    // — Heartbeat: b[8]=0xC0 en una trama de evento. El minuto es el byte CRUDO, no BCD.
-    if (b.length >= 15 && evento && b8 === 0xC0) {
-      return { ...base, unknown, kind: 'heartbeat', badge: '♥',
-               label: 'Latido', fields: [{ k: 'minuto', v: String(b[14]) }] };
-    }
-
-    // — GO (trama 1): b[8]=0xA1 con cualquier clase de evento (0x3E DS-300,
-    //   0x3A club, 0x3B por vueltas). La duración solo viene en las conocidas.
-    if (b.length >= 11 && evento && b8 === 0xA1) {
-      pendingGo = true;
-      pendingResume = false;
-      const ms = goDurationMs(b);
-      return { ...base, unknown, kind: 'go', badge: '▶',
-               label: 'GO — arranque de manga',
-               fields: [{ k: 'duración', v: ms == null ? '—' : fmtDur(ms) }] };
-    }
-
-    // — Verde (trama 3): b[8]=0xA3. Solo significa algo si hay latch pendiente.
-    if (b.length >= 9 && evento && b8 === 0xA3) {
-      if (pendingGo)     { pendingGo = false;     return { ...base, unknown, kind: 'started', badge: '🟢', label: 'Verde — carrera en marcha' }; }
-      if (pendingResume) { pendingResume = false; return { ...base, unknown, kind: 'resumed', badge: '🟢', label: 'Verde — carrera reanudada' }; }
-      return { ...base, unknown, kind: 'started', badge: '🟢', label: 'Verde sin aviso previo — arranca o reanuda' };
-    }
-
-    // — Paso intermedio del semáforo: b[8]=0xA2, solo con latch pendiente.
-    if (b.length >= 9 && evento && b8 === 0xA2 && (pendingGo || pendingResume)) {
-      return { ...base, unknown, kind: 'semaphore', badge: '🟡', label: 'Semáforo — paso intermedio' };
-    }
-
-    // — Tramas de control (sin carril).
-    if (isControlFrame(opts.model, b)) {
-      switch (b8) {
-        case 0xA7: return { ...base, unknown, kind: 'stopped',  badge: '⏹', label: 'Stop forzado' };
-        case 0xA4: return { ...base, unknown, kind: 'finished', badge: '🏁', label: 'Fin de manga' };
-        case 0xA5: return { ...base, unknown, kind: 'paused',   badge: '⏸', label: 'Pausa' };
-        case 0xA6:
-          pendingResume = true;
-          return { ...base, unknown, kind: 'resume_signal', badge: '⏵', label: 'Señal de reanudación' };
-        default:
-          return { ...base, unknown, kind: 'ignored', badge: '·',
-                   label: `Control desconocido (b8=0x${hex(b8 ?? 0)})` };
-      }
-    }
-
-    // — Cruce truncado.
-    if (b.length < 18) {
-      return { ...base, unknown, kind: 'truncated', badge: '✂', label: 'Cruce truncado (descartado)' };
-    }
-
-    // — Cruce de carril. Se identifica por b[10]!=0 y len>=18, NO por b[7].
-    const lapMs = readLapTimeMs(b);
+    // — Cruce de carril (b[7] = 0x1B).
+    const lapMs = d.lapMs;
     const boxOffset = boxes > 1 ? Math.min(Math.max((b[4] || 1) - 1, 0), boxes - 1) * 8 : 0;
-    const lanes = crossingLanes(opts.model, b).map(local => ({ local, global: boxOffset + local + laneOffset }));
+    const lanes = d.lanes.map(local => ({ local, global: boxOffset + local + laneOffset }));
 
     const fields = [];
     if (boxes > 1) fields.push({ k: 'caja', v: String(b[4]) });
     fields.push({ k: 'carril', v: lanes.map(l => l.global === l.local ? `${l.local}` : `${l.local}→${l.global}`).join(', ') });
     fields.push({ k: 'tiempo', v: lapMs == null ? 'primera vuelta' : fmtMs(lapMs) });
-    const counter = bcd(b[12]);
-    if (counter != null) fields.push({ k: 'contador', v: String(counter) });
+    if (d.counter != null) fields.push({ k: 'contador', v: String(d.counter) });
 
     // El parser descarta en silencio los rebotes: hay que marcarlo o en pantalla
     // queda un hueco inexplicable entre trama y evento.

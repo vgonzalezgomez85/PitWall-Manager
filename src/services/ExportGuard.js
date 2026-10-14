@@ -22,8 +22,8 @@
 // Generar un .xlsx de resultados es la operación bloqueante más pesada de la
 // app: en una carrera larga son decenas de miles de filas con estilo por celda
 // más la compresión del ZIP, del orden de segundos en el hilo principal. Si eso
-// ocurre mientras una manga está viva, puede partir una trama del DS-300
-// (FRAME_GAP_MS = 75 ms) y perder un cruce real.
+// ocurre mientras una manga está viva, el directo se congela segundos y los
+// cruces se registran con la hora a la que se procesan, no a la que llegaron.
 //
 // Dos reglas:
 //   1. No se puede EMPEZAR una exportación con una manga viva (corriendo o en

@@ -97,15 +97,24 @@ test('tras un frame truncado, el siguiente frame VÁLIDO se procesa', () => {
   assert.equal(cruces[0].lane, 1);
 });
 
-test('_onData deja el buffer limpio aunque el frame que vacía lance', () => {
-  // Reproduce el camino real: bytes -> buffer -> flush. Si _processFrame lanzara,
-  // el buffer se quedaba con la basura y se reprocesaba en bucle.
-  const { c } = circuito();
-  c._onData(Buffer.from([0xe0, 0, 0, 0, 0, 0, 0, 0, 0x00, 0, 0x80, 0]));
-  // Fuerza el flush por silencio sin esperar al temporizador.
-  if (c._flushTimer) { clearTimeout(c._flushTimer); c._flushTimer = null; }
-  assert.doesNotThrow(() => c._flushFrameBuf());
-  assert.deepEqual(c._frameBuf, [], 'el buffer queda vacío pase lo que pase');
+test('si procesar una trama lanza, las siguientes se procesan igual', () => {
+  const { c, cruces } = circuito();
+  const real = c._handleFrame.bind(c);
+  let primera = true;
+  c._handleFrame = (f, ts) => { if (primera) { primera = false; throw new Error('listener roto'); } real(f, ts); };
+  const dos = [...frameCruce({ bit: 0x80 }), ...frameCruce({ bit: 0x40 })];
+  assert.doesNotThrow(() => c._onData(Buffer.from(dos)));
+  assert.deepEqual(cruces.map(x => x.lane), [2]);
+});
+
+test('una trama partida en dos lecturas del puerto se recompone', () => {
+  const { c, cruces } = circuito();
+  const f = frameCruce();
+  c._processFrame(f.slice(0, 9), 1000);
+  assert.equal(cruces.length, 0, 'a medias: espera al resto');
+  c._processFrame(f.slice(9), 1080);
+  assert.equal(cruces.length, 1);
+  assert.equal(cruces[0].timestamp, 1000, 'la hora de la trama es la de su 0xE0');
 });
 
 test('un frame de longitud 0 o 1 no rompe nada', () => {

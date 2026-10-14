@@ -13,6 +13,17 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.62.2] — 2026-10-14
+
+### Mejorado
+- **Lectura de tramas DS más robusta**: las tramas se buscan en el chorro de bytes, como hace TicTacSlot (inicio, final y checksum), en vez de separarlas por los silencios del cable. Una trama partida en dos lecturas, varias tramas pegadas o un momento en que el ordenador va cargado ya no pueden partir tramas ni inventar cruces.
+- **Retransmisiones**: el DS manda cada trama 2-3 veces; ahora se reconocen aunque las copias lleguen separadas.
+- **Un solo lector**: el cronometraje, el visor de tramas y el importador de carreras simuladas leen las tramas con el mismo código; el visor ya no puede decir una cosa y el cronometraje hacer otra. El visor muestra cada trama por separado y marca las retransmisiones y los bytes descartados.
+- **Registro de depuración**: guarda además los bytes tal y como llegan del cable, para poder reproducir una sesión exactamente.
+
+### Eliminado
+- **Ajuste «FRAME_GAP_MS»** (Ajustes → Fuente de datos → avanzado): ya no hace falta, la lectura no depende de los silencios.
+
 ## [1.62.1] — 2026-10-14
 
 ### Corregido

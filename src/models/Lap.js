@@ -193,8 +193,8 @@ class Lap {
   //
   // `aggregateByRace` escanea las vueltas de TODA la carrera. En una 24 h son
   // 160.000 filas y cuesta ~101 ms, y la proyección lo llamaba en cada cruce.
-  // Ese bloqueo síncrono no es solo lentitud: supera FRAME_GAP_MS (75 ms), así
-  // que puede partir una trama del DS en dos y perder un cruce de verdad.
+  // Ese bloqueo síncrono retrasa cada cruce y el directo (con el lector antiguo,
+  // que cortaba las tramas por 75 ms de silencio, además las partía).
   //
   // La parte de las mangas ya cerradas (153.000 de esas 160.000 filas) NO cambia
   // mientras corre una manga. Se calcula una vez y se cachea; la manga en curso
