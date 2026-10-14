@@ -45,12 +45,45 @@ function modelInfo(model) {
   return MODELS[normalizeModel(model)];
 }
 
-// El DS-200 es el único que no distingue cruce de control por byte[10]: su
-// carril 1 puede valer 0x00, igual que una trama de control. Ahí manda byte[7]
-// (0x1B = cruce). En el resto, byte[10] != 0 es lo que ha funcionado siempre.
-function isControlFrame(model, frame) {
-  if (normalizeModel(model) === 'ds200') return frame[7] !== 0x1b;
-  return !(frame.length >= 11 ? frame[10] : 0);
+// Cruce o evento lo decide byte[7] (0x1B = cruce), como TicTacSlot y en todos
+// los modelos. Antes valía byte[10] != 0, y una trama de evento con datos en
+// byte[10] (el GO de clase 0x3A/0x3B lleva ahí la duración) se leía como cruce:
+// la manga no arrancaba y salían vueltas de carriles inventados. En las capturas
+// reales (DS-300 de Italia, 160.000 tramas, y el DS antiguo a 4800) todos los
+// cruces llevan 0x1B.
+const CROSSING_CLASS = 0x1b;
+
+function isCrossingFrame(frame) {
+  return frame.length > 7 && frame[7] === CROSSING_CLASS;
+}
+
+function isControlFrame(_model, frame) {
+  return !isCrossingFrame(frame);
+}
+
+// byte[18] = (byte[1] + … + byte[17] + byte[19]) & 0xFF. Solo se comprueba con
+// la trama entera: un trozo no se puede validar y lo trata quien lo recibe.
+function checksumOk(frame) {
+  if (frame.length !== 21) return true;
+  let sum = frame[19];
+  for (let i = 1; i <= 17; i++) sum += frame[i];
+  return (sum & 0xff) === frame[18];
+}
+
+// Duración de la manga que trae el GO (byte[8] = 0xA1), en ms, o null si la clase
+// no la lleva (p. ej. 0x3B, GO por vueltas). Formatos de TicTacSlot, por nibbles:
+//   0x3A → [9][10] = H MM S  (horas, minutos, decenas de segundo)
+//   0x3E → [9] = _H, [10] = MM, [11] = S_
+// Con 0x3E y menos de 60 min coincide con leer byte[10] como minutos BCD.
+// Comprobado con el DS antiguo: `3A A1 01 00` = 600 s y las mangas duraron 600 s.
+function goDurationMs(frame) {
+  const hi = x => x >> 4, lo = x => x & 0x0f;
+  const [b9, b10, b11] = [frame[9] || 0, frame[10] || 0, frame[11] || 0];
+  let s;
+  if (frame[7] === 0x3a)      s = hi(b9) * 3600 + lo(b9) * 600 + hi(b10) * 60 + lo(b10) * 10;
+  else if (frame[7] === 0x3e) s = lo(b9) * 3600 + hi(b10) * 600 + lo(b10) * 60 + hi(b11) * 10;
+  else return null;
+  return s > 0 ? s * 1000 : null;
 }
 
 // Carriles locales que reporta una trama de cruce. Vacío = byte de carril que el
@@ -62,9 +95,14 @@ function crossingLanes(model, frame) {
     if (laneByte === 0x02) return [2];
     return [];
   }
+  // TicTacSlot trata 0xAC como carril 1; por bits saldrían los carriles 1, 3, 5 y 6.
+  if (laneByte === 0xac) return [1];
   const lanes = [];
   for (const [mask, lane] of LANE_BITS) if (laneByte & mask) lanes.push(lane);
   return lanes;
 }
 
-module.exports = { MODELS, DEFAULT_MODEL, LANE_BITS, normalizeModel, modelInfo, isControlFrame, crossingLanes };
+module.exports = {
+  MODELS, DEFAULT_MODEL, LANE_BITS, CROSSING_CLASS, normalizeModel, modelInfo,
+  isCrossingFrame, isControlFrame, checksumOk, goDurationMs, crossingLanes,
+};

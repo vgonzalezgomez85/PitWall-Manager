@@ -79,8 +79,11 @@ database/                 — pitwall.db (SQLite, no commitear)
 
 - **Puerto serie**: 56000 baud, 8N1
 - **Frames**: 21 bytes fijos, `0xE0`…`0xEB`, separados por silencio > 75ms (`FRAME_GAP_MS`). En ráfaga (varios cruces juntos) llegan concatenados; `_processFrame` los **re-separa** en tramas de 21 bytes (de-merge) para no perder cruces. Ver `DS300-protocolo.md`
-- **Lane**: byte[10] — bitmask no secuencial: `0x80→1, 0x40→2, 0x20→3, 0x10→4, 0x08→5, 0x04→6, 0x02→7, 0x01→8`
-- **Tiempo de vuelta**: bytes[14-17] BCD (`ds300Byte()`): minutos, segundos, centésimas, diezmilésimas. Si algún nibble es A-F = primer cruce (sin tiempo válido)
+- **Cruce o evento**: lo decide byte[7] (`0x1B` = cruce; cualquier otro = evento según byte[8]), como TicTacSlot y en todos los modelos (`dsModels.isCrossingFrame`). NO por byte[10]: el GO de clase `0x3A`/`0x3B` lleva datos ahí y se leía como cruce
+- **Checksum**: byte[18] = (byte[1..17] + byte[19]) & 0xFF; la trama que no cuadra se descarta (`checksumOk`)
+- **GO** (`0xA1`): cualquier clase de evento (`0x3E` DS-300, `0x3A` club, `0x3B` por vueltas). Duración por formato (`goDurationMs`): `0x3A` → [9][10] = H MM S; `0x3E` → [9]=_H, [10]=MM, [11]=S_; otra clase → sin duración (la de la carrera). El verde `0xA3` sin aviso previo arranca (reiniciando contadores por carril) o, en pausa, reanuda
+- **Lane**: byte[10] — bitmask no secuencial: `0x80→1, 0x40→2, 0x20→3, 0x10→4, 0x08→5, 0x04→6, 0x02→7, 0x01→8`; `0xAC` = carril 1 (TicTacSlot)
+- **Tiempo de vuelta**: bytes[14-17] BCD (`ds300Byte()`): minutos, segundos, centésimas, diezmilésimas. Si algún nibble es A-F = primer cruce (sin tiempo válido). Las vueltas de más de 240 s SE CUENTAN (la caja las cuenta); solo no entran en la media del carril con la que se reponen vueltas perdidas
 - **Señales de carrera** (emitidas por `SerialService` como eventos internos):
   - `race_go` → semáforo + arranca la carrera (lleva `durationMs` real del DS-300)
   - `race_started` → empieza el cronometraje (`TimingService.startManga`)

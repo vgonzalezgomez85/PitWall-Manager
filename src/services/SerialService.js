@@ -22,7 +22,7 @@ const EventEmitter = require('events');
 const Settings     = require('../models/Settings');
 const DebugLogger  = require('./DebugLogger');
 const FrameMonitor = require('./FrameMonitor');
-const { DEFAULT_MODEL, normalizeModel, modelInfo, isControlFrame, crossingLanes } = require('../lib/dsModels');
+const { DEFAULT_MODEL, normalizeModel, modelInfo, isControlFrame, isCrossingFrame, checksumOk, goDurationMs, crossingLanes } = require('../lib/dsModels');
 
 // Fixed offset so performance.now() (relative) maps to epoch ms (float, ~0.01ms precision)
 const _PERF_OFFSET = Date.now() - performance.now();
@@ -57,7 +57,9 @@ function ds300FrameOffsets(buf) {
   return offsets;
 }
 const MIN_CROSSING_MS = 500;   // minimum ms between two crossings on the same lane
-const MAX_LAP_MS      = 240000; // elapsed > 240s → car stopped; reset ref, skip recording
+// Las vueltas más largas SE CUENTAN (la caja las cuenta); solo no alimentan la
+// media del carril con la que se reponen vueltas perdidas.
+const MAX_LAP_MS      = 240000;
 
 // DS-300 emits a heartbeat frame every 60s while a manga is running (byte7=0x00 byte8=0xC0).
 // If we don't see one for HEARTBEAT_TIMEOUT_MS, the DS is probably unplugged or off.
@@ -514,6 +516,16 @@ class CircuitConnection {
     }
   }
 
+  // Manga nueva: la caja reinicia sus contadores por carril. Si se arrastraran
+  // los de la anterior, el byte12 «retrocedería» y la reposición inventaría vueltas.
+  _resetLaneState() {
+    this._lastLapByLane.clear();
+    this._lastLapAbsByLane.clear();
+    this._lastCrossTsByLane.clear();
+    this._lastSigByLane.clear();
+    this._lapStatsByLane.clear();
+  }
+
   _setRaceState(newState) {
     if (newState === this._raceState) return;
     const prev = this._raceState;
@@ -598,12 +610,21 @@ class CircuitConnection {
       DebugLogger.log('frame', { circuit: this._circuitIndex + 1, len: frame.length, hex, b7, b8, frame_ts: ts });
     }
 
+    // Ruido en la línea (más probable a 4800 baudios): una trama con el checksum
+    // mal puede traer cualquier carril o evento. TicTacSlot también la descarta.
+    if (!checksumOk(frame)) {
+      console.warn(`[DS C${this._circuitIndex + 1}] Checksum incorrecto — trama descartada`);
+      DebugLogger.log('ds_checksum', { circuit: this._circuitIndex + 1 });
+      return;
+    }
+
     // Any well-formed frame means the DS is alive; refresh the watchdog.
     this._pingAlive();
 
     // ── Heartbeat frame (DS sends one every 60s while running) ────────────────
-    // Signature: frame[7]=0x00, frame[8]=0xC0. Byte 14 = minute counter.
-    if (frame.length >= 15 && frame[7] === 0x00 && frame[8] === 0xC0) {
+    // Signature: frame[8]=0xC0 en una trama de evento. Byte 14 = minute counter.
+    const evento = !isCrossingFrame(frame);
+    if (frame.length >= 15 && evento && frame[8] === 0xC0) {
       const minute = frame[14];
       this._lastHeartbeatTs = ts;
       console.log(`[DS-300 C${this._circuitIndex + 1}] ♥ heartbeat (min ${minute})`);
@@ -618,26 +639,21 @@ class CircuitConnection {
     const laneByte = frame.length >= 11 ? frame[10] : 0;
 
     // ── Real DS-300 GO sequence (3 frames, deltas +2500ms / +2953ms from t1):
-    //    Trama 1: byte7=0x3E byte8=0xA1 byte10=BCD(durationMins)  → store duration, latch pending start
-    //    Trama 2: byte7=0x00 byte8=0xA2                            → semaphore step 2 (intermediate)
-    //    Trama 3: byte7=0x00 byte8=0xA3                            → current ON, race starts (countdown)
-    // Algunas unidades de club emiten la trama 1 con clase 0x3A en vez de 0x3E
-    // (mismo byte8=0xA1, checksum válido): sin aceptarla el GO no enganchaba el
-    // latch, el verde 0xA3 se ignoraba y la carrera no arrancaba.
-    if (frame.length >= 11 && (frame[7] === 0x3e || frame[7] === 0x3a) && frame[8] === 0xa1) {
-      const mins = ds300Byte(frame[10]) ?? 0;
-      // New manga → reset per-lane lap counters and stats for gap detection.
-      this._lastLapByLane.clear();
-      this._lastLapAbsByLane.clear();
-      this._lastCrossTsByLane.clear();
-      this._lastSigByLane.clear();
-      this._lapStatsByLane.clear();
+    //    Trama 1: byte8=0xA1, duración en byte[9..11]  → store duration, latch pending start
+    //    Trama 2: byte8=0xA2                            → semaphore step 2 (intermediate)
+    //    Trama 3: byte8=0xA3                            → current ON, race starts (countdown)
+    // La clase de la trama 1 (byte[7]) cambia según la caja: 0x3E en el DS-300,
+    // 0x3A en unidades de club, 0x3B en el GO por vueltas. Como TicTacSlot, vale
+    // cualquiera que no sea un cruce; la duración solo se lee de las conocidas.
+    if (frame.length >= 11 && evento && frame[8] === 0xa1) {
+      const durMs = goDurationMs(frame);
+      this._resetLaneState();
       // Reset cached race state so the next transition to 'running' actually
       // fires the callback. Some DS-300 units don't emit 0xA4/0xA7 between
       // mangas, so without this reset _raceState stays 'running' and the new
       // GO is silently ignored by _setRaceState's same-state short-circuit.
       this._raceState = null;
-      this._onGoSignal(mins * 60000);
+      this._onGoSignal(durMs || 0);
       this._pendingGoStart = true;
       if (this._goFallbackTimer) clearTimeout(this._goFallbackTimer);
       // Fallback: if trama 3 never arrives, start race anyway after 5s
@@ -651,8 +667,8 @@ class CircuitConnection {
     }
 
     // Trama 3 (0xA3) is shared by GO and Resume sequences. Whoever has a
-    // pending latch (go or resume) gets resolved here; otherwise it's ignored.
-    if (frame.length >= 9 && frame[7] === 0x00 && frame[8] === 0xa3) {
+    // pending latch (go or resume) gets resolved here.
+    if (frame.length >= 9 && evento && frame[8] === 0xa3) {
       if (this._pendingGoStart) {
         this._pendingGoStart = false;
         if (this._goFallbackTimer) { clearTimeout(this._goFallbackTimer); this._goFallbackTimer = null; }
@@ -665,12 +681,20 @@ class CircuitConnection {
         this._setRaceState('resumed');
         return;
       }
+      // Sin aviso previo (GO perdido, o una caja que reanuda sin 0xA6): para
+      // TicTacSlot el verde es «inicio de manga» o «fin de pausa», y así se lee.
+      if (this._raceState === 'paused') {
+        this._setRaceState('resumed');
+      } else if (this._raceState !== 'running' && this._raceState !== 'resumed') {
+        this._resetLaneState();
+        this._setRaceState('running');
+      }
       return;
     }
 
     // Trama 2 (0xA2) is consumed silently for state machine, but used to drive
     // the on-screen semaphore in real time so it matches the physical DS lights.
-    if ((this._pendingGoStart || this._pendingResumeStart) && frame.length >= 9 && frame[7] === 0x00 && frame[8] === 0xa2) {
+    if ((this._pendingGoStart || this._pendingResumeStart) && frame.length >= 9 && evento && frame[8] === 0xa2) {
       this._onSemaphoreStep();
       return;
     }
@@ -810,15 +834,17 @@ class CircuitConnection {
         continue;
       }
 
-      if (lapTimeMs < MIN_CROSSING_MS || lapTimeMs > MAX_LAP_MS) continue;
+      if (lapTimeMs < MIN_CROSSING_MS) continue;
 
       console.log(`[DS-300 C${this._circuitIndex + 1}] Lane ${localLane} → global ${globalLane} — ${lapTimeMs.toFixed(1)}ms`);
       // Feed real lap times into the running stats so future phantom laps can
       // estimate a realistic value. Phantoms themselves are NOT fed back.
-      const stats = this._lapStatsByLane.get(laneKey) || { sum: 0, count: 0 };
-      stats.sum += lapTimeMs;
-      stats.count += 1;
-      this._lapStatsByLane.set(laneKey, stats);
+      if (lapTimeMs <= MAX_LAP_MS) {
+        const stats = this._lapStatsByLane.get(laneKey) || { sum: 0, count: 0 };
+        stats.sum += lapTimeMs;
+        stats.count += 1;
+        this._lapStatsByLane.set(laneKey, stats);
+      }
       this._onCrossing({ lane: globalLane, timestamp: ts, lapTimeMs });
     }
   }

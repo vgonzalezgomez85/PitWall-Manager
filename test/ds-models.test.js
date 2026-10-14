@@ -26,6 +26,7 @@ const { test, after } = require('node:test');
 const assert = require('node:assert/strict');
 
 const { CircuitConnection } = require('../src/services/SerialService');
+const { sellar } = require('./helpers/dsFrame');
 const { createDecoder } = require('../src/lib/frameDecoder');
 const { normalizeModel, modelInfo, isControlFrame, crossingLanes } = require('../src/lib/dsModels');
 
@@ -50,8 +51,7 @@ function trama({ tipo = 0x1b, evento = 0x00, carril = 0x00, caja = 0x00, vuelta 
   const f = new Array(21).fill(0);
   f[0] = 0xe0; f[4] = caja; f[7] = tipo; f[8] = evento; f[10] = carril;
   f[12] = vuelta; f[14] = 0x00; f[15] = seg; f[16] = cent; f[17] = 0x00;
-  f[20] = 0xeb;
-  return f;
+  return sellar(f);
 }
 
 test('modelo desconocido o ausente → DS-300', () => {
@@ -83,11 +83,13 @@ test('DS-200: 0x00 y 0x01 son el carril 1, 0x02 el carril 2, el resto no vale', 
   assert.deepEqual(crossingLanes('ds200', trama({ carril: 0x04 })), []);
 });
 
-test('DS-200 distingue cruce de control por byte[7]; el resto por byte[10]', () => {
-  assert.equal(isControlFrame('ds200', trama({ tipo: 0x1b, carril: 0x00 })), false);
-  assert.equal(isControlFrame('ds200', trama({ tipo: 0x00, evento: 0xa5, carril: 0x00 })), true);
-  assert.equal(isControlFrame('ds300', trama({ tipo: 0x00, carril: 0x00 })), true);
-  assert.equal(isControlFrame('ds300', trama({ tipo: 0x00, carril: 0x80 })), false);
+test('cruce o evento lo decide byte[7] en todos los modelos', () => {
+  for (const m of ['ds200', 'ds300', 'ds030', 'ds080']) {
+    assert.equal(isControlFrame(m, trama({ tipo: 0x1b, carril: 0x00 })), false);
+    assert.equal(isControlFrame(m, trama({ tipo: 0x00, evento: 0xa5, carril: 0x00 })), true);
+    // GO de club: lleva la duración en byte[10] y no es un cruce.
+    assert.equal(isControlFrame(m, trama({ tipo: 0x3a, evento: 0xa1, carril: 0x60 })), true);
+  }
 });
 
 test('DS-200: un cruce en el carril 1 con byte[10]=0x00 se registra', () => {
@@ -127,7 +129,7 @@ test('DS-080: byte[4]=2 es el circuito 2 (carriles 9-16); otro valor, el circuit
   assert.deepEqual(cruces.map(x => x.lane), [9, 1, 1]);
 });
 
-test('el DS-300 sigue igual: una trama con byte[10]=0 y byte[7]=0x1B es control, no cruce', () => {
+test('DS-300: un cruce sin bit de carril (byte[10]=0) no inventa cruces', () => {
   const { c, cruces } = circuito('ds300');
   c._processFrame(trama({ tipo: 0x1b, carril: 0x00 }), 1000);
   assert.equal(cruces.length, 0);

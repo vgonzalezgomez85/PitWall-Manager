@@ -18,20 +18,21 @@
 // el visor es una segunda implementación del mismo parseo, así que puede
 // divergir en silencio y mentirle a quien esté depurando hardware. Los casos
 // que más fácilmente divergen —y por eso están cubiertos— son el latch de
-// GO/resume (0xA2/0xA3 solo significan algo con un GO pendiente), que el cruce
-// se identifica por b[10] y NO por b[7], y el filtro de tiempos fuera de rango.
+// GO/resume, que el cruce se identifica por b[7]=0x1B (como TicTacSlot), el
+// checksum y el filtro de rebotes.
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 
 const { createDecoder } = require('../src/lib/frameDecoder');
+const { sellar } = require('./helpers/dsFrame');
 
 // Constructor de tramas de 21 bytes: e0 … eb con los bytes que interesen.
 function frame(over = {}) {
   const b = Array(21).fill(0);
   b[0] = 0xe0; b[20] = 0xeb;
   for (const [i, v] of Object.entries(over)) b[+i] = v;
-  return b;
+  return sellar(b);
 }
 
 const GO   = frame({ 7: 0x3e, 8: 0xa1, 10: 0x99 });   // 99 min en BCD
@@ -39,7 +40,7 @@ const A2   = frame({ 7: 0x00, 8: 0xa2 });
 const A3   = frame({ 7: 0x00, 8: 0xa3 });
 const A6   = frame({ 7: 0x00, 8: 0xa6 });
 // Cruce: carril 3 (bit 0x20), 00:08:43:20 BCD = 8,432 s, contador 7.
-const CRUCE = frame({ 10: 0x20, 12: 0x07, 14: 0x00, 15: 0x08, 16: 0x43, 17: 0x20 });
+const CRUCE = frame({ 7: 0x1b, 10: 0x20, 12: 0x07, 14: 0x00, 15: 0x08, 16: 0x43, 17: 0x20 });
 
 
 // Los campos llevan además su clave de traducción (kKey/vKey): se compara lo decodificado.
@@ -49,7 +50,8 @@ test('GO: etiqueta y duración en BCD', () => {
   const d = createDecoder();
   const r = d.ds(GO);
   assert.equal(r.kind, 'go');
-  assert.deepEqual(kv(r.fields), [{ k: 'duración', v: '99 min' }]);
+  // 0x3E (formato de TicTacSlot): [10] = MM → 99 min.
+  assert.deepEqual(kv(r.fields), [{ k: 'duración', v: '1 h 39 min' }]);
 });
 
 test('el GO de una unidad con clase 0x3A también es un GO', () => {
@@ -59,17 +61,22 @@ test('el GO de una unidad con clase 0x3A también es un GO', () => {
   const d = createDecoder();
   const r = d.ds(frame({ 7: 0x3a, 8: 0xa1, 10: 0x60 }));
   assert.equal(r.kind, 'go');
-  assert.deepEqual(kv(r.fields), [{ k: 'duración', v: '60 min' }]);
+  // 0x3A: [9][10] = H MM S → 0 h, 06 min, 0 s (no 60 min).
+  assert.deepEqual(kv(r.fields), [{ k: 'duración', v: '6 min' }]);
   assert.equal(d.ds(A3).kind, 'started');
 });
 
-test('el verde 0xA3 solo cuenta si hay un GO pendiente', () => {
+test('el verde 0xA3 arranca con GO pendiente y también sin él (como TicTacSlot)', () => {
   const d = createDecoder();
   d.ds(GO);
-  assert.equal(d.ds(A3).kind, 'started', 'con GO pendiente → arranque');
-  // Sin latch, SerialService.js:604 la ignora. Si el visor la marcara como
-  // arranque, enseñaría un evento que el cronometraje nunca produjo.
-  assert.equal(d.ds(A3).kind, 'ignored', 'sin GO pendiente → ignorada');
+  const conGo = d.ds(A3);
+  assert.equal(conGo.kind, 'started');
+  assert.equal(conGo.label, 'Verde — carrera en marcha');
+  // Sin aviso previo (GO perdido o caja que reanuda sin 0xA6) el cronometraje
+  // arranca o reanuda igual; el visor lo dice.
+  const solo = d.ds(A3);
+  assert.equal(solo.kind, 'started');
+  assert.equal(solo.labelKey, 'client.tramas.verde_sin_aviso');
 });
 
 test('0xA6 arma el resume y el verde posterior lo resuelve', () => {
@@ -103,28 +110,48 @@ test('cruce: carril, tiempo BCD y contador', () => {
   ]);
 });
 
-test('el cruce se identifica por b[10], no por b[7]', () => {
-  // b[7] arbitrario: mientras haya carril y ≥18 bytes, es un cruce. Clasificar
-  // por b[7]==0x1B (como sugiere el log) haría que el visor perdiera cruces.
-  const r = createDecoder().ds(frame({ 7: 0x55, 10: 0x20, 15: 0x08, 16: 0x43, 17: 0x20 }));
-  assert.equal(r.kind, 'crossing');
+test('el cruce se identifica por b[7]=0x1B, no por b[10]', () => {
+  // Un evento con datos en b[10] (GO 0x3A/0x3B) se leía como cruce de carriles
+  // inventados y la manga no arrancaba. TicTacSlot clasifica por b[7].
+  const d = createDecoder();
+  assert.equal(d.ds(frame({ 7: 0x3b, 8: 0xa1, 9: 0x40, 10: 0x12 })).kind, 'go');
+  assert.notEqual(d.ds(frame({ 7: 0x55, 10: 0x20, 15: 0x08, 16: 0x43, 17: 0x20 })).kind, 'crossing');
+  assert.equal(d.ds(frame({ 7: 0x1b, 10: 0x20, 15: 0x08, 16: 0x43, 17: 0x20 })).kind, 'crossing');
+});
+
+test('el GO por vueltas (0x3B) no trae duración', () => {
+  const r = createDecoder().ds(frame({ 7: 0x3b, 8: 0xa1, 9: 0x40, 10: 0x12 }));
+  assert.deepEqual(kv(r.fields), [{ k: 'duración', v: '—' }]);
+});
+
+test('checksum incorrecto: se marca y no se interpreta', () => {
+  const f = [...CRUCE];
+  f[18] = (f[18] + 1) & 0xff;
+  const r = createDecoder().ds(f);
+  assert.equal(r.kind, 'bad_checksum');
+  assert.equal(r.labelKey, 'client.tramas.checksum_mal');
+});
+
+test('0xAC en b[10] es el carril 1 (no los carriles 1, 3, 5 y 6)', () => {
+  const r = createDecoder().ds(frame({ 7: 0x1b, 10: 0xac, 15: 0x08, 16: 0x43, 17: 0x20 }));
+  assert.deepEqual(r.lanes, [1]);
 });
 
 test('un b[10] con varios bits reporta varios carriles', () => {
-  const r = createDecoder().ds(frame({ 10: 0xa0, 15: 0x08, 16: 0x43, 17: 0x20 }));
+  const r = createDecoder().ds(frame({ 7: 0x1b, 10: 0xa0, 15: 0x08, 16: 0x43, 17: 0x20 }));
   assert.deepEqual(r.lanes, [1, 3], '0xa0 = bits 0x80 y 0x20');
 });
 
 test('primer cruce de la manga: BCD inválido → sin tiempo, no error', () => {
-  const r = createDecoder().ds(frame({ 10: 0x20, 15: 0xff }));
+  const r = createDecoder().ds(frame({ 7: 0x1b, 10: 0x20, 15: 0xff }));
   assert.equal(r.kind, 'crossing');
   assert.equal(r.fields.find(f => f.k === 'tiempo').v, 'primera vuelta');
 });
 
 test('tiempo fuera de rango se marca como filtrado', () => {
-  // SerialService descarta <500 ms o >240 s EN SILENCIO. El visor debe decirlo
+  // SerialService descarta los rebotes (<500 ms) EN SILENCIO. El visor debe decirlo
   // o queda un hueco inexplicable entre la trama y el evento que no llega.
-  const r = createDecoder().ds(frame({ 10: 0x20, 17: 0x10 }));   // 1 ms
+  const r = createDecoder().ds(frame({ 7: 0x1b, 10: 0x20, 17: 0x10 }));   // 1 ms
   assert.equal(r.kind, 'crossing_filtered');
 });
 
@@ -136,14 +163,14 @@ test('ráfaga del PL2303: colapsa duplicadas consecutivas', () => {
 });
 
 test('ráfaga con carriles distintos NO se colapsa', () => {
-  const otro = frame({ 10: 0x10, 12: 0x07, 15: 0x08, 16: 0x43, 17: 0x20 });   // carril 4
+  const otro = frame({ 7: 0x1b, 10: 0x10, 12: 0x07, 15: 0x08, 16: 0x43, 17: 0x20 });   // carril 4
   const r = createDecoder().ds([...CRUCE, ...otro]);
   assert.equal(r.subs.length, 2, 'cruces simultáneos de carriles distintos son reales');
 });
 
 test('modo agrupador: b[4] desplaza el carril global', () => {
   // Caja 2 (b[4]=0x02) con 4 cajas por puerto → carril 3 local = global 11.
-  const r = createDecoder().ds(frame({ 4: 0x02, 10: 0x20, 15: 0x08, 16: 0x43, 17: 0x20 }),
+  const r = createDecoder().ds(frame({ 7: 0x1b, 4: 0x02, 10: 0x20, 15: 0x08, 16: 0x43, 17: 0x20 }),
                                { boxesPerPort: 4 });
   assert.deepEqual(r.lanes, [11]);
 });
@@ -155,7 +182,7 @@ test('laneOffset de multi-circuito se suma al carril', () => {
 
 test('los bytes sin interpretar se listan para pintarlos atenuados', () => {
   const r = createDecoder().ds(CRUCE);
-  assert.deepEqual(r.unknown, [1, 2, 3, 5, 6, 9, 11, 13, 18, 19]);
+  assert.deepEqual(r.unknown, [1, 2, 3, 5, 6, 9, 11, 13, 19]);
 });
 
 test('heartbeat: el minuto es el byte crudo, no BCD', () => {
@@ -240,7 +267,7 @@ test('trama real capturada del DS por el PL2303', () => {
 
 test('cada etiqueta y campo lleva su clave del diccionario para traducirse en el navegador', () => {
   const d = createDecoder();
-  const r = d.ds([0xe0, 0, 0, 0, 0, 0, 0, 0x1b, 0, 0, 0x80, 0, 5, 0, 0, 0x12, 0x34, 0, 0, 0, 0xeb]);
+  const r = d.ds(sellar([0xe0, 0, 0, 0, 0, 0, 0, 0x1b, 0, 0, 0x80, 0, 5, 0, 0, 0x12, 0x34, 0, 0, 0, 0xeb]));
   assert.equal(r.label, 'Cruce — carril 1', 'la etiqueta sigue en español');
   assert.equal(r.labelKey, 'client.tramas.cruce');
   assert.deepEqual(r.labelVars, { l: '1' });

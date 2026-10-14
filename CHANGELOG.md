@@ -13,6 +13,17 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.62.1] — 2026-10-14
+
+### Corregido
+- **El GO de cualquier caja DS arranca la manga**: PitWall solo reconocía el GO del DS-300 (y la variante `0x3A`); con otras cajas, como el GO por vueltas, la trama se leía como un cruce de carriles inventados y la manga no arrancaba. Ahora las tramas se leen como lo hace TicTacSlot, que funciona con todas las cajas: cruce o evento lo decide el byte 7, el GO vale con cualquier clase y el verde basta por sí solo para arrancar o reanudar tras una pausa.
+- **Duración de la manga en cajas antiguas**: el DS antiguo del club manda la duración en otro formato. PitWall leía 0 min (o 60 en vez de 6) y usaba la duración de la carrera; ahora lee la de la caja (comprobado: 10 min en las 14 mangas del entreno del 13 de octubre).
+- **Vueltas de más de 4 minutos**: se descartaban en directo y al cerrar la manga se reponían como estimadas. Ahora cuentan en directo con su tiempo real, como en la caja.
+
+### Mejorado
+- **Tramas con ruido**: se comprueba el checksum de cada trama y se descartan las que llegan dañadas (más probable a 4800 baudios).
+- **Visor de tramas**: lee igual que el cronometraje (GO de cualquier clase con su duración, verde sin aviso previo, checksum incorrecto).
+
 ## [1.62.0] — 2026-10-14
 
 ### Añadido

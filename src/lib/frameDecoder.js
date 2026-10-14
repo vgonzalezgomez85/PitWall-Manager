@@ -30,7 +30,7 @@
 //   dec.reset()
 // Frame = { kind, label, badge, fields: [{k, v}], lanes: [n], unknown: [i] }
 
-const { isControlFrame, crossingLanes, LANE_BITS } = require('./dsModels');
+const { isControlFrame, isCrossingFrame, checksumOk, goDurationMs, crossingLanes, LANE_BITS } = require('./dsModels');
 const tictac = require('./tictacProtocol');
 
 const DS_FRAME_LEN = 21;
@@ -43,14 +43,20 @@ const bcd = b => (((b >> 4) <= 9 && (b & 0xF) <= 9) ? parseInt(b.toString(16), 1
 const hex = b => b.toString(16).padStart(2, '0');
 
 // Bytes que el parser real llega a leer en una trama de cruce. Todo lo demás se
-// muestra como "sin interpretar" — son 10 de 21, casi media trama.
-const DS_READ_BYTES = new Set([0, 4, 7, 8, 10, 12, 14, 15, 16, 17, 20]);
+// muestra como "sin interpretar" — son 9 de 21.
+const DS_READ_BYTES = new Set([0, 4, 7, 8, 10, 12, 14, 15, 16, 17, 18, 20]);
 
 function fmtMs(ms) {
   if (ms == null) return '—';
   if (ms < 60000) return `${(ms / 1000).toFixed(3)} s`;
   const m = Math.floor(ms / 60000);
   return `${m}:${((ms % 60000) / 1000).toFixed(3).padStart(6, '0')}`;
+}
+
+function fmtDur(ms) {
+  const s = Math.round(ms / 1000);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
+  return (h ? `${h} h ` : '') + `${m} min` + (r ? ` ${r} s` : '');
 }
 
 // Tiempo de vuelta: bytes 14-17 en decimal-en-hex.
@@ -83,7 +89,8 @@ const ETIQUETAS = [
   [/^GO — arranque de manga$/, 'go'],
   [/^Verde — carrera en marcha$/, 'verde_marcha'],
   [/^Verde — carrera reanudada$/, 'verde_reanudada'],
-  [/^Verde sin GO pendiente \(el parser la ignora\)$/, 'verde_sin_go'],
+  [/^Verde sin aviso previo — arranca o reanuda$/, 'verde_sin_aviso'],
+  [/^Checksum incorrecto \(descartada\)$/, 'checksum_mal'],
   [/^Semáforo — paso intermedio$/, 'semaforo'],
   [/^Stop forzado$/, 'stop'],
   [/^Fin de manga$/, 'fin'],
@@ -178,36 +185,40 @@ function createDecoder() {
       }
     }
 
-    const b7 = b[7], b8 = b[8];
+    const b8 = b[8];
     const unknown = unknownBytes(b);
+    const evento = !isCrossingFrame(b);
 
-    // — Heartbeat: b[7]=0x00 b[8]=0xC0. El minuto es el byte CRUDO, no BCD.
-    if (b.length >= 15 && b7 === 0x00 && b8 === 0xC0) {
+    if (!checksumOk(b)) {
+      return { ...base, unknown, kind: 'bad_checksum', badge: '✗', label: 'Checksum incorrecto (descartada)' };
+    }
+
+    // — Heartbeat: b[8]=0xC0 en una trama de evento. El minuto es el byte CRUDO, no BCD.
+    if (b.length >= 15 && evento && b8 === 0xC0) {
       return { ...base, unknown, kind: 'heartbeat', badge: '♥',
                label: 'Latido', fields: [{ k: 'minuto', v: String(b[14]) }] };
     }
 
-    // — GO (trama 1): b[7]=0x3E b[8]=0xA1. b[10] = minutos de manga en BCD.
-    //   Algunas unidades de club emiten la clase 0x3A con el mismo b[8] y
-    //   checksum válido; sin aceptarla el GO no engancha el latch.
-    if (b.length >= 11 && (b7 === 0x3E || b7 === 0x3A) && b8 === 0xA1) {
+    // — GO (trama 1): b[8]=0xA1 con cualquier clase de evento (0x3E DS-300,
+    //   0x3A club, 0x3B por vueltas). La duración solo viene en las conocidas.
+    if (b.length >= 11 && evento && b8 === 0xA1) {
       pendingGo = true;
       pendingResume = false;
-      const mins = bcd(b[10]);
+      const ms = goDurationMs(b);
       return { ...base, unknown, kind: 'go', badge: '▶',
                label: 'GO — arranque de manga',
-               fields: [{ k: 'duración', v: mins == null ? '—' : `${mins} min` }] };
+               fields: [{ k: 'duración', v: ms == null ? '—' : fmtDur(ms) }] };
     }
 
     // — Verde (trama 3): b[8]=0xA3. Solo significa algo si hay latch pendiente.
-    if (b.length >= 9 && b7 === 0x00 && b8 === 0xA3) {
+    if (b.length >= 9 && evento && b8 === 0xA3) {
       if (pendingGo)     { pendingGo = false;     return { ...base, unknown, kind: 'started', badge: '🟢', label: 'Verde — carrera en marcha' }; }
       if (pendingResume) { pendingResume = false; return { ...base, unknown, kind: 'resumed', badge: '🟢', label: 'Verde — carrera reanudada' }; }
-      return { ...base, unknown, kind: 'ignored', badge: '·', label: 'Verde sin GO pendiente (el parser la ignora)' };
+      return { ...base, unknown, kind: 'started', badge: '🟢', label: 'Verde sin aviso previo — arranca o reanuda' };
     }
 
     // — Paso intermedio del semáforo: b[8]=0xA2, solo con latch pendiente.
-    if (b.length >= 9 && b7 === 0x00 && b8 === 0xA2 && (pendingGo || pendingResume)) {
+    if (b.length >= 9 && evento && b8 === 0xA2 && (pendingGo || pendingResume)) {
       return { ...base, unknown, kind: 'semaphore', badge: '🟡', label: 'Semáforo — paso intermedio' };
     }
 
@@ -243,9 +254,9 @@ function createDecoder() {
     const counter = bcd(b[12]);
     if (counter != null) fields.push({ k: 'contador', v: String(counter) });
 
-    // El parser descarta en silencio los tiempos fuera de rango: hay que
-    // marcarlo o en pantalla queda un hueco inexplicable entre trama y evento.
-    const filtered = lapMs != null && (lapMs < MIN_CROSSING_MS || lapMs > MAX_LAP_MS);
+    // El parser descarta en silencio los rebotes: hay que marcarlo o en pantalla
+    // queda un hueco inexplicable entre trama y evento.
+    const filtered = lapMs != null && lapMs < MIN_CROSSING_MS;
 
     return {
       ...base,
