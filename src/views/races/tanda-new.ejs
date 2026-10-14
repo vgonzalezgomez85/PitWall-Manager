@@ -266,28 +266,36 @@
 
       <% } %>
 
-      <div class="form-group" style="margin-top:1.75rem;padding-top:1.25rem;border-top:1px solid #21262d">
-        <span class="form-label" style="margin-bottom:.15rem">
-          <%= t('tanda-new.carriles_sin_participante') %>
-        </span>
-        <p class="form-hint" style="margin:0 0 .7rem">
+      <% const _elOpts = [
+           ['rotate', 'tanda-new.pasar_por_todos',       'tanda-new.pasar_por_todos_desc'],
+           ['skip',   'tanda-new.saltar_vacios',         'tanda-new.saltar_vacios_desc'],
+           ['fixed',  'tanda-new.saltar_ultimos_vacios', 'tanda-new.saltar_ultimos_vacios_desc'],
+         ];
+         const _elSel = _elOpts.some(o => o[0] === body.empty_lane_mode) ? body.empty_lane_mode : 'rotate'; %>
+      <details id="emptyLaneBox" class="form-group" style="margin-top:1.75rem;padding-top:1.25rem;border-top:1px solid #21262d">
+        <summary style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;cursor:pointer;list-style:none">
+          <span class="form-label" style="margin:0"><%= t('tanda-new.carriles_sin_participante') %>:</span>
+          <span id="emptyLaneCurrent" style="color:#8b949e"><%= t(_elOpts.find(o => o[0] === _elSel)[1]) %></span>
+          <span class="btn btn--ghost btn--sm"><%= t('tanda-new.modificar') %></span>
+        </summary>
+        <p class="form-hint" style="margin:.7rem 0 .7rem">
           <%= t('tanda-new.si_hay_menos_participantes_que_carriles_que') %>
         </p>
-        <label style="display:flex;gap:.55rem;align-items:flex-start;margin-bottom:.5rem;cursor:pointer">
-          <input type="radio" name="empty_lane_mode" value="fixed" checked style="margin-top:.2rem">
-          <span>
-            <strong><%= t('tanda-new.sobran_los_ultimos') %></strong>
-            — <%= t('tanda-new.los_carriles_de_mayor_numero_quedan_siempre') %>
-          </span>
-        </label>
-        <label style="display:flex;gap:.55rem;align-items:flex-start;cursor:pointer">
-          <input type="radio" name="empty_lane_mode" value="rotate" style="margin-top:.2rem">
-          <span>
-            <strong><%= t('tanda-new.el_hueco_rota') %></strong>
-            — <%= t('tanda-new.el_carril_libre_va_cambiando_cada_manga_para') %>
-          </span>
-        </label>
-      </div>
+        <% _elOpts.forEach(([val, lbl, desc], n) => { %>
+          <label style="display:flex;gap:.55rem;align-items:flex-start;<%= n < 2 ? 'margin-bottom:.5rem;' : '' %>cursor:pointer">
+            <input type="radio" name="empty_lane_mode" value="<%= val %>" <%= _elSel === val ? 'checked' : '' %> style="margin-top:.2rem">
+            <span>
+              <strong><%= t(lbl) %></strong>
+              — <%= t(desc) %>
+            </span>
+          </label>
+        <% }) %>
+      </details>
+      <script>
+        document.querySelectorAll('#emptyLaneBox input[name="empty_lane_mode"]').forEach(r => r.addEventListener('change', () => {
+          document.getElementById('emptyLaneCurrent').textContent = r.closest('label').querySelector('strong').textContent;
+        }));
+      </script>
 
       <div class="form-actions" style="margin-top:1.5rem">
         <a href="/races/<%= race.id %>" class="btn btn--ghost">← <%= t('wizard.back') %></a>
@@ -558,9 +566,10 @@ if (document.getElementById('teamAssignUI')) {
       inp.type = 'hidden'; inp.name = 'team_catalog_ids[]'; inp.value = tid;
       hiddenInputs.appendChild(inp);
     };
+    // Un carril vacío viaja como '' para que el servidor sepa qué carril quedó libre.
     ACTIVE_LANES.forEach(lane => {
       const btn = document.getElementById('lane-btn-' + lane);
-      if (btn && btn.dataset.teamId) add(btn.dataset.teamId);
+      add(btn && btn.dataset.teamId ? btn.dataset.teamId : '');
     });
     laneGrid.querySelectorAll('.tanda-lane-btn--rest').forEach(btn => {
       if (btn.dataset.teamId) add(btn.dataset.teamId);

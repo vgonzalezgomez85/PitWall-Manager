@@ -525,6 +525,8 @@ const migrations = [
   //   'rotate' → el hueco rota manga a manga para que todos pasen por los mismos
   //              carriles (se rellena la rotación con huecos vacíos que NO generan
   //              fila en manga_lanes → ni vueltas ni clasificación).
+  //   'skip'   → los carriles que se dejan libres al crear la tanda no se usan
+  //              nunca (p. ej. 8 carriles corriendo sin el 1 ni el 8).
   // Se lee al (re)generar el horario en creación y edición de la tanda.
   `ALTER TABLE tandas ADD COLUMN empty_lane_mode TEXT NOT NULL DEFAULT 'fixed'`,
 

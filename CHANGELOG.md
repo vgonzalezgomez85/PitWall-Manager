@@ -13,6 +13,17 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.62.0] — 2026-10-14
+
+### Añadido
+- **Carriles libres donde tú quieras**: al crear la tanda se pueden dejar huecos en cualquier carril del tablero (p. ej. 8 carriles sin el 1 ni el 8), no solo al final. La 1ª manga respeta esa colocación.
+- **Modo «No pasar por los carriles vacíos»**: los carriles que se dejan sin participante no se usan en toda la tanda; la rotación va solo por los ocupados.
+
+### Mejorado
+- **Opciones de carriles vacíos más claras**: «Pasar por todos los carriles» (el hueco rota y todos corren en todos; ahora es la opción por defecto), «No pasar por los carriles vacíos» y «No pasar por los últimos carriles vacíos» (la de siempre: no se usan los libres del final; un hueco en medio sí rota).
+- **Editar una tanda conserva sus huecos**: al rehacer el horario, cada participante sigue en los carriles de la 1ª manga.
+- **Italiano**: unos 110 textos posteriores a la traducción de Emanuele, traducidos.
+
 ## [1.61.1] — 2026-10-14
 
 ### Corregido

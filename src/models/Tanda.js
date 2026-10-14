@@ -46,7 +46,7 @@ class Tanda {
 
   static create(raceId, emptyLaneMode = 'fixed') {
     const number = Tanda.nextNumber(raceId);
-    const mode = emptyLaneMode === 'rotate' ? 'rotate' : 'fixed';
+    const mode = ['rotate', 'skip'].includes(emptyLaneMode) ? emptyLaneMode : 'fixed';
     const { lastInsertRowid } = db.prepare(
       'INSERT INTO tandas (race_id, number, empty_lane_mode) VALUES (?, ?, ?)'
     ).run(raceId, number, mode);

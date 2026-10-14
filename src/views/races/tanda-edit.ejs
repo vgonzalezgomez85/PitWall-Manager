@@ -76,7 +76,7 @@
   // posición en la secuencia (i) es la que decide el carril al guardar, así que
   // cada fila lleva su `i` real en el nombre del campo y no cambia nada.
   const slotOrder = (n) => [...Array(n).keys()].sort((a, b) => {
-    const k = (i) => (i < laneSequence.length && laneSequence[i] > 0) ? [0, laneSequence[i]] : [i < laneSequence.length ? 1 : 2, i];
+    const k = (i) => { const ln = ((locals.slotLanes && locals.slotLanes[i] != null) ? locals.slotLanes[i] : (i < laneSequence.length ? laneSequence[i] : 0)); return ln > 0 ? [0, ln] : [i < laneSequence.length ? 1 : 2, i]; };
     const x = k(a), y = k(b);
     return x[0] - y[0] || x[1] - y[1];
   });
@@ -84,7 +84,7 @@
         <div id="driversGrid" class="drivers-grid">
           <% slotOrder(drivers.length).forEach((i, pos) => {
                const d = drivers[i];
-               const slotLane = i < laneSequence.length ? laneSequence[i] : 0;
+               const slotLane = ((locals.slotLanes && locals.slotLanes[i] != null) ? locals.slotLanes[i] : (i < laneSequence.length ? laneSequence[i] : 0));
                const slotColor = slotLane > 0 ? LANE_COLORS[(slotLane - 1) % LANE_COLORS.length] : '#30363d';
                // DSC1 = first to start racing (rests least at start)
                const restIdx = slotLane === 0 ? (drivers.length - i) : 0;
@@ -139,7 +139,7 @@
   // posición en la secuencia (i) es la que decide el carril al guardar, así que
   // cada fila lleva su `i` real en el nombre del campo y no cambia nada.
   const slotOrder = (n) => [...Array(n).keys()].sort((a, b) => {
-    const k = (i) => (i < laneSequence.length && laneSequence[i] > 0) ? [0, laneSequence[i]] : [i < laneSequence.length ? 1 : 2, i];
+    const k = (i) => { const ln = ((locals.slotLanes && locals.slotLanes[i] != null) ? locals.slotLanes[i] : (i < laneSequence.length ? laneSequence[i] : 0)); return ln > 0 ? [0, ln] : [i < laneSequence.length ? 1 : 2, i]; };
     const x = k(a), y = k(b);
     return x[0] - y[0] || x[1] - y[1];
   });
@@ -147,7 +147,7 @@
         <div id="teamsContainer" class="teams-container">
           <% slotOrder(teams.length).forEach((i, pos) => {
                const team = teams[i];
-               const slotLane = i < laneSequence.length ? laneSequence[i] : 0;
+               const slotLane = ((locals.slotLanes && locals.slotLanes[i] != null) ? locals.slotLanes[i] : (i < laneSequence.length ? laneSequence[i] : 0));
                const slotColor = slotLane > 0 ? LANE_COLORS[(slotLane - 1) % LANE_COLORS.length] : '#30363d';
                const restIdx = slotLane === 0 ? (teams.length - i) : 0;
                const slotLabel = slotLane > 0
@@ -232,16 +232,21 @@ const LANES     = <%= laneSequence.length %>;
 const LANE_SEQ  = <%- JSON.stringify(laneSequence) %>;
 const LANG      = "<%= lang %>";
 const COLORS    = <%- JSON.stringify(LANE_COLORS) %>;
+const SLOT_LANES = <%- JSON.stringify(locals.slotLanes || null) %>;
+function laneAt(i){
+  if (SLOT_LANES && SLOT_LANES[i] != null) return SLOT_LANES[i];
+  return i < LANE_SEQ.length ? LANE_SEQ[i] : 0;
+}
 function slotLabel(i, total){
-  if (i < LANE_SEQ.length && LANE_SEQ[i] > 0) return LANE_SEQ[i];
+  if (laneAt(i) > 0) return laneAt(i);
   const t = total ?? document.querySelectorAll('.participant-row').length;
   const restIdx = t - i;
   return (I18N.t('client.common.dsc')) + (restIdx > 0 ? restIdx : '');
 }
-function slotColor(i){ const l = i < LANE_SEQ.length ? LANE_SEQ[i] : 0; return l > 0 ? COLORS[(l-1) % COLORS.length] : '#30363d'; }
+function slotColor(i){ const l = laneAt(i); return l > 0 ? COLORS[(l-1) % COLORS.length] : '#30363d'; }
 // Igual que slotOrder() de la plantilla: posición en pantalla → posición en la secuencia.
 function slotOrder(n){
-  const k = i => (i < LANE_SEQ.length && LANE_SEQ[i] > 0) ? [0, LANE_SEQ[i]] : [i < LANE_SEQ.length ? 1 : 2, i];
+  const k = i => laneAt(i) > 0 ? [0, laneAt(i)] : [i < LANE_SEQ.length ? 1 : 2, i];
   return [...Array(n).keys()].sort((a, b) => { const x = k(a), y = k(b); return x[0] - y[0] || x[1] - y[1]; });
 }
 const DRIVER_PH = <%- JSON.stringify(t('wizard.driver_name_ph')) %>;

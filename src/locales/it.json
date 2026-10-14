@@ -316,7 +316,7 @@
       "ultima": "Ultimo",
       "v_time": "{{v}}, {{time}}",
       "v_vuelta_rapida_time": "{{v}}, giro veloce, {{time}}",
-      "vlt": "vlt",
+      "vlt": "giri",
       "vuelta_asignada_pista_tolane": "Giro assegnato pista {{toLane}}",
       "vuelta_ignorada_pista_lane": "Giro ignorato pista {{lane}}",
       "vuelta_rapida": "Giro veloce, ",
@@ -334,12 +334,12 @@
       "voz_all_title": "Si annunciano tutti i giri — clic: solo giri veloci",
       "salir_pantalla_completa": "Esci dallo schermo intero",
       "pantalla_completa": "Schermo intero",
-      "go_lo_tiene_el_entreno": "El GO lo tiene el entreno: este directo no arrancará la carrera.",
-      "go_lo_tiene_la_pole": "El GO lo tiene la pole de «{{race}}»: este directo no arrancará la carrera.",
-      "go_lo_tiene_otra_carrera": "El GO lo tiene «{{race}}»: este directo no arrancará esta carrera.",
-      "go_entreno_pulsa_tanda": "El GO lo tiene el entreno. Para seguir la carrera, pulsa «▶ Tanda {{n}}».",
-      "go_entreno_prepara_tanda": "El GO lo tiene el entreno. Para seguir la carrera, prepara la siguiente tanda.",
-      "recuperar_el_go": "Recuperar el GO"
+      "go_lo_tiene_el_entreno": "Il GO è delle prove libere: questo diretto non avvierà la gara.",
+      "go_lo_tiene_la_pole": "Il GO è della pole di «{{race}}»: questo diretto non avvierà la gara.",
+      "go_lo_tiene_otra_carrera": "Il GO è di «{{race}}»: questo diretto non avvierà questa gara.",
+      "go_entreno_pulsa_tanda": "Il GO è delle prove libere. Per continuare la gara, premi «▶ Batteria {{n}}».",
+      "go_entreno_prepara_tanda": "Il GO è delle prove libere. Per continuare la gara, prepara la batteria successiva.",
+      "recuperar_el_go": "Riprendi il GO"
     },
     "link": {
       "enlace_guardado": "✓ Link salvato.",
@@ -392,8 +392,8 @@
       "sin_referencia": "Senza riferimento",
       "pulsa_go_para_empezar": "Premi GO per iniziare",
       "n_vueltas": "· {{n}} giri",
-      "voz_mejor_vuelta": "Mejor vuelta, {{time}}",
-      "voz_nueva_pole": "Nueva pole, {{time}}"
+      "voz_mejor_vuelta": "Giro migliore, {{time}}",
+      "voz_nueva_pole": "Nuova pole, {{time}}"
     },
     "race": {
       "borrar_este_cambio_devuelve_el_juego_a": "Eliminare questo cambio? Riporta il set tra i disponibili.",
@@ -456,7 +456,7 @@
       "modo_normal": "Finestra",
       "modo_maximizada": "Massimizzata",
       "modo_completa": "Schermo intero",
-      "club_logo_no_se_puede_leer": "No se ha podido leer esa imagen."
+      "club_logo_no_se_puede_leer": "Impossibile leggere questa immagine."
     },
     "shifts-live": {
       "ambiguedad_usa_override_manual": "Ambiguità — usa override manuale",
@@ -559,12 +559,12 @@
       "sin_vueltas": "Ancora nessun giro",
       "vuelta": "Giro",
       "mejor_vuelta": "Giro migliore",
-      "go_manga_en_marcha": "Hay una manga de «{{race}}» en marcha: el GO es de la carrera.",
-      "go_tanda_a_medias": "La tanda {{n}} de «{{race}}» está a medias: el próximo GO arrancará su siguiente manga.",
-      "go_directo_abierto": "El directo de «{{race}}» está abierto en este ordenador: el próximo GO arrancará la carrera, no el entreno.",
-      "go_pole": "Hay una pole en marcha en «{{race}}»: el próximo GO es de la pole.",
-      "go_carrera_simulada": "Se está reproduciendo una carrera simulada: el GO es de la carrera.",
-      "go_ceder": "Ceder el GO al entreno"
+      "go_manga_en_marcha": "È in corso una manche di «{{race}}»: il GO è della gara.",
+      "go_tanda_a_medias": "La batteria {{n}} di «{{race}}» è a metà: il prossimo GO avvierà la sua manche successiva.",
+      "go_directo_abierto": "Il diretto di «{{race}}» è aperto su questo computer: il prossimo GO avvierà la gara, non le prove libere.",
+      "go_pole": "È in corso una pole in «{{race}}»: il prossimo GO è della pole.",
+      "go_carrera_simulada": "È in riproduzione una gara simulata: il GO è della gara.",
+      "go_ceder": "Cedi il GO alle prove libere"
     },
     "link-compare": {
       "loading": "Caricamento…",
@@ -1008,9 +1008,9 @@
   "control": {
     "al_90_del_maximo": "Al 90% del massimo",
     "limites": "Limiti: ",
-    "max": "máx",
+    "max": "max",
     "max_turnos": "max turni",
-    "min": "mín",
+    "min": "min",
     "sin_limites_configurados": "Nessun limite configurato"
   },
   "database": {
@@ -1372,7 +1372,7 @@
     "media_paren": "(media)"
   },
   "lemans": {
-    "car": "Car.",
+    "car": "Auto",
     "equipo_piloto_activo": "Team / Pilota attivo",
     "media_necesaria_para_subir": "Media necessaria per salire",
     "restante": "Rimanente",
@@ -1573,8 +1573,8 @@
     "confirmar_ausencia": "Conferma assenza →",
     "confirm_salto_1": "{{nombre}} non è in pista. Passerà in fondo alla coda e avrà un'altra possibilità quando tornerà il suo turno.",
     "confirm_salto_2": "{{nombre}} continua a non presentarsi. Verrà segnato come ASSENTE (0.00) e non avrà altre possibilità.",
-    "cantar_tiempos": "Cantar tiempos",
-    "si_esta_activo_se_cantan_los_tiempos": "Si está activo, se canta en voz alta el tiempo de cada vuelta del piloto en pista"
+    "cantar_tiempos": "Annuncia i tempi",
+    "si_esta_activo_se_cantan_los_tiempos": "Se attivo, si annuncia ad alta voce il tempo di ogni giro del pilota in pista"
   },
   "qr-all": {
     "imprimir_todos": "Stampa tutti",
@@ -1642,8 +1642,8 @@
     "historico_de_turnos": "Storico turni",
     "informe_final": "Report finale",
     "inicio": "Inizio",
-    "max": "Máx.",
-    "min": "Mín.",
+    "max": "Max.",
+    "min": "Min.",
     "no_aplica": "Non applicabile",
     "sin_turnos": "Nessun turno.",
     "solo_las_carreras_de_tipo_campeonato_registran": "Solo le gare di tipo campionato registrano i turni dei piloti.",
@@ -1714,7 +1714,7 @@
     "mejor_media_de_carril": "Migliore media di corsia",
     "mostrar": "Mostra",
     "ninguno": "Nessuno",
-    "pend": "Pend.",
+    "pend": "Att.",
     "piloto_del_carril": "Pilota della corsia",
     "piloto_del_carril_en_esta_manga": "Pilota della corsia in questa manche",
     "pinos": "Pini",
@@ -1740,9 +1740,9 @@
     "vueltas_tras_el_lider_al_cierre_de_cada_manga_0": "Giri dietro al leader alla chiusura di ogni manche (0 = leader). Scegli 2–4 team per vedere il gap TRA loro. Bordo dorato = c'è stato un pit-stop in quella manche.",
     "coma_manual_title": "Virgola dell'ultima manche CORRETTA A MANO: frazione del giro in corso alla caduta della bandiera dell'ultima manche. Fa da spareggio a parità di giri (di più = era più avanti alla fine).",
     "coma_title": "Virgola dell'ultima manche: frazione del giro in corso alla caduta della bandiera dell'ultima manche. Fa da spareggio a parità di giri (di più = era più avanti alla fine).",
-    "pilotos": "Pilotos",
-    "tanda": "tanda",
-    "exportar": "Exportar",
+    "pilotos": "Piloti",
+    "tanda": "batteria",
+    "exportar": "Esporta",
     "dest_titulo": "In evidenza",
     "dest_mas_regular": "Più regolare",
     "dest_pct_consistencia": "{{pct}} di consistenza",
@@ -1775,7 +1775,7 @@
     "todavia_no_hay_carreras_finalizadas": "Non ci sono ancora gare concluse",
     "todavia_no_hay_entrenos_guardados": "Non ci sono ancora prove salvate.",
     "ultima": "Ultimo",
-    "v": "v",
+    "v": "g",
     "ver_resultados": "Vedi risultati",
     "vuelta_rapida_de_la_carrera": "Giro veloce della gara"
   },
@@ -1957,17 +1957,17 @@
     "ventana_modo": "Come si apre",
     "ventana_abrir_al_iniciar": "Apri all'avvio di PitWall",
     "ventana_abrir_al_iniciar_d": "Non si apre se il prossimo GO è di una gara (con una tanda a metà) o di una pole.",
-    "club_titulo": "Nombre y logo del club",
-    "club_descripcion": "Con esto activado salen en las exportaciones (Excel, PDF y HTML), en la pantalla de TV y en los QR, junto al logo de PitWall.",
-    "club_usar": "Usar el nombre y el logo del club",
-    "club_nombre": "Nombre del club",
-    "club_nombre_ph": "Ej.: Club Slot Llinars",
+    "club_titulo": "Nome e logo del club",
+    "club_descripcion": "Se attivato, compaiono nelle esportazioni (Excel, PDF e HTML), sullo schermo TV e nei QR, accanto al logo di PitWall.",
+    "club_usar": "Usa il nome e il logo del club",
+    "club_nombre": "Nome del club",
+    "club_nombre_ph": "Es.: Club Slot Llinars",
     "club_logo": "Logo",
-    "club_logo_d": "PNG, JPG, SVG o WebP. Se reduce a 512 px al subirlo.",
-    "club_sin_logo": "Sin logo",
-    "club_elegir_logo": "Elegir logo…",
-    "club_quitar_logo": "Quitar logo",
-    "club_logo_no_valido": "El logo no es válido o pesa demasiado (máx. 1 MB)."
+    "club_logo_d": "PNG, JPG, SVG o WebP. Viene ridotto a 512 px al caricamento.",
+    "club_sin_logo": "Nessun logo",
+    "club_elegir_logo": "Scegli logo…",
+    "club_quitar_logo": "Rimuovi logo",
+    "club_logo_no_valido": "Il logo non è valido o è troppo pesante (max 1 MB)."
   },
   "shifts-live": {
     "a_punto": "In ordine",
@@ -2153,16 +2153,19 @@
     "coche_del_catalogo": "Vettura dal catalogo",
     "crear_tanda": "Crea batteria",
     "dsc": "DSC ",
-    "el_carril_libre_va_cambiando_cada_manga_para": "la corsia libera cambia ad ogni manche cosi tutti passano sulle stesse corsie.",
-    "el_hueco_rota": "Lo slot ruota",
     "equipos_disponibles": "Team disponibili",
     "hasta_v_pilotos_por_manga_puedes_dejar_carriles": "Fino a {{v}} piloti per manche. Puoi lasciare corsie vuote, o aggiungere piu piloti per rotazioni con pausa.",
-    "los_carriles_de_mayor_numero_quedan_siempre": "le corsie con numero piu alto restano sempre vuote; nessuno ci corre.",
+    "modificar": "Modifica",
     "no_hay_equipos_crea_uno": "Nessun team. Creane uno.",
     "nueva_tanda": "Nuova batteria",
+    "pasar_por_todos": "Passare su tutte le corsie",
+    "pasar_por_todos_desc": "anche con corsie vuote: lo spazio libero cambia a ogni manche e tutti corrono su tutte le corsie.",
+    "saltar_ultimos_vacios": "Non passare sulle ultime corsie vuote",
+    "saltar_ultimos_vacios_desc": "le corsie libere in fondo non si usano; uno spazio lasciato in mezzo invece ruota.",
+    "saltar_vacios": "Non passare sulle corsie vuote",
+    "saltar_vacios_desc": "le corsie lasciate senza partecipante non si usano in tutta la batteria (es. 8 corsie senza la 1 e la 8).",
     "selecciona_un_equipo_de_la_izquierda_y_pulsa_un": "Seleziona un team a sinistra e premi una corsia o pausa (oppure trascinalo). Premi uno assegnato per liberarlo.",
-    "si_hay_menos_participantes_que_carriles_que": "Se ci sono meno partecipanti che corsie, cosa fare con le corsie che restano libere?",
-    "sobran_los_ultimos": "Avanzano le ultime"
+    "si_hay_menos_participantes_que_carriles_que": "Se ci sono meno partecipanti che corsie, cosa fare con le corsie che restano libere?"
   },
   "teamcatalog": {
     "created_equipos_creados": "{{created}} team creati",
@@ -2569,24 +2572,24 @@
     "min_abrev": "min"
   },
   "_drivers-panel": {
-    "titulo": "Pilotos por equipo",
-    "fichaje_cubre": "Fichaje QR: {{n}} de {{m}} mangas",
-    "piloto_de_cada_vuelta": "Piloto tomado de cada vuelta (sin fichajes QR)",
-    "nota_sin_fichar": "Las vueltas de las mangas sin fichaje no se pueden asignar a nadie: cuentan para el equipo como «Sin fichar».",
-    "por_equipo": "Por equipo",
-    "todos": "Todos los pilotos",
-    "al_volante": "Al volante",
-    "mangas": "Mangas",
-    "vph": "V/h",
-    "vph_title": "Vueltas por hora al volante",
-    "mejor": "Mejor",
+    "titulo": "Piloti per team",
+    "fichaje_cubre": "Check-in QR: {{n}} di {{m}} manche",
+    "piloto_de_cada_vuelta": "Pilota preso da ogni giro (senza check-in QR)",
+    "nota_sin_fichar": "I giri delle manche senza check-in non si possono assegnare a nessuno: contano per il team come «Senza check-in».",
+    "por_equipo": "Per team",
+    "todos": "Tutti i piloti",
+    "al_volante": "Alla guida",
+    "mangas": "Manche",
+    "vph": "G/h",
+    "vph_title": "Giri all'ora alla guida",
+    "mejor": "Migliore",
     "media": "Media",
     "const": "Consistenza",
     "const_title": "Consistenza: percentuale dei giri entro il ±1,5% del tuo ritmo di ogni manche",
-    "salidas": "Salidas",
-    "pits": "Pits",
-    "sin_fichar": "Sin fichar",
-    "ordenar": "Pulsa el nombre de una columna para ordenar.",
-    "piloto": "Piloto"
+    "salidas": "Uscite",
+    "pits": "Pit",
+    "sin_fichar": "Senza check-in",
+    "ordenar": "Premi il nome di una colonna per ordinare.",
+    "piloto": "Pilota"
   }
 }

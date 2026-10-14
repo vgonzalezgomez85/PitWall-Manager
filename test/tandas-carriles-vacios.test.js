@@ -110,6 +110,40 @@ test('rotate: un solo piloto, 8 carriles → 8 mangas y corre en todos', () => {
   assert.equal(lanes.size, 8);
 });
 
+// ── Huecos colocados a mano (8 carriles, pilotos solo del 2 al 7) ──────────────
+const conHuecos = () => [null, ...drivers(6), null];
+const lanesOf = (sched) => new Set(sched.flatMap(m => m.filter(s => !s.isEmpty).map(s => s.lane)));
+
+test('skip: los carriles libres no se usan nunca', () => {
+  const sched = Manga.buildSchedule([1, 2, 3, 4, 5, 6, 7, 8], conHuecos(), 1, 1, 'skip');
+  assert.equal(sched.length, 6);
+  assert.deepEqual([...lanesOf(sched)].sort(), [2, 3, 4, 5, 6, 7]);
+  // La 1ª manga respeta la colocación: e1 en el 2 … e6 en el 7.
+  assert.deepEqual(sched[0].map(s => [s.entity.id, s.lane]), [[1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7]]);
+  assert.ok(sched.every(m => m.every(s => !s.isEmpty)));
+});
+
+test('fixed: no se usan los últimos libres; el hueco intermedio rota', () => {
+  const sched = Manga.buildSchedule([1, 2, 3, 4, 5, 6, 7, 8], conHuecos(), 1, 1, 'fixed');
+  assert.equal(sched.length, 7);
+  assert.deepEqual([...lanesOf(sched)].sort(), [1, 2, 3, 4, 5, 6, 7]);
+  assert.equal(sched[0].find(s => s.entity?.id === 1).lane, 2);
+});
+
+test('rotate: con huecos colocados, todos pasan por los 8 y la 1ª manga los respeta', () => {
+  const sched = Manga.buildSchedule([1, 2, 3, 4, 5, 6, 7, 8], conHuecos(), 1, 1, 'rotate');
+  assert.equal(sched.length, 8);
+  assert.deepEqual(sched[0].filter(s => s.isEmpty).map(s => s.lane), [1, 8]);
+  assert.equal(lanesOf(sched).size, 8);
+});
+
+test('placeInLanes: recoloca en los carriles de la 1ª manga o devuelve tal cual', () => {
+  const seq = [1, 2, 3, 4, 5, 6, 7, 8];
+  assert.deepEqual(Manga.placeInLanes(seq, [7, 2, 3], ['a', 'b', 'c']), [null, 'a', 'b', null, null, null, 'c', null]);
+  assert.deepEqual(Manga.placeInLanes(seq, [2, 3], ['a', 'b', 'c']), ['a', 'b', 'c']);
+  assert.deepEqual(Manga.placeInLanes([1, 2, 0], [2], ['a']), ['a']);
+});
+
 // ── persistSchedule: los huecos NO crean fila ─────────────────────────────────
 test('persistSchedule: un carril libre no genera fila en manga_lanes', () => {
   const raceId = Race.create({
@@ -190,6 +224,27 @@ test('controller.create: tanda individual con carriles vacíos (fixed, por defec
   const tanda = Tanda.findByRace(raceId)[0];
   assert.equal(tanda.empty_lane_mode, 'fixed');
   assert.equal(tanda.manga_count, 6); // ciclo colapsado
+});
+
+test('controller.create: sin el carril 1 ni el 8 (skip) y la edición lo conserva', () => {
+  const raceId = Race.create({
+    name: 'ctrl-skip', type: 'club', format: 'individual',
+    lanes_count: 8, lane_sequence: [1, 2, 3, 4, 5, 6, 7, 8], manga_duration_minutes: 5,
+  });
+  const rr = reqres(raceId, { drivers: ['', 'a', 'b', 'c', 'd', 'e', 'f', ''], empty_lane_mode: 'skip' });
+  TandaController.create(rr.req, rr.res);
+
+  const tanda = Tanda.findByRace(raceId)[0];
+  assert.equal(tanda.empty_lane_mode, 'skip');
+  assert.equal(tanda.manga_count, 6);
+  const usados = () => new Set(Manga.findByTanda(tanda.id).flatMap(m => Manga.getLanes(m.id).map(l => l.lane)));
+  assert.deepEqual([...usados()].sort(), [2, 3, 4, 5, 6, 7]);
+
+  // Renombrar en la edición rehace la tanda sin volver a los carriles 1-6.
+  const ed = reqres(raceId, { drivers: ['A', 'B', 'C', 'D', 'E', 'F'].map(name => ({ name })) });
+  ed.req.params.tandaId = String(tanda.id);
+  TandaController.updateTanda(ed.req, ed.res);
+  assert.deepEqual([...usados()].sort(), [2, 3, 4, 5, 6, 7]);
 });
 
 test('controller.create: sin ningún participante → error, no crea la tanda', () => {

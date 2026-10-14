@@ -92,9 +92,10 @@ class TandaController {
     const laneSequence = Race.getLaneSequence(race);
     const errors = [];
 
-    // Carriles sin participante: 'fixed' (sobran los últimos) o 'rotate' (el hueco
-    // rota). Solo tiene efecto si hay menos participantes que carriles activos.
-    const emptyLaneMode = req.body.empty_lane_mode === 'rotate' ? 'rotate' : 'fixed';
+    // Carriles sin participante: 'rotate' (todos pasan por todos), 'skip' (los
+    // libres no se usan) o 'fixed' (no se usan los últimos libres). Solo tiene
+    // efecto si hay menos participantes que carriles activos.
+    const emptyLaneMode = ['rotate', 'skip'].includes(req.body.empty_lane_mode) ? req.body.empty_lane_mode : 'fixed';
 
     // Parse participants from form
     // For team format: teams[0][name], teams[0][members][0], ...
@@ -104,7 +105,10 @@ class TandaController {
     const tandaId = Tanda.create(race.id, emptyLaneMode);
 
     if (race.format === 'team') {
-      const catalogIds = [].concat(req.body.team_catalog_ids || []).map(id => parseInt(id, 10)).filter(Boolean);
+      // Una posición vacía ('') es un carril que se dejó libre en el tablero:
+      // se conserva como hueco para que la 1ª manga respete la colocación.
+      const slotIds = [].concat(req.body.team_catalog_ids || []).map(id => parseInt(id, 10) || null);
+      const catalogIds = slotIds.filter(Boolean);
 
       // Se permite crear la tanda sin llenar todos los carriles; solo hace falta
       // al menos un equipo. Los carriles libres se resuelven con emptyLaneMode.
@@ -119,7 +123,10 @@ class TandaController {
       }
 
       const teamPalette = LaneColors.forRace(race);
-      catalogIds.forEach((catalogId, idx) => {
+      let idx = -1;
+      slotIds.forEach(catalogId => {
+        if (!catalogId) { entities.push(null); return; }
+        idx++;
         const catalogTeam = TeamCatalog.findById(catalogId);
         const teamName = catalogTeam ? catalogTeam.name : `Equipo ${idx + 1}`;
         const teamId = Team.create({
@@ -159,9 +166,10 @@ class TandaController {
         return res.render('races/tanda-new', { t: req.t, race, laneSequence, LANE_COLORS: LaneColors.forRace(race), profiles: DriverProfile.findAll(), circuitSizes: _circuitSizesFor(race), errors, body: req.body });
       }
 
+      // La fila i es el carril laneSequence[i]: una fila vacía es un hueco.
       driversArray.forEach((d, idx) => {
         const name = d?.name?.trim();
-        if (!name) return;
+        if (!name) { if (idx < laneSequence.length) entities.push(null); return; }
         const driverId = Driver.create({
           race_id: race.id, tanda_id: tandaId, team_id: null,
           name, lane: idx + 1, car_number: idx + 1,
@@ -234,22 +242,32 @@ class TandaController {
 
       // For each slot, find the participant the user assigned to it.
       const assignMap = new Map(assignments.map(a => [a.mlId, a]));
+      const laneSequence = Race.getLaneSequence(race);
+      const activeLanes  = laneSequence.filter(l => l > 0);
       const entities = [];
+      const byLane   = Array(activeLanes.length).fill(null);
       for (const slot of originalSlots) {
         const a = assignMap.get(slot.id);
         if (!a) continue; // shouldn't happen — form sends every slot
+        let ent = null;
         if (race.format === 'team') {
           const t = Team.findById(a.teamId);
-          if (t) entities.push({ id: t.id, type: 'team', name: t.name });
+          if (t) ent = { id: t.id, type: 'team', name: t.name };
         } else {
           const d = Driver.findById(a.driverId);
-          if (d) entities.push({ id: d.id, type: 'driver', name: d.name });
+          if (d) ent = { id: d.id, type: 'driver', name: d.name };
         }
+        if (!ent) continue;
+        entities.push(ent);
+        const k = slot.is_rest ? -1 : activeLanes.indexOf(slot.lane);
+        if (k >= 0) byLane[k] = ent;
       }
+      // Con carriles libres, esta manga pasa a ser la 1ª con sus mismos huecos.
+      const placedOk = !laneSequence.includes(0) && entities.length < activeLanes.length
+        && byLane.filter(Boolean).length === entities.length;
 
-      const laneSequence = Race.getLaneSequence(race);
       const mode = Tanda.findById(manga.tanda_id)?.empty_lane_mode || 'fixed';
-      const schedule = Manga.buildSchedule(laneSequence, entities, race.passes, race.lane_repeat, mode);
+      const schedule = Manga.buildSchedule(laneSequence, placedOk ? byLane : entities, race.passes, race.lane_repeat, mode);
 
       // Drop all mangas of this tanda (cascade kills manga_lanes) and re-persist.
       // Las vueltas se borran explícitamente: la FK es ON DELETE SET NULL y
@@ -289,8 +307,20 @@ class TandaController {
       ? require('../models/Team').findByTandaWithMembers(tanda.id)
       : [];
 
+    // Con carriles libres, cada participante se muestra en su carril de la 1ª
+    // manga (no en la fila i de la secuencia).
+    const nEnt = race.format === 'team' ? teams.length : drivers.length;
+    const firstLanes = mangas.length
+      ? Manga.getLanes(mangas.slice().sort((a, b) => a.number - b.number)[0].id).filter(l => !l.is_rest && l.lane > 0).map(l => l.lane)
+      : [];
+    const placed = Manga.placeInLanes(laneSequence, firstLanes, Array.from({ length: nEnt }, (_, i) => i));
+    const activeLanes = laneSequence.filter(l => l > 0);
+    const slotLanes = placed.length > nEnt
+      ? placed.reduce((acc, e, k) => { if (e != null) acc[e] = activeLanes[k]; return acc; }, [])
+      : null;
+
     res.render('races/tanda-edit', {
-      t: req.t, race, tanda, laneSequence, LANE_COLORS: LaneColors.forRace(race), profiles,
+      t: req.t, race, tanda, laneSequence, slotLanes, LANE_COLORS: LaneColors.forRace(race), profiles,
       drivers, teams, canRestructure, errors: []
     });
   }
@@ -307,6 +337,11 @@ class TandaController {
     const mangas         = Manga.findByTanda(tanda.id);
     const canRestructure = mangas.every(m => m.status === 'pending');
     const db             = require('../config/database');
+    // Carriles libres de la tanda: se leen de su 1ª manga antes de rehacerla.
+    const firstMangaId   = mangas.slice().sort((a, b) => a.number - b.number)[0]?.id;
+    const firstLanes     = firstMangaId ? db.prepare(
+      'SELECT lane FROM manga_lanes WHERE manga_id = ? AND is_rest = 0 AND lane > 0'
+    ).all(firstMangaId).map(r => r.lane) : [];
 
     if (race.format === 'individual') {
       const rawDrivers   = req.body.drivers || {};
@@ -335,7 +370,7 @@ class TandaController {
           });
           entities.push({ id, type: 'driver', name });
         });
-        Manga.persistSchedule(tanda.id, race.id, Manga.buildSchedule(laneSequence, entities, race.passes, race.lane_repeat, tanda.empty_lane_mode || 'fixed'));
+        Manga.persistSchedule(tanda.id, race.id, Manga.buildSchedule(laneSequence, Manga.placeInLanes(laneSequence, firstLanes, entities), race.passes, race.lane_repeat, tanda.empty_lane_mode || 'fixed'));
       } else {
         driversArray.forEach(d => {
           const id   = parseInt(d.id);
@@ -381,7 +416,7 @@ class TandaController {
           });
           entities.push({ id: teamId, type: 'team', name: teamName });
         });
-        Manga.persistSchedule(tanda.id, race.id, Manga.buildSchedule(laneSequence, entities, race.passes, race.lane_repeat, tanda.empty_lane_mode || 'fixed'));
+        Manga.persistSchedule(tanda.id, race.id, Manga.buildSchedule(laneSequence, Manga.placeInLanes(laneSequence, firstLanes, entities), race.passes, race.lane_repeat, tanda.empty_lane_mode || 'fixed'));
       } else {
         teamsArray.forEach(team => {
           const teamId = parseInt(team.id);

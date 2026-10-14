@@ -85,17 +85,24 @@ class Manga {
   //   una manga más larga.
   // Total de mangas = P × seqLen × R.
   //
+  // `entities` puede traer HUECOS (null): la posición k es el carril
+  // activeLanes[k] de la 1ª manga, tal como se colocó en el formulario. Sin
+  // huecos, los que falten se entienden al final.
+  //
   // `emptyLaneMode` decide qué pasa con los carriles libres cuando hay MENOS
   // entidades que carriles activos:
-  //   'fixed'  → se usan solo los N primeros carriles activos; los de mayor
-  //              número quedan siempre vacíos (comportamiento histórico).
-  //   'rotate' → la rotación se rellena con HUECOS vacíos (entity null) para que
-  //              el carril libre vaya cambiando de manga en manga y todos pasen
-  //              por los mismos carriles. Los huecos ocupan sitio en la rotación
-  //              pero persistSchedule NO los guarda (no crean fila en manga_lanes
-  //              → ni vueltas ni clasificación fantasma).
+  //   'rotate' → se pasa por todos los carriles: los huecos rotan como una
+  //              entidad más y todos corren en todos los carriles.
+  //   'skip'   → los carriles libres no se usan nunca: la rotación va solo por
+  //              los carriles ocupados (p. ej. 8 carriles sin el 1 ni el 8).
+  //   'fixed'  → no se usan los últimos carriles libres; los huecos intermedios
+  //              rotan. Sin huecos intermedios = los N primeros carriles
+  //              (comportamiento histórico).
+  // Los huecos ocupan sitio en la rotación pero persistSchedule NO los guarda
+  // (no crean fila en manga_lanes → ni vueltas ni clasificación fantasma).
   static buildSchedule(laneSequence, entities, passes = 1, laneRepeat = 1, emptyLaneMode = 'fixed') {
-    const N0 = entities.length;
+    const real = entities.filter(e => e != null);
+    const N0 = real.length;
     if (N0 === 0 || laneSequence.length === 0) return [];
     const P = Math.max(1, parseInt(passes, 10) || 1);
     const R = Math.max(1, parseInt(laneRepeat, 10) || 1);
@@ -103,17 +110,29 @@ class Manga {
     const activeLanes  = laneSequence.filter(l => l > 0);
     const hasExplicit0 = laneSequence.includes(0);
 
-    // Modo "rotate" con menos entidades que carriles: rellenamos la rotación con
-    // huecos vacíos (null) hasta cubrir todos los carriles activos, de modo que
-    // el/los hueco(s) roten por todos los carriles como una entidad más.
-    let ents = entities;
-    if (emptyLaneMode === 'rotate' && !hasExplicit0 && N0 < activeLanes.length) {
-      ents = [...entities, ...Array(activeLanes.length - N0).fill(null)];
-    }
-    const N = ents.length;
-
+    let ents = real;
+    let N = N0;
     let extended;
-    if (hasExplicit0 && N >= activeLanes.length) {
+    if (!hasExplicit0 && N0 < activeLanes.length) {
+      const placed = activeLanes.map((_, k) => entities[k] ?? null);
+      for (const e of entities.slice(activeLanes.length)) {
+        if (e != null) placed[placed.indexOf(null)] = e;
+      }
+      if (emptyLaneMode === 'rotate') {
+        ents = placed;
+        extended = activeLanes;
+      } else if (emptyLaneMode === 'skip') {
+        const used = placed.map((e, k) => (e != null ? k : -1)).filter(k => k >= 0);
+        ents = used.map(k => placed[k]);
+        extended = used.map(k => activeLanes[k]);
+      } else {
+        let last = placed.length - 1;
+        while (placed[last] == null) last--;
+        ents = placed.slice(0, last + 1);
+        extended = activeLanes.slice(0, last + 1);
+      }
+      N = ents.length;
+    } else if (hasExplicit0 && N >= activeLanes.length) {
       // Sequence already has rest slots; extend with more 0s only if entities > seq length
       extended = N > laneSequence.length
         ? [...laneSequence, ...Array(N - laneSequence.length).fill(0)]
@@ -143,6 +162,20 @@ class Manga {
       }
     }
     return schedule;
+  }
+
+  // Coloca `entities` (en orden) en los carriles `usedLanes` (los ocupados en la
+  // 1ª manga), para regenerar una tanda sin perder sus carriles libres. Si no
+  // cuadran (hay descansos o cambió el nº de participantes) se devuelven tal
+  // cual y buildSchedule los pone desde el primer carril.
+  static placeInLanes(laneSequence, usedLanes, entities) {
+    const activeLanes = laneSequence.filter(l => l > 0);
+    if (laneSequence.includes(0)) return entities;
+    const used = usedLanes.map(l => activeLanes.indexOf(l)).filter(k => k >= 0).sort((a, b) => a - b);
+    if (used.length !== entities.length || used.length >= activeLanes.length) return entities;
+    const placed = Array(activeLanes.length).fill(null);
+    used.forEach((k, i) => { placed[k] = entities[i]; });
+    return placed;
   }
 
   // Persist a generated schedule into the DB for a tanda
