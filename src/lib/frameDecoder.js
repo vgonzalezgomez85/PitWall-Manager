@@ -123,7 +123,6 @@ function traducible(f) {
       if (VALORES[fld.v]) fld.vKey = 'client.tramas.' + VALORES[fld.v];
     }
   }
-  if (Array.isArray(f.subs)) f.subs.forEach(traducible);
   return f;
 }
 

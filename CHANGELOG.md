@@ -21,6 +21,9 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 - **Un solo lector**: el cronometraje, el visor de tramas y el importador de carreras simuladas leen las tramas con el mismo código; el visor ya no puede decir una cosa y el cronometraje hacer otra. El visor muestra cada trama por separado y marca las retransmisiones y los bytes descartados.
 - **Registro de depuración**: guarda además los bytes tal y como llegan del cable, para poder reproducir una sesión exactamente.
 
+### Corregido
+- **Nueva tanda sin modo de carriles vacíos**: si el formulario no lo enviaba, se guardaba «No pasar por los últimos carriles vacíos» aunque la opción marcada por defecto es «Pasar por todos los carriles». Ahora coinciden. Las tandas que llegan por otras vías (Control, pole, carrera simulada) siguen con el reparto de siempre.
+
 ### Eliminado
 - **Ajuste «FRAME_GAP_MS»** (Ajustes → Fuente de datos → avanzado): ya no hace falta, la lectura no depende de los silencios.
 

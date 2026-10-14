@@ -4063,12 +4063,7 @@ body:has(.vt-page) { background: #000; }
 
 /* Filtros: puro CSS sobre data-kind, así cambiar de filtro no repinta nada. */
 .vt-frames.hide-hb  .vt-frame[data-kind="heartbeat"] { display: none; }
-.vt-frames.only-cross .vt-frame:not([data-kind="crossing"]):not(.vt-frame--sub) { display: none; }
-/* Un burst que trae cruces dentro SÍ interesa: es justo la retransmisión del
-   PL2303 que se está depurando. Se deja el padre y se ocultan sus subs que no
-   sean cruces. */
-.vt-frames.only-cross .vt-frame[data-kind="burst"]:has(.vt-frame[data-kind="crossing"]) { display: block; }
-.vt-frames.only-cross .vt-frame--sub:not([data-kind="crossing"]) { display: none; }
+.vt-frames.only-cross .vt-frame:not([data-kind="crossing"]) { display: none; }
 
 /* Fila de trama. */
 .vt-frame {
@@ -4113,13 +4108,6 @@ body:has(.vt-page) { background: #000; }
 .vt-hb { padding: 0 1px; }
 .vt-hb.is-unknown { opacity: .26; }
 .vt-hb:hover { background: rgba(255,255,255,.12); border-radius: 3px; }
-
-/* Sub-tramas de un burst: colgadas del padre. */
-.vt-frame__subs {
-  margin: 5px 0 2px 14px; padding-left: 10px;
-  border-left: 1px dashed var(--vt-border-2, rgba(255,255,255,.16));
-}
-.vt-frame--sub { background: none; margin-bottom: 0; padding: 4px 8px; }
 
 /* Color por tipo de trama. */
 .vt-frame.is-crossing {

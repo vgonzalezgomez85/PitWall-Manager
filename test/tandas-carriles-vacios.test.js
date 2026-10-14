@@ -212,18 +212,32 @@ test('controller.create: tanda individual con carriles vacíos (rotate)', () => 
   assert.equal(tanda.manga_count, 8);
 });
 
-test('controller.create: tanda individual con carriles vacíos (fixed, por defecto)', () => {
+test('controller.create: tanda individual con carriles vacíos (fixed)', () => {
   const raceId = Race.create({
     name: 'ctrl-fixed', type: 'club', format: 'individual',
     lanes_count: 8, lane_sequence: [1, 2, 3, 4, 5, 6, 7, 8], manga_duration_minutes: 5,
   });
-  // sin empty_lane_mode en el body → 'fixed'
-  const rr = reqres(raceId, { drivers: ['a', 'b', 'c', 'd', 'e', 'f'] });
+  const rr = reqres(raceId, { drivers: ['a', 'b', 'c', 'd', 'e', 'f'], empty_lane_mode: 'fixed' });
   TandaController.create(rr.req, rr.res);
 
   const tanda = Tanda.findByRace(raceId)[0];
   assert.equal(tanda.empty_lane_mode, 'fixed');
   assert.equal(tanda.manga_count, 6); // ciclo colapsado
+});
+
+test('controller.create: sin modo en el formulario → «pasar por todos», como lo marca', () => {
+  const raceId = Race.create({
+    name: 'ctrl-defecto', type: 'club', format: 'individual',
+    lanes_count: 8, lane_sequence: [1, 2, 3, 4, 5, 6, 7, 8], manga_duration_minutes: 5,
+  });
+  const rr = reqres(raceId, { drivers: ['a', 'b', 'c', 'd', 'e', 'f'] });
+  TandaController.create(rr.req, rr.res);
+  assert.equal(Tanda.findByRace(raceId)[0].empty_lane_mode, 'rotate');
+});
+
+test('Tanda.create sin modo (Control, pole, simulada) → fixed, el reparto de siempre', () => {
+  const raceId = Race.create({ name: 'tanda-api', type: 'club', format: 'individual', lanes_count: 8, manga_duration_minutes: 5 });
+  assert.equal(Tanda.findById(Tanda.create(raceId)).empty_lane_mode, 'fixed');
 });
 
 test('controller.create: sin el carril 1 ni el 8 (skip) y la edición lo conserva', () => {
