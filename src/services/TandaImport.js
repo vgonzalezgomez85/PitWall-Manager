@@ -223,6 +223,10 @@ function createFromPayload(payload) {
       Manga.persistSchedule(tandaId, raceId, schedule);
     }
 
+    // Como al crear la tanda a mano: con las mangas listas la carrera está «En
+    // curso». Si se quedara «Pendiente», el GO del DS no la arrancaría.
+    Race.updateStatus(raceId, 'active');
+
     return { raceId, tandas: v.tandas.length, teams: teamCount, pole: false };
   });
 

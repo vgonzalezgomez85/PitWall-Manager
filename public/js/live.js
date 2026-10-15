@@ -2728,7 +2728,11 @@ function announce(text) {
     });
   }
 
-  socket.on('race:semaphore', () => showSemaphore());
+  // Sin dueño (GO por software, reanudación) el semáforo es de quien lo ve.
+  socket.on('race:semaphore', (go) => {
+    if (go && go.owner && !(go.owner === 'race' && (go.raceId == null || go.raceId === RACE_DATA.raceId))) return;
+    showSemaphore();
+  });
   socket.on('race:semaphore_step', () => semaphoreStep());
 
   // GO / REANUDAR manual (simulación/BART): enviar por AJAX para NO recargar la

@@ -13,6 +13,13 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.62.3] — 2026-10-16
+
+### Corregido
+- **Las carreras importadas desde PitWall Control (sin pole) no arrancaban con el GO del DS**: llegaban como «Pendiente» y, desde la v1.57.0, el GO solo valía para una carrera «En curso». El directo enseñaba el semáforo, pero el GO se lo llevaba el entreno y la pantalla se quedaba en verde. Ahora la importación deja la carrera «En curso», igual que al crear la tanda a mano. Además, abrir el directo de una manga pendiente (o pulsar **Recuperar el GO**) también vale con la carrera «Pendiente», y al arrancar su primera manga pasa sola a «En curso». Las importadas con pole no cambian: se activan al asignar los carriles tras la pole.
+- **El semáforo del directo ya no se queda clavado en verde**: el directo solo lo enseña si el GO es para su carrera (si no, sigue la franja «El GO lo tiene…»), y si la manga no llega a arrancar se quita solo a los pocos segundos.
+- **Diagnóstico del GO**: cada GO del DS deja en la consola y en el registro de depuración (`go_owner`) para quién fue y por qué.
+
 ## [1.62.2] — 2026-10-14
 
 ### Mejorado

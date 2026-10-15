@@ -452,7 +452,7 @@ class SessionController {
 
     // Franja «el GO no es de este directo»: solo en el ordenador de la pista y
     // si a la carrera le queda algo por correr.
-    const goStrip = localReq && race.status === 'active' && !!Manga.findFirstPending(race.id);
+    const goStrip = localReq && ['pending', 'active'].includes(race.status) && !!Manga.findFirstPending(race.id);
     const goOwner = goStrip ? GoOwnerService.publicState() : null;
 
     res.render('races/live', { t: req.t, liveOrder, goStrip, goOwner, race, manga, tanda, lanes, laps, isActive, standings, projection, prevLapsByLane, totalMangas, totalTandas, totalRaceMs, effectiveMangaDurationMs, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, allParticipants, nextLaneByLane, nextMangaInfo, nextPendingMangaId, raceOver, isSimulating, isBart, isTicTac, softwareGo, isPaused });

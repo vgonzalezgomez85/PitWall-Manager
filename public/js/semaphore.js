@@ -136,9 +136,12 @@
   }
 
   function semaphoreStep() {
+    if (!document.getElementById('semaphore-overlay')) return;
     _clearTimers();
     _setLightsGo();
     _goBeep();
+    // Si nadie lo cierra (la manga no arranca), que no se quede en verde.
+    _fbTimer = setTimeout(() => semaphoreGo(null), FALLBACK_MS);
   }
 
   function semaphoreGo(callback) {
