@@ -2519,7 +2519,12 @@
     "carril_repetido": "Corsia {{carril}} ripetuta nella batteria {{n}} (due squadre nella stessa corsia).",
     "todos_descanso": "La batteria {{n}} non ha nessuna squadra in corsia (tutte a riposo).",
     "demasiados": "La batteria {{n}} ha {{equipos}} squadre in corsia e solo {{carriles}} corsie.",
-    "pin_incorrecto": "PIN di importazione errato o dispositivo non autorizzato."
+    "pin_incorrecto": "PIN di importazione errato o dispositivo non autorizzato.",
+    "carrera_no_existe": "La gara {{id}} non esiste in questo PitWall. Inviala come gara nuova.",
+    "formato_distinto": "Il formato (individuale/squadre) non coincide con quello della gara.",
+    "pole_distinta": "La pole dell'invio non coincide con quella della gara (con/senza pole).",
+    "pole_ya_corrida": "La pole è già iniziata: non si possono più cambiare i partecipanti.",
+    "carril_no_existe": "La gara non ha la corsia {{carril}} (batteria {{n}})."
   },
   "importtanda": {
     "titulo": "Importa batteria",

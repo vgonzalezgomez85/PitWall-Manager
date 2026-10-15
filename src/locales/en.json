@@ -2519,7 +2519,12 @@
     "carril_repetido": "Lane {{carril}} repeated in round {{n}} (two teams in the same lane).",
     "todos_descanso": "Round {{n}} has no team in a lane (all resting).",
     "demasiados": "Round {{n}} has {{equipos}} teams in lanes and only {{carriles}} lanes.",
-    "pin_incorrecto": "Wrong import PIN or unauthorised device."
+    "pin_incorrecto": "Wrong import PIN or unauthorised device.",
+    "carrera_no_existe": "Race {{id}} does not exist in this PitWall. Send it as a new race.",
+    "formato_distinto": "The format (individual/teams) does not match the race's.",
+    "pole_distinta": "The pole setting does not match the race's (with/without pole).",
+    "pole_ya_corrida": "The pole has already started: its participants can no longer be changed.",
+    "carril_no_existe": "The race has no lane {{carril}} (round {{n}})."
   },
   "importtanda": {
     "titulo": "Import round",

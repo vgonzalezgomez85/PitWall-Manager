@@ -2519,7 +2519,12 @@
     "carril_repetido": "Carril {{carril}} repetido en la tanda {{n}} (dos equipos en el mismo carril).",
     "todos_descanso": "La tanda {{n}} no tiene ningún equipo en carril (todos en descanso).",
     "demasiados": "La tanda {{n}} tiene {{equipos}} equipos en carril y solo {{carriles}} carriles.",
-    "pin_incorrecto": "PIN de importación incorrecto o dispositivo no autorizado."
+    "pin_incorrecto": "PIN de importación incorrecto o dispositivo no autorizado.",
+    "carrera_no_existe": "La carrera {{id}} no existe en este PitWall. Envíala como carrera nueva.",
+    "formato_distinto": "El formato (individual/equipos) no coincide con el de la carrera.",
+    "pole_distinta": "La pole del envío no coincide con la de la carrera (con/sin pole).",
+    "pole_ya_corrida": "La pole ya ha empezado: no se pueden cambiar sus participantes.",
+    "carril_no_existe": "La carrera no tiene el carril {{carril}} (tanda {{n}})."
   },
   "importtanda": {
     "titulo": "Importar tanda",

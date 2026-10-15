@@ -55,14 +55,20 @@ const ImportController = {
     res.render('import/tanda', { t: req.t, pin: ensureImportPin() });
   },
 
-  // POST /import/tanda — crea la carrera desde el payload del body (fichero o LAN).
+  // POST /import/tanda — crea la carrera desde el payload del body (fichero o LAN),
+  // o la actualiza si el payload trae `race_id`.
   create(req, res) {
     if (!importAuthorized(req)) {
       return res.status(403).json({ ok: false, error: req.t('tandaimport.pin_incorrecto') });
     }
     try {
       const payload = req.body && req.body.payload ? req.body.payload : req.body;
-      const result = TandaImport.createFromPayload(payload);
+      // Con race_id (la Prueba ya se envió antes) se actualiza esa carrera sin
+      // tocar las tandas que ya han rodado; sin él se crea una nueva.
+      const raceId = parseInt(payload && payload.race_id, 10);
+      const result = Number.isFinite(raceId) && raceId > 0
+        ? TandaImport.updateFromPayload(raceId, payload)
+        : TandaImport.createFromPayload(payload);
       res.json({ ok: true, ...result });
     } catch (e) {
       const code = e instanceof TandaImport.TandaImportError ? 400 : 500;

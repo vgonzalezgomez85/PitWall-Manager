@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.63.0] — 2026-10-16
+
+### Añadido
+- **Actualizar una carrera importada desde PitWall Control**: si Control reenvía las tandas de una prueba que ya se importó (`race_id` en el envío), PitWall actualiza esa carrera en vez de crear otra. Las tandas que ya han rodado (alguna manga empezada o con vueltas) no se tocan; las pendientes se rehacen con los nuevos equipos, pilotos, carriles, categoría y coche; las nuevas se crean y las que ya no vienen se borran si no se han corrido. Las tandas creadas a mano en PitWall nunca se tocan. Con pole, se reemplazan los participantes mientras la pole no haya empezado. Cada tanda importada guarda su número de Control (`tandas.control_numero`) para casarla en los reenvíos.
+
 ## [1.62.3] — 2026-10-16
 
 ### Corregido
