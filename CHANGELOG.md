@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.63.1] — 2026-10-17
+
+### Corregido
+- **El arranque de cada manga se iba frenando hasta congelar PitWall varios segundos**: la consulta de la mejor vuelta por carril (al arrancar la manga y al abrir el directo) dependía de las estadísticas que SQLite recoge al arrancar el programa. Si arrancaba con la carrera aún vacía, SQLite elegía un camino que recalculaba la mejor vuelta por cada vuelta de la carrera, y el coste crecía en cada manga (en el PC del club, de 6 a 20 s en una tanda: el GO no arrancaba la manga a tiempo y se perdió una). Solo un reinicio lo arreglaba. Ahora la consulta fija su orden y tarda lo mismo siempre (~1 ms en vez de ~2 s con 3.400 vueltas). Reproducido con las tramas reales del club.
+
 ## [1.63.0] — 2026-10-16
 
 ### Añadido
