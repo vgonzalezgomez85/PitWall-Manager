@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.63.2] — 2026-10-17
+
+### Corregido
+- **Los descansos ya no se renumeran al añadir pilotos en el formulario de tanda**: con más pilotos que carriles, cada «Añadir piloto» cambiaba las etiquetas de los descansos (el que habías puesto en DSC1 pasaba a DSC2 y el nuevo salía DSC1), y era fácil creer que alguien estaba en un descanso cuando ya estaba en otro. Ahora, al crear y al editar una tanda, salen DSC1, DSC2, DSC3… en el orden en que los añades y una fila ya rellenada no cambia de etiqueta. El orden de carrera es el de siempre: DSC1 es el primero que vuelve a pista y el último DSC, el último.
+
 ## [1.63.1] — 2026-10-17
 
 ### Corregido
