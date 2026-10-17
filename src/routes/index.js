@@ -136,7 +136,7 @@ router.post('/api/go-owner/claim', (req, res) => {
   const GoOwnerService = require('../services/GoOwnerService');
   const raceId = parseInt(req.body?.raceId, 10);
   const race   = Number.isFinite(raceId) ? require('../models/Race').findById(raceId) : null;
-  if (!race || race.status !== 'active') return res.status(404).json({ error: 'not_found' });
+  if (!race || !['pending', 'active'].includes(race.status)) return res.status(404).json({ error: 'not_found' });
   GoOwnerService.claimRace(race.id, 'recuperar el GO desde el directo');
   res.json(GoOwnerService.publicState());
 });

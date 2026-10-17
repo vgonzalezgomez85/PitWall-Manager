@@ -658,6 +658,12 @@ const migrations = [
   // Colores de carril propios del circuito: JSON con un hex por carril (null =
   // hereda los globales de Configuración). NULL en la columna = todos heredan.
   `ALTER TABLE circuits ADD COLUMN lane_colors TEXT`,
+
+  // Nº de la tanda en PitWall Control (`tandas[].numero` de pitwall.tanda/v1).
+  // Liga cada tanda importada con la suya en Control para que un reenvío
+  // (actualizar carrera) sepa cuál reemplazar. NULL = tanda creada en Manager
+  // o importada antes de existir la columna.
+  `ALTER TABLE tandas ADD COLUMN control_numero INTEGER`,
 ];
 for (const sql of migrations) {
   try {

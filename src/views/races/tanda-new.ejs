@@ -457,7 +457,12 @@ function renumber(containerId) {
   const container = document.getElementById(containerId);
   if (!container) return;
   const isTeams = containerId === 'teamsContainer';
-  container.querySelectorAll('.participant-row').forEach((row, i) => {
+  const rows = container.querySelectorAll('.participant-row');
+  // Las filas de descanso se ven en orden DSC1, DSC2… pero DSC1 es la ÚLTIMA
+  // posición de la secuencia (la primera que vuelve a pista): se numeran al
+  // revés para que añadir una fila no le cambie la etiqueta a las de arriba.
+  rows.forEach((row, pos) => {
+    const i = (!isTeams && pos >= LANES) ? LANES + (rows.length - 1 - pos) : pos;
     row.dataset.row = i;
     const badge = row.querySelector('.participant-badge');
     if (badge) {
@@ -505,7 +510,6 @@ document.getElementById('addDriver')?.addEventListener('click', () => {
       title="${I18N.t('client.common.eliminar')}">✕</button>`;
   grid.appendChild(div);
   div.querySelector('.participant-name').focus();
-  // Relabel existing rest slots since total just increased
   renumber('driversGrid');
   updateRestInfo();
 });

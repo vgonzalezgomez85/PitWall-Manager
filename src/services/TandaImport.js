@@ -19,7 +19,8 @@
 // `pitwall.tanda/v1` (una Prueba con sus Mangas + los equipos y su carril de
 // salida) autocrea la carrera en Manager: cada Manga de Control → una tanda,
 // con los equipos colocados en su carril de salida, y el motor de resistencia
-// (Manga.buildSchedule) genera la rotación de mangas.
+// (Manga.buildSchedule) genera la rotación de mangas. Con `race_id` el envío
+// actualiza esa carrera (updateFromPayload) sin tocar las tandas ya corridas.
 //
 // Comparte el patrón de creación con SimController.create; ambos son consumidos
 // por dos vías (subida de fichero JSON y POST directo por LAN) que solo cambian
@@ -129,6 +130,79 @@ function validate(payload) {
   return { nombre, sede: prueba.sede ? String(prueba.sede) : null, carriles, isTeam, pole, hasCategoria, hasCoche, tandas };
 }
 
+// Crea en `tandaId` los equipos (+ pilotos) o pilotos sueltos de una tanda del
+// payload y genera su rotación de mangas. `laneSeq` es la secuencia de carriles
+// de la carrera. Devuelve cuántos participantes ha creado.
+function poblarTanda(raceId, tandaId, tanda, v, laneSeq) {
+  const palette = LaneColors.global();
+  let creados = 0;
+  // Crea el team (+ pilotos) o el driver de un equipo y devuelve su entidad.
+  const crear = (eq, colorSeed) => {
+    const color = palette[((colorSeed % palette.length) + palette.length) % palette.length];
+    creados++;
+    if (v.isTeam) {
+      const teamId = Team.create({ race_id: raceId, tanda_id: tandaId, name: eq.nombre, lane: 0, color, categoria: v.hasCategoria ? eq.copa : null, coche: v.hasCoche ? eq.coche : null });
+      eq.pilotos.forEach((p, i) => Driver.create({
+        race_id: raceId, tanda_id: tandaId, team_id: teamId, name: p, lane: null, car_number: i + 1,
+      }));
+      return { id: teamId, type: 'team', name: eq.nombre };
+    }
+    // INDIVIDUAL: cada equipo es un piloto suelto (usa su nombre).
+    const driverId = Driver.create({
+      race_id: raceId, tanda_id: tandaId, team_id: null, name: eq.nombre,
+      lane: eq.carril || null, car_number: eq.carril || null,
+      categoria: v.hasCategoria ? eq.copa : null, coche: v.hasCoche ? eq.coche : null,
+    });
+    return { id: driverId, type: 'driver', name: eq.nombre };
+  };
+
+  const racers  = tanda.equipos.filter(e => !e.isRest);
+  const resters = tanda.equipos.filter(e =>  e.isRest).sort((a, b) => a.descanso - b.descanso);
+
+  // Orden de rotación = la secuencia de la carrera restringida a los carriles
+  // usados, MÁS una plaza de descanso (0) por cada equipo que descansa. Así
+  // la entidad i arranca (manga 1, s=0) en extended[i]: los que corren en su
+  // carril_salida y los que descansan en una plaza 0 (is_rest). El motor de
+  // resistencia rota carriles y descansos entre todos.
+  const usados = new Set(racers.map(e => e.carril));
+  const rotationLanes = laneSeq.filter(l => usados.has(l));
+  const extended = [...rotationLanes, ...Array(resters.length).fill(0)];
+  const byLane = new Map(racers.map(e => [e.carril, e]));
+
+  let restCursor = 0;
+  const entities = extended.map((lane) => {
+    if (lane !== 0) return crear(byLane.get(lane), lane - 1);
+    const eq = resters[restCursor];
+    return crear(eq, v.carriles + restCursor++);
+  });
+
+  Manga.persistSchedule(tandaId, raceId, Manga.buildSchedule(extended, entities));
+  db.prepare('UPDATE tandas SET control_numero = ? WHERE id = ?').run(tanda.numero, tandaId);
+  return creados;
+}
+
+// Participantes de la sesión de pole (dedupe por nombre entre tandas).
+// Devuelve cuántos ha añadido.
+function poblarPole(sessionId, v) {
+  const PoleSession = require('../models/PoleSession');
+  const entityType = v.isTeam ? 'team' : 'driver';
+  const vistos = new Set();
+  for (const tanda of v.tandas) {
+    for (const eq of tanda.equipos) {
+      if (vistos.has(eq.nombre)) continue;
+      vistos.add(eq.nombre);
+      PoleSession.addEntry({
+        poleSessionId: sessionId,
+        entityType,
+        entityName: eq.nombre,
+        membersJson: eq.pilotos.length ? JSON.stringify(eq.pilotos) : null,
+        categoria: v.hasCategoria ? eq.copa : null, coche: v.hasCoche ? eq.coche : null,
+      });
+    }
+  }
+  return vistos.size;
+}
+
 // Crea la carrera completa a partir del payload. Devuelve { raceId, url, ... }.
 // Todo dentro de una transacción: si algo falla, no queda una carrera a medias.
 function createFromPayload(payload) {
@@ -148,80 +222,24 @@ function createFromPayload(payload) {
       min_lap_ms: minLapMs,
     });
 
-    let teamCount = 0;
-    // Crea el team (+ pilotos) o el driver de un equipo y devuelve su entidad.
-    const palette = LaneColors.global();
-    const crear = (tandaId, eq, colorSeed) => {
-      const color = palette[((colorSeed % palette.length) + palette.length) % palette.length];
-      if (v.isTeam) {
-        const teamId = Team.create({ race_id: raceId, tanda_id: tandaId, name: eq.nombre, lane: 0, color, categoria: v.hasCategoria ? eq.copa : null, coche: v.hasCoche ? eq.coche : null });
-        eq.pilotos.forEach((p, i) => Driver.create({
-          race_id: raceId, tanda_id: tandaId, team_id: teamId, name: p, lane: null, car_number: i + 1,
-        }));
-        teamCount++;
-        return { id: teamId, type: 'team', name: eq.nombre };
-      }
-      // INDIVIDUAL: cada equipo es un piloto suelto (usa su nombre).
-      const driverId = Driver.create({
-        race_id: raceId, tanda_id: tandaId, team_id: null, name: eq.nombre,
-        lane: eq.carril || null, car_number: eq.carril || null,
-        categoria: v.hasCategoria ? eq.copa : null, coche: v.hasCoche ? eq.coche : null,
-      });
-      teamCount++;
-      return { id: driverId, type: 'driver', name: eq.nombre };
-    };
-
     // CON POLE: el orden de carril se decide DESPUÉS de correr la pole, así que
     // NO se crean tandas/equipos aquí. Solo la sesión de pole con los equipos
-    // como participantes (dedupe por nombre entre tandas); tras la pole, el
-    // flujo nativo (PoleController.assignLanes) crea la tanda con la parrilla.
+    // como participantes; tras la pole, el flujo nativo
+    // (PoleController.assignLanes) crea la tanda con la parrilla.
     if (v.pole) {
       const PoleSession = require('../models/PoleSession');
-      const sessionId = PoleSession.create(raceId);
-      const entityType = v.isTeam ? 'team' : 'driver';
-      const vistos = new Set();
-      for (const tanda of v.tandas) {
-        for (const eq of tanda.equipos) {
-          if (vistos.has(eq.nombre)) continue;
-          vistos.add(eq.nombre);
-          PoleSession.addEntry({
-            poleSessionId: sessionId,
-            entityType,
-            entityName: eq.nombre,
-            membersJson: eq.pilotos.length ? JSON.stringify(eq.pilotos) : null,
-            categoria: v.hasCategoria ? eq.copa : null, coche: v.hasCoche ? eq.coche : null,
-          });
-        }
-      }
-      return { raceId, tandas: 0, teams: vistos.size, pole: true };
+      const teams = poblarPole(PoleSession.create(raceId), v);
+      return { raceId, tandas: 0, teams, pole: true };
     }
 
+    let teamCount = 0;
     for (const tanda of v.tandas) {
-      const tandaId = Tanda.create(raceId);
-
-      const racers  = tanda.equipos.filter(e => !e.isRest);
-      const resters = tanda.equipos.filter(e =>  e.isRest).sort((a, b) => a.descanso - b.descanso);
-
-      // Orden de rotación = la secuencia por defecto restringida a los carriles
-      // usados, MÁS una plaza de descanso (0) por cada equipo que descansa. Así
-      // la entidad i arranca (manga 1, s=0) en extended[i]: los que corren en su
-      // carril_salida y los que descansan en una plaza 0 (is_rest). El motor de
-      // resistencia rota carriles y descansos entre todos.
-      const usados = new Set(racers.map(e => e.carril));
-      const rotationLanes = laneSeqRace.filter(l => usados.has(l));
-      const extended = [...rotationLanes, ...Array(resters.length).fill(0)];
-      const byLane = new Map(racers.map(e => [e.carril, e]));
-
-      let restCursor = 0;
-      const entities = extended.map((lane) => {
-        if (lane !== 0) return crear(tandaId, byLane.get(lane), lane - 1);
-        const eq = resters[restCursor];
-        return crear(tandaId, eq, v.carriles + restCursor++);
-      });
-
-      const schedule = Manga.buildSchedule(extended, entities);
-      Manga.persistSchedule(tandaId, raceId, schedule);
+      teamCount += poblarTanda(raceId, Tanda.create(raceId), tanda, v, laneSeqRace);
     }
+
+    // Como al crear la tanda a mano: con las mangas listas la carrera está «En
+    // curso». Si se quedara «Pendiente», el GO del DS no la arrancaría.
+    Race.updateStatus(raceId, 'active');
 
     return { raceId, tandas: v.tandas.length, teams: teamCount, pole: false };
   });
@@ -230,4 +248,122 @@ function createFromPayload(payload) {
   return { ...out, name: v.nombre, url: `/races/${out.raceId}` };
 }
 
-module.exports = { validate, createFromPayload, TandaImportError, SCHEMA };
+// ¿La tanda ya ha rodado? Basta una manga que no esté pendiente (o que llegara
+// a arrancar) o una vuelta registrada: entonces no se toca.
+function tandaEmpezada(tandaId) {
+  return !!db.prepare(`
+    SELECT 1 FROM mangas m
+    WHERE m.tanda_id = ?
+      AND (m.status != 'pending' OR m.started_at IS NOT NULL
+           OR EXISTS (SELECT 1 FROM laps l WHERE l.manga_id = m.id))
+    LIMIT 1
+  `).get(tandaId);
+}
+
+// Quita mangas, equipos y pilotos de una tanda (sin borrar la tanda).
+function vaciarTanda(tandaId) {
+  db.prepare('DELETE FROM mangas  WHERE tanda_id = ?').run(tandaId);
+  db.prepare('DELETE FROM drivers WHERE tanda_id = ?').run(tandaId);
+  db.prepare('DELETE FROM teams   WHERE tanda_id = ?').run(tandaId);
+}
+
+// Actualiza una carrera ya importada con un nuevo envío de Control. Cada tanda
+// se casa con la suya por `control_numero` y:
+//   · si ya ha rodado (alguna manga empezada o con vueltas) → NO se toca;
+//   · si está pendiente → se rehace entera (equipos, pilotos y rotación);
+//   · si no existía → se crea;
+//   · si ya no viene en el envío y está pendiente → se borra.
+// Las tandas creadas a mano en Manager (sin control_numero) nunca se tocan.
+// Con pole, se reemplazan los participantes mientras la pole no haya empezado.
+function updateFromPayload(raceId, payload) {
+  const v = validate(payload);
+  const race = Race.findById(raceId);
+  if (!race) throw new TandaImportError(`La carrera ${raceId} no existe en PitWall.`, 'carrera_no_existe', { id: raceId });
+  if ((race.format === 'team') !== v.isTeam) {
+    throw new TandaImportError('El formato (individual/equipos) no coincide con el de la carrera.', 'formato_distinto');
+  }
+  if (!!race.has_pole !== v.pole) {
+    throw new TandaImportError('La pole del envío no coincide con la de la carrera.', 'pole_distinta');
+  }
+
+  const run = db.transaction(() => {
+    db.prepare('UPDATE races SET has_categoria = ?, has_coche = ? WHERE id = ?')
+      .run(v.hasCategoria ? 1 : 0, v.hasCoche ? 1 : 0, raceId);
+
+    if (v.pole) {
+      const PoleSession = require('../models/PoleSession');
+      const ses = PoleSession.findByRace(raceId);
+      if (ses && ses.status !== 'setup') {
+        throw new TandaImportError('La pole ya ha empezado: no se pueden cambiar sus participantes.', 'pole_ya_corrida');
+      }
+      const sessionId = ses ? ses.id : PoleSession.create(raceId);
+      db.prepare('DELETE FROM pole_entries WHERE pole_session_id = ?').run(sessionId);
+      return { tandas: 0, teams: poblarPole(sessionId, v), pole: true,
+               actualizadas: [], nuevas: [], borradas: [], bloqueadas: [] };
+    }
+
+    const laneSeq = Race.getLaneSequence(race);
+    for (const tanda of v.tandas) {
+      for (const eq of tanda.equipos) {
+        if (!eq.isRest && !laneSeq.includes(eq.carril)) {
+          throw new TandaImportError(`La carrera no tiene el carril ${eq.carril} (tanda ${tanda.numero}).`, 'carril_no_existe', { carril: eq.carril, n: tanda.numero });
+        }
+      }
+    }
+
+    const existentes = db.prepare('SELECT * FROM tandas WHERE race_id = ? ORDER BY number, id').all(raceId);
+    // Carreras importadas antes de guardar control_numero: se casan por orden,
+    // que es como se crearon.
+    if (existentes.length && existentes.every(t => t.control_numero == null)) {
+      existentes.forEach((t, i) => { if (v.tandas[i]) t.control_numero = v.tandas[i].numero; });
+    }
+    const porNumero = new Map(existentes.filter(t => t.control_numero != null).map(t => [t.control_numero, t]));
+    const enEnvio = new Set(v.tandas.map(t => t.numero));
+
+    const out = { tandas: v.tandas.length, teams: 0, pole: false, actualizadas: [], nuevas: [], borradas: [], bloqueadas: [] };
+    for (const tanda of v.tandas) {
+      const ex = porNumero.get(tanda.numero);
+      if (ex && tandaEmpezada(ex.id)) { out.bloqueadas.push(tanda.numero); continue; }
+      let tandaId;
+      if (ex) {
+        vaciarTanda(ex.id);
+        Tanda.updateStatus(ex.id, 'pending');
+        tandaId = ex.id;
+        out.actualizadas.push(tanda.numero);
+      } else {
+        tandaId = Tanda.create(raceId);
+        out.nuevas.push(tanda.numero);
+      }
+      out.teams += poblarTanda(raceId, tandaId, tanda, v, laneSeq);
+    }
+    for (const ex of existentes) {
+      if (ex.control_numero == null || enEnvio.has(ex.control_numero)) continue;
+      if (tandaEmpezada(ex.id)) { out.bloqueadas.push(ex.control_numero); continue; }
+      vaciarTanda(ex.id);
+      Tanda.delete(ex.id);
+      out.borradas.push(ex.control_numero);
+    }
+    out.bloqueadas.sort((a, b) => a - b);
+
+    // Numeración de Manager = orden de Control (una tanda nueva puede caer
+    // entre otras). Las creadas a mano conservan su número como posición.
+    const todas = db.prepare(
+      'SELECT id FROM tandas WHERE race_id = ? ORDER BY COALESCE(control_numero, number), id'
+    ).all(raceId);
+    const renumerar = db.prepare('UPDATE tandas SET number = ? WHERE id = ?');
+    todas.forEach((t, i) => renumerar.run(i + 1, t.id));
+
+    // Con tandas pendientes la carrera tiene que estar «En curso» para el GO.
+    const pendiente = db.prepare("SELECT 1 FROM mangas WHERE race_id = ? AND status = 'pending' LIMIT 1").get(raceId);
+    if (pendiente && race.status !== 'active') Race.updateStatus(raceId, 'active');
+    return out;
+  });
+
+  const out = run();
+  // Las clasificaciones en caché dependen de equipos/mangas que acaban de cambiar.
+  try { require('../models/Lap').markExternalMutation(); } catch {}
+  try { require('./TimingService').invalidateStandingsCaches(); } catch {}
+  return { ...out, raceId: race.id, name: race.name, url: `/races/${race.id}`, actualizada: true };
+}
+
+module.exports = { validate, createFromPayload, updateFromPayload, TandaImportError, SCHEMA };

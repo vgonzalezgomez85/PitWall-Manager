@@ -547,22 +547,6 @@ const navItems = [
         </div>
 
 
-        <details>
-          <summary>
-            <span class="ar"></span>
-            <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
-            <%= t('settings.avanzado_timing_del_parser_ds_300') %>
-          </summary>
-          <div class="vt-disc-body">
-            <div class="vt-field" style="max-width:160px;margin-top:10px">
-              <label>FRAME_GAP_MS</label>
-              <input class="vt-inp is-mono" type="number" name="serial_frame_gap_ms" min="10" max="500" value="<%= cfg.serial_frame_gap_ms || 75 %>">
-            </div>
-            <div class="vt-hint">
-              <%= t('settings.silencio_ms_entre_bytes_que_separa_dos_tramas') %>
-            </div>
-          </div>
-        </details>
       </div>
         </section>
 

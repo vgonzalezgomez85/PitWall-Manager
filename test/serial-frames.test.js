@@ -30,6 +30,7 @@ const { test, after, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 
 const { CircuitConnection } = require('../src/services/SerialService');
+const { sellar } = require('./helpers/dsFrame');
 
 after(limpiarBdTemporal);
 
@@ -56,6 +57,7 @@ function circuito() {
 function frameCruce({ bit = 0x80, lapCounter = 0x05, min = 0x00, seg = 0x09, cent = 0x50, dmil = 0x00, box = 0 } = {}) {
   const f = new Array(21).fill(0);
   f[0]  = 0xe0;
+  f[7]  = 0x1b;         // clase «cruce»
   f[4]  = box;          // id de caja del agrupador (0 = sin agrupar; 0x01, 0x02… = caja N)
   f[10] = bit;          // laneByte
   f[12] = lapCounter;   // contador de vueltas (BCD)
@@ -63,7 +65,7 @@ function frameCruce({ bit = 0x80, lapCounter = 0x05, min = 0x00, seg = 0x09, cen
   f[15] = seg;
   f[16] = cent;
   f[17] = dmil;
-  return f;
+  return sellar(f);
 }
 
 const MIN_CROSSING_MS = 500;   // el filtro de cruces del propio SerialService
@@ -95,15 +97,24 @@ test('tras un frame truncado, el siguiente frame VÁLIDO se procesa', () => {
   assert.equal(cruces[0].lane, 1);
 });
 
-test('_onData deja el buffer limpio aunque el frame que vacía lance', () => {
-  // Reproduce el camino real: bytes -> buffer -> flush. Si _processFrame lanzara,
-  // el buffer se quedaba con la basura y se reprocesaba en bucle.
-  const { c } = circuito();
-  c._onData(Buffer.from([0xe0, 0, 0, 0, 0, 0, 0, 0, 0x00, 0, 0x80, 0]));
-  // Fuerza el flush por silencio sin esperar al temporizador.
-  if (c._flushTimer) { clearTimeout(c._flushTimer); c._flushTimer = null; }
-  assert.doesNotThrow(() => c._flushFrameBuf());
-  assert.deepEqual(c._frameBuf, [], 'el buffer queda vacío pase lo que pase');
+test('si procesar una trama lanza, las siguientes se procesan igual', () => {
+  const { c, cruces } = circuito();
+  const real = c._handleFrame.bind(c);
+  let primera = true;
+  c._handleFrame = (f, ts) => { if (primera) { primera = false; throw new Error('listener roto'); } real(f, ts); };
+  const dos = [...frameCruce({ bit: 0x80 }), ...frameCruce({ bit: 0x40 })];
+  assert.doesNotThrow(() => c._onData(Buffer.from(dos)));
+  assert.deepEqual(cruces.map(x => x.lane), [2]);
+});
+
+test('una trama partida en dos lecturas del puerto se recompone', () => {
+  const { c, cruces } = circuito();
+  const f = frameCruce();
+  c._processFrame(f.slice(0, 9), 1000);
+  assert.equal(cruces.length, 0, 'a medias: espera al resto');
+  c._processFrame(f.slice(9), 1080);
+  assert.equal(cruces.length, 1);
+  assert.equal(cruces[0].timestamp, 1000, 'la hora de la trama es la de su 0xE0');
 });
 
 test('un frame de longitud 0 o 1 no rompe nada', () => {
@@ -245,7 +256,7 @@ test('el GO de una manga nueva reinicia el contador absoluto', () => {
   c._processFrame(frameConContador(90), 1000);
   // GO: [7]=0x3E [8]=0xA1
   const go = new Array(21).fill(0);
-  go[0] = 0xe0; go[7] = 0x3e; go[8] = 0xa1; go[10] = 0x06; go[20] = 0xeb;
+  go[0] = 0xe0; go[7] = 0x3e; go[8] = 0xa1; go[10] = 0x06; go[20] = 0xeb; sellar(go);
   c._processFrame(go, 2000);
 
   const antes = cruces.length;
@@ -259,12 +270,12 @@ test('el GO con clase 0x3A (variante de algunas unidades) también arranca', () 
   // arranque: el GO no enganchaba el latch y el verde 0xA3 se ignoraba.
   const { c } = circuito();
   const go = new Array(21).fill(0);
-  go[0] = 0xe0; go[7] = 0x3a; go[8] = 0xa1; go[10] = 0x06; go[20] = 0xeb;
+  go[0] = 0xe0; go[7] = 0x3a; go[8] = 0xa1; go[10] = 0x06; go[20] = 0xeb; sellar(go);
   c._processFrame(go, 2000);
   assert.equal(c._pendingGoStart, true, 'la variante 0x3A engancha el latch del GO');
 
   const verde = new Array(21).fill(0);
-  verde[0] = 0xe0; verde[7] = 0x00; verde[8] = 0xa3; verde[20] = 0xeb;
+  verde[0] = 0xe0; verde[7] = 0x00; verde[8] = 0xa3; verde[20] = 0xeb; sellar(verde);
   c._processFrame(verde, 5000);
   assert.equal(c._raceState, 'running', 'el verde posterior arranca la carrera');
 });

@@ -72,11 +72,12 @@
         </p>
 
 <%
-  // Orden de PANTALLA: carriles de menor a mayor y los descansos al final. La
+  // Orden de PANTALLA: carriles de menor a mayor y los descansos al final (DSC1
+  // primero, que es la última posición de la secuencia). La
   // posición en la secuencia (i) es la que decide el carril al guardar, así que
   // cada fila lleva su `i` real en el nombre del campo y no cambia nada.
   const slotOrder = (n) => [...Array(n).keys()].sort((a, b) => {
-    const k = (i) => { const ln = ((locals.slotLanes && locals.slotLanes[i] != null) ? locals.slotLanes[i] : (i < laneSequence.length ? laneSequence[i] : 0)); return ln > 0 ? [0, ln] : [i < laneSequence.length ? 1 : 2, i]; };
+    const k = (i) => { const ln = ((locals.slotLanes && locals.slotLanes[i] != null) ? locals.slotLanes[i] : (i < laneSequence.length ? laneSequence[i] : 0)); return ln > 0 ? [0, ln] : [1, -i]; };
     const x = k(a), y = k(b);
     return x[0] - y[0] || x[1] - y[1];
   });
@@ -135,11 +136,12 @@
         </p>
 
 <%
-  // Orden de PANTALLA: carriles de menor a mayor y los descansos al final. La
+  // Orden de PANTALLA: carriles de menor a mayor y los descansos al final (DSC1
+  // primero, que es la última posición de la secuencia). La
   // posición en la secuencia (i) es la que decide el carril al guardar, así que
   // cada fila lleva su `i` real en el nombre del campo y no cambia nada.
   const slotOrder = (n) => [...Array(n).keys()].sort((a, b) => {
-    const k = (i) => { const ln = ((locals.slotLanes && locals.slotLanes[i] != null) ? locals.slotLanes[i] : (i < laneSequence.length ? laneSequence[i] : 0)); return ln > 0 ? [0, ln] : [i < laneSequence.length ? 1 : 2, i]; };
+    const k = (i) => { const ln = ((locals.slotLanes && locals.slotLanes[i] != null) ? locals.slotLanes[i] : (i < laneSequence.length ? laneSequence[i] : 0)); return ln > 0 ? [0, ln] : [1, -i]; };
     const x = k(a), y = k(b);
     return x[0] - y[0] || x[1] - y[1];
   });
@@ -246,7 +248,9 @@ function slotLabel(i, total){
 function slotColor(i){ const l = laneAt(i); return l > 0 ? COLORS[(l-1) % COLORS.length] : '#30363d'; }
 // Igual que slotOrder() de la plantilla: posición en pantalla → posición en la secuencia.
 function slotOrder(n){
-  const k = i => laneAt(i) > 0 ? [0, laneAt(i)] : [i < LANE_SEQ.length ? 1 : 2, i];
+  // Descansos de la última posición a la primera: así salen DSC1, DSC2… en
+  // pantalla y una fila añadida al final no le cambia la etiqueta a las demás.
+  const k = i => laneAt(i) > 0 ? [0, laneAt(i)] : [1, -i];
   return [...Array(n).keys()].sort((a, b) => { const x = k(a), y = k(b); return x[0] - y[0] || x[1] - y[1]; });
 }
 const DRIVER_PH = <%- JSON.stringify(t('wizard.driver_name_ph')) %>;

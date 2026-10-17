@@ -44,9 +44,9 @@ const db            = require('../config/database');
 //
 // Con 22 móviles refrescando cada 5 s —y un rebote extra por cada cruce— eso eran
 // ~11 s de CPU por cada segundo de reloj en un proceso de un solo hilo. Y como
-// better-sqlite3 es síncrono, ese bloqueo no era solo lentitud: supera de largo
-// los 75 ms de FRAME_GAP_MS del serie, así que podía partir una trama del DS y
-// perder un cruce de verdad.
+// better-sqlite3 es síncrono, ese bloqueo retrasaba cada cruce y el directo (con
+// el lector antiguo, que cortaba las tramas por 75 ms de silencio, además podía
+// partir una trama del DS y perder un cruce).
 //
 // Aquí se calcula UNA vez por carrera y se reparte a todos. La invalidación es la
 // misma idea que en el motor y no depende de que nadie se acuerde: cualquier

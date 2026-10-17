@@ -37,6 +37,7 @@ const SerialService = require('../src/services/SerialService');
 const TimingService = require('../src/services/TimingService');
 const { CircuitConnection } = SerialService;
 const { crearCarreraConManga } = require('./helpers/seed');
+const { sellar } = require('./helpers/dsFrame');
 
 after(limpiarBdTemporal);
 
@@ -101,7 +102,7 @@ test('una retransmisión partida entre dos bloques cuenta una sola vez', () => {
 test('la vuelta siguiente del mismo carril SÍ cuenta (sube el byte12)', () => {
   const { c, cruces } = circuito();
   c._processFrame(hex('e0 80 15 03 00 04 4c 1b a9 00 80 00 02 00 00 10 03 57 98 00 eb'), 1000);
-  c._processFrame(hex('e0 81 15 03 00 04 4c 1b a9 00 80 00 03 00 00 09 73 55 98 00 eb'), 10735);
+  c._processFrame(sellar(hex('e0 81 15 03 00 04 4c 1b a9 00 80 00 03 00 00 09 73 55 98 00 eb')), 10735);
   assert.equal(cruces.length, 2);
 });
 
@@ -110,7 +111,7 @@ test('el GO olvida la última trama: la 1ª vuelta de la manga nueva cuenta aunq
   const primera = hex('e0 7b 15 03 00 04 4c 1b 00 00 80 00 01 00 aa ab aa aa 28 00 eb');
   c._processFrame(primera, 1000);
   const go = new Array(21).fill(0);
-  go[0] = 0xe0; go[7] = 0x3e; go[8] = 0xa1; go[10] = 0x10; go[20] = 0xeb;
+  go[0] = 0xe0; go[7] = 0x3e; go[8] = 0xa1; go[10] = 0x10; go[20] = 0xeb; sellar(go);
   c._processFrame(go, 2000);
   clearTimeout(c._goFallbackTimer);
   c._processFrame(primera, 3000);

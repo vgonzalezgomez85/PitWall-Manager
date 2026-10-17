@@ -94,8 +94,9 @@ class TandaController {
 
     // Carriles sin participante: 'rotate' (todos pasan por todos), 'skip' (los
     // libres no se usan) o 'fixed' (no se usan los últimos libres). Solo tiene
-    // efecto si hay menos participantes que carriles activos.
-    const emptyLaneMode = ['rotate', 'skip'].includes(req.body.empty_lane_mode) ? req.body.empty_lane_mode : 'fixed';
+    // efecto si hay menos participantes que carriles activos. Sin valor, el que
+    // el formulario marca por defecto.
+    const emptyLaneMode = ['fixed', 'skip'].includes(req.body.empty_lane_mode) ? req.body.empty_lane_mode : 'rotate';
 
     // Parse participants from form
     // For team format: teams[0][name], teams[0][members][0], ...
@@ -156,7 +157,7 @@ class TandaController {
         .map(d => (typeof d === 'string' ? { name: d } : d));
 
       // Igual que en equipos: basta con un piloto; los carriles libres se
-      // resuelven con emptyLaneMode ('fixed' | 'rotate').
+      // resuelven con emptyLaneMode ('rotate' | 'skip' | 'fixed').
       if (driversArray.filter(d => d?.name?.trim()).length < 1) {
         errors.push('no_participants');
       }

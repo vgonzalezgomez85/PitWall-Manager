@@ -78,9 +78,13 @@ database/                 — pitwall.db (SQLite, no commitear)
 ## Protocolo DS-300
 
 - **Puerto serie**: 56000 baud, 8N1
-- **Frames**: 21 bytes fijos, `0xE0`…`0xEB`, separados por silencio > 75ms (`FRAME_GAP_MS`). En ráfaga (varios cruces juntos) llegan concatenados; `_processFrame` los **re-separa** en tramas de 21 bytes (de-merge) para no perder cruces. Ver `DS300-protocolo.md`
-- **Lane**: byte[10] — bitmask no secuencial: `0x80→1, 0x40→2, 0x20→3, 0x10→4, 0x08→5, 0x04→6, 0x02→7, 0x01→8`
-- **Tiempo de vuelta**: bytes[14-17] BCD (`ds300Byte()`): minutos, segundos, centésimas, diezmilésimas. Si algún nibble es A-F = primer cruce (sin tiempo válido)
+- **Frames**: 21 bytes fijos, `0xE0`…`0xEB`. Se buscan en el FLUJO de bytes como TicTacSlot (`dsProtocol.createFrameSplitter`): un `0xE0`, `0xEB` 20 bytes después y checksum correcto; da igual cómo lleguen troceados (la cola sin cerrar espera a la siguiente lectura). Ya no se corta por silencio (el antiguo `FRAME_GAP_MS` de 75 ms partía tramas en ráfagas o con el hilo bloqueado). La hora de una trama es la de su `0xE0`. Ver `DS300-protocolo.md`
+- **Lector único**: `src/lib/dsProtocol.js` (`decodeFrame`, separador, `sameBytes`) lo usan `SerialService`, el visor (`frameDecoder`) y el importador de simuladas (`dsFrames`). No duplicar reglas de trama fuera de ahí ni de `dsModels`
+- **Cruce o evento**: lo decide byte[7] (`0x1B` = cruce; cualquier otro = evento según byte[8]), como TicTacSlot y en todos los modelos (`dsModels.isCrossingFrame`). NO por byte[10]: el GO de clase `0x3A`/`0x3B` lleva datos ahí y se leía como cruce
+- **Checksum**: byte[18] = (byte[1..17] + byte[19]) & 0xFF; la trama que no cuadra se descarta (`checksumOk`)
+- **GO** (`0xA1`): cualquier clase de evento (`0x3E` DS-300, `0x3A` club, `0x3B` por vueltas). Duración por formato (`goDurationMs`): `0x3A` → [9][10] = H MM S; `0x3E` → [9]=_H, [10]=MM, [11]=S_; otra clase → sin duración (la de la carrera). El verde `0xA3` sin aviso previo arranca (reiniciando contadores por carril) o, en pausa, reanuda
+- **Lane**: byte[10] — bitmask no secuencial: `0x80→1, 0x40→2, 0x20→3, 0x10→4, 0x08→5, 0x04→6, 0x02→7, 0x01→8`; `0xAC` = carril 1 (TicTacSlot)
+- **Tiempo de vuelta**: bytes[14-17] BCD (`ds300Byte()`): minutos, segundos, centésimas, diezmilésimas. Si algún nibble es A-F = primer cruce (sin tiempo válido). Las vueltas de más de 240 s SE CUENTAN (la caja las cuenta); solo no entran en la media del carril con la que se reponen vueltas perdidas
 - **Señales de carrera** (emitidas por `SerialService` como eventos internos):
   - `race_go` → semáforo + arranca la carrera (lleva `durationMs` real del DS-300)
   - `race_started` → empieza el cronometraje (`TimingService.startManga`)
@@ -152,7 +156,7 @@ Siguiente manga pendiente se activa automáticamente
 - Singleton. Emite eventos internos con `EventEmitter`.
 - En modo simulación (sin puerto serie configurado) usa `RegistroCarrera.txt` o genera cruces aleatorios.
 - `getRawLog()` devuelve los últimos bytes recibidos (útil para debug).
-- **De-merge de ráfagas**: las tramas son de 21 bytes (`0xE0`…`0xEB`). Si varias llegan juntas (<`FRAME_GAP_MS`) se concatenan en un buffer; `_processFrame` lo re-separa en tramas de 21 bytes y procesa cada cruce. Sin esto se perdía ~7-8% de vueltas. Ver `DS300-protocolo.md` → "De-merge de ráfagas".
+- **Entrada de bytes**: `_onData` → `_processFrame(bytes, ts)` (también la usan `feedFrame` y los tests) → separador del flujo → `_handleFrame(trama)`. El DS manda cada trama 2-3 veces: se descarta la trama idéntica a la última aceptada de esa caja (`_lastFrameByBox`, por `byte[4]` con agrupador), llegue junta o separada; la firma por carril (`_lastSigByLane`) es la segunda red. Con depuración activa se registran los bytes tal y como llegan (`serial_raw`) para poder reproducir una sesión.
 
 ### TimingService
 - Singleton. `isRunning` = hay manga activa.
@@ -194,7 +198,7 @@ Siguiente manga pendiente se activa automáticamente
 
 - **Models**: métodos estáticos sobre `better-sqlite3`, síncronos. Sin ORM. Nombres: `findById`, `findAll`, `create`, `update`, `updateStatus`.
 - **Controllers**: funciones exportadas `module.exports = { action }`. Leen `req.params/body/session`, llaman a models/services, renderizan EJS o redirigen.
-- **Tests**: `npm test` (`node --test`, sin dependencias nuevas). Cubren turnos de piloto, informe, pre-arme, el parser de tramas DS-300, los endpoints peligrosos, el motor puro de proyección (`race-projection-engine`), el worker de stats (`stats-worker*`, `timing-projection-worker`, `lap-settled-cache`), la contraseña de acceso (`access-password`), la corrección de vueltas con manga viva (`lap-correction-live`) y el historial «las 10 mejores» de entrenos (`training-best-laps`). La rotación de carriles y el resto de estadísticas **siguen sin cobertura**.
+- **Tests**: `npm test` (`node --test`, sin dependencias nuevas). Cubren turnos de piloto, informe, pre-arme, el lector de tramas DS (`ds-protocol`, `ds-lectura-tictac`, `serial-frames`; las tramas de prueba se cierran con `test/helpers/dsFrame.js` → `sellar()`, o el checksum las descarta), los endpoints peligrosos, el motor puro de proyección (`race-projection-engine`), el worker de stats (`stats-worker*`, `timing-projection-worker`, `lap-settled-cache`), la contraseña de acceso (`access-password`), la corrección de vueltas con manga viva (`lap-correction-live`) y el historial «las 10 mejores» de entrenos (`training-best-laps`). La rotación de carriles y el resto de estadísticas **siguen sin cobertura**.
 - **Banco de pruebas**: emulador DS-300 (`/Users/victor/ds300-emulator/emulator.js`) y `node scripts/rehearsal-shifts.js` (ensayo E2E sobre 3 cajas, 24 carriles).
   Las rutas `/api/test/*` y `/api/rawlog` simulan las señales del DS, pero **solo se montan con `PITWALL_TEST_ENDPOINTS=1`**: `/api/test/stop` borra todas las vueltas de la manga activa, así que no puede existir en la máquina de una carrera.
 

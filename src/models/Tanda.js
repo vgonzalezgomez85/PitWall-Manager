@@ -44,6 +44,8 @@ class Tanda {
     return (row?.n ?? 0) + 1;
   }
 
+  // Sin modo, 'fixed': las tandas que no salen del formulario (importadas de
+  // Control, pole, carrera simulada) conservan el reparto de siempre.
   static create(raceId, emptyLaneMode = 'fixed') {
     const number = Tanda.nextNumber(raceId);
     const mode = ['rotate', 'skip'].includes(emptyLaneMode) ? emptyLaneMode : 'fixed';

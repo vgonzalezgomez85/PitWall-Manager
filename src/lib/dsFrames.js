@@ -27,13 +27,20 @@
 const OFFSET = { DS1: 0, DS2: 8, DS3: 16 };
 const LANE_MAP = { 0x80: 1, 0x40: 2, 0x20: 3, 0x10: 4, 0x08: 5, 0x04: 6, 0x02: 7, 0x01: 8 };
 
-// Decimal-en-hex (BCD): 0x57 → 57. Devuelve null si algún nibble > 9.
-const bcd = b => (((b >> 4) <= 9 && (b & 0xF) <= 9) ? parseInt(b.toString(16), 10) : null);
+// Qué es cada trama lo dice el lector común (dsProtocol), el mismo del cronometraje.
+const { decodeFrame } = require('./dsProtocol');
 
-function isGo(b)     { return b[7] === 0x3e && b[8] === 0xa1; }   // duración (arranque)
-function isFinish(b) { return b[7] === 0x00 && b[8] === 0xa4; }   // fin de manga
-function goDurationMin(b) { return bcd(b[10]); }                  // minutos de la manga
-function laneLocal(b) { return LANE_MAP[b[10]]; }                 // bitmask → carril local (1-8)
+const tipo = b => (b.length >= 21 ? decodeFrame(null, b).type : null);
+function isGo(b)     { return tipo(b) === 'go'; }        // arranque (0xA1, cualquier clase)
+function isFinish(b) { return tipo(b) === 'finish'; }    // fin de manga
+function goDurationMin(b) {                              // minutos de la manga, o null
+  const d = decodeFrame(null, b);
+  return d.type === 'go' && d.durationMs ? Math.round(d.durationMs / 60000) : null;
+}
+function laneLocal(b) {                                  // carril local (1-8) de un cruce
+  const d = b.length >= 21 ? decodeFrame(null, b) : null;
+  return d && d.type === 'crossing' && d.lanes.length === 1 ? d.lanes[0] : undefined;
+}
 
 // ── TXT (multi-DS, con timestamp absoluto) ───────────────────────────────────
 function parseTxt(content) {
@@ -87,7 +94,7 @@ function analyze(frames, gos) {
   for (const f of frames) {
     if (isGo(f.bytes) && durationMin == null) durationMin = goDurationMin(f.bytes);
     const local = laneLocal(f.bytes);
-    if (local && !isGo(f.bytes)) {
+    if (local) {
       crossings++;
       lanesByDs[f.ds].add(local);
       lanesGlobal.add(local + (OFFSET[f.ds] || 0));

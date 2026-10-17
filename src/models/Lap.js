@@ -179,8 +179,11 @@ class Lap {
         CASE WHEN t.id IS NOT NULL
              THEN COALESCE(t.categoria, tc.categoria)
              ELSE d.categoria END AS entityCategoria
+      -- CROSS JOIN fija el orden: con las estadísticas del arranque (carrera aún
+      -- vacía) SQLite ponía laps fuera y recalculaba best_per_lane por fila:
+      -- 1,5 s con 3.400 vueltas, y crecía en cada manga hasta reiniciar.
       FROM best_per_lane b
-      JOIN laps l ON l.race_id = ? AND l.lane = b.lane AND l.lap_time_ms = b.bestLapMs
+      CROSS JOIN laps l ON l.race_id = ? AND l.lane = b.lane AND l.lap_time_ms = b.bestLapMs
                  AND l.is_ghost = 0 AND l.is_exit = 0 AND l.is_warmup = 0 AND l.lap_number > 1
       LEFT JOIN teams   t ON t.id = l.team_id
       LEFT JOIN drivers d ON d.id = l.driver_id
@@ -193,8 +196,8 @@ class Lap {
   //
   // `aggregateByRace` escanea las vueltas de TODA la carrera. En una 24 h son
   // 160.000 filas y cuesta ~101 ms, y la proyección lo llamaba en cada cruce.
-  // Ese bloqueo síncrono no es solo lentitud: supera FRAME_GAP_MS (75 ms), así
-  // que puede partir una trama del DS en dos y perder un cruce de verdad.
+  // Ese bloqueo síncrono retrasa cada cruce y el directo (con el lector antiguo,
+  // que cortaba las tramas por 75 ms de silencio, además las partía).
   //
   // La parte de las mangas ya cerradas (153.000 de esas 160.000 filas) NO cambia
   // mientras corre una manga. Se calcula una vez y se cachea; la manga en curso

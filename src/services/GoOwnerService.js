@@ -46,14 +46,15 @@ class GoOwnerService {
   }
 
   // Una carrera pedida que ya no tiene nada que correr (finalizada, borrada)
-  // no puede quedarse el GO: se perdería.
+  // no puede quedarse el GO: se perdería. «Pendiente» vale: con mangas por
+  // correr pasa a «En curso» al arrancar la primera.
   _validClaim() {
     if (this._claimRaceId == null) return null;
     try {
       const db = require('../config/database');
       const ok = db.prepare(
         `SELECT 1 FROM races r JOIN mangas m ON m.race_id = r.id
-          WHERE r.id = ? AND r.status = 'active' AND m.status = 'pending' LIMIT 1`
+          WHERE r.id = ? AND r.status IN ('pending', 'active') AND m.status = 'pending' LIMIT 1`
       ).get(this._claimRaceId);
       return ok ? this._claimRaceId : null;
     } catch { return null; }

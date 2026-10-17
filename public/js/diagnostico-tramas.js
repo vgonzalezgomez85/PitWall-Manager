@@ -57,7 +57,7 @@
   let buffer  = [];   // tramas retenidas mientras está en pausa
   let total   = 0;
   let stamps  = [];   // marcas de llegada para el ritmo
-  let rows    = 0;    // filas de primer nivel en el DOM (las subs no cuentan)
+  let rows    = 0;    // filas en el DOM
 
   // ── Utilidades ────────────────────────────────────────────────────────
   const esc = (s) => String(s == null ? '' : s)
@@ -90,13 +90,14 @@
     resumed:           'is-go',
     resume_signal:     'is-go',
     semaphore:         'is-warn',
-    burst:             'is-warn',
     finished:          'is-end',
     stopped:           'is-end',
     paused:            'is-end',
     heartbeat:         'is-faint',
     crossing_filtered: 'is-drop',
-    truncated:         'is-drop',
+    duplicate:         'is-drop',
+    resync:            'is-drop',
+    bad_checksum:      'is-bad',
     short:             'is-drop',
     ignored:           'is-drop',
     error:             'is-bad',
@@ -115,16 +116,15 @@
     return out;
   }
 
-  // Construye la fila de una trama. `parent` aporta ts/circuito a las subs,
-  // que pueden venir sin ellos.
-  function buildRow(f, parent) {
-    const ts      = f.ts != null ? f.ts : (parent && parent.ts);
-    const circuit = f.circuit != null ? f.circuit : (parent && parent.circuit);
-    const source  = f.source || (parent && parent.source);
+  // Construye la fila de una trama.
+  function buildRow(f) {
+    const ts      = f.ts;
+    const circuit = f.circuit;
+    const source  = f.source;
     const kind    = f.kind || 'unknown';
 
     const row = document.createElement('div');
-    row.className = 'vt-frame ' + (KIND_CLASS[kind] || '') + (parent ? ' vt-frame--sub' : '');
+    row.className = 'vt-frame ' + (KIND_CLASS[kind] || '');
     row.dataset.kind = kind;
 
     let html = '<div class="vt-frame__head">'
@@ -146,14 +146,6 @@
 
     if (f.hex) html += '<div class="vt-frame__hex">' + hexHtml(f.hex, f.unknown) + '</div>';
     row.innerHTML = html;
-
-    // Burst = retransmisión del PL2303: las sub-tramas cuelgan del padre.
-    if (kind === 'burst' && Array.isArray(f.subs) && f.subs.length) {
-      const box = document.createElement('div');
-      box.className = 'vt-frame__subs';
-      for (const s of f.subs) box.appendChild(buildRow(s, f));
-      row.appendChild(box);
-    }
     return row;
   }
 
@@ -163,12 +155,11 @@
     if (empty && !empty.hidden) empty.hidden = true;
 
     const frag = document.createDocumentFragment();
-    for (let i = batch.length - 1; i >= 0; i--) frag.appendChild(buildRow(batch[i], null));
+    for (let i = batch.length - 1; i >= 0; i--) frag.appendChild(buildRow(batch[i]));
     list.insertBefore(frag, list.firstChild);
     rows += batch.length;
 
-    // Poda por el final. Solo filas de primer nivel: las subs de un burst se
-    // van con su padre.
+    // Poda por el final.
     while (rows > MAX_ROWS) {
       // El nodo de "esperando tramas" vive dentro de la lista y se queda.
       let last = list.lastElementChild;

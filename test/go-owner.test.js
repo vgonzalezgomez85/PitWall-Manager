@@ -172,3 +172,33 @@ test('una pole ya cerrada en la BD no se queda el GO aunque el servicio siga arm
     Pole.session = prev.session; Pole._standby = prev.standby;
   }
 });
+
+// ── Carrera importada desde PitWall Control (club, 2026-10-15) ───────────────
+// Llegaba «Pendiente» con las mangas listas: el directo pedía el GO, pero la
+// petición no valía y el GO se iba al entreno con el semáforo clavado en verde.
+
+const TandaImport = require('../src/services/TandaImport');
+const Race        = require('../src/models/Race');
+const importar = (extra = {}) => TandaImport.createFromPayload({
+  prueba: { nombre: 'Importada de Control', formato: 'INDIVIDUAL' },
+  carriles: 2,
+  tandas: [{ equipos: [{ nombre: 'Ana', carril_salida: 1 }, { nombre: 'Bea', carril_salida: 2 }] }],
+  ...extra,
+});
+
+test('importar desde Control sin pole deja la carrera «En curso»', () => {
+  const { raceId: id } = importar();
+  assert.equal(Race.findById(id).status, 'active');
+});
+
+test('importar desde Control con pole la deja «Pendiente» (la activa la asignación de carriles)', () => {
+  const { raceId: id } = importar({ pole: true });
+  assert.equal(Race.findById(id).status, 'pending');
+});
+
+test('carrera «Pendiente» con mangas: abrir su directo le da el GO', () => {
+  db.prepare(`UPDATE races SET status = 'pending' WHERE id = ?`).run(raceId);
+  GoOwner.claimRace(raceId, 'directo de la manga 1');
+  const d = GoOwner.decide();
+  assert.deepEqual([d.owner, d.raceId], ['race', raceId]);
+});

@@ -22,8 +22,8 @@
 //  agregado de mangas anteriores (~40-75 ms) son SELECTs síncronos de
 //  better-sqlite3 que hoy bloquean el event loop principal en cada cruce y en
 //  cada petición de live-stats. Con 24 carriles y muchas pantallas, ese bloqueo
-//  acumulado retrasa el tick de 1 s y puede partir una trama del DS-300
-//  (FRAME_GAP_MS = 75 ms). Aquí corre en un núcleo distinto y el hilo principal
+//  acumulado retrasa el tick de 1 s y el registro de cada cruce. Aquí corre en
+//  un núcleo distinto y el hilo principal
 //  solo recibe el resultado ya hecho.
 //
 //  Este worker SOLO LEE: abre su propia conexión `readonly` al mismo

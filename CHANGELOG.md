@@ -13,6 +13,53 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.63.2] — 2026-10-17
+
+### Corregido
+- **Los descansos ya no se renumeran al añadir pilotos en el formulario de tanda**: con más pilotos que carriles, cada «Añadir piloto» cambiaba las etiquetas de los descansos (el que habías puesto en DSC1 pasaba a DSC2 y el nuevo salía DSC1), y era fácil creer que alguien estaba en un descanso cuando ya estaba en otro. Ahora, al crear y al editar una tanda, salen DSC1, DSC2, DSC3… en el orden en que los añades y una fila ya rellenada no cambia de etiqueta. El orden de carrera es el de siempre: DSC1 es el primero que vuelve a pista y el último DSC, el último.
+
+## [1.63.1] — 2026-10-17
+
+### Corregido
+- **El arranque de cada manga se iba frenando hasta congelar PitWall varios segundos**: la consulta de la mejor vuelta por carril (al arrancar la manga y al abrir el directo) dependía de las estadísticas que SQLite recoge al arrancar el programa. Si arrancaba con la carrera aún vacía, SQLite elegía un camino que recalculaba la mejor vuelta por cada vuelta de la carrera, y el coste crecía en cada manga (en el PC del club, de 6 a 20 s en una tanda: el GO no arrancaba la manga a tiempo y se perdió una). Solo un reinicio lo arreglaba. Ahora la consulta fija su orden y tarda lo mismo siempre (~1 ms en vez de ~2 s con 3.400 vueltas). Reproducido con las tramas reales del club.
+
+## [1.63.0] — 2026-10-16
+
+### Añadido
+- **Actualizar una carrera importada desde PitWall Control**: si Control reenvía las tandas de una prueba que ya se importó (`race_id` en el envío), PitWall actualiza esa carrera en vez de crear otra. Las tandas que ya han rodado (alguna manga empezada o con vueltas) no se tocan; las pendientes se rehacen con los nuevos equipos, pilotos, carriles, categoría y coche; las nuevas se crean y las que ya no vienen se borran si no se han corrido. Las tandas creadas a mano en PitWall nunca se tocan. Con pole, se reemplazan los participantes mientras la pole no haya empezado. Cada tanda importada guarda su número de Control (`tandas.control_numero`) para casarla en los reenvíos.
+
+## [1.62.3] — 2026-10-16
+
+### Corregido
+- **Las carreras importadas desde PitWall Control (sin pole) no arrancaban con el GO del DS**: llegaban como «Pendiente» y, desde la v1.57.0, el GO solo valía para una carrera «En curso». El directo enseñaba el semáforo, pero el GO se lo llevaba el entreno y la pantalla se quedaba en verde. Ahora la importación deja la carrera «En curso», igual que al crear la tanda a mano. Además, abrir el directo de una manga pendiente (o pulsar **Recuperar el GO**) también vale con la carrera «Pendiente», y al arrancar su primera manga pasa sola a «En curso». Las importadas con pole no cambian: se activan al asignar los carriles tras la pole.
+- **El semáforo del directo ya no se queda clavado en verde**: el directo solo lo enseña si el GO es para su carrera (si no, sigue la franja «El GO lo tiene…»), y si la manga no llega a arrancar se quita solo a los pocos segundos.
+- **Diagnóstico del GO**: cada GO del DS deja en la consola y en el registro de depuración (`go_owner`) para quién fue y por qué.
+
+## [1.62.2] — 2026-10-14
+
+### Mejorado
+- **Lectura de tramas DS más robusta**: las tramas se buscan en el chorro de bytes, como hace TicTacSlot (inicio, final y checksum), en vez de separarlas por los silencios del cable. Una trama partida en dos lecturas, varias tramas pegadas o un momento en que el ordenador va cargado ya no pueden partir tramas ni inventar cruces.
+- **Retransmisiones**: el DS manda cada trama 2-3 veces; ahora se reconocen aunque las copias lleguen separadas.
+- **Un solo lector**: el cronometraje, el visor de tramas y el importador de carreras simuladas leen las tramas con el mismo código; el visor ya no puede decir una cosa y el cronometraje hacer otra. El visor muestra cada trama por separado y marca las retransmisiones y los bytes descartados.
+- **Registro de depuración**: guarda además los bytes tal y como llegan del cable, para poder reproducir una sesión exactamente.
+
+### Corregido
+- **Nueva tanda sin modo de carriles vacíos**: si el formulario no lo enviaba, se guardaba «No pasar por los últimos carriles vacíos» aunque la opción marcada por defecto es «Pasar por todos los carriles». Ahora coinciden. Las tandas que llegan por otras vías (Control, pole, carrera simulada) siguen con el reparto de siempre.
+
+### Eliminado
+- **Ajuste «FRAME_GAP_MS»** (Ajustes → Fuente de datos → avanzado): ya no hace falta, la lectura no depende de los silencios.
+
+## [1.62.1] — 2026-10-14
+
+### Corregido
+- **El GO de cualquier caja DS arranca la manga**: PitWall solo reconocía el GO del DS-300 (y la variante `0x3A`); con otras cajas, como el GO por vueltas, la trama se leía como un cruce de carriles inventados y la manga no arrancaba. Ahora las tramas se leen como lo hace TicTacSlot, que funciona con todas las cajas: cruce o evento lo decide el byte 7, el GO vale con cualquier clase y el verde basta por sí solo para arrancar o reanudar tras una pausa.
+- **Duración de la manga en cajas antiguas**: el DS antiguo del club manda la duración en otro formato. PitWall leía 0 min (o 60 en vez de 6) y usaba la duración de la carrera; ahora lee la de la caja (comprobado: 10 min en las 14 mangas del entreno del 13 de octubre).
+- **Vueltas de más de 4 minutos**: se descartaban en directo y al cerrar la manga se reponían como estimadas. Ahora cuentan en directo con su tiempo real, como en la caja.
+
+### Mejorado
+- **Tramas con ruido**: se comprueba el checksum de cada trama y se descartan las que llegan dañadas (más probable a 4800 baudios).
+- **Visor de tramas**: lee igual que el cronometraje (GO de cualquier clase con su duración, verde sin aviso previo, checksum incorrecto).
+
 ## [1.62.0] — 2026-10-14
 
 ### Añadido

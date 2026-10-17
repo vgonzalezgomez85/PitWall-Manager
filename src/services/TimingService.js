@@ -332,6 +332,7 @@ class TimingServiceClass {
     this._scheduleCircuitAutoFinish(startCircuitIndex);
 
     Manga.updateStatus(manga.id, 'active');
+    if (race.status === 'pending') require('../models/Race').updateStatus(race.id, 'active');
     DebugLogger.startMangaLog(manga, race);
     DebugLogger.log('manga', { event: 'start', mangaNumber: manga.number, durationMs: sessionDurationMs, activeLanes });
     SocketService.emit('manga:started', { mangaId: manga.id, ...this.getStandings() });

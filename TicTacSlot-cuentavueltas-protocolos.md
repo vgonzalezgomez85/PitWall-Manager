@@ -129,10 +129,10 @@ Además, según las capturas reales de PitWall (`DS300-protocolo.md`), el DS-300
 | `0x3E` | `L([9])*3600 + H([10])*600 + L([10])*60 + H([11])*10` | 10 s |
 | otro | 0 (sin duración) | — |
 
-**⚠ Discrepancia con PitWall.** PitWall calcula `mins = bcd([9])*100 + bcd([10])` tanto para `0x3E` como para `0x3A`. Para mangas de menos de 60 min con `0x3E` sale lo mismo. Pero:
-
-- **`0x3A`**: su trama de club `3A A1 00 60` da **60 min** con PitWall y **6 min** con TicTacSlot (`H([10])*60 + L([10])*10` = 360 s). Hay que mirar cuánto duró de verdad esa manga.
-- **`0x3E` de 60 min o más**: TicTacSlot lee `[9]` como horas; PitWall, como centenas de minuto.
+**Resuelto en PitWall v1.62.1** (`goDurationMs` en `src/lib/dsModels.js`): usa estas
+mismas fórmulas. Comprobado con el DS antiguo a 4800 baudios del club (13-oct-2026):
+el GO `3A A1 01 00` = 600 s y las 14 mangas duraron 599,4–600,0 s. Antes PitWall
+leía solo `[10]` como minutos BCD (0 min con esa trama; 60 min con `00 60`, que son 6).
 
 Leído como dígitos: con `0x3A`, `[9][10]` = `H MM S` (hora, minutos y decenas de
 segundo); con `0x3E`, `[9]` = `_H`, `[10]` = `MM` y `[11]` = `S_`.

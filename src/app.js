@@ -143,14 +143,14 @@ let _pendingGoDurationMs = null;
 // más margen para el desfase entre los GO/resume de los distintos DS.
 const SEMA_DEDUP_MS = 5000;
 let _lastSemaphoreAt = 0;
-function emitSemaphoreOnce(reason) {
+function emitSemaphoreOnce(reason, data) {
   const now = Date.now();
   if (now - _lastSemaphoreAt < SEMA_DEDUP_MS) {
     console.log(`[DS-300] race:semaphore ignorado (${reason}) — ya hay uno activo en la ventana`);
     return;
   }
   _lastSemaphoreAt = now;
-  SocketService.emit('race:semaphore');
+  SocketService.emit('race:semaphore', data);
 }
 
 SerialService.on('race_go', ({ durationMs }) => {
@@ -162,7 +162,16 @@ SerialService.on('race_go', ({ durationMs }) => {
   // Con límite de tanda el GO no es de la carrera, pero sí del entreno: el
   // semáforo se muestra igual (race_started ya ignora la carrera).
   _pendingGoDurationMs = durationMs || null;
-  emitSemaphoreOnce('go');
+  // Para quién es el GO: el directo de una carrera que no se lo lleva no pinta
+  // el semáforo (se quedaría en verde esperando una manga que no arranca).
+  let owner = null;
+  try {
+    const d = GoOwnerService.decide();
+    owner = { owner: d.owner, raceId: d.raceId };
+    console.log(`[DS-300] GO para ${d.owner}${d.raceId != null ? ` (carrera ${d.raceId})` : ''}${d.reason ? ` — ${d.reason}` : ''}`);
+    DebugLogger.log('go_owner', { owner: d.owner, raceId: d.raceId, reason: d.reason });
+  } catch {}
+  emitSemaphoreOnce('go', owner);
 });
 
 SerialService.on('race_started', ({ circuit } = {}) => {
@@ -208,7 +217,8 @@ SerialService.on('race_started', ({ circuit } = {}) => {
     const Driver = require('./models/Driver');
     const db     = require('./config/database');
 
-    const races = Race.findAll().filter(r => r.status === 'active' && (go.raceId == null || r.id === go.raceId));
+    const races = Race.findAll().filter(r => go.raceId == null ? r.status === 'active'
+                                                            : r.id === go.raceId && ['pending', 'active'].includes(r.status));
     for (const race of races) {
       const manga = Manga.findFirstPending(race.id);
       if (!manga) continue;
