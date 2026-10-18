@@ -23,10 +23,13 @@
 // emulador (emulador-tictac) o su puente hid-bridge.js, que reenvían las tramas a
 // un PTY.
 //
-// El aparato solo manda cruces: no manda GO, pausa, stop ni fin. Esas señales las
-// genera PitWall (SerialService.softwareGo), y de este lado solo hace falta saber
-// cuándo empieza una manga (sendStart) y si hay una viva (setExternalRaceState).
-// Las tramas de evento (0x1C) que llegaran se muestran en el visor y se ignoran.
+// El aparato no tiene botones: el GO, la pausa, la reanudación y el stop se los manda
+// PitWall (sendGo/sendPause/sendResume/sendStop, órdenes C1..C4). Él lleva el
+// semáforo, el reloj de la manga y el relé de la pista, y lo cuenta con sus tramas
+// de evento (0x1C), que se traducen a las mismas señales que un DS (race_go,
+// race_started, race_paused…). Así la corriente y el cronometraje van a la vez.
+// Si el aparato no contesta a una orden, PitWall sigue por su cuenta como antes
+// (semáforo de 3 s), para no perder la manga.
 const { performance } = require('perf_hooks');
 const DebugLogger  = require('./DebugLogger');
 const FrameMonitor = require('./FrameMonitor');
@@ -44,6 +47,13 @@ const RAW_LOG_MAX     = 2000;
 const RECENT_LAPS     = 9;        // vueltas reales recientes por carril para el ritmo típico (mediana)
 const MAX_GAP_FILL    = 50;       // más vueltas de salto que esto = el aparato reinició su contador, no un hueco
 const BUF_MAX         = 4096;     // tope del buffer de troceado: ante basura sin sincronismo no crece
+// Esperas de las órdenes (los tests las acortan).
+const TIEMPOS = {
+  respuesta:      1500,   // lo que se espera la respuesta del aparato a una orden
+  verdeMax:      10000,   // semáforo del aparato: tras su arranque, el verde tiene que llegar antes
+  semaforoLocal:  3000,   // semáforo de PitWall cuando el aparato no contesta
+};
+const SESION_ABIERTA_MS = 9 * 3600000;  // entreno sin tiempo: el aparato necesita uno
 
 // `node-hid` es un módulo nativo opcional: si no se pudo instalar o compilar, la
 // fuente USB no está disponible pero el resto de PitWall sigue funcionando.
@@ -52,6 +62,7 @@ let _hidLoader = () => require('node-hid');
 class TicTacConnection {
   // Solo para los tests: sustituye el módulo HID por uno falso.
   static setHidLoader(fn) { _hidLoader = fn || (() => require('node-hid')); }
+  static get TIEMPOS() { return TIEMPOS; }
 
   // Aparatos TicTacSlot conectados por USB, para que Ajustes muestre si lo detecta.
   // { available, devices: [{ path, product, manufacturer }], error }
@@ -73,10 +84,25 @@ class TicTacConnection {
   // único array de callbacks para todas las fuentes. Aquí solo se usan los de cruce
   // y enlace.
   constructor(circuitIndex, laneOffset, onCrossing, onGo, onStop, onPause, onResume, onGoSignal, onFinish, onResumeSignal, onSemaphoreStep, onHeartbeat, onLinkChange) {
+    const noop = () => {};
     this._circuitIndex = circuitIndex;
     this._laneOffset   = laneOffset;
     this._onCrossing   = onCrossing;
-    this._onLinkChange = onLinkChange || (() => {});
+    this._onGo            = onGo || noop;
+    this._onStop          = onStop || noop;
+    this._onPause         = onPause || noop;
+    this._onResume        = onResume || noop;
+    this._onGoSignal      = onGoSignal || noop;
+    this._onFinish        = onFinish || noop;
+    this._onResumeSignal  = onResumeSignal || noop;
+    this._onSemaphoreStep = onSemaphoreStep || noop;
+    this._onLinkChange = onLinkChange || noop;
+
+    // Estado de la pista según el aparato: null (no se sabe) · 'reposo' ·
+    // 'arrancando' (orden dada o semáforo) · 'corriendo' · 'pausa' · 'reanudando'.
+    this._estado         = null;
+    this._esperaTimer    = null;
+    this._duracionPedida = null;   // la del último sendGo; 0 = sesión sin tiempo
 
     this.isTicTac   = true;
     this._port      = null;
@@ -242,6 +268,7 @@ class TicTacConnection {
 
   async close() {
     this._explicitClose = true;
+    this._limpiarEspera();
     if (this._reconnectTimer) { clearTimeout(this._reconnectTimer); this._reconnectTimer = null; }
     this._stopUsbScan();
     this._releaseUsb();
@@ -255,6 +282,141 @@ class TicTacConnection {
     this._connected = connected;
     console.log(`[TicTac C${this._circuitIndex + 1}] Link → ${connected ? 'connected' : 'DISCONNECTED'}`);
     this._onLinkChange(this._circuitIndex, connected);
+  }
+
+  // ── Órdenes al aparato ────────────────────────────────────────────────────
+  // Informe HID: ID de informe 0 delante de los 16 bytes. Por el puerto serie
+  // (emulador, puente) van los 16 bytes solos.
+  _escribir(orden) {
+    const hex = orden.subarray(0, 3).toString('hex');
+    try {
+      if (this._hid)                         this._hid.write([0x00, ...orden]);
+      else if (this._port && this._port.isOpen) this._port.write(orden);
+      else return false;
+    } catch (e) {
+      console.warn(`[TicTac C${this._circuitIndex + 1}] No se pudo mandar la orden ${hex}: ${e.message}`);
+      DebugLogger.log('tictac_orden_error', { circuit: this._circuitIndex + 1, orden: hex, error: e.message });
+      return false;
+    }
+    console.log(`[TicTac C${this._circuitIndex + 1}] Orden → ${hex}`);
+    DebugLogger.log('tictac_orden', { circuit: this._circuitIndex + 1, orden: hex });
+    return true;
+  }
+
+  _esperar(ms, fn) {
+    this._limpiarEspera();
+    this._esperaTimer = setTimeout(() => { this._esperaTimer = null; fn(); }, ms);
+  }
+  _limpiarEspera() {
+    if (this._esperaTimer) { clearTimeout(this._esperaTimer); this._esperaTimer = null; }
+  }
+
+  // GO: el aparato programa el tiempo, hace su semáforo y abre la corriente. La
+  // manga arranca con su verde (A3), no al pulsar. `durationMs` vacío = sesión sin
+  // tiempo (entreno libre): se le da uno largo y a PitWall se le dice «sin tiempo».
+  sendGo(durationMs) {
+    this._duracionPedida = durationMs || 0;
+    if (!this._escribir(P.ordenArrancar(durationMs || SESION_ABIERTA_MS))) { this._goLocal(); return; }
+    this._estado = 'arrancando';
+    this._esperar(TIEMPOS.respuesta, () => {
+      console.warn(`[TicTac C${this._circuitIndex + 1}] El aparato no contesta al GO: arranca PitWall`);
+      DebugLogger.log('tictac_sin_respuesta', { circuit: this._circuitIndex + 1, orden: 'arrancar' });
+      this._goLocal();
+    });
+  }
+
+  _goLocal() {
+    const durationMs = this._duracionPedida || 0;
+    this._duracionPedida = null;
+    this._entrarEnArranque(durationMs);
+    this._esperar(TIEMPOS.semaforoLocal, () => this._arrancar());
+  }
+
+  _entrarEnArranque(durationMs) {
+    this._estado = 'arrancando';
+    this._onGoSignal(durationMs);
+  }
+
+  _arrancar() {
+    this._limpiarEspera();
+    this.sendStart();
+    this._estado = 'corriendo';
+    this._onGo();
+  }
+
+  sendPause() {
+    if (this._estado !== 'corriendo' && this._estado !== null) return;
+    if (!this._escribir(P.orden(P.ORDEN.PAUSA))) { this._pausar(); return; }
+    this._esperar(TIEMPOS.respuesta, () => this._pausar());
+  }
+
+  _pausar() {
+    this._limpiarEspera();
+    this._estado = 'pausa';
+    this._onPause();
+  }
+
+  // Reanudar: como el GO, la corriente vuelve con el verde del aparato.
+  sendResume() {
+    if (this._estado !== 'pausa' && this._estado !== null) return;
+    const ok = this._escribir(P.orden(P.ORDEN.REANUDAR));
+    this._estado = 'reanudando';
+    this._onResumeSignal();
+    this._esperar(ok ? TIEMPOS.verdeMax : TIEMPOS.semaforoLocal, () => this._reanudar());
+  }
+
+  _reanudar() {
+    this._limpiarEspera();
+    this._estado = 'corriendo';
+    this._onResume();
+  }
+
+  // STOP: PitWall ya ha cerrado lo suyo (stop forzado, fin de manga, fin de pole o
+  // de entreno); solo falta cortar la corriente. El STOP con que contesta el
+  // aparato encuentra la pista ya en reposo y no se vuelve a propagar.
+  sendStop() {
+    this._limpiarEspera();
+    if (this._estado === 'reposo') return;
+    this._escribir(P.orden(P.ORDEN.PARAR));
+    this._estado = 'reposo';
+  }
+
+  // Tramas de evento del aparato: lo que de verdad ha pasado en la pista.
+  _onEvento(d) {
+    const E = P.EVENTO;
+    switch (d.codigo) {
+      case E.ARRANQUE_TIEMPO: {
+        const pedida = this._duracionPedida;
+        this._duracionPedida = null;
+        if (this._estado !== 'arrancando' || pedida != null) this._entrarEnArranque(pedida != null ? pedida : d.durationMs);
+        this._esperar(TIEMPOS.verdeMax, () => this._arrancar());
+        return;
+      }
+      case E.SEMAFORO:
+        if (this._estado === 'arrancando' || this._estado === 'reanudando') this._onSemaphoreStep();
+        return;
+      case E.INICIO:
+        if (this._estado === 'pausa' || this._estado === 'reanudando') this._reanudar();
+        else if (this._estado !== 'corriendo') this._arrancar();
+        return;
+      case E.PAUSA:
+        if (this._estado === 'corriendo' || this._estado === 'reanudando' || this._estado === null) this._pausar();
+        return;
+      case E.FINAL: {
+        this._limpiarEspera();
+        const antes = this._estado;
+        this._estado = 'reposo';
+        if (antes !== 'reposo') this._onFinish();
+        return;
+      }
+      case E.STOP: {
+        this._limpiarEspera();
+        const antes = this._estado;
+        this._estado = 'reposo';
+        if (antes !== 'reposo') this._onStop();
+        return;
+      }
+    }
   }
 
   // GO de PitWall: cada carril empieza de cero. El reloj del aparato no se reinicia
@@ -335,7 +497,9 @@ class TicTacConnection {
     this._trackSeq(d.seq);
 
     if (d.tipo === 'evento') {
-      DebugLogger.log('tictac_evento', { circuit: this._circuitIndex + 1, codigo: d.codigo, nombre: d.nombre });
+      console.log(`[TicTac C${this._circuitIndex + 1}] Evento ${d.nombre} (0x${d.codigo.toString(16)})`);
+      DebugLogger.log('tictac_evento', { circuit: this._circuitIndex + 1, codigo: d.codigo, nombre: d.nombre, estado: this._estado });
+      this._onEvento(d);
       return;
     }
     if (d.tipo !== 'cruce') return;

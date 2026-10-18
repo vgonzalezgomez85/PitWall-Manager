@@ -226,10 +226,34 @@ reloj_ms = min * 60000 + ms + decimas / 10
 Mismos códigos que `[8]` en los DS: TicTacSlot traduce el evento USB a la
 trama DS correspondiente, con `[7] = 0x3E` en el caso de `0xA1`.
 
-### 2.5 PC → aparato [código, sin uso confirmado]
+### 2.5 PC → aparato: control remoto (relé de la pista) [código, TICTAC_Slot nuevo]
 
-Informe de salida `00 BB <carril>` (`00` es el ID de informe; el resto del
-informe va a `0xFF`). **Observado** con TicTacSlot conectado al emulador:
+Sacado el 19-oct-2026 del programa nuevo `TICTAC_Slot.exe` (.NET NativeAOT,
+Avalonia + HidSharp). Es el único sitio donde escribe al HID (`SendFrame`):
+informe de salida de 17 bytes = ID de informe `00` + 16 bytes, con la orden
+al principio y **el resto a `0x00`**. Solo se manda al circuito 1, y solo si
+el cuentavueltas es TICTAC («El control remoto de un cuentavueltas solo es
+posible con cuentavueltas TICTAC»).
+
+| Orden | Bytes | Botón de TICTAC_Slot |
+|---|---|---|
+| Arrancar | `C1 <min> <horas>` | START. Tiempo programado de la manga: `min` = 1..60, `horas` = (min_totales − 1) div 60. 10 min → `C1 0A 00`; 60 min → `C1 3C 00`; 90 min → `C1 1E 01`. Resolución de 1 minuto |
+| Parar | `C2` | STOP (con la manga en marcha o en pausa) |
+| Pausa | `C3` | PAUSA |
+| Reanudar | `C4` | PAUSA pulsado estando en pausa |
+
+El aparato hace el resto y lo cuenta con sus tramas de evento (2.4); el
+programa las trata igual que las de un DS: `A1` «Programado» (trae el
+tiempo), `A2` «SEMÁFORO», `A3` «START/GO» (o «PAUSE OFF» si venía de
+pausa), `A4` «TIME END», `A5` «PAUSE ON», `A7` «STOP». O sea: con el TicTac
+el semáforo, el reloj de la manga y el corte de corriente los lleva el
+aparato, como un DS-300 al que se le pulsan los botones desde el PC.
+Sin probar con el aparato real: cuánto dura su semáforo y si contesta con
+todos esos eventos.
+
+El programa antiguo (`TicTacSlot.exe` 5.8.8, VB6) no tiene estas órdenes.
+Su único informe de salida es `00 BB <carril>` (con el resto a `0xFF`).
+**Observado** con TicTacSlot conectado al emulador:
 lo manda en el **primer paso de cada carril** tras arrancar la manga, una vez
 por carril. Puede que sirva para que el aparato reinicie la cuenta de ese
 carril (eso encajaría con que en la captura real cada carril empezara en 1 en
@@ -278,8 +302,10 @@ Evento  { tipo: 'arranque_tiempo' | 'inicio' | 'final' | 'pausa' | 'stop',
 1. El formato de `[14..17]` en los DS.
 2. La velocidad real del DS-300 (56000 según la ayuda; puede que sea 57600).
 3. Qué hace el aparato con su contador de vueltas en INICIO, PAUSA y STOP.
-4. Para qué sirve el comando USB `BB <carril>` (se manda en el primer paso de
-   cada carril) y el `E0 …` visto una vez.
+4. Para qué sirve el comando USB `BB <carril>` del programa antiguo (se manda en
+   el primer paso de cada carril) y el `E0 …` visto una vez.
+5. Con las órdenes `C1`..`C4` (2.5): cuánto dura el semáforo del aparato y qué
+   eventos devuelve exactamente tras cada orden.
 
 ## 5. Banco de pruebas con el TicTacSlot real
 

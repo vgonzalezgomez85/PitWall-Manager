@@ -117,6 +117,22 @@ class SessionController {
       try { require('../config/database').prepare('UPDATE races SET manga_duration_minutes=? WHERE id=?').run(durMin, race.id); } catch {}
     }
 
+    const wantsJson = req.xhr || (req.get('accept') || '').includes('application/json');
+
+    // TicTac: el GO es una orden a la caja (con el tiempo de la manga). Ella hace su
+    // semáforo y abre la corriente, y su verde arranca la manga por el mismo camino
+    // que el GO de un DS (app.js, race_started → _pendingSetup).
+    if (SerialService.remoteGo) {
+      TimingService.clearTandaBoundary();
+      TimingService.setPendingManga(manga, race, lanes, teams, drivers);
+      GoOwnerService.claimRace(race.id, `GO de la manga ${manga.number}`);
+      GoOwnerService.armRemoteGo('race', race.id);
+      Tanda.updateStatus(tanda.id, 'active');
+      SerialService.sendGo(durationMs || (race.manga_duration_minutes || 0) * 60000);
+      if (wantsJson) return res.json({ ok: true, semaphore: true });
+      return res.redirect(`/races/${race.id}/mangas/${manga.id}/live`);
+    }
+
     const softwareGo = SerialService.softwareGo;
 
     const doStart = () => {
@@ -134,7 +150,7 @@ class SessionController {
     if (softwareGo && req.body.semaphore !== '0') {
       SocketService.emit('race:semaphore');
       setTimeout(doStart, SEMAPHORE_MS);
-      if (req.xhr || (req.get('accept') || '').includes('application/json')) {
+      if (wantsJson) {
         return res.json({ ok: true, semaphore: true });
       }
       return res.redirect(`/races/${race.id}/mangas/${manga.id}/live`);
@@ -145,12 +161,32 @@ class SessionController {
   }
 
   // POST /races/:id/mangas/:mangaId/pause  — pausa manual (simulación/BART)
-  static pause(req, res) {
+  static async pause(req, res) {
     const race  = Race.findById(req.params.id);
     const manga = Manga.findById(req.params.mangaId);
     if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.not_found') });
-    if (TimingService.activeMangaId === manga.id) TimingService.pauseManga();
+    // TicTac: la pausa la hace la caja (corta la corriente) y su trama de pausa
+    // pausa la manga.
+    if (TimingService.activeMangaId === manga.id) {
+      if (SerialService.remoteGo) {
+        SerialService.sendPause();
+        await SessionController._waitFor(() => TimingService.isPaused);
+      } else {
+        TimingService.pauseManga();
+      }
+    }
     res.redirect(`/races/${race.id}/mangas/${manga.id}/live`);
+  }
+
+  // Lo que pide la caja llega con su trama un momento después: se espera antes de
+  // recargar la página para que salga ya en el estado nuevo. Nunca más de lo que
+  // tarda TicTacConnection en seguir por su cuenta si el aparato no contesta.
+  static _waitFor(cond, maxMs = 2500) {
+    return new Promise(resolve => {
+      const t0 = Date.now();
+      const check = () => (cond() || Date.now() - t0 >= maxMs) ? resolve() : setTimeout(check, 50);
+      check();
+    });
   }
 
   // POST /races/:id/mangas/:mangaId/resume  — reanuda manual (simulación/BART)
@@ -159,6 +195,13 @@ class SessionController {
     const manga = Manga.findById(req.params.mangaId);
     if (!race || !manga) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.not_found') });
     if (TimingService.activeMangaId !== manga.id) return res.redirect(`/races/${race.id}/mangas/${manga.id}/live`);
+
+    // TicTac: como el GO, la caja hace su semáforo y su verde reanuda la manga.
+    if (SerialService.remoteGo) {
+      SerialService.sendResume();
+      if (req.xhr || (req.get('accept') || '').includes('application/json')) return res.json({ ok: true, semaphore: true });
+      return res.redirect(`/races/${race.id}/mangas/${manga.id}/live`);
+    }
 
     // Igual que el GO: en BART/sim mostramos el semáforo de reanudación (3s) y
     // reanudamos al ponerse verde — mismo flujo que la trama de resume del DS-300.

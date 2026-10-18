@@ -249,6 +249,13 @@ class PoleController {
       }
       if (!PoleTimingService.isStandby) return res.status(409).json({ ok: false, error: 'not_standby' });
 
+      // TicTac: la orden va a la caja, que hace su semáforo y abre la corriente; su
+      // verde arranca al piloto por el camino del DS (race_started).
+      if (SerialService.remoteGo) {
+        SerialService.sendGo(PoleTimingService.session.durationMs);
+        return res.json({ ok: true, semaphore: true });
+      }
+
       const entryId = current.id;
       SocketService.emit('race:semaphore');
       setTimeout(() => {
@@ -261,7 +268,13 @@ class PoleController {
 
   // POST /races/:id/pole/participant/pause
   static pauseParticipant(req, res) {
-    return PoleController._softwareCommand(req, res, () => {
+    return PoleController._softwareCommand(req, res, async () => {
+      if (SerialService.remoteGo) {
+        if (!PoleTimingService.isRunning || PoleTimingService.isPaused) return res.json({ ok: false });
+        SerialService.sendPause();
+        await require('./SessionController')._waitFor(() => PoleTimingService.isPaused);
+        return res.json({ ok: PoleTimingService.isPaused });
+      }
       res.json({ ok: PoleTimingService.pause() });
     });
   }
@@ -270,6 +283,10 @@ class PoleController {
   static resumeParticipant(req, res) {
     return PoleController._softwareCommand(req, res, () => {
       if (!PoleTimingService.isPaused) return res.json({ ok: false });
+      if (SerialService.remoteGo) {
+        SerialService.sendResume();
+        return res.json({ ok: true, semaphore: true });
+      }
       SocketService.emit('race:semaphore');
       setTimeout(() => PoleTimingService.resume(), PoleController.SEMAPHORE_MS);
       res.json({ ok: true, semaphore: true });

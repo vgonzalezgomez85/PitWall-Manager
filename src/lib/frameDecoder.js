@@ -96,7 +96,7 @@ const ETIQUETAS = [
   [/^Fanout Master→Slaves \(el cliente no la encuadra\)$/, 'fanout'],
   [/^Tipo desconocido (0x\w+) — resincroniza$/, 'tipo_desconocido_resinc', m => ({ x: m[1] })],
   [/^Trama sin sincronismo o incompleta$/, 'sin_sincronismo'],
-  [/^Evento (\S+) \((0x\w+)\) — PitWall lo ignora: el interface no manda la carrera$/, 'evento_tictac', m => ({ n: m[1], x: m[2] })],
+  [/^Evento (\S+) \((0x\w+)\) — la caja lo hace en la pista$/, 'evento_tictac', m => ({ n: m[1], x: m[2] })],
   [/^Tipo desconocido (0x\w+)$/, 'tipo_desconocido', m => ({ x: m[1] })],
   [/^Carril (\d+) fuera de rango \(descartada\)$/, 'carril_fuera', m => ({ l: m[1] })],
 ];
@@ -322,7 +322,7 @@ function createDecoder() {
 
     if (d.tipo === 'evento') {
       return { ...base, unknown: [1, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], kind: 'ignored', badge: '·',
-               label: `Evento ${d.nombre} (0x${hex(d.codigo)}) — PitWall lo ignora: el interface no manda la carrera` };
+               label: `Evento ${d.nombre} (0x${hex(d.codigo)}) — la caja lo hace en la pista` };
     }
     if (d.tipo !== 'cruce') {
       return { ...base, kind: 'ignored', badge: '·', label: `Tipo desconocido 0x${hex(b[2])}` };

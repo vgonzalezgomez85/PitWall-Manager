@@ -24,7 +24,12 @@
 //   Tipo 0x1B, cruce:  [4] carril · [5..6] nº de vuelta (uint16 BE)
 //                      [7..8] reloj, minutos · [9..10] ms dentro del minuto ·
 //                      [11] décimas de ms
-//   Tipo 0x1C, evento: [3] código · [4..5] datos
+//   Tipo 0x1C, evento: [3] código · [4..5] datos (0xA1: [4] minutos, [5] horas)
+//
+// Órdenes PC → aparato (TICTAC_Slot.exe nuevo; protocolos §2.5): 16 bytes con la
+// orden delante y el resto a 0. C1 arranca con el tiempo programado, C2 para, C3
+// pausa y C4 reanuda. El aparato lleva el semáforo, el reloj de la manga y el relé
+// de la pista, y lo va contando con sus tramas de evento.
 //
 // No trae el tiempo de vuelta: sale de restar el reloj de dos cruces del MISMO
 // carril. El reloj NO es un contador lineal de ms: leer [8..10] como 24 bits da un
@@ -37,6 +42,7 @@ const TIPO = { CRUCE: 0x1b, EVENTO: 0x1c };
 
 const EVENTO = {
   ARRANQUE_TIEMPO: 0xa1,
+  SEMAFORO:        0xa2,
   INICIO:          0xa3,
   FINAL:           0xa4,
   PAUSA:           0xa5,
@@ -44,11 +50,14 @@ const EVENTO = {
 };
 const NOMBRE_EVENTO = {
   [EVENTO.ARRANQUE_TIEMPO]: 'arranque_tiempo',
+  [EVENTO.SEMAFORO]:        'semaforo',
   [EVENTO.INICIO]:          'inicio',
   [EVENTO.FINAL]:           'final',
   [EVENTO.PAUSA]:           'pausa',
   [EVENTO.STOP]:            'stop',
 };
+
+const ORDEN = { ARRANCAR: 0xc1, PARAR: 0xc2, PAUSA: 0xc3, REANUDAR: 0xc4 };
 
 // Minutos de 16 bits: el reloj da la vuelta cada 65536 min (~45 días).
 const CLOCK_MOD = 0x10000 * 60000;
@@ -68,13 +77,15 @@ function decodificar(buf) {
     };
   }
   if (buf[2] === TIPO.EVENTO) {
-    return {
+    const ev = {
       tipo:   'evento',
       seq:    buf[1],
       codigo: buf[3],
       nombre: NOMBRE_EVENTO[buf[3]] || 'desconocido',
       datos:  [buf[4], buf[5]],
     };
+    if (buf[3] === EVENTO.ARRANQUE_TIEMPO) ev.durationMs = (buf[5] * 60 + buf[4]) * 60000;
+    return ev;
   }
   return { tipo: 'desconocido', seq: buf[1], raw: Buffer.from(buf.subarray(0, LEN)) };
 }
@@ -105,4 +116,20 @@ function deltaReloj(desde, hasta) {
   return Math.round(d * 10) / 10;
 }
 
-module.exports = { SYNC, LEN, TIPO, EVENTO, CLOCK_MOD, decodificar, extraerTramas, deltaReloj };
+// Orden de arranque con el tiempo de la manga. El aparato solo admite minutos
+// enteros: minutos 1..60 y horas = (minutos totales − 1) div 60, como TICTAC_Slot
+// (60 min = C1 3C 00, 90 min = C1 1E 01). Mínimo 1 minuto.
+function ordenArrancar(durationMs) {
+  const total = Math.max(1, Math.round((durationMs || 0) / 60000));
+  const horas = Math.min(0xff, Math.floor((total - 1) / 60));
+  return orden(ORDEN.ARRANCAR, total - horas * 60, horas);
+}
+
+function orden(codigo, ...datos) {
+  const b = Buffer.alloc(LEN);
+  b[0] = codigo;
+  datos.forEach((v, i) => { b[1 + i] = v; });
+  return b;
+}
+
+module.exports = { SYNC, LEN, TIPO, EVENTO, ORDEN, CLOCK_MOD, decodificar, extraerTramas, deltaReloj, ordenArrancar, orden };

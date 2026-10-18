@@ -42,7 +42,7 @@ src/
     statsWorker.js        — worker_thread: proyección/agregados caros. Abre su propia conexión SQLite `readonly` al mismo pitwall.db (PITWALL_DB_READONLY=1). Protocolo ready/projection/raceWide/invalidate/ping/error
   services/
     SerialService.js      — Lectura del DS (DS-300/200/030/080) / BART / TicTac / simulación. Emite eventos internos
-    TicTacConnection.js   — Fuente «interface TicTac»: lee los cruces por USB HID (node-hid, autodetección por VID/PID) o por un PTY (emulador/puente). Solo cruces: PitWall dirige la carrera
+    TicTacConnection.js   — Fuente «interface TicTac»: lee los cruces por USB HID (node-hid, autodetección por VID/PID) o por un PTY (emulador/puente). Le manda las órdenes de PitWall (C1 GO con tiempo, C2 stop, C3 pausa, C4 reanudar) y traduce sus tramas de evento a las señales `race_*` de un DS
     TimingService.js      — Gestiona la sesión activa de manga (laps, standings, ticks)
     StatsWorkerClient.js  — Cliente del worker de stats en el hilo principal. requestProjection() SIEMPRE resuelve: si el worker no está / falló / PITWALL_NO_WORKER=1, calcula en el hilo con raceProjection
     TrainingService.js    — Modo entrenamiento libre (sin carrera)
@@ -53,7 +53,7 @@ src/
     ClubBrand.js          — Nombre y logo del club (Ajustes → Preferencias): `settings.club_brand_enabled/club_name/club_logo/club_logo_ver`. El logo va en la BD como data URI PNG/JPEG (máx. 1 MB; entra en las copias y Electron no puede escribir en `public/`, que va en el asar). `active()` = marca a pintar o null; la sirve `GET /club/logo` (pública). En vistas: `partials/club-brand.ejs`. El logo de PitWall sale siempre
   lib/
     dsModels.js           — Familia DS PURA: modelos, baud por defecto, cómo se lee el carril (DS-200 distinto) y qué es una trama de control
-    tictacProtocol.js     — Trama HID de 16 bytes del TicTac PURA (reloj = min·60000 + ms + décimas, NO 24 bits lineales; tiempo de vuelta = resta de relojes por carril)
+    tictacProtocol.js     — Trama HID de 16 bytes del TicTac PURA (reloj = min·60000 + ms + décimas, NO 24 bits lineales; tiempo de vuelta = resta de relojes por carril) y sus órdenes (`ordenArrancar`: minutos 1-60 + horas). Ver `TicTacSlot-cuentavueltas-protocolos.md` §2.5
   utils/
     excelClubBand.js      — `addClubBand(wb, ws, cols, {pitwallLogo})`: banda del club arriba de una hoja ExcelJS (resultados, puntos, turnos). Los CSV no llevan marca
   views/                  — Plantillas EJS
@@ -101,11 +101,11 @@ database/                 — pitwall.db (SQLite, no commitear)
 |---|---|---|
 | DS (300/200/030/080) | `serial`, `serial_agg` | la caja (señales `race_*`) |
 | BART | `bart` | PitWall (`isBart`: el Master SÍ se pausa de verdad) |
-| TicTac | `tictac` | PitWall (`isTicTac`: el aparato sigue contando en pausa, así que aplica la compensación de pausa del DS) |
+| TicTac | `tictac` | la caja, por orden de PitWall (`remoteGo`): los botones mandan C1..C4 y el aparato hace el semáforo, abre/corta el relé de la pista y avisa con sus eventos. Su reloj sigue contando en pausa, así que aplica la compensación de pausa del DS |
 | Simulación | `simulation` | PitWall |
 
-- `SerialService.softwareGo` (BART \| simulación \| TicTac) = PitWall da el GO: semáforo de 3 s, botones GO/PAUSE/STOP en directo, entrenamiento y **pole**. `SerialService.endsByTimer` (simulación \| TicTac) = nadie avisa del fin: `TimingService` cierra justo al agotar el tiempo (los DS llevan un respaldo de 30 s de silencio). Usar estas propiedades, no `isBart`, para decidir quién manda.
-- `sendStart()` en `TicTacConnection` borra las referencias de reloj por carril: el primer cruce tras el GO sale sin tiempo = vuelta de salida desde el GO. Con la manga viva (`setExternalRaceState`) una vuelta larga no se descarta como «primer cruce» (pausas largas).
+- `SerialService.softwareGo` (BART \| simulación \| TicTac) = botones GO/PAUSE/STOP en directo, entrenamiento y **pole**. En BART y simulación PitWall da el GO (semáforo de 3 s). `SerialService.remoteGo` (TicTac) = los botones solo mandan la orden (`sendGo(durationMs)`, `sendPause`, `sendResume`) y la manga/entreno/pole se mueve con las señales `race_*` que devuelve la caja, como con un DS; el GO se marca para quien lo pulsó (`GoOwnerService.armRemoteGo`, caduca a los 20 s). Si el aparato no contesta (o no está), `TicTacConnection` sigue por su cuenta con su semáforo de 3 s. `sendStop` es aviso: PitWall ya cerró lo suyo y solo corta la corriente. `SerialService.endsByTimer` (simulación \| TicTac) = nadie avisa del fin: `TimingService` cierra justo al agotar el tiempo (los DS llevan un respaldo de 30 s de silencio). Usar estas propiedades, no `isBart`, para decidir quién manda.
+- `sendStart()` en `TicTacConnection` (lo llama también su verde) borra las referencias de reloj por carril: el primer cruce tras el GO sale sin tiempo = vuelta de salida desde el GO. Con la manga viva (`setExternalRaceState`) una vuelta larga no se descarta como «primer cruce» (pausas largas).
 - Modelo de DS: `circuits_serial[].model` (el DS-300 no se guarda; es el valor por defecto). El latido de 60 s solo se vigila en el DS-300.
 - **Reposición de vueltas del TicTac** (`TicTacConnection._repone`): solo con TRES pruebas a la vez — salto del nº de vuelta del aparato, tramas perdidas según su contador de secuencia `[1]` (+1 por trama, de todos los carriles; la captura real del club no salta nunca) y tiempo plausible frente al ritmo típico (mediana de las últimas 9 vueltas reales). Las `k` vueltas del tramo salen como `missed:true` (is_estimated=1) a ese ritmo; `TimingService` nunca las deja ser mejor vuelta y `PoleTimingService` las ignora. El nº de vuelta del aparato solo no basta: no se sabe cuándo lo reinicia.
 - La vuelta de bandera usa la misma ventana `late_crossing_grace_ms` con cualquier dispositivo (DS, BART, TicTac y simulación); 0 en Ajustes la apaga. Con TicTac y BART no hay reposición por contador del DS (`getDsLapCounters`), así que lo que cruce fuera de la ventana no suma.

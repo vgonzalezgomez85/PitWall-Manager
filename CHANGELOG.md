@@ -13,6 +13,15 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.64.0] — 2026-10-19
+
+### Añadido
+- **PitWall da y corta la corriente de la pista con el interface TicTac**: hasta ahora, con TicTac PitWall contaba bien las vueltas pero la corriente había que darla y cortarla a mano. Ahora los botones **GO**, **PAUSA**, **REANUDAR** y **STOP** (directo de carrera, entreno libre y de competición, y pole) mandan la orden al aparato: el **semáforo lo hace el propio interface** (el de la pantalla sigue al suyo), al ponerse en verde **da corriente** y arranca la manga, la **pausa la corta** y reanudar la devuelve, y al **acabar el tiempo** o pulsar **STOP** la corta. La vuelta que queda partida por una pausa no suma el tiempo parado. El entreno libre sin tiempo se le manda como una sesión larga (9 h) porque el aparato siempre necesita uno.
+- **Si el interface no contesta, la manga no se pierde**: si el aparato no responde a una orden (o no está conectado), PitWall sigue como antes, con su propio semáforo de 3 s y su cronómetro (la corriente, entonces, a mano). Probado con el emulador; **falta probarlo con el aparato del club**, y los interfaces que van con el programa TicTac antiguo podrían no admitir estas órdenes.
+
+### Mejorado
+- **Textos del TicTac al día**: la explicación de la fuente TicTac en **Ajustes** ya no dice que solo manda cruces, y el visor de tramas ya no dice que PitWall ignora sus eventos (semáforo, GO, pausa, fin): ahora son los que mueven la carrera en la pista.
+
 ## [1.63.2] — 2026-10-17
 
 ### Corregido

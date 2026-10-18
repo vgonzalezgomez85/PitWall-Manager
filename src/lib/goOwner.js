@@ -37,12 +37,16 @@
  * @param {boolean} s.tandaBoundary      acaba de terminar una tanda y la siguiente no está preparada
  * @param {boolean} s.liveViewer         hay un directo abierto en el ordenador de la pista
  * @param {boolean} s.simReplay          el GO lo da el reproductor de carrera simulada
+ * @param {{owner:'race'|'training', raceId:number|null}|null} s.remoteGo
+ *   GO pulsado en PitWall con una caja que arranca sola (TicTac): el arranque que
+ *   devuelve la caja es de quien lo pidió
  * @returns {{owner:'race'|'pole'|'training', reason:string|null, raceId:number|null, claimed:boolean}}
  *   `claimed`: la carrera o la pole tienen el GO pedido aunque ahora no lo
  *   cojan (sin directo abierto); lo usa la app de escritorio al arrancar.
  */
 function decideGoOwner(s) {
   if (s.mangaRaceId != null) return { owner: 'race', reason: 'manga_running', raceId: s.mangaRaceId, claimed: true };
+  if (s.remoteGo)            return { owner: s.remoteGo.owner, reason: 'remote_go', raceId: s.remoteGo.raceId ?? null, claimed: true };
   if (s.poleRaceId  != null) return { owner: 'pole', reason: 'pole',          raceId: s.poleRaceId,  claimed: true };
   if (s.simReplay)           return { owner: 'race', reason: 'sim_replay',    raceId: null,          claimed: true };
 

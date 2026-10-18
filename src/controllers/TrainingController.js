@@ -226,6 +226,16 @@ class TrainingController {
 
     const durMin = parseInt(req.body.duration_minutes, 10);
     const durationMs = (Number.isFinite(durMin) && durMin > 0) ? durMin * 60000 : null;
+    const wantsJson  = req.xhr || (req.get('accept') || '').includes('application/json');
+
+    // TicTac: la orden va a la caja, que hace su semáforo y abre la corriente; su
+    // verde activa el entreno por el camino del DS (race_go/race_started).
+    if (SerialService.remoteGo) {
+      GoOwnerService.armRemoteGo('training');
+      SerialService.sendGo(durationMs);
+      if (wantsJson) return res.json({ ok: true, semaphore: true });
+      return res.redirect(dest);
+    }
 
     // Semáforo F1 (3s) y al verde activa + arranca el Master — como en carrera.
     const SEMAPHORE_MS = 3000;
@@ -236,17 +246,23 @@ class TrainingController {
       try { SerialService.sendStart(); } catch {}
     }, SEMAPHORE_MS);
 
-    if (req.xhr || (req.get('accept') || '').includes('application/json')) return res.json({ ok: true, semaphore: true });
+    if (wantsJson) return res.json({ ok: true, semaphore: true });
     res.redirect(dest);
   }
 
   // POST /training/pause — pausa la grabación + pausa el Master BART
-  static pause(req, res) {
+  static async pause(req, res) {
     const isComp = req.body.mode === 'competition';
     const svc    = isComp ? CompetitionService : TrainingService;
-    svc.pause();
-    try { SerialService.sendPause(); } catch {}
-    SocketService.emit('training:paused');
+    if (SerialService.remoteGo) {
+      // TicTac: corta la caja y su trama de pausa pausa el entreno.
+      try { SerialService.sendPause(); } catch {}
+      await require('./SessionController')._waitFor(() => svc.isPaused);
+    } else {
+      svc.pause();
+      try { SerialService.sendPause(); } catch {}
+      SocketService.emit('training:paused');
+    }
     if (req.xhr || (req.get('accept') || '').includes('application/json')) return res.json({ ok: true });
     res.redirect(isComp ? '/training/competition/live' : '/training/live');
   }
@@ -255,6 +271,11 @@ class TrainingController {
   static resume(req, res) {
     const isComp = req.body.mode === 'competition';
     const svc    = isComp ? CompetitionService : TrainingService;
+    if (SerialService.remoteGo) {
+      try { SerialService.sendResume(); } catch {}
+      if (req.xhr || (req.get('accept') || '').includes('application/json')) return res.json({ ok: true, semaphore: true });
+      return res.redirect(isComp ? '/training/competition/live' : '/training/live');
+    }
     const SEMAPHORE_MS = 3000;
     SocketService.emit('race:semaphore');
     setTimeout(() => {

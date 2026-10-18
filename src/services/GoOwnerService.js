@@ -20,10 +20,14 @@
 // solo sobrevive la tanda a medias, que se lee de la BD.
 const { decideGoOwner, canCede } = require('../lib/goOwner');
 
+// Lo que puede tardar la caja desde la orden de GO hasta su verde.
+const REMOTE_GO_MS = 20000;
+
 class GoOwnerService {
   constructor() {
     this._claimRaceId = null;
     this._lastKey     = null;
+    this._remoteGo    = null;
   }
 
   get claimRaceId() { return this._claimRaceId; }
@@ -106,6 +110,7 @@ class GoOwnerService {
       tandaBoundary: TimingService._tandaBoundary === true || (raceId != null && this._dbTandaBoundary(raceId)),
       liveViewer:    SocketService.hasLocalLiveViewer(),
       simReplay:     !!SerialService._simReplay,
+      remoteGo:      this._remoteGo && Date.now() < this._remoteGo.until ? this._remoteGo : null,
     };
   }
 
@@ -141,6 +146,13 @@ class GoOwnerService {
     if (this._claimRaceId !== raceId) console.log(`[GoOwner] La carrera ${raceId} pide el GO (${why})`);
     this._claimRaceId = raceId;
     this.notify();
+  }
+
+  // GO pulsado en PitWall con una caja que arranca sola (TicTac): su arranque llega
+  // unos segundos después (semáforo del aparato) y es de quien lo pidió. Caduca
+  // solo: pasado el semáforo, la manga o el entreno en marcha ya mandan.
+  armRemoteGo(owner, raceId = null) {
+    this._remoteGo = { owner, raceId: raceId != null ? parseInt(raceId, 10) : null, until: Date.now() + REMOTE_GO_MS };
   }
 
   release(why) {

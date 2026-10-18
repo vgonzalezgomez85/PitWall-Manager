@@ -67,8 +67,18 @@ class CompetitionTrainingServiceClass {
     });
 
     // Pausa POR CIRCUITO: cada DS pausa solo sus carriles.
-    SerialService.on('race_paused',  ({ circuit } = {}) => { if (this._active) this._setCircuitPaused(circuit || 0, true);  });
-    SerialService.on('race_resumed', ({ circuit } = {}) => { if (this._active) this._setCircuitPaused(circuit || 0, false); });
+    // TicTac: la pausa y la reanudación de los botones llegan por aquí; la pantalla
+    // cambia sus botones con training:paused/resumed.
+    SerialService.on('race_paused',  ({ circuit } = {}) => {
+      if (!this._active) return;
+      this._setCircuitPaused(circuit || 0, true);
+      if (SerialService.remoteGo) SocketService.emit('training:paused');
+    });
+    SerialService.on('race_resumed', ({ circuit } = {}) => {
+      if (!this._active) return;
+      this._setCircuitPaused(circuit || 0, false);
+      if (SerialService.remoteGo) SocketService.emit('training:resumed');
+    });
     // Forced stop: preserve heat, don't rotate
     SerialService.on('race_stopped',  () => { if (this._active) this._stopHeat(false); });
     // Normal end: rotate lanes

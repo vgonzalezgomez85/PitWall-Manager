@@ -32,6 +32,7 @@ const PoleController   = require('../src/controllers/PoleController');
 const PoleTimingService = require('../src/services/PoleTimingService');
 const SerialService    = require('../src/services/SerialService');
 const TicTacConnection = require('../src/services/TicTacConnection');
+const { tictacConectado } = require('./helpers/tictacAparato');
 
 const conexionesOriginales = SerialService._connections;
 const enviados = [];
@@ -169,21 +170,21 @@ test('endpoints: con un DS (manda la caja) rechazan GO, pausa y reanudar', () =>
   }
 });
 
-test('endpoint GO con TicTac: arma al piloto actual y arranca tras el semáforo', async () => {
-  const e = escenario();
-  const original = Object.getOwnPropertyDescriptor(PoleController, 'SEMAPHORE_MS');
-  Object.defineProperty(PoleController, 'SEMAPHORE_MS', { get: () => 50, configurable: true });
-  try {
-    const { req, res, out } = peticion(e.raceId);
-    PoleController.goParticipant(req, res);
-    assert.equal(out.status, 200);
-    assert.equal(out.body.semaphore, true);
-    assert.equal(PoleTimingService.isStandby, true, 'armado durante el semáforo');
-    await new Promise(r => setTimeout(r, 150));
-    assert.equal(PoleTimingService.isRunning, true, 'arrancó al ponerse verde');
-  } finally {
-    Object.defineProperty(PoleController, 'SEMAPHORE_MS', original);
-  }
+test('endpoint GO con TicTac: manda la orden con el tiempo y arranca con el verde del aparato', () => {
+  const e = escenario(['A', 'B'], 5);
+  const t = tictacConectado();
+  SerialService._connections = [t.conn];
+  const { req, res, out } = peticion(e.raceId);
+  PoleController.goParticipant(req, res);
+  assert.equal(out.status, 200);
+  assert.deepEqual(t.ordenesHex(), ['c10500'], 'C1 con 5 minutos');
+  assert.equal(PoleTimingService.isStandby, true, 'sigue esperando: la corriente aún no está');
+  t.evento(t.E.ARRANQUE_TIEMPO, [5, 0]);
+  t.evento(t.E.SEMAFORO);
+  assert.equal(PoleTimingService.isRunning, false, 'el semáforo del aparato no arranca');
+  t.evento(t.E.INICIO);
+  assert.equal(PoleTimingService.isRunning, true, 'arranca con el verde del aparato');
+  t.conn._limpiarEspera();
 });
 
 test('endpoint GO: si se aborta durante el semáforo, el GO ya no vale', async () => {
@@ -201,21 +202,37 @@ test('endpoint GO: si se aborta durante el semáforo, el GO ya no vale', async (
   }
 });
 
-test('endpoint pausa y reanudar con TicTac', async () => {
+test('endpoint pausa y reanudar con TicTac: corta y abre la caja, y la pole sigue sus tramas', async () => {
   const e = escenario();
-  preparar(e);
-  PoleTimingService.go();
+  const t = tictacConectado();
+  SerialService._connections = [t.conn];
   let p = peticion(e.raceId);
-  PoleController.pauseParticipant(p.req, p.res);
+  PoleController.goParticipant(p.req, p.res);
+  t.evento(t.E.INICIO);
+  assert.equal(PoleTimingService.isRunning, true);
+
+  p = peticion(e.raceId);
+  const pausa = PoleController.pauseParticipant(p.req, p.res);
+  assert.equal(t.ordenesHex().at(-1), 'c3');
+  t.evento(t.E.PAUSA);
+  await pausa;
   assert.equal(p.out.body.ok, true);
   assert.equal(PoleTimingService.isPaused, true);
 
-  Object.defineProperty(PoleController, 'SEMAPHORE_MS', { get: () => 50, configurable: true });
   p = peticion(e.raceId);
   PoleController.resumeParticipant(p.req, p.res);
-  await new Promise(r => setTimeout(r, 150));
+  assert.equal(t.ordenesHex().at(-1), 'c4');
+  assert.equal(PoleTimingService.isPaused, true, 'hasta el verde del aparato sigue en pausa');
+  t.evento(t.E.INICIO);
   assert.equal(PoleTimingService.isPaused, false);
-  Object.defineProperty(PoleController, 'SEMAPHORE_MS', { get: () => 3000, configurable: true });
+
+  // Parar: corta la corriente y el STOP con que contesta el aparato es el eco de
+  // la orden, no un segundo stop (re-armaría y dejaría al piloto a medias).
+  PoleController.stopParticipant(peticion(e.raceId).req, peticion(e.raceId).res);
+  assert.equal(t.ordenesHex().at(-1), 'c2');
+  assert.equal(PoleTimingService.isStandby, true);
+  t.evento(t.E.STOP);
+  assert.equal(PoleTimingService.isStandby, true);
 });
 
 test('la pole ignora las vueltas repuestas (estimadas): no cuentan ni pueden ser la mejor', () => {

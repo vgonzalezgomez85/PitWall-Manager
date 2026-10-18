@@ -108,10 +108,13 @@ class TrainingServiceClass {
     SerialService.on('race_paused',  ({ circuit } = {}) => {
       if (!this.isReady || TimingService.activeMangaId != null) return;
       this._setCircuitPaused(circuit || 0, true);
+      // TicTac: la pausa del botón llega por aquí; la pantalla cambia sus botones.
+      if (SerialService.remoteGo) SocketService.emit('training:paused');
     });
     SerialService.on('race_resumed', ({ circuit } = {}) => {
       if (!this.isReady || TimingService.activeMangaId != null) return;
       this._setCircuitPaused(circuit || 0, false);
+      if (SerialService.remoteGo) SocketService.emit('training:resumed');
     });
     // Forced stop: data stays on screen, cleared on next GO (records survive)
     SerialService.on('race_stopped',  () => { if (this._active) this._pauseToStandby(); });
