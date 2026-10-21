@@ -17,6 +17,7 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ### Mejorado
 - **API móvil: colores de carril en la carrera.** `/api/mobile/races/...` incluye `race.laneColors` (los del circuito, índice 0 = carril 1), para que PitWall Lap pinte la selección de piloto/equipo con el color del carril en el que corre cada uno.
+- **Instaladores de Mac firmados y notarizados por Apple.** Se abren sin el aviso «PitWall está dañado y no se puede abrir» al descargarlos de la web. Firma Developer ID con *hardened runtime* (`build/entitlements.mac.plist`) y notarización con el perfil del llavero `pitwall` (`npm run dist:mac`).
 
 ## [1.64.1] — 2026-10-21
 

@@ -15,7 +15,7 @@
     "dev": "nodemon --ignore public/ src/app.js",
     "electron": "node electron/launcher.js",
     "dist": "npm run dist:mac && npm run dist:win && npm run dist:linux",
-    "dist:mac": "npm run native:clean && electron-builder --mac && npm run native:dev",
+    "dist:mac": "npm run native:clean && APPLE_KEYCHAIN_PROFILE=pitwall electron-builder --mac && npm run native:dev",
     "dist:win": "npm run native:clean && electron-builder --win && npm run native:dev",
     "dist:linux": "npm run native:clean && PATH=/opt/homebrew/opt/binutils/bin:$PATH electron-builder --linux && npm run native:dev",
     "native:clean": "node -e \"for (const m of ['better-sqlite3','node-hid']) require('fs').rmSync('node_modules/'+m+'/build',{recursive:true,force:true})\"",
@@ -99,7 +99,12 @@
         }
       ],
       "category": "public.app-category.sports-games",
-      "identity": null,
+      "identity": "VICTOR GONZALEZ GOMEZ (3ZX3UMHFU9)",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "notarize": true,
       "icon": "build/icon.icns",
       "extendInfo": {
         "NSBluetoothAlwaysUsageDescription": "PitWall usa Bluetooth para conectar con el cronómetro BART (BLE).",
