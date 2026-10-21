@@ -85,6 +85,7 @@ class TimingServiceClass {
     this._lateWindows        = new Map();
     this._lateCloseTimer     = null; // suelta el oyente de cruces al expirar las ventanas
     this._flagReconcileTimer = null; // red de seguridad por contador del DS (ver _reconcileFinalLaps)
+    this._simClock           = null; // reloj de las tramas en una carrera simulada (ver now())
   }
 
   // Cuánto tiempo después del final de su circuito se acepta un cruce como vuelta de
@@ -194,7 +195,7 @@ class TimingServiceClass {
       }
     } catch {}
 
-    const startTime = Date.now();
+    const startTime = this.now();
     const sessionDurationMs = durationMs || (race.manga_duration_minutes * 60 * 1000);
 
     const laneMap = {};
@@ -676,7 +677,7 @@ class TimingServiceClass {
     // El simulador aleatorio no manda trama de fin: este timer ES el fin de la
     // manga, así que cierra justo al agotar el tiempo, sin margen.
     const AUTO_FINISH_GRACE_MS = SerialService.endsByTimer ? 0 : 30000;
-    const elapsed   = c.startTime ? (Date.now() - c.startTime) : 0;
+    const elapsed   = c.startTime ? (this.now() - c.startTime) : 0;
     const remaining = Math.max(0, c.durationMs - elapsed) + AUTO_FINISH_GRACE_MS;
     c.autoStopTimer = setTimeout(() => {
       console.log(`[TimingService] Circuito ${ci + 1} auto-finalizado (tiempo agotado + margen)`);
@@ -711,9 +712,9 @@ class TimingServiceClass {
     const c = this.session && this.session.circuits[ci];
     if (!c) return null;
     if (c.status === 'pending')  return 0;   // GO escalonado: su caja aún no ha arrancado
-    if (c.status === 'finished') return Math.max(0, (c.endTime   || Date.now()) - c.startTime);
-    if (c.status === 'paused')   return Math.max(0, (c.pauseStart || Date.now()) - c.startTime);
-    return Math.max(0, Date.now() - c.startTime);   // running
+    if (c.status === 'finished') return Math.max(0, (c.endTime   || this.now()) - c.startTime);
+    if (c.status === 'paused')   return Math.max(0, (c.pauseStart || this.now()) - c.startTime);
+    return Math.max(0, this.now() - c.startTime);   // running
   }
 
   // Reloj de cada circuito para la UI: tiempo restante propio según su estado.
@@ -738,7 +739,7 @@ class TimingServiceClass {
     if (!c) { console.log(`[TimingService] startCircuit: circuito ${ci + 1} no está en la config`); return; }
     if (c.status === 'running') return;   // su GO ya estaba dado → ignorar
     c.status    = 'running';
-    c.startTime = Date.now();
+    c.startTime = this.now();
     c.endTime   = null;   // por si el circuito se relanza tras un stop forzado
     if (durationMs) c.durationMs = durationMs;
 
@@ -776,22 +777,35 @@ class TimingServiceClass {
     });
   }
 
-  // ── Reloj simulado ──────────────────────────────────────────────────────────
-  // En una carrera simulada el tiempo NO avanza con el reloj de pared: avanza
-  // según las tramas reproducidas (a ×N, o de golpe al "final de manga"). El
-  // reproductor llama aquí con los milisegundos transcurridos DESDE EL GO de la
-  // manga; anclamos startTime para que el cronómetro y el elapsed_ms de cada
-  // vuelta reflejen ese tiempo virtual. Así el contador va a ×N y, al volcar el
-  // final de manga de golpe, salta hasta el final con las vueltas repartidas en
-  // su minuto real (no amontonadas en el 0).
-  simSetClock(elapsedMs) {
-    if (!this.session) return;
-    const anchor = Date.now() - Math.max(0, elapsedMs);
-    this.session.startTime = anchor;
-    Object.values(this.session.circuits).forEach(c => {
-      if (c.status === 'running') c.startTime = anchor;
-    });
+  // ── Reloj de la manga ───────────────────────────────────────────────────────
+  // Todo lo que mide la manga (arranque, cruces, pausas, fin, ventanas de bandera)
+  // usa este reloj. Fuera de la simulación es el de pared. En una carrera simulada
+  // es el de las TRAMAS: los cruces llegan con la hora de su trama (SerialService
+  // la usa también para reponer vueltas perdidas), así que arranque, pausas y fin
+  // tienen que ir en esa misma escala o la resta sale con relojes distintos
+  // (elapsed_ms negativos, coma y desempate rotos). Entre trama y trama avanza a
+  // ×`rate` para que el cronómetro no vaya a saltos, sin pasar de `cap` (la hora
+  // de la trama siguiente): el reloj nunca se adelanta a un cruce que aún no ha
+  // llegado. `rate` 0 = congelado (pausa del panel, volcado del final de manga).
+  // Solo vale mientras se reproduce: si la simulación se dejó sin «Parar» y se
+  // volvió al DS, una manga real no puede heredar un reloj de tramas congelado.
+  now() {
+    const k = this._simClock;
+    if (!k || !SerialService._simReplay) return Date.now();
+    return Math.min(k.ts + (Date.now() - k.at) * k.rate, k.cap);
   }
+
+  simSetClock(ts, rate = 0, cap = ts) {
+    this._simClock = { ts, at: Date.now(), rate, cap: Math.max(ts, cap) };
+  }
+
+  // Cambia la velocidad del reloj simulado sin moverlo (pausa del panel = 0).
+  simSetRate(rate) {
+    const k = this._simClock;
+    if (k) this.simSetClock(this.now(), rate, k.cap);
+  }
+
+  simClearClock() { this._simClock = null; }
 
   // Finaliza un circuito (fin normal o tiempo agotado). La manga se cierra de
   // verdad cuando NINGÚN circuito sigue corriendo y al menos uno terminó.
@@ -799,7 +813,7 @@ class TimingServiceClass {
     if (!this.session) return;
     const c = this.session.circuits[ci];
     if (!c || c.status !== 'running') return;
-    c.endTime = Date.now();   // ANTES del cambio de estado: _circuitElapsedMs ya lo lee
+    c.endTime = this.now();   // ANTES del cambio de estado: _circuitElapsedMs ya lo lee
     c.status  = 'finished';
     this.invalidateStandingsCaches();   // el circuito ya no aporta tiempo restante
     if (c.autoStopTimer) { clearTimeout(c.autoStopTimer); c.autoStopTimer = null; }
@@ -896,7 +910,7 @@ class TimingServiceClass {
       // número de vueltas en la clasificación.
       const dbConn = require('../config/database');
       const comaStmt = dbConn.prepare('UPDATE manga_lanes SET coma = ?, last_cross_ms = ? WHERE manga_id = ? AND lane = ?');
-      const nowTs = Date.now();
+      const nowTs = this.now();
       for (const ld of Object.values(this.session.laneMap)) {
         const ci = this.session.laneToCircuit[ld.lane];
         const c  = ci != null ? this.session.circuits[ci] : null;
@@ -1125,7 +1139,7 @@ class TimingServiceClass {
       this._lateCloseTimer = null;
       this._lateWindows.clear();
       this._detachLapHandler();
-    }, Math.max(0, until - Date.now()) + 250);
+    }, Math.max(0, until - this.now()) + 250);
   }
 
   // Manga nueva o cancelada: las ventanas pendientes son de una manga que ya no está
@@ -1326,7 +1340,7 @@ class TimingServiceClass {
     if (this._tickInt) return;
     this._circuitTickN = 0;
     this._tickInt = setInterval(() => {
-      const elapsedMs   = Date.now() - this.session.startTime;
+      const elapsedMs   = this.now() - this.session.startTime;
       const remainingMs = Math.max(0, this.session.durationMs - elapsedMs);
       SocketService.emit('tick', { elapsedMs, remainingMs, circuits: this._circuitClocks() });
       // Incremento del contador de cada piloto activo y persistencia periódica.
@@ -1358,7 +1372,7 @@ class TimingServiceClass {
     const c = this.session.circuits[ci];
     if (!c || c.status !== 'running') return;
     c.status     = 'paused';
-    c.pauseStart = Date.now();
+    c.pauseStart = this.now();
     if (c.autoStopTimer) { clearTimeout(c.autoStopTimer); c.autoStopTimer = null; }
 
     // Inversión de control: en BART pausamos el Master (corta pista y deja de
@@ -1374,7 +1388,7 @@ class TimingServiceClass {
     // pausa: congelamos el cronómetro global y mostramos el overlay.
     const anyRunning = Object.values(this.session.circuits).some(x => x.status === 'running');
     if (!anyRunning) {
-      this.session.pauseStart = Date.now();
+      this.session.pauseStart = this.now();
       clearInterval(this._tickInt); this._tickInt = null;
       SocketService.emit('manga:paused');
     }
@@ -1387,7 +1401,7 @@ class TimingServiceClass {
     if (!this.session) return;
     const c = this.session.circuits[ci];
     if (!c || c.status !== 'paused') return;
-    const pausedMs = Date.now() - (c.pauseStart || Date.now());
+    const pausedMs = this.now() - (c.pauseStart || this.now());
     c.startTime += pausedMs;       // su reloj se desplaza por SU pausa
     c.status     = 'running';
     c.pauseStart = null;
@@ -1421,7 +1435,7 @@ class TimingServiceClass {
     // reanudamos desplazando el inicio global por el tiempo que estuvo parada.
     if (!this._tickInt) {
       if (this.session.pauseStart) {
-        this.session.startTime += Date.now() - this.session.pauseStart;
+        this.session.startTime += this.now() - this.session.pauseStart;
         this.session.pauseStart = null;
       }
       this._startTick();
@@ -1441,17 +1455,6 @@ class TimingServiceClass {
     if (!this.session) return;
     Object.values(this.session.circuits).forEach(c => { if (c.status === 'paused') this.resumeCircuit(c.index); });
   }
-  // Reanudar en simulación: como resumeManga pero anulando la compensación de
-  // pausa del DS-300. En una carrera real la caja sigue contando durante la
-  // pausa y la primera vuelta tras reanudar viene inflada; en la simulación
-  // paramos de inyectar tramas, así que el tiempo de vuelta ya es el real del
-  // dato y NO hay que restarle nada.
-  simResumeManga() {
-    if (!this.session) return;
-    this.resumeManga();
-    Object.values(this.session.laneMap).forEach(ld => { ld.pendingPauseAdjustMs = 0; });
-  }
-
   // ── Cancel manga (manual stop) — resets to pending, deletes laps ──────────
 
   /**
@@ -2056,8 +2059,8 @@ class TimingServiceClass {
     return {
       mangaId:      manga.id,
       raceId:       race.id,
-      elapsedMs:    Date.now() - startTime,
-      remainingMs:  Math.max(0, this.session.durationMs - (Date.now() - startTime)),
+      elapsedMs:    this.now() - startTime,
+      remainingMs:  Math.max(0, this.session.durationMs - (this.now() - startTime)),
       standings:    rows,
       projection,
       raceBestLaps,
@@ -2391,7 +2394,7 @@ class TimingServiceClass {
   getRemainingMs() {
     if (!this.session) return null;
     // Si la manga está totalmente pausada, el tiempo no avanza desde pauseStart.
-    const ref = (this.isPaused && this.session.pauseStart) ? this.session.pauseStart : Date.now();
+    const ref = (this.isPaused && this.session.pauseStart) ? this.session.pauseStart : this.now();
     return Math.max(0, this.session.durationMs - (ref - this.session.startTime));
   }
 
@@ -2400,7 +2403,7 @@ class TimingServiceClass {
   // neumáticos para sellar en qué minuto:segundo de carrera se hizo un cambio.
   getElapsedMs() {
     if (!this.session) return null;
-    const ref = (this.isPaused && this.session.pauseStart) ? this.session.pauseStart : Date.now();
+    const ref = (this.isPaused && this.session.pauseStart) ? this.session.pauseStart : this.now();
     return Math.max(0, ref - this.session.startTime);
   }
 
@@ -2416,7 +2419,7 @@ class TimingServiceClass {
   // Las pausas se descuentan solas (startTime del circuito ya las absorbe), el
   // GO escalonado sale gratis (un circuito pending tiene elapsed 0) y un
   // circuito finalizado deja de crecer (elapsed congelado en endTime). Al ser
-  // elapsed relativo también es inmune a simSetClock(), que re-ancla startTime.
+  // elapsed relativo sale igual con el reloj de la simulación (ver now()).
   _laneCircuit(lane) {
     return this.session && this.session.laneToCircuit ? this.session.laneToCircuit[lane] : null;
   }

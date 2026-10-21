@@ -2479,7 +2479,7 @@
     "repetir_carril_d": "Ogni corsia si corre per questo numero di manche di fila (stessa corsia) prima di ruotare.",
     "total_cubrir": "Il totale delle manche generate (corsie + riposi) × passaggi × ripeti corsia deve coprire almeno le <b>{{n}}</b> manche rilevate nei frame. Se ne avanzano (es. una gara di 24h che finisce a metà di un ciclo di rotazione), le ultime vengono tagliate automaticamente.",
     "orden_carril": "Ordine di corsia delle squadre",
-    "orden_carril_d": "Una squadra per riga, in ordine di corsia (corsia 1 = prima riga). Oppure carica un CSV qui sotto.",
+    "orden_carril_d": "Una squadra per riga, in ordine di corsia (corsia 1 = prima riga). Lascia una riga vuota per una corsia senza auto. Oppure carica un CSV qui sotto.",
     "ph_orden": "SQUADRA CORSIA 1\nSQUADRA CORSIA 2\nSQUADRA CORSIA 3\n…",
     "o_subir_csv": "…oppure carica un CSV con l'ordine di corsia",
     "crear": "Crea gara simulata",

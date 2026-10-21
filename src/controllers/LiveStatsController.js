@@ -519,7 +519,7 @@ class LiveStatsController {
     entities.forEach((e, i) => { e.position = i + 1; });
 
     // Tiempo transcurrido y restante
-    const elapsedMs = session ? Date.now() - session.startTime : null;
+    const elapsedMs = session ? TimingService.now() - session.startTime : null;
     const remainingMs = isActive && elapsedMs != null
       ? Math.max(0, mangaDurationMs - elapsedMs) : null;
 

@@ -2479,7 +2479,7 @@
     "repetir_carril_d": "Each lane is run this number of heats in a row (same lane) before rotating.",
     "total_cubrir": "The total heats generated (lanes + rests) × passes × lane repeat must cover at least the <b>{{n}}</b> heats detected in the frames. If there are too many (e.g. a 24h race that ends halfway through a rotation cycle), the last ones are trimmed automatically.",
     "orden_carril": "Teams' lane order",
-    "orden_carril_d": "One team per line, in lane order (lane 1 = first line). Or upload a CSV below.",
+    "orden_carril_d": "One team per line, in lane order (lane 1 = first line). Leave a line empty for a lane with no car. Or upload a CSV below.",
     "ph_orden": "TEAM LANE 1\nTEAM LANE 2\nTEAM LANE 3\n…",
     "o_subir_csv": "…or upload a lane order CSV",
     "crear": "Create simulated race",

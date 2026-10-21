@@ -50,6 +50,7 @@ class SimPlayer {
     this.speed = 1; this.playing = false;
     this.rotation = 0; this.frameIdx = 0;
     this._armed = {}; this._skip = false; this._stop = false; this._running = false;
+    this._panelPaused = [];   // circuitos que pausó el panel (no los que pausó la caja en el registro)
     this.phase = 'idle';   // idle | ready | playing | paused | done
   }
 
@@ -91,15 +92,23 @@ class SimPlayer {
     // gos[r] quedarían fuera y esos circuitos no arrancarían (se irían perdiendo
     // circuitos manga a manga: 3→2→1). El descanso entre mangas dura minutos,
     // así que 1,5 s de margen captura todas las a1 sin solaparse con la manga
-    // anterior. Recortamos el final en la ÚLTIMA trama de "fin de manga" (0xa4)
-    // para no reproducir los minutos muertos del descanso.
+    // anterior. Recortamos el final tras la ÚLTIMA trama de "fin de manga" (0xa4)
+    // para no reproducir los minutos muertos del descanso, pero dejando la
+    // ventana de la vuelta de bandera: el último cruce de cada carril llega justo
+    // DESPUÉS del fin de su caja, y cortando en la 0xa4 se perdía la bandera del
+    // último circuito en cerrar.
     const GO_LOOKBACK_MS = 1500;
+    const flagMs = TimingService.constructor.lateCrossingGraceMs();
     this.windows = this.gos.map((t0, r) => {
       const t1 = this.gos[r + 1] || (t0 + durMs + 10 * 60000);
       const win = parsed.frames.filter(f => f.ts >= t0 - GO_LOOKBACK_MS && f.ts < t1);
       let lastFinish = -1;
       for (let i = 0; i < win.length; i++) if (dsFrames.isFinish(win[i].bytes)) lastFinish = i;
-      return lastFinish >= 0 ? win.slice(0, lastFinish + 1) : win;
+      if (lastFinish < 0) return win;
+      const until = Math.min(win[lastFinish].ts + flagMs, t1 - GO_LOOKBACK_MS);
+      let end = lastFinish + 1;
+      while (end < win.length && win[end].ts <= until) end++;
+      return win.slice(0, end);
     });
     this.mangaIds = db.prepare('SELECT id FROM mangas WHERE race_id=? ORDER BY number').all(raceId).map(r => r.id);
     this.circuits = (meta.circuits && meta.circuits.length ? meta.circuits : [meta.lanes || 8]).map(l => ({ lanes: l }));
@@ -124,20 +133,38 @@ class SimPlayer {
     return this.status;
   }
 
-  setSpeed(x) { if (x > 0) this.speed = x; return this.status; }
+  setSpeed(x) {
+    if (x > 0) this.speed = x;
+    if (this.phase === 'playing' && !this._skip) TimingService.simSetRate(this.speed);
+    return this.status;
+  }
 
-  // Pausa: congela reproducción + reloj (la manga sigue armada).
+  // Pausa: congela reproducción + reloj (la manga sigue armada). Con el reloj
+  // parado la pausa dura 0 ms de carrera: al reanudar no hay nada que compensar.
+  // Solo se pausan los circuitos que corrían: uno que la caja ya tenía en pausa
+  // en el registro tiene que seguir así hasta su propia trama de reanudar.
   pause() {
     if (this.phase !== 'playing') return this.status;
     this.playing = false; this.phase = 'paused';
-    try { TimingService.pauseManga(); } catch {}
+    TimingService.simSetRate(0);
+    const session = TimingService.session;
+    this._panelPaused = session
+      ? Object.values(session.circuits).filter(c => c.status === 'running').map(c => c.index)
+      : [];
+    for (const ci of this._panelPaused) { try { TimingService.pauseCircuit(ci); } catch {} }
     return this.status;
+  }
+
+  _resumePanelPaused() {
+    for (const ci of this._panelPaused) { try { TimingService.resumeCircuit(ci); } catch {} }
+    this._panelPaused = [];
   }
 
   // Reanudar tras pausa.
   resume() {
     if (this.phase !== 'paused' || this._running) return this.status;
-    try { TimingService.simResumeManga(); } catch {}
+    this._resumePanelPaused();
+    TimingService.simSetRate(this.speed);
     this.playing = true; this.phase = 'playing';
     this._run();
     return this.status;
@@ -148,7 +175,7 @@ class SimPlayer {
   skipMangaEnd() {
     if (this.phase !== 'playing' && this.phase !== 'paused') return this.status;
     this._skip = true;
-    if (this.phase === 'paused') { try { TimingService.simResumeManga(); } catch {} }
+    if (this.phase === 'paused') this._resumePanelPaused();
     this.playing = true; this.phase = 'playing';
     if (!this._running) this._run();
     return this.status;
@@ -163,6 +190,7 @@ class SimPlayer {
       // marcha" con el reloj corriendo aunque el reproductor esté parado.
       try { TimingService.stopManga(false); } catch {}
       try { await SerialService.stopSimMode(); } catch {}
+      TimingService.simClearClock();
     }
     this._clear();
     return this.status;
@@ -210,11 +238,12 @@ class SimPlayer {
         if (dt >= 4) await sleep(dt);
         else if ((this.frameIdx & 255) === 0) await sleep(0);  // ráfaga rápida (skip o ×100): ceder el event loop para no bloquear el server
         if (this._stop || !this.playing) return;   // pudo pausarse durante el sleep
-        // Ancla el reloj de la manga al tiempo virtual de la trama (ms desde el
-        // GO de esta rotación) ANTES de inyectarla: el cronómetro va a ×N y el
-        // elapsed_ms de la vuelta cae en su minuto real, incluso al volcar el
-        // final de manga de golpe.
-        TimingService.simSetClock(f.ts - this.gos[r]);
+        // El reloj de la manga ES el de las tramas (ver TimingService.now()):
+        // se pone en la hora de esta trama ANTES de inyectarla y avanza a ×N
+        // hasta la siguiente. Al volcar el final de manga va congelado y salta
+        // de trama en trama, así que cada vuelta cae en su minuto real.
+        const next = win[this.frameIdx + 1];
+        TimingService.simSetClock(f.ts, this._skip ? 0 : this.speed, next ? next.ts : f.ts);
         // f.ts (reloj de la trama, determinista) — NO Date.now(): SerialService usa
         // este timestamp para estimar cuántas vueltas caben en un hueco del contador
         // de vuelta (reconciliación de vueltas perdidas). Con el reloj REAL del

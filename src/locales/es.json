@@ -2479,7 +2479,7 @@
     "repetir_carril_d": "Cada carril se corre este nº de mangas seguidas (mismo carril) antes de rotar.",
     "total_cubrir": "El total de mangas generadas (carriles + descansos) × pasadas × repetir carril debe cubrir, como mínimo, las <b>{{n}}</b> mangas detectadas en las tramas. Si sobran (p. ej. una carrera de 24h que termina a mitad de un ciclo de rotación), se recortan las últimas automáticamente.",
     "orden_carril": "Orden de carril de los equipos",
-    "orden_carril_d": "Un equipo por línea, en orden de carril (carril 1 = primera línea). O sube un CSV abajo.",
+    "orden_carril_d": "Un equipo por línea, en orden de carril (carril 1 = primera línea). Deja una línea vacía para un carril sin coche. O sube un CSV abajo.",
     "ph_orden": "EQUIPO CARRIL 1\nEQUIPO CARRIL 2\nEQUIPO CARRIL 3\n…",
     "o_subir_csv": "…o subir CSV de orden de carril",
     "crear": "Crear carrera simulada",

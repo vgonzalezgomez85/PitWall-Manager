@@ -40,7 +40,13 @@ const TMP_DIR = ensureSimDir('_tmp');
 const upload = multer({ dest: TMP_DIR, limits: { fileSize: 60 * 1024 * 1024 } });
 
 const COLORS = n => Array.from({ length: n }, (_, i) => `hsl(${Math.round(i * 360 / n)}, 70%, 50%)`);
-const splitTeams = raw => (raw || '').replace(/\r/g, '').split('\n').map(l => l.split(',')[0].trim()).filter(Boolean);
+// Una línea por carril: una línea vacía es un carril sin coche (así se pueden
+// poner, p. ej., 2 pilotos en los carriles 5 y 6 de una pista de 6).
+const splitTeams = raw => {
+  const names = (raw || '').replace(/\r/g, '').split('\n').map(l => l.split(',')[0].trim());
+  while (names.length && !names[names.length - 1]) names.pop();
+  return names;
+};
 
 const SimController = {
   upload,
@@ -92,8 +98,8 @@ const SimController = {
     // Orden de carril: csv subido (req.file) o textarea manual.
     let teamNames = [];
     if (req.file) { try { teamNames = splitTeams(fs.readFileSync(req.file.path, 'utf8')); } catch {} }
-    if (!teamNames.length) teamNames = splitTeams(req.body.lane_order);
-    if (!teamNames.length) {
+    if (!teamNames.some(Boolean)) teamNames = splitTeams(req.body.lane_order);
+    if (!teamNames.some(Boolean)) {
       return res.redirect('/races/sim/new?error=' + encodeURIComponent(req.t('sim.err_orden')));
     }
 
@@ -126,12 +132,18 @@ const SimController = {
     // permutación de laneSeq para que cada uno acabe en el carril que el usuario
     // indicó. Los equipos que sobren de carriles (más equipos que carriles) van
     // detrás, sin carril fijo en manga 1 (entran por turnos de descanso).
+    // Un carril sin equipo es un hueco (null) que rota como uno más, igual que en
+    // la tanda de una carrera real ('rotate'). Con descansos buildSchedule no
+    // admite huecos: entonces se quedan fuera, como antes.
     const byLane      = teamNames.slice(0, lanes);
-    const extraTeams  = teamNames.slice(lanes);
+    const extraTeams  = teamNames.slice(lanes).filter(Boolean);
+    const conHuecos   = rests === 0 && laneSeq.some(lane => lane > 0 && !byLane[lane - 1]);
     const orderedNames = laneSeq
-      .map(lane => lane > 0 ? byLane[lane - 1] : undefined)
-      .filter(n => n !== undefined)
+      .filter(lane => lane > 0)
+      .map(lane => byLane[lane - 1] || null)
+      .filter(n => n || conHuecos)
       .concat(extraTeams);
+    const realNames = orderedNames.filter(Boolean);
 
     // Comprobación previa (sin tocar la BD): el horario (carriles+descansos ×
     // pasadas × repetir carril) tiene que cubrir, como mínimo, las mangas
@@ -139,11 +151,12 @@ const SimController = {
     // correspondencia rotación↔manga (SimPlayerService indexa mangaIds[] por
     // rotación, en el mismo orden que los GO de las tramas). Si sobra (la carrera
     // real terminó a mitad de un ciclo de rotación), se recorta más abajo.
-    const dryEntities = orderedNames.map(tn => ({ type: 'team', name: tn }));
-    const fullSchedule = Manga.buildSchedule(laneSeq, dryEntities, passes, laneRepeat);
+    const emptyLaneMode = conHuecos ? 'rotate' : 'fixed';
+    const dryEntities = orderedNames.map(tn => tn && ({ type: 'team', name: tn }));
+    const fullSchedule = Manga.buildSchedule(laneSeq, dryEntities, passes, laneRepeat, emptyLaneMode);
     if (fullSchedule.length < parsed.analysis.mangas) {
       return res.redirect('/races/sim/new?error=' + encodeURIComponent(req.t('sim.err_no_cubre', {
-        equipos: teamNames.length, carriles: lanes, descansos: rests, pasadas: passes, repetir: laneRepeat,
+        equipos: realNames.length, carriles: lanes, descansos: rests, pasadas: passes, repetir: laneRepeat,
         generadas: fullSchedule.length, tramas: parsed.analysis.mangas,
       })));
     }
@@ -154,16 +167,17 @@ const SimController = {
       lane_sequence: laneSeq, manga_duration_minutes: mangaMin, circuits, has_pole: 0, min_lap_ms: minLapMs,
       passes, lane_repeat: laneRepeat,
     });
-    const tandaId = Tanda.create(raceId);
-    const colors = COLORS(teamNames.length);
-    const entities = orderedNames.map((tn, i) => ({
-      id: Team.create({ race_id: raceId, tanda_id: tandaId, name: tn, lane: 0, color: colors[i] }),
+    const tandaId = Tanda.create(raceId, emptyLaneMode);
+    const colors = COLORS(realNames.length);
+    let nColor = 0;
+    const entities = orderedNames.map(tn => tn && ({
+      id: Team.create({ race_id: raceId, tanda_id: tandaId, name: tn, lane: 0, color: colors[nColor++] }),
       type: 'team', name: tn,
     }));
     // Mismo horario que la comprobación previa, pero con los equipos reales;
     // recortado a las mangas que de verdad hay en las tramas (ver comprobación
     // previa: la carrera real puede terminar a mitad de un ciclo de rotación).
-    const schedule = Manga.buildSchedule(laneSeq, entities, passes, laneRepeat).slice(0, parsed.analysis.mangas);
+    const schedule = Manga.buildSchedule(laneSeq, entities, passes, laneRepeat, emptyLaneMode).slice(0, parsed.analysis.mangas);
     Manga.persistSchedule(tandaId, raceId, schedule);
     db.prepare("UPDATE mangas SET status='pending' WHERE race_id=?").run(raceId);
     Race.updateStatus(raceId, 'active');

@@ -17,6 +17,7 @@
  */
 // Parser de tramas DS-300 para carreras simuladas. Soporta:
 //   · TXT: líneas "HH:MM:SS.mmm  DSn  <21 bytes hex>"  (formato completo multi-DS)
+//          o "HH:MM:SS.mmm  <21 bytes hex>" (registro de TicTacSlot: una sola caja, DS1)
 //   · CSV: export "vuelta N;tiempo;hex;e0;35;…;eb"      (un solo DS, por vuelta)
 //
 // Devuelve { frames, gos, analysis }:
@@ -48,8 +49,9 @@ function parseTxt(content) {
   let day = 0, prevSecs = null;
   const frames = [], gos = [];
   for (const ln of lines) {
-    const m = ln.match(/^(\d{2}:\d{2}:\d{2}\.\d{3})\s+(DS[123])\s+(.+)$/);
+    const m = ln.match(/^(\d{2}:\d{2}:\d{2}\.\d{3})\s+(?:(DS[123])\s+)?(.+)$/);
     if (!m) continue;
+    const ds = m[2] || 'DS1';
     const bytes = m[3].trim().split(/\s+/).map(h => parseInt(h, 16));
     if (bytes.length < 21 || bytes.some(isNaN)) continue;
     const [hh, mm, rest] = m[1].split(':'); const [ss, mmm] = rest.split('.');
@@ -57,8 +59,8 @@ function parseTxt(content) {
     if (prevSecs != null && secs < prevSecs - 1) day++;   // cruce de medianoche
     prevSecs = secs;
     const ts = day * 86400000 + secs * 1000 + (+mmm);
-    frames.push({ ts, ds: m[2], bytes });
-    if (isGo(bytes) && m[2] === 'DS1') gos.push(ts);
+    frames.push({ ts, ds, bytes });
+    if (isGo(bytes) && ds === 'DS1') gos.push(ts);
   }
   return { frames, gos };
 }
@@ -91,8 +93,9 @@ function analyze(frames, gos) {
   const lanesByDs = { DS1: new Set(), DS2: new Set(), DS3: new Set() };
   const lanesGlobal = new Set();
   let crossings = 0, durationMin = null;
+  const goTs = new Set(gos);   // solo las mangas corridas: un GO abortado puede llevar otra duración
   for (const f of frames) {
-    if (isGo(f.bytes) && durationMin == null) durationMin = goDurationMin(f.bytes);
+    if (durationMin == null && isGo(f.bytes) && goTs.has(f.ts)) durationMin = goDurationMin(f.bytes);
     const local = laneLocal(f.bytes);
     if (local) {
       crossings++;
@@ -120,11 +123,24 @@ function analyze(frames, gos) {
   };
 }
 
+// Un GO que no llega a su trama de fin antes del GO siguiente es una salida
+// abortada (stop, salida en falso): en la carrera real esa manga se cancela y se
+// vuelve a correr con el GO siguiente, así que no es una manga. El último GO se
+// queda siempre (el registro puede acabar a mitad de manga).
+function mangasCorridas(frames, gos) {
+  return gos.filter((t0, i) => {
+    const t1 = gos[i + 1];
+    if (t1 == null) return true;
+    return frames.some(f => f.ts >= t0 && f.ts < t1 && isFinish(f.bytes));
+  });
+}
+
 // ── API principal ────────────────────────────────────────────────────────────
 function parse(content, format /* 'txt' | 'csv' | undefined (autodetect) */) {
   const looksCsv = /;/.test(content.slice(0, 2000)) && /vuelta\s+\d+/i.test(content.slice(0, 4000));
   const fmt = format || (looksCsv ? 'csv' : 'txt');
-  const { frames, gos } = fmt === 'csv' ? parseCsv(content) : parseTxt(content);
+  const { frames, gos: todos } = fmt === 'csv' ? parseCsv(content) : parseTxt(content);
+  const gos = mangasCorridas(frames, todos);
   return { frames, gos, analysis: { ...analyze(frames, gos), source: fmt } };
 }
 

@@ -756,6 +756,7 @@ class SerialServiceClass extends EventEmitter {
     const previas = this._connections;
     await this.closeAll();
     this.stopSimulation();
+    this._simReplay = false;   // vuelta al hardware: el reloj de las tramas deja de valer (TimingService.now)
 
     let laneOffset = 0;
     const connections = [];
@@ -1033,6 +1034,7 @@ class SerialServiceClass extends EventEmitter {
 
   startSimulation(lanesCount = 6, avgLapMs = 12000) {
     this.stopSimulation();
+    this._simReplay  = false;
     this._simRunning = true;
     this._broadcastLinkStatus();
     for (let lane = 1; lane <= lanesCount; lane++) {

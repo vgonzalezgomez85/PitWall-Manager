@@ -63,7 +63,7 @@ const MobileController = {
         name:       race.name,
         mangaId:    manga.id,
         mangaNum:   manga.number,
-        elapsedMs:  Date.now() - startTime,
+        elapsedMs:  TimingService.now() - startTime,
         durationMs: (race.manga_duration_minutes || 5) * 60_000,
         participants,
       });

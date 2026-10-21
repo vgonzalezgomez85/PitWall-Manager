@@ -13,6 +13,17 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.64.1] — 2026-10-21
+
+### Corregido
+- **La carrera simulada guarda los tiempos bien**: al reproducir un registro de tramas, las vueltas se guardaban con una hora imposible. La primera vuelta de cada carril salía con 0 ms, la **coma** de todos los carriles era la misma y el **desempate por quién cruzó antes** no funcionaba. Las gráficas por minuto y por hora también salían mal. Ahora la manga simulada sigue el reloj de las tramas, a la velocidad elegida (×1–×10), y las vueltas, la coma y los desempates salen como en la carrera real.
+- **Las pausas de la caja dentro del registro se respetan**: si el DS pausó la carrera, la reproducción ya no descuenta ese tiempo de la manga y la vuelta partida por la pausa ya no cuenta el tiempo parado (antes, a ×10, solo se le restaba la décima parte). La **Pausa** del panel congela la reproducción sin restar tiempo a la manga y **Reanudar** solo reanuda los circuitos que estaban corriendo.
+- **Ya no se pierden las vueltas de bandera del último circuito**: cada manga simulada se cortaba en la trama de fin y se perdían las vueltas que cruzaban justo después (19 en la 24h de Italia). Ahora se esperan durante la ventana de **vuelta de bandera** de Ajustes, como en la carrera real.
+- **La carrera simulada lee los registros de TicTacSlot**: los ficheros TXT de TicTacSlot (`HH:MM:SS.mmm` y la trama, sin columna DS1/DS2/DS3) daban «ninguna trama válida». Ahora se leen como una sola caja.
+- **Las salidas abortadas ya no crean mangas de más**: un GO que la caja paró antes de acabar la manga (salida en falso, stop) ya no se cuenta como manga, igual que en la carrera real, donde esa manga se repite. Antes el asistente creaba mangas de más y la rotación de carriles quedaba desfasada desde ese punto. La duración de manga detectada sale de la primera manga que se corrió de verdad.
+- **En el asistente se pueden dejar carriles sin coche**: en el orden de carril, una **línea vacía** es un carril vacío (antes se borraban y no se podía poner, por ejemplo, dos pilotos en los carriles 5 y 6). Con huecos y sin descansos, los huecos rotan como en la tanda real. Probado con un registro de TicTacSlot del club: mismas vueltas, carril a carril, y misma mejor vuelta que el resultado oficial de TicTac.
+- **Volver al DS después de una simulación ya no deja la manga con el reloj parado**: el reloj de las tramas solo se usa mientras se reproduce la carrera simulada. Antes solo se quitaba con **Parar**: si una simulación acababa sola o se dejaba a medias y se volvía al DS desde **Ajustes** sin reiniciar, la manga real podía medir con un reloj congelado. Además, al volver al hardware ya sale otra vez el aviso **«Sin señal del DS»**, que tras una simulación no aparecía nunca.
+
 ## [1.64.0] — 2026-10-19
 
 ### Añadido
