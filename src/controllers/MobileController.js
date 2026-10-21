@@ -21,6 +21,7 @@ const CompetitionTrainingService = require('../services/CompetitionTrainingServi
 const CompetitionTrainingResult  = require('../models/CompetitionTrainingResult');
 const PoleTimingService = require('../services/PoleTimingService');
 const PoleSession       = require('../models/PoleSession');
+const LaneColors        = require('../services/LaneColors');
 const Race       = require('../models/Race');
 const Lap        = require('../models/Lap');
 const TireChange = require('../models/TireChange');
@@ -199,6 +200,9 @@ const MobileController = {
         // Dotación de neumáticos por equipo (pares suministrados para toda la
         // carrera; 0 = sin control). La app la usa para la estrategia de goma.
         tirePairsPerTeam:  race.tire_pairs_per_team || 0,
+        // Colores de carril del circuito (índice 0 = carril 1). La app pinta
+        // con ellos la selección de piloto/equipo, como en la pantalla de carrera.
+        laneColors:        LaneColors.forRace(race).slice(0, race.lanes_count || undefined),
       },
       activeManga: activeManga ? {
         id:         activeManga.id,

@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.64.2] — 2026-10-21
+
+### Mejorado
+- **API móvil: colores de carril en la carrera.** `/api/mobile/races/...` incluye `race.laneColors` (los del circuito, índice 0 = carril 1), para que PitWall Lap pinte la selección de piloto/equipo con el color del carril en el que corre cada uno.
+
 ## [1.64.1] — 2026-10-21
 
 ### Corregido
