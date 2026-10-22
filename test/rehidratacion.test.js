@@ -398,11 +398,12 @@ test('arrancar una manga sobre otra no duplica el oyente de cruces', () => {
   // CADA cruce se escribe una vez por oyente: dos mangas encadenadas sin stop de
   // por medio duplicarían todas las vueltas de la carrera.
   const e = escenario();
-  darGo(e);
-  darGo(e);                       // segunda vez, sin stopManga entre medias
   const SerialService = require('../src/services/SerialService');
+  darGo(e);
+  const oyentes = SerialService.listenerCount('lane_crossing');
+  darGo(e);                       // segunda vez, sin stopManga entre medias
 
-  assert.equal(SerialService.listenerCount('lane_crossing'), 1, 'un solo oyente');
+  assert.equal(SerialService.listenerCount('lane_crossing'), oyentes, 'un solo oyente de la manga');
 
   const ahora = Date.now();
   SerialService.emit('lane_crossing', { lane: 1, timestamp: ahora, lapTimeMs: 9000 });

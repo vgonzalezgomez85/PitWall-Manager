@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.64.3] — 2026-10-22
+
+### Corregido
+- **El entreno arranca solo aunque el GO se diera antes de abrir PitWall.** Con un DS, si alguien daba el GO en la caja y luego abría el programa, ese GO no llegaba nunca y el entreno se quedaba esperando con los coches rodando. Ahora el primer cruce con tiempo de vuelta pone en marcha el entreno libre (el reloj cuenta hacia arriba, porque la duración venía en el GO perdido) y se cierra con el fin o el STOP de la caja. No arranca si el GO es de una carrera o una pole, con un entreno de competición preparado, con la caja en pausa ni en los 30 s siguientes a un fin o STOP de la caja (cruces por inercia tras la bandera). Con BART, simulación o TicTac no cambia nada: ahí el GO lo da PitWall.
+
 ## [1.64.2] — 2026-10-21
 
 ### Mejorado

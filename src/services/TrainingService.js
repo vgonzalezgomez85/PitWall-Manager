@@ -54,6 +54,10 @@ function lanesFromSettings() {
 // entrenamiento (en orden cronológico). `laps` sigue con las 20 de siempre.
 const PACE_MAX = 120;
 
+// Tras el fin o el STOP de la caja, los cruces de los coches que siguen rodando
+// por inercia no arrancan un entreno.
+const AUTO_START_AFTER_END_MS = 30000;
+
 class TrainingServiceClass {
   constructor() {
     this._standby        = false;
@@ -120,6 +124,37 @@ class TrainingServiceClass {
     SerialService.on('race_stopped',  () => { if (this._active) this._pauseToStandby(); });
     // Normal end: keep data on screen, cleared on next GO
     SerialService.on('race_finished', () => { if (this._active) this._resetToStandby(); });
+
+    // GO dado en la caja antes de abrir PitWall: ese GO no llegó nunca y la caja
+    // ya cronometra. Se lleva la cuenta de lo que hace la caja (de quien sea la
+    // carrera) para no abrir un entreno con un cruce por inercia tras su fin.
+    this._boxEndedAt = 0;
+    this._boxPaused  = false;
+    SerialService.on('race_go',       () => { this._boxPaused = false; });
+    SerialService.on('race_started',  () => { this._boxPaused = false; });
+    SerialService.on('race_paused',   () => { this._boxPaused = true; });
+    SerialService.on('race_resumed',  () => { this._boxPaused = false; });
+    SerialService.on('race_stopped',  () => { this._boxEndedAt = Date.now(); });
+    SerialService.on('race_finished', () => { this._boxEndedAt = Date.now(); });
+    SerialService.on('lane_crossing', (c) => this._autoStartOnCrossing(c));
+  }
+
+  // Con un DS, el primer cruce con tiempo (la caja está corriendo) arranca el
+  // entreno sin duración: cuenta hacia arriba hasta el fin o el STOP de la caja.
+  // Con BART, simulación o TicTac el GO lo da PitWall: ahí no se arranca solo.
+  _autoStartOnCrossing(crossing) {
+    if (this._active || crossing.lapTimeMs == null || crossing.missed) return;
+    if (SerialService.softwareGo || this._boxPaused) return;
+    if (Date.now() - this._boxEndedAt < AUTO_START_AFTER_END_MS) return;
+    if (TimingService.activeMangaId != null) return;
+    if (require('./CompetitionTrainingService').isReady) return;
+    if (GoOwner().trainingYields()) return;
+
+    console.log(`[TrainingService] Cruce sin GO (carril ${crossing.lane}) — la caja ya corre, arranca el entreno`);
+    this.prepare(lanesFromSettings());
+    this._activate();
+    SocketService.emit('training:go', { durationMs: null });
+    this._handler(crossing);
   }
 
   get isActive()   { return this._active; }
