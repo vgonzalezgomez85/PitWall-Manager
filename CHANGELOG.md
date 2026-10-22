@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.64.4] — 2026-10-22
+
+### Mejorado
+- **«Corrección de vueltas» a mano en más sitios.** Botón nuevo en la ficha de la carrera (junto a Resultados) y en cada fila de «Carreras recientes» del inicio. En la franja de la carrera en curso del inicio sale ya siempre, también antes de correr la primera manga. Abre la manga en curso; si no hay, la última corrida; si no, la primera.
+
 ## [1.64.3] — 2026-10-22
 
 ### Corregido

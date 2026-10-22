@@ -57,7 +57,7 @@ class LapCorrectionController {
     const mangaOptions = [];
     Tanda.findByRace(race.id).forEach(tnd => {
       Manga.findByTanda(tnd.id).forEach(m => {
-        if (m.status === 'pending') return;
+        if (m.status === 'pending' && m.id !== manga.id) return;
         mangaOptions.push({ id: m.id, number: m.number, tandaNumber: tnd.number, status: m.status });
       });
     });

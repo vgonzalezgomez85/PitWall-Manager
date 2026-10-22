@@ -74,6 +74,16 @@ function stepState(idx) {
       <a href="/races/<%= race.id %>/results" class="rs-btn rs-btn--ghost">
         <span>📊</span> <%= t('common.resultados') %>
       </a>
+      <% {
+           const allM = tandas.flatMap(td => td.mangas);
+           const corrM = allM.find(m => m.status === 'active')
+                      || [...allM].reverse().find(m => m.status === 'finished')
+                      || allM[0];
+           if (corrM) { %>
+        <a href="/races/<%= race.id %>/mangas/<%= corrM.id %>/corrections" class="rs-btn rs-btn--ghost">
+          <span>✏️</span> <%= t('common.correccion_de_vueltas_2') %>
+        </a>
+      <% } } %>
       <% if (typeof isSim !== 'undefined' && isSim) { %>
         <a href="/races/<%= race.id %>/sim" class="rs-btn rs-btn--ghost">
           <span>🎬</span> <%= t('client.common.simulacion') %>

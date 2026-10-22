@@ -75,7 +75,7 @@ function homeLiveState(allRaces) {
   return {
     race: liveRace,
     manga: current,
-    correctionsManga: (current && current.status === 'active') ? current : (lastDone || null),
+    correctionsManga: (current && current.status === 'active') ? current : (lastDone || current),
     position: current ? ordered.indexOf(current) + 1 : null,
     total: ordered.length,
     done,
@@ -187,13 +187,26 @@ router.get('/', (req, res) => {
     FROM mangas GROUP BY race_id
   `).all().map(r => [r.race_id, r]));
   const progressOf = (id) => mangaCounts.get(id) || { total: 0, done: 0 };
+  // Manga que abre «Corrección de vueltas»: la activa; si no, la última corrida;
+  // si no, la primera.
+  const mangaOrder = db.prepare(`
+    SELECT m.id, m.status FROM mangas m JOIN tandas t ON t.id = m.tanda_id
+    WHERE m.race_id = ? ORDER BY t.number, m.number
+  `);
+  const correctionsMangaOf = (id) => {
+    const ms = mangaOrder.all(id);
+    const m = ms.find(x => x.status === 'active')
+           || [...ms].reverse().find(x => x.status === 'finished')
+           || ms[0];
+    return m ? m.id : null;
+  };
 
   const live = homeLiveState(allRaces);
 
   const recentRaces = [
     ...allRaces.filter(r => r.status === 'active'),
     ...allRaces.filter(r => r.status !== 'active'),
-  ].slice(0, 6).map(r => ({ ...r, progress: progressOf(r.id) }));
+  ].slice(0, 6).map(r => ({ ...r, progress: progressOf(r.id), correctionsMangaId: correctionsMangaOf(r.id) }));
 
   const homeLayout = Settings.get('home_layout', 'ac') || 'ac';
   const uiMode = Settings.get('ui_mode', 'advanced') === 'basic' ? 'basic' : 'advanced';

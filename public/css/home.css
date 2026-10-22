@@ -229,6 +229,7 @@ a.hm-pill:hover { filter: brightness(1.15); }
   padding: 7px 12px; border-radius: 8px; border: 1px solid var(--hm-border-2);
   font-size: 13px; font-weight: 600;
 }
+.hm-act + .hm-act { margin-left: 6px; }
 .hm-act:hover { border-color: rgba(255,255,255,.45); color: #fff; }
 .hm-more { display: inline-block; margin-top: 12px; color: var(--hm-mute); font-size: 14px; }
 .hm-more:hover { color: #fff; }

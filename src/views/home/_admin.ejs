@@ -402,6 +402,9 @@ const tile = (it, small) => '<a href="' + it.href + '" class="hm-tile' + (small 
                 <td><span class="hm-badge hm-badge--<%= st[0] %>"><%= st[1] %></span></td>
                 <td class="hm-mono"><%= (lv && lv.race.id === r.id) ? lv.heatsShown : (r.progress.done || 0) %> / <%= r.progress.total %></td>
                 <td class="hm-r">
+                  <% if (r.correctionsMangaId) { %>
+                    <a href="/races/<%= r.id %>/mangas/<%= r.correctionsMangaId %>/corrections" class="hm-act" data-win="pw-corr-<%= r.id %>"><%= t('_admin.correcciones') %><%- ext %></a>
+                  <% } %>
                   <% if (r.status === 'active' && lv && lv.race.id === r.id && lv.manga) { %>
                     <a href="/races/<%= r.id %>/mangas/<%= lv.manga.id %>/live" class="hm-act" data-win="pw-live-<%= r.id %>"><%= t('_admin.directo') %><%- ext %></a>
                   <% } else if (r.status === 'finished') { %>
