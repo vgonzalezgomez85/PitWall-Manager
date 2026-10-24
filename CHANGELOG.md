@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.66.1] — 2026-10-24
+
+### Corregido
+- **Ajustes → Actualizaciones en italiano**: el apartado entero (botones, mensajes de estado, confirmación de instalar y avisos del pie) salía en español. Traducidos sus 27 textos.
+
 ## [1.66.0] — 2026-10-24
 
 ### Añadido
