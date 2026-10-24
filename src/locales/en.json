@@ -236,7 +236,9 @@
       "vlt": "LAP",
       "vuelta": "Lap",
       "vuelta_rapida": "Fast lap",
-      "vueltas": "Laps"
+      "vueltas": "Laps",
+      "upd_nueva_version": "New version v{{v}}",
+      "upd_lista_instalar": "v{{v}} ready to install"
     },
     "compare": {
       "distinto": "diff",
@@ -456,7 +458,22 @@
       "modo_normal": "Window",
       "modo_maximizada": "Maximized",
       "modo_completa": "Full screen",
-      "club_logo_no_se_puede_leer": "That image could not be read."
+      "club_logo_no_se_puede_leer": "That image could not be read.",
+      "upd_comprobando": "Checking…",
+      "upd_al_dia": "You have the latest version.",
+      "upd_disponible": "A new version is available: v{{v}}.",
+      "upd_disponible_manual": "A new version is available: v{{v}}. This installation is updated by downloading it from the website.",
+      "upd_descargando": "Downloading v{{v}}… {{p}} %",
+      "upd_lista": "v{{v}} downloaded. It installs when PitWall restarts.",
+      "upd_error_check": "Could not check. Is there an internet connection?",
+      "upd_error_descarga": "The download failed. Try again.",
+      "upd_confirmar": "PitWall will close, install v{{v}} and open again. Every copy of PitWall open on this computer is closed. A copy of the database is saved first. Continue?",
+      "upd_instalando": "Saving the copy and closing PitWall to install…",
+      "upd_ocupado_manga": "A heat is running. Install when it finishes.",
+      "upd_ocupado_entreno": "A practice session is running. Install when it finishes.",
+      "upd_ocupado_pole": "A pole session is running. Install when it finishes.",
+      "upd_error_copia": "The database copy could not be made, so nothing is installed.",
+      "no_se_ha_podido_guardar_sectores": "Could not save (2 to 1000)"
     },
     "shifts-live": {
       "ambiguedad_usa_override_manual": "Ambiguous — use manual override",
@@ -809,6 +826,15 @@
       "escribe_nombre": "Type a name first",
       "categoria_creada": "Category \"{{nombre}}\" created",
       "error_red": "Network error"
+    },
+    "tanda-names": {
+      "repetidos_en_esta_tanda": "These names appear more than once in this heat:",
+      "cambialos_para_guardar": "Change them or remove the repeats to save: there would be no way to tell who is who.",
+      "ya_estan_en_otra_tanda": "These names are already in another heat of this race:",
+      "nombre_en_tandas": "{{name}} — heat {{tandas}}",
+      "si_es_el_mismo": "If it is the same participant running again (for example, another practice session), save anyway. If it is a mistake, check the names.",
+      "revisar": "Review",
+      "guardar_igualmente": "Save anyway"
     }
   },
   "common": {
@@ -1155,7 +1181,8 @@
     "backup_error": "The backup could not be created",
     "cert_error": "The certificate could not be generated: {{msg}}",
     "category_name_required": "Category name is required",
-    "category_exists": "Category already exists"
+    "category_exists": "Category already exists",
+    "duplicate_participant_form": "There are repeated names in the heat: change them or remove the repeats."
   },
   "events": {
     "mostrar_fichajes_de_piloto_antes_del_go_rutina": "Show driver check-ins before GO (routine start-up)"
@@ -1320,27 +1347,17 @@
     "pins_titulo": "Lap PINs — {{nombre}}"
   },
   "lap-corrections": {
-    "a_mano": "manual",
-    "automatica": "auto",
     "bandera": "flag-finish",
-    "calculada_automaticamente_al_cerrar_la_manga": "Calculated automatically when the heat closed",
     "carriles_de_la_manga": "Lanes in this heat",
-    "coma": "Fraction",
-    "corregida_a_mano_automatica": "Corrected by hand. Automatic: ",
     "desde_c": "From L",
     "editar_tiempo": "Edit time",
     "el_cruce_que_completo_justo_al_caer_la_bandera": "The crossing that completed right as the flag fell. If its frame reached PitWall it carries its real time; otherwise it was restored with the lane average.",
     "elegir_manga_a_corregir": "Choose heat to correct",
     "eliminar_vuelta_permanentemente": "Delete lap permanently?",
-    "esta_manga_no_es_la_ultima_que_corrio_esta": "Not the last heat this entry raced: its fraction does not decide the tie-break.",
-    "esta_manga_no_es_la_ultima_que_corrio_esta_2": "This is not the last heat this entry raced: correcting its fraction does not change the tie-break (only the reference sum).",
     "estimada": "Estimated",
     "falso_positivo": "False positive",
     "fantasma": "Ghost",
     "final_de_bandera": "Flag finish",
-    "fraccion_de_vuelta_al_caer_la_bandera_de_0_a_0": "Partial lap when the flag fell (0 to 0.99). Empty = automatic.",
-    "fraccion_de_vuelta_al_caer_la_bandera_de_esta": "Partial lap when this heat’s flag fell",
-    "guardar_coma": "Save fraction",
     "guardar_tiempo": "Save time",
     "la_caja_ds_conto_esta_vuelta_pero_pitwall_no_la": "The DS box counted this lap but PitWall never saw it (link outage). Its time is the lane average.",
     "la_caja_ds_las_conto_pero_pitwall_no_las_vio": "The DS box counted them but PitWall never saw them (link outage). Their time is the lane average.",
@@ -1348,7 +1365,6 @@
     "mover_a_carril": "Move to lane",
     "mover_a_otro_carril": "Move to another lane",
     "movida_a_c": "Moved to L",
-    "no_decide": "no tie",
     "nuevo_tiempo_s": "New time (s)",
     "reloj": "Clock",
     "repuestas": "estimated",
@@ -1358,7 +1374,6 @@
     "sin_vueltas_registradas_en_este_carril": "No laps recorded in this lane.",
     "t": "R",
     "vlt": "Lap",
-    "volver_a_la_coma_automatica": "Back to the automatic fraction",
     "vuelta_a_vuelta": "Lap by lap",
     "vuelta_s_de": "lap(s) of",
     "vueltas_de_final_de_bandera": "flag-finish laps",
@@ -1466,7 +1481,10 @@
     "vueltas_rapidas": "FASTEST LAPS",
     "vueltas_reales_acumuladas": "Actual laps so far",
     "arrancar_manga_tictac": "Start heat (TicTac)",
-    "parar_manga_tictac": "Stop heat (TicTac)"
+    "parar_manga_tictac": "Stop heat (TicTac)",
+    "tarjetas_fijas_por_carril": "Fixed lane cards",
+    "cada_carril_siempre_en_su_sitio_cambian_los_nombres": "Each lane always in its place: names change, positions do not. Heat standings and overall standings on the side.",
+    "clasificacion_de_la_manga": "Heat standings"
   },
   "live-panel": {
     "clasificacion_general": "Overall Standings",
@@ -1737,8 +1755,8 @@
     "vueltas_que_cada_equipo_piloto_lleva_por_detras": "Laps each team/driver is behind the leader through the race. The leader stays at 0 (top); lower = more laps down.",
     "vueltas_tras_el_lider": "Laps behind leader",
     "vueltas_tras_el_lider_al_cierre_de_cada_manga_0": "Laps behind the leader at each heat close (0 = leader). Pick 2–4 teams to see the gap BETWEEN them. Gold border = pit-stop in that heat.",
-    "coma_manual_title": "CORRECTED BY HAND — last-heat fraction: fraction of the unfinished lap at the final flag. Breaks ties on equal laps (more = further ahead at the end).",
-    "coma_title": "Last-heat coma: fraction of the unfinished lap at the final flag. Breaks ties on equal laps (more = further ahead at the end).",
+    "coma_manual_title": "Last-heat sector ENTERED BY HAND: where the car stopped when time ran out (0–{{max}}). It breaks ties on equal laps (more = further ahead at the end).",
+    "coma_title": "Last-heat sector, calculated from time: where the car was at the final flag (0–{{max}}). It breaks ties on equal laps (more = further ahead at the end).",
     "pilotos": "Drivers",
     "tanda": "round",
     "exportar": "Export",
@@ -1759,7 +1777,18 @@
     "dest_n_salidas": "{{n}} exits",
     "dest_y_mas": "and {{n}} more",
     "dest_remontada_pole": "Biggest climb from the pole",
-    "dest_pole_hint": "P{{from}} in qualifying → P{{to}} at the finish"
+    "dest_pole_hint": "P{{from}} in qualifying → P{{to}} at the finish",
+    "por_carril_tab": "By lane",
+    "por_carril_vueltas": "Laps",
+    "por_carril_sector": "Sector",
+    "por_carril_sector_ayuda": "Last-heat sector: where the car was when time ran out (0–{{max}}).",
+    "por_carril_vueltas_carril": "Laps per lane",
+    "por_carril_mejor_carril": "Best time per lane",
+    "por_carril_abrev": "L",
+    "por_carril_vacio": "No laps recorded yet.",
+    "por_carril_leyenda": "In overall standings order. Sector in blue = entered by hand; in grey = calculated from time. In blue, the best time on each lane among all participants.",
+    "por_carril_hoja": "Standings by lane",
+    "por_carril_mejor": "Best"
   },
   "results-index": {
     "buscar_carrera_equipo_o_piloto": "Search race, team or driver…",
@@ -1874,7 +1903,7 @@
     "interfaz_de_red": "Network interface",
     "ips_o_rangos_permitidos": "Allowed IPs or ranges",
     "la_app_movil_de_tic_tac_slot_infolap_se_conecta": "The Tic Tac Slot Infolap mobile app connects to PitWall and receives live laps. Opens UDP :4441.",
-    "la_coma_la_fraccion_de_vuelta_de_cada_coche_al": "The fraction (each car’s partial lap when the flag falls) is calculated automatically. Turn this on to fix it by hand, per lane, in the corrections screen of a finished heat; a corrected fraction wins tie-breaks on equal laps. Saved instantly.",
+    "la_coma_la_fraccion_de_vuelta_de_cada_coche_al": "The fraction (which sector of the lap each car was in at the final flag) is calculated automatically. In manual, a «Sectors» button appears when each round ends to enter every participant's final sector; it decides ties on equal laps. Saved immediately.",
     "labels_v_circuit_v2": "{{labels}} ({{v}} circuito{{v2}})",
     "las_10_mejores_de_mejor_a_peor": "Best 10 (best first)",
     "las_10_ultimas_la_mas_reciente_arriba": "Last 10 (newest first)",
@@ -1964,7 +1993,20 @@
     "club_sin_logo": "No logo",
     "club_elegir_logo": "Choose logo…",
     "club_quitar_logo": "Remove logo",
-    "club_logo_no_valido": "The logo is not valid or is too large (max. 1 MB)."
+    "club_logo_no_valido": "The logo is not valid or is too large (max. 1 MB).",
+    "actualizaciones": "Updates",
+    "actualizaciones_intro": "PitWall checks the website for a new version and lets you download and install it without leaving the app.",
+    "actualizaciones_solo_escritorio": "Desktop app only. From a browser, download the new version at pitwall.es.",
+    "version_instalada": "Installed version",
+    "upd_buscar": "Check for updates",
+    "upd_descargar": "Download",
+    "upd_instalar": "Restart and install",
+    "upd_web": "Open the download page",
+    "upd_novedades": "What's new in each version",
+    "upd_novedades_d": "The full changelog, on GitHub.",
+    "actualizaciones_nota": "Checked at startup and every 6 hours. It never installs while a heat, practice or pole session is running, and before installing it saves a copy of the database next to it (the last 3 are kept). Your races and settings are not touched.",
+    "sectores_por_vuelta": "Sectors per lap",
+    "sectores_por_vuelta_desc": "How many sectors a lap is divided into (100 by default, the Area Corse scale). Sectors go from 0 to this number minus 1. If you change it, those already entered are rescaled proportionally."
   },
   "shifts-live": {
     "a_punto": "Near",
@@ -2593,5 +2635,27 @@
     "sin_fichar": "Not checked in",
     "ordenar": "Click a column name to sort.",
     "piloto": "Driver"
+  },
+  "tanda-summary": {
+    "titulo": "Round sectors",
+    "posicion": "Pos.",
+    "manga_abrev": "H",
+    "vueltas_bateria": "Round laps",
+    "vueltas_totales": "Total laps",
+    "vueltas_totales_ayuda": "Total laps of the race so far (the ones the standings count).",
+    "settori_finales": "Final sectors",
+    "campo_ayuda": "Sector from 0 to {{max}}: where the car stopped when time ran out. Empty = automatic calculation.",
+    "origen_manual": "manual",
+    "origen_auto": "auto",
+    "ayuda": "Enter the sector (0–{{max}}) where each car stopped when the time of its last heat in the round ran out. If left empty, the automatic time-based calculation (the grey number) is used. On equal laps, the sector breaks the tie in the round standings and in the final. Laps are not changed here: use «Lap corrections» for that. Enter moves to the next box; on the last one it saves.",
+    "guardar": "Save sectors",
+    "guardado": "Sectors saved.",
+    "error": "Invalid value for: {{names}}. Use a whole number within the sector scale. Nothing was saved.",
+    "no_terminada": "The round has not finished yet: sectors can be entered once its last heat ends.",
+    "sin_participantes": "This round has no participants.",
+    "boton": "Final sectors of the round",
+    "boton_corto": "Sectors",
+    "desactivado": "The fraction is automatic: hand-entered sectors are not applied. Turn it on in Settings → Preferences → Manual correction of the fraction.",
+    "parcial": "You entered sectors for {{n}} of {{total}} participants. On equal laps the others are compared using the automatic calculation: for a consistent tie-break fill in all or none."
   }
 }

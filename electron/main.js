@@ -23,6 +23,7 @@ const fs     = require('fs');
 const net    = require('net');
 const { fork } = require('child_process');
 const placement = require('./windowPlacement');
+const updater   = require('./updater');
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 let mainWindow = null;
@@ -150,6 +151,17 @@ function startServer(userData) {
       fail(new Error(`El servidor se cerró al arrancar (código ${code ?? signal}).\n\n${tail.trim()}`));
     });
     waitForPort(PORT, 200).then(() => { if (!settled) { settled = true; resolve(); } }).catch(fail);
+  });
+}
+
+// Antes de instalar una actualización: el instalador no puede sustituir los
+// ficheros con el servidor (y su SQLite) todavía abiertos.
+function stopServer(timeoutMs = 5000) {
+  return new Promise((resolve) => {
+    if (!serverProc || serverProc.exitCode !== null) return resolve();
+    const t = setTimeout(() => { try { serverProc.kill('SIGKILL'); } catch {} resolve(); }, timeoutMs);
+    serverProc.once('exit', () => { clearTimeout(t); resolve(); });
+    serverProc.kill();
   });
 }
 
@@ -410,6 +422,33 @@ ipcMain.handle('pitwall:screens-identify', () => {
   return true;
 });
 
+// ── Actualizaciones (ver updater.js) ──────────────────────────────────────────
+ipcMain.handle('pitwall:update-state',    () => updater.getState());
+ipcMain.handle('pitwall:update-check',    () => updater.check());
+ipcMain.handle('pitwall:update-download', () => updater.download());
+ipcMain.handle('pitwall:update-install',  () => updater.install());
+ipcMain.handle('pitwall:update-page',     (_e, lang) => updater.openDownloadPage(String(lang || '')));
+
+function initUpdater() {
+  const local = `http://127.0.0.1:${PORT}`;
+  updater.init({
+    // Nada se reinicia con una manga, un entreno o una pole cronometrando.
+    guard: async () => {
+      try { return (await (await fetch(`${local}/api/app/update-guard`)).json()).busy || null; }
+      catch { return null; }
+    },
+    beforeInstall: async (from) => {
+      const r = await fetch(`${local}/api/app/pre-update-backup`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ from }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.ok) throw new Error(d.error || `HTTP ${r.status}`);
+      app.isQuiting = true;
+      await stopServer();
+    },
+  });
+}
+
 // Entreno libre al arrancar. Con una carrera o una pole en curso no se abre:
 // entrar en el entreno lo arma para el próximo GO, y ese GO es de la carrera.
 async function trainingAutostart() {
@@ -541,6 +580,7 @@ app.whenReady().then(async () => {
   }
   placementFile = path.join(userData, 'window-placement.json');
   createTray();
+  initUpdater();
   const startup = await trainingAutostart();
   createWindow(startup.skipped ? '?notice=training_skipped' : '');
   // Mismo nombre que da el inicio a «Entreno libre»: un clic luego la trae al frente.

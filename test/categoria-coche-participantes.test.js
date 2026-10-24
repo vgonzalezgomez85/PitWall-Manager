@@ -338,3 +338,18 @@ test('Excel: con los interruptores, categoría y coche salen junto al nombre', a
   assert.equal(filaA[4], 12, 'vueltas totales en su columna');
   assert.ok(String(filaA[5]).startsWith('12'), 'la primera pista sigue alineada: ' + filaA[5]);
 });
+
+test('Excel: hoja «Clasif. por carril» con sector y vueltas/mejor por carril', async () => {
+  const { raceId } = seedCarreraExcel({ hasCat: 0, hasCoche: 0 });
+  db.prepare('UPDATE manga_lanes SET coma = 0.42 WHERE lane = 1 AND manga_id IN (SELECT id FROM mangas WHERE race_id = ?)').run(raceId);
+  const wb = await excelDe(raceId);
+  assert.ok(wb.getWorksheet('Por carril'), 'la hoja de siempre sigue ahí');
+  const ws = wb.getWorksheet('Clasif. por carril');
+  const h = filaCabecera(ws);
+  assert.deepEqual(h.values.slice(1, 9), ['#', 'Piloto / Equipo', 'Vueltas', 'Sector', 'Vueltas C1', 'Vueltas C2', 'Mejor C1', 'Mejor C2']);
+  const uno = ws.getRow(h.number + 1).values.slice(1);
+  assert.deepEqual(uno.slice(0, 6), [1, 'Uno', 12, 42, 12, '']);
+  assert.ok(String(uno[6]).startsWith('9'), 'mejor de Uno en el carril 1: ' + uno[6]);
+  const dos = ws.getRow(h.number + 2).values.slice(1);
+  assert.deepEqual(dos.slice(0, 6), [2, 'Dos', 12, '', '', 12]);
+});

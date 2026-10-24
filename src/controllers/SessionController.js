@@ -349,6 +349,11 @@ class SessionController {
     const raceBestLaps = {};
     raceBestLapsArr.forEach(r => { raceBestLaps[r.lane] = { bestLapMs: r.bestLapMs, entityName: r.entityName, categoria: r.entityCategoria || null }; });
 
+    // Con la coma manual, al cerrar la última manga de la tanda el directo ofrece
+    // el botón «Sectores» (settori finales de la tanda).
+    const sectorsReady = !!tanda && Lap.manualComaEnabled()
+      && Manga.findByTanda(tanda.id).every(m => m.status === 'finished');
+
     // Next tanda button: show whenever this tanda is finished (regardless of manga state)
     let nextTanda = null;
     if (tanda?.status === 'finished') {
@@ -498,7 +503,7 @@ class SessionController {
     const goStrip = localReq && ['pending', 'active'].includes(race.status) && !!Manga.findFirstPending(race.id);
     const goOwner = goStrip ? GoOwnerService.publicState() : null;
 
-    res.render('races/live', { t: req.t, liveOrder, goStrip, goOwner, race, manga, tanda, lanes, laps, isActive, standings, projection, prevLapsByLane, totalMangas, totalTandas, totalRaceMs, effectiveMangaDurationMs, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, allParticipants, nextLaneByLane, nextMangaInfo, nextPendingMangaId, raceOver, isSimulating, isBart, isTicTac, softwareGo, isPaused });
+    res.render('races/live', { t: req.t, liveOrder, goStrip, goOwner, race, manga, tanda, lanes, laps, isActive, standings, projection, prevLapsByLane, totalMangas, totalTandas, totalRaceMs, effectiveMangaDurationMs, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, sectorsReady, allParticipants, nextLaneByLane, nextMangaInfo, nextPendingMangaId, raceOver, isSimulating, isBart, isTicTac, softwareGo, isPaused });
   }
 
   // GET /races/:id/mangas/:mangaId/panel/:type  (standalone popup)
@@ -1470,6 +1475,8 @@ class SessionController {
   // AUTOCONTENIDO como descarga (para GitHub Pages / compartir sin PitWall);
   // si no, render normal.
   static _sendResults(req, res, data) {
+    const Settori = require('../utils/settori');
+    data = { ...data, Settori, comaSectors: Settori.perLap() };
     if (!req._exportMode) return res.render('races/results', data);
     res.render('races/results', { ...data, hideNavbar: true, inlineClubLogo: true }, (err, html) => {
       if (err) { console.error('[export] render error:', err.message); return res.status(500).send(req.t('errors.export_error')); }
@@ -1739,6 +1746,60 @@ class SessionController {
       row.getCell(3 + xN).font = { bold: true };
       if (i % 2 === 1 && !fill) row.eachCell({ includeEmpty: true }, c => c.fill = fillSolid(COL.band));
     });
+
+    // ── Hoja «Por carril» (como la pestaña de Resultados) ───────────────────
+    // Participante · vueltas · sector · vueltas y mejor tiempo en cada carril, en
+    // el orden de la clasificación. El mejor tiempo de cada carril, resaltado.
+    {
+      const Settori = require('../utils/settori');
+      const per = Settori.perLap();
+      const perLaneOf = new Map(byTotal.map(r => [r, Lap.perLaneByEntity(race.id, r.entity_id, r.entity_type)]));
+      const laneSet = new Set();
+      for (let l = 1; l <= (race.lanes_count || 0); l++) laneSet.add(l);
+      perLaneOf.forEach(pls => pls.forEach(pl => { if (pl.lane > 0) laneSet.add(pl.lane); }));
+      const lanes = [...laneSet].sort((a, b) => a - b);
+      const ab = req.t('results.por_carril_abrev');
+      const sL = wb.addWorksheet(req.t('results.por_carril_hoja'));
+      sL.columns = [{ width: 5 }, { width: 30 }, ...extraHead.map(() => ({ width: 18 })),
+                    { width: 9 }, { width: 9 }, ...lanes.map(() => ({ width: 9 })), ...lanes.map(() => ({ width: 11 }))];
+      addRaceHeader(sL, 4 + xN + lanes.length * 2);
+      const sLHeader = sL.addRow(['#', req.t('tv.piloto_equipo'), ...extraHead,
+        req.t('results.por_carril_vueltas'), req.t('results.por_carril_sector'),
+        ...lanes.map(l => `${req.t('results.por_carril_vueltas')} ${ab}${l}`),
+        ...lanes.map(l => `${req.t('results.por_carril_mejor')} ${ab}${l}`)]);
+      sLHeader.height = 30;
+      sLHeader.eachCell(c => { Object.assign(c, headerStyle); c.alignment = { ...(c.alignment || {}), wrapText: true, horizontal: 'center', vertical: 'middle' }; });
+      sL.views = [{ state: 'frozen', ySplit: sLHeader.number, xSplit: 2 }];
+      const fastest = {};
+      perLaneOf.forEach(pls => pls.forEach(pl => {
+        if (pl.best_ms != null && (fastest[pl.lane] == null || pl.best_ms < fastest[pl.lane])) fastest[pl.lane] = pl.best_ms;
+      }));
+      byTotal.forEach((r, i) => {
+        const byLane = {};
+        (perLaneOf.get(r) || []).forEach(pl => { byLane[pl.lane] = pl; });
+        const hasSect = r.last_manga_coma > 0 || r.last_manga_coma_manual;
+        const row = sL.addRow([i + 1, r.entity_name, ...extraVals(r), r.total_laps,
+          hasSect ? Settori.fromComa(r.last_manga_coma, per) : '',
+          ...lanes.map(l => byLane[l] ? byLane[l].laps : ''),
+          ...lanes.map(l => byLane[l] && byLane[l].best_ms != null ? fmtMs(byLane[l].best_ms) : '')]);
+        const fill = podiumFill(i + 1);
+        row.eachCell({ includeEmpty: true }, c => {
+          c.border = thinBorder;
+          c.alignment = { horizontal: 'center' };
+          if (fill) c.fill = fill;
+          if (fill && i < 3) c.font = { bold: true };
+        });
+        row.getCell(2).alignment = { horizontal: 'left' };
+        for (let k = 0; k < xN; k++) row.getCell(3 + k).alignment = { horizontal: 'left' };
+        row.getCell(3 + xN).font = { bold: true };
+        if (r.last_manga_coma_manual) row.getCell(4 + xN).font = { bold: true, color: { argb: 'FF1F6FEB' } };
+        lanes.forEach((l, k) => {
+          const b = byLane[l] ? byLane[l].best_ms : null;
+          if (b != null && b === fastest[l]) row.getCell(5 + xN + lanes.length + k).font = { bold: true, color: { argb: 'FF1A7F37' } };
+        });
+        if (i % 2 === 1 && !fill) row.eachCell({ includeEmpty: true }, c => c.fill = fillSolid(COL.band));
+      });
+    }
 
     // ── Sheet 2 — Mejor vuelta ──────────────────────────────────────────────
     const byBest = [...aggregate].filter(r => r.best_lap_ms).sort((a,b) => a.best_lap_ms - b.best_lap_ms);
@@ -2546,7 +2607,8 @@ class SessionController {
     const race = Race.findById(req.params.id);
     if (!race) return res.status(404).send(req.t('errors.not_found'));
 
-    const sectores = Math.min(1000, Math.max(1, parseInt(req.query.settori, 10) || 100));
+    // `?settori=NN` manda; si no, la escala de Preferencias (100 por defecto).
+    const sectores = Math.min(1000, Math.max(1, parseInt(req.query.settori, 10) || require('../utils/settori').perLap()));
     const rows = Lap.aggregateByRace(race.id)
       .filter(r => r.entity_id != null)
       // Orden oficial de la clasificación (igual que /results y los puntos).

@@ -76,7 +76,7 @@
       <span id="restInfoText"></span>
     </div>
 
-    <form action="/races/<%= race.id %>/tandas" method="POST">
+    <form data-name-check action="/races/<%= race.id %>/tandas" method="POST">
 
       <% if (race.format === 'individual') { %>
 
@@ -1035,4 +1035,5 @@ if (document.getElementById('teamAssignUI')) {
 updateRestInfo();
 </script>
 
+<%- include('../partials/tanda-name-check', { otherNames }) %>
 <%- include('../partials/footer') %>

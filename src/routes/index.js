@@ -25,6 +25,7 @@ const SettingsController          = require('../controllers/SettingsController')
 const DriverProfileController     = require('../controllers/DriverProfileController');
 const PoleController              = require('../controllers/PoleController');
 const LapCorrectionController     = require('../controllers/LapCorrectionController');
+const TandaSummaryController      = require('../controllers/TandaSummaryController');
 const CircuitController           = require('../controllers/CircuitController');
 const CategoryController          = require('../controllers/CategoryController');
 const CarController               = require('../controllers/CarController');
@@ -76,6 +77,9 @@ function homeLiveState(allRaces) {
     race: liveRace,
     manga: current,
     correctionsManga: (current && current.status === 'active') ? current : (lastDone || current),
+    // Con la coma manual, «Sectores» abre el fin de la última tanda acabada.
+    sectorsTandaId: require('../models/Lap').manualComaEnabled()
+      ? require('../models/Tanda').lastFinishedId(liveRace.id) : null,
     position: current ? ordered.indexOf(current) + 1 : null,
     total: ordered.length,
     done,
@@ -126,6 +130,28 @@ router.get('/api/home/state', (req, res) => {
 // libre: no lo abre si el GO es de una carrera o de una pole (GoOwnerService).
 router.get('/api/windows/startup', (req, res) => {
   res.json({ busy: require('../services/GoOwnerService').publicState().claimed });
+});
+
+// La app de escritorio pregunta antes de instalar una actualización: no se
+// reinicia con algo cronometrando, y antes deja una copia de la BD.
+router.get('/api/app/update-guard', (req, res) => {
+  const accessControl = require('../middleware/accessControl');
+  if (!accessControl.isLocal(accessControl.reqIp(req))) return res.status(403).json({ error: 'forbidden' });
+  const busy = require('../services/TimingService').isRunning ? 'manga'
+             : require('../services/TrainingService').isActive ? 'training'
+             : require('../services/PoleTimingService').isRunning ? 'pole'
+             : null;
+  res.json({ busy });
+});
+router.post('/api/app/pre-update-backup', async (req, res) => {
+  const accessControl = require('../middleware/accessControl');
+  if (!accessControl.isLocal(accessControl.reqIp(req))) return res.status(403).json({ error: 'forbidden' });
+  try {
+    res.json({ ok: true, file: await require('../services/UpdateBackup').create(String(req.body?.from || '')) });
+  } catch (err) {
+    console.error('[update] copia de la BD:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 // Dueño del próximo GO: aviso del entreno y franja del directo.
@@ -270,7 +296,10 @@ router.post('/races/:id/mangas/:mangaId/corrections/transfer/:lapId',LapCorrecti
 router.post('/races/:id/mangas/:mangaId/corrections/add',            LapCorrectionController.addManual);
 router.post('/races/:id/mangas/:mangaId/corrections/delete/:lapId',  LapCorrectionController.deleteLap);
 router.post('/races/:id/mangas/:mangaId/corrections/edit/:lapId',    LapCorrectionController.editTime);
-router.post('/races/:id/mangas/:mangaId/corrections/coma',           LapCorrectionController.setComa);
+
+// ── Fin de tanda: vueltas (solo lectura) + settori finales ───────────────────
+router.get( '/races/:id/tandas/:tandaId/summary',                    TandaSummaryController.show);
+router.post('/races/:id/tandas/:tandaId/summary',                    TandaSummaryController.save);
 
 // ── Manga session ─────────────────────────────────────────────────────────────
 router.get( '/races/:id/mangas/:mangaId/live',         SessionController.live);

@@ -214,50 +214,6 @@ if (firstFlagged >= 0) initActive = firstFlagged;
               <div class="lc-laps">
                 <div class="lc-laps__bar">
                   <span class="lc-laps__lbl"><%= t('lap-corrections.vuelta_a_vuelta') %></span>
-                  <% if (manualComa && manga.status === 'finished') { %>
-                    <!-- Corrección manual de la coma (Ajustes → Preferencias). Solo
-                         mangas cerradas: en una viva la reescribe stopManga. -->
-                    <% const comaAuto = Number(s.info.coma || 0); %>
-                    <% const comaAutoTxt = comaAuto.toFixed(2).replace('.', ','); %>
-                    <div class="lc-coma">
-                      <span class="lc-coma__lbl"
-                            title="<%= decidesTie[s.info.lane] === false
-                              ? (t('lap-corrections.esta_manga_no_es_la_ultima_que_corrio_esta_2'))
-                              : (t('lap-corrections.fraccion_de_vuelta_al_caer_la_bandera_de_esta')) %>"><%= t('lap-corrections.coma') %></span>
-                      <form class="lc-coma__form" action="/races/<%= race.id %>/mangas/<%= manga.id %>/corrections/coma" method="POST">
-                        <input type="hidden" name="lane" value="<%= s.info.lane %>">
-                        <input class="lc-mini-input lc-mini-input--coma" type="text" inputmode="decimal" name="coma"
-                               value="<%= s.info.coma_manual != null ? String(Number(s.info.coma_manual)).replace('.', ',') : '' %>"
-                               placeholder="<%= comaAutoTxt %>"
-                               title="<%= t('lap-corrections.fraccion_de_vuelta_al_caer_la_bandera_de_0_a_0') %>">
-                        <button class="lc-iconbtn" type="submit" title="<%= t('lap-corrections.guardar_coma') %>">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-                        </button>
-                      </form>
-                      <% if (s.info.coma_manual != null) { %>
-                        <form class="lc-coma__reset" action="/races/<%= race.id %>/mangas/<%= manga.id %>/corrections/coma" method="POST">
-                          <input type="hidden" name="lane" value="<%= s.info.lane %>">
-                          <input type="hidden" name="coma" value="">
-                          <button class="lc-iconbtn" type="submit" title="<%= t('lap-corrections.volver_a_la_coma_automatica') %>">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
-                          </button>
-                        </form>
-                        <span class="lc-coma__tag is-manual" title="<%= t('lap-corrections.corregida_a_mano_automatica') %><%= comaAutoTxt %>">
-                          <%= t('lap-corrections.a_mano') %>
-                        </span>
-                      <% } else { %>
-                        <span class="lc-coma__tag" title="<%= t('lap-corrections.calculada_automaticamente_al_cerrar_la_manga') %>">
-                          <%= t('lap-corrections.automatica') %>
-                        </span>
-                      <% } %>
-                      <% if (decidesTie[s.info.lane] === false) { %>
-                        <span class="lc-coma__tag is-note"
-                              title="<%= t('lap-corrections.esta_manga_no_es_la_ultima_que_corrio_esta') %>">
-                          <%= t('lap-corrections.no_decide') %>
-                        </span>
-                      <% } %>
-                    </div>
-                  <% } %>
                 </div>
 
                 <% if (s.laps.length === 0) { %>
@@ -532,10 +488,9 @@ document.querySelectorAll('.lc-lane').forEach(el => {
     const form = e.target;
     if (!form || !form.classList) return;
     // Mismo camino robusto para "Añadir vuelta" (.lc-insert), "Editar tiempo"
-    // (.lc-edit) y la coma manual (.lc-coma): fetch por delegación + refresco,
+    // (.lc-edit): fetch por delegación + refresco,
     // por si el auto-refresh desconecta el form del DOM en manga activa.
-    if (!form.classList.contains('lc-insert') && !form.classList.contains('lc-edit')
-        && !form.classList.contains('lc-coma__form') && !form.classList.contains('lc-coma__reset')) return;
+    if (!form.classList.contains('lc-insert') && !form.classList.contains('lc-edit')) return;
     e.preventDefault();
     try {
       const res = await fetch(form.action, {
@@ -737,20 +692,6 @@ document.querySelectorAll('.lc-lane').forEach(el => {
   font-size: 11px; font-weight: 700; letter-spacing: .1em;
   text-transform: uppercase; color: var(--vt-mute-2);
 }
-/* Corrección manual de la coma: valor + fuente + guardar / volver a automática */
-.lc-coma { display: flex; align-items: center; gap: 6px; }
-.lc-coma__lbl {
-  font-size: 11px; font-weight: 700; letter-spacing: .1em;
-  text-transform: uppercase; color: var(--vt-mute-2);
-}
-.lc-coma__form { display: flex; align-items: center; gap: 4px; }
-.lc-mini-input--coma { width: 64px; text-align: center; }
-.lc-coma__tag {
-  font-size: 10px; font-weight: 700; letter-spacing: .06em;
-  text-transform: uppercase; color: var(--vt-mute-2);
-}
-.lc-coma__tag.is-manual { color: #58a6ff; }
-.lc-coma__tag.is-note { color: #e6a817; cursor: help; }
 .lc-laps__empty { color: var(--vt-mute); font-size: 14px; padding: 10px 0; }
 
 .lc-lhead, .lc-lap {

@@ -124,9 +124,12 @@ function formatRemaining(ms) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-// ── View picker: filas (1) o tarjetas con detalles (3) ──────────────────────
+// ── View picker: filas (1), tarjetas con detalles (3) o tarjetas fijas (4) ──
 // La antigua «cuadrícula compacta» (2) se quitó al rediseñar las tarjetas: era
 // la 3 con dos datos menos. Un '2' guardado o en ?view=2 abre las tarjetas.
+// La 4 («tarjetas fijas por carril») es la 3 pero cada carril queda en su sitio
+// (orden = nº de carril, no la clasificación) y a la derecha van la clasificación
+// de la manga y, debajo, la general. Marca: body.view-fixed + .live-lanes--fixed.
 function _viewStorageKey() {
   return `pitwall.liveView.race-${RACE_DATA.raceId}`;
 }
@@ -136,7 +139,8 @@ function openViewPicker() {
   ov.hidden = false;
   // Marcar la opción activa (la que se ve, guardada o por defecto)
   const grid = document.getElementById('lanesGrid');
-  const current = grid && grid.classList.contains('live-lanes--vertical') ? '3' : '1';
+  const current = document.body.classList.contains('view-fixed') ? '4'
+    : (grid && grid.classList.contains('live-lanes--vertical') ? '3' : '1');
   ov.querySelectorAll('.vp-opt').forEach(b => {
     b.classList.toggle('is-active', b.dataset.mode === current);
   });
@@ -148,10 +152,28 @@ function closeViewPicker() {
 function selectView(mode, persist = true) {
   const grid = document.getElementById('lanesGrid');
   if (!grid) return;
-  const m = String(mode) === '1' ? '1' : '3';
-  grid.classList.toggle('live-lanes--vertical', m === '3');
+  const m = String(mode) === '1' ? '1' : (String(mode) === '4' ? '4' : '3');
+  const wasFixed = document.body.classList.contains('view-fixed');
+  grid.classList.toggle('live-lanes--vertical', m !== '1');
+  grid.classList.toggle('live-lanes--fixed', m === '4');
+  document.body.classList.toggle('view-fixed', m === '4');
+  // En la 4 la clasificación va SIEMPRE al lado (la pone el CSS), así que el
+  // conmutador #sideBtn queda apartado (sin guardar nada). Al salir de la 4 se
+  // recupera lo que el director tenía guardado.
+  if (m === '4') _setSideStandings(false);
+  else if (wasFixed) {
+    let on = false;
+    try { on = localStorage.getItem(_sideStorageKey()) === '1'; } catch {}
+    _setSideStandings(on);
+  }
   if (persist) { try { localStorage.setItem(_viewStorageKey(), m); } catch {} }
   closeViewPicker();
+  // El orden de las tarjetas cambia con la vista (clasificación ↔ carril) y la
+  // tabla de la manga solo se pinta en la 4: repintar con la última clasificación.
+  if (_lastStandingsData) {
+    if (typeof sortCards === 'function') sortCards(_lastStandingsData.standings);
+    renderMangaStandings(_lastStandingsData);
+  }
   if (typeof fitLaneCards === 'function') requestAnimationFrame(() => fitLaneCards());
   // Re-evaluar paginación de V1 al cambiar de vista
   requestAnimationFrame(_v1ApplyPaging);
@@ -195,6 +217,7 @@ function _initSideStandings() {
   if (q === 'standings') on = true;
   else if (q === 'none') on = false;
   else { try { on = localStorage.getItem(_sideStorageKey()) === '1'; } catch {} }
+  if (document.body.classList.contains('view-fixed')) on = false;   // la 4 lleva su propia columna
   _setSideStandings(on);
   const sb = document.getElementById('liveSidebar');
   if (sb && 'ResizeObserver' in window) {
@@ -385,11 +408,11 @@ function _startDriverFlip() {
 // Restaurar la vista guardada. El botón siempre se muestra.
 function _initViewPicker() {
   const nonRest = (RACE_DATA.lanes || []).filter(l => !l.isRest).length;
-  // ?view=1|2|3 fuerza la vista sin guardarla (enlaces directos/capturas).
+  // ?view=1|2|3|4 fuerza la vista sin guardarla (enlaces directos/capturas).
   const qv = new URLSearchParams(location.search).get('view');
   let saved = null;
   try { saved = localStorage.getItem(_viewStorageKey()); } catch {}
-  if (['1', '2', '3'].includes(qv)) selectView(qv, false);
+  if (['1', '2', '3', '4'].includes(qv)) selectView(qv, false);
   else if (saved) selectView(saved);
   else if (nonRest > 8) selectView('3');  // default sensato para muchos carriles
   _initSideStandings();
@@ -1261,7 +1284,8 @@ if (document.fonts && document.fonts.ready) {
 // factor --lv-scale para que la fuente crezca/mengüe con la tarjeta. Se adapta
 // así a la resolución del dispositivo en cada momento.
 function fitVerticalGrid(root, W, H) {
-  const N = lanesGrid.querySelectorAll('.lane-card').length;
+  const fixedView = lanesGrid.classList.contains('live-lanes--fixed');
+  const N = lanesGrid.querySelectorAll(fixedView ? '.lane-card:not(.is-rest)' : '.lane-card').length;
   if (!N) return;
   const gap = 8;          // .5rem
   const pad = 8;          // .5rem de padding del contenedor
@@ -1646,7 +1670,9 @@ function sortCards(rows) {
 
   // FLIP: mide la posición de cada tarjeta ANTES de tocar su `order` (ver
   // más abajo) para poder deslizarla a la nueva en vez de que salte de golpe.
-  const finishReorderFx = window.ReorderFX ? window.ReorderFX.capture(lanesGrid) : null;
+  // Vista 4 (tarjetas fijas): el orden es el nº de carril y NO se anima nada.
+  const fixedLanes = document.body.classList.contains('view-fixed');
+  const finishReorderFx = (!fixedLanes && window.ReorderFX) ? window.ReorderFX.capture(lanesGrid) : null;
 
   // Gaps entre tarjetas consecutivas (en vueltas proyectadas si hay global).
   const gapAbove = {}, gapBelow = {};
@@ -1659,7 +1685,7 @@ function sortCards(rows) {
   sorted.forEach((r, i) => {
     const k = cardKey(r);
     const card = document.getElementById(`card-${k}`);
-    if (card) card.style.order = i;
+    if (card) card.style.order = fixedLanes ? (r.isRest ? 1000 + i : r.lane) : i;
     const posEl = document.getElementById(`card-pos-${k}`);
     if (posEl) {
       const gpos = hasGlobal ? posOf(r) : (i + 1);   // posición general real (1..N)
@@ -1752,8 +1778,13 @@ function lapFraction(r) {
   return Math.min(sinceCross / r.avgLapMs, 1.5); // clamp por si el reloj cliente/servidor se desincroniza
 }
 
+// Último paquete `standings` recibido: lo reusa selectView para repintar al
+// cambiar de vista sin esperar al siguiente cruce.
+var _lastStandingsData = null;   // var: selectView puede correr antes de esta línea
+
 function renderStandings(data) {
   if (!data?.standings) return;
+  _lastStandingsData = data;
   // Merge active lanes with resting entities (lapCount=0 this manga)
   const restRows = restLanes.map(l => ({
     lane: l.lane, name: l.name, color: l.color, country: l.country, categoria: l.categoria,
@@ -1845,6 +1876,7 @@ function renderStandings(data) {
   // sortCards calcula y vuelca el "Gap V" real de cada tarjeta (sobre los
   // vecinos del orden proyectado que fija aquí mismo, ver realGapAbove).
   sortCards(data.standings);
+  renderMangaStandings(data);
   _v1CheckGrowth();
   // Re-evaluar paginación tras reordenar cards en V1
   _v1SchedulePaging();
@@ -2064,6 +2096,58 @@ function renderProjected(data) {
   }).join('');
 
   applyStandingsCarousel();
+}
+
+// ── Clasificación de LA MANGA (solo vista 4 «tarjetas fijas por carril») ──────
+// Orden: vueltas de esta manga; a igualdad, quien cruzó antes (mangaCrossMs).
+// Gap contra el líder: vueltas (con la fracción en pista, como el resto del
+// directo) o, a la par en vueltas enteras, segundos entre sus últimos cruces.
+var _mangaPanelH = -1;
+function renderMangaStandings(data) {
+  const body = document.getElementById('mangaBody');
+  if (!body || !document.body.classList.contains('view-fixed') || !data?.standings) return;
+  const rows = data.standings.filter(r => !r.isRest).slice().sort((a, b) =>
+    (b.lapCount || 0) - (a.lapCount || 0)
+    || (mangaCrossMs[a.lane] ?? Infinity) - (mangaCrossMs[b.lane] ?? Infinity)
+    || (a.bestLapMs ?? Infinity) - (b.bestLapMs ?? Infinity));
+  const leader = rows[0];
+  body.innerHTML = rows.map((r, i) => {
+    let gap = '—';
+    if (i > 0 && leader) {
+      const lapGap = (leader.lapCount || 0) - (r.lapCount || 0);
+      if (lapGap === 0) {
+        const a = mangaCrossMs[r.lane], b = mangaCrossMs[leader.lane];
+        if (a != null && b != null) gap = `-${formatMs(Math.abs(a - b))}`;
+      } else {
+        gap = `-${num(Math.max(0, lapGap + lapFraction(leader) - lapFraction(r)).toFixed(1))}`;
+      }
+    }
+    const color = r.color || '#8b949e';
+    return `
+    <tr class="srow">
+      <td><span class="sr-pos ${posClass(i + 1)}">${i + 1}</span></td>
+      <td><span class="sr-name" title="${teamPlain(r.name, r.categoria)}"><span class="mp-lane" style="background:${color};color:${laneInk(color)}">${r.lane}</span>${flagHtml(r.country)}${teamHtml(r.name, r.categoria)}</span></td>
+      <td class="sr-right"><span class="sr-ontrack">${r.lapCount || 0}</span></td>
+      <td class="sr-right"><span class="sr-best">${formatMs(r.bestLapMs)}</span></td>
+      <td class="sr-right"><span class="sr-delta">${gap}</span></td>
+    </tr>`;
+  }).join('');
+
+  // Equipos que descansan esta manga (no ocupan carril): una línea bajo la tabla.
+  const restEl = document.getElementById('mangaRest');
+  if (restEl) {
+    const names = restLanes.filter(l => !l.finished).map(l => teamPlain(l.name, l.categoria));
+    restEl.hidden = names.length === 0;
+    restEl.textContent = names.length ? `💤 ${I18N.t('client.common.descanso')}: ${names.join(' · ')}` : '';
+  }
+
+  // Si el panel cambia de alto, a la general (debajo) le queda otro hueco: reajustarla.
+  const panel = document.getElementById('mangaPanel');
+  const h = panel ? Math.round(panel.offsetHeight) : 0;
+  if (h !== _mangaPanelH) {
+    _mangaPanelH = h;
+    requestAnimationFrame(_refitSideStandings);
+  }
 }
 
 // ── Best laps panel ──────────────────────────────────────────────────────────

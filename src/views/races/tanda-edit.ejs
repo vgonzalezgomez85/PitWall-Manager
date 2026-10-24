@@ -58,7 +58,7 @@
       </div>
     <% } %>
 
-    <form action="/races/<%= race.id %>/tandas/<%= tanda.id %>/edit" method="POST"
+    <form data-name-check action="/races/<%= race.id %>/tandas/<%= tanda.id %>/edit" method="POST"
           <% if (canRestructure) { %>onsubmit="return confirm('<%= t('tanda-edit.guardar_cambios_se_regenerara_la_programacion') %>')"<% } %>>
 
       <% if (race.format === 'individual') { %>
@@ -434,4 +434,5 @@ updateRestInfo();
 </script>
 <% } %>
 
+<%- include('../partials/tanda-name-check', { otherNames }) %>
 <%- include('../partials/footer') %>

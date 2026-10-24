@@ -19,6 +19,8 @@ database/slotime.license
 bkp_portatil/
 database/_backup_pre_portatil/
 database/_backup_pre_delete/
+database/_backup-pre-update-*/
+database/_backups-auto/
 
 # Datos generados / de entrada (no son código)
 database/sim/*

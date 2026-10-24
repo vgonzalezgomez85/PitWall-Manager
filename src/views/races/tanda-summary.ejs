@@ -1,0 +1,188 @@
+<%- include('../partials/header', { pageTitle: t('tanda-summary.titulo') }) %>
+
+<%
+const errNames = rows.filter(r => errorKeys.includes(r.key)).map(r => r.name).join(', ');
+const fieldOf = (r) => 's_' + r.key.replace(':', '_');
+%>
+
+<div class="vt-page ts-page">
+  <div class="ts-shell">
+
+    <div class="ts-topbar">
+      <div class="ts-title">
+        <h1><%= t('tanda-summary.titulo') %></h1>
+        <div class="ts-sub"><%= race.name %> · <%= t('common.tanda_2') %> <b><%= tanda.number %></b></div>
+      </div>
+      <div class="ts-actions">
+        <% if (tandaOptions.length > 1) { %>
+          <select class="ts-select" aria-label="<%= t('common.tanda_2') %>" onchange="if (this.value) location.href = this.value">
+            <% tandaOptions.forEach(o => { %>
+              <option value="/races/<%= race.id %>/tandas/<%= o.id %>/summary" <%= o.id === tanda.id ? 'selected' : '' %>>
+                <%= t('common.tanda_2') %> <%= o.number %>
+              </option>
+            <% }) %>
+          </select>
+        <% } %>
+        <a class="ts-btn" href="/races/<%= race.id %>/results"><%= t('common.resultados') %></a>
+        <a class="ts-btn" href="/races/<%= race.id %>"><%= t('common.volver_a_la_carrera') %></a>
+      </div>
+    </div>
+
+    <% if (saved) { %><div class="ts-alert ts-alert--ok"><%= t('tanda-summary.guardado') %></div><% } %>
+    <% if (errorKeys.length) { %><div class="ts-alert ts-alert--err"><%= t('tanda-summary.error', { names: errNames }) %></div><% } %>
+    <% if (!enabled) { %><div class="ts-alert ts-alert--warn"><%= t('tanda-summary.desactivado') %></div>
+    <% } else if (!editable) { %><div class="ts-alert ts-alert--warn"><%= t('tanda-summary.no_terminada') %></div><% } %>
+
+    <div class="ts-alert ts-alert--warn" id="tsPartial" hidden data-tpl="<%= t('tanda-summary.parcial', { n: '{{n}}', total: '{{total}}' }) %>"></div>
+
+    <% if (!rows.length) { %>
+      <p class="ts-empty"><%= t('tanda-summary.sin_participantes') %></p>
+    <% } else { %>
+    <form method="POST" action="/races/<%= race.id %>/tandas/<%= tanda.id %>/summary">
+      <div class="ts-tablewrap">
+        <table class="ts-table">
+          <thead>
+            <tr>
+              <th class="ts-pos"><%= t('tanda-summary.posicion') %></th>
+              <th class="ts-name"><%= t('common.participante') %></th>
+              <% mangas.forEach(m => { %><th class="ts-m" title="<%= t('common.manga') %> <%= m.number %>"><%= t('tanda-summary.manga_abrev') %><%= m.number %></th><% }) %>
+              <th class="ts-num"><%= t('tanda-summary.vueltas_bateria') %></th>
+              <th class="ts-num" title="<%= t('tanda-summary.vueltas_totales_ayuda') %>"><%= t('tanda-summary.vueltas_totales') %></th>
+              <th class="ts-set"><%= t('tanda-summary.settori_finales') %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% rows.forEach((r, i) => { %>
+              <tr data-laps="<%= r.laps %>" data-name="<%= r.name %>">
+                <td class="ts-pos"><span class="ts-badge"><%= i + 1 %></span></td>
+                <td class="ts-name">
+                  <% if (r.color) { %><span class="ts-dot" style="background:<%= r.color %>"></span><% } %>
+                  <strong><%= r.name %></strong>
+                </td>
+                <% r.perManga.forEach(n => { %><td class="ts-m"><%= n == null ? '—' : n %></td><% }) %>
+                <td class="ts-num"><input class="ts-ro" type="text" value="<%= r.laps %>" readonly tabindex="-1" aria-label="<%= t('tanda-summary.vueltas_bateria') %>"></td>
+                <td class="ts-num"><input class="ts-ro" type="text" value="<%= r.total == null ? '' : r.total %>" readonly tabindex="-1" aria-label="<%= t('tanda-summary.vueltas_totales') %>"></td>
+                <td class="ts-set">
+                  <input class="ts-in <%= r.manual != null ? 'is-manual' : '' %>" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="<%= String(MAX_SETTORI).length %>"
+                         name="<%= fieldOf(r) %>" value="<%= r.manual != null ? r.manual : '' %>" placeholder="<%= r.auto %>"
+                         data-auto="<%= r.auto %>"
+                         title="<%= t('tanda-summary.campo_ayuda', { max: MAX_SETTORI }) %>"
+                         <%= editable ? '' : 'disabled' %>
+                         aria-label="<%= t('tanda-summary.settori_finales') %> — <%= r.name %>">
+                  <span class="ts-tag <%= r.manual != null ? 'is-manual' : '' %>"><%= r.manual != null ? t('tanda-summary.origen_manual') : t('tanda-summary.origen_auto') %></span>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="ts-hint"><%= t('tanda-summary.ayuda', { max: MAX_SETTORI }) %></p>
+
+      <div class="ts-foot">
+        <% if (editable) { %><button class="ts-btn ts-btn--go" type="submit"><%= t('tanda-summary.guardar') %></button><% } %>
+        <% mangas.forEach(m => { %>
+          <a class="ts-btn ts-btn--ghost" href="/races/<%= race.id %>/mangas/<%= m.id %>/corrections"><%= t('common.correccion_de_vueltas_2') %> · <%= t('tanda-summary.manga_abrev') %><%= m.number %></a>
+        <% }) %>
+      </div>
+    </form>
+    <% } %>
+
+  </div>
+</div>
+
+
+<script>
+(function () {
+  var tbody = document.querySelector('.ts-table tbody');
+  if (!tbody) return;
+  var rows  = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+  var warn  = document.getElementById('tsPartial');
+
+  // Settori efectivos de una fila: lo escrito o, si está vacío, el cálculo automático.
+  function eff(r) {
+    var i = r.querySelector('input[name^="s_"]');
+    if (!i) return -1;
+    var v = !i.disabled ? i.value.trim() : '';
+    return v !== '' ? Number(v) : Number(i.dataset.auto || 0);
+  }
+
+  function refresh() {
+    var inputs = rows.map(function (r) { return r.querySelector('input[name^="s_"]'); })
+                     .filter(function (i) { return i && !i.disabled; });
+    var filled = inputs.filter(function (i) { return i.value.trim() !== ''; }).length;
+    if (warn) {
+      if (filled > 0 && filled < inputs.length) {
+        warn.textContent = warn.dataset.tpl.replace('{{n}}', filled).replace('{{total}}', inputs.length);
+        warn.hidden = false;
+      } else { warn.hidden = true; }
+    }
+    // Clasificación de la batería en directo: vueltas y, a igualdad, settori.
+    rows.slice().sort(function (a, b) {
+      return (b.dataset.laps - a.dataset.laps) || (eff(b) - eff(a)) || a.dataset.name.localeCompare(b.dataset.name);
+    }).forEach(function (r, idx) {
+      tbody.appendChild(r);
+      r.querySelector('.ts-badge').textContent = idx + 1;
+    });
+  }
+
+  tbody.addEventListener('input', function (e) {
+    if (e.target.classList.contains('ts-in')) e.target.classList.toggle('is-manual', e.target.value.trim() !== '');
+  });
+  // Reordenar al salir de la casilla, no al teclear: mover la fila le quita el foco.
+  tbody.addEventListener('change', function (e) { if (e.target.classList.contains('ts-in')) refresh(); });
+
+  // Intro pasa a la casilla siguiente; en la última, guarda.
+  tbody.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' || !e.target.classList.contains('ts-in')) return;
+    e.preventDefault();
+    var all  = Array.prototype.slice.call(tbody.querySelectorAll('.ts-in:not([disabled])'));
+    var next = all[all.indexOf(e.target) + 1];
+    if (next) { next.focus(); next.select(); }
+    else if (e.target.form) { if (e.target.form.requestSubmit) e.target.form.requestSubmit(); else e.target.form.submit(); }
+  });
+
+  refresh();
+})();
+</script>
+
+<style>
+.ts-page { padding: 18px 22px 40px; }
+.ts-shell { max-width: 1100px; margin: 0 auto; }
+.ts-topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+.ts-title h1 { margin: 0; font-size: 22px; }
+.ts-sub { color: var(--vt-mute, #8b949e); font-size: 14px; margin-top: 2px; }
+.ts-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.ts-select, .ts-btn { background: #14141a; color: inherit; border: 1px solid var(--vt-border, #2a2a33); border-radius: 8px; padding: 8px 12px; font-size: 14px; text-decoration: none; cursor: pointer; }
+.ts-btn:hover { border-color: #58a6ff; }
+.ts-btn--go { background: #1f6feb; border-color: #1f6feb; color: #fff; font-weight: 700; }
+.ts-btn--ghost { color: var(--vt-mute, #8b949e); }
+.ts-alert { border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; font-size: 14px; border: 1px solid; }
+.ts-alert--ok   { color: #3fb950; border-color: rgba(63,185,80,.4); background: rgba(63,185,80,.08); }
+.ts-alert--err  { color: #f85149; border-color: rgba(248,81,73,.4); background: rgba(248,81,73,.08); }
+.ts-alert--warn { color: #e6a817; border-color: rgba(230,168,23,.4); background: rgba(230,168,23,.08); }
+.ts-empty { color: var(--vt-mute, #8b949e); padding: 20px 0; }
+.ts-tablewrap { overflow-x: auto; border: 1px solid var(--vt-border, #2a2a33); border-radius: 10px; }
+.ts-table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.ts-table th { text-align: left; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--vt-mute-2, #6e7681); padding: 10px 12px; border-bottom: 1px solid var(--vt-border, #2a2a33); white-space: nowrap; }
+.ts-table td { padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,.05); vertical-align: middle; }
+.ts-table tr:last-child td { border-bottom: 0; }
+.ts-pos { width: 48px; }
+.ts-badge { display: inline-block; min-width: 26px; text-align: center; border-radius: 6px; background: #1b1b22; padding: 2px 6px; font-weight: 700; }
+.ts-name { white-space: nowrap; }
+.ts-dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; }
+.ts-m, .ts-num { text-align: right; font-variant-numeric: tabular-nums; }
+.ts-m { color: var(--vt-mute, #8b949e); }
+.ts-ro, .ts-in { width: 72px; text-align: center; background: #0c0c10; color: inherit; border: 1px solid var(--vt-border, #2a2a33); border-radius: 6px; padding: 6px 8px; font: inherit; font-variant-numeric: tabular-nums; }
+.ts-ro { background: transparent; border-color: transparent; font-weight: 700; }
+.ts-in:focus { outline: 2px solid #1f6feb; border-color: #1f6feb; }
+.ts-in.is-manual { border-color: rgba(88,166,255,.6); color: #58a6ff; }
+.ts-in:disabled { opacity: .55; }
+.ts-set { white-space: nowrap; }
+.ts-tag { margin-left: 8px; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--vt-mute-2, #6e7681); }
+.ts-tag.is-manual { color: #58a6ff; }
+.ts-hint { color: var(--vt-mute, #8b949e); font-size: 13px; margin: 12px 2px; }
+.ts-foot { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+</style>
+
+<%- include('../partials/footer') %>

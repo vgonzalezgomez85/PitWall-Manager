@@ -1,0 +1,116 @@
+<%#
+  Nombres repetidos al guardar una tanda (ver utils/participantNames.js).
+  El formulario lleva `data-name-check`. Repetido en la misma tanda = no deja
+  guardar; ya en otra tanda = aviso con «Guardar igualmente».
+  Parámetro: otherNames = participantNames.inOtherTandas(race, tanda.id).
+%>
+<style>
+  .nc-box { border-radius: 8px; padding: 12px 14px; margin: 0 0 1rem; font-size: 14px; line-height: 1.45; border: 1px solid; }
+  .nc-box--err  { color: #f85149; border-color: rgba(248,81,73,.4); background: rgba(248,81,73,.08); }
+  .nc-box--warn { color: #e6a817; border-color: rgba(230,168,23,.4); background: rgba(230,168,23,.08); }
+  .nc-box ul { margin: .4rem 0 .5rem 1.1rem; padding: 0; }
+  .nc-box p { margin: 0; }
+  .nc-box .nc-hint { color: var(--vt-mute, #8b949e); margin-top: .3rem; }
+  .nc-acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: .7rem; }
+  .nc-btn { background: #14141a; color: #e6edf3; border: 1px solid var(--vt-border, #2a2a33); border-radius: 8px; padding: 7px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+  .nc-btn:hover { border-color: #58a6ff; }
+  .nc-btn--go { background: #9e6a03; border-color: #9e6a03; color: #fff; font-weight: 700; }
+</style>
+<script>
+(function () {
+  var form = document.querySelector('form[data-name-check]');
+  if (!form) return;
+  var OTHER = <%- JSON.stringify(otherNames || []).replace(/</g, '\\u003c') %>;
+  var otherByKey = {};
+  OTHER.forEach(function (o) { otherByKey[o.key] = o; });
+
+  // Misma regla que utils/participantNames.normName.
+  function norm(s) {
+    return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .toLowerCase().replace(/\s+/g, ' ').trim();
+  }
+
+  function namesOf() {
+    var out = [];
+    form.querySelectorAll('input[name]').forEach(function (i) {
+      if (/^(drivers|teams)\[\d+\]\[name\]$/.test(i.name) || /^drivers\[\d+\]$/.test(i.name)) {
+        if (i.value.trim()) out.push(i.value.trim());
+      } else if (i.name === 'team_catalog_ids[]' && i.value) {
+        var card = document.querySelector('.catalog-card[data-team-id="' + CSS.escape(i.value) + '"]');
+        if (card && card.dataset.teamName) out.push(card.dataset.teamName);
+      }
+    });
+    return out;
+  }
+
+  var box = document.createElement('div');
+  box.className = 'nc-box';
+  box.hidden = true;
+  box.setAttribute('role', 'alert');
+  var submitBtn = form.querySelector('[type="submit"]');
+  var anchor = submitBtn && submitBtn.parentElement !== form ? submitBtn.parentElement : submitBtn;
+  if (anchor) anchor.parentElement.insertBefore(box, anchor); else form.appendChild(box);
+
+  function el(tag, text, cls) {
+    var e = document.createElement(tag);
+    if (text != null) e.textContent = text;
+    if (cls) e.className = cls;
+    return e;
+  }
+  function list(items) {
+    var ul = el('ul');
+    items.forEach(function (t) { ul.appendChild(el('li', t)); });
+    return ul;
+  }
+
+  var override = false;
+  form.addEventListener('submit', function (e) {
+    if (override) { override = false; return; }
+    var names = namesOf();
+    var seen = {}, dups = [], repeats = [], told = {};
+    names.forEach(function (n) {
+      var k = norm(n);
+      if (seen[k] && dups.indexOf(seen[k]) < 0) dups.push(seen[k]);
+      if (!seen[k]) seen[k] = n;
+      if (otherByKey[k] && !told[k]) { told[k] = true; repeats.push(otherByKey[k]); }
+    });
+    if (!dups.length && !repeats.length) { box.hidden = true; return; }
+
+    // Antes que el resto de comprobaciones del formulario (fase de captura).
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    box.innerHTML = '';
+    if (dups.length) {
+      box.className = 'nc-box nc-box--err';
+      box.appendChild(el('p', I18N.t('client.tanda-names.repetidos_en_esta_tanda')));
+      box.appendChild(list(dups));
+      box.appendChild(el('p', I18N.t('client.tanda-names.cambialos_para_guardar'), 'nc-hint'));
+    } else {
+      box.className = 'nc-box nc-box--warn';
+      box.appendChild(el('p', I18N.t('client.tanda-names.ya_estan_en_otra_tanda')));
+      box.appendChild(list(repeats.map(function (r) {
+        return I18N.t('client.tanda-names.nombre_en_tandas', { name: r.name, tandas: r.tandas.join(', ') });
+      })));
+      box.appendChild(el('p', I18N.t('client.tanda-names.si_es_el_mismo'), 'nc-hint'));
+      var acts = el('div', null, 'nc-acts');
+      var review = el('button', I18N.t('client.tanda-names.revisar'), 'nc-btn');
+      review.type = 'button';
+      review.addEventListener('click', function () { box.hidden = true; });
+      var go = el('button', I18N.t('client.tanda-names.guardar_igualmente'), 'nc-btn nc-btn--go');
+      go.type = 'button';
+      go.addEventListener('click', function () {
+        override = true;
+        box.hidden = true;
+        if (form.requestSubmit) form.requestSubmit(); else form.submit();
+      });
+      acts.appendChild(review);
+      acts.appendChild(go);
+      box.appendChild(acts);
+    }
+    box.hidden = false;
+    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, true);
+
+  form.addEventListener('input', function () { if (!box.hidden && box.classList.contains('nc-box--err')) box.hidden = true; });
+})();
+</script>

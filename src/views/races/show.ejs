@@ -84,6 +84,13 @@ function stepState(idx) {
           <span>✏️</span> <%= t('common.correccion_de_vueltas_2') %>
         </a>
       <% } } %>
+      <% if (manualComa) {
+           const lastDoneTanda = [...tandas].reverse().find(td => td.manga_count > 0 && td.mangas_finished === td.manga_count);
+           if (lastDoneTanda) { %>
+        <a href="/races/<%= race.id %>/tandas/<%= lastDoneTanda.id %>/summary" class="rs-btn rs-btn--ghost" title="<%= t('tanda-summary.boton') %>">
+          <span>🏁</span> <%= t('tanda-summary.boton_corto') %>
+        </a>
+      <% } } %>
       <% if (typeof isSim !== 'undefined' && isSim) { %>
         <a href="/races/<%= race.id %>/sim" class="rs-btn rs-btn--ghost">
           <span>🎬</span> <%= t('client.common.simulacion') %>
@@ -304,6 +311,11 @@ function stepState(idx) {
             <% } else if (nextManga) { %>
               <a href="/races/<%= race.id %>/mangas/<%= nextManga.id %>/live" class="rs-btn rs-btn--success rs-btn--sm">
                 ▶ <%= t('common.manga') %> <%= nextManga.number %>
+              </a>
+            <% } %>
+            <% if (manualComa && tanda.manga_count > 0 && tanda.mangas_finished === tanda.manga_count) { %>
+              <a href="/races/<%= race.id %>/tandas/<%= tanda.id %>/summary" class="rs-btn rs-btn--ghost rs-btn--sm" title="<%= t('tanda-summary.boton') %>">
+                🏁 <%= t('tanda-summary.boton_corto') %>
               </a>
             <% } %>
             <% if (tanda.status !== 'active') { %>

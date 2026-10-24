@@ -203,6 +203,9 @@ const tile = (it, small) => '<a href="' + it.href + '" class="hm-tile' + (small 
     <% if (lv.correctionsManga) { %>
       <a href="/races/<%= lv.race.id %>/mangas/<%= lv.correctionsManga.id %>/corrections" class="hm-btn" data-win="pw-corr-<%= lv.race.id %>"><%= compact ? (t('_admin.correcciones')) : (t('common.correccion_de_vueltas_2')) %><%- ext %></a>
     <% } %>
+    <% if (lv.sectorsTandaId) { %>
+      <a href="/races/<%= lv.race.id %>/tandas/<%= lv.sectorsTandaId %>/summary" class="hm-btn" data-win="pw-sect-<%= lv.race.id %>"><%= t('tanda-summary.boton_corto') %><%- ext %></a>
+    <% } %>
     <a href="/race-stats" class="hm-btn" data-win><%= compact ? (t('_admin.estadisticas')) : (t('common.estadisticas_en_vivo')) %><%- ext %></a>
     <% if (!compact) { %>
       <% if (lv.race.type === 'championship') { %>
@@ -235,6 +238,7 @@ const tile = (it, small) => '<a href="' + it.href + '" class="hm-tile' + (small 
         <span class="hm-strip__acts">
           <% if (lv.manga) { %><a href="/races/<%= lv.race.id %>/mangas/<%= lv.manga.id %>/live" class="hm-btn hm-btn--primary" data-win="pw-live-<%= lv.race.id %>"><%= t('_admin.abrir_directo') %><%- ext %></a><% } %>
           <% if (lv.correctionsManga) { %><a href="/races/<%= lv.race.id %>/mangas/<%= lv.correctionsManga.id %>/corrections" class="hm-btn" data-win="pw-corr-<%= lv.race.id %>"><%= t('_admin.correcciones') %><%- ext %></a><% } %>
+          <% if (lv.sectorsTandaId) { %><a href="/races/<%= lv.race.id %>/tandas/<%= lv.sectorsTandaId %>/summary" class="hm-btn" data-win="pw-sect-<%= lv.race.id %>"><%= t('tanda-summary.boton_corto') %><%- ext %></a><% } %>
         </span>
       </section>
     <% } else if (variant === 'panel') { %>

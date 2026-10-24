@@ -236,7 +236,9 @@
       "vlt": "Giri",
       "vuelta": "Giro",
       "vuelta_rapida": "Giro veloce",
-      "vueltas": "Giri"
+      "vueltas": "Giri",
+      "upd_nueva_version": "Nueva versión v{{v}}",
+      "upd_lista_instalar": "v{{v}} lista para instalar"
     },
     "compare": {
       "distinto": "diverso",
@@ -456,7 +458,22 @@
       "modo_normal": "Finestra",
       "modo_maximizada": "Massimizzata",
       "modo_completa": "Schermo intero",
-      "club_logo_no_se_puede_leer": "Impossibile leggere questa immagine."
+      "club_logo_no_se_puede_leer": "Impossibile leggere questa immagine.",
+      "upd_comprobando": "Comprobando…",
+      "upd_al_dia": "Tienes la última versión.",
+      "upd_disponible": "Hay una versión nueva: v{{v}}.",
+      "upd_disponible_manual": "Hay una versión nueva: v{{v}}. Esta instalación se actualiza descargándola desde la web.",
+      "upd_descargando": "Descargando v{{v}}… {{p}} %",
+      "upd_lista": "v{{v}} descargada. Se instala al reiniciar PitWall.",
+      "upd_error_check": "No se ha podido comprobar. ¿Hay conexión a internet?",
+      "upd_error_descarga": "La descarga ha fallado. Prueba otra vez.",
+      "upd_confirmar": "PitWall se cerrará, instalará la v{{v}} y se volverá a abrir. Se cierran todas las copias de PitWall abiertas en este equipo. Antes se guarda una copia de la base de datos. ¿Seguimos?",
+      "upd_instalando": "Guardando la copia y cerrando PitWall para instalar…",
+      "upd_ocupado_manga": "Hay una manga en marcha. Instala cuando termine.",
+      "upd_ocupado_entreno": "Hay un entreno en marcha. Instala cuando termine.",
+      "upd_ocupado_pole": "Hay una pole en marcha. Instala cuando termine.",
+      "upd_error_copia": "No se ha podido hacer la copia de la base de datos, así que no se instala.",
+      "no_se_ha_podido_guardar_sectores": "Impossibile salvare (da 2 a 1000)"
     },
     "shifts-live": {
       "ambiguedad_usa_override_manual": "Ambiguità — usa override manuale",
@@ -809,6 +826,15 @@
       "escribe_nombre": "Scrivi prima un nome",
       "categoria_creada": "Categoria \"{{nombre}}\" creata",
       "error_red": "Errore di rete"
+    },
+    "tanda-names": {
+      "repetidos_en_esta_tanda": "Questi nomi compaiono più di una volta in questa batteria:",
+      "cambialos_para_guardar": "Cambiali o togli i doppioni per poter salvare: non si saprebbe chi è chi.",
+      "ya_estan_en_otra_tanda": "Questi nomi sono già in un'altra batteria di questa gara:",
+      "nombre_en_tandas": "{{name}} — batteria {{tandas}}",
+      "si_es_el_mismo": "Se è lo stesso partecipante che corre di nuovo (per esempio un'altra sessione di prove), salva comunque. Se è un errore, controlla i nomi.",
+      "revisar": "Controlla",
+      "guardar_igualmente": "Salva comunque"
     }
   },
   "common": {
@@ -1155,7 +1181,8 @@
     "backup_error": "Impossibile creare il backup",
     "cert_error": "Impossibile generare il certificato: {{msg}}",
     "category_name_required": "Il nome della categoria è obbligatorio",
-    "category_exists": "La categoria esiste già"
+    "category_exists": "La categoria esiste già",
+    "duplicate_participant_form": "Ci sono nomi ripetuti nella batteria: cambiali o togli i doppioni."
   },
   "events": {
     "mostrar_fichajes_de_piloto_antes_del_go_rutina": "Mostra le timbrature pilota prima del GO (routine di avvio)"
@@ -1320,27 +1347,17 @@
     "pins_titulo": "PIN Lap — {{nombre}}"
   },
   "lap-corrections": {
-    "a_mano": "manuale",
-    "automatica": "automatica",
     "bandera": "bandiera",
-    "calculada_automaticamente_al_cerrar_la_manga": "Calcolata automaticamente alla chiusura della manche",
     "carriles_de_la_manga": "Corsie della manche",
-    "coma": "Virgola",
-    "corregida_a_mano_automatica": "Corretta manualmente. Automatica: ",
     "desde_c": "Da C",
     "editar_tiempo": "Modifica tempo",
     "el_cruce_que_completo_justo_al_caer_la_bandera": "Il passaggio che si è completato proprio al momento della bandiera. Se il suo frame è arrivato a PitWall va con il suo tempo reale; altrimenti è stato ripristinato con la media della corsia.",
     "elegir_manga_a_corregir": "Scegli la manche da correggere",
     "eliminar_vuelta_permanentemente": "Eliminare il giro definitivamente?",
-    "esta_manga_no_es_la_ultima_que_corrio_esta": "Questa manche non è l'ultima corsa da questa entità: la sua virgola non decide lo spareggio.",
-    "esta_manga_no_es_la_ultima_que_corrio_esta_2": "Questa manche non è l'ultima corsa da questa entità: correggere la sua virgola non cambia lo spareggio (solo la virgola accumulata di riferimento).",
     "estimada": "Stimata",
     "falso_positivo": "Falso positivo",
     "fantasma": "Fantasma",
     "final_de_bandera": "Finale di bandiera",
-    "fraccion_de_vuelta_al_caer_la_bandera_de_0_a_0": "Frazione di giro al momento della bandiera (da 0 a 0,99). Vuoto = automatica.",
-    "fraccion_de_vuelta_al_caer_la_bandera_de_esta": "Frazione di giro al momento della bandiera di questa manche",
-    "guardar_coma": "Salva virgola",
     "guardar_tiempo": "Salva tempo",
     "la_caja_ds_conto_esta_vuelta_pero_pitwall_no_la": "La centralina DS ha contato questo giro ma PitWall non l'ha visto (cavo scollegato o processo interrotto). Il suo tempo è la media della corsia: correggilo se conosci quello reale.",
     "la_caja_ds_las_conto_pero_pitwall_no_las_vio": "La centralina DS li ha contati ma PitWall non li ha visti (cavo scollegato o processo interrotto). Il loro tempo è la media della corsia: controllali e correggili o eliminali se non sono avvenuti.",
@@ -1348,7 +1365,6 @@
     "mover_a_carril": "Sposta su corsia",
     "mover_a_otro_carril": "Sposta su un'altra corsia",
     "movida_a_c": "Spostata a C",
-    "no_decide": "non decide",
     "nuevo_tiempo_s": "Nuovo tempo (s)",
     "reloj": "Orologio",
     "repuestas": "ripristinati",
@@ -1358,7 +1374,6 @@
     "sin_vueltas_registradas_en_este_carril": "Nessun giro registrato in questa corsia.",
     "t": "T",
     "vlt": "Giri",
-    "volver_a_la_coma_automatica": "Torna alla virgola automatica",
     "vuelta_a_vuelta": "Giro per giro",
     "vuelta_s_de": "giro/i di",
     "vueltas_de_final_de_bandera": "giri di finale di bandiera",
@@ -1466,7 +1481,10 @@
     "vueltas_rapidas": "GIRI VELOCI",
     "vueltas_reales_acumuladas": "Giri reali accumulati",
     "arrancar_manga_tictac": "Avvia manche (TicTac)",
-    "parar_manga_tictac": "Ferma manche (TicTac)"
+    "parar_manga_tictac": "Ferma manche (TicTac)",
+    "tarjetas_fijas_por_carril": "Schede fisse per corsia",
+    "cada_carril_siempre_en_su_sitio_cambian_los_nombres": "Ogni corsia sempre al suo posto: cambiano i nomi, non le posizioni. A lato classifica di manche e generale.",
+    "clasificacion_de_la_manga": "Classifica di manche"
   },
   "live-panel": {
     "clasificacion_general": "Classifica Generale",
@@ -1737,8 +1755,8 @@
     "vueltas_que_cada_equipo_piloto_lleva_por_detras": "Giri che ogni team/pilota ha di ritardo dal leader lungo la gara. Il leader è a 0 (in alto); più in basso, più giri persi.",
     "vueltas_tras_el_lider": "Giri dietro al leader",
     "vueltas_tras_el_lider_al_cierre_de_cada_manga_0": "Giri dietro al leader alla chiusura di ogni manche (0 = leader). Scegli 2–4 team per vedere il gap TRA loro. Bordo dorato = c'è stato un pit-stop in quella manche.",
-    "coma_manual_title": "Virgola dell'ultima manche CORRETTA A MANO: frazione del giro in corso alla caduta della bandiera dell'ultima manche. Fa da spareggio a parità di giri (di più = era più avanti alla fine).",
-    "coma_title": "Virgola dell'ultima manche: frazione del giro in corso alla caduta della bandiera dell'ultima manche. Fa da spareggio a parità di giri (di più = era più avanti alla fine).",
+    "coma_manual_title": "Settore dell'ultima manche INSERITO A MANO: dove si è fermata l'auto allo scadere del tempo (0–{{max}}). Fa da spareggio a parità di giri (di più = era più avanti alla fine).",
+    "coma_title": "Settore dell'ultima manche, calcolato dal tempo: dove si trovava l'auto alla caduta della bandiera (0–{{max}}). Fa da spareggio a parità di giri (di più = era più avanti alla fine).",
     "pilotos": "Piloti",
     "tanda": "batteria",
     "exportar": "Esporta",
@@ -1759,7 +1777,18 @@
     "dest_n_salidas": "{{n}} uscite",
     "dest_y_mas": "e altri {{n}}",
     "dest_remontada_pole": "Maggior rimonta dalla pole",
-    "dest_pole_hint": "P{{from}} in pole → P{{to}} all’arrivo"
+    "dest_pole_hint": "P{{from}} in pole → P{{to}} all’arrivo",
+    "por_carril_tab": "Per corsia",
+    "por_carril_vueltas": "Giri",
+    "por_carril_sector": "Settore",
+    "por_carril_sector_ayuda": "Settore dell'ultima manche: dove si trovava l'auto allo scadere del tempo (0–{{max}}).",
+    "por_carril_vueltas_carril": "Giri per corsia",
+    "por_carril_mejor_carril": "Miglior tempo per corsia",
+    "por_carril_abrev": "C",
+    "por_carril_vacio": "Ancora nessun giro registrato.",
+    "por_carril_leyenda": "Nell'ordine della classifica generale. Settore in blu = inserito a mano; in grigio = calcolato dal tempo. In blu, il miglior tempo di ogni corsia tra tutti i partecipanti.",
+    "por_carril_hoja": "Classifica per corsia",
+    "por_carril_mejor": "Migliore"
   },
   "results-index": {
     "buscar_carrera_equipo_o_piloto": "Cerca gara, team o pilota…",
@@ -1874,7 +1903,7 @@
     "interfaz_de_red": "Interfaccia di rete",
     "ips_o_rangos_permitidos": "IP o range consentiti",
     "la_app_movil_de_tic_tac_slot_infolap_se_conecta": "L'app mobile di Tic Tac Slot Infolap si connette a PitWall e riceve i giri in diretta. Apre UDP :4441.",
-    "la_coma_la_fraccion_de_vuelta_de_cada_coche_al": "La virgola (la frazione di giro di ogni vettura al momento della bandiera) si calcola da sola. Attivalo per poterla correggere a mano per corsia nella schermata correzioni di una manche chiusa; la virgola corretta prevale nello spareggio a parità di giri. Si salva al momento.",
+    "la_coma_la_fraccion_de_vuelta_de_cada_coche_al": "La virgola (in quale settore del giro si trovava ogni auto alla caduta della bandiera) si calcola da sola. In manuale, alla fine di ogni batteria compare il pulsante «Settori» per inserire il settore finale di ogni partecipante; decide lo spareggio a parità di giri. Si salva al momento.",
     "labels_v_circuit_v2": "{{labels}} ({{v}} circuit{{v2}})",
     "las_10_mejores_de_mejor_a_peor": "Le 10 migliori (dalla migliore alla peggiore)",
     "las_10_ultimas_la_mas_reciente_arriba": "Le 10 ultime (la più recente in alto)",
@@ -1964,7 +1993,20 @@
     "club_sin_logo": "Nessun logo",
     "club_elegir_logo": "Scegli logo…",
     "club_quitar_logo": "Rimuovi logo",
-    "club_logo_no_valido": "Il logo non è valido o è troppo pesante (max 1 MB)."
+    "club_logo_no_valido": "Il logo non è valido o è troppo pesante (max 1 MB).",
+    "actualizaciones": "Actualizaciones",
+    "actualizaciones_intro": "PitWall mira en la web si hay una versión nueva y te deja descargarla e instalarla sin salir del programa.",
+    "actualizaciones_solo_escritorio": "Solo en la app de escritorio de PitWall. Desde el navegador, descarga la versión nueva en pitwall.es.",
+    "version_instalada": "Versión instalada",
+    "upd_buscar": "Buscar actualizaciones",
+    "upd_descargar": "Descargar",
+    "upd_instalar": "Reiniciar e instalar",
+    "upd_web": "Abrir la web de descarga",
+    "upd_novedades": "Novedades de cada versión",
+    "upd_novedades_d": "El historial de cambios completo, en GitHub.",
+    "actualizaciones_nota": "Se comprueba al arrancar y cada 6 horas. Nunca se instala con una manga, un entreno o una pole en marcha, y antes de instalar se guarda una copia de la base de datos junto a ella (se conservan las 3 últimas). Tus carreras y ajustes no se tocan.",
+    "sectores_por_vuelta": "Settori per giro",
+    "sectores_por_vuelta_desc": "In quanti settori si divide un giro (100 di default, la scala di Area Corse). I settori vanno da 0 a questo numero meno 1. Se lo cambi, quelli già inseriti vengono riscalati in proporzione."
   },
   "shifts-live": {
     "a_punto": "In ordine",
@@ -2593,5 +2635,27 @@
     "sin_fichar": "Senza check-in",
     "ordenar": "Premi il nome di una colonna per ordinare.",
     "piloto": "Pilota"
+  },
+  "tanda-summary": {
+    "titulo": "Settori della batteria",
+    "posicion": "Pos.",
+    "manga_abrev": "M",
+    "vueltas_bateria": "Giri batteria",
+    "vueltas_totales": "Giri totali",
+    "vueltas_totales_ayuda": "Giri totali della gara finora (quelli che conta la classifica).",
+    "settori_finales": "Settori finali",
+    "campo_ayuda": "Settore da 0 a {{max}}: dove si è fermata l'auto allo scadere del tempo. Vuoto = calcolo automatico.",
+    "origen_manual": "manuale",
+    "origen_auto": "auto",
+    "ayuda": "Scrivi in quale settore (0–{{max}}) si è fermata ogni auto quando è scaduto il tempo della sua ultima manche della batteria. Se lo lasci vuoto si usa il calcolo automatico basato sul tempo (il numero grigio). A parità di giri, il settore fa da spareggio nella classifica della batteria e in quella finale. Qui i giri non si modificano: per correggerli usa «Correzione giri». Con Invio passi alla casella successiva; nell'ultima salva.",
+    "guardar": "Salva settori",
+    "guardado": "Settori salvati.",
+    "error": "Valore non valido per: {{names}}. Usa un numero intero entro la scala dei settori. Non è stato salvato nulla.",
+    "no_terminada": "La batteria non è ancora finita: i settori si potranno inserire alla fine della sua ultima manche.",
+    "sin_participantes": "Questa batteria non ha partecipanti.",
+    "boton": "Settori finali della batteria",
+    "boton_corto": "Settori",
+    "desactivado": "I settori sono automatici: quelli inseriti a mano non vengono applicati. Attivalo in Impostazioni → Preferenze → Correzione manuale dei settori.",
+    "parcial": "Hai inserito i settori per {{n}} piloti su {{total}}. A parità di giri gli altri vengono confrontati con il calcolo automatico: per uno spareggio uniforme compila tutti oppure nessuno."
   }
 }

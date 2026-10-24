@@ -472,6 +472,7 @@ class RaceController {
       t: req.t, race, laneSequence, tandas: tandasWithMangas,
       virtualStandings, LANE_COLORS: LaneColors.forRace(race), poleSession, isSim, verificationsCount,
       catalogSyncEligible,
+      manualComa: require('../models/Lap').manualComaEnabled(),
     });
   }
 

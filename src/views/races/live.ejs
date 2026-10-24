@@ -103,6 +103,15 @@
           </form>
         <% } %>
       <% } %>
+      <% if (typeof sectorsReady !== 'undefined' && sectorsReady && manga.status === 'finished') { %>
+        <%# Fin de tanda: vueltas de cada participante y settori finales. %>
+        <a href="/races/<%= race.id %>/tandas/<%= tanda.id %>/summary" target="_blank"
+           onclick="openPanel(this.href,'width=1100,height=760'); return false;"
+           class="lbtn lbtn--go" title="<%= t('tanda-summary.boton') %>">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V4M4 4h13l-2.5 4L17 12H4"/></svg>
+          <span><%= t('tanda-summary.boton_corto') %></span>
+        </a>
+      <% } %>
       <% if (typeof nextTanda !== 'undefined' && nextTanda) { %>
         <button id="next-tanda-btn" class="lbtn lbtn--go"
                 data-race-id="<%= race.id %>"
@@ -240,7 +249,29 @@
     <div id="sidebarResizer" class="sidebar-resizer" title="<%= t('live.arrastra_para_redimensionar') %>"></div>
 
     <aside class="live-sidebar" id="liveSidebar">
-      <div class="live-panel">
+      <%# Solo con las «Tarjetas fijas por carril» (body.view-fixed): clasificación de ESTA manga
+          encima de la general. En las otras vistas el panel va oculto y no se rellena. %>
+      <div class="live-panel live-panel--manga" id="mangaPanel">
+        <div class="live-panel__title">
+          <%= t('live.clasificacion_de_la_manga') %>
+        </div>
+        <div class="live-panel__body">
+          <table class="sidebar-table sidebar-table--manga" id="mangaTable">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th><%= t('common.participante') %></th>
+                <th class="sr-right"><%= t('client.common.vlt') %></th>
+                <th class="sr-right"><%= t('live.mejor') %></th>
+                <th class="sr-right"><%= t('live.gap_v') %></th>
+              </tr>
+            </thead>
+            <tbody id="mangaBody"></tbody>
+          </table>
+          <div class="mp-rest" id="mangaRest" hidden></div>
+        </div>
+      </div>
+      <div class="live-panel live-panel--general">
         <div class="live-panel__title">
           <%= t('live.clasificacion_estimada') %>
           <span class="live-panel__subtitle"><%= t('live.al_final_de_la_carrera') %></span>
@@ -406,6 +437,14 @@
           </div>
           <div class="vp-label"><%= t('live.tarjetas_con_detalles') %></div>
           <div class="vp-desc"><%= t('live.todas_las_pistas_a_la_vez_con_la_ultima_vuelta') %></div>
+        </button>
+        <button class="vp-opt" data-mode="4" onclick="selectView('4')">
+          <div class="vp-thumb vp-thumb--4" aria-hidden="true">
+            <span class="vp-fixed-cards"><i></i><i></i><i></i><i></i></span>
+            <span class="vp-fixed-side"><b></b><b></b></span>
+          </div>
+          <div class="vp-label"><%= t('live.tarjetas_fijas_por_carril') %></div>
+          <div class="vp-desc"><%= t('live.cada_carril_siempre_en_su_sitio_cambian_los_nombres') %></div>
         </button>
       </div>
     </div>

@@ -68,6 +68,18 @@ class Tanda {
     `).get(raceId, afterNumber);
   }
 
+  // Última tanda con todas sus mangas cerradas (la del botón «Sectores»).
+  static lastFinishedId(raceId) {
+    const r = db.prepare(`
+      SELECT t.id FROM tandas t
+      WHERE t.race_id = ?
+        AND EXISTS (SELECT 1 FROM mangas m WHERE m.tanda_id = t.id)
+        AND NOT EXISTS (SELECT 1 FROM mangas m WHERE m.tanda_id = t.id AND m.status != 'finished')
+      ORDER BY t.number DESC LIMIT 1
+    `).get(raceId);
+    return r ? r.id : null;
+  }
+
   static delete(id) {
     db.prepare('DELETE FROM tandas WHERE id = ?').run(id);
   }

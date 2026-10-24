@@ -1604,7 +1604,7 @@ body:not(:has(.live-lanes--vertical)) .lane-card__col--laps .lane-card__laps.is-
 .vp-x:hover { background: #30363d; color: #fff; }
 .vp-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: .9rem;
 }
 .vp-opt {
@@ -1670,17 +1670,28 @@ body:not(:has(.live-lanes--vertical)) .lane-card__col--laps .lane-card__laps.is-
 }
 .vp-thumb--3 > span > i { background: #2a2a2a; border-radius: 1px; }
 
-/* V4: tabla con filas */
+/* V4: tarjetas fijas por carril + columna con clasificación de manga y general */
 .vp-thumb--4 {
-  grid-template-rows: repeat(7, 1fr);
-  gap: 2px;
-  padding: .4rem;
+  grid-template-columns: 1fr 34%;
+  gap: .35rem;
 }
-.vp-thumb--4 > i {
-  background: linear-gradient(90deg, #21262d 0 12%, #161b22 12% 28%, #21262d 28% 46%, #161b22 46% 60%, #21262d 60% 76%, #161b22 76% 100%);
-  border-radius: 2px;
+.vp-thumb--4 .vp-fixed-cards {
+  display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 3px;
 }
-.vp-thumb--4 > i:first-child { background: #1f6feb; opacity: .5; }
+.vp-thumb--4 .vp-fixed-cards > i {
+  background: #161b22; border-radius: 3px; border-left: 3px solid #e63946;
+}
+.vp-thumb--4 .vp-fixed-cards > i:nth-child(2) { border-left-color: #2196f3; }
+.vp-thumb--4 .vp-fixed-cards > i:nth-child(3) { border-left-color: #4caf50; }
+.vp-thumb--4 .vp-fixed-cards > i:nth-child(4) { border-left-color: #ff9800; }
+.vp-thumb--4 .vp-fixed-side {
+  display: grid; grid-template-rows: auto 1fr; gap: 3px;
+}
+.vp-thumb--4 .vp-fixed-side > b {
+  background: linear-gradient(180deg, #f6c90e 0 10%, #21262d 10% 100%);
+  border-radius: 3px; min-height: 30px;
+}
+.vp-thumb--4 .vp-fixed-side > b:first-child { min-height: 38px; }
 
 /* Botón Vista en header — el selector :not([hidden]) evita sobrescribir el
    atributo hidden que aplicamos por defecto para carreras con ≤8 carriles. */
@@ -2269,4 +2280,44 @@ body.manga-finished.swap-show-next .live-lanes--vertical .lane-card.is-rest .lan
 body.manga-finished.swap-show-next .live-lanes--vertical .lane-card.is-rest .lane-card__rest-laps,
 body.manga-finished.swap-show-next .live-lanes--vertical .lane-card.is-rest .lane-card__rest-label {
   opacity: 0; visibility: hidden;
+}
+
+
+/* ── Vista 4: tarjetas fijas por carril ────────────────────────────────────
+   Las tarjetas son las de «tarjetas con detalles» (con todos los datos), pero
+   su orden es el del carril (lo fija sortCards) y a la derecha va una columna
+   con la clasificación de la MANGA y, debajo, la GENERAL. El panel de la manga
+   solo existe en esta vista; el conmutador #sideBtn no pinta nada aquí. */
+#mangaPanel { display: none; }
+body.view-fixed #liveSidebar    { display: flex; }
+body.view-fixed #sidebarResizer { display: block; }
+body.view-fixed #sideBtn        { display: none; }
+body.view-fixed #mangaPanel     { display: flex; flex: 0 1 auto; max-height: 52%; }
+body.view-fixed #mangaPanel .live-panel__body { flex: 0 1 auto; }
+body.view-fixed #liveSidebar .live-panel--general { flex: 1 1 0; min-height: 0; }
+/* Quien descansa no ocupa carril: no hay hueco fijo para él (va en la línea de «descanso»). */
+.live-lanes--fixed .lane-card.is-rest { display: none !important; }
+
+#liveSidebar .sidebar-table--manga {
+  /* Letra propia (la de --sb-font se calcula para la general): compacta pero legible desde lejos. */
+  font-size: clamp(.82rem, 1.75vh, 1.25rem);
+}
+#liveSidebar .sidebar-table--manga td { padding: .22em .45rem; }
+#liveSidebar .sidebar-table--manga :is(.sr-ontrack, .sr-best, .sr-delta) {
+  font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
+  font-variant-numeric: tabular-nums; letter-spacing: 0;
+}
+#liveSidebar .sidebar-table--manga .sr-ontrack { color: #fff; font-size: 1.15em; }
+#liveSidebar .sidebar-table--manga .sr-best    { color: #c9d1d9; }
+#liveSidebar .sidebar-table--manga .sr-delta   { color: #9ca3af; }
+#liveSidebar .sidebar-table--manga .sr-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+#liveSidebar .sidebar-table--manga td:nth-child(2) { width: auto; max-width: 14em; }
+.mp-lane {
+  display: inline-block; min-width: 1.5em; padding: 0 .3em; margin-right: .45em;
+  border-radius: 4px; text-align: center; vertical-align: middle;
+  font-family: 'Barlow Condensed', sans-serif; font-weight: 800; line-height: 1.25;
+}
+.mp-rest {
+  padding: .35rem .7rem; font-size: .72rem; line-height: 1.3; color: #8b949e;
+  border-top: 1px solid #161b22;
 }

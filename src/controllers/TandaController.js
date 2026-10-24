@@ -22,6 +22,7 @@ const Team           = require('../models/Team');
 const Driver         = require('../models/Driver');
 const DriverProfile  = require('../models/DriverProfile');
 const TeamCatalog    = require('../models/TeamCatalog');
+const Names          = require('../utils/participantNames');
 
 const LaneColors = require('../services/LaneColors');
 
@@ -81,7 +82,7 @@ class TandaController {
     const profiles      = DriverProfile.findAll();
     const teamsCatalog  = TeamCatalog.findAll();
     const circuitSizes  = _circuitSizesFor(race);
-    res.render('races/tanda-new', { t: req.t, race, laneSequence, LANE_COLORS: LaneColors.forRace(race), profiles, teamsCatalog, circuitSizes, errors: [], body: {} });
+    res.render('races/tanda-new', { t: req.t, race, otherNames: Names.inOtherTandas(race), laneSequence, LANE_COLORS: LaneColors.forRace(race), profiles, teamsCatalog, circuitSizes, errors: [], body: {} });
   }
 
   // POST /races/:id/tandas
@@ -116,11 +117,14 @@ class TandaController {
       if (catalogIds.length < 1) {
         errors.push('no_participants');
       }
+      if (Names.duplicatesIn(catalogIds.map(id => TeamCatalog.findById(id)?.name)).length) {
+        errors.push('duplicate_participant_form');
+      }
 
       if (errors.length) {
         Tanda.delete(tandaId);
         const teamsCatalog = TeamCatalog.findAll();
-        return res.render('races/tanda-new', { t: req.t, race, laneSequence, LANE_COLORS: LaneColors.forRace(race), profiles: DriverProfile.findAll(), teamsCatalog, circuitSizes: _circuitSizesFor(race), errors, body: req.body });
+        return res.render('races/tanda-new', { t: req.t, race, otherNames: Names.inOtherTandas(race), laneSequence, LANE_COLORS: LaneColors.forRace(race), profiles: DriverProfile.findAll(), teamsCatalog, circuitSizes: _circuitSizesFor(race), errors, body: req.body });
       }
 
       const teamPalette = LaneColors.forRace(race);
@@ -161,10 +165,13 @@ class TandaController {
       if (driversArray.filter(d => d?.name?.trim()).length < 1) {
         errors.push('no_participants');
       }
+      if (Names.duplicatesIn(driversArray.map(d => d?.name)).length) {
+        errors.push('duplicate_participant_form');
+      }
 
       if (errors.length) {
         Tanda.delete(tandaId);
-        return res.render('races/tanda-new', { t: req.t, race, laneSequence, LANE_COLORS: LaneColors.forRace(race), profiles: DriverProfile.findAll(), circuitSizes: _circuitSizesFor(race), errors, body: req.body });
+        return res.render('races/tanda-new', { t: req.t, race, otherNames: Names.inOtherTandas(race), laneSequence, LANE_COLORS: LaneColors.forRace(race), profiles: DriverProfile.findAll(), circuitSizes: _circuitSizesFor(race), errors, body: req.body });
       }
 
       // La fila i es el carril laneSequence[i]: una fila vacía es un hueco.
@@ -321,7 +328,7 @@ class TandaController {
       : null;
 
     res.render('races/tanda-edit', {
-      t: req.t, race, tanda, laneSequence, slotLanes, LANE_COLORS: LaneColors.forRace(race), profiles,
+      t: req.t, race, tanda, otherNames: Names.inOtherTandas(race, tanda.id), laneSequence, slotLanes, LANE_COLORS: LaneColors.forRace(race), profiles,
       drivers, teams, canRestructure, errors: []
     });
   }
@@ -344,6 +351,19 @@ class TandaController {
       'SELECT lane FROM manga_lanes WHERE manga_id = ? AND is_rest = 0 AND lane > 0'
     ).all(firstMangaId).map(r => r.lane) : [];
 
+    // Dos participantes con el mismo nombre en la tanda: no se guarda.
+    const rawList = race.format === 'individual' ? (req.body.drivers || {}) : (req.body.teams || {});
+    const submitted = (Array.isArray(rawList) ? rawList : Object.values(rawList))
+      .map(e => (typeof e === 'string' ? e : e?.name));
+    if (Names.duplicatesIn(submitted).length) {
+      return res.render('races/tanda-edit', {
+        t: req.t, race, tanda, otherNames: Names.inOtherTandas(race, tanda.id), laneSequence, LANE_COLORS: LaneColors.forRace(race),
+        profiles: DriverProfile.findAll(), canRestructure, errors: ['duplicate_participant_form'],
+        drivers: race.format === 'individual' ? Driver.findByTanda(tanda.id).filter(d => !d.team_id) : [],
+        teams:   race.format === 'team' ? require('../models/Team').findByTandaWithMembers(tanda.id) : [],
+      });
+    }
+
     if (race.format === 'individual') {
       const rawDrivers   = req.body.drivers || {};
       const driversArray = Array.isArray(rawDrivers) ? rawDrivers : Object.values(rawDrivers);
@@ -353,7 +373,7 @@ class TandaController {
         if (valid.length < 1) {
           const drivers = Driver.findByTanda(tanda.id).filter(d => !d.team_id);
           return res.render('races/tanda-edit', {
-            t: req.t, race, tanda, laneSequence, LANE_COLORS: LaneColors.forRace(race), profiles: DriverProfile.findAll(),
+            t: req.t, race, tanda, otherNames: Names.inOtherTandas(race, tanda.id), laneSequence, LANE_COLORS: LaneColors.forRace(race), profiles: DriverProfile.findAll(),
             drivers, teams: [], canRestructure, errors: ['no_participants']
           });
         }
@@ -392,7 +412,7 @@ class TandaController {
         if (valid.length < 1) {
           const teams = require('../models/Team').findByTandaWithMembers(tanda.id);
           return res.render('races/tanda-edit', {
-            t: req.t, race, tanda, laneSequence, LANE_COLORS: LaneColors.forRace(race), profiles: DriverProfile.findAll(),
+            t: req.t, race, tanda, otherNames: Names.inOtherTandas(race, tanda.id), laneSequence, LANE_COLORS: LaneColors.forRace(race), profiles: DriverProfile.findAll(),
             drivers: [], teams, canRestructure, errors: ['no_participants']
           });
         }

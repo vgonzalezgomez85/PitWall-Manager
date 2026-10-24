@@ -32,6 +32,11 @@
         </a>
       <% } %>
 
+      <%# Lo rellena el script del final solo en la app de escritorio (window.pitwallUpdates). %>
+      <a href="/settings#upd" id="footerUpdPill" class="footer-pill footer-pill--upd" hidden>
+        <span class="status-dot status-dot--sim"></span><span id="footerUpdTxt"></span>
+      </a>
+
       <%# La lista sale de src/locales/, así que añadir un idioma no se toca aquí.
           `langUrl` conserva el resto del query string (vista, filtros, orden). %>
       <div class="footer-langs">
@@ -89,6 +94,21 @@
       pill.innerHTML = `<span class="status-dot status-dot--${dot}"></span>${esc(text)}` +
         (detail ? `<span class="footer-pill__detail">${esc(detail)}</span>` : '');
     });
+  })();
+  // Versión nueva de PitWall (electron/updater.js): aviso discreto hacia Ajustes.
+  (function () {
+    const api = window.pitwallUpdates;
+    const pill = document.getElementById('footerUpdPill');
+    if (!api || !pill) return;
+    const paint = (s) => {
+      const show = s && (s.status === 'available' || s.status === 'downloading' || s.status === 'ready');
+      pill.hidden = !show;
+      if (show) document.getElementById('footerUpdTxt').textContent = s.status === 'ready'
+        ? I18N.t('client.common.upd_lista_instalar', { v: s.version })
+        : I18N.t('client.common.upd_nueva_version', { v: s.version });
+    };
+    api.onState(paint);
+    api.state().then(paint).catch(() => {});
   })();
   </script>
 </body>

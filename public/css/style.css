@@ -136,6 +136,7 @@ input, button, select { font-family: inherit; }
 .footer-pill--tier.tier--pro    { background: linear-gradient(90deg, rgba(168,85,247,.15), rgba(168,85,247,.05)); border-color: rgba(168,85,247,.45); color: #d2a8ff; }
 .footer-pill--tier.tier--basic  { color: #8a92a3; }
 .footer-pill--serial { color: #e9ecf1; }
+.footer-pill[hidden] { display: none; }
 .footer-pill:has(.status-dot--ok)  { border-color: rgba(34,197,94,.35);  background: rgba(34,197,94,.08); }
 .footer-pill:has(.status-dot--sim) { border-color: rgba(245,158,11,.35); background: rgba(245,158,11,.08); }
 .footer-pill:has(.status-dot--off) { border-color: rgba(239,70,81,.35);  background: rgba(239,70,81,.08); color: #f3b6ba; }

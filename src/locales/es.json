@@ -236,7 +236,9 @@
       "vlt": "VLT",
       "vuelta": "Vuelta",
       "vuelta_rapida": "Vuelta rápida",
-      "vueltas": "Vueltas"
+      "vueltas": "Vueltas",
+      "upd_nueva_version": "Nueva versión v{{v}}",
+      "upd_lista_instalar": "v{{v}} lista para instalar"
     },
     "compare": {
       "distinto": "distinto",
@@ -456,7 +458,22 @@
       "modo_normal": "Ventana",
       "modo_maximizada": "Maximizada",
       "modo_completa": "Pantalla completa",
-      "club_logo_no_se_puede_leer": "No se ha podido leer esa imagen."
+      "club_logo_no_se_puede_leer": "No se ha podido leer esa imagen.",
+      "upd_comprobando": "Comprobando…",
+      "upd_al_dia": "Tienes la última versión.",
+      "upd_disponible": "Hay una versión nueva: v{{v}}.",
+      "upd_disponible_manual": "Hay una versión nueva: v{{v}}. Esta instalación se actualiza descargándola desde la web.",
+      "upd_descargando": "Descargando v{{v}}… {{p}} %",
+      "upd_lista": "v{{v}} descargada. Se instala al reiniciar PitWall.",
+      "upd_error_check": "No se ha podido comprobar. ¿Hay conexión a internet?",
+      "upd_error_descarga": "La descarga ha fallado. Prueba otra vez.",
+      "upd_confirmar": "PitWall se cerrará, instalará la v{{v}} y se volverá a abrir. Se cierran todas las copias de PitWall abiertas en este equipo. Antes se guarda una copia de la base de datos. ¿Seguimos?",
+      "upd_instalando": "Guardando la copia y cerrando PitWall para instalar…",
+      "upd_ocupado_manga": "Hay una manga en marcha. Instala cuando termine.",
+      "upd_ocupado_entreno": "Hay un entreno en marcha. Instala cuando termine.",
+      "upd_ocupado_pole": "Hay una pole en marcha. Instala cuando termine.",
+      "upd_error_copia": "No se ha podido hacer la copia de la base de datos, así que no se instala.",
+      "no_se_ha_podido_guardar_sectores": "No se ha podido guardar (de 2 a 1000)"
     },
     "shifts-live": {
       "ambiguedad_usa_override_manual": "Ambigüedad — usa override manual",
@@ -809,6 +826,15 @@
       "escribe_nombre": "Escribe un nombre primero",
       "categoria_creada": "Categoría \"{{nombre}}\" creada",
       "error_red": "Error de red"
+    },
+    "tanda-names": {
+      "repetidos_en_esta_tanda": "Estos nombres salen más de una vez en esta tanda:",
+      "cambialos_para_guardar": "Cámbialos o quita los repetidos para poder guardar: no se sabría quién es quién.",
+      "ya_estan_en_otra_tanda": "Estos nombres ya están en otra tanda de esta carrera:",
+      "nombre_en_tandas": "{{name}} — tanda {{tandas}}",
+      "si_es_el_mismo": "Si es el mismo participante corriendo otra vez (por ejemplo, otra sesión de entreno), guarda igualmente. Si es un error, revisa los nombres.",
+      "revisar": "Revisar",
+      "guardar_igualmente": "Guardar igualmente"
     }
   },
   "common": {
@@ -1155,7 +1181,8 @@
     "backup_error": "No se pudo generar la copia de seguridad",
     "cert_error": "No se pudo generar el certificado: {{msg}}",
     "category_name_required": "El nombre de la categoría es obligatorio",
-    "category_exists": "La categoría ya existe"
+    "category_exists": "La categoría ya existe",
+    "duplicate_participant_form": "Hay nombres repetidos en la tanda: cámbialos o quita los repetidos."
   },
   "events": {
     "mostrar_fichajes_de_piloto_antes_del_go_rutina": "Mostrar fichajes de piloto antes del GO (rutina de arranque)"
@@ -1320,27 +1347,17 @@
     "pins_titulo": "PINs Lap — {{nombre}}"
   },
   "lap-corrections": {
-    "a_mano": "a mano",
-    "automatica": "automática",
     "bandera": "bandera",
-    "calculada_automaticamente_al_cerrar_la_manga": "Calculada automáticamente al cerrar la manga",
     "carriles_de_la_manga": "Carriles de la manga",
-    "coma": "Coma",
-    "corregida_a_mano_automatica": "Corregida a mano. Automática: ",
     "desde_c": "Desde C",
     "editar_tiempo": "Editar tiempo",
     "el_cruce_que_completo_justo_al_caer_la_bandera": "El cruce que completó justo al caer la bandera. Si su trama llegó a PitWall va con su tiempo real; si no, se repuso con la media del carril.",
     "elegir_manga_a_corregir": "Elegir manga a corregir",
     "eliminar_vuelta_permanentemente": "¿Eliminar vuelta permanentemente?",
-    "esta_manga_no_es_la_ultima_que_corrio_esta": "Esta manga no es la última que corrió esta entidad: su coma no decide el desempate.",
-    "esta_manga_no_es_la_ultima_que_corrio_esta_2": "Esta manga no es la última que corrió esta entidad: corregir su coma no cambia el desempate (solo la coma acumulada de referencia).",
     "estimada": "Estimada",
     "falso_positivo": "Falso positivo",
     "fantasma": "Fantasma",
     "final_de_bandera": "Final de bandera",
-    "fraccion_de_vuelta_al_caer_la_bandera_de_0_a_0": "Fracción de vuelta al caer la bandera (de 0 a 0,99). Vacío = automática.",
-    "fraccion_de_vuelta_al_caer_la_bandera_de_esta": "Fracción de vuelta al caer la bandera de esta manga",
-    "guardar_coma": "Guardar coma",
     "guardar_tiempo": "Guardar tiempo",
     "la_caja_ds_conto_esta_vuelta_pero_pitwall_no_la": "La caja DS contó esta vuelta pero PitWall no la vio (cable fuera o proceso caído). Su tiempo es la media del carril: corrígelo si sabes el real.",
     "la_caja_ds_las_conto_pero_pitwall_no_las_vio": "La caja DS las contó pero PitWall no las vio (cable fuera o proceso caído). Su tiempo es la media del carril: revísalas y corrígelas o bórralas si no ocurrieron.",
@@ -1348,7 +1365,6 @@
     "mover_a_carril": "Mover a carril",
     "mover_a_otro_carril": "Mover a otro carril",
     "movida_a_c": "Movida a C",
-    "no_decide": "no decide",
     "nuevo_tiempo_s": "Nuevo tiempo (s)",
     "reloj": "Reloj",
     "repuestas": "repuestas",
@@ -1358,7 +1374,6 @@
     "sin_vueltas_registradas_en_este_carril": "Sin vueltas registradas en este carril.",
     "t": "T",
     "vlt": "Vlt",
-    "volver_a_la_coma_automatica": "Volver a la coma automática",
     "vuelta_a_vuelta": "Vuelta a vuelta",
     "vuelta_s_de": "vuelta(s) de",
     "vueltas_de_final_de_bandera": "vueltas de final de bandera",
@@ -1466,7 +1481,10 @@
     "vueltas_rapidas": "VUELTAS RÁPIDAS",
     "vueltas_reales_acumuladas": "Vueltas reales acumuladas",
     "arrancar_manga_tictac": "Arrancar manga (TicTac)",
-    "parar_manga_tictac": "Parar manga (TicTac)"
+    "parar_manga_tictac": "Parar manga (TicTac)",
+    "tarjetas_fijas_por_carril": "Tarjetas fijas por carril",
+    "cada_carril_siempre_en_su_sitio_cambian_los_nombres": "Cada carril siempre en su sitio: cambian los nombres, no las posiciones. Clasificación de la manga y general al lado.",
+    "clasificacion_de_la_manga": "Clasificación de la manga"
   },
   "live-panel": {
     "clasificacion_general": "Clasificación General",
@@ -1737,8 +1755,8 @@
     "vueltas_que_cada_equipo_piloto_lleva_por_detras": "Vueltas que cada equipo/piloto lleva por detrás del líder a lo largo de la carrera. El líder va en 0 (arriba); cuanto más abajo, más vueltas perdidas.",
     "vueltas_tras_el_lider": "Vueltas tras el líder",
     "vueltas_tras_el_lider_al_cierre_de_cada_manga_0": "Vueltas tras el líder al cierre de cada manga (0 = líder). Elige 2–4 equipos para ver el gap ENTRE ellos. Borde dorado = hubo pit-stop en esa manga.",
-    "coma_manual_title": "Coma de la última manga CORREGIDA A MANO: fracción de la vuelta en curso al caer la bandera de la última manga. Desempata a igualdad de vueltas (más = iba más adelantado al final).",
-    "coma_title": "Coma de la última manga: fracción de la vuelta en curso al caer la bandera de la última manga. Desempata a igualdad de vueltas (más = iba más adelantado al final).",
+    "coma_manual_title": "Sector de la última manga ESCRITO A MANO: dónde se quedó el coche al acabarse el tiempo (0–{{max}}). Desempata a igualdad de vueltas (más = iba más adelantado al final).",
+    "coma_title": "Sector de la última manga, calculado por tiempo: dónde estaba el coche al caer la bandera (0–{{max}}). Desempata a igualdad de vueltas (más = iba más adelantado al final).",
     "pilotos": "Pilotos",
     "tanda": "tanda",
     "exportar": "Exportar",
@@ -1759,7 +1777,18 @@
     "dest_n_salidas": "{{n}} salidas",
     "dest_y_mas": "y {{n}} más",
     "dest_remontada_pole": "Mayor remontada desde la pole",
-    "dest_pole_hint": "P{{from}} en la pole → P{{to}} al final"
+    "dest_pole_hint": "P{{from}} en la pole → P{{to}} al final",
+    "por_carril_tab": "Por carril",
+    "por_carril_vueltas": "Vueltas",
+    "por_carril_sector": "Sector",
+    "por_carril_sector_ayuda": "Sector de la última manga: dónde estaba el coche al acabarse el tiempo (0–{{max}}).",
+    "por_carril_vueltas_carril": "Vueltas por carril",
+    "por_carril_mejor_carril": "Mejor tiempo por carril",
+    "por_carril_abrev": "C",
+    "por_carril_vacio": "Todavía no hay vueltas registradas.",
+    "por_carril_leyenda": "En el orden de la clasificación general. Sector en azul = escrito a mano; en gris = calculado por tiempo. En azul, el mejor tiempo de cada carril entre todos los participantes.",
+    "por_carril_hoja": "Clasif. por carril",
+    "por_carril_mejor": "Mejor"
   },
   "results-index": {
     "buscar_carrera_equipo_o_piloto": "Buscar carrera, equipo o piloto…",
@@ -1874,7 +1903,7 @@
     "interfaz_de_red": "Interfaz de red",
     "ips_o_rangos_permitidos": "IPs o rangos permitidos",
     "la_app_movil_de_tic_tac_slot_infolap_se_conecta": "La app móvil de Tic Tac Slot Infolap se conecta a PitWall y recibe vueltas en directo. Abre UDP :4441.",
-    "la_coma_la_fraccion_de_vuelta_de_cada_coche_al": "La coma (la fracción de vuelta de cada coche al caer la bandera) se calcula sola. Actívalo para poder corregirla a mano por carril en la pantalla de correcciones de una manga cerrada; la coma corregida manda en el desempate a igualdad de vueltas. Se guarda al momento.",
+    "la_coma_la_fraccion_de_vuelta_de_cada_coche_al": "La coma (en qué sector de la vuelta estaba cada coche al caer la bandera) se calcula sola. En manual, al acabar cada tanda sale el botón «Sectores» para escribir el sector final de cada participante; manda en el desempate a igualdad de vueltas. Se guarda al momento.",
     "labels_v_circuit_v2": "{{labels}} ({{v}} circuit{{v2}})",
     "las_10_mejores_de_mejor_a_peor": "Las 10 mejores (de mejor a peor)",
     "las_10_ultimas_la_mas_reciente_arriba": "Las 10 últimas (la más reciente arriba)",
@@ -1964,7 +1993,20 @@
     "club_sin_logo": "Sin logo",
     "club_elegir_logo": "Elegir logo…",
     "club_quitar_logo": "Quitar logo",
-    "club_logo_no_valido": "El logo no es válido o pesa demasiado (máx. 1 MB)."
+    "club_logo_no_valido": "El logo no es válido o pesa demasiado (máx. 1 MB).",
+    "actualizaciones": "Actualizaciones",
+    "actualizaciones_intro": "PitWall mira en la web si hay una versión nueva y te deja descargarla e instalarla sin salir del programa.",
+    "actualizaciones_solo_escritorio": "Solo en la app de escritorio de PitWall. Desde el navegador, descarga la versión nueva en pitwall.es.",
+    "version_instalada": "Versión instalada",
+    "upd_buscar": "Buscar actualizaciones",
+    "upd_descargar": "Descargar",
+    "upd_instalar": "Reiniciar e instalar",
+    "upd_web": "Abrir la web de descarga",
+    "upd_novedades": "Novedades de cada versión",
+    "upd_novedades_d": "El historial de cambios completo, en GitHub.",
+    "actualizaciones_nota": "Se comprueba al arrancar y cada 6 horas. Nunca se instala con una manga, un entreno o una pole en marcha, y antes de instalar se guarda una copia de la base de datos junto a ella (se conservan las 3 últimas). Tus carreras y ajustes no se tocan.",
+    "sectores_por_vuelta": "Sectores por vuelta",
+    "sectores_por_vuelta_desc": "En cuántos sectores se divide una vuelta (100 por defecto, la escala de Area Corse). Los sectores van de 0 a este número menos 1. Si lo cambias, los ya escritos se reescalan en proporción."
   },
   "shifts-live": {
     "a_punto": "A punto",
@@ -2593,5 +2635,27 @@
     "sin_fichar": "Sin fichar",
     "ordenar": "Pulsa el nombre de una columna para ordenar.",
     "piloto": "Piloto"
+  },
+  "tanda-summary": {
+    "titulo": "Sectores de la tanda",
+    "posicion": "Pos.",
+    "manga_abrev": "M",
+    "vueltas_bateria": "Vueltas tanda",
+    "vueltas_totales": "Vueltas totales",
+    "vueltas_totales_ayuda": "Vueltas totales de la carrera hasta ahora (las que cuenta la clasificación).",
+    "settori_finales": "Sectores finales",
+    "campo_ayuda": "Sector de 0 a {{max}}: dónde se quedó el coche al acabarse el tiempo. Vacío = cálculo automático.",
+    "origen_manual": "a mano",
+    "origen_auto": "auto",
+    "ayuda": "Escribe en qué sector (0–{{max}}) se quedó cada coche cuando se acabó el tiempo de su última manga de la tanda. Si lo dejas vacío se usa el cálculo automático por tiempo (el número gris). A igualdad de vueltas, el sector desempata en la clasificación de la tanda y en la final. Las vueltas no se tocan aquí: para corregirlas usa «Corrección de vueltas». Intro pasa a la casilla siguiente; en la última, guarda.",
+    "guardar": "Guardar sectores",
+    "guardado": "Sectores guardados.",
+    "error": "Valor no válido en: {{names}}. Usa un número entero dentro de la escala de sectores. No se ha guardado nada.",
+    "no_terminada": "La tanda aún no ha terminado: los sectores se podrán escribir cuando acabe su última manga.",
+    "sin_participantes": "Esta tanda no tiene participantes.",
+    "boton": "Sectores finales de la tanda",
+    "boton_corto": "Sectores",
+    "desactivado": "La coma está en automática: los sectores escritos a mano no se aplican. Actívalo en Ajustes → Preferencias → Corrección manual de la coma.",
+    "parcial": "Has escrito sectores para {{n}} de {{total}} participantes. A igualdad de vueltas, los demás se comparan con el cálculo automático: para un desempate homogéneo rellena todos o ninguno."
   }
 }

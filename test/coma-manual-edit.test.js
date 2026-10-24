@@ -18,7 +18,8 @@
 // Corrección manual de la coma (Ajustes → Preferencias, apagada por defecto).
 // Con el ajuste activo, `manga_lanes.coma_manual` manda sobre la coma automática
 // y sobre el instante del cruce en el desempate (utils/tieBreak); con el ajuste
-// apagado se ignora y todo queda como siempre.
+// apagado se ignora y todo queda como siempre. Se escribe en sectores en la
+// pantalla de fin de tanda (TandaSummaryController), con la escala `coma_sectors`.
 
 const { usarBdTemporal, limpiarBdTemporal } = require('./helpers/db');
 usarBdTemporal();
@@ -32,7 +33,7 @@ const Manga      = require('../src/models/Manga');
 const Settings   = require('../src/models/Settings');
 const SocketService = require('../src/services/SocketService');
 const SettingsController = require('../src/controllers/SettingsController');
-const LapCorrectionController = require('../src/controllers/LapCorrectionController');
+const TandaSummaryController = require('../src/controllers/TandaSummaryController');
 const { crearPerfil, crearEquipoCatalogo, crearCarreraConManga } = require('./helpers/seed');
 
 // Silencio de socket en los tests (applyLapCorrection emite laps:corrected).
@@ -216,18 +217,7 @@ test('cambiar el ajuste invalida las cachés por contador', () => {
   assert.ok(Lap.mutationCount > antes, 'encender/apagar cambia la coma efectiva sin tocar laps');
 });
 
-test('la pantalla de correcciones sabe si la manga decide el desempate', () => {
-  const e = carrera({ coma1: 0.20, coma2: 0.10 });
-  Settings.set('manual_coma', 'manual');
-  const res = fakeRes();
-  LapCorrectionController.show(
-    { params: { id: e.raceId, mangaId: e.mangaId }, t: (k) => k }, res);
-  assert.equal(res.data.manualComa, true);
-  assert.equal(res.data.decidesTie[1], true, 'es la única manga: decide el desempate');
-  assert.equal(res.data.laneGroups.length, 2);
-});
-
-// ── Controlador (POST /races/:id/mangas/:mangaId/corrections/coma) ───────────
+// ── Pantalla de fin de tanda (/races/:id/tandas/:tandaId/summary) ───────────
 
 function fakeRes() {
   return { code: 200, redirectTo: null, body: null,
@@ -236,53 +226,93 @@ function fakeRes() {
     redirect(u) { this.redirectTo = u; return this; },
     json(o) { this.body = o; return this; } };
 }
-const fakeReq = (e, body) => ({ params: { id: e.raceId, mangaId: e.mangaId }, body, t: (k) => k });
-const postComa = (e, body) => {
+const tandaDe = (e) => db.prepare('SELECT tanda_id FROM mangas WHERE id = ?').get(e.mangaId).tanda_id;
+const reqTanda = (e, extra = {}) => ({ params: { id: e.raceId, tandaId: tandaDe(e) }, query: {}, t: (k) => k, ...extra });
+const campo = (e, i) => 's_team_' + e.teams[i].id;
+const postSectores = (e, body) => {
   const res = fakeRes();
-  LapCorrectionController.setComa(fakeReq(e, body), res);
+  TandaSummaryController.save(reqTanda(e, { body }), res);
   return res;
 };
+const verResumen = (e) => { const res = fakeRes(); TandaSummaryController.show(reqTanda(e), res); return res.data; };
 
-test('el controlador guarda con el ajuste activo y una manga cerrada', () => {
+test('el resumen enseña vueltas y el sector automático como sugerencia', () => {
+  const e = carrera({ coma1: 0.20, coma2: 0.45 });
+  Settings.set('manual_coma', 'manual');
+  const d = verResumen(e);
+  assert.equal(d.editable, true);
+  assert.equal(d.MAX_SETTORI, 99);
+  const e1 = d.rows.find(r => r.name === 'E1');
+  assert.equal(e1.laps, 5);
+  assert.equal(e1.auto, 20);
+  assert.equal(e1.manual, null);
+  assert.equal(d.rows[0].name, 'E2', 'a igualdad de vueltas ordena por el sector automático');
+});
+
+test('se guarda en sectores (escala 100) y vacío vuelve a la automática', () => {
   const e = carrera({ coma1: 0.20 });
   Settings.set('manual_coma', 'manual');
-  const res = postComa(e, { lane: '1', coma: '0,85' });   // coma decimal española
-  assert.equal(res.redirectTo, `/races/${e.raceId}/mangas/${e.mangaId}/corrections`);
+  const res = postSectores(e, { [campo(e, 0)]: '85' });
+  assert.equal(res.redirectTo, `/races/${e.raceId}/tandas/${tandaDe(e)}/summary?saved=1`);
   assert.equal(comaGuardada(e.mangaId, 1).coma_manual, 0.85);
   assert.equal(comaGuardada(e.mangaId, 1).coma, 0.20);
+  assert.equal(verResumen(e).rows.find(r => r.name === 'E1').manual, 85);
 
-  // Vacío = volver a la automática.
-  postComa(e, { lane: '1', coma: '' });
+  postSectores(e, { [campo(e, 0)]: '' });
   assert.equal(comaGuardada(e.mangaId, 1).coma_manual, null);
 });
 
-test('el controlador ignora la edición con el ajuste apagado', () => {
+test('la escala de Preferencias manda: con 60 sectores, 30 = media vuelta', () => {
   const e = carrera({ coma1: 0.20 });
-  postComa(e, { lane: '1', coma: '0,85' });
-  assert.equal(comaGuardada(e.mangaId, 1).coma_manual, null);
+  Settings.set('manual_coma', 'manual');
+  Settings.set('coma_sectors', 60);
+  postSectores(e, { [campo(e, 0)]: '30' });
+  assert.equal(comaGuardada(e.mangaId, 1).coma_manual, 0.5);
+  assert.equal(verResumen(e).MAX_SETTORI, 59);
+  postSectores(e, { [campo(e, 0)]: '60' });   // fuera de escala
+  assert.equal(comaGuardada(e.mangaId, 1).coma_manual, 0.5, 'no se ha tocado');
 });
 
-test('el controlador rechaza valores fuera de rango, carriles y mangas no cerradas', () => {
+test('con el ajuste apagado no se escribe nada', () => {
+  const e = carrera({ coma1: 0.20 });
+  postSectores(e, { [campo(e, 0)]: '85' });
+  assert.equal(comaGuardada(e.mangaId, 1).coma_manual, null);
+  assert.equal(verResumen(e).editable, false);
+});
+
+test('valores no válidos o tanda sin acabar: no se guarda ninguno', () => {
   const e = carrera({ coma1: 0.20 });
   Settings.set('manual_coma', 'manual');
 
-  postComa(e, { lane: '1', coma: '1,5' });      // > 0,99
-  postComa(e, { lane: '1', coma: '-0,2' });     // < 0
-  postComa(e, { lane: '1', coma: 'abc' });
-  postComa(e, { lane: '9', coma: '0,5' });      // carril que no existe
-  assert.equal(comaGuardada(e.mangaId, 1).coma_manual, null, 'nada de eso escribe');
+  const res = postSectores(e, { [campo(e, 0)]: '40', [campo(e, 1)]: 'abc' });
+  assert.match(res.redirectTo, /\?error=/);
+  assert.equal(comaGuardada(e.mangaId, 1).coma_manual, null, 'uno malo y no se guarda ninguno');
+  postSectores(e, { [campo(e, 0)]: '-5' });
+  postSectores(e, { [campo(e, 0)]: '100' });
+  assert.equal(comaGuardada(e.mangaId, 1).coma_manual, null);
 
   db.prepare("UPDATE mangas SET status = 'active' WHERE id = ?").run(e.mangaId);
-  postComa(e, { lane: '1', coma: '0,50' });
+  postSectores(e, { [campo(e, 0)]: '50' });
   assert.equal(comaGuardada(e.mangaId, 1).coma_manual, null, 'una manga viva no se edita');
 });
 
-test('el controlador invalida las cachés por contador (mutación externa)', () => {
-  const e = carrera({ coma1: 0.20 });
+test('los sectores escritos deciden el desempate de la clasificación', () => {
+  const e = carrera({ coma1: 0.20, coma2: 0.45 });
   Settings.set('manual_coma', 'manual');
+  assert.equal(Lap.aggregateByRace(e.raceId)[0].entity_name, 'E2');
   const antes = Lap.mutationCount;
-  postComa(e, { lane: '1', coma: '0,60' });
+  postSectores(e, { [campo(e, 0)]: '90' });
   assert.ok(Lap.mutationCount > antes, 'la coma vive en manga_lanes y hay que forzar la invalidación');
+  const rows = Lap.aggregateByRace(e.raceId);
+  assert.equal(rows[0].entity_name, 'E1');
+  assert.equal(rows[0].last_manga_coma_manual, true);
+});
+
+test('el resumen de una tanda de otra carrera da 404', () => {
+  const e = carrera();
+  const res = fakeRes();
+  TandaSummaryController.show({ params: { id: e.raceId + 999, tandaId: tandaDe(e) }, query: {}, t: (k) => k }, res);
+  assert.equal(res.code, 404);
 });
 
 // ── Ajustes: la preferencia y su validación ─────────────────────────────────
@@ -296,4 +326,16 @@ test('el ajuste manual_coma se guarda solo con valores válidos', () => {
   SettingsController.savePrefs({ body: { key: 'manual_coma', value: 'sí' } }, bad);
   assert.equal(bad.code, 400);
   assert.equal(Settings.get('manual_coma'), 'manual', 'no se ha tocado');
+});
+
+test('la escala de sectores solo admite de 2 a 1000', () => {
+  const ok = fakeRes();
+  SettingsController.savePrefs({ body: { key: 'coma_sectors', value: '60' } }, ok);
+  assert.equal(Number(Settings.get('coma_sectors')), 60);
+  for (const v of ['1', '1001', 'abc']) {
+    const bad = fakeRes();
+    SettingsController.savePrefs({ body: { key: 'coma_sectors', value: v } }, bad);
+    assert.equal(bad.code, 400);
+  }
+  assert.equal(require('../src/utils/settori').perLap(), 60);
 });

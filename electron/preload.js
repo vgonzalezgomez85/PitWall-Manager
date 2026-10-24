@@ -46,6 +46,16 @@ contextBridge.exposeInMainWorld('pitwallWindow', {
   onFullScreenChange: (cb) => ipcRenderer.on('pitwall:fullscreen-changed', (_e, on) => cb(!!on)),
 });
 
+// Actualizaciones (Ajustes → Actualizaciones y aviso del pie). Ver updater.js.
+contextBridge.exposeInMainWorld('pitwallUpdates', {
+  state:    () => ipcRenderer.invoke('pitwall:update-state'),
+  check:    () => ipcRenderer.invoke('pitwall:update-check'),
+  download: () => ipcRenderer.invoke('pitwall:update-download'),
+  install:  () => ipcRenderer.invoke('pitwall:update-install'),
+  openPage: (lang) => ipcRenderer.invoke('pitwall:update-page', String(lang || '')),
+  onState:  (cb) => ipcRenderer.on('pitwall:update-state', (_e, s) => cb(s)),
+});
+
 webFrame.executeJavaScript(`(() => {
   for (const name of ['alert', 'confirm', 'prompt']) {
     const native = window[name];

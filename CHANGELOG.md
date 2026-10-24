@@ -13,6 +13,33 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.66.0] — 2026-10-24
+
+### Añadido
+- **Sectores finales al acabar cada tanda** (idea de Emanuele Palena). Con la coma en manual (Ajustes → Preferencias), al terminar la última manga de una tanda aparece el botón **Sectores**: en el directo, en la ficha de la carrera (arriba y en cada tanda acabada) y en la franja de la carrera en curso del inicio. Abre una pantalla con las vueltas de cada piloto o equipo por manga, las de la tanda y el total de la carrera (solo lectura) y una casilla para escribir su **sector final**, dónde se quedó el coche al acabarse el tiempo. El sector automático sale en gris como sugerencia; vacío = automático. Al salir de cada casilla se reordena la tanda, Intro pasa a la siguiente y avisa si solo se han rellenado algunos. A igualdad de vueltas, el sector escrito manda en el desempate, como la coma corregida a mano.
+- **Sectores por vuelta** (Ajustes → Preferencias, sale al poner la coma en manual): 100 por defecto, la escala de Area Corse; de 2 a 1000. Los sectores van de 0 a ese número menos 1 y, si se cambia, los ya escritos se reescalan en proporción. El CSV para Area Corse la usa por defecto (`?settori=` sigue mandando).
+- **Pestaña «Por carril» en Resultados** (idea de Emanuele Palena): en el orden de la clasificación, cada participante con sus vueltas, su sector y, carril a carril, las vueltas que dio y su mejor tiempo. El mejor tiempo de cada carril entre todos sale resaltado y el sector en azul si se escribió a mano.
+- **Hoja «Clasif. por carril» en el Excel de resultados**, con lo mismo que la pestaña.
+- **Aviso de nombres repetidos al crear o editar una tanda** (idea de Emanuele Palena). Si un piloto o equipo sale dos veces en la misma tanda, no deja guardar (no se sabría quién es quién). Si ya está en otra tanda de la carrera, avisa con la lista de nombres y tandas y deja **Guardar igualmente**, porque a veces es lo correcto (por ejemplo, los mismos equipos en dos sesiones de entreno). No distingue mayúsculas, acentos ni espacios de más.
+- **Copia de seguridad automática al arrancar** (idea de Emanuele Palena): antes de tocar la base de datos, PitWall guarda una copia en `_backups-auto`, junto a ella. Se conservan las 5 últimas y, con la misma versión, como mucho una cada 6 horas; con una versión nueva, siempre. Tarda unas décimas de segundo, si falla nunca impide arrancar, y se puede desactivar con `PITWALL_NO_AUTOBACKUP=1`.
+- **Vista del directo «Tarjetas fijas por carril»** (idea de Emanuele Palena; botón «Vista»). Las tarjetas con todos los datos, pero cada carril siempre en su sitio: lo que cambia con la rotación es el nombre, no la posición. A la derecha, la clasificación de la manga (vueltas, mejor vuelta y gap con el líder) y, debajo, la general. Quien descansa sale en una línea bajo la clasificación de la manga. `?view=4` la fuerza sin guardarla.
+
+### Mejorado
+- Resultados enseña la coma de la última manga en sectores (`+45` en vez de `+0,45`), en azul si se escribió a mano.
+
+### Eliminado
+- La casilla de coma de «Corrección de vueltas» (y su ruta): la sustituye la pantalla de sectores de la tanda. Las comas ya corregidas a mano se conservan y siguen mandando.
+
+## [1.65.0] — 2026-10-22
+
+### Añadido
+- **Actualizaciones desde el propio programa** (Ajustes → Actualizaciones). PitWall mira en pitwall.es si hay una versión nueva al arrancar y cada 6 horas, y avisa en el pie de página. Se descarga con un botón y se instala con «Reiniciar e instalar»: PitWall se cierra, se actualiza y se vuelve a abrir.
+  - Nunca se instala con una manga, un entreno o una pole en marcha.
+  - Antes de instalar guarda una copia de la base de datos junto a ella (`_backup-pre-update-<versión>-<fecha>`; se conservan las 3 últimas). Las carreras y los ajustes no se tocan.
+  - Se instala solo en Mac, en Windows con el instalador y en Linux con el AppImage. El portable de Windows y el .deb avisan y abren la página de descarga.
+  - Solo en la app de escritorio. Instalar cierra todas las copias de PitWall abiertas en ese equipo.
+- El instalador de Windows pasa a llamarse `PitWall-Setup-<versión>.exe`, el nombre que espera el actualizador.
+
 ## [1.64.4] — 2026-10-22
 
 ### Mejorado

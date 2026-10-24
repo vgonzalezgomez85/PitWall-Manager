@@ -26,14 +26,16 @@ const PREFS = {
   ui_mode:               ['advanced', 'basic'],
   training_history_mode: ['recent', 'best'],
   // Por defecto 'auto': la coma (fracción de vuelta al caer la bandera) se
-  // calcula sola. 'manual' habilita corregirla a mano en la pantalla de
-  // correcciones de una manga cerrada (ver models/Lap._lastMangaByEntity).
+  // calcula sola. 'manual' habilita escribir los settori finales al acabar
+  // cada tanda (/races/:id/tandas/:tandaId/summary, ver models/Lap._lastMangaByEntity).
   manual_coma:           ['auto', 'manual'],
 };
 
 // Preferencias numéricas de guardado inmediato: clave → [mín, máx].
 const NUM_PREFS = {
   late_crossing_grace_ms: [0, 10000],
+  // Sectores por vuelta de la coma manual (utils/settori): 100 = regla de Area Corse.
+  coma_sectors:           [2, 1000],
 };
 
 class SettingsController {
@@ -103,6 +105,7 @@ class SettingsController {
       uiMode:              cfg.ui_mode === 'basic' ? 'basic' : 'advanced',
       trainingHistoryMode: cfg.training_history_mode === 'best' ? 'best' : 'recent',
       manualComa:          cfg.manual_coma === 'manual' ? 'manual' : 'auto',
+      comaSectors:         require('../utils/settori').perLap(),
       lateCrossingGraceMs: require('../services/TimingService').constructor.lateCrossingGraceMs(),
       clubBrand:           require('../services/ClubBrand').get(),
       passwordEnabled:     require('../services/AccessPassword').isEnabled(),
@@ -128,6 +131,8 @@ class SettingsController {
       const n = Math.round(Number(req.body.value));
       if (!Number.isFinite(n) || n < range[0] || n > range[1]) return res.status(400).json({ ok: false });
       Settings.set(key, n);
+      // La escala cambia los settori que enseñan resultados, móvil y Lap.
+      if (key === 'coma_sectors') require('../models/Lap').markExternalMutation();
       return res.json({ ok: true, key, value: n });
     }
     const allowed = PREFS[key];

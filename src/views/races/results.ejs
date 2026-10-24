@@ -384,6 +384,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
       <button class="results-tab active" data-tab="matrix">
         <%= t('results.tab_resultados') %>
       </button>
+      <button class="results-tab" data-tab="lanes"><%= t('results.por_carril_tab') %></button>
       <button class="results-tab" data-tab="progression">
         <%= t('results.progresion') %>
       </button>
@@ -663,7 +664,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
                   <% } %>
                 </td>
                 <td class="matrix-laps matrix-total">
-                  <%= r.total_laps %><% if (r.last_manga_coma > 0) { %><span style="font-size:.6em; color:<%= r.last_manga_coma_manual ? '#58a6ff' : '#8b949e' %>; margin-left:4px; font-weight:normal;" title="<%= r.last_manga_coma_manual ? t('results.coma_manual_title') : t('results.coma_title') %>">+<%= r.last_manga_coma.toFixed(2).replace('.', ',') %></span><% } %>
+                  <%= r.total_laps %><% if (r.last_manga_coma > 0 || r.last_manga_coma_manual) { %><span style="font-size:.6em; color:<%= r.last_manga_coma_manual ? '#58a6ff' : '#8b949e' %>; margin-left:4px; font-weight:normal;" title="<%= r.last_manga_coma_manual ? t('results.coma_manual_title', { max: comaSectors - 1 }) : t('results.coma_title', { max: comaSectors - 1 }) %>">+<%= Settori.fromComa(r.last_manga_coma, comaSectors) %></span><% } %>
                 </td>
                 <% if (perOcc) { %>
                   <% occColumns.forEach(col => {
@@ -864,6 +865,90 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
         </table>
       </div>
     </div>
+
+    <!-- ── Por carril: vueltas, sector y, por cada carril, vueltas y mejor tiempo ── -->
+    <div class="results-panel" id="tab-lanes">
+      <%
+        const pcLanes = [...new Set((laneSequence || []).filter(l => l > 0))].sort((a, b) => a - b);
+        // Mismo orden que la clasificación (ver tab-matrix).
+        const pcRows = [...results].sort((a,b) => b.total_laps - a.total_laps
+          || compareLastManga(a, b)
+          || (a.total_time_ms||Infinity) - (b.total_time_ms||Infinity)
+          || (a.best_lap_ms||Infinity) - (b.best_lap_ms||Infinity));
+        const pcFastest = {};
+        pcRows.forEach(r => (r.perLane || []).forEach(pl => {
+          if (pl.best_ms != null && (pcFastest[pl.lane] == null || pl.best_ms < pcFastest[pl.lane])) pcFastest[pl.lane] = pl.best_ms;
+        }));
+        const pcTime = ms => ms == null ? '—' : (ms / 1000).toFixed(3).replace('.', ',');
+      %>
+      <% if (!pcRows.length) { %>
+        <p class="pc-empty"><%= t('results.por_carril_vacio') %></p>
+      <% } else { %>
+      <div class="pc-wrap">
+        <table class="pc-table">
+          <thead>
+            <tr>
+              <th rowspan="2" class="pc-pos">#</th>
+              <th rowspan="2" class="pc-name"><%= t('common.participante') %></th>
+              <th rowspan="2" class="pc-num"><%= t('results.por_carril_vueltas') %></th>
+              <th rowspan="2" class="pc-num" title="<%= t('results.por_carril_sector_ayuda', { max: comaSectors - 1 }) %>"><%= t('results.por_carril_sector') %></th>
+              <th colspan="<%= pcLanes.length %>" class="pc-grp"><%= t('results.por_carril_vueltas_carril') %></th>
+              <th colspan="<%= pcLanes.length %>" class="pc-grp"><%= t('results.por_carril_mejor_carril') %></th>
+            </tr>
+            <tr>
+              <% pcLanes.forEach((l, k) => { %><th class="pc-lane <%= k === 0 ? 'pc-first' : '' %>"><%= t('results.por_carril_abrev') %><%= l %></th><% }) %>
+              <% pcLanes.forEach((l, k) => { %><th class="pc-lane <%= k === 0 ? 'pc-first' : '' %>"><%= t('results.por_carril_abrev') %><%= l %></th><% }) %>
+            </tr>
+          </thead>
+          <tbody>
+            <% pcRows.forEach((r, i) => {
+                 const byLane = {};
+                 (r.perLane || []).forEach(pl => { byLane[pl.lane] = pl; });
+                 const showSett = r.last_manga_coma > 0 || r.last_manga_coma_manual;
+            %>
+              <tr class="<%= i < 3 ? 'pc-top-' + (i + 1) : '' %>">
+                <td class="pc-pos"><span class="pc-badge"><%= i + 1 %></span></td>
+                <td class="pc-name">
+                  <% if (r.color) { %><span class="pc-dot" style="background:<%= r.color %>"></span><% } %>
+                  <strong><%= r.entity_name %></strong>
+                </td>
+                <td class="pc-num pc-total"><%= r.total_laps %></td>
+                <td class="pc-num pc-sett <%= r.last_manga_coma_manual ? 'is-manual' : '' %>"
+                    title="<%= r.last_manga_coma_manual ? t('results.coma_manual_title', { max: comaSectors - 1 }) : t('results.coma_title', { max: comaSectors - 1 }) %>"><%= showSett ? Settori.fromComa(r.last_manga_coma, comaSectors) : '—' %></td>
+                <% pcLanes.forEach((l, k) => { %><td class="pc-lapcell <%= k === 0 ? 'pc-first' : '' %>"><%= byLane[l] ? byLane[l].laps : '—' %></td><% }) %>
+                <% pcLanes.forEach((l, k) => { const b = byLane[l] ? byLane[l].best_ms : null; %>
+                  <td class="pc-timecell <%= k === 0 ? 'pc-first' : '' %> <%= (b != null && b === pcFastest[l]) ? 'is-fastest' : '' %>"><%= pcTime(b) %></td>
+                <% }) %>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+      <p class="pc-legend"><%= t('results.por_carril_leyenda') %></p>
+      <% } %>
+    </div>
+
+    <style>
+      .pc-wrap { overflow-x: auto; border: 1px solid var(--vt-border, #2a2a33); border-radius: 10px; }
+      .pc-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: .88rem; }
+      .pc-table th, .pc-table td { padding: .5rem .7rem; text-align: center; white-space: nowrap; border-bottom: 1px solid rgba(255,255,255,.05); }
+      .pc-table thead th { font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--vt-mute-2, #6e7681); border-bottom: 1px solid var(--vt-border, #2a2a33); }
+      .pc-table .pc-grp, .pc-table .pc-first { border-left: 1px solid var(--vt-border, #2a2a33); }
+      .pc-table .pc-lane { color: var(--vt-mute, #8b949e); }
+      .pc-table tbody tr:last-child td { border-bottom: 0; }
+      .pc-name { text-align: left !important; min-width: 180px; }
+      .pc-dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; }
+      .pc-badge { display: inline-block; min-width: 26px; padding: 2px 6px; border-radius: 6px; background: #1b1b22; font-weight: 700; }
+      .pc-top-1 .pc-badge { background: #d4a017; color: #111; }
+      .pc-top-2 .pc-badge { background: #aab2bd; color: #111; }
+      .pc-top-3 .pc-badge { background: #b87333; color: #111; }
+      .pc-total { font-weight: 800; font-size: 1rem; }
+      .pc-sett { color: #8b949e; font-weight: 700; }
+      .pc-sett.is-manual { color: #58a6ff; }
+      .pc-timecell.is-fastest { color: #58a6ff; font-weight: 800; }
+      .pc-legend { color: var(--vt-mute, #8b949e); font-size: .8rem; margin: .7rem .2rem; }
+      .pc-empty { color: var(--vt-mute, #8b949e); padding: 1.2rem 0; }
+    </style>
 
     <!-- ── Progression chart ── -->
     <div class="results-panel" id="tab-progression">

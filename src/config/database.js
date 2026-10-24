@@ -92,6 +92,9 @@ if (fs.existsSync(RESTORE_STAGING_PATH)) {
   }
 }
 
+// ¿Había ya una BD con datos? Solo entonces se copia antes de migrar.
+const DB_EXISTED = fs.existsSync(DB_PATH) && fs.statSync(DB_PATH).size > 0;
+
 const db = new Database(DB_PATH);
 
 // ── PRAGMAs de rendimiento ────────────────────────────────────────────────
@@ -105,6 +108,13 @@ db.pragma('cache_size  = -65536');     // 64 MB cache (antes 16 MB) — cabe cas
 db.pragma('mmap_size   = 268435456');  // 256 MB memory-map para reads paralelos
 db.pragma('foreign_keys = ON');
 db.pragma('busy_timeout = 5000');      // espera 5s antes de SQLITE_BUSY (mejor que fail rápido)
+
+// ── Copia automática ANTES del esquema y las migraciones (services/AutoBackup) ──
+if (DB_EXISTED) {
+  let version = 'x';
+  try { version = require('../../package.json').version; } catch {}
+  require('../services/AutoBackup').snapshot(db, DATA_DIR, version);
+}
 
 // ── Base schema (idempotent) ───────────────────────────────────────────────
 db.exec(`
