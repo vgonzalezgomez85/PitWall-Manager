@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.66.2] — 2026-10-25
+
+### Corregido
+- **Borrar una tanda ya no deja pilotos ni equipos sueltos en la carrera**: al borrarla se quitaban sus mangas, pero sus pilotos y equipos se quedaban en la carrera sin tanda y las vueltas de sus mangas sin manga. Ahora se borra todo junto (tanda, mangas, vueltas, pilotos y equipos), y la clasificación y el directo se actualizan sin esas vueltas.
+
 ## [1.66.1] — 2026-10-24
 
 ### Corregido

@@ -80,8 +80,17 @@ class Tanda {
     return r ? r.id : null;
   }
 
+  // Pilotos, equipos y vueltas cuelgan de la tanda con ON DELETE SET NULL: sin
+  // borrarlos a mano se quedaban sueltos en la carrera (y las vueltas, sin manga).
   static delete(id) {
-    db.prepare('DELETE FROM tandas WHERE id = ?').run(id);
+    const borrar = db.transaction(() => {
+      const { changes } = db.prepare('DELETE FROM laps WHERE manga_id IN (SELECT id FROM mangas WHERE tanda_id = ?)').run(id);
+      db.prepare('DELETE FROM drivers WHERE tanda_id = ? OR team_id IN (SELECT id FROM teams WHERE tanda_id = ?)').run(id, id);
+      db.prepare('DELETE FROM teams WHERE tanda_id = ?').run(id);
+      db.prepare('DELETE FROM tandas WHERE id = ?').run(id);
+      return changes;
+    });
+    if (borrar() > 0) require('./Lap').markExternalMutation();
   }
 }
 
