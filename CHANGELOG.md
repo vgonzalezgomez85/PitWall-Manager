@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.66.4] — 2026-11-02
+
+### Mejorado
+- **Mejor, media y récord del entreno, más grandes en la TV**: en la vista con historial van ahora uno debajo de otro, a lo ancho de la tarjeta, y el tiempo sale casi el doble de grande; en una fila de tres no se leían a varios metros. En la vista compacta siguen en fila, pero ocupan todo su hueco.
+
 ## [1.66.3] — 2026-11-02
 
 ### Mejorado

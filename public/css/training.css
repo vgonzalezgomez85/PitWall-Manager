@@ -180,22 +180,27 @@
 .tr-card__delta.lv-color-amber { color: var(--tr-amber); }
 .tr-card__delta.lv-color-red   { color: var(--tr-red); }
 
-/* Mejor · Media · Récord del carril en una fila. El tiempo, lo más grande que
-   cabe en un tercio de la tarjeta (a 7,5cqi «10,069» todavía entra). */
+/* Mejor · Media · Récord del carril, uno por línea a lo ancho de la tarjeta: en
+   una fila de tres cada tiempo solo tenía un tercio y no se leía en una TV a
+   varios metros. «12,345» mide 3,3 veces la letra: a 14cqi ocupa ~46cqi y deja
+   sitio a la etiqueta. */
 .tr-card__stats {
-  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: grid; grid-template-columns: minmax(0, 1fr);
   border-top: 1px solid var(--tr-line); border-bottom: 1px solid var(--tr-line);
 }
-.tr-stat { display: flex; flex-direction: column; gap: .1rem; padding: .4rem .5rem; min-width: 0; }
-.tr-stat + .tr-stat { border-left: 1px solid var(--tr-line); }
+.tr-stat {
+  display: flex; align-items: baseline; justify-content: space-between; gap: .5rem;
+  padding: .15rem .75rem; min-width: 0;
+}
+.tr-stat + .tr-stat { border-top: 1px solid var(--tr-line); }
 .tr-stat__lbl {
-  font-size: clamp(.6rem, .75vw, .75rem); letter-spacing: .1em; text-transform: uppercase;
+  font-size: clamp(.8rem, 5cqi, 1.5rem); letter-spacing: .08em; text-transform: uppercase;
   color: var(--tr-mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .tr-stat__val {
   font-family: 'Inter', system-ui, sans-serif; font-variant-numeric: tabular-nums;
   font-weight: 800; letter-spacing: -.03em; line-height: 1.1;
-  font-size: clamp(.95rem, 7.5cqi, 2.6rem);
+  font-size: clamp(1.25rem, 14cqi, 4.3rem);
   white-space: nowrap; overflow: hidden; text-overflow: clip; color: #fff;
 }
 .tr-stat--best .tr-stat__val { color: var(--tr-green); }
@@ -275,9 +280,13 @@
 }
 .training-grid--compact .tr-card__best { font-size: clamp(1.8rem, 2.6vw, 2.8rem); }
 .training-grid--compact .tr-card__delta { margin: 0; text-align: right; }
-.training-grid--compact .tr-card__stats { border-bottom: 0; }
-.training-grid--compact .tr-stat { padding: .3rem .5rem .4rem; }
-.training-grid--compact .tr-stat__val { font-size: clamp(.85rem, 1.05vw, 1.1rem); }
+/* En la compacta siguen en una fila de tres (muchas tarjetas), cada tiempo a lo
+   que cabe en su tercio: 33,3cqi menos el relleno, entre 3,3 veces la letra. */
+.training-grid--compact .tr-card__stats { grid-template-columns: repeat(3, minmax(0, 1fr)); border-bottom: 0; }
+.training-grid--compact .tr-stat { flex-direction: column; justify-content: flex-start; gap: .1rem; padding: .3rem .25rem .4rem; }
+.training-grid--compact .tr-stat + .tr-stat { border-top: 0; border-left: 1px solid var(--tr-line); }
+.training-grid--compact .tr-stat__lbl { font-size: clamp(.6rem, 3.2cqi, 1rem); }
+.training-grid--compact .tr-stat__val { font-size: clamp(.95rem, calc(9.9cqi - 3px), 2.6rem); letter-spacing: -.04em; }
 .training-grid--compact .tr-card__laps { display: none; }
 .training-grid--compact .tr-pace { flex: 0 0 34px; min-height: 34px; height: 34px; margin: 0; border: 0; border-top: 1px solid var(--tr-line); border-radius: 0; background: none; }
 .training-grid--compact .tr-pace__lbl,
