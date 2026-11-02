@@ -17,7 +17,6 @@
  */
 const TrainingService     = require('../services/TrainingService');
 const CompetitionService  = require('../services/CompetitionTrainingService');
-const TimingService       = require('../services/TimingService');
 const SerialService       = require('../services/SerialService');
 const SocketService       = require('../services/SocketService');
 const Settings            = require('../models/Settings');
@@ -228,6 +227,16 @@ class TrainingController {
     const durationMs = (Number.isFinite(durMin) && durMin > 0) ? durMin * 60000 : null;
     const wantsJson  = req.xhr || (req.get('accept') || '').includes('application/json');
 
+    // Una sola sesión en pista: con una manga, la pole o el otro entreno corriendo
+    // no arranca (el entreno libre sí se aparta si arranca el de competición).
+    const session = isComp ? 'competition' : 'training';
+    const busy = GoOwnerService.blockerFor(session);
+    if (busy) {
+      const message = GoOwnerService.blockerMessage(req.t, busy);
+      if (wantsJson) return res.status(409).json({ ok: false, error: `${busy}_running`, message });
+      return res.status(409).render('error', { t: req.t, code: 409, message });
+    }
+
     // TicTac: la orden va a la caja, que hace su semáforo y abre la corriente; su
     // verde activa el entreno por el camino del DS (race_go/race_started).
     if (SerialService.remoteGo) {
@@ -241,6 +250,8 @@ class TrainingController {
     const SEMAPHORE_MS = 3000;
     SocketService.emit('race:semaphore');
     setTimeout(() => {
+      // Una sesión arrancada durante el semáforo se queda la caja.
+      if (GoOwnerService.blockerFor(session)) return;
       svc.activate(durationMs);
       SocketService.emit('training:autostart');   // → semáforo verde en el cliente
       try { SerialService.sendStart(); } catch {}
@@ -299,12 +310,8 @@ class TrainingController {
 
   // POST /training/start (legacy / manual)
   static start(req, res) {
-    if (TimingService.isRunning) {
-      return res.status(409).render('error', {
-        t: req.t, code: 409,
-        message: req.t ? 'A race is already running' : 'A race is already running'
-      });
-    }
+    const busy = GoOwnerService.blockerFor('training');
+    if (busy) return res.status(409).render('error', { t: req.t, code: 409, message: GoOwnerService.blockerMessage(req.t, busy) });
     const lanes = Math.max(1, Math.min(32, parseInt(req.body.lanes, 10) || 6));
     TrainingService.start(lanes);
     res.redirect('/training/live');

@@ -18,7 +18,9 @@
 // Reúne el estado real y le pregunta a `lib/goOwner` de quién es el próximo GO.
 // La petición de la carrera (`_claimRaceId`) vive en memoria: tras un reinicio
 // solo sobrevive la tanda a medias, que se lee de la BD.
-const { decideGoOwner, canCede } = require('../lib/goOwner');
+const { decideGoOwner, canCede, routeBoxEvent } = require('../lib/goOwner');
+
+const BOX_EVENTS = ['race_go', 'race_started', 'race_paused', 'race_resumed', 'race_stopped', 'race_finished', 'lane_crossing'];
 
 // Lo que puede tardar la caja desde la orden de GO hasta su verde.
 const REMOTE_GO_MS = 20000;
@@ -28,6 +30,71 @@ class GoOwnerService {
     this._claimRaceId = null;
     this._lastKey     = null;
     this._remoteGo    = null;
+    this._sessions    = {};
+    this._listening   = false;
+  }
+
+  // ── Reparto de las señales de la caja ──────────────────────────────────────
+  // Las sesiones se dan de alta aquí en vez de escuchar a SerialService:
+  // 'race' (TimingService), 'pole', 'competition' y 'training' (entreno libre), con
+  // { ready(), active(), handle(event, payload) }. La regla de a quién va cada
+  // señal es `routeBoxEvent` (lib/goOwner). Lo que no es de ninguna sesión
+  // (semáforo en pantalla, Infolap, recuperación) sigue escuchando directamente.
+  attach(name, session) {
+    this._sessions[name] = session;
+    if (this._listening) return;
+    this._listening = true;
+    const SerialService = require('./SerialService');
+    // Delante de los demás oyentes: el reparto se decide con el estado de ANTES
+    // de la señal, no con el que deja la sesión que arranca o acaba con ella.
+    for (const ev of BOX_EVENTS) SerialService.prependListener(ev, (payload) => this._route(ev, payload));
+  }
+
+  // ── Una sola sesión en pista ───────────────────────────────────────────────
+  // La sesión en pista (o null), sin contar `except`.
+  busySession(except = null) {
+    for (const name of ['race', 'pole', 'competition', 'training']) {
+      if (name !== except && this._sessions[name]?.active()) return name;
+    }
+    return null;
+  }
+
+  // Lo que impide arrancar `name`: otra sesión en pista. El entreno libre no
+  // impide nada: va de fondo y deja la caja a quien arranca (begin).
+  blockerFor(name) {
+    const busy = this.busySession(name);
+    return busy === 'training' ? null : busy;
+  }
+
+  // Texto para el operador cuando `blockerFor` impide arrancar.
+  blockerMessage(t, busy) {
+    return t(`goowner.ocupado_${busy}`);
+  }
+
+  // Al arrancar una sesión, el entreno libre que estuviera en pista deja la caja.
+  begin(name) {
+    const training = this._sessions.training;
+    if (name !== 'training' && training?.active()) {
+      console.log(`[GoOwner] El entreno libre deja la caja: arranca ${name}`);
+      training.yieldBox();
+    }
+  }
+
+  _route(event, payload) {
+    const st = (name) => {
+      const x = this._sessions[name];
+      return { ready: !!x?.ready(), active: !!x?.active() };
+    };
+    const race = st('race');
+    const target = routeBoxEvent(event, {
+      mangaRunning: race.active,
+      mangaLate:    race.ready && !race.active,
+      owner:        () => this.decide().owner,
+      pole:         st('pole'),
+      competition:  st('competition'),
+      training:     st('training'),
+    });
+    if (target && this._sessions[target]) this._sessions[target].handle(event, payload || {});
   }
 
   get claimRaceId() { return this._claimRaceId; }

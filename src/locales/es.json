@@ -395,7 +395,8 @@
       "pulsa_go_para_empezar": "Pulsa GO para empezar",
       "n_vueltas": "· {{n}} vueltas",
       "voz_mejor_vuelta": "Mejor vuelta, {{time}}",
-      "voz_nueva_pole": "Nueva pole, {{time}}"
+      "voz_nueva_pole": "Nueva pole, {{time}}",
+      "otra_sesion_en_pista": "⛔ Hay una manga o un entreno de competición en pista: la pole podrá seguir cuando acabe."
     },
     "race": {
       "borrar_este_cambio_devuelve_el_juego_a": "¿Borrar este cambio? Devuelve el juego a disponibles.",
@@ -2657,5 +2658,10 @@
     "boton_corto": "Sectores",
     "desactivado": "La coma está en automática: los sectores escritos a mano no se aplican. Actívalo en Ajustes → Preferencias → Corrección manual de la coma.",
     "parcial": "Has escrito sectores para {{n}} de {{total}} participantes. A igualdad de vueltas, los demás se comparan con el cálculo automático: para un desempate homogéneo rellena todos o ninguno."
+  },
+  "goowner": {
+    "ocupado_race": "Hay una manga en marcha: espera a que acabe o párala antes.",
+    "ocupado_pole": "Hay un piloto de la pole en pista: termina o para su intento antes.",
+    "ocupado_competition": "Hay un entreno de competición en pista: páralo antes."
   }
 }

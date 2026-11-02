@@ -395,7 +395,8 @@
       "pulsa_go_para_empezar": "Press GO to start",
       "n_vueltas": "· {{n}} laps",
       "voz_mejor_vuelta": "Best lap, {{time}}",
-      "voz_nueva_pole": "New pole, {{time}}"
+      "voz_nueva_pole": "New pole, {{time}}",
+      "otra_sesion_en_pista": "⛔ A heat or a competition practice is on track: pole will continue when it ends."
     },
     "race": {
       "borrar_este_cambio_devuelve_el_juego_a": "Delete this change? Returns the set to available.",
@@ -2657,5 +2658,10 @@
     "boton_corto": "Sectors",
     "desactivado": "The fraction is automatic: hand-entered sectors are not applied. Turn it on in Settings → Preferences → Manual correction of the fraction.",
     "parcial": "You entered sectors for {{n}} of {{total}} participants. On equal laps the others are compared using the automatic calculation: for a consistent tie-break fill in all or none."
+  },
+  "goowner": {
+    "ocupado_race": "A heat is running: wait for it to end or stop it first.",
+    "ocupado_pole": "A pole driver is on track: finish or stop their run first.",
+    "ocupado_competition": "A competition practice is on track: stop it first."
   }
 }

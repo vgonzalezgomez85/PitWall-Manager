@@ -101,6 +101,20 @@ class SessionController {
       });
     }
 
+    const wantsJson = req.xhr || (req.get('accept') || '').includes('application/json');
+
+    // Una sola sesión en pista: con la pole o un entreno de competición corriendo
+    // la manga espera. Si la pole solo espera el GO, el operador ha pedido la
+    // manga y la pole se aparta.
+    const busy = GoOwnerService.blockerFor('race');
+    if (busy) {
+      const message = GoOwnerService.blockerMessage(req.t, busy);
+      if (wantsJson) return res.status(409).json({ ok: false, error: `${busy}_running`, message });
+      return res.status(409).render('error', { t: req.t, code: 409, message });
+    }
+    const Pole = require('../services/PoleTimingService');
+    if (Pole.isStandby) Pole.release();
+
     const lanes   = Manga.getLanes(manga.id);
     const tanda   = Tanda.findById(manga.tanda_id);
     const teams   = Team.findByTanda(manga.tanda_id);
@@ -116,8 +130,6 @@ class SessionController {
       race.manga_duration_minutes = durMin;
       try { require('../config/database').prepare('UPDATE races SET manga_duration_minutes=? WHERE id=?').run(durMin, race.id); } catch {}
     }
-
-    const wantsJson = req.xhr || (req.get('accept') || '').includes('application/json');
 
     // TicTac: el GO es una orden a la caja (con el tiempo de la manga). Ella hace su
     // semáforo y abre la corriente, y su verde arranca la manga por el mismo camino
@@ -136,6 +148,9 @@ class SessionController {
     const softwareGo = SerialService.softwareGo;
 
     const doStart = () => {
+      // Una sesión arrancada durante el semáforo se queda la caja.
+      const late = GoOwnerService.blockerFor('race');
+      if (late) { console.log(`[Session] GO de la manga ${manga.id} descartado: ${late} en pista`); return; }
       TimingService.startManga(manga, race, lanes, teams, drivers, durationMs);
       // BART/sim: un único GO arranca TODOS los circuitos (no hay caja DS por
       // circuito). En DS-300 cada caja manda su GO.

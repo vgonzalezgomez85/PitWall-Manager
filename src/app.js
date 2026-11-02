@@ -133,8 +133,6 @@ if (SettingsModel.get('link_role', 'off') === 'master') {
   catch (e) { console.error('[RaceLink] no se pudo arrancar el maestro:', e.message); }
 }
 
-let _pendingGoDurationMs = null;
-
 // ── De-dup del semáforo entre varios DS ──────────────────────────────────────
 // Con varios circuitos, cada DS emite su propia secuencia de semáforo (en GO y
 // en resume). Atendemos solo al PRIMER race:semaphore dentro de una ventana y
@@ -153,15 +151,14 @@ function emitSemaphoreOnce(reason, data) {
   SocketService.emit('race:semaphore', data);
 }
 
-SerialService.on('race_go', ({ durationMs }) => {
-  console.log(`[DS-300] race_go received (duration=${durationMs}ms) — emit race:semaphore @ ${Date.now()}`);
+// Señales de la caja que no son de ninguna sesión (pantallas, exportaciones,
+// Infolap). Lo que hace la manga con ellas está en services/MangaBoxHandlers y se
+// lo entrega GoOwnerService, como a la pole y a los entrenos.
+SerialService.on('race_go', () => {
   // GO del DS-300: aborta ya cualquier exportación a Excel en curso (quedan
   // ~3s de cuenta atrás antes de que se abra la pista → el event loop se
   // libera antes del primer cruce).
   try { require('./services/ExportGuard').abortAll(); } catch {}
-  // Con límite de tanda el GO no es de la carrera, pero sí del entreno: el
-  // semáforo se muestra igual (race_started ya ignora la carrera).
-  _pendingGoDurationMs = durationMs || null;
   // Para quién es el GO: el directo de una carrera que no se lo lleva no pinta
   // el semáforo (se quedaría en verde esperando una manga que no arranca).
   let owner = null;
@@ -175,110 +172,11 @@ SerialService.on('race_go', ({ durationMs }) => {
 });
 
 SerialService.on('race_started', ({ circuit } = {}) => {
-  const ci = circuit || 0;
-  console.log(`[DS-300] race_started (circuit ${ci + 1}) @ ${Date.now()} → emit training:autostart`);
+  console.log(`[DS-300] race_started (circuit ${(circuit || 0) + 1}) @ ${Date.now()} → emit training:autostart`);
   SocketService.emit('training:autostart');
   // Reset del estado por-carril en el server Infolap para que los clientes
   // Android vean los carriles como "primer reporte" en cada manga nueva.
   if (InfolapServer.isRunning) InfolapServer.resetSession();
-
-  // Si ya hay una manga en curso, este GO pertenece a OTRO circuito: arranca
-  // solo ese circuito (con su propio reloj) sin reiniciar ni tocar los demás.
-  // EXCEPCIÓN agrupador: una sola señal de GO cubre TODAS las cajas del puerto
-  // (las tramas de GO de cada caja llegan casi a la vez por el mismo cable), así
-  // que arrancamos todos los circuitos pendientes de golpe (idempotente).
-  if (TimingService.activeMangaId != null) {
-    if (SerialService.isAggregator) TimingService.startAllCircuits(_pendingGoDurationMs);
-    else                            TimingService.startCircuit(ci, _pendingGoDurationMs);
-    _pendingGoDurationMs = null;
-    return;
-  }
-
-  if (TimingService._tandaBoundary) {
-    console.log('[DS-300] STARTED ignored — tanda boundary, waiting for user to start next tanda');
-    return;
-  }
-  // La misma regla que usa el entreno para apartarse (GoOwnerService): si la
-  // carrera no es la dueña, este GO es del entreno (ya arrancado arriba).
-  const go = GoOwnerService.decide();
-  if (go.owner !== 'race') {
-    console.log(`[DS-300] GO para ${go.owner === 'pole' ? 'la pole' : 'el entreno'}, no para la carrera (${go.reason || 'sin carrera pedida'})`);
-    return;
-  }
-
-  let setup = TimingService._pendingSetup;
-  if (setup && go.raceId != null && setup.race.id !== go.raceId) setup = null;
-
-  // Auto-find first pending manga if none registered (e.g. after server restart)
-  if (!setup) {
-    const Race   = require('./models/Race');
-    const Manga  = require('./models/Manga');
-    const Team   = require('./models/Team');
-    const Driver = require('./models/Driver');
-    const db     = require('./config/database');
-
-    const races = Race.findAll().filter(r => go.raceId == null ? r.status === 'active'
-                                                            : r.id === go.raceId && ['pending', 'active'].includes(r.status));
-    for (const race of races) {
-      const manga = Manga.findFirstPending(race.id);
-      if (!manga) continue;
-
-      // Tanda-boundary guard (survives server restarts): if the most recently
-      // finished manga of this race is in a different tanda than the pending
-      // one, block the auto-GO. User must hit "▶ Tanda N" first.
-      const lastFinished = db.prepare(
-        `SELECT tanda_id FROM mangas
-         WHERE race_id = ? AND status = 'finished' AND finished_at IS NOT NULL
-         ORDER BY finished_at DESC LIMIT 1`
-      ).get(race.id);
-      if (lastFinished && lastFinished.tanda_id !== manga.tanda_id) {
-        console.log(`[DS-300] GO ignored — tanda boundary (last finished was tanda ${lastFinished.tanda_id}, pending in tanda ${manga.tanda_id})`);
-        return;
-      }
-
-      const lanes   = Manga.getLanes(manga.id);
-      const teams   = Team.findByTanda(manga.tanda_id);
-      const drivers = Driver.findByTanda(manga.tanda_id);
-      setup = { manga, race, lanes, teams, drivers };
-      console.log(`[DS-300] Auto-found pending manga ${manga.id} for race ${race.id}`);
-      break;
-    }
-  }
-
-  if (!setup) { console.log('[DS-300] GO received but no pending manga found'); return; }
-  TimingService.startManga(setup.manga, setup.race, setup.lanes, setup.teams, setup.drivers, _pendingGoDurationMs, ci);
-  // Agrupador: un único GO cubre todas las cajas → arranca TODOS los circuitos
-  // de la manga, no solo el primero (si no, los carriles de las demás cajas
-  // llegan a un circuito 'pending' y se descartan por circuit_not_running).
-  if (SerialService.isAggregator) TimingService.startAllCircuits(_pendingGoDurationMs);
-  _pendingGoDurationMs = null;
-  TimingService.clearPendingManga();
-});
-
-SerialService.on('race_stopped', () => {
-  // STOP forzado = abortar TODA la manga (aunque haya circuitos en pausa).
-  if (TimingService.activeMangaId != null) TimingService.cancelManga();
-});
-
-SerialService.on('race_finished', ({ circuit } = {}) => {
-  // Fin (normal / tiempo agotado) de UN circuito: lo cierra. La manga se
-  // finaliza de verdad cuando todos los circuitos han terminado (finishCircuit).
-  // Agrupador: la única trama de fin cubre todas las cajas del puerto → cierra
-  // todos los circuitos (si no, el circuito de otra caja quedaría corriendo y la
-  // manga no se cerraría nunca).
-  if (TimingService.activeMangaId != null) {
-    if (SerialService.isAggregator) TimingService.finishAllCircuits();
-    else                            TimingService.finishCircuit(circuit || 0);
-  }
-});
-
-SerialService.on('race_paused', ({ circuit } = {}) => {
-  // Pausa POR CIRCUITO: solo afecta a los carriles de ese DS.
-  // Agrupador: la pausa del puerto para todas las cajas a la vez.
-  if (TimingService.activeMangaId != null) {
-    if (SerialService.isAggregator) TimingService.pauseManga();
-    else                            TimingService.pauseCircuit(circuit || 0);
-  }
 });
 
 // Trama 1 of the resume sequence (0xA6): show the same semaphore animation
@@ -293,14 +191,6 @@ SerialService.on('race_resume_signal', () => {
 // when the physical DS does — keeps both in sync regardless of firmware timing.
 SerialService.on('semaphore_step', () => {
   SocketService.emit('race:semaphore_step');
-});
-
-SerialService.on('race_resumed', ({ circuit } = {}) => {
-  // Agrupador: la reanudación del puerto revive todas las cajas a la vez.
-  if (TimingService.activeMangaId != null) {
-    if (SerialService.isAggregator) TimingService.resumeManga();
-    else                            TimingService.resumeCircuit(circuit || 0);
-  }
 });
 
 const PORT = process.env.PORT || 3000;

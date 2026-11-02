@@ -44,34 +44,37 @@ class PoleTimingServiceClass {
     // desactivarlo desde la vista de pole. Persiste entre pilotos de la sesión.
     this._omitFirstCrossing = true;
 
-    // Trama 1: guarda duración (la UI ya sabe la durationMs, pero la real
-    // viene del DS-300 al recibir GO; respetamos la del DS-300 si llega).
-    SerialService.on('race_go', ({ durationMs }) => {
-      if (!this._standby && !this._active) return;
-      if (durationMs) this._pendingDurationMs = durationMs;
-      this._paused = false;
+    // Las señales de la caja llegan por GoOwnerService: el GO solo si es de la
+    // pole, y lo demás solo con el piloto en pista y sin manga en marcha.
+    const handlers = {
+      // Trama 1: guarda duración (la UI ya sabe la durationMs, pero la real
+      // viene del DS-300 al recibir GO; respetamos la del DS-300 si llega).
+      race_go: ({ durationMs }) => {
+        if (durationMs) this._pendingDurationMs = durationMs;
+        this._paused = false;
+      },
+      // Trama 3: activa el cronómetro real.
+      race_started: () => { if (this._standby && !this._active) this._activate(); },
+      race_paused:  () => this._pauseState(),
+      race_resumed: () => this._resumeState(),
+      // Stop manual/forzado del DS-300 → abortamos la pole de este piloto (sin
+      // guardar tiempo) y lo re-armamos EN EL ACTO (mismo tick, sin async de por
+      // medio): si dejáramos el servicio en idle a la espera de que alguien
+      // pulse "Iniciar" en el navegador, un GO físico que llegue mientras tanto
+      // se pierde en silencio y, como el DS-300 no repite una transición de
+      // estado (_setRaceState corta en seco si no cambia), esa manga se queda
+      // muerta hasta el siguiente ciclo stop→go. forceStop() imita el "pilotos
+      // pre-armados" del stop forzado de resistencia. Finished/timer expiry →
+      // guardamos mejor vuelta.
+      race_stopped:  () => this.forceStop(),
+      race_finished: () => this.finish(true),
+      lane_crossing: (c) => { if (this._lapHandler) this._lapHandler(c); },
+    };
+    require('./GoOwnerService').attach('pole', {
+      ready:  () => !!this.session && (this._standby || this._active),
+      active: () => this._active,
+      handle: (event, payload) => handlers[event](payload),
     });
-
-    // Trama 3: activa el cronómetro real
-    SerialService.on('race_started', () => {
-      if (!this._standby || this._active) return;
-      this._activate();
-    });
-
-    SerialService.on('race_paused',  () => this._pauseState());
-    SerialService.on('race_resumed', () => this._resumeState());
-
-    // Stop manual/forzado del DS-300 → abortamos la pole de este piloto (sin
-    // guardar tiempo) y lo re-armamos EN EL ACTO (mismo tick, sin async de por
-    // medio): si dejáramos el servicio en idle a la espera de que alguien
-    // pulse "Iniciar" en el navegador, un GO físico que llegue mientras tanto
-    // se pierde en silencio (race_go/race_started exigen _standby=true) y,
-    // como el DS-300 no repite una transición de estado (_setRaceState corta
-    // en seco si no cambia), esa manga se queda muerta hasta el siguiente
-    // ciclo stop→go. forceStop() imita el "pilotos pre-armados" del stop
-    // forzado de resistencia. Finished/timer expiry → guardamos mejor vuelta.
-    SerialService.on('race_stopped',  () => { if (this._active || this._standby) this.forceStop(); });
-    SerialService.on('race_finished', () => { if (this._active || this._standby) this.finish(true); });
   }
 
   // Llamado desde POST /races/:id/pole/participant/start
@@ -102,7 +105,6 @@ class PoleTimingServiceClass {
       if (!this._active || this._paused) return;
       this._onCrossing(timestamp, lapTimeMs);
     };
-    SerialService.on('lane_crossing', this._lapHandler);
 
     SocketService.emit('pole:standby', { entryName, poleLane });
     require('./GoOwnerService').notify();
@@ -156,6 +158,7 @@ class PoleTimingServiceClass {
   _activate() {
     const s = this.session;
     if (!s) return;
+    require('./GoOwnerService').begin('pole');
     s.startTime    = Date.now();
     s.lastCrossing = s.startTime;
     if (this._pendingDurationMs != null) {
@@ -261,6 +264,18 @@ class PoleTimingServiceClass {
     return null;
   }
 
+  // Deja de esperar el GO sin parar la fuente: el GO lo da ahora una manga, que
+  // arma la caja/Master ella misma (abort() mandaría un stop justo antes).
+  release() {
+    if (!this.session || this._active) return false;
+    const { entryName } = this.session;
+    this._teardown();
+    this.session = null;
+    SocketService.emit('pole:aborted', { entryName });
+    console.log(`[PoleTimingService] "${entryName}" deja de esperar el GO: lo pide una manga`);
+    return true;
+  }
+
   // Compat: stop(auto) sigue funcionando — true = finish, false = abort.
   stop(auto = false) {
     return auto ? this.finish(true) : this.abort();
@@ -282,10 +297,7 @@ class PoleTimingServiceClass {
 
   _teardown() {
     if (this._tickInt) { clearInterval(this._tickInt); this._tickInt = null; }
-    if (this._lapHandler) {
-      SerialService.off('lane_crossing', this._lapHandler);
-      this._lapHandler = null;
-    }
+    this._lapHandler = null;
     this._active  = false;
     this._standby = false;
     this._paused  = false;

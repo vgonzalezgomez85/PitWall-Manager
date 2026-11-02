@@ -53,6 +53,18 @@ function applyTeamAttrs(db, raceId, teamName, obj) {
 
 // Devuelve el array de tamaños de sub-circuitos. Si no hay circuito asignado
 // o la config no es válida, devuelve [lanes_count] (un solo sub-circuito).
+// Con pole, las tandas salen de sus resultados (Asignar carriles): una tanda hecha
+// a mano antes de acabarla corre con otros participantes que los de la pole.
+function _poleBlocksTandas(race) {
+  if (!race.has_pole) return false;
+  const session = require('../models/PoleSession').findByRace(race.id);
+  return !!session && session.status !== 'done';
+}
+
+function _renderPoleFirst(req, res) {
+  return res.status(409).render('error', { t: req.t, code: 409, message: req.t('show.tienes_que_terminar_la_sesion_de_pole_position') });
+}
+
 function _circuitSizesFor(race) {
   try {
     if (race.circuit_id) {
@@ -77,6 +89,7 @@ class TandaController {
   static newForm(req, res) {
     const race = Race.findById(req.params.id);
     if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.race_not_found') });
+    if (_poleBlocksTandas(race)) return _renderPoleFirst(req, res);
 
     const laneSequence  = Race.getLaneSequence(race);
     const profiles      = DriverProfile.findAll();
@@ -89,6 +102,7 @@ class TandaController {
   static create(req, res) {
     const race = Race.findById(req.params.id);
     if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.race_not_found') });
+    if (_poleBlocksTandas(race)) return _renderPoleFirst(req, res);
 
     const laneSequence = Race.getLaneSequence(race);
     const errors = [];

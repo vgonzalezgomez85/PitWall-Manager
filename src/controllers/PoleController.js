@@ -27,6 +27,13 @@ const Manga              = require('../models/Manga');
 
 const LaneColors = require('../services/LaneColors');
 
+// Una sola sesión en pista: con una manga o un entreno de competición corriendo la
+// pole no se arma ni arranca. `manga_running` / `competition_running`.
+function _blocker() {
+  const busy = require('../services/GoOwnerService').blockerFor('pole');
+  return busy && (busy === 'race' ? 'manga' : busy);
+}
+
 // Tamaños de cada circuito (caja) de la carrera: [8,8,8] = 3 cajas de 8. Prefiere
 // la config del circuito asignado; si no, circuits_config; si no, todo en uno.
 function _circuitSizesFor(race) {
@@ -137,7 +144,8 @@ class PoleController {
     // Si hay piloto pendiente y el servicio no está activo/standby, lo dejamos
     // ya en standby aquí — así un GO físico inmediato no se pierde por la
     // race condition del POST async desde el cliente.
-    if (current && !PoleTimingService.isRunning && !PoleTimingService.isStandby) {
+    const blocked = !!_blocker();
+    if (current && !blocked && !PoleTimingService.isRunning && !PoleTimingService.isStandby) {
       PoleTimingService.start({
         poleSessionId: session.id,
         entryId:       current.id,
@@ -164,6 +172,7 @@ class PoleController {
       LANE_COLORS: LaneColors.forRace(race), isTimingRunning, durationMs, poleBestMs, poleHolder,
       omitFirstCrossing: PoleTimingService.omitFirstCrossing,
       softwareGo: SerialService.softwareGo,  // BART/TicTac/simulación: PitWall da el GO, no la caja
+      blocked,
       poleLocked: timedEntries.length > 0,   // ya hay tiempos → no se puede cambiar la regla
     });
   }
@@ -202,6 +211,9 @@ class PoleController {
     // (el GET /pole/timing pudo prepararlo antes y un abort aquí abriría una
     // ventana donde el GO físico se perdería). Si es otro piloto o estaba
     // inactivo, abortamos para arrancar limpio.
+    const busy = _blocker();
+    if (busy) return res.status(409).json({ ok: false, error: `${busy}_running` });
+
     if (PoleTimingService.currentEntryId === current.id) {
       return res.json({ ok: true, entryName: current.entity_name, alreadyPrepared: true });
     }
@@ -238,6 +250,8 @@ class PoleController {
       const entries = PoleSession.getEntriesOrdered(session.id);
       const current = entries[session.current_idx];
       if (!current) return res.status(400).json({ ok: false, error: 'no_current_entry' });
+      const busy = _blocker();
+      if (busy) return res.status(409).json({ ok: false, error: `${busy}_running` });
 
       // El GET /pole/timing ya lo deja en standby; si no (p. ej. tras un stop), se arma aquí.
       if (PoleTimingService.currentEntryId !== current.id) {
@@ -259,7 +273,8 @@ class PoleController {
       const entryId = current.id;
       SocketService.emit('race:semaphore');
       setTimeout(() => {
-        // Si en estos 3 s se paró, se saltó o cambió de piloto, el GO ya no vale.
+        // Si en estos 3 s se paró, se saltó, cambió de piloto o arrancó otra sesión, el GO ya no vale.
+        if (_blocker()) return;
         if (PoleTimingService.isStandby && PoleTimingService.currentEntryId === entryId) PoleTimingService.go();
       }, PoleController.SEMAPHORE_MS);
       res.json({ ok: true, semaphore: true });

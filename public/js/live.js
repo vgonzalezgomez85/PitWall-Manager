@@ -2833,11 +2833,18 @@ function announce(text) {
       if (btn) btn.disabled = true;
       if (reloadOnDone) _pendingActionReload = true;
       try {
-        await fetch(form.action, {
+        const r = await fetch(form.action, {
           method: 'POST',
           headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/x-www-form-urlencoded' },
           body: new URLSearchParams(new FormData(form)),
         });
+        if (r.status === 409) {
+          const body = await r.json().catch(() => ({}));
+          _pendingActionReload = false;
+          if (btn) btn.disabled = false;
+          if (body.message) alert(body.message);
+          return;
+        }
         // No recargamos aquí: los eventos socket conducen la transición.
       } catch (err) {
         _pendingActionReload = false;

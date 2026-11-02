@@ -247,6 +247,7 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
 const RACE_ID      = '<%= race.id %>';
 const IS_RUNNING   = <%- isTimingRunning ? 'true' : 'false' %>;
 const SOFTWARE_GO  = <%- softwareGo ? 'true' : 'false' %>;
+const BLOCKED = <%- blocked ? 'true' : 'false' %>;
 const DURATION_MS  = <%= durationMs %>;
 const IS_GUEST     = <%- isGuestAccess ? 'true' : 'false' %>;
 let   poleBestMs   = <%- poleBestMs != null ? poleBestMs : 'null' %>; // tiempo a batir (ms)
@@ -517,6 +518,7 @@ async function swCommand(name) {
   if (btn) btn.disabled = true;
   try {
     const r = await fetch('/races/' + RACE_ID + '/pole/participant/' + name, { method: 'POST' });
+    if (r.status === 409 && /_running$/.test((await r.json().catch(() => ({}))).error || '')) { if (btn) btn.disabled = false; enterBlocked(); return; }
     if (!r.ok) throw new Error(name + ' failed');
   } catch (e) {
     if (btn) btn.disabled = false;
@@ -531,6 +533,15 @@ function enterIdle() {
   hide('js-chrono-wrap'); hide('js-countdown-wrap'); hide('js-finished-result');
   setStateSub(I18N.t('client.pole-timing.preparado'));
 }
+// Una sola sesión en pista: mientras corre una manga o un entreno de competición
+// no se arma al piloto. Al acabar se recarga y la página lo arma como siempre.
+let sessionBlocked = false;
+function enterBlocked() {
+  sessionBlocked = true;
+  enterIdle();
+  setStateSub(I18N.t('client.pole-timing.otra_sesion_en_pista'));
+}
+
 function enterStandby() {
   state = 'standby';
   showSw('go');
@@ -643,6 +654,7 @@ async function startTiming() {
   if (btn) btn.disabled = true;
   try {
     const r = await fetch('/races/' + RACE_ID + '/pole/participant/start', { method: 'POST' });
+    if (r.status === 409) { if (btn) btn.disabled = false; enterBlocked(); return; }
     if (!r.ok) throw new Error('start failed');
     enterStandby();
   } catch(e) {
@@ -727,11 +739,17 @@ socket.on('pole:finished', ({ entryName, bestLapMs, lapCount }) => {
   enterFinished(bestLapMs, lapCount);
 });
 
+socket.on('manga:stopped',   () => { if (sessionBlocked) location.reload(); });
+socket.on('manga:cancelled', () => { if (sessionBlocked) location.reload(); });
+socket.on('training:standby', () => { if (sessionBlocked) location.reload(); });
+
 // ── Init ─────────────────────────────────────────────────────────────────
 renderTower();
 renderOrder();
 if (IS_RUNNING) {
   enterRunning();
+} else if (CURRENT_NAME && BLOCKED) {
+  enterBlocked();
 } else if (!CURRENT_NAME) {
   enterIdle();
 } else if (IS_GUEST) {

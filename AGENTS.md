@@ -32,6 +32,8 @@ por puerto serie a 56000 baudios con tramas de ~19 bytes codificadas en BCD.
 ```
 src/
   app.js                  — Entry point: Express + Socket.io + SerialService init + arranca el worker de stats
+  services/GoOwnerService.js — Dueño del GO y repartidor de las señales de la caja entre sesiones (ver «Fuentes de datos»)
+  services/MangaBoxHandlers.js — Qué hace la manga con GO/pausa/STOP/fin de la caja (antes en app.js)
   routes/index.js         — Todas las rutas HTTP
   controllers/            — Un controller por dominio (thin, delegan en models/services)
   models/                 — Acceso a SQLite, un archivo por tabla
@@ -105,6 +107,7 @@ database/                 — pitwall.db (SQLite, no commitear)
 | Simulación | `simulation` | PitWall |
 
 - `SerialService.softwareGo` (BART \| simulación \| TicTac) = botones GO/PAUSE/STOP en directo, entrenamiento y **pole**. En BART y simulación PitWall da el GO (semáforo de 3 s). `SerialService.remoteGo` (TicTac) = los botones solo mandan la orden (`sendGo(durationMs)`, `sendPause`, `sendResume`) y la manga/entreno/pole se mueve con las señales `race_*` que devuelve la caja, como con un DS; el GO se marca para quien lo pulsó (`GoOwnerService.armRemoteGo`, caduca a los 20 s). Si el aparato no contesta (o no está), `TicTacConnection` sigue por su cuenta con su semáforo de 3 s. `sendStop` es aviso: PitWall ya cerró lo suyo y solo corta la corriente. `SerialService.endsByTimer` (simulación \| TicTac) = nadie avisa del fin: `TimingService` cierra justo al agotar el tiempo (los DS llevan un respaldo de 30 s de silencio). Usar estas propiedades, no `isBart`, para decidir quién manda.
+- **Reparto de las señales de la caja (`GoOwnerService.attach`)**: ninguna sesión escucha a `SerialService`. La manga (`TimingService`, `'race'`), la pole, el entreno de competición y el entreno libre se dan de alta en `GoOwnerService`, que oye `race_*` y `lane_crossing` el primero (`prependListener`, decide con el estado de antes de la señal) y entrega cada una a UNA sesión según `lib/goOwner.routeBoxEvent`: con manga en marcha, todo a la manga (y sus cruces mientras haya ventanas de vuelta de bandera); el GO, a la dueña; pausa/STOP/fin/cruces, a la que está en pista; un cruce sin nadie en pista, al entreno libre (arranque con el primer cruce con DS). Lo que hace la manga con cada señal está en `services/MangaBoxHandlers.js` (antes en `app.js`). Una sesión nueva se da de alta ahí, no con `SerialService.on`. Siguen escuchando directamente solo los observadores que no son sesión: semáforo en pantalla, `ExportGuard`, Infolap y `SessionRecovery` (`app.js`), y el estado de la caja del entreno libre (`_boxPaused`/`_boxEndedAt`). **Una sola sesión en pista**: todo lo que arranca una sesión pregunta antes a `GoOwnerService.blockerFor(sesión)` (GO de la manga, GO/«Iniciar» y página de la pole, GO de los entrenos) y responde 409 `<sesión>_running` con `blockerMessage` (`goowner.ocupado_*`); se repite tras el semáforo de 3 s. El entreno libre no bloquea a nadie: al arrancar otra sesión deja la caja (`GoOwnerService.begin`, lo llaman la pole y el entreno de competición al activarse; la manga ya lo para en `startManga`).
 - `sendStart()` en `TicTacConnection` (lo llama también su verde) borra las referencias de reloj por carril: el primer cruce tras el GO sale sin tiempo = vuelta de salida desde el GO. Con la manga viva (`setExternalRaceState`) una vuelta larga no se descarta como «primer cruce» (pausas largas).
 - Modelo de DS: `circuits_serial[].model` (el DS-300 no se guarda; es el valor por defecto). El latido de 60 s solo se vigila en el DS-300.
 - **Reposición de vueltas del TicTac** (`TicTacConnection._repone`): solo con TRES pruebas a la vez — salto del nº de vuelta del aparato, tramas perdidas según su contador de secuencia `[1]` (+1 por trama, de todos los carriles; la captura real del club no salta nunca) y tiempo plausible frente al ritmo típico (mediana de las últimas 9 vueltas reales). Las `k` vueltas del tramo salen como `missed:true` (is_estimated=1) a ese ritmo; `TimingService` nunca las deja ser mejor vuelta y `PoleTimingService` las ignora. El nº de vuelta del aparato solo no basta: no se sabe cuándo lo reinicia.
@@ -131,9 +134,9 @@ Usuario crea Race → Tanda → Manga
          ↓
 SessionController.live() — carga vista live.ejs
          ↓
-DS-300 envía GO → app.js captura → emite race:semaphore via Socket.io → cliente muestra semáforo
+DS-300 envía GO → app.js emite race:semaphore via Socket.io → cliente muestra semáforo
          ↓
-DS-300 envía STARTED → TimingService.startManga() → Socket.io emit manga:started
+DS-300 envía STARTED → GoOwnerService (si el GO es de la carrera) → MangaBoxHandlers → TimingService.startManga() → Socket.io emit manga:started
          ↓
 live.js recibe manga:started → redirige a /races/:id/mangas/:mangaId/live
          ↓

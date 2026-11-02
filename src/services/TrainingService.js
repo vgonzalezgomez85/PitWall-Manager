@@ -19,7 +19,6 @@ const SerialService = require('./SerialService');
 const SocketService = require('./SocketService');
 const Settings      = require('../models/Settings');
 const Circuit       = require('../models/Circuit');
-const TimingService = require('./TimingService');
 // Diferido: GoOwnerService lee TimingService/PoleTimingService al decidir.
 const GoOwner = () => require('./GoOwnerService');
 
@@ -74,56 +73,57 @@ class TrainingServiceClass {
     // Fin de tanda: los datos se quedan a la vista hasta el siguiente GO.
     this._clearOnNextGo    = false;
 
+    // Las señales de la caja llegan por GoOwnerService: el GO solo si es del
+    // entreno (no de la carrera, la pole ni un entreno de competición preparado),
+    // lo demás solo con el entreno en pista y sin manga, y los cruces también sin
+    // nadie en pista (arranque con el primer cruce, _autoStartOnCrossing).
+    //
     // Trama 1 del GO: limpia datos de la sesión anterior y guarda la duración.
     // La activación (cronómetro) se difiere hasta race_started (trama 3,
     // t+3134ms) para que la cuenta atrás comience exactamente cuando la
     // corriente se enciende. Los récords de carril (_sessionRecords) se
     // PRESERVAN entre GOs — solo se borran con el botón "Reset" manual.
-    // El "auto" de training (engancharse a un GO del DS-300) solo aplica si el
-    // GO no es de la carrera ni de la pole (GoOwnerService, la misma regla que
-    // usa app.js para arrancar la manga). El límite de tanda ya no aparta al
-    // entreno: al acabar una tanda el GO es suyo.
-    SerialService.on('race_go', ({ durationMs }) => {
-      if (this._active) return;
-      if (GoOwner().trainingYields()) return;
-      this._pendingDurationMs = durationMs;
-      this._pausedCircuits.clear();
-      this.prepare(lanesFromSettings());
-      SocketService.emit('training:standby', this.getLanes());
+    const handlers = {
+      race_go: ({ durationMs }) => {
+        if (this._active) return;
+        this._pendingDurationMs = durationMs;
+        this._pausedCircuits.clear();
+        this.prepare(lanesFromSettings());
+        SocketService.emit('training:standby', this.getLanes());
+      },
+      race_started: () => {
+        if (this._active) return;
+        this._pausedCircuits.clear();
+        if (this._pendingDurationMs != null) {
+          this._durationMs = this._pendingDurationMs;
+          this._pendingDurationMs = null;
+        }
+        if (!this._standby) this.prepare(lanesFromSettings());
+        this._activate();
+        SocketService.emit('training:go', { durationMs: this._durationMs });
+      },
+      // Pausa POR CIRCUITO: cada DS pausa solo sus carriles.
+      race_paused: ({ circuit } = {}) => {
+        this._setCircuitPaused(circuit || 0, true);
+        // TicTac: la pausa del botón llega por aquí; la pantalla cambia sus botones.
+        if (SerialService.remoteGo) SocketService.emit('training:paused');
+      },
+      race_resumed: ({ circuit } = {}) => {
+        this._setCircuitPaused(circuit || 0, false);
+        if (SerialService.remoteGo) SocketService.emit('training:resumed');
+      },
+      // Forced stop: data stays on screen, cleared on next GO (records survive)
+      race_stopped:  () => this._pauseToStandby(),
+      // Normal end: keep data on screen, cleared on next GO
+      race_finished: () => this._resetToStandby(),
+      lane_crossing: (c) => { if (this._handler) this._handler(c); else this._autoStartOnCrossing(c); },
+    };
+    GoOwner().attach('training', {
+      ready:  () => this.isReady,
+      active: () => this._active,
+      yieldBox: () => this.stop(),
+      handle: (event, payload) => handlers[event](payload),
     });
-
-    SerialService.on('race_started', () => {
-      if (this._active) return;
-      if (GoOwner().trainingYields()) return;
-      this._pausedCircuits.clear();
-      if (this._pendingDurationMs != null) {
-        this._durationMs = this._pendingDurationMs;
-        this._pendingDurationMs = null;
-      }
-      if (!this._standby) this.prepare(lanesFromSettings());
-      this._activate();
-      SocketService.emit('training:go', { durationMs: this._durationMs });
-    });
-
-    // Pausa POR CIRCUITO: cada DS pausa solo sus carriles. Igual que race_go/
-    // race_started, se ignora si hay una manga oficial en marcha (TimingService)
-    // o si training ni siquiera está activo/en standby — si no, cada pausa de
-    // una carrera real generaba también un `training:circuit_state` fantasma.
-    SerialService.on('race_paused',  ({ circuit } = {}) => {
-      if (!this.isReady || TimingService.activeMangaId != null) return;
-      this._setCircuitPaused(circuit || 0, true);
-      // TicTac: la pausa del botón llega por aquí; la pantalla cambia sus botones.
-      if (SerialService.remoteGo) SocketService.emit('training:paused');
-    });
-    SerialService.on('race_resumed', ({ circuit } = {}) => {
-      if (!this.isReady || TimingService.activeMangaId != null) return;
-      this._setCircuitPaused(circuit || 0, false);
-      if (SerialService.remoteGo) SocketService.emit('training:resumed');
-    });
-    // Forced stop: data stays on screen, cleared on next GO (records survive)
-    SerialService.on('race_stopped',  () => { if (this._active) this._pauseToStandby(); });
-    // Normal end: keep data on screen, cleared on next GO
-    SerialService.on('race_finished', () => { if (this._active) this._resetToStandby(); });
 
     // GO dado en la caja antes de abrir PitWall: ese GO no llegó nunca y la caja
     // ya cronometra. Se lleva la cuenta de lo que hace la caja (de quien sea la
@@ -136,7 +136,6 @@ class TrainingServiceClass {
     SerialService.on('race_resumed',  () => { this._boxPaused = false; });
     SerialService.on('race_stopped',  () => { this._boxEndedAt = Date.now(); });
     SerialService.on('race_finished', () => { this._boxEndedAt = Date.now(); });
-    SerialService.on('lane_crossing', (c) => this._autoStartOnCrossing(c));
   }
 
   // Con un DS, el primer cruce con tiempo (la caja está corriendo) arranca el
@@ -146,8 +145,6 @@ class TrainingServiceClass {
     if (this._active || crossing.lapTimeMs == null || crossing.missed) return;
     if (SerialService.softwareGo || this._boxPaused) return;
     if (Date.now() - this._boxEndedAt < AUTO_START_AFTER_END_MS) return;
-    if (TimingService.activeMangaId != null) return;
-    if (require('./CompetitionTrainingService').isReady) return;
     if (GoOwner().trainingYields()) return;
 
     console.log(`[TrainingService] Cruce sin GO (carril ${crossing.lane}) — la caja ya corre, arranca el entreno`);
@@ -273,7 +270,6 @@ class TrainingServiceClass {
       });
     };
 
-    SerialService.on('lane_crossing', this._handler);
     SocketService.emit('training:activated', this.getLanes());
     console.log(`[TrainingService] Activated — ${this._lanes.length} lanes`);
     this._scheduleAutoFinish();
@@ -301,10 +297,7 @@ class TrainingServiceClass {
   _deactivate() {
     this._active = false;
     if (this._autoFinishTimer) { clearTimeout(this._autoFinishTimer); this._autoFinishTimer = null; }
-    if (this._handler) {
-      SerialService.off('lane_crossing', this._handler);
-      this._handler = null;
-    }
+    this._handler = null;
   }
 
   // ── Forced stop: like the normal end, data stays until the next GO ────────

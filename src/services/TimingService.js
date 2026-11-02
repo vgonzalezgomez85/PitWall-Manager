@@ -86,6 +86,18 @@ class TimingServiceClass {
     this._lateCloseTimer     = null; // suelta el oyente de cruces al expirar las ventanas
     this._flagReconcileTimer = null; // red de seguridad por contador del DS (ver _reconcileFinalLaps)
     this._simClock           = null; // reloj de las tramas en una carrera simulada (ver now())
+
+    // Las señales de la caja llegan por GoOwnerService: todas con la manga en
+    // marcha, el GO si la carrera es la dueña y los cruces mientras hay ventanas de
+    // vuelta de bandera abiertas (`_lapHandler` vive hasta que expiran).
+    require('./GoOwnerService').attach('race', {
+      ready:  () => this._lapHandler != null,
+      active: () => this.activeMangaId != null,
+      handle: (event, payload) => {
+        if (event === 'lane_crossing') { if (this._lapHandler) this._lapHandler(payload); return; }
+        require('./MangaBoxHandlers')[event](payload);
+      },
+    });
   }
 
   // Cuánto tiempo después del final de su circuito se acepta un cruce como vuelta de
@@ -184,9 +196,8 @@ class TimingServiceClass {
     // dejar el event loop libre para las tramas del DS-300.
     try { require('./ExportGuard').abortAll(); } catch {}
 
-    // Si TrainingService se había auto-activado por el mismo GO (su listener
-    // de race_started corre antes que el de app.js que llama aquí), hay que
-    // pararlo: ese GO pertenece a la manga oficial, no al training libre.
+    // El entreno libre que estuviera preparado o en pista deja la caja: desde aquí
+    // las señales son de la manga (GoOwnerService ya no se las da al entreno).
     try {
       const TrainingService = require('./TrainingService');
       if (TrainingService.isReady) {
@@ -1552,18 +1563,14 @@ class TimingServiceClass {
   // ── Lap crossing ──────────────────────────────────────────────────────────
 
   /**
-   * Engancha el oyente de cruces, soltando antes el que hubiera. Sin esto, una
-   * segunda `startManga`/`rehydrateManga` sin `stopManga` de por medio deja el
-   * oyente viejo colgado del emisor: cada cruce entraría DOS veces en `laps`.
-   * `_lapHandler` es un closure nuevo cada vez, así que perder la referencia
-   * anterior significa no poder soltarla nunca.
+   * Engancha el oyente de cruces (lo llama GoOwnerService), soltando antes el que
+   * hubiera.
    */
   _attachLapHandler() {
     const SerialService = require('./SerialService');
     this._clearLateWindows();   // las ventanas de la manga anterior ya no valen
     this._detachLapHandler();
     this._lapHandler = (data) => this._onCrossing(data.lane, data.timestamp, data.lapTimeMs, data.missed);
-    SerialService.on('lane_crossing', this._lapHandler);
     // Arma el watchdog de latido de cada caja. Imprescindible al REHIDRATAR: ya no
     // llegará ninguna trama de GO que lo arme por su cuenta, y sin él una caja que
     // se calla no se detecta jamás.
@@ -1573,7 +1580,6 @@ class TimingServiceClass {
   _detachLapHandler() {
     if (!this._lapHandler) return;
     const SerialService = require('./SerialService');
-    SerialService.off('lane_crossing', this._lapHandler);
     SerialService.setRaceRunning(false);   // manga parada: el silencio del DS es normal
     this._lapHandler = null;
   }

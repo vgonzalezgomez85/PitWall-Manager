@@ -42,47 +42,49 @@ class CompetitionTrainingServiceClass {
     this._pendingDurationMs = null;
     this._autoFinishTimer  = null;
 
+    // Las señales de la caja llegan por GoOwnerService: el GO si es del entreno
+    // (o el heat ya está en pista: otro circuito), lo demás solo con el heat en
+    // pista y sin manga ni pole corriendo.
     // Trama 1: guarda la duración pero no arranca el cronómetro.
     // Trama 3 (race_started): activa el heat y emite training:go.
-    SerialService.on('race_go', ({ durationMs }) => {
-      if (!this.isReady) return;
-      this._pendingDurationMs = durationMs;
-      this._pausedCircuits.clear();
+    const handlers = {
+      race_go: ({ durationMs }) => {
+        this._pendingDurationMs = durationMs;
+        this._pausedCircuits.clear();
+      },
+      race_started: () => {
+        this._pausedCircuits.clear();
+        if (this._pendingDurationMs != null) {
+          this._durationMs = this._pendingDurationMs;
+          this._pendingDurationMs = null;
+        }
+        if (this._standby && !this._active) this._activate();
+        if (this._active) {
+          SocketService.emit('training:go', { durationMs: this._durationMs });
+        }
+      },
+      // Pausa POR CIRCUITO: cada DS pausa solo sus carriles.
+      // TicTac: la pausa y la reanudación de los botones llegan por aquí; la pantalla
+      // cambia sus botones con training:paused/resumed.
+      race_paused: ({ circuit } = {}) => {
+        this._setCircuitPaused(circuit || 0, true);
+        if (SerialService.remoteGo) SocketService.emit('training:paused');
+      },
+      race_resumed: ({ circuit } = {}) => {
+        this._setCircuitPaused(circuit || 0, false);
+        if (SerialService.remoteGo) SocketService.emit('training:resumed');
+      },
+      // Forced stop: preserve heat, don't rotate
+      race_stopped:  () => this._stopHeat(false),
+      // Normal end: rotate lanes
+      race_finished: () => this._stopHeat(true),
+      lane_crossing: (c) => { if (this._handler) this._handler(c); },
+    };
+    require('./GoOwnerService').attach('competition', {
+      ready:  () => this.isReady,
+      active: () => this._active,
+      handle: (event, payload) => handlers[event](payload),
     });
-
-    SerialService.on('race_started', () => {
-      if (!this.isReady) return;
-      // Un heat en marcha sigue con su GO (otro circuito); uno en standby solo
-      // arranca si el GO no es de la carrera ni de la pole.
-      if (!this._active && require('./GoOwnerService').trainingYields()) return;
-      this._pausedCircuits.clear();
-      if (this._pendingDurationMs != null) {
-        this._durationMs = this._pendingDurationMs;
-        this._pendingDurationMs = null;
-      }
-      if (this._standby && !this._active) this._activate();
-      if (this._active) {
-        SocketService.emit('training:go', { durationMs: this._durationMs });
-      }
-    });
-
-    // Pausa POR CIRCUITO: cada DS pausa solo sus carriles.
-    // TicTac: la pausa y la reanudación de los botones llegan por aquí; la pantalla
-    // cambia sus botones con training:paused/resumed.
-    SerialService.on('race_paused',  ({ circuit } = {}) => {
-      if (!this._active) return;
-      this._setCircuitPaused(circuit || 0, true);
-      if (SerialService.remoteGo) SocketService.emit('training:paused');
-    });
-    SerialService.on('race_resumed', ({ circuit } = {}) => {
-      if (!this._active) return;
-      this._setCircuitPaused(circuit || 0, false);
-      if (SerialService.remoteGo) SocketService.emit('training:resumed');
-    });
-    // Forced stop: preserve heat, don't rotate
-    SerialService.on('race_stopped',  () => { if (this._active) this._stopHeat(false); });
-    // Normal end: rotate lanes
-    SerialService.on('race_finished', () => { if (this._active) this._stopHeat(true); });
   }
 
   // ── Setup ─────────────────────────────────────────────────────────────────
@@ -213,6 +215,7 @@ class CompetitionTrainingServiceClass {
 
   // ── Activate (start recording) ────────────────────────────────────────────
   _activate() {
+    require('./GoOwnerService').begin('competition');
     this._standby   = false;
     this._active    = true;
     this._pausedCircuits.clear();
@@ -262,7 +265,6 @@ class CompetitionTrainingServiceClass {
       });
     };
 
-    SerialService.on('lane_crossing', this._handler);
     SocketService.emit('training:activated', this.getLanes());
     console.log(`[CompetitionTraining] Heat ${this._heatNumber} started`);
     this._scheduleAutoFinish();
@@ -286,10 +288,7 @@ class CompetitionTrainingServiceClass {
   _deactivate() {
     this._active = false;
     if (this._autoFinishTimer) { clearTimeout(this._autoFinishTimer); this._autoFinishTimer = null; }
-    if (this._handler) {
-      SerialService.off('lane_crossing', this._handler);
-      this._handler = null;
-    }
+    this._handler = null;
   }
 
   // Guarda el heat que acaba de terminar. Solo se llama al caer la bandera: un

@@ -13,6 +13,17 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.66.3] — 2026-11-02
+
+### Mejorado
+- **Cada señal de la caja va a una sola sesión**: el GO, la pausa, el STOP, el fin y las vueltas llegan solo a la que toca (manga, pole, entreno de competición o entreno libre). Con una caja DS y un entreno de competición preparado, el GO ya no arranca además el entreno libre: arranca solo el de competición.
+
+### Corregido
+- **Solo una sesión en pista a la vez** (lo detectó Alessandro De Siro). Con BART, TicTac o simulación, dar el GO a una manga en una ventana y a la pole en otra arrancaba las dos, y el carril de la pole contaba vueltas en ambas. Ahora, mientras haya en pista una manga, un piloto de la pole o un entreno de competición, ni las otras ni el entreno libre pueden arrancar: el GO no sale y el directo, la pole o la pantalla de entreno dicen qué hay en pista. La pole avisa «⛔ Hay una manga o un entreno de competición en pista: la pole podrá seguir cuando acabe» y sigue sola al terminar. Si la pole solo esperaba el GO, se aparta y la manga arranca; y un entreno libre en pista se para solo al empezar una manga, una pole o un entreno de competición.
+- **Con una caja DS, la pole que esperaba el GO ya no reacciona a las señales de la manga**: el fin de una manga cerraba el intento del piloto de turno sin tiempo (y el cambio automático lo saltaba), el STOP la volvía a armar y el GO de otra caja (multicircuito) la arrancaba. Ahora la pole solo arranca con un GO que sea suyo, y el fin y el STOP solo afectan al piloto que está en pista.
+- **Con la pole sin terminar ya no se pueden crear tandas a mano**: la tanda corría con participantes distintos de los de la pole. El botón **Nueva tanda** no aparece en la ficha hasta acabar la pole, y la primera tanda sale de **Asignar carriles de salida**, como estaba pensado.
+- **El entreno de competición ya no se mezcla con una manga que corra a la vez**: recibía las vueltas de la manga y el fin o el STOP de la manga cerraba su tanda de entreno. Ahora cada señal de la caja (GO, pausa, STOP, fin y cruces) va solo a la sesión que está en pista. Y si la pole y un entreno de competición esperan el GO a la vez, el GO es de la pole.
+
 ## [1.66.2] — 2026-10-25
 
 ### Corregido

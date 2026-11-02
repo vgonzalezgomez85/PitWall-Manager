@@ -395,7 +395,8 @@
       "pulsa_go_para_empezar": "Premi GO per iniziare",
       "n_vueltas": "· {{n}} giri",
       "voz_mejor_vuelta": "Giro migliore, {{time}}",
-      "voz_nueva_pole": "Nuova pole, {{time}}"
+      "voz_nueva_pole": "Nuova pole, {{time}}",
+      "otra_sesion_en_pista": "⛔ C’è una manche o un allenamento di gara in pista: la pole potrà continuare quando finisce."
     },
     "race": {
       "borrar_este_cambio_devuelve_el_juego_a": "Eliminare questo cambio? Riporta il set tra i disponibili.",
@@ -2657,5 +2658,10 @@
     "boton_corto": "Settori",
     "desactivado": "I settori sono automatici: quelli inseriti a mano non vengono applicati. Attivalo in Impostazioni → Preferenze → Correzione manuale dei settori.",
     "parcial": "Hai inserito i settori per {{n}} piloti su {{total}}. A parità di giri gli altri vengono confrontati con il calcolo automatico: per uno spareggio uniforme compila tutti oppure nessuno."
+  },
+  "goowner": {
+    "ocupado_race": "C’è una manche in corso: aspetta che finisca o fermala prima.",
+    "ocupado_pole": "C’è un pilota della pole in pista: termina o ferma il suo tentativo prima.",
+    "ocupado_competition": "C’è un allenamento di gara in pista: fermalo prima."
   }
 }

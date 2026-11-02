@@ -115,11 +115,18 @@ function wireTrAjax(id) {
     const btn = f.querySelector('button[type="submit"]'); if (btn) btn.disabled = true;
     _trPendingReload = true;
     try {
-      await fetch(f.action, {
+      const r = await fetch(f.action, {
         method: 'POST',
         headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams(new FormData(f)),
       });
+      // Otra sesión en pista (manga, pole o entreno de competición): no arranca.
+      if (r.status === 409) {
+        const body = await r.json().catch(() => ({}));
+        _trPendingReload = false;
+        if (btn) btn.disabled = false;
+        if (body.message) alert(body.message);
+      }
     } catch (err) { _trPendingReload = false; location.reload(); }
   });
 }

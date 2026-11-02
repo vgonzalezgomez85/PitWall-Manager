@@ -126,9 +126,11 @@ function stepState(idx) {
             <span>✅</span> <%= t('show.completar_carrera') %>
           </button>
         </form>
+        <% if (!race.has_pole || !poleSession || polDone) { %>
         <a href="/races/<%= race.id %>/tandas/new" class="rs-btn rs-btn--primary">
           <span>+</span> <%= t('show.nueva_tanda') %>
         </a>
+        <% } %>
       <% } %>
       <div class="rs-menu-wrap">
         <button class="rs-btn rs-btn--icon" id="rsMenuBtn" aria-label="<%= t('common.mas_opciones') %>" type="button">⋯</button>

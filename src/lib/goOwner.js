@@ -67,4 +67,47 @@ function canCede(decision) {
   return decision.owner === 'race' && decision.reason === 'claimed';
 }
 
-module.exports = { decideGoOwner, canCede };
+// A qué sesión van las señales de la caja (GoOwnerService las reparte). Las
+// sesiones (manga, pole, entreno de competición y entreno libre) ya no escuchan a
+// SerialService: antes cada una recibía todo y decidía por su cuenta, y una pole
+// que esperaba el GO se cerraba con el fin de la manga.
+//
+// Con una manga en marcha todo es de la manga. El GO va a quien es dueño; el resto
+// (pausa, reanudar, STOP, fin, cruces) solo a quien está en pista.
+
+const GO_EVENTS = new Set(['race_go', 'race_started']);
+
+/**
+ * @param {string} event  'race_go'|'race_started'|'race_paused'|'race_resumed'|
+ *                        'race_stopped'|'race_finished'|'lane_crossing'
+ * @param {object} s
+ * @param {boolean} s.mangaRunning
+ * @param {boolean} s.mangaLate   manga cerrada con ventanas de vuelta de bandera abiertas
+ * @param {() => string} s.owner  dueño del GO (decideGoOwner); solo se pregunta para un GO
+ * @param {{ready:boolean, active:boolean}} s.pole
+ * @param {{ready:boolean, active:boolean}} s.competition
+ * @param {{active:boolean}} s.training  entreno libre
+ * @returns {'race'|'pole'|'competition'|'training'|null}
+ */
+function routeBoxEvent(event, s) {
+  if (s.mangaRunning) return 'race';
+  if (GO_EVENTS.has(event)) {
+    // Un heat en pista sigue con el GO de otro circuito.
+    if (s.competition.active) return 'competition';
+    const owner = s.owner();
+    if (owner === 'race') return 'race';
+    if (owner === 'pole') return s.pole.ready ? 'pole' : null;
+    return s.competition.ready ? 'competition' : 'training';
+  }
+  // El último cruce de cada carril llega justo después del fin de la manga.
+  if (event === 'lane_crossing' && s.mangaLate) return 'race';
+  if (s.pole.active)        return 'pole';
+  if (s.competition.active) return 'competition';
+  if (s.training.active)    return 'training';
+  // Con un DS el entreno libre puede arrancar con el primer cruce (la caja ya
+  // corría): nunca con una pole o un heat esperando su GO.
+  if (event === 'lane_crossing' && !s.pole.ready && !s.competition.ready) return 'training';
+  return null;
+}
+
+module.exports = { decideGoOwner, canCede, routeBoxEvent };
