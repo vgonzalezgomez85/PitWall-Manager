@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.66.5] — 2026-11-06
+
+### Corregido
+- **La app de escritorio ya abre con PitWall atado a una red concreta**: con «Interfaz de red» elegida en Ajustes, el servidor solo escuchaba en esa IP y la ventana del programa (que abre 127.0.0.1) se quedaba en «Timeout» sin forma de volver atrás. Ahora también responde en 127.0.0.1.
+
 ## [1.66.4] — 2026-11-02
 
 ### Mejorado

@@ -274,6 +274,15 @@ if (require.main === module) {
   const bindIp    = bindIface ? net.ipOfInterface(bindIface) : null;
   const listenArgs = bindIp ? [PORT, bindIp] : [PORT];
 
+  // Atado a una IP, 127.0.0.1 deja de responder: la ventana de Electron (que
+  // espera y carga 127.0.0.1) daba «Timeout» y no había forma de volver atrás.
+  if (bindIp) {
+    const loopback = http.createServer(app);
+    SocketService.attach(loopback);
+    loopback.listen(PORT, '127.0.0.1');
+    loopback.on('error', (e) => console.error('[Red] no se pudo abrir 127.0.0.1:', e.message));
+  }
+
   server.listen(...listenArgs, () => {
     if (bindIface && !bindIp) {
       console.warn(`  [Red] Interfaz "${bindIface}" no encontrada → escuchando en TODAS las interfaces`);
