@@ -61,20 +61,24 @@ class RaceController {
       return RaceController._renderStep1(req, res, { body: RaceController._bodyFromWizard(w), typeLocked: !!w.type_locked });
     }
     req.session.wizard = {};
-    // Preselect the circuit assigned to the DS-300 in settings (if any).
-    // Looks at circuits_serial[].circuit_id; first entry with a circuit wins.
-    let defaultCircuitId = '';
-    try {
-      const cfg = JSON.parse(Settings.get('circuits_serial', '[]')) || [];
-      const found = cfg.find(c => c && c.circuit_id);
-      if (found) defaultCircuitId = String(found.circuit_id);
-    } catch {}
+    const defaultCircuitId = RaceController._settingsCircuitId();
     const body = defaultCircuitId ? { circuit_id: defaultCircuitId } : {};
     // Botones «Carrera sprint» / «Carrera resistencia» del inicio: el tipo ya
     // está decidido y el asistente no lo vuelve a preguntar.
     const typeLocked = ['club', 'championship'].includes(req.query.type);
     if (typeLocked) body.type = req.query.type;
     RaceController._renderStep1(req, res, { body, typeLocked });
+  }
+
+  // Circuito asignado a la caja en Ajustes (circuits_serial[].circuit_id; gana
+  // la primera entrada con circuito). '' si no hay.
+  static _settingsCircuitId() {
+    try {
+      const cfg = JSON.parse(Settings.get('circuits_serial', '[]')) || [];
+      const found = cfg.find(c => c && c.circuit_id);
+      if (found) return String(found.circuit_id);
+    } catch {}
+    return '';
   }
 
   static _renderStep1(req, res, { body, typeLocked, errors = [] }) {
@@ -87,7 +91,8 @@ class RaceController {
       const times = Circuit.getCategoryTimes(c.id);
       if (times.length) circuitCategoryTimes[c.id] = times;
     }
-    res.render('races/new-step1', { t: req.t, errors, body, typeLocked, savedCircuits, circuitCategoryTimes });
+    res.render('races/new-step1', { t: req.t, errors, body, typeLocked, savedCircuits, circuitCategoryTimes,
+      settingsCircuitId: RaceController._settingsCircuitId() });
   }
 
   // El asistente guarda ms y listas; el formulario trabaja en min/s y campos sueltos.
@@ -127,10 +132,12 @@ class RaceController {
     const categoryId = parseInt(req.body.category_id, 10) || null;
     let circuits = [];
     let minLapMs = 0;
+    let circuitName = null;
 
     if (circuitId) {
       const savedCircuit = Circuit.findById(circuitId);
       if (savedCircuit) {
+        circuitName = savedCircuit.name;
         circuits = Circuit.getConfig(savedCircuit);
         // Pt hierarchy: per-category override > circuit default.
         minLapMs = Circuit.getMinLapMsForCategory(circuitId, categoryId);
@@ -199,6 +206,7 @@ class RaceController {
       has_categoria: req.body.has_categoria === '1' ? 1 : 0,
       has_coche:     req.body.has_coche     === '1' ? 1 : 0,
       circuit_id: circuitId,
+      circuit_name: circuitName,
       category_id: categoryId,
       min_lap_ms: minLapMs,
       driver_min_total_ms:      driverMinMs,
@@ -410,7 +418,8 @@ class RaceController {
     }
 
     req.session.wizard = null;
-    res.redirect(`/races/${raceId}`);
+    // Sin pole, lo siguiente es apuntar a los participantes: se va directo.
+    res.redirect(wizard.has_pole ? `/races/${raceId}` : `/races/${raceId}/tandas/new`);
   }
 
   // ─── GET /races/:id ───────────────────────────────────────────────────────

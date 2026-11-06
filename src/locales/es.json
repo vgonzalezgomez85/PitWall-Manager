@@ -532,7 +532,19 @@
       "error_al_crear_el_equipo": "Error al crear el equipo.",
       "pais_opcional": "País (opcional)",
       "quitar_descanso": "Quitar descanso",
-      "selecciona": "Selecciona..."
+      "selecciona": "Selecciona...",
+      "en_descanso": "Descansa",
+      "carril_n": "Carril {{n}}",
+      "todos_los_carriles_ocupados": "Todos los carriles están ocupados: pulsa un carril para poner este equipo en su lugar, o añade un descanso.",
+      "manga": "Manga",
+      "manga_n": "Manga {{n}}",
+      "descansan": "Descansan",
+      "no_se_usa": "No se usa",
+      "libre": "libre",
+      "preview_n_mangas": "{{n}} mangas.",
+      "preview_descansan": "En cada manga descansan {{n}}.",
+      "preview_no_se_usan": "Los carriles {{lanes}} no se usan.",
+      "preview_primeras": "Se ven las {{n}} primeras."
     },
     "wizard": {
       "carril": "carril ×",
@@ -1029,7 +1041,24 @@
     "no": "No",
     "pares": "pares",
     "participantes_de_pole": "Participantes de Pole",
-    "si_con_sesion_de_clasificacion": "Sí, con sesión de clasificación"
+    "si_con_sesion_de_clasificacion": "Sí, con sesión de clasificación",
+    "esta_todo_bien": "¿Está todo bien?",
+    "leelo_con_calma": "Léelo con calma. Si algo no cuadra, pulsa «Cambiar».",
+    "frase_nombre": "Vas a crear {{nombre}}, una carrera {{tipo}}.",
+    "frase_tipo_resistencia": "de resistencia por equipos",
+    "frase_tipo_sprint": "sprint, cada piloto por su cuenta",
+    "frase_circuito": "Se corre en {{circuito}}: {{carriles}} carriles.",
+    "frase_circuito_a_mano": "Circuito configurado a mano: {{carriles}} carriles.",
+    "frase_vuelta_minima": "Las vueltas de menos de {{s}} s no cuentan.",
+    "frase_con_pole": "Con pole: primero una clasificación y el más rápido elige carril.",
+    "frase_sin_pole": "Sin pole: tú colocas a cada participante en su carril al apuntarlo.",
+    "frase_extras": "Además:",
+    "frase_orden_carriles": "En cada manga, cada uno cambia de carril en este orden:",
+    "descanso": "Descansa",
+    "el_tiempo_lo_pone_la_caja": "El tiempo de cada manga lo pone la caja de cronometraje.",
+    "cambiar": "Cambiar",
+    "siguiente_paso_apuntar": "En el siguiente paso apuntas a los participantes de la primera tanda.",
+    "crear_y_apuntar": "Crear carrera y apuntar participantes"
   },
   "control": {
     "al_90_del_maximo": "Al 90% del máximo",
@@ -2204,8 +2233,14 @@
     "saltar_ultimos_vacios_desc": "los carriles libres del final no se usan; si dejas un hueco en medio, ese sí va rotando.",
     "saltar_vacios": "No pasar por los carriles vacíos",
     "saltar_vacios_desc": "los carriles que dejes sin participante no se usan en toda la tanda (p. ej. 8 carriles sin el 1 ni el 8).",
-    "selecciona_un_equipo_de_la_izquierda_y_pulsa_un": "Selecciona un equipo de la izquierda y pulsa un carril o descanso (o arrástralo). Pulsa uno asignado para liberarlo.",
-    "si_hay_menos_participantes_que_carriles_que": "Si hay menos participantes que carriles, ¿qué hacer con los carriles que quedan libres?"
+    "selecciona_un_equipo_de_la_izquierda_y_pulsa_un": "Pulsa un equipo y se coloca en el primer carril libre. Para sacarlo, púlsalo otra vez o pulsa su carril. También se puede arrastrar.",
+    "si_hay_menos_participantes_que_carriles_que": "Si hay menos participantes que carriles, ¿qué hacer con los carriles que quedan libres?",
+    "tanda_creada_apunta_la_siguiente": "Tanda {{v}} creada. Ahora apunta a los de la siguiente.",
+    "ya_en_tanda": "Ya en tanda {{v}}",
+    "mezclar_al_azar": "Mezclar al azar",
+    "vaciar": "Vaciar",
+    "asi_quedan_las_mangas": "Así quedan las mangas",
+    "crear_y_apuntar_otra": "Crear y apuntar otra tanda"
   },
   "teamcatalog": {
     "created_equipos_creados": "{{created}} equipos creados",
@@ -2324,11 +2359,12 @@
     "step2_title": "Nueva Carrera — Formato",
     "step3_seq_title": "Nueva Carrera — Secuencia de Carriles",
     "steps": {
-      "confirm": "Confirmar",
+      "confirm": "Comprobar",
       "format": "Formato",
       "participants": "Participantes",
       "sequence": "Secuencia",
-      "type": "Tipo"
+      "type": "La carrera",
+      "tanda": "Apuntar participantes"
     },
     "summary": "Resumen",
     "summary_format": "Formato",
@@ -2341,7 +2377,15 @@
     "team_name": "Nombre del equipo",
     "team_name_ph": "Ej: Scuderia Ferrari",
     "toca_un_equipo_del_catalogo_para_anadirlo_con": "📋 Toca un equipo del catálogo para añadirlo con sus pilotos. Si no existe, créalo a mano más abajo.",
-    "veces_que_se_corre_la_rotacion_completa_de": "Veces que se corre la rotación completa de carriles."
+    "veces_que_se_corre_la_rotacion_completa_de": "Veces que se corre la rotación completa de carriles.",
+    "q_nombre": "¿Cómo se llama la carrera?",
+    "q_circuito": "¿En qué circuito se corre?",
+    "q_pole": "¿Hay pole (clasificación) antes de la carrera?",
+    "circuito_de_ajustes": "Puesto solo: es el circuito de la caja en Ajustes.",
+    "cambiar_circuito": "Cambiar circuito",
+    "opciones_avanzadas": "Opciones avanzadas",
+    "opciones_avanzadas_ayuda": "Normalmente no hace falta tocar nada.",
+    "vueltas_por_los_carriles": "Vueltas por los carriles"
   },
   "export": {
     "csv_posicion": "Posicion",
@@ -2663,5 +2707,10 @@
     "ocupado_race": "Hay una manga en marcha: espera a que acabe o párala antes.",
     "ocupado_pole": "Hay un piloto de la pole en pista: termina o para su intento antes.",
     "ocupado_competition": "Hay un entreno de competición en pista: páralo antes."
+  },
+  "header": {
+    "tamano_de_letra": "Tamaño de letra",
+    "letra_normal": "Letra normal",
+    "letra_grande": "Letra grande"
   }
 }

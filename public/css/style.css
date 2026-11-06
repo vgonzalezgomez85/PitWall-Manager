@@ -4392,3 +4392,18 @@ a.st-nav__item:hover { text-decoration: none; }
 }
 .club-logo__box img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .club-logo__box .st-row__d { color: #57606a; font-size: .75rem; text-align: center; }
+
+/* ── Tamaño de letra (botón A / A+ de la barra) ─────────────────────────── */
+/* zoom y no rem: buena parte de las vistas fija tamaños en px. */
+html.pw-big .main-content { zoom: 1.18; }
+.pw-textsize { margin-left: auto; display: flex; align-items: center; gap: .4rem; }
+.pw-textsize__lbl { font-size: .85rem; color: var(--text-muted); }
+.pw-textsize__btn {
+  min-width: 44px; min-height: 40px; padding: 0 .6rem; border-radius: 10px;
+  border: 1.5px solid var(--border); background: var(--bg-card); color: var(--text);
+  font-size: .95rem; font-weight: 600; cursor: pointer;
+}
+.pw-textsize__btn--big { font-size: 1.2rem; font-weight: 700; }
+.pw-textsize__btn[aria-pressed="true"] { border-color: var(--blue); background: rgba(88,166,255,.14); }
+.pw-textsize__btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+@media (max-width: 560px) { .pw-textsize__lbl { display: none; } }

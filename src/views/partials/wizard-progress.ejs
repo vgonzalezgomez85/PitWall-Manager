@@ -9,6 +9,8 @@
     if (!_skipSeq) _steps.push('sequence');
     if (_hasPole)  _steps.push('participants');
     _steps.push('confirm');
+    // Sin pole, tras crear la carrera se va directo a apuntar la 1ª tanda.
+    if (!_hasPole) _steps.push('tanda');
     const _curIdx = _steps.indexOf(current);
   %>
   <% _steps.forEach((s, i) => { %>

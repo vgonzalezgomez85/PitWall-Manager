@@ -532,7 +532,19 @@
       "error_al_crear_el_equipo": "Error creating team.",
       "pais_opcional": "Country (optional)",
       "quitar_descanso": "Remove rest",
-      "selecciona": "Select..."
+      "selecciona": "Select...",
+      "en_descanso": "Resting",
+      "carril_n": "Lane {{n}}",
+      "todos_los_carriles_ocupados": "All lanes are taken: press a lane to put this team there instead, or add a rest.",
+      "manga": "Heat",
+      "manga_n": "Heat {{n}}",
+      "descansan": "Resting",
+      "no_se_usa": "Not used",
+      "libre": "free",
+      "preview_n_mangas": "{{n}} heats.",
+      "preview_descansan": "In each heat {{n}} rest.",
+      "preview_no_se_usan": "Lanes {{lanes}} are not used.",
+      "preview_primeras": "Showing the first {{n}}."
     },
     "wizard": {
       "carril": "lane ×",
@@ -1029,7 +1041,24 @@
     "no": "No",
     "pares": "pairs",
     "participantes_de_pole": "Pole participants",
-    "si_con_sesion_de_clasificacion": "Yes, with qualifying session"
+    "si_con_sesion_de_clasificacion": "Yes, with qualifying session",
+    "esta_todo_bien": "Is everything right?",
+    "leelo_con_calma": "Read it calmly. If something is wrong, press “Change”.",
+    "frase_nombre": "You are creating {{nombre}}, a {{tipo}} race.",
+    "frase_tipo_resistencia": "team endurance",
+    "frase_tipo_sprint": "sprint, each driver on their own",
+    "frase_circuito": "Raced on {{circuito}}: {{carriles}} lanes.",
+    "frase_circuito_a_mano": "Track set up by hand: {{carriles}} lanes.",
+    "frase_vuelta_minima": "Laps under {{s}} s do not count.",
+    "frase_con_pole": "With pole: qualifying first, and the fastest picks a lane.",
+    "frase_sin_pole": "No pole: you put each participant in a lane when you sign them up.",
+    "frase_extras": "Also:",
+    "frase_orden_carriles": "In each heat, everyone moves lane in this order:",
+    "descanso": "Rest",
+    "el_tiempo_lo_pone_la_caja": "The length of each heat is set by the timing box.",
+    "cambiar": "Change",
+    "siguiente_paso_apuntar": "In the next step you sign up the participants of the first round.",
+    "crear_y_apuntar": "Create race and sign up participants"
   },
   "control": {
     "al_90_del_maximo": "At 90% of max",
@@ -2204,8 +2233,14 @@
     "saltar_ultimos_vacios_desc": "free lanes at the end are not used; a gap left in the middle does rotate.",
     "saltar_vacios": "Skip the empty lanes",
     "saltar_vacios_desc": "lanes left without a participant are not used for the whole heat group (e.g. 8 lanes without 1 and 8).",
-    "selecciona_un_equipo_de_la_izquierda_y_pulsa_un": "Select a team on the left and click a lane or rest (or drag it). Click an assigned one to free it.",
-    "si_hay_menos_participantes_que_carriles_que": "If there are fewer participants than lanes, what should happen with the free lanes?"
+    "selecciona_un_equipo_de_la_izquierda_y_pulsa_un": "Press a team and it goes to the first free lane. To take it out, press it again or press its lane. You can also drag it.",
+    "si_hay_menos_participantes_que_carriles_que": "If there are fewer participants than lanes, what should happen with the free lanes?",
+    "tanda_creada_apunta_la_siguiente": "Round {{v}} created. Now sign up the next one.",
+    "ya_en_tanda": "Already in round {{v}}",
+    "mezclar_al_azar": "Shuffle",
+    "vaciar": "Clear",
+    "asi_quedan_las_mangas": "This is how the heats look",
+    "crear_y_apuntar_otra": "Create and sign up another round"
   },
   "teamcatalog": {
     "created_equipos_creados": "{{created}} teams created",
@@ -2324,11 +2359,12 @@
     "step2_title": "New Race — Format",
     "step3_seq_title": "New Race — Lane Sequence",
     "steps": {
-      "confirm": "Confirm",
+      "confirm": "Check",
       "format": "Format",
       "participants": "Participants",
       "sequence": "Sequence",
-      "type": "Type"
+      "type": "The race",
+      "tanda": "Sign up participants"
     },
     "summary": "Summary",
     "summary_format": "Format",
@@ -2341,7 +2377,15 @@
     "team_name": "Team name",
     "team_name_ph": "E.g.: Scuderia Ferrari",
     "toca_un_equipo_del_catalogo_para_anadirlo_con": "📋 Tap a catalog team to add it with its drivers. If it doesn't exist, add it manually below.",
-    "veces_que_se_corre_la_rotacion_completa_de": "Times the full lane rotation is run."
+    "veces_que_se_corre_la_rotacion_completa_de": "Times the full lane rotation is run.",
+    "q_nombre": "What is the race called?",
+    "q_circuito": "Which track is it raced on?",
+    "q_pole": "Is there a pole (qualifying) before the race?",
+    "circuito_de_ajustes": "Filled in for you: it is the timing box track in Settings.",
+    "cambiar_circuito": "Change track",
+    "opciones_avanzadas": "Advanced options",
+    "opciones_avanzadas_ayuda": "Usually there is nothing to change here.",
+    "vueltas_por_los_carriles": "Rounds through the lanes"
   },
   "export": {
     "csv_posicion": "Position",
@@ -2663,5 +2707,10 @@
     "ocupado_race": "A heat is running: wait for it to end or stop it first.",
     "ocupado_pole": "A pole driver is on track: finish or stop their run first.",
     "ocupado_competition": "A competition practice is on track: stop it first."
+  },
+  "header": {
+    "tamano_de_letra": "Text size",
+    "letra_normal": "Normal text",
+    "letra_grande": "Large text"
   }
 }

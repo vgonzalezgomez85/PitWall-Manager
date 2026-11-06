@@ -12,11 +12,15 @@ const maxMin = body.driver_max_total_min != null ? body.driver_max_total_min : '
 const lockS  = body.driver_change_lockout_s != null ? body.driver_change_lockout_s : 120;
 const maxRuns = body.driver_max_runs != null ? body.driver_max_runs : '';
 const tirePairs = body.tire_pairs_per_team != null ? body.tire_pairs_per_team : '';
+// Opciones avanzadas plegadas salvo que ya traigan algo distinto de lo normal.
+const advOpen = passes > 1 || laneRepeat > 1 || body.has_categoria === '1' || body.has_coche === '1'
+  || minMin !== '' || maxMin !== '' || maxRuns !== '' || tirePairs !== ''
+  || String(lockS) !== '120' || errors.includes('driver_max_below_min');
 %>
 <%- include('../partials/header', { pageTitle: title }) %>
 <div class="container container--narrow">
 
-  <%- include('../partials/wizard-progress', { current: 'type' }) %>
+  <%- include('../partials/wizard-progress', { current: 'type', hasPole: body.has_pole === '1', skipSequence: !!body.circuit_id }) %>
 
   <div class="nr-head">
     <% if (locked) { %>
@@ -76,30 +80,44 @@ const tirePairs = body.tire_pairs_per_team != null ? body.tire_pairs_per_team : 
 
     <!-- ── Nombre ─────────────────────────────────────────────────────────── -->
     <section class="nr-sec">
-      <label class="nr-sec__t" for="name"><%= t('wizard.race_name') %></label>
+      <label class="nr-sec__t nr-q" for="name"><%= t('wizard.q_nombre') %></label>
       <input class="form-input nr-name <%= errors.includes('name_required') ? 'form-input--error' : '' %>"
              type="text" id="name" name="name" placeholder="<%= t('wizard.race_name_placeholder') %>"
              value="<%= body.name || '' %>" autocomplete="off" autofocus required>
     </section>
 
     <!-- ── Circuito ───────────────────────────────────────────────────────── -->
+    <%# Con circuito ya elegido (p. ej. el de la caja en Ajustes) se ve en una
+        línea con «Cambiar circuito»: es un paso menos. %>
     <section class="nr-sec">
       <div class="nr-sec__row">
-        <label class="nr-sec__t" for="circuitSelect"><%= t('client.common.circuito') %></label>
+        <label class="nr-sec__t nr-q" for="circuitSelect"><%= t('wizard.q_circuito') %></label>
         <a href="/circuits/new" class="nr-link" target="_blank">+ <%= t('wizard.nuevo_circuito') %></a>
       </div>
-      <select id="circuitSelect" class="form-input" onchange="applyCircuit(this.value)">
-        <option value="">— <%= t('wizard.configurar_a_mano') %> —</option>
-        <% savedCircuits.forEach(c => { %>
-          <option value="<%= c.id %>" data-count="<%= c.circuits_count %>" data-config="<%= c.circuits_config %>"
-                  data-min-ms="<%= c.min_lap_ms %>" data-lanes="<%= c.lanes_count %>"
-                  <%= body.circuit_id == c.id ? 'selected' : '' %>><%= c.name %></option>
-        <% }) %>
-      </select>
-      <input type="hidden" name="circuit_id" id="circuitId" value="<%= body.circuit_id || '' %>">
 
-      <%# Con circuito guardado: lo que importa en una línea. %>
-      <div class="nr-facts" id="circuitFacts" hidden></div>
+      <div class="nr-picked" id="circuitPicked" hidden>
+        <span class="nr-picked__ok" aria-hidden="true">✓</span>
+        <div class="nr-picked__txt">
+          <strong class="nr-picked__name" id="circuitPickedName"></strong>
+          <div class="nr-picked__facts" id="circuitFacts"></div>
+          <% if (settingsCircuitId) { %>
+            <small class="nr-picked__src" id="circuitFromSettings" data-circuit="<%= settingsCircuitId %>"><%= t('wizard.circuito_de_ajustes') %></small>
+          <% } %>
+        </div>
+        <button type="button" class="btn btn--ghost nr-change" id="circuitChange"><%= t('wizard.cambiar_circuito') %></button>
+      </div>
+
+      <div class="nr-chooser" id="circuitChooser">
+        <select id="circuitSelect" class="form-input nr-select" onchange="applyCircuit(this.value)">
+          <option value="">— <%= t('wizard.configurar_a_mano') %> —</option>
+          <% savedCircuits.forEach(c => { %>
+            <option value="<%= c.id %>" data-count="<%= c.circuits_count %>" data-config="<%= c.circuits_config %>"
+                    data-min-ms="<%= c.min_lap_ms %>" data-lanes="<%= c.lanes_count %>"
+                    <%= body.circuit_id == c.id ? 'selected' : '' %>><%= c.name %></option>
+          <% }) %>
+        </select>
+      </div>
+      <input type="hidden" name="circuit_id" id="circuitId" value="<%= body.circuit_id || '' %>">
 
       <%# Categoría (solo si el circuito tiene Pt por categoría). %>
       <div class="nr-inline" id="categoryWrap" hidden>
@@ -149,8 +167,8 @@ const tirePairs = body.tire_pairs_per_team != null ? body.tire_pairs_per_team : 
 
     <!-- ── Pole ───────────────────────────────────────────────────────────── -->
     <section class="nr-sec">
-      <span class="nr-sec__t"><%= t('common.pole_position') %></span>
-      <div class="nr-seg" role="radiogroup" aria-label="<%= t('common.pole_position') %>">
+      <span class="nr-sec__t nr-q" id="poleQ"><%= t('wizard.q_pole') %></span>
+      <div class="nr-seg" role="radiogroup" aria-labelledby="poleQ">
         <label class="nr-seg__opt">
           <input type="radio" name="has_pole" value="0" <%= (body.has_pole || '0') !== '1' ? 'checked' : '' %>>
           <span><b><%= t('wizard.sin_pole') %></b><small><%= t('wizard.los_carriles_se_reparten_al_crear_la_tanda') %></small></span>
@@ -162,64 +180,72 @@ const tirePairs = body.tire_pairs_per_team != null ? body.tire_pairs_per_team : 
       </div>
     </section>
 
-    <!-- ── Categoría y coche por participante (opcional) ──────────────────── -->
-    <section class="nr-sec">
-      <span class="nr-sec__t"><%= t('common.categoria_y_coche_opcional') %></span>
-      <p class="nr-help"><%= t('wizard.al_activarlos_al_inscribir_cada_equipo_o_piloto') %></p>
-      <div class="nr-seg">
-        <label class="nr-seg__opt">
-          <input type="checkbox" name="has_categoria" value="1" <%= body.has_categoria === '1' ? 'checked' : '' %>>
-          <span><b><%= t('common.categoria_copa') %></b><small><%= t('wizard.se_ve_junto_al_nombre_en_el_directo_y_sale_en') %></small></span>
-        </label>
-        <label class="nr-seg__opt">
-          <input type="checkbox" name="has_coche" value="1" <%= body.has_coche === '1' ? 'checked' : '' %>>
-          <span><b><%= t('common.coche') %></b><small><%= t('wizard.columna_en_el_excel_de_resultados') %></small></span>
-        </label>
-      </div>
-    </section>
+    <!-- ── Opciones avanzadas (plegadas) ──────────────────────────────────── -->
+    <details class="nr-sec nr-more" id="advBox" <%= advOpen ? 'open' : '' %>>
+      <summary>
+        <span class="nr-sec__t"><%= t('wizard.opciones_avanzadas') %></span>
+        <span class="nr-help"><%= t('wizard.opciones_avanzadas_ayuda') %></span>
+        <span class="nr-help" id="moreSummary"></span>
+      </summary>
 
-    <!-- ── Resistencia: turnos y neumáticos ───────────────────────────────── -->
-    <section class="nr-sec" id="champSection" <%= isChamp ? '' : 'hidden' %>>
-      <span class="nr-sec__t"><%= t('wizard.reglas_de_resistencia') %></span>
-      <p class="nr-help"><%= t('wizard.deja_en_blanco_lo_que_no_quieras_controlar_cada') %></p>
-      <div class="nr-grid">
-        <label class="nr-field">
-          <span class="nr-lbl"><%= t('wizard.minimo_por_piloto') %></span>
-          <span class="nr-unit"><input class="form-input form-input--sm" type="number" id="driverMinMin" name="driver_min_total_min" min="0" max="600" step="1" placeholder="—" value="<%= minMin %>"><span>min</span></span>
-        </label>
-        <label class="nr-field">
-          <span class="nr-lbl"><%= t('wizard.maximo_por_piloto') %></span>
-          <span class="nr-unit"><input class="form-input form-input--sm" type="number" id="driverMaxMin" name="driver_max_total_min" min="0" max="600" step="1" placeholder="—" value="<%= maxMin %>"><span>min</span></span>
-        </label>
-        <label class="nr-field">
-          <span class="nr-lbl"><%= t('wizard.maximo_de_turnos') %></span>
-          <span class="nr-unit"><input class="form-input form-input--sm" type="number" id="driverMaxRuns" name="driver_max_runs" min="0" max="100" step="1" placeholder="—" value="<%= maxRuns %>"><span><%= t('wizard.por_piloto') %></span></span>
-        </label>
-        <label class="nr-field">
-          <span class="nr-lbl"><%= t('common.neumaticos') %></span>
-          <span class="nr-unit"><input class="form-input form-input--sm" type="number" id="tirePairs" name="tire_pairs_per_team" min="0" max="99" step="1" placeholder="—" value="<%= tirePairs %>"><span><%= t('common.pares_por_equipo') %></span></span>
-        </label>
-        <label class="nr-field">
-          <span class="nr-lbl"><%= t('wizard.sin_cambios_al_final') %></span>
-          <span class="nr-unit"><input class="form-input form-input--sm" type="number" id="lockoutS" name="driver_change_lockout_s" min="0" max="600" step="1" value="<%= lockS %>"><span><%= t('wizard.s_de_cada_manga') %></span></span>
-        </label>
-      </div>
-    </section>
+      <div class="nr-adv">
+        <div class="nr-adv__grp">
+          <span class="nr-adv__t"><%= t('common.categoria_y_coche_opcional') %></span>
+          <p class="nr-help"><%= t('wizard.al_activarlos_al_inscribir_cada_equipo_o_piloto') %></p>
+          <div class="nr-seg">
+            <label class="nr-seg__opt">
+              <input type="checkbox" name="has_categoria" value="1" <%= body.has_categoria === '1' ? 'checked' : '' %>>
+              <span><b><%= t('common.categoria_copa') %></b><small><%= t('wizard.se_ve_junto_al_nombre_en_el_directo_y_sale_en') %></small></span>
+            </label>
+            <label class="nr-seg__opt">
+              <input type="checkbox" name="has_coche" value="1" <%= body.has_coche === '1' ? 'checked' : '' %>>
+              <span><b><%= t('common.coche') %></b><small><%= t('wizard.columna_en_el_excel_de_resultados') %></small></span>
+            </label>
+          </div>
+        </div>
 
-    <!-- ── Más opciones ───────────────────────────────────────────────────── -->
-    <details class="nr-sec nr-more" <%= (passes > 1 || laneRepeat > 1) ? 'open' : '' %>>
-      <summary><span class="nr-sec__t"><%= t('common.mas_opciones') %></span><span class="nr-help" id="moreSummary"></span></summary>
-      <div class="nr-grid">
-        <label class="nr-field">
-          <span class="nr-lbl"><%= t('common.pasadas') %></span>
-          <input class="form-input form-input--sm nr-num" type="number" id="passes" name="passes" min="1" step="1" value="<%= passes %>">
-          <small class="nr-help"><%= t('wizard.veces_que_se_corre_la_rotacion_completa_de') %></small>
-        </label>
-        <label class="nr-field">
-          <span class="nr-lbl"><%= t('common.repetir_carril') %></span>
-          <input class="form-input form-input--sm nr-num" type="number" id="laneRepeat" name="lane_repeat" min="1" step="1" value="<%= laneRepeat %>">
-          <small class="nr-help"><%= t('wizard.mangas_seguidas_en_el_mismo_carril_las_vueltas') %></small>
-        </label>
+        <div class="nr-adv__grp" id="champSection" <%= isChamp ? '' : 'hidden' %>>
+          <span class="nr-adv__t"><%= t('wizard.reglas_de_resistencia') %></span>
+          <p class="nr-help"><%= t('wizard.deja_en_blanco_lo_que_no_quieras_controlar_cada') %></p>
+          <div class="nr-grid">
+            <label class="nr-field">
+              <span class="nr-lbl"><%= t('wizard.minimo_por_piloto') %></span>
+              <span class="nr-unit"><input class="form-input form-input--sm" type="number" id="driverMinMin" name="driver_min_total_min" min="0" max="600" step="1" placeholder="—" value="<%= minMin %>"><span>min</span></span>
+            </label>
+            <label class="nr-field">
+              <span class="nr-lbl"><%= t('wizard.maximo_por_piloto') %></span>
+              <span class="nr-unit"><input class="form-input form-input--sm" type="number" id="driverMaxMin" name="driver_max_total_min" min="0" max="600" step="1" placeholder="—" value="<%= maxMin %>"><span>min</span></span>
+            </label>
+            <label class="nr-field">
+              <span class="nr-lbl"><%= t('wizard.maximo_de_turnos') %></span>
+              <span class="nr-unit"><input class="form-input form-input--sm" type="number" id="driverMaxRuns" name="driver_max_runs" min="0" max="100" step="1" placeholder="—" value="<%= maxRuns %>"><span><%= t('wizard.por_piloto') %></span></span>
+            </label>
+            <label class="nr-field">
+              <span class="nr-lbl"><%= t('common.neumaticos') %></span>
+              <span class="nr-unit"><input class="form-input form-input--sm" type="number" id="tirePairs" name="tire_pairs_per_team" min="0" max="99" step="1" placeholder="—" value="<%= tirePairs %>"><span><%= t('common.pares_por_equipo') %></span></span>
+            </label>
+            <label class="nr-field">
+              <span class="nr-lbl"><%= t('wizard.sin_cambios_al_final') %></span>
+              <span class="nr-unit"><input class="form-input form-input--sm" type="number" id="lockoutS" name="driver_change_lockout_s" min="0" max="600" step="1" value="<%= lockS %>"><span><%= t('wizard.s_de_cada_manga') %></span></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="nr-adv__grp">
+          <span class="nr-adv__t"><%= t('wizard.vueltas_por_los_carriles') %></span>
+          <div class="nr-grid">
+            <label class="nr-field">
+              <span class="nr-lbl"><%= t('common.pasadas') %></span>
+              <input class="form-input form-input--sm nr-num" type="number" id="passes" name="passes" min="1" step="1" value="<%= passes %>">
+              <small class="nr-help"><%= t('wizard.veces_que_se_corre_la_rotacion_completa_de') %></small>
+            </label>
+            <label class="nr-field">
+              <span class="nr-lbl"><%= t('common.repetir_carril') %></span>
+              <input class="form-input form-input--sm nr-num" type="number" id="laneRepeat" name="lane_repeat" min="1" step="1" value="<%= laneRepeat %>">
+              <small class="nr-help"><%= t('wizard.mangas_seguidas_en_el_mismo_carril_las_vueltas') %></small>
+            </label>
+          </div>
+        </div>
       </div>
     </details>
 
@@ -243,6 +269,10 @@ const factsEl      = document.getElementById('circuitFacts');
 const categoryWrap   = document.getElementById('categoryWrap');
 const categorySelect = document.getElementById('categorySelect');
 const categoryIdEl   = document.getElementById('categoryId');
+const pickedEl     = document.getElementById('circuitPicked');
+const pickedName   = document.getElementById('circuitPickedName');
+const chooserEl    = document.getElementById('circuitChooser');
+const fromSettings = document.getElementById('circuitFromSettings');
 // Map<circuitId, [{ category_id, category_name, min_lap_ms }]>
 const CIRCUIT_CATEGORY_TIMES = <%- JSON.stringify(circuitCategoryTimes || {}) %>;
 
@@ -281,7 +311,8 @@ function applyCircuit(id) {
   circuitIdEl.value = id || '';
   if (!id || !opt) {
     manualBox.hidden = false;
-    factsEl.hidden = true;
+    pickedEl.hidden = true;
+    chooserEl.hidden = false;
     populateCategories(null);
     refreshSummary();
     return;
@@ -297,7 +328,10 @@ function applyCircuit(id) {
   // formato inglés en `value`. Cambiarlo a coma deja el campo vacío.
   minLapInput.value = minMs > 0 ? (minMs / 1000).toFixed(2) : '';
   manualBox.hidden = true;
-  factsEl.hidden = false;
+  pickedName.textContent = opt.textContent;
+  if (fromSettings) fromSettings.hidden = String(id) !== fromSettings.dataset.circuit;
+  pickedEl.hidden = false;
+  chooserEl.hidden = true;
   populateCategories(id);
   renderFacts(opt);
   refreshSummary();
@@ -330,6 +364,12 @@ function applyCategoryFromSelect() {
   if (cOpt) renderFacts(cOpt);
 }
 categorySelect.addEventListener('change', applyCategoryFromSelect);
+
+document.getElementById('circuitChange').addEventListener('click', () => {
+  pickedEl.hidden = true;
+  chooserEl.hidden = false;
+  document.getElementById('circuitSelect').focus();
+});
 
 // Solo sin tipo fijado: las reglas de resistencia siguen al tipo elegido.
 document.querySelectorAll('input[type="radio"][name="type"]').forEach(r => {
@@ -420,12 +460,29 @@ refreshSummary();
   .nr-sec { border: 1px solid var(--border, #30363d); border-radius: 14px; background: var(--bg-card, #0d1117); padding: 16px 18px; display: grid; gap: 12px; }
   .nr-sec[hidden] { display: none; }
   .nr-sec__row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-  .nr-sec__t { display: block; margin: 0; font-family: 'Saira Condensed', sans-serif; font-weight: 700; font-size: 15px;
+  .nr-sec__t { display: block; margin: 0; font-family: 'Saira Condensed', sans-serif; font-weight: 700; font-size: 17px;
                letter-spacing: .12em; text-transform: uppercase; color: var(--text, #e6edf3); }
+  /* Las preguntas se leen como frase, no como rótulo en mayúsculas. */
+  .nr-q { font-family: inherit; font-size: 20px; letter-spacing: 0; text-transform: none; }
+  .nr-picked { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 14px 16px; border-radius: 12px;
+               background: rgba(63,185,80,.07); border: 1.5px solid rgba(63,185,80,.35); }
+  .nr-picked[hidden], .nr-chooser[hidden], .nr-adv__grp[hidden] { display: none; }
+  .nr-picked__ok { flex: none; width: 36px; height: 36px; border-radius: 50%; background: #238636; color: #fff;
+                   display: grid; place-items: center; font-weight: 800; }
+  .nr-picked__txt { flex: 1; min-width: 200px; display: grid; gap: 2px; }
+  .nr-picked__name { font-size: 20px; color: var(--text, #e6edf3); }
+  .nr-picked__facts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 15px; color: #b3bcc6; }
+  .nr-picked__facts b { color: var(--text, #e6edf3); }
+  .nr-picked__src { font-size: 14px; color: #7ee787; }
+  .nr-change { min-height: 44px; }
+  .nr-select { font-size: 17px; min-height: 48px; }
+  .nr-adv { display: grid; gap: 18px; padding-top: 6px; }
+  .nr-adv__grp { display: grid; gap: 10px; }
+  .nr-adv__t { font-weight: 700; font-size: 16px; color: var(--text, #e6edf3); }
   .nr-link { font-size: 13px; color: #58a6ff; }
-  .nr-name { font-size: 18px; padding: 12px 14px; }
-  .nr-help { margin: 0; font-size: 13px; color: var(--text-muted, #8b949e); }
-  .nr-lbl { font-size: 13px; color: var(--text-muted, #8b949e); }
+  .nr-name { font-size: 21px; padding: 14px 16px; }
+  .nr-help { margin: 0; font-size: 15px; color: #b3bcc6; }
+  .nr-lbl { font-size: 15px; color: #b3bcc6; }
   .nr-inline { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .nr-inline[hidden] { display: none; }
   .nr-manual { display: grid; gap: 12px; padding-top: 4px; }
@@ -440,9 +497,9 @@ refreshSummary();
   .nr-seg { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
   .nr-seg__opt { position: relative; display: block; cursor: pointer; }
   .nr-seg__opt input { position: absolute; opacity: 0; pointer-events: none; }
-  .nr-seg__opt > span { display: grid; gap: 2px; padding: 11px 14px; border-radius: 10px; border: 1.5px solid var(--border, #30363d); background: #0a0d12; transition: border-color .15s, background .15s; }
-  .nr-seg__opt b { color: var(--text, #e6edf3); font-size: 14.5px; }
-  .nr-seg__opt small { color: var(--text-muted, #8b949e); font-size: 12.5px; }
+  .nr-seg__opt > span { display: grid; gap: 2px; padding: 14px 16px; border-radius: 10px; border: 1.5px solid var(--border, #30363d); background: #0a0d12; transition: border-color .15s, background .15s; }
+  .nr-seg__opt b { color: var(--text, #e6edf3); font-size: 17px; }
+  .nr-seg__opt small { color: #b3bcc6; font-size: 14.5px; }
   .nr-seg__opt:hover > span { border-color: #484f58; }
   .nr-seg__opt input:checked + span { border-color: #e63946; background: rgba(230,57,70,.08); }
   .nr-seg__opt input:focus-visible + span { outline: 2px solid #58a6ff; outline-offset: 2px; }
@@ -451,7 +508,7 @@ refreshSummary();
   .nr-unit { display: flex; align-items: center; gap: 8px; }
   .nr-unit input { width: 5.5rem; }
   .nr-unit span { font-size: 13px; color: var(--text-muted, #8b949e); }
-  .nr-more summary { display: flex; align-items: baseline; gap: 12px; cursor: pointer; list-style: none; }
+  .nr-more summary { display: flex; align-items: baseline; gap: 4px 12px; flex-wrap: wrap; cursor: pointer; list-style: none; min-height: 32px; }
   .nr-more summary::-webkit-details-marker { display: none; }
   .nr-more summary .nr-sec__t::before { content: '▸'; display: inline-block; margin-right: 8px; transition: transform .15s; }
   .nr-more[open] summary .nr-sec__t::before { transform: rotate(90deg); }
@@ -460,7 +517,7 @@ refreshSummary();
   .nr-err { margin: 0; font-size: .82rem; color: #ff8a92; }
   .nr-bar { position: sticky; bottom: 0; z-index: 5; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
             padding: 22px 0 12px; background: linear-gradient(180deg, rgba(0,0,0,0), var(--bg, #000) 14px); }
-  .nr-bar__sum { flex: 1; min-width: 200px; font-size: 14px; color: var(--text-muted, #8b949e); }
+  .nr-bar__sum { flex: 1; min-width: 200px; font-size: 16px; color: var(--text-muted, #8b949e); }
   .nr-bar__sum b { color: var(--text, #e6edf3); font-weight: 600; }
   @media (prefers-reduced-motion: reduce) { .nr-seg__opt > span, .nr-more summary .nr-sec__t::before { transition: none; } }
 </style>

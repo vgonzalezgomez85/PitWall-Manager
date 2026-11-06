@@ -11,6 +11,9 @@
   <h1 class="page-title"><%= t('tanda-new.nueva_tanda') %></h1>
   <p class="page-subtitle"><%= race.name %> · <%= t('races.format.' + race.format) %> · <%= laneSequence.length %> <%= t('races.lanes') %></p>
 
+  <% if (typeof createdNumber !== 'undefined' && createdNumber) { %>
+    <div class="alert tn-created"><%= t('tanda-new.tanda_creada_apunta_la_siguiente', { v: createdNumber }) %></div>
+  <% } %>
   <% if (errors.length > 0) { %>
     <div class="alert alert--error">
       <% errors.forEach(e => { %><p><%= t('errors.' + e) %></p><% }) %>
@@ -160,6 +163,11 @@
           const activeLanes = laneSequence.filter(l => l !== 0);
         %>
 
+        <%
+          // Misma regla que utils/participantNames.normName.
+          const _norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+          const _otherBy = new Map((otherNames || []).map(o => [o.key, o.tandas]));
+        %>
         <div id="teamAssignUI" style="display:flex;gap:1.25rem;align-items:flex-start;flex-wrap:wrap">
 
           <!-- Left: catalog -->
@@ -191,6 +199,11 @@
                     <span style="font-size:.7rem;color:#8b949e;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;max-width:6.5rem" title="<%= t('tanda-new.coche_del_catalogo') %>"><%= ct.coche %></span>
                   <% } %>
                   <span style="font-size:.75rem;color:#8b949e;flex-shrink:0"><%= ct.members.length %>👤</span>
+                  <% const _ot = _otherBy.get(_norm(ct.name)); %>
+                  <% if (_ot && _ot.length) { %>
+                    <span class="catalog-card__other"><%= t('tanda-new.ya_en_tanda', { v: _ot.join(', ') }) %></span>
+                  <% } %>
+                  <span class="catalog-card__tag" aria-live="polite"></span>
                 </div>
               <% }) %>
               <% if (teamsCatalog.length === 0) { %>
@@ -208,6 +221,10 @@
           <div style="flex:1;min-width:280px">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;flex-wrap:wrap;gap:.5rem">
               <span class="form-label" style="margin:0"><%= t('client.common.asignacion_de_carriles') %></span>
+              <span class="tn-tools">
+                <button type="button" class="btn btn--ghost btn--sm" id="btnShuffleTeams"><%= t('tanda-new.mezclar_al_azar') %></button>
+                <button type="button" class="btn btn--ghost btn--sm" id="btnClearTeams"><%= t('tanda-new.vaciar') %></button>
+              </span>
             </div>
             <div id="restInfoTeams" class="alert" style="display:none;background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.25);color:#58a6ff;margin-bottom:.75rem;font-size:.85rem">
             </div>
@@ -297,8 +314,16 @@
         }));
       </script>
 
+      <section class="tn-preview" id="tandaPreview" aria-labelledby="tnPreviewT" hidden>
+        <h2 class="tn-preview__t" id="tnPreviewT"><%= t('tanda-new.asi_quedan_las_mangas') %></h2>
+        <p class="tn-preview__sum" id="tnPreviewSum"></p>
+        <div class="tn-preview__wrap"><table class="tn-preview__table" id="tnPreviewTable"></table></div>
+      </section>
       <div class="form-actions" style="margin-top:1.5rem">
         <a href="/races/<%= race.id %>" class="btn btn--ghost">← <%= t('wizard.back') %></a>
+        <button type="submit" name="after" value="another" class="btn btn--ghost">
+          <%= t('tanda-new.crear_y_apuntar_otra') %>
+        </button>
         <button type="submit" class="btn btn--primary">
           🏁 <%= t('tanda-new.crear_tanda') %>
         </button>
@@ -489,6 +514,7 @@ function renumber(containerId) {
     }
   });
   updateRestInfo();
+  schedulePreview();
 }
 
 // ── Add driver row ────────────────────────────────────────────────────────────
@@ -520,6 +546,85 @@ document.getElementById('driversGrid')?.addEventListener('click', e => {
     renumber('driversGrid');
   }
 });
+
+// ── Vista previa de las mangas ──────────────────────────────────────────────
+// La calcula el servidor con el mismo Manga.buildSchedule que al crear la tanda.
+const PREVIEW_URL = '/races/<%= race.id %>/tandas/preview';
+const IS_TEAM = <%= race.format === 'team' ? 'true' : 'false' %>;
+const PREVIEW_MAX_ROWS = 60;
+let _pvTimer = null, _pvSeq = 0;
+function schedulePreview() { clearTimeout(_pvTimer); _pvTimer = setTimeout(runPreview, 250); }
+function driverSlots() {
+  const slots = [];
+  document.querySelectorAll('#driversGrid .participant-row').forEach(row => {
+    const v = row.querySelector('.participant-name')?.value.trim();
+    slots[+row.dataset.row] = v || null;
+  });
+  for (let i = 0; i < slots.length; i++) if (slots[i] === undefined) slots[i] = null;
+  return slots;
+}
+function currentEmptyMode() {
+  return document.querySelector('input[name="empty_lane_mode"]:checked')?.value || 'rotate';
+}
+async function runPreview() {
+  const box = document.getElementById('tandaPreview');
+  if (!box) return;
+  const slots = IS_TEAM ? (window.tandaPreviewSlots ? window.tandaPreviewSlots() : []) : driverSlots();
+  if (!slots.some(Boolean)) { box.hidden = true; return; }
+  const seq = ++_pvSeq;
+  let data;
+  try {
+    const r = await fetch(PREVIEW_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slots, mode: currentEmptyMode() }),
+    });
+    if (!r.ok) return;
+    data = await r.json();
+  } catch { return; }
+  if (seq !== _pvSeq) return;
+  renderPreview(data);
+  box.hidden = false;
+}
+function renderPreview(d) {
+  const table = document.getElementById('tnPreviewTable');
+  const used = new Set(d.usedLanes || []);
+  const hasRests = d.mangas.some(m => m.rests.length);
+  const el = (tag, cls, text) => { const x = document.createElement(tag); if (cls) x.className = cls; if (text != null) x.textContent = text; return x; };
+  table.replaceChildren();
+  const thead = el('thead'), hr = el('tr');
+  hr.appendChild(el('th', 'tn-pv-manga', I18N.t('client.tanda-new.manga')));
+  d.lanes.forEach(l => {
+    const th = el('th', null, I18N.t('client.tanda-new.carril_n', { n: l }));
+    th.style.borderBottomColor = COLORS[(l - 1) % COLORS.length];
+    hr.appendChild(th);
+  });
+  if (hasRests) hr.appendChild(el('th', 'tn-pv-resthd', I18N.t('client.tanda-new.descansan')));
+  thead.appendChild(hr); table.appendChild(thead);
+  const tbody = el('tbody');
+  d.mangas.slice(0, PREVIEW_MAX_ROWS).forEach((m, i) => {
+    const tr = el('tr');
+    tr.appendChild(el('th', 'tn-pv-manga', I18N.t('client.tanda-new.manga_n', { n: i + 1 })));
+    d.lanes.forEach(l => {
+      if (m.byLane[l]) tr.appendChild(el('td', null, m.byLane[l]));
+      else if (!used.has(l)) tr.appendChild(el('td', 'tn-pv-off', I18N.t('client.tanda-new.no_se_usa')));
+      else tr.appendChild(el('td', 'tn-pv-free', I18N.t('client.tanda-new.libre')));
+    });
+    if (hasRests) tr.appendChild(el('td', 'tn-pv-rest', m.rests.join(', ')));
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  const restN = Math.max(0, ...d.mangas.map(m => m.rests.length));
+  const off = d.lanes.filter(l => !used.has(l));
+  const parts = [I18N.t('client.tanda-new.preview_n_mangas', { n: d.mangas.length })];
+  if (restN > 0) parts.push(I18N.t('client.tanda-new.preview_descansan', { n: restN }));
+  if (off.length) parts.push(I18N.t('client.tanda-new.preview_no_se_usan', { lanes: off.join(', ') }));
+  if (d.mangas.length > PREVIEW_MAX_ROWS) parts.push(I18N.t('client.tanda-new.preview_primeras', { n: PREVIEW_MAX_ROWS }));
+  document.getElementById('tnPreviewSum').textContent = parts.join(' ');
+}
+document.addEventListener('input', e => {
+  if (e.target.classList.contains('participant-name')) schedulePreview();
+});
+document.querySelectorAll('input[name="empty_lane_mode"]').forEach(r => r.addEventListener('change', schedulePreview));
 
 // ── Team lane assignment (tablero estilo post-pole, clic) ─────────────────────
 if (document.getElementById('teamAssignUI')) {
@@ -578,6 +683,33 @@ if (document.getElementById('teamAssignUI')) {
     laneGrid.querySelectorAll('.tanda-lane-btn--rest').forEach(btn => {
       if (btn.dataset.teamId) add(btn.dataset.teamId);
     });
+    schedulePreview();
+  }
+
+  // Lo que se manda a la vista previa: mismo orden que team_catalog_ids[].
+  window.tandaPreviewSlots = () => {
+    const nameOf = tid => catalogList.querySelector('.catalog-card[data-team-id="' + tid + '"]')?.dataset.teamName || ('#' + tid);
+    const slots = ACTIVE_LANES.map(lane => {
+      const btn = document.getElementById('lane-btn-' + lane);
+      return btn && btn.dataset.teamId ? nameOf(btn.dataset.teamId) : null;
+    });
+    laneGrid.querySelectorAll('.tanda-lane-btn--rest').forEach(btn => {
+      if (btn.dataset.teamId) slots.push(nameOf(btn.dataset.teamId));
+    });
+    return slots;
+  };
+
+  // Carriles en orden de número (como se ven en el tablero) y luego descansos.
+  function firstFreeSlot() {
+    const lanes = [...laneGrid.querySelectorAll('.tanda-lane-btn:not(.tanda-lane-btn--rest)')]
+      .sort((a, b) => (+a.dataset.lane) - (+b.dataset.lane));
+    return lanes.find(b => !b.dataset.teamId)
+        || [...laneGrid.querySelectorAll('.tanda-lane-btn--rest')].find(b => !b.dataset.teamId)
+        || null;
+  }
+
+  function teamFromCard(card) {
+    return { id: card.dataset.teamId, name: card.dataset.teamName, country: card.dataset.teamCountry };
   }
 
   function updateRestBanner() {
@@ -597,9 +729,19 @@ if (document.getElementById('teamAssignUI')) {
     laneGrid.querySelectorAll('.tanda-lane-btn').forEach(b => {
       if (b.dataset.teamId) usedIds.add(b.dataset.teamId);
     });
+    const where = {};
+    laneGrid.querySelectorAll('.tanda-lane-btn').forEach(b => {
+      if (!b.dataset.teamId) return;
+      where[b.dataset.teamId] = b.classList.contains('tanda-lane-btn--rest')
+        ? I18N.t('client.tanda-new.en_descanso')
+        : I18N.t('client.tanda-new.carril_n', { n: b.dataset.lane });
+    });
     catalogList.querySelectorAll('.catalog-card').forEach(card => {
       const used = usedIds.has(card.dataset.teamId);
       card.classList.toggle('catalog-card--used', used);
+      card.setAttribute('aria-pressed', String(used));
+      const tag = card.querySelector('.catalog-card__tag');
+      if (tag) tag.textContent = used ? where[card.dataset.teamId] : '';
       if (used && selected && selected.el === card) clearSelection();
     });
   }
@@ -658,9 +800,44 @@ if (document.getElementById('teamAssignUI')) {
   }
 
   // ── Eventos ──────────────────────────────────────────────────────────────────
+  // Un clic: el equipo va al primer carril libre; otro clic lo saca. Solo si ya
+  // no queda hueco se pasa al modo antiguo (elegir y pulsar un carril para
+  // sustituir).
   catalogList.addEventListener('click', e => {
     const card = e.target.closest('.catalog-card');
-    if (card) selectTeam(card);
+    if (!card) return;
+    resetHint();
+    if (card.classList.contains('catalog-card--used')) {
+      const btn = laneGrid.querySelector('.tanda-lane-btn[data-team-id="' + card.dataset.teamId + '"]');
+      if (btn) unassignBtn(btn);
+      return;
+    }
+    if (selected && selected.el === card) { clearSelection(); return; }
+    const free = firstFreeSlot();
+    if (free) { clearSelection(); assignBtn(free, teamFromCard(card)); return; }
+    selectTeam(card);
+    if (pickHint) pickHint.textContent = I18N.t('client.tanda-new.todos_los_carriles_ocupados');
+  });
+  catalogList.querySelectorAll('.catalog-card').forEach(card => {
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+  });
+  catalogList.addEventListener('keydown', e => {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('catalog-card')) {
+      e.preventDefault(); e.target.click();
+    }
+  });
+
+  document.getElementById('btnClearTeams')?.addEventListener('click', () => {
+    laneGrid.querySelectorAll('.tanda-lane-btn').forEach(b => { if (b.dataset.teamId) unassignBtn(b); });
+    clearSelection();
+  });
+  document.getElementById('btnShuffleTeams')?.addEventListener('click', () => {
+    const btns = [...laneGrid.querySelectorAll('.tanda-lane-btn')]
+      .filter(b => b.dataset.teamId && catalogList.querySelector('.catalog-card[data-team-id="' + b.dataset.teamId + '"]'));
+    const teams = btns.map(b => teamFromCard(catalogList.querySelector('.catalog-card[data-team-id="' + b.dataset.teamId + '"]')));
+    for (let i = teams.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [teams[i], teams[j]] = [teams[j], teams[i]]; }
+    btns.forEach((b, i) => assignBtn(b, teams[i]));
   });
 
   laneGrid.addEventListener('click', e => {
@@ -1018,10 +1195,15 @@ if (document.getElementById('teamAssignUI')) {
       card.dataset.teamId      = ct.id;
       card.dataset.teamName    = ct.name;
       card.dataset.teamCountry = ct.country || '';
-      card.innerHTML = `${icoHtml}<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ct.name}</span><span style="font-size:.75rem;color:#8b949e">${ct.members.length}👤</span>`;
+      card.innerHTML = `${icoHtml}<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ct.name}</span><span style="font-size:.75rem;color:#8b949e">${ct.members.length}👤</span><span class="catalog-card__tag" aria-live="polite"></span>`;
+      card.setAttribute('role', 'button');
+      card.setAttribute('tabindex', '0');
       const emptyMsg = document.getElementById('emptyCatalogMsg');
       if (emptyMsg) emptyMsg.remove();
       catalogList.appendChild(card);
+      // Recién creado = lo quieren en esta tanda: va al primer hueco.
+      const free = firstFreeSlot();
+      if (free) assignBtn(free, teamFromCard(card));
       closeModal();
     } catch(err) {
       errEl.textContent = I18N.t('client.tanda-new.error_al_crear_el_equipo');
@@ -1033,7 +1215,36 @@ if (document.getElementById('teamAssignUI')) {
 }
 
 updateRestInfo();
+schedulePreview();
 </script>
+
+<style>
+  .tn-created { background: rgba(63,185,80,.1); border: 1px solid rgba(63,185,80,.4); color: #7ee787; font-size: 1.05rem; }
+  .tn-tools { display: inline-flex; gap: .4rem; flex-wrap: wrap; }
+  #teamAssignUI > div:first-child { flex-basis: 270px !important; }
+  #catalogList .catalog-card { min-height: 46px; font-size: .98rem; flex-wrap: wrap; row-gap: 2px; }
+  /* Aquí un equipo colocado se puede volver a pulsar para sacarlo. */
+  #catalogList .catalog-card--used { opacity: 1; pointer-events: auto; border-color: #3a6ea5; background: rgba(88,166,255,.08); }
+  #catalogList .catalog-card:focus-visible { outline: 2px solid #58a6ff; outline-offset: 2px; }
+  .catalog-card__tag:empty { display: none; }
+  .catalog-card__tag { flex-shrink: 0; font-size: .8rem; font-weight: 700; color: #79c0ff; }
+  .catalog-card__other { flex-basis: 100%; font-size: .78rem; color: #d29922; }
+  #pickHint { font-size: .98rem; color: #c9d1d9; }
+  .tn-preview { margin-top: 1.75rem; padding-top: 1.25rem; border-top: 1px solid #21262d; display: grid; gap: .6rem; }
+  .tn-preview[hidden] { display: none; }
+  .tn-preview__t { margin: 0; font-size: 1.3rem; }
+  .tn-preview__sum { margin: 0; color: #b3bcc6; font-size: 1rem; }
+  .tn-preview__wrap { overflow-x: auto; border: 1px solid #30363d; border-radius: 12px; }
+  .tn-preview__table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+  .tn-preview__table th, .tn-preview__table td { padding: .5rem .65rem; text-align: left; }
+  .tn-preview__table thead th, .tn-pv-manga { white-space: nowrap; }
+  .tn-preview__table thead th { background: #0d1117; border-bottom: 3px solid #30363d; font-weight: 700; }
+  .tn-preview__table tbody tr { border-top: 1px solid #21262d; }
+  .tn-pv-manga { color: #b3bcc6; font-variant-numeric: tabular-nums; }
+  .tn-pv-free { color: #8b949e; font-style: italic; }
+  .tn-pv-off { color: #6e7681; background: #07090c; }
+  .tn-pv-rest { color: #c9d1d9; background: #0b0e13; }
+</style>
 
 <%- include('../partials/tanda-name-check', { otherNames }) %>
 <%- include('../partials/footer') %>

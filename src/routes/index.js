@@ -399,6 +399,7 @@ router.post('/races/:id/pole/lanes',             PoleController.assignLanes);
 // ── Tandas ────────────────────────────────────────────────────────────────────
 router.get(   '/races/:id/tandas/new',            TandaController.newForm);
 router.post(  '/races/:id/tandas',                TandaController.create);
+router.post(  '/races/:id/tandas/preview',        TandaController.preview);
 router.get(   '/races/:id/tandas/:tandaId/edit',  TandaController.editTanda);
 router.post(  '/races/:id/tandas/:tandaId/edit',  TandaController.updateTanda);
 router.delete('/races/:id/tandas/:tandaId',       TandaController.delete);

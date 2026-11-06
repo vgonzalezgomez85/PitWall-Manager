@@ -13,6 +13,19 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.67.0] — 2026-11-06
+
+### Mejorado
+- **Crear una carrera, más fácil**: el primer paso son solo tres preguntas en frase (nombre, circuito y si hay pole). Si en Ajustes la caja ya tiene un circuito, sale puesto en una línea con «Cambiar circuito»: un paso menos. Categoría y coche, reglas de resistencia, pasadas y repetir carril van plegados en «Opciones avanzadas» (se abren solos si ya traen algo).
+- **Comprobar, en frases**: el resumen antes de crear dice lo que va a pasar («Se corre en EL SOT: 6 carriles…») con un «Cambiar» en cada línea. Ya no enseña la duración de manga de relleno (99 minutos) ni el formato.
+- **De la carrera a los participantes sin buscar**: sin pole, «Crear carrera y apuntar participantes» lleva directo a la primera tanda. La barra de pasos lo anuncia («La carrera · Comprobar · Apuntar participantes»).
+- **Tanda de equipos con un clic**: pulsar un equipo lo pone en el primer carril libre y pulsarlo otra vez lo saca; cada equipo dice en qué carril está. Botones «Mezclar al azar» y «Vaciar». Un equipo nuevo creado desde la tanda entra solo en el primer hueco. Arrastrar sigue funcionando.
+- **Varias tandas seguidas**: «Crear y apuntar otra tanda» guarda la tanda y vuelve al formulario para la siguiente; los equipos que ya corren en otra tanda llevan «Ya en tanda N».
+
+### Añadido
+- **«Así quedan las mangas»** al crear una tanda (equipos y pilotos): tabla de mangas por carriles con los nombres, quién descansa y qué carriles no se usan. Se actualiza al momento y sale del mismo cálculo que las mangas que se guardan.
+- **Botón de tamaño de letra (A / A+)** en la barra de arriba: agranda las páginas para quien ve peor. Se recuerda en ese equipo.
+
 ## [1.66.5] — 2026-11-06
 
 ### Corregido

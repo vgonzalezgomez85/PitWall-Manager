@@ -532,7 +532,19 @@
       "error_al_crear_el_equipo": "Errore durante la creazione del team.",
       "pais_opcional": "Paese (opzionale)",
       "quitar_descanso": "Rimuovi pausa",
-      "selecciona": "Seleziona..."
+      "selecciona": "Seleziona...",
+      "en_descanso": "Riposa",
+      "carril_n": "Corsia {{n}}",
+      "todos_los_carriles_ocupados": "Tutte le corsie sono occupate: premi una corsia per mettere lì questa squadra, o aggiungi un riposo.",
+      "manga": "Manche",
+      "manga_n": "Manche {{n}}",
+      "descansan": "Riposano",
+      "no_se_usa": "Non usata",
+      "libre": "libera",
+      "preview_n_mangas": "{{n}} manche.",
+      "preview_descansan": "In ogni manche ne riposano {{n}}.",
+      "preview_no_se_usan": "Le corsie {{lanes}} non si usano.",
+      "preview_primeras": "Si vedono le prime {{n}}."
     },
     "wizard": {
       "carril": "corsia ×",
@@ -1029,7 +1041,24 @@
     "no": "No",
     "pares": "coppie",
     "participantes_de_pole": "Partecipanti della Pole",
-    "si_con_sesion_de_clasificacion": "Sì, con sessione di qualifica"
+    "si_con_sesion_de_clasificacion": "Sì, con sessione di qualifica",
+    "esta_todo_bien": "È tutto a posto?",
+    "leelo_con_calma": "Leggilo con calma. Se qualcosa non va, premi «Cambia».",
+    "frase_nombre": "Stai creando {{nombre}}, una gara {{tipo}}.",
+    "frase_tipo_resistencia": "di endurance a squadre",
+    "frase_tipo_sprint": "sprint, ogni pilota per conto suo",
+    "frase_circuito": "Si corre su {{circuito}}: {{carriles}} corsie.",
+    "frase_circuito_a_mano": "Pista configurata a mano: {{carriles}} corsie.",
+    "frase_vuelta_minima": "I giri sotto i {{s}} s non contano.",
+    "frase_con_pole": "Con pole: prima una qualifica e il più veloce sceglie la corsia.",
+    "frase_sin_pole": "Senza pole: metti tu ogni partecipante nella sua corsia quando lo iscrivi.",
+    "frase_extras": "Inoltre:",
+    "frase_orden_carriles": "In ogni manche, ognuno cambia corsia in questo ordine:",
+    "descanso": "Riposo",
+    "el_tiempo_lo_pone_la_caja": "La durata di ogni manche la decide il cronometro.",
+    "cambiar": "Cambia",
+    "siguiente_paso_apuntar": "Nel prossimo passo iscrivi i partecipanti della prima batteria.",
+    "crear_y_apuntar": "Crea la gara e iscrivi i partecipanti"
   },
   "control": {
     "al_90_del_maximo": "Al 90% del massimo",
@@ -2204,8 +2233,14 @@
     "saltar_ultimos_vacios_desc": "le corsie libere in fondo non si usano; uno spazio lasciato in mezzo invece ruota.",
     "saltar_vacios": "Non passare sulle corsie vuote",
     "saltar_vacios_desc": "le corsie lasciate senza partecipante non si usano in tutta la batteria (es. 8 corsie senza la 1 e la 8).",
-    "selecciona_un_equipo_de_la_izquierda_y_pulsa_un": "Seleziona un team a sinistra e premi una corsia o pausa (oppure trascinalo). Premi uno assegnato per liberarlo.",
-    "si_hay_menos_participantes_que_carriles_que": "Se ci sono meno partecipanti che corsie, cosa fare con le corsie che restano libere?"
+    "selecciona_un_equipo_de_la_izquierda_y_pulsa_un": "Premi una squadra e va nella prima corsia libera. Per toglierla, premila di nuovo o premi la sua corsia. Si può anche trascinare.",
+    "si_hay_menos_participantes_que_carriles_que": "Se ci sono meno partecipanti che corsie, cosa fare con le corsie che restano libere?",
+    "tanda_creada_apunta_la_siguiente": "Batteria {{v}} creata. Ora iscrivi quelli della prossima.",
+    "ya_en_tanda": "Già nella batteria {{v}}",
+    "mezclar_al_azar": "Mescola a caso",
+    "vaciar": "Svuota",
+    "asi_quedan_las_mangas": "Ecco come restano le manche",
+    "crear_y_apuntar_otra": "Crea e iscrivi un’altra batteria"
   },
   "teamcatalog": {
     "created_equipos_creados": "{{created}} team creati",
@@ -2324,11 +2359,12 @@
     "step2_title": "Nuova gara — Formato",
     "step3_seq_title": "Nuova gara — Sequenza corsie",
     "steps": {
-      "confirm": "Conferma",
+      "confirm": "Controllo",
       "format": "Formato",
       "participants": "Partecipanti",
       "sequence": "Sequenza",
-      "type": "Tipo"
+      "type": "La gara",
+      "tanda": "Iscrivere i partecipanti"
     },
     "summary": "Riepilogo",
     "summary_format": "Formato",
@@ -2341,7 +2377,15 @@
     "team_name": "Nome del team",
     "team_name_ph": "Es: Scuderia Ferrari",
     "toca_un_equipo_del_catalogo_para_anadirlo_con": "📋 Tocca un team del catalogo per aggiungerlo con i suoi piloti. Se non esiste, crealo manualmente qui sotto.",
-    "veces_que_se_corre_la_rotacion_completa_de": "Numero di volte che si corre la rotazione completa delle corsie."
+    "veces_que_se_corre_la_rotacion_completa_de": "Numero di volte che si corre la rotazione completa delle corsie.",
+    "q_nombre": "Come si chiama la gara?",
+    "q_circuito": "Su quale pista si corre?",
+    "q_pole": "C’è la pole (qualifica) prima della gara?",
+    "circuito_de_ajustes": "Inserito da solo: è la pista del cronometro nelle Impostazioni.",
+    "cambiar_circuito": "Cambia pista",
+    "opciones_avanzadas": "Opzioni avanzate",
+    "opciones_avanzadas_ayuda": "Di solito non serve toccare niente.",
+    "vueltas_por_los_carriles": "Giri delle corsie"
   },
   "export": {
     "csv_posicion": "Posizione",
@@ -2663,5 +2707,10 @@
     "ocupado_race": "C’è una manche in corso: aspetta che finisca o fermala prima.",
     "ocupado_pole": "C’è un pilota della pole in pista: termina o ferma il suo tentativo prima.",
     "ocupado_competition": "C’è un allenamento di gara in pista: fermalo prima."
+  },
+  "header": {
+    "tamano_de_letra": "Dimensione del testo",
+    "letra_normal": "Testo normale",
+    "letra_grande": "Testo grande"
   }
 }

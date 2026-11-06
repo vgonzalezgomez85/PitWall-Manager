@@ -95,7 +95,8 @@ class TandaController {
     const profiles      = DriverProfile.findAll();
     const teamsCatalog  = TeamCatalog.findAll();
     const circuitSizes  = _circuitSizesFor(race);
-    res.render('races/tanda-new', { t: req.t, race, otherNames: Names.inOtherTandas(race), laneSequence, LANE_COLORS: LaneColors.forRace(race), profiles, teamsCatalog, circuitSizes, errors: [], body: {} });
+    const createdNumber = parseInt(req.query?.created, 10) || null;
+    res.render('races/tanda-new', { t: req.t, race, otherNames: Names.inOtherTandas(race), laneSequence, LANE_COLORS: LaneColors.forRace(race), profiles, teamsCatalog, circuitSizes, errors: [], body: {}, createdNumber });
   }
 
   // POST /races/:id/tandas
@@ -209,7 +210,39 @@ class TandaController {
     // Mark race as active if it was pending
     if (race.status === 'pending') Race.updateStatus(race.id, 'active');
 
+    if (req.body.after === 'another') {
+      return res.redirect(`/races/${race.id}/tandas/new?created=${Tanda.findById(tandaId)?.number || ''}`);
+    }
     res.redirect(`/races/${race.id}`);
+  }
+
+  // POST /races/:id/tandas/preview — las mangas que saldrían, sin guardar nada.
+  // Usa el mismo Manga.buildSchedule que create(), así la vista previa no puede
+  // divergir del calendario real. slots[i] = nombre o null (hueco), en el mismo
+  // orden que el formulario envía los participantes.
+  static preview(req, res) {
+    const race = Race.findById(req.params.id);
+    if (!race) return res.status(404).json({ error: 'race_not_found' });
+    const laneSequence = Race.getLaneSequence(race);
+    const mode = ['fixed', 'skip'].includes(req.body?.mode) ? req.body.mode : 'rotate';
+    const slots = Array.isArray(req.body?.slots) ? req.body.slots.slice(0, 200) : [];
+    const entities = slots.map((n, i) => {
+      const name = typeof n === 'string' ? n.trim() : '';
+      return name ? { id: i, name } : null;
+    });
+    const schedule = Manga.buildSchedule(laneSequence, entities, race.passes, race.lane_repeat, mode);
+    const lanes = [...new Set(laneSequence.filter(l => l > 0))].sort((a, b) => a - b);
+    const used = new Set();
+    const mangas = schedule.map(slotsOf => {
+      const byLane = {}, rests = [];
+      slotsOf.forEach(sl => {
+        if (sl.lane > 0) used.add(sl.lane);
+        if (sl.isRest) { if (sl.entity) rests.push(sl.entity.name); return; }
+        if (sl.entity) byLane[sl.lane] = sl.entity.name;
+      });
+      return { byLane, rests };
+    });
+    res.json({ lanes, usedLanes: [...used], mangas });
   }
 
   // GET /races/:id/mangas/:mangaId/edit
