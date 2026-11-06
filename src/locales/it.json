@@ -2240,7 +2240,9 @@
     "mezclar_al_azar": "Mescola a caso",
     "vaciar": "Svuota",
     "asi_quedan_las_mangas": "Ecco come restano le manche",
-    "crear_y_apuntar_otra": "Crea e iscrivi un’altra batteria"
+    "crear_y_apuntar_otra": "Crea e iscrivi un’altra batteria",
+    "finalizar": "Concludi",
+    "finalizar_ayuda": "«Concludi» salva questa batteria e ti porta alla gara. Se ci sono altre batterie, usa «Crea e iscrivi un’altra batteria»."
   },
   "teamcatalog": {
     "created_equipos_creados": "{{created}} team creati",

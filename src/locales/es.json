@@ -2240,7 +2240,9 @@
     "mezclar_al_azar": "Mezclar al azar",
     "vaciar": "Vaciar",
     "asi_quedan_las_mangas": "Así quedan las mangas",
-    "crear_y_apuntar_otra": "Crear y apuntar otra tanda"
+    "crear_y_apuntar_otra": "Crear y apuntar otra tanda",
+    "finalizar": "Finalizar",
+    "finalizar_ayuda": "«Finalizar» guarda esta tanda y te lleva a la carrera. Si hay más tandas, usa «Crear y apuntar otra tanda»."
   },
   "teamcatalog": {
     "created_equipos_creados": "{{created}} equipos creados",

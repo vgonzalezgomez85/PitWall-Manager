@@ -20,7 +20,7 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 - **Comprobar, en frases**: el resumen antes de crear dice lo que va a pasar («Se corre en EL SOT: 6 carriles…») con un «Cambiar» en cada línea. Ya no enseña la duración de manga de relleno (99 minutos) ni el formato.
 - **De la carrera a los participantes sin buscar**: sin pole, «Crear carrera y apuntar participantes» lleva directo a la primera tanda. La barra de pasos lo anuncia («La carrera · Comprobar · Apuntar participantes»).
 - **Tanda de equipos con un clic**: pulsar un equipo lo pone en el primer carril libre y pulsarlo otra vez lo saca; cada equipo dice en qué carril está. Botones «Mezclar al azar» y «Vaciar». Un equipo nuevo creado desde la tanda entra solo en el primer hueco. Arrastrar sigue funcionando.
-- **Varias tandas seguidas**: «Crear y apuntar otra tanda» guarda la tanda y vuelve al formulario para la siguiente; los equipos que ya corren en otra tanda llevan «Ya en tanda N».
+- **Varias tandas seguidas**: «Crear y apuntar otra tanda» guarda la tanda y vuelve al formulario para la siguiente; los equipos que ya corren en otra tanda llevan «Ya en tanda N». El botón principal pasa a llamarse **«Finalizar»**: guarda la tanda y lleva a la carrera, y con el formulario vacío (ya no quedan más tandas) va a la carrera sin dar error.
 
 ### Añadido
 - **«Así quedan las mangas»** al crear una tanda (equipos y pilotos): tabla de mangas por carriles con los nombres, quién descansa y qué carriles no se usan. Se actualiza al momento y sale del mismo cálculo que las mangas que se guardan.

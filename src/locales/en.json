@@ -2240,7 +2240,9 @@
     "mezclar_al_azar": "Shuffle",
     "vaciar": "Clear",
     "asi_quedan_las_mangas": "This is how the heats look",
-    "crear_y_apuntar_otra": "Create and sign up another round"
+    "crear_y_apuntar_otra": "Create and sign up another round",
+    "finalizar": "Finish",
+    "finalizar_ayuda": "“Finish” saves this round and takes you to the race. If there are more rounds, use “Create and sign up another round”."
   },
   "teamcatalog": {
     "created_equipos_creados": "{{created}} teams created",

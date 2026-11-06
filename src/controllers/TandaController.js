@@ -96,7 +96,8 @@ class TandaController {
     const teamsCatalog  = TeamCatalog.findAll();
     const circuitSizes  = _circuitSizesFor(race);
     const createdNumber = parseInt(req.query?.created, 10) || null;
-    res.render('races/tanda-new', { t: req.t, race, otherNames: Names.inOtherTandas(race), laneSequence, LANE_COLORS: LaneColors.forRace(race), profiles, teamsCatalog, circuitSizes, errors: [], body: {}, createdNumber });
+    const existingTandas = Tanda.findByRace(race.id).length;
+    res.render('races/tanda-new', { t: req.t, race, otherNames: Names.inOtherTandas(race), laneSequence, LANE_COLORS: LaneColors.forRace(race), profiles, teamsCatalog, circuitSizes, errors: [], body: {}, createdNumber, existingTandas });
   }
 
   // POST /races/:id/tandas
