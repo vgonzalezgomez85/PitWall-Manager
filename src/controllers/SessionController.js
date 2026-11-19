@@ -114,6 +114,9 @@ class SessionController {
     }
     const Pole = require('../services/PoleTimingService');
     if (Pole.isStandby) Pole.release();
+    // Un warm-up solo armado (o ya terminado) se descarta: la manga de verdad pide el GO.
+    const Warmup = require('../services/WarmupService');
+    if (!Warmup.isRunning && !Warmup.isPaused) Warmup.discard();   // armado o terminado: se descarta sin rastro
 
     const lanes   = Manga.getLanes(manga.id);
     const tanda   = Tanda.findById(manga.tanda_id);
@@ -518,7 +521,8 @@ class SessionController {
     const goStrip = localReq && ['pending', 'active'].includes(race.status) && !!Manga.findFirstPending(race.id);
     const goOwner = goStrip ? GoOwnerService.publicState() : null;
 
-    res.render('races/live', { t: req.t, liveOrder, goStrip, goOwner, race, manga, tanda, lanes, laps, isActive, standings, projection, prevLapsByLane, totalMangas, totalTandas, totalRaceMs, effectiveMangaDurationMs, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, sectorsReady, allParticipants, nextLaneByLane, nextMangaInfo, nextPendingMangaId, raceOver, isSimulating, isBart, isTicTac, softwareGo, isPaused });
+    res.render('races/live', { t: req.t, liveOrder, goStrip, goOwner, race, manga, tanda, lanes, laps, isActive, standings, projection, prevLapsByLane, totalMangas, totalTandas, totalRaceMs, effectiveMangaDurationMs, teamMembersByLane, activeDriversByLane, raceBestLaps, hasBestLaps, hasQrCheckin, nextTanda, sectorsReady, allParticipants, nextLaneByLane, nextMangaInfo, nextPendingMangaId, raceOver, isSimulating, isBart, isTicTac, softwareGo, isPaused,
+      warmupEnabled: require('../services/SprintExtras').warmupEnabled(race) });
   }
 
   // GET /races/:id/mangas/:mangaId/panel/:type  (standalone popup)
@@ -1118,6 +1122,55 @@ class SessionController {
         }
       }
 
+      // Puesto de cada piloto en cada carril (toda la carrera): más vueltas
+      // válidas (mismos filtros que Lap.perLaneByEntity) → mejor vuelta → nombre.
+      // Una sola consulta; la vuelta sin driver_id se atribuye al único piloto
+      // fichado en esa (equipo, carril, manga) y se descarta si hay relevo.
+      const rankByLane = new Map();   // lane → [{team, key, name, laps, best}]
+      const driverRankIdx = new Map(); // `${team}|${lane}|${nombre en minúsculas}` → entrada
+      if (race.type === 'championship') {
+        const minLap = race.min_lap_ms || 0;
+        const lapRows = db.prepare(`
+          SELECT l.lane, l.team_id, l.manga_id, l.driver_id, d.name AS driver_name,
+                 COUNT(*) AS laps,
+                 MIN(CASE WHEN l.is_exit = 0 AND l.is_warmup = 0 AND l.lap_number > 1
+                           AND l.lap_time_ms >= ?
+                          THEN l.lap_time_ms END) AS best_ms
+          FROM laps l
+          LEFT JOIN drivers d ON d.id = l.driver_id
+          WHERE l.race_id = ? AND l.team_id IS NOT NULL AND l.is_ghost = 0 AND l.manga_id IS NOT NULL
+          GROUP BY l.lane, l.team_id, l.manga_id, l.driver_id
+        `).all(minLap, race.id);
+        const acc = new Map();
+        const add = (lane, team, name, laps, best) => {
+          const k = `${lane}|${team}|${name.toLowerCase()}`;
+          let e = acc.get(k);
+          if (!e) { e = { lane, team, name, laps: 0, best: null }; acc.set(k, e); }
+          e.laps += laps;
+          if (best != null && (e.best == null || best < e.best)) e.best = best;
+        };
+        for (const r of lapRows) {
+          let name = r.driver_name;
+          if (!name) {
+            const c = byCell.get(`${r.team_id}|${r.lane}|${r.manga_id}`);
+            if (c && c.length === 1) name = c[0];
+          }
+          if (name) add(r.lane, r.team_id, name, r.laps, r.best_ms);
+        }
+        for (const e of acc.values()) {
+          let list = rankByLane.get(e.lane);
+          if (!list) { list = []; rankByLane.set(e.lane, list); }
+          list.push(e);
+          driverRankIdx.set(`${e.team}|${e.lane}|${e.name.toLowerCase()}`, e);
+        }
+        for (const list of rankByLane.values()) {
+          list.sort((a, b) => (b.laps - a.laps) ||
+            ((a.best ?? Infinity) - (b.best ?? Infinity)) ||
+            a.name.localeCompare(b.name));
+          list.forEach((e, i) => { e.rank = i + 1; e.total = list.length; });
+        }
+      }
+
       if (byCell.size || byLane.size) {
         results.forEach(r => {
           if (r.entity_type !== 'team') return;
@@ -1127,7 +1180,13 @@ class SessionController {
           });
           (r.perLane || []).forEach(pl => {
             const names = byLane.get(`${r.entity_id}|${pl.lane}`);
-            if (names && names.length) pl.drivers = names;
+            if (names && names.length) {
+              pl.drivers = names;
+              pl.driverRanks = names.map(n => {
+                const e = driverRankIdx.get(`${r.entity_id}|${pl.lane}|${n.toLowerCase()}`);
+                return e ? { name: n, rank: e.rank, total: e.total, laps: e.laps } : { name: n };
+              });
+            }
           });
         });
       }
@@ -1167,6 +1226,28 @@ class SessionController {
       WHERE l.race_id = ? AND l.is_ghost = 0 AND l.lap_number > 0
       ORDER BY t.number ASC, m.number ASC, l.lane ASC, l.lap_number ASC
     `).all(race.id);
+
+    // En qué manga(s) corrió cada entidad cada pista: se pinta bajo las vueltas
+    // de la parrilla. Con varias tandas una pista puede repetirse (una por tanda).
+    {
+      const mangasByCell = new Map();   // `${key}|${lane}` -> [{ mangaId, tanda, manga }]
+      for (const row of progressionRows) {
+        const ck = `${row.team_id ? 'team_' + row.team_id : 'driver_' + row.driver_id}|${row.lane}`;
+        let list = mangasByCell.get(ck);
+        if (!list) { list = []; mangasByCell.set(ck, list); }
+        if (!list.some(x => x.mangaId === row.manga_id)) {
+          list.push({ mangaId: row.manga_id, tanda: row.tanda_number, manga: row.manga_number });
+        }
+      }
+      results.forEach(r => {
+        const key = r.entity_type === 'team' ? `team_${r.entity_id}` : `driver_${r.entity_id}`;
+        (r.perLane || []).forEach(pl => { pl.mangas = mangasByCell.get(`${key}|${pl.lane}`) || []; });
+        Object.values(r.occByKey || {}).forEach(cell => {
+          const m = (mangasByCell.get(`${key}|${cell.lane}`) || []).find(x => x.mangaId === cell.manga_id);
+          cell.mangas = m ? [m] : [];
+        });
+      });
+    }
 
     // Quién conducía cada vuelta (carreras por equipos): el mismo reparto que la
     // pestaña de pilotos (lib/driverStats), por (manga, equipo) y con hora UTC.

@@ -29,6 +29,9 @@ const PREFS = {
   // calcula sola. 'manual' habilita escribir los settori finales al acabar
   // cada tanda (/races/:id/tandas/:tandaId/summary, ver models/Lap._lastMangaByEntity).
   manual_coma:           ['auto', 'manual'],
+  // Extras de las carreras sprint (services/SprintExtras), apagados por defecto.
+  sprint_warmup:         ['off', 'on'],
+  sprint_pole_add:       ['off', 'on'],
 };
 
 // Preferencias numéricas de guardado inmediato: clave → [mín, máx].
@@ -106,6 +109,8 @@ class SettingsController {
       trainingHistoryMode: cfg.training_history_mode === 'best' ? 'best' : 'recent',
       manualComa:          cfg.manual_coma === 'manual' ? 'manual' : 'auto',
       comaSectors:         require('../utils/settori').perLap(),
+      sprintWarmup:        cfg.sprint_warmup === 'on' ? 'on' : 'off',
+      sprintPoleAdd:       cfg.sprint_pole_add === 'on' ? 'on' : 'off',
       lateCrossingGraceMs: require('../services/TimingService').constructor.lateCrossingGraceMs(),
       clubBrand:           require('../services/ClubBrand').get(),
       passwordEnabled:     require('../services/AccessPassword').isEnabled(),

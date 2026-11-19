@@ -53,7 +53,7 @@ class GoOwnerService {
   // ── Una sola sesión en pista ───────────────────────────────────────────────
   // La sesión en pista (o null), sin contar `except`.
   busySession(except = null) {
-    for (const name of ['race', 'pole', 'competition', 'training']) {
+    for (const name of ['race', 'warmup', 'pole', 'competition', 'training']) {
       if (name !== except && this._sessions[name]?.active()) return name;
     }
     return null;
@@ -83,7 +83,7 @@ class GoOwnerService {
   _route(event, payload) {
     const st = (name) => {
       const x = this._sessions[name];
-      return { ready: !!x?.ready(), active: !!x?.active() };
+      return { ready: !!x?.ready(), active: !!x?.active(), draining: !!x?.draining?.() };
     };
     const race = st('race');
     const target = routeBoxEvent(event, {
@@ -91,6 +91,7 @@ class GoOwnerService {
       mangaLate:    race.ready && !race.active,
       owner:        () => this.decide().owner,
       pole:         st('pole'),
+      warmup:       st('warmup'),
       competition:  st('competition'),
       training:     st('training'),
     });
@@ -128,6 +129,14 @@ class GoOwnerService {
           WHERE r.id = ? AND r.status IN ('pending', 'active') AND m.status = 'pending' LIMIT 1`
       ).get(this._claimRaceId);
       return ok ? this._claimRaceId : null;
+    } catch { return null; }
+  }
+
+  // Carrera con un warm-up armado o en pista (sesión solo en memoria).
+  _warmupRaceId() {
+    try {
+      const W = require('./WarmupService');
+      return (W.isStandby || W.isRunning || W.isPaused) ? W.raceId : null;
     } catch { return null; }
   }
 
@@ -172,6 +181,7 @@ class GoOwnerService {
     return {
       mangaRaceId:   TimingService.activeRaceId,
       poleRaceId:    this._poleRaceId(),
+      warmupRaceId:  this._warmupRaceId(),
       halfTanda,
       claimRaceId,
       tandaBoundary: TimingService._tandaBoundary === true || (raceId != null && this._dbTandaBoundary(raceId)),

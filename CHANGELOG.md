@@ -13,6 +13,17 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.68.0] — 2026-11-19
+
+### Añadido
+- **Warm-up antes de cada manga (carreras sprint)**: nuevo botón **🔥 Warm-up** en el directo de una manga pendiente. Abre su propia ventana con cronómetro, vueltas y mejor vuelta de cada carril, con **GO, pausa, reanudar y terminar**. Es un calentamiento: **no se guarda ninguna vuelta** y la manga sigue pendiente, así que después das el GO de la manga y empieza de cero. Con un DS-300 el tiempo lo marca la caja (y para cortarlo antes hay que pulsar también STOP en ella); con BART, TicTac o simulación lo da PitWall. PitWall recuerda los minutos que usaste para proponerlos la próxima vez. Se activa en **Ajustes → Preferencias → «Warm-up antes de cada manga (sprint)»** (apagado por defecto) y solo en sprint individual.
+- **Añadir pilotos durante la pole (sprint)**: si alguien llega tarde, el botón **➕ Añadir piloto** lo pone al final de la pole (nombre y, si la carrera los usa, categoría y coche). Sirve con la pole en marcha y también con la pole ya terminada: se reabre y el piloto nuevo sale el siguiente, siempre que aún no se hayan creado las tandas. No deja repetir un nombre. Se activa en **Ajustes → Preferencias → «Añadir pilotos durante la pole (sprint)»** (apagado por defecto).
+
+### Mejorado
+- **Resultados → Por carril, ordenable y con pilotos**: pulsa el título de una columna para ordenar la tabla. **Vueltas**, **Sector** y las vueltas de cada carril van primero de más a menos (▼) y, con otro clic, al revés (▲); el **mejor tiempo** de cada carril, primero el más rápido. **#** vuelve al orden de la clasificación general, y su número sigue siendo la posición en la general. Los empates quedan en el orden de la general y quien no tiene dato («—») va siempre al final. El PDF sale como siempre. En las carreras de resistencia, cada casilla de «Vueltas por carril» muestra además el **piloto o pilotos que corrieron ese carril con su puesto** entre todos los pilotos de ese carril (más vueltas; si empatan, mejor vuelta). El nombre se recorta si no cabe y el puesto queda siempre visible; al pasar el ratón sale, por ejemplo, «3º de 29 pilotos en el carril · 212 vueltas».
+- **Resultados: en qué manga se corrió cada carril**: bajo las vueltas de cada casilla de la parrilla aparece la manga (M2) o, con varias tandas, tanda y manga (T1·M2), con su detalle al pasar el ratón.
+- **El GO sabe de qué es el warm-up**: con un warm-up preparado o en pista, el aviso del directo y del entreno libre lo dice («el próximo GO es del warm-up»), no se confunde con otra carrera, y los cruces de la caja no arrancan el entreno libre. Sigue habiendo una sola sesión en pista: no se puede dar GO a una manga, pole o entreno con un warm-up en marcha.
+
 ## [1.67.0] — 2026-11-06
 
 ### Mejorado

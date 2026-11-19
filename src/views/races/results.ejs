@@ -98,6 +98,11 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
   display: block; margin-top: 2px; font-size: .6rem; line-height: 1.15;
   font-weight: 500; color: #8b949e; text-transform: none; letter-spacing: 0;
 }
+/* Manga(s) en que la entidad corrió esa pista, bajo el nº de vueltas. */
+.matrix-manga {
+  display: block; margin-top: 2px; font-size: .62rem; line-height: 1.15;
+  font-weight: 600; color: #58a6ff; letter-spacing: .02em; font-variant-numeric: tabular-nums;
+}
 /* Categoría y coche del participante (solo si la carrera los activa). */
 .matrix-catcar {
   display: block; margin-top: 4px; font-size: .72rem; line-height: 1.3;
@@ -235,6 +240,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
   .matrix-lane__label { color: #555; }
   .matrix-occ__label { color: #555; }
   .matrix-driver { color: #333 !important; }
+  .matrix-manga { color: #1a56db !important; }
   .matrix-catcar { color: #555 !important; }
   .matrix-occ__ord { color: #000 !important; }
   .matrix-occ--group-start, thead .matrix-occ--group-start {
@@ -494,6 +500,20 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
           return (ms / 1000).toFixed(3).replace('.', ',');
         }
 
+        // Manga(s) en que la entidad corrió esa pista. Con varias tandas el nº de
+        // manga se repite en cada una: se antepone la tanda.
+        const multiTandaGrid = (tandas || []).length > 1;
+        function mangaTag(list) {
+          return (list || []).map(x => multiTandaGrid
+            ? t('results.celda_tanda_manga', { t: x.tanda, m: x.manga })
+            : t('results.celda_manga', { m: x.manga })).join(', ');
+        }
+        function mangaTitle(list) {
+          return (list || []).map(x => multiTandaGrid
+            ? t('results.dest_tanda_manga_sin_pista', { t: x.tanda, m: x.manga })
+            : t('results.dest_manga_sin_pista', { m: x.manga })).join(', ');
+        }
+
         // Consistencia: nivel → clase de color y etiqueta (mismo sistema que live-stats).
         function consClass(level) {
           switch (level) {
@@ -674,6 +694,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
                     <td class="matrix-lane-cell matrix-lane-laps <%= groupStart ? 'matrix-occ--group-start' : '' %>">
                       <% const oRank = (c && c.laps != null && occLapRank[col.key]) ? occLapRank[col.key][startKey] : null; %>
                       <%= c ? c.laps : '—' %><% if (oRank) { %><span class="lane-rank <%= oRank === 1 ? 'lane-rank--top' : '' %>">(<%= oRank %>)</span><% } %>
+                      <% if (c && c.mangas && c.mangas.length) { %><span class="matrix-manga" title="<%= mangaTitle(c.mangas) %>"><%= mangaTag(c.mangas) %></span><% } %>
                       <% if (c && c.drivers && c.drivers.length) { %>
                         <span class="matrix-driver" title="<%= (t('results.piloto_del_carril_en_esta_manga')) %>: <%= c.drivers.join(' · ') %>"><%= c.drivers.join(' · ') %></span>
                       <% } %>
@@ -687,6 +708,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
                     <td class="matrix-lane-cell matrix-lane-laps <%= isStart ? 'matrix-lane-cell--start' : '' %>">
                       <% const lRank = (pl && pl.laps != null && laneLapRank[lane]) ? laneLapRank[lane][startKey] : null; %>
                       <%= pl ? pl.laps : '—' %><% if (lRank) { %><span class="lane-rank <%= lRank === 1 ? 'lane-rank--top' : '' %>">(<%= lRank %>)</span><% } %>
+                      <% if (pl && pl.mangas && pl.mangas.length) { %><span class="matrix-manga" title="<%= mangaTitle(pl.mangas) %>"><%= mangaTag(pl.mangas) %></span><% } %>
                       <% if (pl && pl.drivers && pl.drivers.length) { %>
                         <span class="matrix-driver" title="<%= (t('results.piloto_del_carril')) %>: <%= pl.drivers.join(' · ') %>"><%= pl.drivers.join(' · ') %></span>
                       <% } %>
@@ -880,6 +902,7 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
           if (pl.best_ms != null && (pcFastest[pl.lane] == null || pl.best_ms < pcFastest[pl.lane])) pcFastest[pl.lane] = pl.best_ms;
         }));
         const pcTime = ms => ms == null ? '—' : (ms / 1000).toFixed(3).replace('.', ',');
+        const pcShowDrivers = race.type === 'championship';
       %>
       <% if (!pcRows.length) { %>
         <p class="pc-empty"><%= t('results.por_carril_vacio') %></p>
@@ -888,16 +911,16 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
         <table class="pc-table">
           <thead>
             <tr>
-              <th rowspan="2" class="pc-pos">#</th>
+              <th rowspan="2" class="pc-pos pc-sort" data-col="0" data-dir="asc" title="<%= t('results.por_carril_orden_general') %>">#</th>
               <th rowspan="2" class="pc-name"><%= t('common.participante') %></th>
-              <th rowspan="2" class="pc-num"><%= t('results.por_carril_vueltas') %></th>
-              <th rowspan="2" class="pc-num" title="<%= t('results.por_carril_sector_ayuda', { max: comaSectors - 1 }) %>"><%= t('results.por_carril_sector') %></th>
+              <th rowspan="2" class="pc-num pc-sort" data-col="2" data-dir="desc" title="<%= t('results.por_carril_ordenar') %>"><%= t('results.por_carril_vueltas') %></th>
+              <th rowspan="2" class="pc-num pc-sort" data-col="3" data-dir="desc" title="<%= t('results.por_carril_sector_ayuda', { max: comaSectors - 1 }) %>"><%= t('results.por_carril_sector') %></th>
               <th colspan="<%= pcLanes.length %>" class="pc-grp"><%= t('results.por_carril_vueltas_carril') %></th>
               <th colspan="<%= pcLanes.length %>" class="pc-grp"><%= t('results.por_carril_mejor_carril') %></th>
             </tr>
             <tr>
-              <% pcLanes.forEach((l, k) => { %><th class="pc-lane <%= k === 0 ? 'pc-first' : '' %>"><%= t('results.por_carril_abrev') %><%= l %></th><% }) %>
-              <% pcLanes.forEach((l, k) => { %><th class="pc-lane <%= k === 0 ? 'pc-first' : '' %>"><%= t('results.por_carril_abrev') %><%= l %></th><% }) %>
+              <% pcLanes.forEach((l, k) => { %><th class="pc-lane pc-sort <%= k === 0 ? 'pc-first' : '' %>" data-col="<%= 4 + k %>" data-dir="desc" title="<%= t('results.por_carril_ordenar') %>"><%= t('results.por_carril_abrev') %><%= l %></th><% }) %>
+              <% pcLanes.forEach((l, k) => { %><th class="pc-lane pc-sort <%= k === 0 ? 'pc-first' : '' %>" data-col="<%= 4 + pcLanes.length + k %>" data-dir="asc" title="<%= t('results.por_carril_ordenar') %>"><%= t('results.por_carril_abrev') %><%= l %></th><% }) %>
             </tr>
           </thead>
           <tbody>
@@ -907,17 +930,17 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
                  const showSett = r.last_manga_coma > 0 || r.last_manga_coma_manual;
             %>
               <tr class="<%= i < 3 ? 'pc-top-' + (i + 1) : '' %>">
-                <td class="pc-pos"><span class="pc-badge"><%= i + 1 %></span></td>
+                <td class="pc-pos" data-v="<%= i %>"><span class="pc-badge"><%= i + 1 %></span></td>
                 <td class="pc-name">
                   <% if (r.color) { %><span class="pc-dot" style="background:<%= r.color %>"></span><% } %>
                   <strong><%= r.entity_name %></strong>
                 </td>
-                <td class="pc-num pc-total"><%= r.total_laps %></td>
-                <td class="pc-num pc-sett <%= r.last_manga_coma_manual ? 'is-manual' : '' %>"
+                <td class="pc-num pc-total" data-v="<%= r.total_laps %>"><%= r.total_laps %></td>
+                <td class="pc-num pc-sett <%= r.last_manga_coma_manual ? 'is-manual' : '' %>" data-v="<%= showSett ? r.last_manga_coma : '' %>"
                     title="<%= r.last_manga_coma_manual ? t('results.coma_manual_title', { max: comaSectors - 1 }) : t('results.coma_title', { max: comaSectors - 1 }) %>"><%= showSett ? Settori.fromComa(r.last_manga_coma, comaSectors) : '—' %></td>
-                <% pcLanes.forEach((l, k) => { %><td class="pc-lapcell <%= k === 0 ? 'pc-first' : '' %>"><%= byLane[l] ? byLane[l].laps : '—' %></td><% }) %>
+                <% pcLanes.forEach((l, k) => { %><td class="pc-lapcell <%= k === 0 ? 'pc-first' : '' %>" data-v="<%= byLane[l] && byLane[l].laps != null ? byLane[l].laps : '' %>"><%= byLane[l] ? byLane[l].laps : '—' %><% if (pcShowDrivers && byLane[l] && byLane[l].drivers && byLane[l].drivers.length) { const dr = byLane[l].driverRanks || byLane[l].drivers.map(n => ({ name: n })); %><span class="pc-driver" title="<%= t('results.piloto_del_carril') %>: <%= dr.map(d => d.rank ? t('results.piloto_puesto_carril', { name: d.name, rank: d.rank, total: d.total, laps: d.laps }) : d.name).join(' · ') %>"><% dr.forEach((d, di) => { %><% if (di) { %><span class="pc-drv__sep"> · </span><% } %><span class="pc-drv"><span class="pc-drv__name"><%= d.name %></span><% if (d.rank) { %><span class="lane-rank <%= d.rank === 1 ? 'lane-rank--top' : '' %>">(<%= d.rank %>)</span><% } %></span><% }) %></span><% } %></td><% }) %>
                 <% pcLanes.forEach((l, k) => { const b = byLane[l] ? byLane[l].best_ms : null; %>
-                  <td class="pc-timecell <%= k === 0 ? 'pc-first' : '' %> <%= (b != null && b === pcFastest[l]) ? 'is-fastest' : '' %>"><%= pcTime(b) %></td>
+                  <td class="pc-timecell <%= k === 0 ? 'pc-first' : '' %> <%= (b != null && b === pcFastest[l]) ? 'is-fastest' : '' %>" data-v="<%= b != null ? b : '' %>"><%= pcTime(b) %></td>
                 <% }) %>
               </tr>
             <% }) %>
@@ -948,7 +971,48 @@ thead .matrix-occ--group-start { box-shadow: inset 2px 0 0 #484f58; }
       .pc-timecell.is-fastest { color: #58a6ff; font-weight: 800; }
       .pc-legend { color: var(--vt-mute, #8b949e); font-size: .8rem; margin: .7rem .2rem; }
       .pc-empty { color: var(--vt-mute, #8b949e); padding: 1.2rem 0; }
+      .pc-table th.pc-sort { cursor: pointer; user-select: none; }
+      .pc-table th.pc-sort:hover { color: var(--vt-text, #e6edf3); }
+      .pc-table th.pc-sorted { color: #58a6ff; }
+      .pc-table th.pc-sorted::after { content: ' ▼'; font-size: .8em; }
+      .pc-table th.pc-sorted.is-asc::after { content: ' ▲'; }
+      .pc-driver { display: flex; justify-content: center; align-items: baseline; max-width: 9em; margin: 0 auto; white-space: nowrap; font-size: .62rem; font-weight: 500; line-height: 1.15; text-transform: none; color: #8b949e; }
+      .pc-drv { display: inline-flex; align-items: baseline; min-width: 0; }
+      .pc-drv__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+      .pc-drv .lane-rank, .pc-drv__sep { flex: none; }
+      .pc-drv__sep { padding: 0 .3em; }
+      @media print { .pc-table th.pc-sorted::after { content: ''; } .pc-driver { color: #444; } }
     </style>
+    <script>
+    (function () {
+      const table = document.querySelector('#tab-lanes .pc-table');
+      if (!table) return;
+      const tbody = table.tBodies[0];
+      const val = (tr, col) => {
+        const v = tr.cells[col] && tr.cells[col].dataset.v;
+        return v === '' || v == null ? null : Number(v);
+      };
+      let cur = { col: 0, asc: true };
+      table.querySelectorAll('th.pc-sort').forEach(th => {
+        th.addEventListener('click', () => {
+          const col = Number(th.dataset.col);
+          const asc = col === 0 ? true : (cur.col === col ? !cur.asc : th.dataset.dir === 'asc');
+          cur = { col, asc };
+          const rows = [...tbody.rows];
+          rows.sort((a, b) => {
+            const va = val(a, col), vb = val(b, col);
+            if (va == null && vb == null) return val(a, 0) - val(b, 0);
+            if (va == null) return 1;
+            if (vb == null) return -1;
+            return (asc ? va - vb : vb - va) || (val(a, 0) - val(b, 0));
+          });
+          rows.forEach(r => tbody.appendChild(r));
+          table.querySelectorAll('th.pc-sort').forEach(h => h.classList.remove('pc-sorted', 'is-asc'));
+          if (col !== 0) th.classList.add('pc-sorted', ...(asc ? ['is-asc'] : []));
+        });
+      });
+    })();
+    </script>
 
     <!-- ── Progression chart ── -->
     <div class="results-panel" id="tab-progression">

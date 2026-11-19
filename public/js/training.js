@@ -564,6 +564,7 @@ function goOwnerText(st) {
   if (st.reason === 'tanda_half')    return I18N.t('client.training.go_tanda_a_medias', { race, n: st.tandaNumber });
   if (st.reason === 'claimed')       return I18N.t('client.training.go_directo_abierto', { race });
   if (st.reason === 'pole')          return I18N.t('client.training.go_pole', { race });
+  if (st.reason === 'warmup')        return I18N.t('client.training.go_warmup', { race });
   if (st.reason === 'sim_replay')    return I18N.t('client.training.go_carrera_simulada');
   return '';
 }

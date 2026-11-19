@@ -396,7 +396,18 @@
       "n_vueltas": "· {{n}} giri",
       "voz_mejor_vuelta": "Giro migliore, {{time}}",
       "voz_nueva_pole": "Nuova pole, {{time}}",
-      "otra_sesion_en_pista": "⛔ C’è una manche o un allenamento di gara in pista: la pole potrà continuare quando finisce."
+      "otra_sesion_en_pista": "⛔ C’è una manche o un allenamento di gara in pista: la pole potrà continuare quando finisce.",
+      "add_driver": "➕ Aggiungi pilota",
+      "add_name": "Nome",
+      "add_categoria": "Categoria",
+      "add_coche": "Auto",
+      "add_save": "Aggiungi in fondo",
+      "add_cancel": "Annulla",
+      "add_dup": "Esiste già un partecipante con questo nome.",
+      "add_error": "Impossibile aggiungere. Riprova.",
+      "add_tanda_exists": "Le tande sono già state create dalla pole: non si può aggiungere.",
+      "add_hint": "Viene aggiunto in fondo alla lista e farà la sua qualifica.",
+      "add_hint_reopen": "La qualifica si riapre e il nuovo pilota parte per primo."
     },
     "race": {
       "borrar_este_cambio_devuelve_el_juego_a": "Eliminare questo cambio? Riporta il set tra i disponibili.",
@@ -594,7 +605,8 @@
       "go_directo_abierto": "Il diretto di «{{race}}» è aperto su questo computer: il prossimo GO avvierà la gara, non le prove libere.",
       "go_pole": "È in corso una pole in «{{race}}»: il prossimo GO è della pole.",
       "go_carrera_simulada": "È in riproduzione una gara simulata: il GO è della gara.",
-      "go_ceder": "Cedi il GO alle prove libere"
+      "go_ceder": "Cedi il GO alle prove libere",
+      "go_warmup": "C’è un warm-up in «{{race}}»: il prossimo GO è del warm-up."
     },
     "link-compare": {
       "loading": "Caricamento…",
@@ -848,6 +860,33 @@
       "si_es_el_mismo": "Se è lo stesso partecipante che corre di nuovo (per esempio un'altra sessione di prove), salva comunque. Se è un errore, controlla i nomi.",
       "revisar": "Controlla",
       "guardar_igualmente": "Salva comunque"
+    },
+    "warmup": {
+      "title": "Warm-up",
+      "start": "🔥 Avvia warm-up",
+      "min": "min",
+      "hint_ds": "Il tempo si imposta sul DS-300",
+      "standby_ds": "Warm-up pronto: premi GO sul DS-300",
+      "standby_sw": "Warm-up pronto: premi GO",
+      "go": "GO",
+      "cancel": "Annulla",
+      "running": "Warm-up in corso",
+      "paused": "Warm-up in pausa",
+      "pause": "PAUSE",
+      "resume": "Riprendi",
+      "end": "Termina warm-up",
+      "end_confirm": "Terminare il warm-up? Poi potrai dare il GO alla manche.",
+      "done": "✓ Warm-up concluso. Premi «Termina warm-up» e poi dai il GO alla manche.",
+      "again": "Ripeti warm-up",
+      "busy": "C’è un’altra sessione in pista.",
+      "error": "Impossibile completare l’azione del warm-up.",
+      "laps": "giri",
+      "best": "migliore",
+      "btn_armed": "Warm-up pronto: il prossimo GO è suo",
+      "btn_running": "Warm-up in pista",
+      "end_confirm_ds": "Terminare il warm-up? Premi anche STOP sul DS: PitWall non può fermare la centralina.",
+      "hint_ds_stop": "Per interromperlo prima, premi STOP sul DS.",
+      "lane_n": "Corsia {{n}}"
     }
   },
   "common": {
@@ -1763,6 +1802,7 @@
     "ninguno": "Nessuno",
     "pend": "Att.",
     "piloto_del_carril": "Pilota della corsia",
+    "piloto_puesto_carril": "{{name}}: {{rank}}º di {{total}} piloti nella corsia · {{laps}} giri",
     "piloto_del_carril_en_esta_manga": "Pilota della corsia in questa manche",
     "pinos": "Pini",
     "pista": "Pista",
@@ -1816,9 +1856,15 @@
     "por_carril_mejor_carril": "Miglior tempo per corsia",
     "por_carril_abrev": "C",
     "por_carril_vacio": "Ancora nessun giro registrato.",
-    "por_carril_leyenda": "Nell'ordine della classifica generale. Settore in blu = inserito a mano; in grigio = calcolato dal tempo. In blu, il miglior tempo di ogni corsia tra tutti i partecipanti.",
+    "por_carril_leyenda": "Nell'ordine della classifica generale. Settore in blu = inserito a mano; in grigio = calcolato dal tempo. In blu, il miglior tempo di ogni corsia tra tutti i partecipanti. Clicca sul titolo di una colonna per ordinare; di nuovo, al contrario. «#» torna all'ordine generale.",
+    "por_carril_ordenar": "Clicca per ordinare; di nuovo, al contrario.",
+    "por_carril_orden_general": "Torna all'ordine della classifica generale",
     "por_carril_hoja": "Classifica per corsia",
-    "por_carril_mejor": "Migliore"
+    "por_carril_mejor": "Migliore",
+    "celda_manga": "M{{m}}",
+    "celda_tanda_manga": "B{{t}}·M{{m}}",
+    "dest_manga_sin_pista": "Manche {{m}}",
+    "dest_tanda_manga_sin_pista": "Batteria {{t}} · Manche {{m}}"
   },
   "results-index": {
     "buscar_carrera_equipo_o_piloto": "Cerca gara, team o pilota…",
@@ -2036,7 +2082,13 @@
     "upd_novedades_d": "La cronologia completa delle modifiche, su GitHub.",
     "actualizaciones_nota": "Si controlla all'avvio e ogni 6 ore. Non si installa mai con una manche, prove libere o una pole in corso, e prima di installare si salva una copia del database accanto ad esso (si conservano le ultime 3). Le tue gare e impostazioni non vengono toccate.",
     "sectores_por_vuelta": "Settori per giro",
-    "sectores_por_vuelta_desc": "In quanti settori si divide un giro (100 di default, la scala di Area Corse). I settori vanno da 0 a questo numero meno 1. Se lo cambi, quelli già inseriti vengono riscalati in proporzione."
+    "sectores_por_vuelta_desc": "In quanti settori si divide un giro (100 di default, la scala di Area Corse). I settori vanno da 0 a questo numero meno 1. Se lo cambi, quelli già inseriti vengono riscalati in proporzione.",
+    "sprint_warmup": "Warm-up prima di ogni manche (sprint)",
+    "sprint_warmup_desc": "Aggiunge il pulsante «Warm-up» nella diretta delle gare sprint: qualche minuto di riscaldamento con cronometro e giri che non vengono salvati, poi la manche parte da zero.",
+    "sprint_pole_add": "Aggiungere piloti durante la qualifica (sprint)",
+    "sprint_pole_add_desc": "Permette di aggiungere in fondo alla qualifica un pilota arrivato tardi, anche a qualifica finita, finché non sono state create le batterie.",
+    "sprint_desactivado": "Disattivato",
+    "sprint_activado": "Attivato"
   },
   "shifts-live": {
     "a_punto": "In ordine",
@@ -2708,7 +2760,8 @@
   "goowner": {
     "ocupado_race": "C’è una manche in corso: aspetta che finisca o fermala prima.",
     "ocupado_pole": "C’è un pilota della pole in pista: termina o ferma il suo tentativo prima.",
-    "ocupado_competition": "C’è un allenamento di gara in pista: fermalo prima."
+    "ocupado_competition": "C’è un allenamento di gara in pista: fermalo prima.",
+    "ocupado_warmup": "C’è un warm-up in pista: termina o ferma prima quello."
   },
   "header": {
     "tamano_de_letra": "Dimensione del testo",

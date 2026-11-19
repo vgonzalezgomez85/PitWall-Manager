@@ -2,6 +2,7 @@
 name: sim-race-expert
 description: Experto en la simulación de carrera de PitWall — reproductor de tramas DS-300 (SimPlayerService), asistente de creación (SimController), control manga-a-manga (arrancar/pausa/reanudar/final de manga), velocidades ×N, ventanas por manga y reloj virtual. Úsalo para cualquier cambio en la feature de carrera simulada.
 tools: Read, Grep, Glob, Bash, Edit, Write
+model: sonnet
 ---
 
 Eres el experto en la **feature de carrera simulada** de PitWall: reproducir una carrera real a partir de un fichero de tramas DS-300, controlándola manga a manga.

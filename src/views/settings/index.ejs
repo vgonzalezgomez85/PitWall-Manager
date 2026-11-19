@@ -623,6 +623,30 @@ const navItems = [
               </div>
               <input type="number" min="0" max="10" step="0.1" class="vt-inp is-mono st-row__ctl" value="<%= (lateCrossingGraceMs / 1000).toString() %>" data-pref-ms="late_crossing_grace_ms" aria-label="<%= t('settings.espera_de_cruces_tras_el_final_s') %>">
             </div>
+            <div class="st-row st-row--wrap">
+              <div class="st-row__txt">
+                <div class="st-row__t"><%= t('settings.sprint_warmup') %></div>
+                <div class="st-row__d"><%= t('settings.sprint_warmup_desc') %></div>
+              </div>
+              <div class="vt-selw st-row__ctl st-row__ctl--wide">
+                <select data-pref="sprint_warmup" aria-label="<%= t('settings.sprint_warmup') %>">
+                  <option value="off" <%= sprintWarmup === 'off' ? 'selected' : '' %>><%= t('settings.sprint_desactivado') %></option>
+                  <option value="on" <%= sprintWarmup === 'on' ? 'selected' : '' %>><%= t('settings.sprint_activado') %></option>
+                </select>
+              </div>
+            </div>
+            <div class="st-row st-row--wrap">
+              <div class="st-row__txt">
+                <div class="st-row__t"><%= t('settings.sprint_pole_add') %></div>
+                <div class="st-row__d"><%= t('settings.sprint_pole_add_desc') %></div>
+              </div>
+              <div class="vt-selw st-row__ctl st-row__ctl--wide">
+                <select data-pref="sprint_pole_add" aria-label="<%= t('settings.sprint_pole_add') %>">
+                  <option value="off" <%= sprintPoleAdd === 'off' ? 'selected' : '' %>><%= t('settings.sprint_desactivado') %></option>
+                  <option value="on" <%= sprintPoleAdd === 'on' ? 'selected' : '' %>><%= t('settings.sprint_activado') %></option>
+                </select>
+              </div>
+            </div>
             <div class="st-row st-row--hint" hidden><div class="st-row__d" id="prefsMsg" role="status"></div></div>
           </div>
           <%

@@ -147,6 +147,48 @@
         </svg>
         <span><%= t('live.vista') %></span>
       </button>
+      <% if (warmupEnabled && manga.status === 'pending' && !isActive) { %>
+        <%# Warm-up (sprint, Ajustes → Preferencias): calentamiento antes de la manga en
+            su propia ventana; no guarda vueltas. Armado, el próximo GO es suyo: el botón lo dice. %>
+        <button id="warmupBtn" class="lbtn lbtn--back" type="button"
+                onclick="openWarmup()" title="<%= t('client.warmup.title') %>">
+          <span id="warmupBtnTxt">🔥 <%= t('client.warmup.title') %></span>
+        </button>
+        <script>
+          (function () {
+            const BASE = '/races/<%= race.id %>/mangas/<%= manga.id %>/warmup';
+            const MANGA_ID = <%- Number(manga.id) %>;
+            let win = null;
+            window.openWarmup = function () {
+              if (win && !win.closed) { win.focus(); return; }
+              win = window.open(BASE, 'pw-warmup-<%= manga.id %>', 'width=460,height=600');
+            };
+            const btn = document.getElementById('warmupBtn');
+            const txt = document.getElementById('warmupBtnTxt');
+            const LABEL = {
+              idle:    '🔥 ' + I18N.t('client.warmup.title'),
+              standby: '🔥 ' + I18N.t('client.warmup.btn_armed'),
+              running: '🔥 ' + I18N.t('client.warmup.btn_running'),
+            };
+            const paint = (state) => {
+              const key = state === 'standby' ? 'standby' : (state === 'running' || state === 'paused') ? 'running' : 'idle';
+              txt.textContent = LABEL[key];
+              btn.style.outline = key === 'idle' ? '' : '2px solid #f0883e';
+            };
+            fetch(BASE + '/state').then(r => r.json()).then(j => paint(j.state)).catch(() => {});
+            const mine = (d) => d && d.mangaId === MANGA_ID;
+            window.addEventListener('load', () => {
+              if (typeof io !== 'function') return;
+              const s = io();
+              s.on('warmup:standby',  (d) => { if (mine(d)) paint('standby'); });
+              s.on('warmup:started',  (d) => { if (mine(d)) paint('running'); });
+              s.on('warmup:finished', (d) => { if (mine(d)) paint('idle'); });
+              s.on('warmup:aborted',  (d) => { if (mine(d)) paint('idle'); });
+              s.on('manga:started',   () => paint('idle'));
+            });
+          })();
+        </script>
+      <% } %>
       <%# Clasificación estimada acoplada a la derecha (filas y tarjetas).
           Estado por carrera en localStorage; ?side=standings|none lo fuerza. %>
       <button id="sideBtn" class="lbtn lbtn--back lbtn--icon lbtn--toggle" type="button" aria-pressed="false"

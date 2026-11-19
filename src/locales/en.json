@@ -396,7 +396,18 @@
       "n_vueltas": "· {{n}} laps",
       "voz_mejor_vuelta": "Best lap, {{time}}",
       "voz_nueva_pole": "New pole, {{time}}",
-      "otra_sesion_en_pista": "⛔ A heat or a competition practice is on track: pole will continue when it ends."
+      "otra_sesion_en_pista": "⛔ A heat or a competition practice is on track: pole will continue when it ends.",
+      "add_driver": "➕ Add driver",
+      "add_name": "Name",
+      "add_categoria": "Category",
+      "add_coche": "Car",
+      "add_save": "Add to the end",
+      "add_cancel": "Cancel",
+      "add_dup": "A participant with that name already exists.",
+      "add_error": "Could not add. Please try again.",
+      "add_tanda_exists": "Heats were already created from the pole: cannot add.",
+      "add_hint": "Added at the end of the list; they will get their pole run.",
+      "add_hint_reopen": "The qualifying reopens and the new driver goes next."
     },
     "race": {
       "borrar_este_cambio_devuelve_el_juego_a": "Delete this change? Returns the set to available.",
@@ -594,7 +605,8 @@
       "go_directo_abierto": "The live view of “{{race}}” is open on this computer: the next GO will start the race, not training.",
       "go_pole": "A pole session of “{{race}}” is in progress: the next GO belongs to the pole.",
       "go_carrera_simulada": "A simulated race is being replayed: GO belongs to the race.",
-      "go_ceder": "Give GO to training"
+      "go_ceder": "Give GO to training",
+      "go_warmup": "There is a warm-up in “{{race}}”: the next GO belongs to the warm-up."
     },
     "link-compare": {
       "loading": "Loading…",
@@ -848,6 +860,33 @@
       "si_es_el_mismo": "If it is the same participant running again (for example, another practice session), save anyway. If it is a mistake, check the names.",
       "revisar": "Review",
       "guardar_igualmente": "Save anyway"
+    },
+    "warmup": {
+      "title": "Warm-up",
+      "start": "🔥 Start warm-up",
+      "min": "min",
+      "hint_ds": "The time is set on the DS-300",
+      "standby_ds": "Warm-up ready: press GO on the DS-300",
+      "standby_sw": "Warm-up ready: press GO",
+      "go": "GO",
+      "cancel": "Cancel",
+      "running": "Warm-up running",
+      "paused": "Warm-up paused",
+      "pause": "PAUSE",
+      "resume": "Resume",
+      "end": "End warm-up",
+      "end_confirm": "End the warm-up? You can then give the GO for the heat.",
+      "done": "✓ Warm-up finished. Press “End warm-up”, then give the GO for the heat.",
+      "again": "Repeat warm-up",
+      "busy": "Another session is on track.",
+      "error": "The warm-up action could not be completed.",
+      "laps": "laps",
+      "best": "best",
+      "btn_armed": "Warm-up ready: the next GO is for it",
+      "btn_running": "Warm-up on track",
+      "end_confirm_ds": "End the warm-up? Also press STOP on the DS: PitWall cannot stop the box.",
+      "hint_ds_stop": "To cut it short, press STOP on the DS.",
+      "lane_n": "Lane {{n}}"
     }
   },
   "common": {
@@ -1763,6 +1802,7 @@
     "ninguno": "None",
     "pend": "Pend.",
     "piloto_del_carril": "Lane driver",
+    "piloto_puesto_carril": "{{name}}: #{{rank}} of {{total}} drivers on the lane · {{laps}} laps",
     "piloto_del_carril_en_esta_manga": "Lane driver in this heat",
     "pinos": "Crashes",
     "pista": "Lane",
@@ -1816,9 +1856,15 @@
     "por_carril_mejor_carril": "Best time per lane",
     "por_carril_abrev": "L",
     "por_carril_vacio": "No laps recorded yet.",
-    "por_carril_leyenda": "In overall standings order. Sector in blue = entered by hand; in grey = calculated from time. In blue, the best time on each lane among all participants.",
+    "por_carril_leyenda": "In overall standings order. Sector in blue = entered by hand; in grey = calculated from time. In blue, the best time on each lane among all participants. Click a column heading to sort by it; click again to reverse. «#» goes back to the overall order.",
+    "por_carril_ordenar": "Click to sort; click again to reverse.",
+    "por_carril_orden_general": "Back to overall standings order",
     "por_carril_hoja": "Standings by lane",
-    "por_carril_mejor": "Best"
+    "por_carril_mejor": "Best",
+    "celda_manga": "H{{m}}",
+    "celda_tanda_manga": "R{{t}}·H{{m}}",
+    "dest_manga_sin_pista": "Heat {{m}}",
+    "dest_tanda_manga_sin_pista": "Round {{t}} · Heat {{m}}"
   },
   "results-index": {
     "buscar_carrera_equipo_o_piloto": "Search race, team or driver…",
@@ -2036,7 +2082,13 @@
     "upd_novedades_d": "The full changelog, on GitHub.",
     "actualizaciones_nota": "Checked at startup and every 6 hours. It never installs while a heat, practice or pole session is running, and before installing it saves a copy of the database next to it (the last 3 are kept). Your races and settings are not touched.",
     "sectores_por_vuelta": "Sectors per lap",
-    "sectores_por_vuelta_desc": "How many sectors a lap is divided into (100 by default, the Area Corse scale). Sectors go from 0 to this number minus 1. If you change it, those already entered are rescaled proportionally."
+    "sectores_por_vuelta_desc": "How many sectors a lap is divided into (100 by default, the Area Corse scale). Sectors go from 0 to this number minus 1. If you change it, those already entered are rescaled proportionally.",
+    "sprint_warmup": "Warm-up before each heat (sprint)",
+    "sprint_warmup_desc": "Adds a «Warm-up» button to the live view of sprint races: a few minutes of warm-up with a timer and laps that are not saved, and then the heat starts from zero.",
+    "sprint_pole_add": "Add drivers during qualifying (sprint)",
+    "sprint_pole_add_desc": "Lets you add a late driver at the end of the qualifying, even once it has finished, as long as the rounds have not been created.",
+    "sprint_desactivado": "Off",
+    "sprint_activado": "On"
   },
   "shifts-live": {
     "a_punto": "Near",
@@ -2708,7 +2760,8 @@
   "goowner": {
     "ocupado_race": "A heat is running: wait for it to end or stop it first.",
     "ocupado_pole": "A pole driver is on track: finish or stop their run first.",
-    "ocupado_competition": "A competition practice is on track: stop it first."
+    "ocupado_competition": "A competition practice is on track: stop it first.",
+    "ocupado_warmup": "A warm-up is on track: finish or stop it first."
   },
   "header": {
     "tamano_de_letra": "Text size",

@@ -1857,6 +1857,8 @@ body:has(.pole-timing-fit) { overflow: hidden; }
   outline: none; border-color: var(--pb-gold);
   background: rgba(255,255,255,.06);
 }
+.pole-edit-input--wide { width: 100%; font-family: inherit; }
+.pole-add-msg { font-size: .8rem; color: #f85149; min-height: 1em; }
 .pole-edit-actions {
   display: flex; justify-content: flex-end; gap: 10px;
   margin-top: 18px;

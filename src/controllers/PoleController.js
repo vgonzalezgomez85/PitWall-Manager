@@ -26,6 +26,7 @@ const Tanda              = require('../models/Tanda');
 const Manga              = require('../models/Manga');
 
 const LaneColors = require('../services/LaneColors');
+const SprintExtras = require('../services/SprintExtras');
 
 // Una sola sesión en pista: con una manga o un entreno de competición corriendo la
 // pole no se arma ni arranca. `manga_running` / `competition_running`.
@@ -174,6 +175,7 @@ class PoleController {
       softwareGo: SerialService.softwareGo,  // BART/TicTac/simulación: PitWall da el GO, no la caja
       blocked,
       poleLocked: timedEntries.length > 0,   // ya hay tiempos → no se puede cambiar la regla
+      poleAdd:    SprintExtras.poleAddEnabled(race),
     });
   }
 
@@ -357,6 +359,43 @@ class PoleController {
     res.redirect(`/races/${race.id}/pole/timing`);
   }
 
+  // POST /races/:id/pole/entry/add — añade un piloto AL FINAL de la pole, con la
+  // sesión ya en marcha (llega alguien tarde) o incluso cerrada (se reabre,
+  // siempre que aún no se hayan creado las tandas). Solo sprint individual y con
+  // el ajuste `sprint_pole_add` encendido (SprintExtras). Responde JSON.
+  static addEntry(req, res) {
+    const race = Race.findById(req.params.id);
+    if (!race) return res.status(404).json({ ok: false, error: 'race_not_found' });
+    if (!race.has_pole) return res.status(400).json({ ok: false, error: 'no_pole' });
+    if (!SprintExtras.poleAddEnabled(race)) return res.status(403).json({ ok: false, error: 'disabled' });
+
+    const session = PoleSession.findByRace(race.id);
+    if (!session) return res.status(400).json({ ok: false, error: 'no_session' });
+
+    const name = String(req.body.name || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+    if (!name) return res.status(400).json({ ok: false, error: 'name_required' });
+    if (PoleSession.nameTaken(session.id, name)) return res.status(409).json({ ok: false, error: 'duplicate' });
+
+    const wasDone = session.status === 'done';
+    // Si las tandas ya nacieron de la clasificación, un piloto nuevo las descuadraría.
+    if (wasDone && Tanda.findByRace(race.id).length > 0) {
+      return res.status(409).json({ ok: false, error: 'tanda_exists' });
+    }
+
+    const categoria = race.has_categoria ? (String(req.body.categoria || '').trim().slice(0, 40) || null) : null;
+    const coche     = race.has_coche     ? (String(req.body.coche     || '').trim().slice(0, 60) || null) : null;
+    const entryId = PoleSession.addEntryAtEnd({
+      poleSessionId: session.id, entityType: 'driver', entityName: name, categoria, coche,
+    });
+
+    const entries = PoleSession.getEntriesOrdered(session.id);
+    if (wasDone) PoleSession.reopen(session.id, entries.findIndex(e => e.id === entryId));
+
+    const payload = { raceId: race.id, id: entryId, name, categoria, coche, total: entries.length, reopened: wasDone };
+    SocketService.emit('pole:entry_added', payload);
+    res.json({ ok: true, ...payload });
+  }
+
   // POST /races/:id/pole/next  — advance to next participant
   static advanceParticipant(req, res) {
     const race = Race.findById(req.params.id);
@@ -397,7 +436,9 @@ class PoleController {
     const allTimed = entries.every(e => e.lap_time_ms != null);
 
     res.render('races/pole-results', {
-      t: req.t, race, session, entries, allTimed, LANE_COLORS: LaneColors.forRace(race)
+      t: req.t, race, session, entries, allTimed, LANE_COLORS: LaneColors.forRace(race),
+      // Con la pole cerrada solo se puede añadir mientras no existan las tandas.
+      poleAdd: SprintExtras.poleAddEnabled(race) && Tanda.findByRace(race.id).length === 0,
     });
   }
 

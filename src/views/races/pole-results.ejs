@@ -109,6 +109,11 @@ const poleHolderName = timedEntries.length > 0 ? timedEntries[0].entity_name : n
       <button type="button" id="btnEditTimes" class="pole-btn-edit">
         ✏️ <%= t('pole-results.editar_tiempos') %>
       </button>
+      <% if (session.status === 'done' && poleAdd) { %>
+        <button type="button" id="btnAddEntry" class="pole-btn-edit">
+          <%= t('client.pole-timing.add_driver') %>
+        </button>
+      <% } %>
       <% if (session.status !== 'done') { %>
         <a href="/races/<%= race.id %>/pole/lanes" class="pole-btn-confirm">
           🚦 <%= t('pole-results.asignar_carriles_de_salida') %> →
@@ -120,6 +125,42 @@ const poleHolderName = timedEntries.length > 0 ? timedEntries[0].entity_name : n
         </a>
       <% } %>
     </div>
+
+    <% if (session.status === 'done' && poleAdd) { %>
+    <!-- ── Añadir un piloto que llega tarde (oculto) — reabre la pole ── -->
+    <div id="addEditor" class="pole-bcast-card pole-edit-card" style="display:none">
+      <div class="pole-bcast-title">
+        <span class="pole-bcast-ico">➕</span>
+        <%= t('client.pole-timing.add_driver') %>
+        <span class="pole-edit-hint"><%= t('client.pole-timing.add_hint_reopen') %></span>
+      </div>
+      <div class="pole-edit-form">
+        <div class="pole-edit-row">
+          <input class="pole-edit-input pole-edit-input--wide" type="text" id="addName" maxlength="80" autocomplete="off"
+                 placeholder="<%= t('client.pole-timing.add_name') %>">
+        </div>
+        <% if (race.has_categoria) { %>
+          <div class="pole-edit-row">
+            <input class="pole-edit-input pole-edit-input--wide" type="text" id="addCategoria" maxlength="40" autocomplete="off"
+                   placeholder="<%= t('client.pole-timing.add_categoria') %>">
+          </div>
+        <% } %>
+        <% if (race.has_coche) { %>
+          <div class="pole-edit-row">
+            <input class="pole-edit-input pole-edit-input--wide" type="text" id="addCoche" maxlength="60" autocomplete="off"
+                   placeholder="<%= t('client.pole-timing.add_coche') %>">
+          </div>
+        <% } %>
+        <div class="pole-add-msg" id="addMsg" role="alert"></div>
+        <div class="pole-edit-actions">
+          <button type="button" id="btnCancelAdd" class="pole-btn-edit"><%= t('client.common.cancelar') %></button>
+          <button type="button" id="btnSaveAdd" class="pole-btn-confirm pole-btn-confirm--save">
+            <%= t('client.pole-timing.add_save') %>
+          </button>
+        </div>
+      </div>
+    </div>
+    <% } %>
 
     <!-- ── Editor de tiempos (oculto) ───────────────────────────────── -->
     <div id="timeEditor" class="pole-bcast-card pole-edit-card" style="display:none">
@@ -159,6 +200,44 @@ const poleHolderName = timedEntries.length > 0 ? timedEntries[0].entity_name : n
 </div>
 
 <script>
+// Añadir un piloto que llega tarde: reabre la pole (si aún no hay tandas) y vuelve
+// al cronometraje, donde queda como el siguiente en salir.
+(function () {
+  const open = document.getElementById('btnAddEntry');
+  if (!open) return;
+  const box = document.getElementById('addEditor');
+  const msg = document.getElementById('addMsg');
+  const val = (id) => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+  open.addEventListener('click', () => {
+    box.style.display = ''; open.style.display = 'none';
+    document.getElementById('addName').focus();
+  });
+  document.getElementById('btnCancelAdd').addEventListener('click', () => {
+    box.style.display = 'none'; open.style.display = ''; msg.textContent = '';
+  });
+  async function save() {
+    const name = val('addName');
+    if (!name) { document.getElementById('addName').focus(); return; }
+    const btn = document.getElementById('btnSaveAdd');
+    btn.disabled = true; msg.textContent = '';
+    try {
+      const r = await fetch('/races/<%= race.id %>/pole/entry/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, categoria: val('addCategoria'), coche: val('addCoche') }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok && j.ok) { location.href = '/races/<%= race.id %>/pole/timing'; return; }
+      msg.textContent = j.error === 'duplicate'    ? I18N.t('client.pole-timing.add_dup')
+                      : j.error === 'tanda_exists' ? I18N.t('client.pole-timing.add_tanda_exists')
+                      :                              I18N.t('client.pole-timing.add_error');
+    } catch (e) {
+      msg.textContent = I18N.t('client.pole-timing.add_error');
+    } finally { btn.disabled = false; }
+  }
+  document.getElementById('btnSaveAdd').addEventListener('click', save);
+  box.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); save(); } });
+})();
 document.getElementById('btnEditTimes').addEventListener('click', () => {
   document.getElementById('timeEditor').style.display = '';
   document.getElementById('btnEditTimes').style.display = 'none';

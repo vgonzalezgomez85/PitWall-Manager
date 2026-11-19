@@ -134,6 +134,34 @@ class PoleSession {
     db.prepare('UPDATE pole_entries SET lap_time_ms = 0, is_noshow = 1 WHERE id = ?').run(entryId);
   }
 
+  // ¿Ya hay una inscripción con ese nombre en la sesión? (sin distinguir mayúsculas)
+  static nameTaken(sessionId, name) {
+    const n = String(name || '').trim().toLowerCase();
+    return db.prepare('SELECT entity_name FROM pole_entries WHERE pole_session_id = ?')
+      .all(sessionId).some(r => String(r.entity_name || '').trim().toLowerCase() === n);
+  }
+
+  // Añade un participante AL FINAL de la lista, con la sesión ya empezada (o
+  // terminada). A diferencia de addEntry() fija order_idx, para que se quede
+  // detrás de los que ya tienen turno y no cuele delante de ellos.
+  static addEntryAtEnd({ poleSessionId, entityType, entityName, membersJson, categoria, coche }) {
+    const row = db.prepare(
+      'SELECT MAX(order_idx) AS m, COUNT(*) AS n FROM pole_entries WHERE pole_session_id = ?'
+    ).get(poleSessionId);
+    const orderIdx = row.m != null ? row.m + 1 : row.n;
+    return db.prepare(`
+      INSERT INTO pole_entries (pole_session_id, entity_type, entity_name, members_json, order_idx, categoria, coche)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(poleSessionId, entityType, entityName, membersJson ?? null, orderIdx,
+           categoria ?? null, coche ?? null).lastInsertRowid;
+  }
+
+  // Reabre una pole ya cerrada ('done') para cronometrar a quien llega tarde:
+  // vuelve a 'in_progress' apuntando al índice indicado.
+  static reopen(sessionId, idx) {
+    db.prepare("UPDATE pole_sessions SET status = 'in_progress', current_idx = ? WHERE id = ?").run(idx, sessionId);
+  }
+
   static advanceIdx(sessionId, newIdx) {
     db.prepare('UPDATE pole_sessions SET current_idx = ? WHERE id = ?').run(newIdx, sessionId);
   }

@@ -32,6 +32,7 @@
  * @param {object} s
  * @param {number|null} s.mangaRaceId    carrera con una manga en marcha o en pausa
  * @param {number|null} s.poleRaceId     carrera con una pole preparada o corriendo
+ * @param {number|null} [s.warmupRaceId] carrera con un warm-up preparado o corriendo
  * @param {{raceId:number, tandaNumber:number}|null} s.halfTanda  tanda a medias
  * @param {number|null} s.claimRaceId    carrera que alguien ha pedido
  * @param {boolean} s.tandaBoundary      acaba de terminar una tanda y la siguiente no está preparada
@@ -48,6 +49,7 @@ function decideGoOwner(s) {
   if (s.mangaRaceId != null) return { owner: 'race', reason: 'manga_running', raceId: s.mangaRaceId, claimed: true };
   if (s.remoteGo)            return { owner: s.remoteGo.owner, reason: 'remote_go', raceId: s.remoteGo.raceId ?? null, claimed: true };
   if (s.poleRaceId  != null) return { owner: 'pole', reason: 'pole',          raceId: s.poleRaceId,  claimed: true };
+  if (s.warmupRaceId != null) return { owner: 'warmup', reason: 'warmup',     raceId: s.warmupRaceId, claimed: true };
   if (s.simReplay)           return { owner: 'race', reason: 'sim_replay',    raceId: null,          claimed: true };
 
   const raceId = s.halfTanda ? s.halfTanda.raceId : s.claimRaceId;
@@ -90,6 +92,8 @@ const GO_EVENTS = new Set(['race_go', 'race_started']);
  * @returns {'race'|'pole'|'competition'|'training'|null}
  */
 function routeBoxEvent(event, s) {
+  // El warm-up (calentamiento antes de la manga) es opcional: sin él todo va como siempre.
+  const warmup = s.warmup || { ready: false, active: false, draining: false };
   if (s.mangaRunning) return 'race';
   if (GO_EVENTS.has(event)) {
     // Un heat en pista sigue con el GO de otro circuito.
@@ -97,16 +101,20 @@ function routeBoxEvent(event, s) {
     const owner = s.owner();
     if (owner === 'race') return 'race';
     if (owner === 'pole') return s.pole.ready ? 'pole' : null;
+    if (owner === 'warmup') return warmup.ready ? 'warmup' : null;
     return s.competition.ready ? 'competition' : 'training';
   }
   // El último cruce de cada carril llega justo después del fin de la manga.
   if (event === 'lane_crossing' && s.mangaLate) return 'race';
+  // `draining`: warm-up terminado en PitWall con una caja DS que sigue con su
+  // carrera hasta que le den STOP; sus cruces y su fin no son de nadie más.
+  if (warmup.active || warmup.draining) return 'warmup';
   if (s.pole.active)        return 'pole';
   if (s.competition.active) return 'competition';
   if (s.training.active)    return 'training';
   // Con un DS el entreno libre puede arrancar con el primer cruce (la caja ya
-  // corría): nunca con una pole o un heat esperando su GO.
-  if (event === 'lane_crossing' && !s.pole.ready && !s.competition.ready) return 'training';
+  // corría): nunca con una pole, un heat o un warm-up esperando su GO.
+  if (event === 'lane_crossing' && !s.pole.ready && !s.competition.ready && !warmup.ready) return 'training';
   return null;
 }
 

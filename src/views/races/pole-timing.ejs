@@ -51,7 +51,7 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
     <div class="pole-progress">
       <div class="pole-progress-head">
         <span class="pole-progress-lbl"><%= t('pole-timing.progreso_de_la_sesion') %></span>
-        <span class="pole-progress-val"><b><%= completed %></b> / <%= total %> <%= t('pole-timing.completados') %></span>
+        <span class="pole-progress-val"><b id="js-done-count"><%= completed %></b> / <span id="js-total-count"><%= total %></span> <%= t('pole-timing.completados') %></span>
       </div>
       <div class="pole-bar"><div class="pole-bar-fill" style="width: <%= progressPct %>%"></div></div>
     </div>
@@ -220,6 +220,32 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
           <!-- populated by JS / renderOrder — así se mantiene al día sin recargar
                cuando avanza el piloto actual (ver switchCurrent) -->
         </div>
+        <% if (!isGuestAccess && poleAdd) { %>
+        <!-- ── Añadir un piloto al final (llega tarde) — sprint, Ajustes → Preferencias ── -->
+        <div class="pole-add" id="js-add-wrap">
+          <button type="button" class="pole-add-btn" id="js-add-open">
+            <%= t('client.pole-timing.add_driver') %>
+          </button>
+          <div class="pole-add-form" id="js-add-form" style="display:none">
+            <input type="text" id="js-add-name" maxlength="80" autocomplete="off"
+                   placeholder="<%= t('client.pole-timing.add_name') %>">
+            <% if (race.has_categoria) { %>
+              <input type="text" id="js-add-categoria" maxlength="40" autocomplete="off"
+                     placeholder="<%= t('client.pole-timing.add_categoria') %>">
+            <% } %>
+            <% if (race.has_coche) { %>
+              <input type="text" id="js-add-coche" maxlength="60" autocomplete="off"
+                     placeholder="<%= t('client.pole-timing.add_coche') %>">
+            <% } %>
+            <div class="pole-add-hint"><%= t('client.pole-timing.add_hint') %></div>
+            <div class="pole-add-msg" id="js-add-msg" role="alert"></div>
+            <div class="pole-add-actions">
+              <button type="button" class="pole-add-save" id="js-add-save"><%= t('client.pole-timing.add_save') %></button>
+              <button type="button" class="pole-add-cancel" id="js-add-cancel"><%= t('client.pole-timing.add_cancel') %></button>
+            </div>
+          </div>
+        </div>
+        <% } %>
       </section>
 
       <!-- ── CLASIFICACIÓN EN VIVO ─────────────────────────────────── -->
@@ -494,6 +520,72 @@ function switchCurrent(name) {
   renderTower();
 }
 
+// ── Añadir piloto/equipo al final ────────────────────────────────────────
+function refreshNextChip() {
+  const idx  = seedEntries.findIndex(e => e.isCurrent);
+  const next = idx >= 0 ? seedEntries[idx + 1] : null;
+  const chip = document.getElementById('js-next-chip');
+  const chipName = document.getElementById('js-next-chip-name');
+  if (chip) chip.style.display = next ? '' : 'none';
+  if (chipName) chipName.textContent = next ? next.name : '';
+}
+function addEntryLocal(d) {
+  if (!d || !d.name || seedEntries.some(e => e.name === d.name)) return;
+  seedEntries.push({ name: d.name, categoria: d.categoria || null, bestLapMs: null,
+                     isNoShow: false, isCurrent: false, isDone: false });
+  const tot = document.getElementById('js-total-count');
+  if (tot) tot.textContent = String(seedEntries.length);
+  renderOrder();
+  renderTower();
+  refreshNextChip();
+}
+(function () {
+  const openB = document.getElementById('js-add-open');
+  if (!openB) return;
+  const form = document.getElementById('js-add-form');
+  const msg  = document.getElementById('js-add-msg');
+  const val  = (id) => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+  const reset = () => {
+    ['js-add-name', 'js-add-categoria', 'js-add-coche'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    msg.textContent = '';
+  };
+  openB.addEventListener('click', () => {
+    form.style.display = '';
+    openB.style.display = 'none';
+    document.getElementById('js-add-name').focus();
+  });
+  document.getElementById('js-add-cancel').addEventListener('click', () => {
+    form.style.display = 'none'; openB.style.display = ''; reset();
+  });
+  async function save() {
+    const name = val('js-add-name');
+    if (!name) { document.getElementById('js-add-name').focus(); return; }
+    const btn = document.getElementById('js-add-save');
+    btn.disabled = true; msg.textContent = '';
+    try {
+      const r = await fetch('/races/' + RACE_ID + '/pole/entry/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, categoria: val('js-add-categoria'), coche: val('js-add-coche') }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok && j.ok) {
+        addEntryLocal(j);          // el socket también lo avisa: addEntryLocal ignora duplicados
+        reset();
+        document.getElementById('js-add-name').focus();   // por si llegan varios seguidos
+      } else if (j.error === 'duplicate')        msg.textContent = I18N.t('client.pole-timing.add_dup');
+      else if (j.error === 'tanda_exists')       msg.textContent = I18N.t('client.pole-timing.add_tanda_exists');
+      else                                       msg.textContent = I18N.t('client.pole-timing.add_error');
+    } catch (e) {
+      msg.textContent = I18N.t('client.pole-timing.add_error');
+    } finally { btn.disabled = false; }
+  }
+  document.getElementById('js-add-save').addEventListener('click', save);
+  form.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); save(); } });
+})();
+
 // ── Estados ──────────────────────────────────────────────────────────────
 let state = IS_RUNNING ? 'running' : 'idle';
 
@@ -739,6 +831,7 @@ socket.on('pole:finished', ({ entryName, bestLapMs, lapCount }) => {
   enterFinished(bestLapMs, lapCount);
 });
 
+socket.on('pole:entry_added', (d) => { if (d && String(d.raceId) === String(RACE_ID)) addEntryLocal(d); });
 socket.on('manga:stopped',   () => { if (sessionBlocked) location.reload(); });
 socket.on('manga:cancelled', () => { if (sessionBlocked) location.reload(); });
 socket.on('training:standby', () => { if (sessionBlocked) location.reload(); });
@@ -831,6 +924,16 @@ if (IS_RUNNING) {
 .pole-omit--locked .pole-omit-switch { cursor: not-allowed; }
 .pole-omit-switch input:disabled + .pole-omit-track { cursor: not-allowed; }
 .pole-omit-lock { font-size: .8rem; }
+.pole-add { margin-top: .9rem; }
+.pole-add-btn, .pole-add-save { background: #1f6feb; color: #fff; border: 0; border-radius: 8px; padding: .55rem 1rem; font-weight: 700; cursor: pointer; font-size: .9rem; }
+.pole-add-btn { width: 100%; background: transparent; border: 1px dashed #1f6feb; color: #58a6ff; }
+.pole-add-btn:hover { background: rgba(31,111,235,.12); }
+.pole-add-cancel { background: transparent; color: #8b949e; border: 1px solid #30363d; border-radius: 8px; padding: .55rem 1rem; cursor: pointer; }
+.pole-add-form { display: flex; flex-direction: column; gap: .5rem; }
+.pole-add-form input { background: #0d1117; color: #e6edf3; border: 1px solid #30363d; border-radius: 8px; padding: .55rem .7rem; font-size: .95rem; }
+.pole-add-actions { display: flex; gap: .5rem; }
+.pole-add-hint { font-size: .72rem; color: #8b949e; }
+.pole-add-msg { font-size: .8rem; color: #f85149; min-height: 1em; }
 </style>
 
 <%- include('../partials/footer') %>

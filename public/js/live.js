@@ -2492,6 +2492,8 @@ function announce(text) {
     const mine = st.raceId === RACE_DATA.raceId || st.reason === 'sim_replay';
     // `no_live_viewer` de esta carrera: el join de este directo aún no ha llegado.
     if (mine && (st.owner === 'race' || st.reason === 'no_live_viewer')) { el.hidden = true; return; }
+    // El warm-up de ESTA carrera tiene su propio panel: no es «otra carrera».
+    if (mine && st.owner === 'warmup') { el.hidden = true; return; }
     const race = st.raceName || '';
     // Fin de tanda: el GO vuelve con «▶ Tanda N», no con «Recuperar».
     const atTandaEnd = RACE_DATA.nextTandaNumber != null || (mine && st.reason === 'tanda_boundary');

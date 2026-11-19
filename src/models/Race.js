@@ -116,6 +116,11 @@ class Race {
     db.prepare('UPDATE races SET lap_pin_required=? WHERE id=?').run(required ? 1 : 0, id);
   }
 
+  // Última duración de warm-up usada en la carrera (minutos), para proponerla otra vez.
+  static setWarmupMinutes(id, minutes) {
+    db.prepare('UPDATE races SET warmup_minutes = ? WHERE id = ?').run(minutes, id);
+  }
+
   static updateStatus(id, status) {
     const now = new Date().toISOString();
     if (status === 'active') {

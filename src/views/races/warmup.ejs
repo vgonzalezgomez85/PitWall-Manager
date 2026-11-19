@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="<%= lang %>">
+<head>
+  <meta charset="UTF-8">
+<%- include('../partials/i18n-client') %>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔥 <%= t('client.warmup.title') %> — <%= race.name %></title>
+  <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
+  <link rel="stylesheet" href="/css/fonts.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0d1117; color: #e6edf3; font-family: 'Inter', system-ui, sans-serif;
+           min-height: 100vh; display: flex; flex-direction: column; }
+    .wu-head { padding: .7rem 1rem; border-bottom: 1px solid #21262d; display: flex; justify-content: space-between; align-items: center; gap: .8rem; }
+    .wu-title { font-weight: 800; letter-spacing: .04em; font-size: 1.05rem; }
+    .wu-sub { font-size: .75rem; color: #8b949e; }
+    .wu-main { flex: 1; padding: 1rem; display: flex; flex-direction: column; gap: .8rem; }
+    .wu-status { text-align: center; font-size: .9rem; color: #8b949e; min-height: 1.2em; }
+    .wu-timer { font-family: 'IBM Plex Mono', monospace; font-size: 3.6rem; font-weight: 700; text-align: center; line-height: 1.05; }
+    .wu-timer.wu-urgent { color: #f85149; }
+    .wu-hint { font-size: .82rem; color: #8b949e; text-align: center; }
+    .wu-lanes { display: flex; flex-direction: column; gap: .3rem; }
+    .wu-lane { display: flex; justify-content: space-between; gap: .6rem; background: #161b22; border: 1px solid #21262d;
+               border-radius: 8px; padding: .4rem .7rem; font-size: .85rem; }
+    .wu-lane b { color: #58a6ff; }
+    .wu-lane span { color: #8b949e; font-family: 'IBM Plex Mono', monospace; }
+    .wu-msg { font-size: .8rem; color: #f85149; min-height: 1em; text-align: center; }
+    .wu-row { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: center; align-items: center; padding: .9rem 1rem 1.1rem; border-top: 1px solid #21262d; }
+    .wu-btn { background: transparent; color: #e6edf3; border: 1px solid #30363d; border-radius: 8px;
+              padding: .55rem 1.1rem; font-weight: 700; cursor: pointer; font-size: .9rem; }
+    .wu-btn[hidden] { display: none; }
+    .wu-btn:disabled { opacity: .5; cursor: default; }
+    .wu-btn--main { background: #1f6feb; border-color: #1f6feb; color: #fff; }
+    .wu-btn--end  { background: #da3633; border-color: #da3633; color: #fff; }
+    .wu-min { display: inline-flex; align-items: center; gap: .35rem; font-size: .85rem; color: #8b949e; }
+    .wu-min[hidden] { display: none; }
+    .wu-min input { width: 64px; text-align: center; background: #010409; color: #e6edf3; border: 1px solid #30363d;
+                    border-radius: 6px; padding: .4rem; font-family: 'IBM Plex Mono', monospace; font-size: 1rem; }
+  </style>
+</head>
+<body>
+  <div class="wu-head">
+    <div>
+      <div class="wu-title">🔥 <%= t('client.warmup.title') %></div>
+      <div class="wu-sub"><%= race.name %> · <%= t('common.manga') %> <%= manga.number %></div>
+    </div>
+  </div>
+
+  <div class="wu-main">
+    <div id="wuStatus" class="wu-status"></div>
+    <div id="wuTimer" class="wu-timer" hidden>00:00</div>
+    <div id="wuHint" class="wu-hint" hidden></div>
+    <div id="wuLanes" class="wu-lanes" hidden></div>
+    <div id="wuMsg" class="wu-msg" role="alert"></div>
+  </div>
+
+  <div class="wu-row">
+    <label id="wuMinWrap" class="wu-min" hidden>
+      <input id="wuMin" type="number" min="1" max="60" step="1" value="3">
+      <span><%= t('client.warmup.min') %></span>
+    </label>
+    <button type="button" id="wuStart"  class="wu-btn wu-btn--main" hidden><%= t('client.warmup.start') %></button>
+    <button type="button" id="wuGo"     class="wu-btn wu-btn--main" hidden>▶ <%= t('client.warmup.go') %></button>
+    <button type="button" id="wuPause"  class="wu-btn" hidden>⏸ <%= t('client.warmup.pause') %></button>
+    <button type="button" id="wuResume" class="wu-btn wu-btn--main" hidden>▶ <%= t('client.warmup.resume') %></button>
+    <button type="button" id="wuEnd"    class="wu-btn wu-btn--end" hidden>⏹ <%= t('client.warmup.end') %></button>
+  </div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+(function () {
+  const RACE_ID  = <%- JSON.stringify(String(race.id)) %>;
+  const MANGA_ID = <%- Number(manga.id) %>;
+  const BASE = '/races/' + RACE_ID + '/mangas/' + MANGA_ID + '/warmup';
+  const LIVE = '/races/' + RACE_ID + '/mangas/' + MANGA_ID + '/live';
+  const $ = (id) => document.getElementById(id);
+
+  let info = { state: 'idle', softwareGo: false, remoteGo: false, defaultMinutes: 3, lanes: [] };
+  const show = (id, on) => { const el = $(id); if (el) el.hidden = !on; };
+  const pad = (n) => String(n).padStart(2, '0');
+  function fmt(ms) { const t = Math.max(0, Math.round((ms || 0) / 1000)); return pad(Math.floor(t / 60)) + ':' + pad(t % 60); }
+  function fmtLap(ms) { return ms == null ? '—' : (ms / 1000).toFixed(3); }
+
+  function renderLanes() {
+    const box = $('wuLanes');
+    box.textContent = '';
+    (info.lanes || []).forEach(l => {
+      const row = document.createElement('div');
+      row.className = 'wu-lane';
+      const n = document.createElement('b'); n.textContent = l.name;
+      const v = document.createElement('span');
+      v.textContent = (l.laps || 0) + ' ' + I18N.t('client.warmup.laps')
+        + (l.bestLapMs != null ? ' · ' + I18N.t('client.warmup.best') + ' ' + fmtLap(l.bestLapMs) : '');
+      row.appendChild(n); row.appendChild(v); box.appendChild(row);
+    });
+    box.hidden = !(info.lanes && info.lanes.length) || !['running', 'paused', 'done'].includes(info.state);
+  }
+
+  function render() {
+    const st = info.state, sw = !!info.softwareGo;
+    $('wuMsg').textContent = '';
+    ['wuStart', 'wuGo', 'wuPause', 'wuResume', 'wuEnd', 'wuMinWrap', 'wuTimer', 'wuHint'].forEach(id => show(id, false));
+    $('wuStatus').textContent = '';
+
+    if (st === 'idle') {
+      show('wuStart', true);
+      if (sw) { show('wuMinWrap', true); if (!$('wuMin').dataset.touched) $('wuMin').value = info.defaultMinutes || 3; }
+      else    { $('wuHint').textContent = I18N.t('client.warmup.hint_ds'); show('wuHint', true); }
+    } else if (st === 'standby') {
+      $('wuStatus').textContent = sw ? I18N.t('client.warmup.standby_sw') : I18N.t('client.warmup.standby_ds');
+      if (sw) show('wuGo', true);
+      show('wuEnd', true);
+    } else if (st === 'running') {
+      $('wuStatus').textContent = I18N.t('client.warmup.running');
+      show('wuTimer', true);
+      if (!sw) { $('wuHint').textContent = I18N.t('client.warmup.hint_ds_stop'); show('wuHint', true); }
+      if (sw) show('wuPause', true);
+      show('wuEnd', true);
+    } else if (st === 'paused') {
+      $('wuStatus').textContent = I18N.t('client.warmup.paused');
+      show('wuTimer', true);
+      if (sw) show('wuResume', true);
+      show('wuEnd', true);
+    } else if (st === 'done') {
+      $('wuStatus').textContent = I18N.t('client.warmup.done');
+      show('wuEnd', true);
+    }
+    if (info.remainingMs != null && (st === 'running' || st === 'paused')) {
+      $('wuTimer').textContent = fmt(info.remainingMs);
+      $('wuTimer').classList.toggle('wu-urgent', info.remainingMs <= 10000 && st === 'running');
+    }
+    renderLanes();
+  }
+
+  const errText = (code) => /_running$/.test(code || '') ? I18N.t('client.warmup.busy') : I18N.t('client.warmup.error');
+  async function post(path, body) {
+    try {
+      const r = await fetch(BASE + '/' + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j.ok === false) { $('wuMsg').textContent = errText(j.error); return null; }
+      return j;
+    } catch (e) { $('wuMsg').textContent = errText(); return null; }
+  }
+  async function refresh() {
+    try { const r = await fetch(BASE + '/state'); if (r.ok) info = Object.assign(info, await r.json()); } catch (e) {}
+    render();
+  }
+
+  // Cierra esta ventana; si el navegador no deja, vuelve al directo.
+  function closeWindow() {
+    try { window.close(); } catch (e) {}
+    setTimeout(() => { location.href = LIVE; }, 300);
+  }
+
+  $('wuMin').addEventListener('input', () => { $('wuMin').dataset.touched = '1'; });
+  $('wuStart').addEventListener('click', async () => {
+    const j = await post('arm', { minutes: parseInt($('wuMin').value, 10) });
+    if (j) { info = Object.assign(info, j); render(); }
+  });
+  $('wuGo').addEventListener('click',     () => post('go'));
+  $('wuPause').addEventListener('click',  () => post('pause'));
+  $('wuResume').addEventListener('click', () => post('resume'));
+  // «Terminar warm-up»: corta (si seguía en pista), borra lo que se veía y cierra la ventana.
+  $('wuEnd').addEventListener('click', async () => {
+    const live = info.state === 'running' || info.state === 'paused';
+    // Con un DS PitWall no puede parar la caja: el operador tiene que darle STOP.
+    const ask = info.softwareGo ? I18N.t('client.warmup.end_confirm') : I18N.t('client.warmup.end_confirm_ds');
+    if (live && !confirm(ask)) return;
+    const j = await post('close');
+    if (j) closeWindow();
+  });
+
+  const sock = io();
+  const mine = (d) => d && d.mangaId === MANGA_ID;
+  sock.on('warmup:standby',  (d) => { if (mine(d)) { info.state = 'standby'; info.durationMs = d.durationMs; info.remainingMs = d.durationMs; info.lanes = d.lanes || []; render(); } });
+  sock.on('warmup:started',  (d) => { if (mine(d)) { info.state = 'running'; info.durationMs = d.durationMs; info.remainingMs = d.durationMs; info.lanes = d.lanes || []; render(); } });
+  sock.on('warmup:paused',   (d) => { if (mine(d)) { info.state = 'paused'; render(); } });
+  sock.on('warmup:resumed',  (d) => { if (mine(d)) { info.state = 'running'; render(); } });
+  sock.on('warmup:tick',     (d) => {
+    if (info.state !== 'running') return;
+    info.remainingMs = d.remainingMs;
+    $('wuTimer').textContent = fmt(d.remainingMs);
+    $('wuTimer').classList.toggle('wu-urgent', d.remainingMs <= 10000);
+  });
+  sock.on('warmup:lap', (d) => {
+    const l = (info.lanes || []).find(x => x.lane === d.lane);
+    if (l) { l.laps = d.laps; l.bestLapMs = d.bestLapMs; renderLanes(); }
+  });
+  sock.on('warmup:finished', (d) => { if (mine(d)) { info.state = 'done'; info.lanes = d.lanes || info.lanes; info.remainingMs = 0; render(); } });
+  sock.on('warmup:aborted',  (d) => { if (mine(d)) { info.state = 'idle'; info.lanes = []; render(); } });
+  // Ha arrancado la manga de verdad: esta ventana ya no hace falta.
+  sock.on('manga:started', () => closeWindow());
+
+  refresh();
+})();
+</script>
+</body>
+</html>

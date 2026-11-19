@@ -24,6 +24,7 @@ const SessionController           = require('../controllers/SessionController');
 const SettingsController          = require('../controllers/SettingsController');
 const DriverProfileController     = require('../controllers/DriverProfileController');
 const PoleController              = require('../controllers/PoleController');
+const WarmupController            = require('../controllers/WarmupController');
 const LapCorrectionController     = require('../controllers/LapCorrectionController');
 const TandaSummaryController      = require('../controllers/TandaSummaryController');
 const CircuitController           = require('../controllers/CircuitController');
@@ -390,6 +391,16 @@ router.post('/races/:id/pole/participant/resume', PoleController.resumeParticipa
 router.post('/races/:id/pole/participant/stop',  PoleController.stopParticipant);
 router.post('/races/:id/pole/participant/skip',  PoleController.skipParticipant);
 router.post('/races/:id/pole/next',              PoleController.advanceParticipant);
+router.post('/races/:id/pole/entry/add',         PoleController.addEntry);
+
+// Warm-up antes de la manga (calentamiento sin que empiece la carrera)
+router.get( '/races/:id/mangas/:mangaId/warmup',        WarmupController.page);
+router.get( '/races/:id/mangas/:mangaId/warmup/state',  WarmupController.state);
+router.post('/races/:id/mangas/:mangaId/warmup/arm',    WarmupController.arm);
+router.post('/races/:id/mangas/:mangaId/warmup/go',     WarmupController.go);
+router.post('/races/:id/mangas/:mangaId/warmup/pause',  WarmupController.pause);
+router.post('/races/:id/mangas/:mangaId/warmup/resume', WarmupController.resume);
+router.post('/races/:id/mangas/:mangaId/warmup/close',  WarmupController.close);
 router.post('/races/:id/pole/omit-first',        PoleController.setOmitFirstCrossing);
 router.get( '/races/:id/pole/results',           PoleController.results);
 router.post('/races/:id/pole/times',             PoleController.saveTimes);

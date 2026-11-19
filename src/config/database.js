@@ -218,6 +218,8 @@ const migrations = [
   `ALTER TABLE laps     ADD COLUMN is_exit INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE races    ADD COLUMN circuits_config TEXT NOT NULL DEFAULT '[]'`,
   `ALTER TABLE races ADD COLUMN has_pole INTEGER NOT NULL DEFAULT 0`,
+  // Warm-up antes de cada manga: última duración usada (min). 0 = nunca se ha usado.
+  `ALTER TABLE races ADD COLUMN warmup_minutes INTEGER NOT NULL DEFAULT 0`,
   `CREATE TABLE IF NOT EXISTS pole_sessions (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     race_id     INTEGER NOT NULL UNIQUE,
