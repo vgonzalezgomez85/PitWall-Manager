@@ -10,96 +10,91 @@ const circuitTxt = wizard.circuit_name
   : t('confirm.frase_circuito_a_mano', { carriles: wizard.lanes_count });
 %>
 <%- include('../partials/header', { pageTitle: t('wizard.confirm_title') }) %>
-<div class="container container--narrow">
+<div class="vt-page nr-page">
+  <div class="vt-wrap vt-wrap--narrow">
 
-  <%- include('../partials/wizard-progress', { current: 'confirm', hasPole: wizard.has_pole, skipSequence: !!wizard.circuit_id }) %>
+    <div class="nr-top">
+      <a href="/" class="vt-back-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        <%= t('common.inicio') %>
+      </a>
+      <%- include('../partials/wizard-progress', { current: 'confirm', hasPole: wizard.has_pole, skipSequence: !!wizard.circuit_id }) %>
+    </div>
 
-  <h1 class="page-title"><%= t('confirm.esta_todo_bien') %></h1>
-  <p class="page-subtitle cf-sub"><%= t('confirm.leelo_con_calma') %></p>
+    <h1><%= t('confirm.esta_todo_bien') %></h1>
+    <p class="nr-lead"><%= t('confirm.leelo_con_calma') %></p>
 
-  <section class="cf-card">
-    <div class="cf-row">
-      <p><%- t('confirm.frase_nombre', { nombre: '<b>' + escapeHtml(wizard.name) + '</b>', tipo: '<b>' + escapeHtml(typeTxt) + '</b>' }) %></p>
-      <a href="<%= backStep1 %>" class="btn btn--ghost cf-change"><%= t('confirm.cambiar') %></a>
-    </div>
-    <div class="cf-row">
-      <p>
-        <%= circuitTxt %>
-        <% if (minLap) { %><%= t('confirm.frase_vuelta_minima', { s: minLap }) %><% } %>
-      </p>
-      <a href="<%= backStep1 %>" class="btn btn--ghost cf-change"><%= t('confirm.cambiar') %></a>
-    </div>
-    <div class="cf-row">
-      <p><%= wizard.has_pole ? t('confirm.frase_con_pole') : t('confirm.frase_sin_pole') %></p>
-      <a href="<%= backStep1 %>" class="btn btn--ghost cf-change"><%= t('confirm.cambiar') %></a>
-    </div>
-    <% const extras = [];
-       if (wizard.passes > 1) extras.push(t('common.pasadas') + ': ' + wizard.passes);
-       if (wizard.lane_repeat > 1) extras.push(t('common.repetir_carril') + ': ' + wizard.lane_repeat);
-       if (wizard.tire_pairs_per_team > 0) extras.push(t('common.neumaticos_por_equipo') + ': ' + wizard.tire_pairs_per_team + ' ' + t('confirm.pares'));
-       if (wizard.has_categoria) extras.push(t('common.categoria_copa'));
-       if (wizard.has_coche) extras.push(t('common.coche'));
-    %>
-    <% if (extras.length) { %>
-      <div class="cf-row">
-        <p><%= t('confirm.frase_extras') %> <b><%= extras.join(' · ') %></b></p>
-        <a href="<%= backStep1 %>" class="btn btn--ghost cf-change"><%= t('confirm.cambiar') %></a>
+    <section class="vt-card nr-sum" style="margin-top:18px">
+      <div class="nr-sum__row">
+        <p><%- t('confirm.frase_nombre', { nombre: '<b>' + escapeHtml(wizard.name) + '</b>', tipo: '<b>' + escapeHtml(typeTxt) + '</b>' }) %></p>
+        <a href="<%= backStep1 %>" class="vt-btn vt-btn--ghost"><%= t('confirm.cambiar') %></a>
       </div>
+      <div class="nr-sum__row">
+        <p>
+          <%= circuitTxt %>
+          <% if (minLap) { %><%= t('confirm.frase_vuelta_minima', { s: minLap }) %><% } %>
+        </p>
+        <a href="<%= backStep1 %>" class="vt-btn vt-btn--ghost"><%= t('confirm.cambiar') %></a>
+      </div>
+      <div class="nr-sum__row">
+        <p><%= wizard.has_pole ? t('confirm.frase_con_pole') : t('confirm.frase_sin_pole') %></p>
+        <a href="<%= backStep1 %>" class="vt-btn vt-btn--ghost"><%= t('confirm.cambiar') %></a>
+      </div>
+      <% const extras = [];
+         if (wizard.passes > 1) extras.push(t('common.pasadas') + ': ' + wizard.passes);
+         if (wizard.lane_repeat > 1) extras.push(t('common.repetir_carril') + ': ' + wizard.lane_repeat);
+         if (wizard.tire_pairs_per_team > 0) extras.push(t('common.neumaticos_por_equipo') + ': ' + wizard.tire_pairs_per_team + ' ' + t('confirm.pares'));
+         if (wizard.has_categoria) extras.push(t('common.categoria_copa'));
+         if (wizard.has_coche) extras.push(t('common.coche'));
+      %>
+      <% if (extras.length) { %>
+        <div class="nr-sum__row">
+          <p><%= t('confirm.frase_extras') %> <b><%= extras.join(' · ') %></b></p>
+          <a href="<%= backStep1 %>" class="vt-btn vt-btn--ghost"><%= t('confirm.cambiar') %></a>
+        </div>
+      <% } %>
+      <div class="nr-sum__row nr-sum__row--seq">
+        <p><%= t('confirm.frase_orden_carriles') %></p>
+        <div class="seq-display">
+          <% wizard.lane_sequence.forEach((lane, i) => { %>
+            <% if (lane === 0) { %>
+              <span class="seq-display__lane seq-display__lane--rest"><%= t('confirm.descanso') %></span>
+            <% } else { %>
+              <span class="seq-display__lane" style="background:<%= LANE_COLORS[lane-1] %>"><%= lane %></span>
+            <% } %>
+            <% if (i < wizard.lane_sequence.length - 1) { %><span class="seq-display__arrow">→</span><% } %>
+          <% }) %>
+        </div>
+        <small class="nr-sum__hint"><%= t('confirm.el_tiempo_lo_pone_la_caja') %></small>
+      </div>
+    </section>
+
+    <% if (wizard.has_pole && wizard.participants?.length) { %>
+      <section class="vt-card">
+        <h2 class="nr-q"><%= t('confirm.participantes_de_pole') %></h2>
+        <div class="nr-chips">
+          <% wizard.participants.forEach((p) => { %>
+            <span class="nr-chip">
+              <%= p.name %>
+              <% if (p.members?.length) { %><small>(<%= p.members.join(', ') %>)</small><% } %>
+            </span>
+          <% }) %>
+        </div>
+      </section>
+    <% } else if (!wizard.has_pole) { %>
+      <p class="nr-note" style="margin-top:16px"><%= t('confirm.siguiente_paso_apuntar') %></p>
     <% } %>
-    <div class="cf-row cf-row--seq">
-      <p><%= t('confirm.frase_orden_carriles') %></p>
-      <div class="seq-display">
-        <% wizard.lane_sequence.forEach((lane, i) => { %>
-          <% if (lane === 0) { %>
-            <span class="seq-display__lane" style="background:#30363d;color:#c9d1d9;font-size:.7rem;padding:0 .4rem"><%= t('confirm.descanso') %></span>
-          <% } else { %>
-            <span class="seq-display__lane" style="background:<%= LANE_COLORS[lane-1] %>"><%= lane %></span>
-          <% } %>
-          <% if (i < wizard.lane_sequence.length - 1) { %><span class="seq-display__arrow">→</span><% } %>
-        <% }) %>
+
+    <form action="/races" method="POST">
+      <div class="nr-bar">
+        <a href="<%= wizard.has_pole ? '/races/new/step4' : (wizard.circuit_id ? '/races/new?back=1' : '/races/new/step3') %>" class="vt-btn vt-btn--ghost">← <%= t('wizard.back') %></a>
+        <div class="nr-bar__sum"></div>
+        <button type="submit" class="vt-btn vt-btn--primary">
+          <%= wizard.has_pole ? t('wizard.confirm_create') : t('confirm.crear_y_apuntar') %> →
+        </button>
       </div>
-      <small class="cf-hint"><%= t('confirm.el_tiempo_lo_pone_la_caja') %></small>
-    </div>
-  </section>
+    </form>
 
-  <% if (wizard.has_pole && wizard.participants?.length) { %>
-    <h2 class="section-title"><%= t('confirm.participantes_de_pole') %></h2>
-    <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:2rem">
-      <% wizard.participants.forEach((p, i) => { %>
-        <span class="badge badge--neutral" style="background:rgba(255,255,255,.06);font-size:.95rem">
-          <%= p.name %>
-          <% if (p.members?.length) { %>
-            <span style="color:#b3bcc6;font-size:.85rem;margin-left:.25rem">(<%= p.members.join(', ') %>)</span>
-          <% } %>
-        </span>
-      <% }) %>
-    </div>
-  <% } else if (!wizard.has_pole) { %>
-    <p class="cf-next"><%= t('confirm.siguiente_paso_apuntar') %></p>
-  <% } %>
-
-  <form action="/races" method="POST">
-    <div class="form-actions">
-      <a href="<%= wizard.has_pole ? '/races/new/step4' : (wizard.circuit_id ? '/races/new?back=1' : '/races/new/step3') %>" class="btn btn--ghost btn--lg">← <%= t('wizard.back') %></a>
-      <button type="submit" class="btn btn--primary btn--lg">
-        <%= wizard.has_pole ? t('wizard.confirm_create') : t('confirm.crear_y_apuntar') %> →
-      </button>
-    </div>
-  </form>
-
+  </div>
 </div>
-<style>
-  .cf-sub { font-size: 1.1rem; }
-  .cf-card { margin: 1.25rem 0 1.5rem; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-card); }
-  .cf-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
-            padding: 1rem 1.2rem; border-bottom: 1px solid var(--border); }
-  .cf-row:last-child { border-bottom: 0; }
-  .cf-row p { margin: 0; flex: 1 1 320px; font-size: 1.2rem; line-height: 1.5; }
-  .cf-row b { color: #fff; }
-  .cf-row--seq { display: grid; gap: .6rem; justify-content: stretch; }
-  .cf-change { min-height: 44px; }
-  .cf-hint { color: #b3bcc6; font-size: .95rem; }
-  .cf-next { margin: 0 0 1.5rem; padding: .9rem 1.1rem; border-radius: 12px; font-size: 1.05rem;
-             background: rgba(88,166,255,.08); border: 1px solid rgba(88,166,255,.3); }
-</style>
 <%- include('../partials/footer') %>

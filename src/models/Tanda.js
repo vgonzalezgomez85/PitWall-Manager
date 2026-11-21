@@ -55,6 +55,11 @@ class Tanda {
     return lastInsertRowid;
   }
 
+  static setEmptyLaneMode(id, emptyLaneMode) {
+    const mode = ['rotate', 'skip'].includes(emptyLaneMode) ? emptyLaneMode : 'fixed';
+    db.prepare('UPDATE tandas SET empty_lane_mode = ? WHERE id = ?').run(mode, id);
+  }
+
   static updateStatus(id, status) {
     db.prepare('UPDATE tandas SET status = ? WHERE id = ?').run(status, id);
   }

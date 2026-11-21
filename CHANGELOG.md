@@ -13,6 +13,20 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.69.0] — 2026-11-21
+
+### Añadido
+- **Todas las tandas en una sola pantalla**: al crear la carrera, **«¿Cuántas tandas tiene la carrera?»** (con − y +) y una tarjeta por tanda; un solo botón **«Crear las tandas»** las guarda todas o ninguna (una tanda vacía da error y no se crea nada). Al quitar una tanda que ya tiene pilotos, pregunta antes. En una carrera con tandas ya creadas, añadir o editar sigue siendo de una en una, en la misma pantalla.
+- **Dos formas de apuntar pilotos en la tanda**, a elegir en **Ajustes → Preferencias → «Cómo se apuntan los pilotos en la tanda»**: **Escribir en el carril** (por defecto; sugiere del catálogo al escribir, **Apuntar como nuevo** y el aviso «También en tanda N (se permite)») o **Arrastrar pilotos** (lista a la izquierda, arrastras a cualquier carril de cualquier tanda; si está ocupado se intercambian; también vale tocar el piloto y luego el carril; **Rellenar al azar**, **Vaciar** y **Añadir tanda**). En equipos, **Detalles** por carril con los miembros, y categoría y coche si la carrera los tiene. Sustituye al antiguo «tocar pilotos de una tanda».
+
+### Mejorado
+- **Asistente de nueva carrera con el estilo del resto del programa**: botón **← Inicio**, barra de pasos legible que solo muestra los pasos que tocan, tarjetas de opción con punto de radio y una barra de abajo con fondo y el resumen «Así queda…» (antes flotaba sin fondo y tapaba la tarjeta del circuito). Se conserva la letra grande.
+- **Sprint viene preseleccionado**.
+- **Sin pantalla «Comprobar» en el caso común**: sin pole y con el circuito elegido, **«Crear carrera y apuntar participantes»** crea la carrera directamente. Con pole o con el circuito a mano sigue habiendo Comprobar.
+
+### Corregido
+- Textos del asistente: los errores de participantes de la pole piden **al menos 2** (no «igual a carriles»), los carriles por circuito son **2-8**, y el campo se llama **«Vuelta mínima de la categoría»** (se confundía con Categoría/copa).
+
 ## [1.68.0] — 2026-11-19
 
 ### Añadido

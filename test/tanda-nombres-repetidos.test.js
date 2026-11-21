@@ -69,7 +69,7 @@ test('duplicatesIn devuelve cada repetido una vez y salta los vacíos', () => {
 test('tanda nueva con un piloto repetido: no se crea y vuelve el formulario con lo escrito', () => {
   const raceId = carrera();
   const res = crear(raceId, { drivers: { 0: { name: 'Ana' }, 1: { name: 'Beto' }, 2: { name: 'ANA ' } } });
-  assert.equal(res.view, 'races/tanda-new');
+  assert.equal(res.view, 'races/tandas');
   assert.deepEqual(res.data.errors, ['duplicate_participant_form']);
   assert.equal(res.data.body.drivers[2].name, 'ANA ', 'no se pierde lo escrito');
   assert.equal(tandas(raceId), 0, 'ni rastro de la tanda');
@@ -83,7 +83,7 @@ test('editar una tanda dejando dos equipos con el mismo nombre: no se guarda', (
   const res = fakeRes();
   TandaController.updateTanda({ params: { id: String(raceId), tandaId: String(tandaId) }, t: k => k,
     body: { teams: { 0: { id: String(a), name: 'Rojo' }, 1: { id: String(b), name: 'rojo' } } } }, res);
-  assert.equal(res.view, 'races/tanda-edit');
+  assert.equal(res.view, 'races/tandas');
   assert.deepEqual(res.data.errors, ['duplicate_participant_form']);
   assert.equal(db.prepare('SELECT name FROM teams WHERE id = ?').get(b).name, 'Azul', 'no se ha tocado');
 });

@@ -39,6 +39,9 @@ function defaultSequence(n) {
   return [...odds, ...evens.reverse()];
 }
 
+// Bloqueo de cambios de piloto al final de cada manga (resistencia), por defecto.
+const DEFAULT_LOCKOUT_MS = 120000;
+
 class RaceController {
 
   static index(req, res) {
@@ -63,6 +66,7 @@ class RaceController {
     req.session.wizard = {};
     const defaultCircuitId = RaceController._settingsCircuitId();
     const body = defaultCircuitId ? { circuit_id: defaultCircuitId } : {};
+    body.type = 'club';
     // Botones «Carrera sprint» / «Carrera resistencia» del inicio: el tipo ya
     // está decidido y el asistente no lo vuelve a preguntar.
     const typeLocked = ['club', 'championship'].includes(req.query.type);
@@ -92,6 +96,7 @@ class RaceController {
       if (times.length) circuitCategoryTimes[c.id] = times;
     }
     res.render('races/new-step1', { t: req.t, errors, body, typeLocked, savedCircuits, circuitCategoryTimes,
+      defaultLockoutS: DEFAULT_LOCKOUT_MS / 1000,
       settingsCircuitId: RaceController._settingsCircuitId() });
   }
 
@@ -108,7 +113,7 @@ class RaceController {
       has_coche:     w.has_coche     ? '1' : '',
       driver_min_total_min: w.driver_min_total_ms ? w.driver_min_total_ms / 60000 : '',
       driver_max_total_min: w.driver_max_total_ms ? w.driver_max_total_ms / 60000 : '',
-      driver_change_lockout_s: w.driver_change_lockout_ms != null ? w.driver_change_lockout_ms / 1000 : 120,
+      driver_change_lockout_s: w.driver_change_lockout_ms != null ? w.driver_change_lockout_ms / 1000 : DEFAULT_LOCKOUT_MS / 1000,
       driver_max_runs: w.driver_max_runs || '',
       tire_pairs_per_team: w.tire_pairs_per_team || '',
     };
@@ -166,7 +171,7 @@ class RaceController {
 
     // Reglas de turnos por piloto (solo si type === 'championship'; en otros
     // casos se guardan a 0 = sin límite y se ignoran).
-    let driverMinMs = 0, driverMaxMs = 0, lockoutMs = 120000, driverMaxRuns = 0;
+    let driverMinMs = 0, driverMaxMs = 0, lockoutMs = DEFAULT_LOCKOUT_MS, driverMaxRuns = 0;
     // Dotación de neumáticos por equipo (pares). Solo resistencia (championship);
     // en el resto se guarda 0 = sin control de neumáticos.
     let tirePairs = 0;
@@ -233,7 +238,11 @@ class RaceController {
       let seq = c ? Circuit.getLaneSequence(c) : null;
       if (!seq || seq.length === 0) seq = defaultSequence(w.lanes_count);
       w.lane_sequence = seq;
-      return res.redirect(w.has_pole ? '/races/new/step4' : '/races/new/confirm');
+      if (w.has_pole) return res.redirect('/races/new/step4');
+      // Sin pole y con circuito no queda nada que comprobar: se crea y se pasa a apuntar.
+      const raceId = RaceController._persistRace(w);
+      req.session.wizard = null;
+      return res.redirect(`/races/${raceId}/tandas/new`);
     }
     if (!w.lane_sequence || !w.lane_sequence.length) w.lane_sequence = defaultSequence(w.lanes_count);
     return res.redirect('/races/new/step3');
@@ -361,6 +370,13 @@ class RaceController {
     const wizard = req.session.wizard;
     if (!wizard?.name) return res.redirect('/races/new');
 
+    const raceId = RaceController._persistRace(wizard);
+    req.session.wizard = null;
+    // Sin pole, lo siguiente es apuntar a los participantes: se va directo.
+    res.redirect(wizard.has_pole ? `/races/${raceId}` : `/races/${raceId}/tandas/new`);
+  }
+
+  static _persistRace(wizard) {
     const raceId = Race.create({
       name:                   wizard.name,
       type:                   wizard.type,
@@ -376,7 +392,7 @@ class RaceController {
       // para no-championship).
       driver_min_total_ms:      wizard.driver_min_total_ms      || 0,
       driver_max_total_ms:      wizard.driver_max_total_ms      || 0,
-      driver_change_lockout_ms: wizard.driver_change_lockout_ms || 120000,
+      driver_change_lockout_ms: wizard.driver_change_lockout_ms || DEFAULT_LOCKOUT_MS,
       driver_max_runs:          wizard.driver_max_runs          || 0,
       passes:                   wizard.passes                   || 1,
       lane_repeat:              wizard.lane_repeat              || 1,
@@ -417,9 +433,7 @@ class RaceController {
       if (entityType === 'team') Team.ensureLapPins(raceId);
     }
 
-    req.session.wizard = null;
-    // Sin pole, lo siguiente es apuntar a los participantes: se va directo.
-    res.redirect(wizard.has_pole ? `/races/${raceId}` : `/races/${raceId}/tandas/new`);
+    return raceId;
   }
 
   // ─── GET /races/:id ───────────────────────────────────────────────────────

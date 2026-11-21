@@ -573,6 +573,31 @@ const navItems = [
             </div>
           </div>
           <div class="st-card">
+            <div class="st-tmode">
+              <div class="st-row__t"><%= t('settings.tanda_modo_t') %></div>
+              <div class="st-row__d"><%= t('settings.tanda_modo_d') %></div>
+              <div class="st-tmode__opts" role="radiogroup" aria-label="<%= t('settings.tanda_modo_t') %>">
+                <button type="button" class="st-tmode__opt <%= tandaEntryMode === 'write' ? 'is-sel' : '' %>" role="radio" aria-checked="<%= tandaEntryMode === 'write' %>" data-tanda-mode="write">
+                  <span class="st-tmode__top"><strong><%= t('settings.tanda_modo_write') %></strong><span class="st-tmode__dot"></span></span>
+                  <span class="st-tmode__d"><%= t('settings.tanda_modo_write_d') %></span>
+                  <span class="st-tmode__art" aria-hidden="true">
+                    <span class="st-tmode__line"><i style="background:#ef4651"></i><b>Jordi Puig</b></span>
+                    <span class="st-tmode__line st-tmode__line--on"><i style="background:#3b9eff"></i><b>Mar|</b></span>
+                  </span>
+                </button>
+                <button type="button" class="st-tmode__opt <%= tandaEntryMode === 'drag' ? 'is-sel' : '' %>" role="radio" aria-checked="<%= tandaEntryMode === 'drag' %>" data-tanda-mode="drag">
+                  <span class="st-tmode__top"><strong><%= t('settings.tanda_modo_drag') %></strong><span class="st-tmode__dot"></span></span>
+                  <span class="st-tmode__d"><%= t('settings.tanda_modo_drag_d') %></span>
+                  <span class="st-tmode__art st-tmode__art--drag" aria-hidden="true">
+                    <span class="st-tmode__pool"><b>Laia</b><b>Toni</b></span>
+                    <span class="st-tmode__arrow">→</span>
+                    <span class="st-tmode__lanes"><span class="st-tmode__lane"><i style="background:#ef4651"></i><b>Jordi</b></span><span class="st-tmode__lane st-tmode__lane--drop"><i style="background:#3b9eff"></i></span></span>
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="st-card">
             <div class="st-row st-row--wrap">
               <div class="st-row__txt">
                 <div class="st-row__t"><%= t('common.modo_de_la_app') %></div>
@@ -1292,6 +1317,27 @@ const settingsForm = document.getElementById('settingsForm');
         msg.textContent = I18N.t('client.settings.guardado');
       } catch {
         sel.value = saved;
+        msg.textContent = I18N.t('client.settings.no_se_ha_podido_guardar');
+      }
+    });
+  });
+  document.querySelectorAll('[data-tanda-mode]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const prev = document.querySelector('[data-tanda-mode].is-sel');
+      if (prev === btn) return;
+      try {
+        const r = await fetch('/settings/prefs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+          body: new URLSearchParams({ key: 'tanda_entry_mode', value: btn.dataset.tandaMode }),
+        });
+        if (!r.ok) throw new Error(r.status);
+        document.querySelectorAll('[data-tanda-mode]').forEach(b => {
+          b.classList.toggle('is-sel', b === btn);
+          b.setAttribute('aria-checked', b === btn ? 'true' : 'false');
+        });
+        msg.textContent = I18N.t('client.settings.guardado');
+      } catch {
         msg.textContent = I18N.t('client.settings.no_se_ha_podido_guardar');
       }
     });

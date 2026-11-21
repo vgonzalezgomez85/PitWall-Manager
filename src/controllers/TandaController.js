@@ -23,33 +23,10 @@ const Driver         = require('../models/Driver');
 const DriverProfile  = require('../models/DriverProfile');
 const TeamCatalog    = require('../models/TeamCatalog');
 const Names          = require('../utils/participantNames');
+const EntryMode      = require('../utils/tandaEntryMode');
+const TandaBatch     = require('../services/TandaBatch');
 
 const LaneColors = require('../services/LaneColors');
-
-// ── Categoría/copa y coche por participante (opcionales por carrera) ──────────
-// Estos campos NO afectan al calendario, así que se pueden editar también en una
-// tanda con mangas ya corridas. Sólo se tocan si el formulario los envía
-// (`!== undefined`): un formulario viejo no debe borrarlos por omisión.
-function _attrSets(obj) {
-  const sets = [], vals = [];
-  if (obj.categoria !== undefined) { sets.push('categoria = ?'); vals.push((obj.categoria || '').trim() || null); }
-  if (obj.coche     !== undefined) { sets.push('coche = ?');     vals.push((obj.coche     || '').trim() || null); }
-  return { sets, vals };
-}
-
-function applyDriverAttrs(db, driverId, obj) {
-  const { sets, vals } = _attrSets(obj);
-  if (!sets.length) return;
-  db.prepare(`UPDATE drivers SET ${sets.join(', ')} WHERE id = ?`).run(...vals, driverId);
-}
-
-// Por NOMBRE dentro de la carrera: la fila de la tanda y la "maestra" que crea la
-// pole son filas distintas con el mismo nombre, y el directo puede leer cualquiera.
-function applyTeamAttrs(db, raceId, teamName, obj) {
-  const { sets, vals } = _attrSets(obj);
-  if (!sets.length) return;
-  db.prepare(`UPDATE teams SET ${sets.join(', ')} WHERE race_id = ? AND name = ?`).run(...vals, raceId, teamName);
-}
 
 // Devuelve el array de tamaños de sub-circuitos. Si no hay circuito asignado
 // o la config no es válida, devuelve [lanes_count] (un solo sub-circuito).
@@ -83,6 +60,127 @@ function _circuitSizesFor(race) {
   return [race.lanes_count || 6];
 }
 
+// ── Pantalla de tandas (nueva, varias a la vez y edición) ─────────────────────
+
+function _payloadOf(body) {
+  if (body.payload == null) return null;
+  try {
+    const p = typeof body.payload === 'string' ? JSON.parse(body.payload) : body.payload;
+    return p && typeof p === 'object' ? p : { tandas: [] };
+  } catch { return { tandas: [] }; }
+}
+
+function _asList(v) { return Array.isArray(v) ? v : Object.values(v || {}); }
+
+// Formulario antiguo → casillas. Individual: la fila i es la posición i (una
+// fila vacía = hueco). Equipos: team_catalog_ids[] ('' = carril libre).
+function _legacyCreateSlots(race, body) {
+  if (race.format === 'team') {
+    let n = 0;
+    return [].concat(body.team_catalog_ids || []).map(id => {
+      const catalogId = parseInt(id, 10) || null;
+      if (!catalogId) return null;
+      n++;
+      return { catalogId, name: TeamCatalog.findById(catalogId)?.name || `Equipo ${n}` };
+    });
+  }
+  return _asList(body.drivers);
+}
+
+function _legacyEditSlots(race, body) {
+  return _asList(race.format === 'team' ? body.teams : body.drivers);
+}
+
+function _parseBody(race, body) {
+  const payload = _payloadOf(body);
+  if (payload) return { mode: payload.mode, tandas: _asList(payload.tandas) };
+  return { mode: body.empty_lane_mode, tandas: [{ slots: _legacyCreateSlots(race, body) }] };
+}
+
+// Posiciones de la secuencia en el orden de pantalla: carriles de menor a mayor
+// y los descansos (0) al final. `ci` = circuito del carril.
+function _laneRows(laneSequence, circuitSizes, colors) {
+  const info = {};
+  let end = 0;
+  circuitSizes.forEach((size, ci) => { for (let l = end + 1; l <= end + size; l++) info[l] = ci; end += size; });
+  const rows = laneSequence.map((lane, pos) => {
+    const color = lane > 0 ? colors[(lane - 1) % colors.length] : null;
+    return { pos, lane, ci: lane > 0 ? (info[lane] ?? 0) : null, color, ink: color ? LaneColors.ink(color) : null };
+  });
+  return rows.sort((a, b) => (a.lane > 0 ? 0 : 1) - (b.lane > 0 ? 0 : 1) || (a.lane > 0 ? a.lane - b.lane : b.pos - a.pos));
+}
+
+// Casillas de una tanda guardada. Con carriles libres cada participante vuelve
+// a su carril de la 1ª manga (no a la fila i de la secuencia).
+function _slotsOfTanda(race, tanda, laneSequence) {
+  const mangas = Manga.findByTanda(tanda.id);
+  const ents = race.format === 'team'
+    ? Team.findByTandaWithMembers(tanda.id)
+    : Driver.findByTanda(tanda.id).filter(d => !d.team_id);
+  const firstLanes = mangas.length
+    ? Manga.getLanes(mangas.slice().sort((a, b) => a.number - b.number)[0].id).filter(l => !l.is_rest && l.lane > 0).map(l => l.lane)
+    : [];
+  const placed = Manga.placeInLanes(laneSequence, firstLanes, ents.map((_, i) => i));
+  const slots = Array(Math.max(laneSequence.length, ents.length)).fill(null);
+  const posOf = (k) => {
+    if (placed.length <= ents.length) return k;
+    const at = placed.indexOf(k);
+    return at >= 0 ? at : k;
+  };
+  ents.forEach((e, k) => {
+    slots[posOf(k)] = {
+      id: e.id, name: e.name, categoria: e.categoria || '', coche: e.coche || '',
+      members: race.format === 'team' ? (e.members || []).map(m => ({ id: m.id, name: m.name })) : undefined,
+    };
+  });
+  return slots;
+}
+
+function _renderScreen(req, res, race, { tanda = null, createdNumber = null, errorDetail = [], body = {}, initial = null } = {}) {
+  const laneSequence = Race.getLaneSequence(race);
+  const circuitSizes = _circuitSizesFor(race);
+  const isTeam = race.format === 'team';
+  const existing = Tanda.findByRace(race.id);
+  const canRestructure = tanda ? Manga.findByTanda(tanda.id).every(m => m.status === 'pending') : true;
+
+  let tandas;
+  if (initial) tandas = initial.tandas.map(t => ({ slots: TandaBatch.normSlots(t?.slots) }));
+  else if (tanda) tandas = [{ slots: _slotsOfTanda(race, tanda, laneSequence) }];
+  else tandas = [{ slots: [] }];
+
+  const emptyMode = ['rotate', 'skip', 'fixed'].includes(initial?.mode) ? initial.mode
+    : (tanda ? (tanda.empty_lane_mode || 'fixed') : 'rotate');
+
+  const catalog = isTeam
+    ? TeamCatalog.findAll().map(c => ({
+        id: c.id, name: c.name, country: c.country || null, categoria: c.categoria || '', coche: c.coche || '',
+        members: c.members.map(m => m.name).filter(Boolean),
+      }))
+    : DriverProfile.findAll().map(p => ({ name: p.name, category: p.category || null }));
+
+  const config = {
+    raceId: race.id, isTeam, isEdit: !!tanda, canRestructure,
+    mode: EntryMode.get(), emptyMode,
+    createAll: !tanda && existing.length === 0,
+    baseNumber: tanda ? tanda.number : Tanda.nextNumber(race.id),
+    seqLen: laneSequence.length,
+    rows: _laneRows(laneSequence, circuitSizes, LaneColors.forRace(race)),
+    multiCircuit: circuitSizes.length > 1,
+    colors: LaneColors.forRace(race),
+    showCat: !!race.has_categoria, showCar: !!race.has_coche,
+    catalog, otherNames: Names.inOtherTandas(race, tanda ? tanda.id : null),
+    tandas,
+    errors: errorDetail,
+  };
+
+  const errors = [...new Set(errorDetail.map(e => e.key))];
+  res.render('races/tandas', {
+    t: req.t, race, tanda, laneSequence, config, errors, errorDetail, body,
+    createdNumber, existingTandas: existing.length, canRestructure,
+    otherNames: config.otherNames,
+  });
+}
+
 class TandaController {
 
   // GET /races/:id/tandas/new
@@ -90,131 +188,30 @@ class TandaController {
     const race = Race.findById(req.params.id);
     if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.race_not_found') });
     if (_poleBlocksTandas(race)) return _renderPoleFirst(req, res);
-
-    const laneSequence  = Race.getLaneSequence(race);
-    const profiles      = DriverProfile.findAll();
-    const teamsCatalog  = TeamCatalog.findAll();
-    const circuitSizes  = _circuitSizesFor(race);
     const createdNumber = parseInt(req.query?.created, 10) || null;
-    const existingTandas = Tanda.findByRace(race.id).length;
-    res.render('races/tanda-new', { t: req.t, race, otherNames: Names.inOtherTandas(race), laneSequence, LANE_COLORS: LaneColors.forRace(race), profiles, teamsCatalog, circuitSizes, errors: [], body: {}, createdNumber, existingTandas });
+    _renderScreen(req, res, race, { createdNumber });
   }
 
-  // POST /races/:id/tandas
+  // POST /races/:id/tandas — crea una o varias tandas a la vez (todas o ninguna).
+  // Cuerpo nuevo: { payload: JSON {mode, tandas:[{slots}]} }. Se sigue aceptando
+  // el formulario antiguo (drivers[] / team_catalog_ids[] / empty_lane_mode).
   static create(req, res) {
     const race = Race.findById(req.params.id);
     if (!race) return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.race_not_found') });
     if (_poleBlocksTandas(race)) return _renderPoleFirst(req, res);
 
-    const laneSequence = Race.getLaneSequence(race);
-    const errors = [];
-
-    // Carriles sin participante: 'rotate' (todos pasan por todos), 'skip' (los
-    // libres no se usan) o 'fixed' (no se usan los últimos libres). Solo tiene
-    // efecto si hay menos participantes que carriles activos. Sin valor, el que
-    // el formulario marca por defecto.
-    const emptyLaneMode = ['fixed', 'skip'].includes(req.body.empty_lane_mode) ? req.body.empty_lane_mode : 'rotate';
-
-    // Parse participants from form
-    // For team format: teams[0][name], teams[0][members][0], ...
-    // For individual: drivers[0], drivers[1], ...
-    let entities = []; // [{id, type, name}] — filled after DB inserts below
-
-    const tandaId = Tanda.create(race.id, emptyLaneMode);
-
-    if (race.format === 'team') {
-      // Una posición vacía ('') es un carril que se dejó libre en el tablero:
-      // se conserva como hueco para que la 1ª manga respete la colocación.
-      const slotIds = [].concat(req.body.team_catalog_ids || []).map(id => parseInt(id, 10) || null);
-      const catalogIds = slotIds.filter(Boolean);
-
-      // Se permite crear la tanda sin llenar todos los carriles; solo hace falta
-      // al menos un equipo. Los carriles libres se resuelven con emptyLaneMode.
-      if (catalogIds.length < 1) {
-        errors.push('no_participants');
+    const body = req.body || {};
+    const parsed = _parseBody(race, body);
+    try {
+      const ids = TandaBatch.createTandas(race, parsed.tandas, parsed.mode);
+      if (body.after === 'another') {
+        return res.redirect(`/races/${race.id}/tandas/new?created=${Tanda.findById(ids[ids.length - 1])?.number || ''}`);
       }
-      if (Names.duplicatesIn(catalogIds.map(id => TeamCatalog.findById(id)?.name)).length) {
-        errors.push('duplicate_participant_form');
-      }
-
-      if (errors.length) {
-        Tanda.delete(tandaId);
-        const teamsCatalog = TeamCatalog.findAll();
-        return res.render('races/tanda-new', { t: req.t, race, otherNames: Names.inOtherTandas(race), laneSequence, LANE_COLORS: LaneColors.forRace(race), profiles: DriverProfile.findAll(), teamsCatalog, circuitSizes: _circuitSizesFor(race), errors, body: req.body });
-      }
-
-      const teamPalette = LaneColors.forRace(race);
-      let idx = -1;
-      slotIds.forEach(catalogId => {
-        if (!catalogId) { entities.push(null); return; }
-        idx++;
-        const catalogTeam = TeamCatalog.findById(catalogId);
-        const teamName = catalogTeam ? catalogTeam.name : `Equipo ${idx + 1}`;
-        const teamId = Team.create({
-          race_id: race.id, tanda_id: tandaId,
-          name: teamName, lane: 0, color: teamPalette[idx % teamPalette.length],
-          country: catalogTeam ? catalogTeam.country : null,
-          // Copa/coche del catálogo como valor de partida (snapshot: la carrera
-          // se queda con ellos y editarlos en el catálogo ya no la cambia).
-          categoria: catalogTeam ? (catalogTeam.categoria || null) : null,
-          coche:     catalogTeam ? (catalogTeam.coche     || null) : null,
-        });
-        if (catalogTeam) {
-          catalogTeam.members.forEach(m => {
-            if (m.name?.trim()) {
-              Driver.create({ race_id: race.id, tanda_id: tandaId, team_id: teamId, name: m.name.trim() });
-            }
-          });
-        }
-        entities.push({ id: teamId, type: 'team', name: teamName });
-      });
-
-    } else {
-      const rawDrivers = req.body.drivers || {};
-      // Los pilotos llegan como objetos (drivers[i][name|categoria|coche]); se
-      // tolera el formato antiguo (array de nombres) por compatibilidad.
-      const driversArray = (Array.isArray(rawDrivers) ? rawDrivers : Object.values(rawDrivers))
-        .map(d => (typeof d === 'string' ? { name: d } : d));
-
-      // Igual que en equipos: basta con un piloto; los carriles libres se
-      // resuelven con emptyLaneMode ('rotate' | 'skip' | 'fixed').
-      if (driversArray.filter(d => d?.name?.trim()).length < 1) {
-        errors.push('no_participants');
-      }
-      if (Names.duplicatesIn(driversArray.map(d => d?.name)).length) {
-        errors.push('duplicate_participant_form');
-      }
-
-      if (errors.length) {
-        Tanda.delete(tandaId);
-        return res.render('races/tanda-new', { t: req.t, race, otherNames: Names.inOtherTandas(race), laneSequence, LANE_COLORS: LaneColors.forRace(race), profiles: DriverProfile.findAll(), circuitSizes: _circuitSizesFor(race), errors, body: req.body });
-      }
-
-      // La fila i es el carril laneSequence[i]: una fila vacía es un hueco.
-      driversArray.forEach((d, idx) => {
-        const name = d?.name?.trim();
-        if (!name) { if (idx < laneSequence.length) entities.push(null); return; }
-        const driverId = Driver.create({
-          race_id: race.id, tanda_id: tandaId, team_id: null,
-          name, lane: idx + 1, car_number: idx + 1,
-          categoria: (d.categoria || '').trim() || null,
-          coche:     (d.coche     || '').trim() || null,
-        });
-        entities.push({ id: driverId, type: 'driver', name });
-      });
+      return res.redirect(`/races/${race.id}`);
+    } catch (e) {
+      if (!(e instanceof TandaBatch.TandaBatchError)) throw e;
+      return _renderScreen(req, res, race, { errorDetail: e.errors, body, initial: parsed });
     }
-
-    // Generate and persist the manga schedule
-    const schedule = Manga.buildSchedule(laneSequence, entities, race.passes, race.lane_repeat, emptyLaneMode);
-    Manga.persistSchedule(tandaId, race.id, schedule);
-
-    // Mark race as active if it was pending
-    if (race.status === 'pending') Race.updateStatus(race.id, 'active');
-
-    if (req.body.after === 'another') {
-      return res.redirect(`/races/${race.id}/tandas/new?created=${Tanda.findById(tandaId)?.number || ''}`);
-    }
-    res.redirect(`/races/${race.id}`);
   }
 
   // POST /races/:id/tandas/preview — las mangas que saldrían, sin guardar nada.
@@ -350,35 +347,7 @@ class TandaController {
     if (!race || !tanda || tanda.race_id !== race.id) {
       return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.not_found') });
     }
-
-    const laneSequence   = Race.getLaneSequence(race);
-    const profiles       = DriverProfile.findAll();
-    const mangas         = Manga.findByTanda(tanda.id);
-    const canRestructure = mangas.every(m => m.status === 'pending');
-
-    const drivers = race.format === 'individual'
-      ? Driver.findByTanda(tanda.id).filter(d => !d.team_id)
-      : [];
-    const teams = race.format === 'team'
-      ? require('../models/Team').findByTandaWithMembers(tanda.id)
-      : [];
-
-    // Con carriles libres, cada participante se muestra en su carril de la 1ª
-    // manga (no en la fila i de la secuencia).
-    const nEnt = race.format === 'team' ? teams.length : drivers.length;
-    const firstLanes = mangas.length
-      ? Manga.getLanes(mangas.slice().sort((a, b) => a.number - b.number)[0].id).filter(l => !l.is_rest && l.lane > 0).map(l => l.lane)
-      : [];
-    const placed = Manga.placeInLanes(laneSequence, firstLanes, Array.from({ length: nEnt }, (_, i) => i));
-    const activeLanes = laneSequence.filter(l => l > 0);
-    const slotLanes = placed.length > nEnt
-      ? placed.reduce((acc, e, k) => { if (e != null) acc[e] = activeLanes[k]; return acc; }, [])
-      : null;
-
-    res.render('races/tanda-edit', {
-      t: req.t, race, tanda, otherNames: Names.inOtherTandas(race, tanda.id), laneSequence, slotLanes, LANE_COLORS: LaneColors.forRace(race), profiles,
-      drivers, teams, canRestructure, errors: []
-    });
+    _renderScreen(req, res, race, { tanda });
   }
 
   // POST /races/:id/tandas/:tandaId/edit
@@ -388,124 +357,14 @@ class TandaController {
     if (!race || !tanda || tanda.race_id !== race.id) {
       return res.status(404).render('error', { t: req.t, code: 404, message: req.t('errors.not_found') });
     }
-
-    const laneSequence   = Race.getLaneSequence(race);
-    const mangas         = Manga.findByTanda(tanda.id);
-    const canRestructure = mangas.every(m => m.status === 'pending');
-    const db             = require('../config/database');
-    // Carriles libres de la tanda: se leen de su 1ª manga antes de rehacerla.
-    const firstMangaId   = mangas.slice().sort((a, b) => a.number - b.number)[0]?.id;
-    const firstLanes     = firstMangaId ? db.prepare(
-      'SELECT lane FROM manga_lanes WHERE manga_id = ? AND is_rest = 0 AND lane > 0'
-    ).all(firstMangaId).map(r => r.lane) : [];
-
-    // Dos participantes con el mismo nombre en la tanda: no se guarda.
-    const rawList = race.format === 'individual' ? (req.body.drivers || {}) : (req.body.teams || {});
-    const submitted = (Array.isArray(rawList) ? rawList : Object.values(rawList))
-      .map(e => (typeof e === 'string' ? e : e?.name));
-    if (Names.duplicatesIn(submitted).length) {
-      return res.render('races/tanda-edit', {
-        t: req.t, race, tanda, otherNames: Names.inOtherTandas(race, tanda.id), laneSequence, LANE_COLORS: LaneColors.forRace(race),
-        profiles: DriverProfile.findAll(), canRestructure, errors: ['duplicate_participant_form'],
-        drivers: race.format === 'individual' ? Driver.findByTanda(tanda.id).filter(d => !d.team_id) : [],
-        teams:   race.format === 'team' ? require('../models/Team').findByTandaWithMembers(tanda.id) : [],
-      });
-    }
-
-    if (race.format === 'individual') {
-      const rawDrivers   = req.body.drivers || {};
-      const driversArray = Array.isArray(rawDrivers) ? rawDrivers : Object.values(rawDrivers);
-
-      if (canRestructure) {
-        const valid = driversArray.filter(d => (typeof d === 'string' ? d : d?.name)?.trim());
-        if (valid.length < 1) {
-          const drivers = Driver.findByTanda(tanda.id).filter(d => !d.team_id);
-          return res.render('races/tanda-edit', {
-            t: req.t, race, tanda, otherNames: Names.inOtherTandas(race, tanda.id), laneSequence, LANE_COLORS: LaneColors.forRace(race), profiles: DriverProfile.findAll(),
-            drivers, teams: [], canRestructure, errors: ['no_participants']
-          });
-        }
-        db.prepare('DELETE FROM laps WHERE manga_id IN (SELECT id FROM mangas WHERE tanda_id = ?)').run(tanda.id);
-        require('../models/Lap').markExternalMutation();
-        db.prepare('DELETE FROM mangas WHERE tanda_id = ?').run(tanda.id);
-        db.prepare('DELETE FROM drivers WHERE tanda_id = ?').run(tanda.id);
-        const entities = [];
-        valid.forEach((d, idx) => {
-          const name = (typeof d === 'string' ? d : d.name).trim();
-          const id   = Driver.create({
-            race_id: race.id, tanda_id: tanda.id, team_id: null, name, lane: idx + 1, car_number: idx + 1,
-            categoria: (typeof d === 'object' ? (d.categoria || '').trim() : '') || null,
-            coche:     (typeof d === 'object' ? (d.coche     || '').trim() : '') || null,
-          });
-          entities.push({ id, type: 'driver', name });
-        });
-        Manga.persistSchedule(tanda.id, race.id, Manga.buildSchedule(laneSequence, Manga.placeInLanes(laneSequence, firstLanes, entities), race.passes, race.lane_repeat, tanda.empty_lane_mode || 'fixed'));
-      } else {
-        driversArray.forEach(d => {
-          const id   = parseInt(d.id);
-          const name = d.name?.trim();
-          if (id && name) db.prepare('UPDATE drivers SET name = ? WHERE id = ?').run(name, id);
-          // Categoría/coche: no afectan al calendario, editables también en modo
-          // solo renombrar. Sólo se tocan si el formulario los envía.
-          if (id) applyDriverAttrs(db, id, d);
-        });
-      }
-
-    } else {
-      const rawTeams   = req.body.teams || {};
-      const teamsArray = Array.isArray(rawTeams) ? rawTeams : Object.values(rawTeams);
-
-      if (canRestructure) {
-        const valid = teamsArray.filter(t => t?.name?.trim());
-        if (valid.length < 1) {
-          const teams = require('../models/Team').findByTandaWithMembers(tanda.id);
-          return res.render('races/tanda-edit', {
-            t: req.t, race, tanda, otherNames: Names.inOtherTandas(race, tanda.id), laneSequence, LANE_COLORS: LaneColors.forRace(race), profiles: DriverProfile.findAll(),
-            drivers: [], teams, canRestructure, errors: ['no_participants']
-          });
-        }
-        db.prepare('DELETE FROM laps WHERE manga_id IN (SELECT id FROM mangas WHERE tanda_id = ?)').run(tanda.id);
-        require('../models/Lap').markExternalMutation();
-        db.prepare('DELETE FROM mangas WHERE tanda_id = ?').run(tanda.id);
-        db.prepare('DELETE FROM drivers WHERE tanda_id = ?').run(tanda.id);
-        db.prepare('DELETE FROM teams   WHERE tanda_id = ?').run(tanda.id);
-        const entities = [];
-        const teamPalette = LaneColors.forRace(race);
-        valid.forEach((team, idx) => {
-          const teamName = team.name.trim();
-          const teamId   = Team.create({
-            race_id: race.id, tanda_id: tanda.id, name: teamName, lane: 0, color: teamPalette[idx % teamPalette.length],
-            categoria: (team.categoria || '').trim() || null,
-            coche:     (team.coche     || '').trim() || null,
-          });
-          const members  = Array.isArray(team.members) ? team.members : Object.values(team.members || {});
-          members.forEach(m => {
-            const mName = (typeof m === 'string' ? m : m?.name)?.trim();
-            if (mName) Driver.create({ race_id: race.id, tanda_id: tanda.id, team_id: teamId, name: mName });
-          });
-          entities.push({ id: teamId, type: 'team', name: teamName });
-        });
-        Manga.persistSchedule(tanda.id, race.id, Manga.buildSchedule(laneSequence, Manga.placeInLanes(laneSequence, firstLanes, entities), race.passes, race.lane_repeat, tanda.empty_lane_mode || 'fixed'));
-      } else {
-        teamsArray.forEach(team => {
-          const teamId = parseInt(team.id);
-          const teamName = team.name?.trim();
-          if (teamId && teamName) {
-            db.prepare('UPDATE teams SET name = ? WHERE id = ?').run(teamName, teamId);
-          }
-          // Categoría/coche (editables también sin reestructurar). Se propagan a
-          // TODAS las filas del equipo con ese nombre en la carrera: la fila de
-          // la tanda y la "maestra" que crea la pole son filas distintas.
-          if (teamName) applyTeamAttrs(db, race.id, teamName, team);
-          const members = typeof team.members === 'object' ? Object.values(team.members) : [];
-          members.forEach(m => {
-            const memberId = parseInt(m.id);
-            if (memberId && m.name?.trim()) {
-              db.prepare('UPDATE drivers SET name = ? WHERE id = ?').run(m.name.trim(), memberId);
-            }
-          });
-        });
-      }
+    const body = req.body || {};
+    const payload = _payloadOf(body);
+    const slots = payload ? payload.tandas?.[0]?.slots : _legacyEditSlots(race, body);
+    try {
+      TandaBatch.updateTanda(race, tanda, slots, { mode: payload ? payload.mode : undefined, compact: !payload });
+    } catch (e) {
+      if (!(e instanceof TandaBatch.TandaBatchError)) throw e;
+      return _renderScreen(req, res, race, { tanda, errorDetail: e.errors, body, initial: { tandas: [{ slots: TandaBatch.normSlots(slots) }], mode: payload?.mode } });
     }
 
     // La categoría/coche no mueven los contadores de `laps`: si hay un directo

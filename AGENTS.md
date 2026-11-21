@@ -34,6 +34,9 @@ src/
   app.js                  — Entry point: Express + Socket.io + SerialService init + arranca el worker de stats
   services/GoOwnerService.js — Dueño del GO y repartidor de las señales de la caja entre sesiones (ver «Fuentes de datos»)
   services/MangaBoxHandlers.js — Qué hace la manga con GO/pausa/STOP/fin de la caja (antes en app.js)
+  services/TandaBatch.js  — Crea/edita varias tandas de una vez (todo o nada; tanda vacía = error); lo usa TandaController
+  utils/tandaEntryMode.js — Lee el ajuste `tanda_entry_mode` (`write` por defecto = «Escribir en el carril»; `drag` = «Arrastrar pilotos»)
+  views/races/tandas.ejs + public/js/tandas.js — Única pantalla de tandas (crear todas al crear la carrera, o añadir/editar una); sustituye a tanda-new/tanda-edit
   routes/index.js         — Todas las rutas HTTP
   controllers/            — Un controller por dominio (thin, delegan en models/services)
   models/                 — Acceso a SQLite, un archivo por tabla
@@ -234,6 +237,7 @@ Siguiente manga pendiente se activa automáticamente
   - Errores con código, no con frase: `TandaImportError(msg, key, vars)` → el controller hace `req.t('tandaimport.' + e.key, e.vars)`. Fuera de una petición (exportaciones con `?lang=`), `require('../middleware/i18n').translator(lang)`.
   - El `t` del servidor no cae al español clave a clave: toda clave nueva va en los tres JSON.
   - El kit para traductores está en `traducciones/` (README + CSV). Se regenera con `node scripts/i18n-kit.js export --lang it --out traducciones --sin-guia`.
+- **Apuntar pilotos en la tanda**: preferencia global `tanda_entry_mode` (Ajustes → Preferencias): `write` (por defecto, escribir en el carril con catálogo) o `drag` (arrastrar / tocar piloto → tocar carril). La misma vista `races/tandas.ejs` sirve a los dos modos.
 - **Sin comentarios redundantes** en el código. Solo WHY si no es obvio.
 
 ---

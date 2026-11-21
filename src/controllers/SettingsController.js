@@ -25,6 +25,8 @@ const { DEFAULT_MODEL, MODELS, normalizeModel, modelInfo } = require('../lib/dsM
 const PREFS = {
   ui_mode:               ['advanced', 'basic'],
   training_history_mode: ['recent', 'best'],
+  // Cómo se apuntan los participantes en la pantalla de tandas (utils/tandaEntryMode).
+  tanda_entry_mode:      ['write', 'drag'],
   // Por defecto 'auto': la coma (fracción de vuelta al caer la bandera) se
   // calcula sola. 'manual' habilita escribir los settori finales al acabar
   // cada tanda (/races/:id/tandas/:tandaId/summary, ver models/Lap._lastMangaByEntity).
@@ -107,6 +109,7 @@ class SettingsController {
       caFingerprint:  (() => { try { return require('../services/TlsService').caFingerprint(); } catch { return null; } })(),
       uiMode:              cfg.ui_mode === 'basic' ? 'basic' : 'advanced',
       trainingHistoryMode: cfg.training_history_mode === 'best' ? 'best' : 'recent',
+      tandaEntryMode:      require('../utils/tandaEntryMode').get(),
       manualComa:          cfg.manual_coma === 'manual' ? 'manual' : 'auto',
       comaSectors:         require('../utils/settori').perLap(),
       sprintWarmup:        cfg.sprint_warmup === 'on' ? 'on' : 'off',

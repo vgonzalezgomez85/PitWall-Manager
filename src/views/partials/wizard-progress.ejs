@@ -1,25 +1,22 @@
-<div class="wizard-progress">
-  <%
-    // El stepper se define por CLAVE de paso (no por número). El formato ya no
-    // es un paso (se deriva del tipo). La "secuencia" solo existe en carreras
-    // manuales (sin circuito): con circuito, skipSequence=true la oculta.
-    const _hasPole = typeof hasPole !== 'undefined' ? !!hasPole : false;
-    const _skipSeq = typeof skipSequence !== 'undefined' && !!skipSequence;
-    const _steps = ['type'];
-    if (!_skipSeq) _steps.push('sequence');
-    if (_hasPole)  _steps.push('participants');
-    _steps.push('confirm');
-    // Sin pole, tras crear la carrera se va directo a apuntar la 1ª tanda.
-    if (!_hasPole) _steps.push('tanda');
-    const _curIdx = _steps.indexOf(current);
-  %>
-  <% _steps.forEach((s, i) => { %>
-    <div class="wizard-step <%= i < _curIdx ? 'done' : (i === _curIdx ? 'active' : '') %>">
-      <div class="wizard-step__dot"><%= i < _curIdx ? '✓' : (i + 1) %></div>
-      <span class="wizard-step__label"><%= t('wizard.steps.' + s) %></span>
-    </div>
-    <% if (i < _steps.length - 1) { %>
-      <div class="wizard-connector <%= i < _curIdx ? 'done' : '' %>"></div>
-    <% } %>
+<%
+  const _hasPole = typeof hasPole !== 'undefined' ? !!hasPole : false;
+  const _skipSeq = typeof skipSequence !== 'undefined' && !!skipSequence;
+  const _all = [
+    { key: 'type',         show: true },
+    { key: 'sequence',     show: !_skipSeq },
+    { key: 'participants', show: _hasPole },
+    { key: 'confirm',      show: _hasPole || !_skipSeq },
+    { key: 'tanda',        show: !_hasPole },
+  ];
+  const _visible = _all.filter(s => s.show).map(s => s.key);
+  const _curIdx = _visible.indexOf(current);
+%>
+<ol class="nr-steps" id="nrSteps" data-current="<%= current %>">
+  <% _all.forEach(s => {
+       const i = _visible.indexOf(s.key);
+       const state = i < 0 ? '' : (i < _curIdx ? 'is-done' : (i === _curIdx ? 'is-active' : '')); %>
+    <li class="nr-step <%= state %>" data-step="<%= s.key %>" <%= s.show ? '' : 'hidden' %>>
+      <span class="nr-step__n"><%= i >= 0 && i < _curIdx ? '✓' : (i + 1) %></span><%= t('wizard.steps.' + s.key) %>
+    </li>
   <% }) %>
-</div>
+</ol>

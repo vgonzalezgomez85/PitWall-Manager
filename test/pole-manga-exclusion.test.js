@@ -232,5 +232,5 @@ test('con la pole terminada (o sin pole) el formulario de tanda se abre', () => 
   const { req, res, out } = peticion({ id: String(e.raceId) });
   TandaController.newForm(req, res);
   assert.equal(out.status, 200);
-  assert.equal(out.view, 'races/tanda-new');
+  assert.equal(out.view, 'races/tandas');
 });

@@ -1,0 +1,108 @@
+<%
+  const isEdit = !!tanda;
+  const isTeam = race.format === 'team';
+  const quien = t(isTeam ? 'tandas.noun_team' : 'tandas.noun_driver');
+  const mode = config.mode;
+  const title = isEdit ? (t('tanda-edit.editar_tanda') + ' ' + tanda.number) : t('tandas.titulo');
+  let hint;
+  if (isEdit && !canRestructure) hint = t('tandas.hint_rename');
+  else if (isEdit) hint = t(mode === 'drag' ? 'tandas.hint_drag_one' : 'tandas.hint_write_one', { quien });
+  else if (config.createAll) hint = t(mode === 'drag' ? 'tandas.hint_drag_all' : 'tandas.hint_write_all', { quien });
+  else hint = t(mode === 'drag' ? 'tandas.hint_drag_one' : 'tandas.hint_write_one', { quien });
+  const _elOpts = [
+    ['rotate', 'tanda-new.pasar_por_todos',       'tanda-new.pasar_por_todos_desc'],
+    ['skip',   'tanda-new.saltar_vacios',         'tanda-new.saltar_vacios_desc'],
+    ['fixed',  'tanda-new.saltar_ultimos_vacios', 'tanda-new.saltar_ultimos_vacios_desc'],
+  ];
+  const _elSel = config.emptyMode;
+  const submitLabel = isEdit ? t('common.guardar_cambios') : t('tandas.crear_una');
+%>
+<%- include('../partials/header', { pageTitle: title }) %>
+
+<link rel="stylesheet" href="/css/fonts.css">
+
+<form id="tdForm" action="/races/<%= race.id %>/tandas<%= isEdit ? '/' + tanda.id + '/edit' : '' %>" method="POST" novalidate>
+<div class="vt-page td-page">
+  <div class="vt-wrap td-wrap td-wrap--<%= mode === 'drag' && canRestructure ? 'wide' : 'narrow' %>">
+
+    <div class="td-top">
+    <a class="vt-back-link" href="/races/<%= race.id %>">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+      <%= race.name %>
+    </a>
+      <% if (config.createAll) { %><%- include('../partials/wizard-progress', { current: 'tanda', hasPole: false, skipSequence: true }) %><% } %>
+    </div>
+
+    <div class="td-title">
+      <h1><%= title %></h1>
+      <p class="td-sub"><%= race.name %> · <%= t('races.format.' + race.format) %> · <%= laneSequence.filter(l => l > 0).length %> <%= t('races.lanes') %></p>
+      <p class="td-hint"><%= hint %></p>
+    </div>
+
+    <% if (typeof createdNumber !== 'undefined' && createdNumber) { %>
+      <div class="td-created"><%= t('tanda-new.tanda_creada_apunta_la_siguiente', { v: createdNumber }) %></div>
+    <% } %>
+
+    <div id="tdErrors" class="td-errors" role="alert" <%= errorDetail.length ? '' : 'hidden' %>>
+      <% errorDetail.forEach(e => { %><p><%= t('tandas.err_' + e.key, { n: e.tanda }) %></p><% }) %>
+    </div>
+
+    <% if (isEdit && !canRestructure) { %>
+      <div class="td-note-box"><strong><%= t('tanda-edit.modo_solo_renombrar') %></strong><br><%= t('tanda-edit.esta_tanda_ya_tiene_mangas_iniciadas_solo') %></div>
+    <% } else if (isEdit) { %>
+      <div class="td-note-box"><%= t('tandas.edit_aviso_regenera') %></div>
+    <% } %>
+
+    <section id="tdCount" class="vt-card td-count-box" hidden></section>
+    <div id="tdAsk" class="td-ask" role="alertdialog" aria-label="<%= t('tandas.borrar_tanda') %>" hidden></div>
+
+    <div id="tdBoard" class="td-board"></div>
+
+    <% if (canRestructure) { %>
+    <details id="emptyLaneBox" class="vt-card td-empty">
+      <summary>
+        <span class="td-empty__k"><%= t('tanda-new.carriles_sin_participante') %>:</span>
+        <span id="emptyLaneCurrent"><%= t(_elOpts.find(o => o[0] === _elSel)[1]) %></span>
+        <span class="vt-btn vt-btn--ghost vt-btn--sm"><%= t('tanda-new.modificar') %></span>
+      </summary>
+      <p class="td-empty__p"><%= t('tanda-new.si_hay_menos_participantes_que_carriles_que') %></p>
+      <% _elOpts.forEach(([val, lbl, desc]) => { %>
+        <label class="td-empty__opt">
+          <input type="radio" name="empty_lane_mode" value="<%= val %>" <%= _elSel === val ? 'checked' : '' %>>
+          <span><strong><%= t(lbl) %></strong> — <%= t(desc) %></span>
+        </label>
+      <% }) %>
+    </details>
+    <% } %>
+
+    <section class="vt-card td-pv" id="tdPreview" hidden></section>
+  </div>
+</div>
+
+<div class="td-foot">
+  <div class="td-foot__in">
+    <div class="td-foot__sum">
+      <span class="td-foot__k"><%= t('tandas.asi_queda') %></span>
+      <span id="tdSummary" class="td-foot__v"></span>
+    </div>
+    <input type="hidden" name="payload" id="tdPayload">
+    <input type="hidden" name="after" id="tdAfter" value="another" disabled>
+    <% if (canRestructure) { %>
+      <button type="button" id="tdPreviewBtn" class="vt-btn vt-btn--ghost td-btn"></button>
+    <% } %>
+    <% if (!isEdit && !config.createAll) { %>
+      <button type="submit" id="tdAnother" class="vt-btn vt-btn--ghost td-btn"><%= t('tandas.crear_y_otra') %></button>
+    <% } %>
+    <button type="submit" id="tdSubmit" class="vt-btn vt-btn--primary td-btn td-btn--main"><%= submitLabel %> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg></button>
+  </div>
+</div>
+</form>
+
+<script type="application/json" id="tdCfg"><%- JSON.stringify(config).replace(/</g, '\\u003c') %></script>
+<script>
+  document.querySelectorAll('#emptyLaneBox input[name="empty_lane_mode"]').forEach(r => r.addEventListener('change', () => {
+    document.getElementById('emptyLaneCurrent').textContent = r.closest('label').querySelector('strong').textContent;
+  }));
+</script>
+<script src="/js/tandas.js"></script>
+<%- include('../partials/footer') %>
