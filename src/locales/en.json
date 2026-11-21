@@ -485,7 +485,17 @@
       "upd_ocupado_entreno": "A practice session is running. Install when it finishes.",
       "upd_ocupado_pole": "A pole session is running. Install when it finishes.",
       "upd_error_copia": "The database copy could not be made, so nothing is installed.",
-      "no_se_ha_podido_guardar_sectores": "Could not save (2 to 1000)"
+      "no_se_ha_podido_guardar_sectores": "Could not save (2 to 1000)",
+      "remoto_pulsa": "Press the key combination…",
+      "remoto_guardado": "Remote control saved.",
+      "remoto_no_guardado": "The keys could not be saved.",
+      "remoto_error_invalid": "Invalid combination: a key is needed besides the modifiers.",
+      "remoto_error_duplicate": "Two actions have the same combination.",
+      "remoto_fallo_registro": "Could not register {{teclas}}: another application or another copy of PitWall is probably using it. Choose another combination.",
+      "remoto_accion_go": "GO",
+      "remoto_accion_pausa": "Pause",
+      "remoto_accion_stop": "STOP",
+      "remoto_solo_ventana": "You are in the browser: the keys only work with the PitWall page in front."
     },
     "shifts-live": {
       "ambiguedad_usa_override_manual": "Ambiguous — use manual override",
@@ -956,6 +966,13 @@
       "crear_una": "Create the round",
       "crear_varias": "Create the rounds",
       "lista_vacia": "There are no participants yet: type a name above and press Add."
+    },
+    "remote": {
+      "go_enviado": "GO sent",
+      "pausa_enviada": "Pause sent",
+      "reanudar_enviado": "Resuming",
+      "stop_enviado": "STOP sent",
+      "pulsa_stop_otra_vez": "Press STOP again to stop"
     }
   },
   "common": {
@@ -2163,7 +2180,15 @@
     "tanda_modo_write": "Type in the lane",
     "tanda_modo_write_d": "Each lane is a field; as you type, participants from the catalog appear.",
     "tanda_modo_drag": "Drag drivers",
-    "tanda_modo_drag_d": "A list on the left: drag each participant to the lane of the round you want, or tap it and then tap the lane."
+    "tanda_modo_drag_d": "A list on the left: drag each participant to the lane of the round you want, or tap it and then tap the lane.",
+    "remoto_titulo": "Remote control (macro keyboard)",
+    "remoto_desc": "Press GO, PAUSE and STOP from a USB macro keyboard (to the computer it is a normal keyboard). It only works in the desktop app, even when PitWall is not in front, and only when PitWall gives the GO (TicTac, BART or simulation): with a DS box the box is in charge and the key does nothing. STOP must be pressed twice.",
+    "remoto_usar": "Enable remote control",
+    "remoto_go": "GO",
+    "remoto_pausa": "Pause / resume",
+    "remoto_stop": "STOP",
+    "remoto_grabar": "Record",
+    "remoto_defecto": "Default"
   },
   "shifts-live": {
     "a_punto": "Near",

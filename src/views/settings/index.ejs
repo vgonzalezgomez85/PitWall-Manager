@@ -736,6 +736,29 @@ const navItems = [
               </div>
             </div>
           </div>
+          <div class="st-card" id="remoteCard">
+            <div class="st-row st-row--wrap">
+              <div class="st-row__txt">
+                <div class="st-row__t"><%= t('settings.remoto_titulo') %></div>
+                <div class="st-row__d"><%= t('settings.remoto_desc') %></div>
+              </div>
+              <button type="button" class="vt-switch <%= remoteKeys.enabled ? 'is-on' : '' %>" id="remoteSwitch" role="switch" aria-checked="<%= remoteKeys.enabled %>" aria-label="<%= t('settings.remoto_usar') %>"></button>
+            </div>
+            <% [['go', 'settings.remoto_go'], ['pause', 'settings.remoto_pausa'], ['stop', 'settings.remoto_stop']].forEach(function (r) { %>
+            <div class="st-row st-row--wrap">
+              <div class="st-row__txt"><div class="st-row__t"><%= t(r[1]) %></div></div>
+              <code class="st-row__ctl" data-remote-label="<%= r[0] %>" style="min-width:12em;text-align:center"></code>
+              <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" data-remote-rec="<%= r[0] %>"><%= t('settings.remoto_grabar') %></button>
+              <button type="button" class="vt-btn vt-btn--ghost vt-btn--sm" data-remote-def="<%= r[0] %>"><%= t('settings.remoto_defecto') %></button>
+            </div>
+            <% }) %>
+            <div class="st-row st-row--wrap" style="display:block">
+              <div class="lc-actions" style="margin-top:0">
+                <button type="button" class="vt-btn vt-btn--primary vt-btn--sm" id="remoteSave" disabled><%= t('actions.save') %></button>
+                <span class="st-row__d" id="remoteMsg" role="status"></span>
+              </div>
+            </div>
+          </div>
         </section>
 
         <!-- ══ Ventanas y pantallas (solo app de escritorio) ═══════════════ -->
@@ -1099,6 +1122,7 @@ const navItems = [
 </div>
 
 <script src="/js/laneColors.js"></script>
+<script src="/js/remote-keys-core.js"></script>
 <script>
 const LANG = "<%= lang %>";
 
@@ -1381,6 +1405,101 @@ const settingsForm = document.getElementById('settingsForm');
       }
     });
   });
+})();
+
+/* ── Control remoto (teclado de macros) ── */
+(function () {
+  const card = document.getElementById('remoteCard');
+  if (!card) return;
+  const RK = window.PWRemoteKeys;
+  const platform = /Mac/i.test(navigator.platform || '') ? 'darwin' : 'other';
+  const ACTIONS = RK.ACTIONS;
+  const sw = document.getElementById('remoteSwitch');
+  const saveBtn = document.getElementById('remoteSave');
+  const msg = document.getElementById('remoteMsg');
+  const saved = <%- JSON.stringify(remoteKeys) %>;
+  let enabled = saved.enabled;
+  const keys = Object.assign({}, saved.keys);
+  let recording = null;
+  const names = { go: () => I18N.t('client.settings.remoto_accion_go'), pause: () => I18N.t('client.settings.remoto_accion_pausa'), stop: () => I18N.t('client.settings.remoto_accion_stop') };
+
+  function paint() {
+    ACTIONS.forEach(a => {
+      const el = card.querySelector('[data-remote-label="' + a + '"]');
+      el.textContent = recording === a ? I18N.t('client.settings.remoto_pulsa') : RK.humanize(keys[a], platform);
+      card.querySelector('[data-remote-rec="' + a + '"]').classList.toggle('vt-btn--primary', recording === a);
+    });
+    sw.classList.toggle('is-on', enabled);
+    sw.setAttribute('aria-checked', String(enabled));
+  }
+  function dirty() { saveBtn.disabled = false; msg.textContent = ''; }
+
+  function stopRecording() { recording = null; window.removeEventListener('keydown', onKey, true); paint(); }
+  function onKey(e) {
+    e.preventDefault(); e.stopPropagation();
+    if (e.code === 'Escape' && !e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey) return stopRecording();
+    const accel = RK.fromEvent(e, platform);
+    if (!accel) return;          // solo un modificador: seguir esperando
+    keys[recording] = accel;
+    dirty();
+    stopRecording();
+  }
+  card.querySelectorAll('[data-remote-rec]').forEach(b => b.addEventListener('click', () => {
+    const a = b.dataset.remoteRec, was = recording;
+    if (was) stopRecording();
+    if (was === a) return;
+    recording = a;
+    window.addEventListener('keydown', onKey, true);
+    paint();
+  }));
+  card.querySelectorAll('[data-remote-def]').forEach(b => b.addEventListener('click', () => {
+    if (recording) stopRecording();
+    keys[b.dataset.remoteDef] = RK.DEFAULTS[b.dataset.remoteDef];
+    dirty(); paint();
+  }));
+  sw.addEventListener('click', () => { enabled = !enabled; dirty(); paint(); });
+
+  async function warnFailures() {
+    const api = window.pitwallRemoteKeys;
+    if (!api) { if (enabled) msg.textContent = I18N.t('client.settings.remoto_solo_ventana'); return; }
+    let r;
+    try { r = await api.apply(); } catch { return; }
+    if (r && r.failed && r.failed.length) {
+      msg.textContent = I18N.t('client.settings.remoto_fallo_registro', { teclas: r.failed.map(a => names[a]() + ' (' + RK.humanize(keys[a], platform) + ')').join(', ') });
+    }
+  }
+
+  saveBtn.addEventListener('click', async () => {
+    const v = RK.validate(keys);
+    if (!v.ok) {
+      const bad = Object.keys(v.errors)[0];
+      msg.textContent = v.errors[bad] === 'duplicate' ? I18N.t('client.settings.remoto_error_duplicate') : I18N.t('client.settings.remoto_error_invalid');
+      return;
+    }
+    saveBtn.disabled = true;
+    try {
+      const r = await fetch('/settings/remote-keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: JSON.stringify({ enabled: enabled ? '1' : '0', go: keys.go, pause: keys.pause, stop: keys.stop }),
+      });
+      if (!r.ok) throw new Error(r.status);
+      msg.textContent = I18N.t('client.settings.remoto_guardado');
+      await warnFailures();
+    } catch {
+      saveBtn.disabled = false;
+      msg.textContent = I18N.t('client.settings.no_se_han_podido_guardar');
+    }
+  });
+
+  paint();
+  if (enabled && window.pitwallRemoteKeys) {
+    window.pitwallRemoteKeys.status().then(r => {
+      if (r && r.failed && r.failed.length) {
+        msg.textContent = I18N.t('client.settings.remoto_fallo_registro', { teclas: r.failed.map(a => names[a]() + ' (' + RK.humanize(keys[a], platform) + ')').join(', ') });
+      }
+    }).catch(() => {});
+  }
 })();
 
 /* ── Nombre y logo del club ── */

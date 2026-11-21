@@ -73,7 +73,7 @@
                      style="width:64px;text-align:center">
               <span class="live-dur__u">min</span>
             </label>
-            <button class="lbtn lbtn--go" type="submit" title="<%= goTitle %>">
+            <button class="lbtn lbtn--go" type="submit" data-remote="go" title="<%= goTitle %>">
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
               <span>GO</span>
             </button>
@@ -81,14 +81,14 @@
         <% } else if (isActive) { %>
           <% if (isPaused) { %>
             <form id="resumeForm" action="/races/<%= race.id %>/mangas/<%= manga.id %>/resume" method="POST" style="display:inline">
-              <button class="lbtn lbtn--go" type="submit" title="<%= t('live.reanudar_manga') %>">
+              <button class="lbtn lbtn--go" type="submit" data-remote="resume" title="<%= t('live.reanudar_manga') %>">
                 <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
                 <span><%= t('live.reanudar') %></span>
               </button>
             </form>
           <% } else { %>
             <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/pause" method="POST" style="display:inline">
-              <button class="lbtn" type="submit" title="<%= t('live.pausar_manga') %>">
+              <button class="lbtn" type="submit" data-remote="pause" title="<%= t('live.pausar_manga') %>">
                 <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
                 <span>PAUSE</span>
               </button>
@@ -96,7 +96,7 @@
           <% } %>
           <form action="/races/<%= race.id %>/mangas/<%= manga.id %>/stop" method="POST" style="display:inline"
             onsubmit="return confirm('<%= t('live.parar_la_manga_y_borrar_las_vueltas_registradas') %>')">
-            <button class="lbtn lbtn--fin" type="submit" title="<%= stopTitle %>">
+            <button class="lbtn lbtn--fin" type="submit" data-remote="stop" title="<%= stopTitle %>">
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>
               <span>STOP</span>
             </button>
@@ -496,6 +496,7 @@
   <script src="/js/semaphore.js"></script>
   <script src="/js/reorder-fx.js?v=<%= Date.now() %>"></script>
   <script src="/js/live.js?v=<%= Date.now() %>"></script>
+  <%- include('../partials/remote-keys') %>
   <script>
     (function () {
       const resizer = document.getElementById('sidebarResizer');

@@ -155,6 +155,18 @@ router.post('/api/app/pre-update-backup', async (req, res) => {
   }
 });
 
+// La app de escritorio lee los atajos del Control remoto para registrarlos
+// como atajos globales (electron/main.js).
+router.get('/api/app/remote-keys', (req, res) => {
+  const accessControl = require('../middleware/accessControl');
+  if (!accessControl.isLocal(accessControl.reqIp(req))) return res.status(403).json({ error: 'forbidden' });
+  res.json(require('../utils/remoteKeys').get());
+});
+// Mismo módulo que usa el servidor para validar, servido al navegador.
+router.get('/js/remote-keys-core.js', (req, res) => {
+  res.type('application/javascript').sendFile(require('path').join(__dirname, '..', 'lib', 'remoteKeys.js'));
+});
+
 // Dueño del próximo GO: aviso del entreno y franja del directo.
 router.get('/api/go-owner', (req, res) => {
   res.json(require('../services/GoOwnerService').publicState());
@@ -523,6 +535,7 @@ router.post('/settings',           SettingsController.save);
 router.get( '/api/settings/tictac-devices', SettingsController.tictacDevices);
 router.post('/settings/lane-colors', SettingsController.saveLaneColors);
 router.post('/settings/prefs',       SettingsController.savePrefs);
+router.post('/settings/remote-keys', SettingsController.saveRemoteKeys);
 router.post('/settings/security',    SettingsController.saveSecurity);
 router.post('/settings/club',        SettingsController.saveClub);
 router.get( '/club/logo',            SettingsController.clubLogo);

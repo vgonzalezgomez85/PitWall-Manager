@@ -243,6 +243,8 @@ app.use((req, res, next) => {
   res.locals.serialStatus = SerialService.getLinkStatus();
   // Windows no pinta banderas emoji: las vistas que muestran país de equipo
   // usan esto para servir el SVG de public/flags/4x3/ en vez del emoji.
+  // Atajos del Control remoto para el fallback de teclado del navegador (partials/remote-keys.ejs).
+  res.locals.remoteKeysConfig = () => require('./utils/remoteKeys').get();
   res.locals.flagEmojiToIso = require('./config/countries').flagEmojiToIso;
   next();
 });

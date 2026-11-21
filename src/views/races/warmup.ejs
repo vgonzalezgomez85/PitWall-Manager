@@ -60,13 +60,14 @@
       <span><%= t('client.warmup.min') %></span>
     </label>
     <button type="button" id="wuStart"  class="wu-btn wu-btn--main" hidden><%= t('client.warmup.start') %></button>
-    <button type="button" id="wuGo"     class="wu-btn wu-btn--main" hidden>▶ <%= t('client.warmup.go') %></button>
-    <button type="button" id="wuPause"  class="wu-btn" hidden>⏸ <%= t('client.warmup.pause') %></button>
-    <button type="button" id="wuResume" class="wu-btn wu-btn--main" hidden>▶ <%= t('client.warmup.resume') %></button>
-    <button type="button" id="wuEnd"    class="wu-btn wu-btn--end" hidden>⏹ <%= t('client.warmup.end') %></button>
+    <button type="button" id="wuGo" data-remote="go" class="wu-btn wu-btn--main" hidden>▶ <%= t('client.warmup.go') %></button>
+    <button type="button" id="wuPause" data-remote="pause" class="wu-btn" hidden>⏸ <%= t('client.warmup.pause') %></button>
+    <button type="button" id="wuResume" data-remote="resume" class="wu-btn wu-btn--main" hidden>▶ <%= t('client.warmup.resume') %></button>
+    <button type="button" id="wuEnd" data-remote="stop" class="wu-btn wu-btn--end" hidden>⏹ <%= t('client.warmup.end') %></button>
   </div>
 
 <script src="/socket.io/socket.io.js"></script>
+<%- include('../partials/remote-keys') %>
 <script>
 (function () {
   const RACE_ID  = <%- JSON.stringify(String(race.id)) %>;
@@ -101,6 +102,7 @@
     $('wuMsg').textContent = '';
     ['wuStart', 'wuGo', 'wuPause', 'wuResume', 'wuEnd', 'wuMinWrap', 'wuTimer', 'wuHint'].forEach(id => show(id, false));
     $('wuStatus').textContent = '';
+    $('wuEnd').dataset.remote = (st === 'standby' || st === 'running' || st === 'paused') ? 'stop' : '';
 
     if (st === 'idle') {
       show('wuStart', true);

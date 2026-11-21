@@ -1,0 +1,9 @@
+<%#
+  Control remoto (teclado de macros): `window.pwRemote(accion)` y, con el ajuste
+  activo, el keydown de respaldo para el navegador. Va al final de las pantallas
+  con botones GO / PAUSE / STOP de software; necesita I18N (partials/i18n-client).
+%>
+<% const _rk = typeof remoteKeysConfig === 'function' ? remoteKeysConfig() : { enabled: false, keys: {} }; %>
+<% if (_rk.enabled) { %><script>window.PW_REMOTE_KEYS = <%- JSON.stringify(_rk.keys) %>;</script><% } %>
+<script src="/js/remote-keys-core.js"></script>
+<script src="/js/remote-keys.js"></script>

@@ -485,7 +485,17 @@
       "upd_ocupado_entreno": "Hay un entreno en marcha. Instala cuando termine.",
       "upd_ocupado_pole": "Hay una pole en marcha. Instala cuando termine.",
       "upd_error_copia": "No se ha podido hacer la copia de la base de datos, así que no se instala.",
-      "no_se_ha_podido_guardar_sectores": "No se ha podido guardar (de 2 a 1000)"
+      "no_se_ha_podido_guardar_sectores": "No se ha podido guardar (de 2 a 1000)",
+      "remoto_pulsa": "Pulsa la combinación…",
+      "remoto_guardado": "Control remoto guardado.",
+      "remoto_no_guardado": "No se han podido guardar las teclas.",
+      "remoto_error_invalid": "Combinación no válida: hace falta una tecla además de los modificadores.",
+      "remoto_error_duplicate": "Hay dos acciones con la misma combinación.",
+      "remoto_fallo_registro": "No se ha podido registrar {{teclas}}: probablemente la usa otra aplicación u otra copia de PitWall. Elige otra combinación.",
+      "remoto_accion_go": "GO",
+      "remoto_accion_pausa": "Pausa",
+      "remoto_accion_stop": "STOP",
+      "remoto_solo_ventana": "Estás en el navegador: las teclas solo funcionan con la página de PitWall delante."
     },
     "shifts-live": {
       "ambiguedad_usa_override_manual": "Ambigüedad — usa override manual",
@@ -956,6 +966,13 @@
       "crear_una": "Crear la tanda",
       "crear_varias": "Crear las tandas",
       "lista_vacia": "Aún no hay participantes: escribe un nombre arriba y pulsa Añadir."
+    },
+    "remote": {
+      "go_enviado": "GO enviado",
+      "pausa_enviada": "Pausa enviada",
+      "reanudar_enviado": "Reanudando",
+      "stop_enviado": "STOP enviado",
+      "pulsa_stop_otra_vez": "Pulsa STOP otra vez para parar"
     }
   },
   "common": {
@@ -2163,7 +2180,15 @@
     "tanda_modo_write": "Escribir en el carril",
     "tanda_modo_write_d": "Cada carril es un campo; al escribir salen los participantes del catálogo.",
     "tanda_modo_drag": "Arrastrar pilotos",
-    "tanda_modo_drag_d": "Una lista a la izquierda: arrastras cada participante al carril de la tanda que quieras, o lo tocas y tocas el carril."
+    "tanda_modo_drag_d": "Una lista a la izquierda: arrastras cada participante al carril de la tanda que quieras, o lo tocas y tocas el carril.",
+    "remoto_titulo": "Control remoto (teclado de macros)",
+    "remoto_desc": "Pulsa GO, PAUSA y STOP desde un teclado de macros USB (para el ordenador es un teclado normal). Solo funciona en la app de escritorio, aunque PitWall no esté delante, y solo cuando PitWall da el GO (TicTac, BART o simulación): con una caja DS manda la caja y la tecla no hace nada. STOP pide pulsarlo dos veces.",
+    "remoto_usar": "Activar el control remoto",
+    "remoto_go": "GO",
+    "remoto_pausa": "Pausa / reanudar",
+    "remoto_stop": "STOP",
+    "remoto_grabar": "Grabar",
+    "remoto_defecto": "Por defecto"
   },
   "shifts-live": {
     "a_punto": "A punto",

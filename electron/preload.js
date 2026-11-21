@@ -46,6 +46,13 @@ contextBridge.exposeInMainWorld('pitwallWindow', {
   onFullScreenChange: (cb) => ipcRenderer.on('pitwall:fullscreen-changed', (_e, on) => cb(!!on)),
 });
 
+// Control remoto (Ajustes → Preferencias): re-registra los atajos globales tras
+// guardar y devuelve {enabled, failed:['go'|'pause'|'stop']} con los que no se pudieron.
+contextBridge.exposeInMainWorld('pitwallRemoteKeys', {
+  apply:  () => ipcRenderer.invoke('pitwall:remote-keys-apply'),
+  status: () => ipcRenderer.invoke('pitwall:remote-keys-status'),
+});
+
 // Actualizaciones (Ajustes → Actualizaciones y aviso del pie). Ver updater.js.
 contextBridge.exposeInMainWorld('pitwallUpdates', {
   state:    () => ipcRenderer.invoke('pitwall:update-state'),

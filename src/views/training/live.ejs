@@ -42,7 +42,7 @@
             <input type="number" name="duration_minutes" min="1" max="600" value="10">
             <span>min</span>
           </label>
-          <button class="lbtn lbtn--go" type="submit" title="<%= t('live.arrancar_entrenamiento') %>">
+          <button class="lbtn lbtn--go" type="submit" data-remote="go" title="<%= t('live.arrancar_entrenamiento') %>">
             <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
             <span>GO</span>
           </button>
@@ -51,7 +51,7 @@
         <% if (_paused) { %>
           <form id="trResumeForm" action="/training/resume" method="POST">
             <input type="hidden" name="mode" value="<%= _mode %>">
-            <button class="lbtn lbtn--go" type="submit">
+            <button class="lbtn lbtn--go" type="submit" data-remote="resume">
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
               <span><%= t('live.reanudar') %></span>
             </button>
@@ -59,7 +59,7 @@
         <% } else { %>
           <form id="trPauseForm" action="/training/pause" method="POST">
             <input type="hidden" name="mode" value="<%= _mode %>">
-            <button class="lbtn" type="submit" title="<%= t('live.pausar') %>">
+            <button class="lbtn" type="submit" data-remote="pause" title="<%= t('live.pausar') %>">
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
               <span>PAUSE</span>
             </button>
@@ -67,7 +67,7 @@
         <% } %>
         <form id="trStopForm" action="/training/halt" method="POST">
           <input type="hidden" name="mode" value="<%= _mode %>">
-          <button class="lbtn lbtn--fin" type="submit" title="<%= t('common.parar') %>">
+          <button class="lbtn lbtn--fin" type="submit" data-remote="stop" title="<%= t('common.parar') %>">
             <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>
             <span>STOP</span>
           </button>
@@ -187,5 +187,6 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/semaphore.js"></script>
   <script src="/js/training.js"></script>
+  <%- include('../partials/remote-keys') %>
 </body>
 </html>

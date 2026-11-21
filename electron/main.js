@@ -15,7 +15,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-const { app, BrowserWindow, Tray, Menu, shell, nativeImage, dialog, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, Tray, Menu, shell, nativeImage, dialog, ipcMain, screen, globalShortcut } = require('electron');
 const path   = require('path');
 const zlib   = require('zlib');
 const crypto = require('crypto');
@@ -24,6 +24,7 @@ const net    = require('net');
 const { fork } = require('child_process');
 const placement = require('./windowPlacement');
 const updater   = require('./updater');
+const remoteWin = require('./remoteKeysWindows');
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 let mainWindow = null;
@@ -127,6 +128,9 @@ function startServer(userData) {
       },
       silent: true,
     });
+
+    // Ajustes → Control remoto avisa por el canal IPC del fork al guardar.
+    serverProc.on('message', (m) => { if (m && m.type === 'remote-keys-changed') applyRemoteKeys(); });
 
     // Sin esto, un fallo al arrancar solo se veía como «Timeout» y sin rastro en Windows.
     let logStream = null;
@@ -422,6 +426,50 @@ ipcMain.handle('pitwall:screens-identify', () => {
   return true;
 });
 
+// ── Control remoto: teclado de macros → atajos globales ───────────────────────
+// El servidor es un proceso hijo (fork), así que main lee los ajustes por HTTP
+// local (GET /api/app/remote-keys) al arrancar y cada vez que el servidor avisa
+// por IPC o que Ajustes llama a `pitwallRemoteKeys.apply()`. Si otra app (o otra
+// copia de PitWall, p. ej. PitWall Videos) ya tiene la combinación, `register`
+// devuelve false: se anota y Ajustes lo enseña, sin romper nada.
+const remoteFocus = remoteWin.createFocusTracker();
+let remoteStatus = { enabled: false, failed: [] };
+let remoteChain = Promise.resolve();
+
+app.on('browser-window-focus', (_e, win) => remoteFocus.note(win.id));
+app.on('browser-window-closed', (_e, win) => remoteFocus.forget(win.id));
+
+async function fireRemote(action) {
+  const wins = BrowserWindow.getAllWindows().filter(w => !w.isDestroyed());
+  const byId = new Map(wins.map(w => [w.id, w]));
+  const ids = remoteWin.orderTargets(wins.map(w => ({ id: w.id, focused: w.isFocused() })), remoteFocus);
+  const script = remoteWin.scriptFor(action);
+  await remoteWin.dispatch(ids, (id) => byId.get(id).webContents.executeJavaScript(script));
+}
+
+function applyRemoteKeys() {
+  remoteChain = remoteChain.then(async () => {
+    globalShortcut.unregisterAll();
+    remoteStatus = { enabled: false, failed: [] };
+    let cfg;
+    try { cfg = await (await fetch(`http://127.0.0.1:${PORT}/api/app/remote-keys`)).json(); }
+    catch (err) { console.warn('[remote-keys] no se pudieron leer los ajustes:', err.message); return remoteStatus; }
+    if (!cfg || !cfg.enabled) return remoteStatus;
+    const failed = [];
+    for (const action of remoteWin.ACTIONS) {
+      let ok = false;
+      try { ok = globalShortcut.register(cfg.keys[action], () => { fireRemote(action); }); } catch {}
+      if (!ok) { failed.push(action); console.warn(`[remote-keys] no se pudo registrar ${cfg.keys[action]} (${action}): ya la usa otra aplicación`); }
+    }
+    remoteStatus = { enabled: true, failed };
+    return remoteStatus;
+  }).catch((err) => { console.warn('[remote-keys]', err.message); return remoteStatus; });
+  return remoteChain;
+}
+
+ipcMain.handle('pitwall:remote-keys-apply',  () => applyRemoteKeys());
+ipcMain.handle('pitwall:remote-keys-status', () => remoteChain.then(() => remoteStatus));
+
 // ── Actualizaciones (ver updater.js) ──────────────────────────────────────────
 ipcMain.handle('pitwall:update-state',    () => updater.getState());
 ipcMain.handle('pitwall:update-check',    () => updater.check());
@@ -581,6 +629,7 @@ app.whenReady().then(async () => {
   placementFile = path.join(userData, 'window-placement.json');
   createTray();
   initUpdater();
+  applyRemoteKeys();
   const startup = await trainingAutostart();
   createWindow(startup.skipped ? '?notice=training_skipped' : '');
   // Mismo nombre que da el inicio a «Entreno libre»: un clic luego la trae al frente.
@@ -590,4 +639,4 @@ app.whenReady().then(async () => {
 app.on('window-all-closed', () => { /* stay in tray */ });
 app.on('activate', () => mainWindow ? (mainWindow.show(), mainWindow.focus()) : createWindow());
 app.on('before-quit', () => { app.isQuiting = true; });
-app.on('will-quit',   () => { serverProc?.kill(); });
+app.on('will-quit',   () => { globalShortcut.unregisterAll(); serverProc?.kill(); });

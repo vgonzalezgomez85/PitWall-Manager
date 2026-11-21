@@ -161,20 +161,20 @@ const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
             Con una caja DS manda la caja y estos botones no existen. %>
         <% if (softwareGo) { %>
         <div id="js-btn-sw" class="pole-btn-row" style="display:none">
-          <button id="js-btn-go" class="pole-btn-start" onclick="swCommand('go')" style="display:none">
+          <button id="js-btn-go" data-remote="go" class="pole-btn-start" onclick="swCommand('go')" style="display:none">
             <span class="pole-btn-tri">▶</span> GO
           </button>
-          <button id="js-btn-pause" class="pole-btn-skip" onclick="swCommand('pause')" style="display:none">
+          <button id="js-btn-pause" data-remote="pause" class="pole-btn-skip" onclick="swCommand('pause')" style="display:none">
             ⏸ PAUSE
           </button>
-          <button id="js-btn-resume" class="pole-btn-start" onclick="swCommand('resume')" style="display:none">
+          <button id="js-btn-resume" data-remote="resume" class="pole-btn-start" onclick="swCommand('resume')" style="display:none">
             <span class="pole-btn-tri">▶</span> <%= t('live.reanudar') %>
           </button>
         </div>
         <% } %>
 
         <div id="js-btn-running" class="pole-btn-row" style="display:none">
-          <button id="js-btn-stop" class="pole-btn-stop" onclick="stopTiming()">
+          <button id="js-btn-stop" data-remote="stop" class="pole-btn-stop" onclick="stopTiming()">
             ⏹ <%= t('common.parar') %>
           </button>
         </div>
@@ -936,4 +936,5 @@ if (IS_RUNNING) {
 .pole-add-msg { font-size: .8rem; color: #f85149; min-height: 1em; }
 </style>
 
+<%- include('../partials/remote-keys') %>
 <%- include('../partials/footer') %>

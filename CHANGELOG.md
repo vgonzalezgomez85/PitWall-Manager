@@ -13,6 +13,15 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.70.0] — 2026-11-21
+
+### Añadido
+- **Control remoto con un teclado de macros**: puedes dar **GO**, **pausa / reanudar** y **STOP** desde un teclado de macros USB (para el ordenador es un teclado normal que manda una combinación de teclas). En **Ajustes → Preferencias → «Control remoto»** lo activas y eliges la combinación de cada acción: pulsa **Grabar**, toca la combinación en tu teclado y ya está (valen también F1 a F24). **Por defecto** devuelve la de fábrica (`Ctrl+Alt+Mayús+G`, `P` y `S`; en Mac, `⌘+⌥+⇧`). PitWall no deja guardar combinaciones repetidas ni sin tecla.
+- **Funciona con PitWall detrás de otras ventanas** (app de escritorio): la orden va a la ventana que tengas delante y, si esa no tiene botón de GO, a la última que usaste. Cubre el directo de la carrera, el entreno libre y el de competición, la pole y el warm-up.
+- **Solo cuando PitWall da el GO** (TicTac, BART o simulación), igual que los botones de la pantalla. Con una caja DS manda la caja y la tecla no hace nada.
+- **STOP pide pulsarlo dos veces** (avisa en grande «Pulsa STOP otra vez para parar» durante 3 segundos) para que un toque accidental no corte la manga. Al segundo toque para sin preguntar nada. GO, pausa y reanudar enseñan un aviso breve para ver que la orden ha llegado.
+- Si otra aplicación (o otra copia de PitWall abierta) ya usa una combinación, al guardar Ajustes te dice cuál no se ha podido registrar. En el navegador las teclas solo funcionan con la página de PitWall delante.
+
 ## [1.69.3] — 2026-11-21
 
 ### Corregido

@@ -110,6 +110,7 @@ class SettingsController {
       uiMode:              cfg.ui_mode === 'basic' ? 'basic' : 'advanced',
       trainingHistoryMode: cfg.training_history_mode === 'best' ? 'best' : 'recent',
       tandaEntryMode:      require('../utils/tandaEntryMode').get(),
+      remoteKeys:          require('../utils/remoteKeys').get(),
       manualComa:          cfg.manual_coma === 'manual' ? 'manual' : 'auto',
       comaSectors:         require('../utils/settori').perLap(),
       sprintWarmup:        cfg.sprint_warmup === 'on' ? 'on' : 'off',
@@ -155,6 +156,20 @@ class SettingsController {
       require('../services/TimingService').invalidateStandingsCaches();
     }
     res.json({ ok: true, key, value });
+  }
+
+  // POST /settings/remote-keys — Control remoto (teclado de macros). Si corre
+  // dentro de la app de escritorio, avisa al proceso principal para que
+  // re-registre los atajos globales (electron/main.js).
+  static saveRemoteKeys(req, res) {
+    const b = req.body || {};
+    const r = require('../utils/remoteKeys').save({
+      enabled: b.enabled === '1' || b.enabled === 1 || b.enabled === true,
+      keys: { go: b.go, pause: b.pause, stop: b.stop },
+    });
+    if (!r.ok) return res.status(400).json({ ok: false, errors: r.errors });
+    if (typeof process.send === 'function') { try { process.send({ type: 'remote-keys-changed' }); } catch {} }
+    res.json({ ok: true, config: r.config });
   }
 
   // POST /settings/club — nombre y logo del club. `logo` ausente = no tocarlo.
