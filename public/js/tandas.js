@@ -70,6 +70,8 @@
     filter: '',
     focus: null,
     sugActive: 0,
+    sugMoved: false,
+    sugHidden: false,
     preview: false,
     clientErrors: [],
   };
@@ -281,14 +283,23 @@
   }
 
   // Sugerencias del catálogo (modo write).
+  // Carril vacío con el foco: lista de lo del catálogo que aún no está en ninguna tanda (`browse`).
   function suggestionsFor(ti, pos) {
+    if (MODE === 'rename' || state.sugHidden || !state.focus || state.focus.ti !== ti || state.focus.pos !== pos) return null;
     const slot = state.tandas[ti].slots[pos];
-    if (!slot || !state.focus || state.focus.ti !== ti || state.focus.pos !== pos || slot.confirmed) return null;
+    if (!slot) {
+      if (!CAT.length) return null;
+      const occ = occurrences();
+      const options = CAT.filter(c => !occ.has(c.key) && !OTHER.has(c.key)).slice(0, 8);
+      return options.length ? { q: '', options, browse: true } : null;
+    }
+    if (slot.confirmed) return null;
     const q = norm(slot.name);
-    if (q.length < 2 || CAT_BY_KEY.has(q)) return null;
-    const options = CAT.filter(c => c.key.startsWith(q) || c.key.split(' ').some(w => w.startsWith(q))).slice(0, 4);
+    if (!q || CAT_BY_KEY.has(q)) return null;
+    const options = CAT.filter(c => c.key.startsWith(q) || c.key.split(' ').some(w => w.startsWith(q))).slice(0, 6);
     return { q, options };
   }
+  const sugItems = sug => sug.options.map(c => ({ kind: 'cat', c })).concat(sug.browse ? [] : [{ kind: 'new' }]);
 
   function buildAux(ti, pos, occ) {
     const frag = document.createDocumentFragment();
@@ -306,16 +317,16 @@
       const panel = el('div', 'td-sug');
       panel.setAttribute('role', 'listbox');
       if (sug.options.length) panel.appendChild(el('div', 'td-sug__h', I18N.t('client.tandas.del_catalogo')));
-      const items = sug.options.map(c => ({ kind: 'cat', c })).concat([{ kind: 'new' }]);
+      const items = sugItems(sug);
       if (state.sugActive >= items.length) state.sugActive = 0;
       items.forEach((it, i) => {
-        const b = el('button', 'td-sug__i' + (i === state.sugActive ? ' is-active' : ''));
+        const b = el('button', 'td-sug__i' + (i === state.sugActive && (!sug.browse || state.sugMoved) ? ' is-active' : ''));
         b.type = 'button';
         b.setAttribute('role', 'option');
         if (it.kind === 'cat') {
           b.appendChild(el('span', null, it.c.name));
           const at = otherNumbers(ti, it.c.key, occ);
-          b.appendChild(el('span', 'td-sug__n', at.length ? I18N.t('client.tandas.ya_en_tanda', { n: at.join(', ') }) : I18N.t('client.tandas.intro_elegir')));
+          if (!sug.browse || at.length) b.appendChild(el('span', 'td-sug__n', at.length ? I18N.t('client.tandas.ya_en_tanda', { n: at.join(', ') }) : I18N.t('client.tandas.intro_elegir')));
         } else {
           b.classList.add('td-sug__i--new');
           b.textContent = (CFG.isTeam ? I18N.t('client.tandas.apuntar_nuevo_equipo', { name: slot.name.trim() }) : I18N.t('client.tandas.apuntar_nuevo', { name: slot.name.trim() }));
@@ -329,7 +340,8 @@
   }
 
   function pickSuggestion(ti, pos, it) {
-    const slot = state.tandas[ti].slots[pos];
+    let slot = state.tandas[ti].slots[pos];
+    if (!slot && it.kind === 'cat') slot = state.tandas[ti].slots[pos] = mkSlot({ name: it.c.name });
     if (!slot) return;
     if (it.kind === 'cat') applyCatalog(slot, it.c); else slot.confirmed = true;
     state.focus = null;
@@ -391,7 +403,7 @@
     auxPainters.push(paintAux);
     paintDet(); aux.appendChild(buildAux(ti, pos, occ));
 
-    inp.addEventListener('focus', () => { state.focus = { ti, pos }; state.sugActive = 0; paintAux(); });
+    inp.addEventListener('focus', () => { state.focus = { ti, pos }; state.sugActive = 0; state.sugMoved = false; state.sugHidden = false; paintAux(); });
     inp.addEventListener('blur', () => {
       setTimeout(() => {
         if (state.focus && state.focus.ti === ti && state.focus.pos === pos) {
@@ -419,7 +431,7 @@
           if (!c || norm(c.name) !== norm(v)) s.catalogId = null;
         }
       }
-      state.focus = { ti, pos }; state.sugActive = 0;
+      state.focus = { ti, pos }; state.sugActive = 0; state.sugMoved = false; state.sugHidden = false;
       inp.classList.toggle('is-empty', !t.slots[pos]);
       const chip = main.querySelector('.td-chip'); if (chip) chip.classList.toggle('is-off', !t.slots[pos]);
       paintDet(); paintAux();
@@ -429,8 +441,8 @@
       const sug = suggestionsFor(ti, pos);
       if (e.key === 'Enter') {
         e.preventDefault();
-        if (sug) {
-          const items = sug.options.map(c => ({ kind: 'cat', c })).concat([{ kind: 'new' }]);
+        if (sug && (!sug.browse || state.sugMoved)) {
+          const items = sugItems(sug);
           pickSuggestion(ti, pos, items[Math.min(state.sugActive, items.length - 1)]);
         } else {
           const next = nextInputAfter(pos);
@@ -439,11 +451,13 @@
         }
       } else if (sug && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
         e.preventDefault();
-        const n = sug.options.length + 1;
-        state.sugActive = (state.sugActive + (e.key === 'ArrowDown' ? 1 : n - 1)) % n;
+        const n = sugItems(sug).length;
+        if (sug.browse && !state.sugMoved) state.sugActive = e.key === 'ArrowDown' ? 0 : n - 1;
+        else state.sugActive = (state.sugActive + (e.key === 'ArrowDown' ? 1 : n - 1)) % n;
+        state.sugMoved = true;
         paintAux();
       } else if (e.key === 'Escape' && sug) {
-        const s = t.slots[pos]; if (s) s.confirmed = true;
+        const s = t.slots[pos]; if (s) s.confirmed = true; else state.sugHidden = true;
         paintAux();
       }
     });

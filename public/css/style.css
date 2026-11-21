@@ -4597,8 +4597,8 @@ html.pw-big .main-content { zoom: 1.18; }
 
 .td-board { display: block; }
 .td-board--drag { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
-.td-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 16px; align-items: start; min-width: 0; }
-.td-board--drag .td-grid { flex: 999 1 640px; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); }
+.td-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 16px; align-items: start; min-width: 0; }
+.td-board--drag .td-grid { flex: 999 1 640px; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); }
 
 .td-card { margin: 0; padding: 18px; display: flex; flex-direction: column; gap: 10px; }
 .td-card--err { border-color: rgba(239,70,81,.8); box-shadow: 0 0 0 3px rgba(239,70,81,.14); }

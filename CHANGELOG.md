@@ -13,6 +13,12 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.69.3] — 2026-11-21
+
+### Corregido
+- **Apuntar equipos (o pilotos) ya creados en la tanda**: en el modo «Escribir en el carril» el catálogo solo aparecía al teclear dos letras, y parecía que no había equipos (se notaba sobre todo al crear una resistencia). Ahora, al tocar un carril vacío, sale la lista **«Del catálogo»** con los que aún no están en ninguna tanda; se elige con un toque y entra con sus pilotos. Al escribir se filtra desde la primera letra. Con teclado: Intro en un carril vacío sigue saltando al siguiente; flecha abajo + Intro elige; Esc cierra la lista.
+- **Editar una tanda se veía muy estrecho**: la tarjeta ocupaba una columna de unos 330 px y dejaba el resto vacío. Ahora las tarjetas se reparten el ancho de la página: una sola ocupa todo el ancho; dos, la mitad cada una; tres, un tercio.
+
 ## [1.69.2] — 2026-11-21
 
 ### Mejorado
