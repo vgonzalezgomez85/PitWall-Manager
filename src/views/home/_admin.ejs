@@ -141,6 +141,7 @@ const tile = (it, small) => '<a href="' + it.href + '" class="hm-tile' + (small 
     <% if (withWin) { %><span class="hm-pill" id="hmWinPill" hidden></span><% } %>
     <% lockBtn() %>
     <% modeToggle() %>
+    <%- include('../partials/text-size', { cls: 'pw-textsize--pill' }) %>
     <button type="button" class="hm-pill hm-custom" id="hmCustomBtn" aria-haspopup="dialog"
             title="<%= t('_admin.elegir_el_diseno_del_inicio') %>">
       <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
@@ -484,6 +485,7 @@ const tile = (it, small) => '<a href="' + it.href + '" class="hm-tile' + (small 
           <a href="/training" class="hm-btn" data-win><%= t('common.entreno_libre') %><%- ext %></a>
           <% lockBtn() %>
           <% modeToggle() %>
+    <%- include('../partials/text-size', { cls: 'pw-textsize--pill' }) %>
           <button type="button" class="hm-pill hm-custom" id="hmCustomBtn" aria-haspopup="dialog" title="<%= t('_admin.elegir_el_diseno_del_inicio') %>">
             <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
             <%= t('_admin.personalizar') %>

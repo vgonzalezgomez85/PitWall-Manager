@@ -1,0 +1,25 @@
+<%# Botones A / A+ (letra normal / grande). El estado vive en localStorage `pw-text` y la clase `pw-big` de <html> la pone header.ejs antes de pintar. %>
+<div class="pw-textsize<%= typeof cls !== 'undefined' && cls ? ' ' + cls : '' %>" role="group" aria-label="<%= t('header.tamano_de_letra') %>">
+  <span class="pw-textsize__lbl"><%= t('header.tamano_de_letra') %></span>
+  <button type="button" class="pw-textsize__btn" data-size="normal" aria-label="<%= t('header.letra_normal') %>">A</button>
+  <button type="button" class="pw-textsize__btn pw-textsize__btn--big" data-size="big" aria-label="<%= t('header.letra_grande') %>">A+</button>
+</div>
+<script>
+  (function () {
+    var box = document.currentScript.previousElementSibling;
+    var btns = box.querySelectorAll('.pw-textsize__btn');
+    function paint() {
+      var big = document.documentElement.classList.contains('pw-big');
+      document.querySelectorAll('.pw-textsize__btn').forEach(function (b) { b.setAttribute('aria-pressed', String((b.dataset.size === 'big') === big)); });
+    }
+    btns.forEach(function (b) {
+      b.addEventListener('click', function () {
+        var big = b.dataset.size === 'big';
+        document.documentElement.classList.toggle('pw-big', big);
+        try { localStorage.setItem('pw-text', big ? 'big' : 'normal'); } catch (e) {}
+        paint();
+      });
+    });
+    paint();
+  })();
+</script>

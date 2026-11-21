@@ -4725,3 +4725,7 @@ html.pw-big .main-content { zoom: 1.18; }
 .st-tmode__pool, .st-tmode__lanes { flex: 1; display: flex; flex-direction: column; gap: 5px; }
 .st-tmode__arrow { color: var(--vt-mute, #8a8a93); }
 .st-tmode__lane--drop { min-height: 20px; border: 1px dashed rgba(239,70,81,.6); border-radius: 5px; padding: 1px; }
+.pw-textsize--pill { margin-left: 0; }
+.pw-textsize--pill .pw-textsize__lbl { display: none; }
+.pw-textsize--pill .pw-textsize__btn { min-width: 38px; min-height: 34px; border-radius: 999px; }
+.pw-textsize--corner { position: fixed; top: 12px; right: 16px; z-index: 10; }

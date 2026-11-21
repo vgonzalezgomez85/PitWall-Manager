@@ -27,29 +27,7 @@
         
       </span>
     </a>
-    <div class="pw-textsize" role="group" aria-label="<%= t('header.tamano_de_letra') %>">
-      <span class="pw-textsize__lbl"><%= t('header.tamano_de_letra') %></span>
-      <button type="button" class="pw-textsize__btn" data-size="normal" aria-label="<%= t('header.letra_normal') %>">A</button>
-      <button type="button" class="pw-textsize__btn pw-textsize__btn--big" data-size="big" aria-label="<%= t('header.letra_grande') %>">A+</button>
-    </div>
-    <script>
-      (function () {
-        var btns = document.querySelectorAll('.pw-textsize__btn');
-        function paint() {
-          var big = document.documentElement.classList.contains('pw-big');
-          btns.forEach(function (b) { b.setAttribute('aria-pressed', String((b.dataset.size === 'big') === big)); });
-        }
-        btns.forEach(function (b) {
-          b.addEventListener('click', function () {
-            var big = b.dataset.size === 'big';
-            document.documentElement.classList.toggle('pw-big', big);
-            try { localStorage.setItem('pw-text', big ? 'big' : 'normal'); } catch (e) {}
-            paint();
-          });
-        });
-        paint();
-      })();
-    </script>
+    <%- include('text-size') %>
   </nav>
   <% } %>
   <% if (typeof flash !== 'undefined' && flash) { %>

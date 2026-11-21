@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.69.2] — 2026-11-21
+
+### Mejorado
+- **El selector «Tamaño de letra» (A / A+) sale también en el inicio** (en sus cinco diseños, junto a «Personalizar»; y en el inicio de invitado) **y en la pantalla de contraseña**, que no tienen la barra de arriba. La elección se guarda en el navegador y vale para todas las páginas. El directo, la TV y los paneles siguen con su propio zoom.
+
 ## [1.69.1] — 2026-11-21
 
 ### Corregido
