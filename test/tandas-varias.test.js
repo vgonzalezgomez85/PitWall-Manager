@@ -240,3 +240,31 @@ test('se guarda con savePrefs y solo acepta write | drag; la pantalla lo usa', (
   assert.equal(pref('write').json_.value, 'write');
   assert.equal(EntryMode.get(), 'write');
 });
+
+test('editar una tanda con mangas ya corridas (solo renombrar): llegan todos los participantes con sus datos y guardar renombra', () => {
+  const id = Race.create({ name: 'R', type: 'club', format: 'individual', lanes_count: 4,
+    lane_sequence: [1, 2, 3, 4], circuits: [4], has_categoria: 1, has_coche: 1 });
+  crear(id, { tandas: [{ slots: [{ name: 'A', categoria: 'GT', coche: 'Audi' }, { name: 'B', categoria: 'LMP' }] }] });
+  const tanda = Tanda.findByRace(id)[0];
+  db.prepare("UPDATE mangas SET status = 'finished' WHERE tanda_id = ?").run(tanda.id);
+
+  const ed = fakeRes();
+  TandaController.editTanda({ params: { id: String(id), tandaId: String(tanda.id) }, t: k => k }, ed);
+  assert.equal(ed.data.config.canRestructure, false);
+  const slots = ed.data.config.tandas[0].slots.filter(Boolean);
+  assert.deepEqual(slots.map(s => [s.name, s.categoria, s.coche]), [['A', 'GT', 'Audi'], ['B', 'LMP', '']]);
+  assert.ok(slots.every(s => s.id));
+
+  const res = fakeRes();
+  TandaController.updateTanda({ params: { id: String(id), tandaId: String(tanda.id) }, t: k => k,
+    body: { payload: JSON.stringify({ tandas: [{ slots: [{ id: slots[0].id, name: 'A2', categoria: 'GT3', coche: 'Audi' }, { id: slots[1].id, name: 'B' }] }] }) } }, res);
+  assert.equal(res.redirectTo, `/races/${id}`);
+  const d = db.prepare('SELECT name, categoria FROM drivers WHERE id = ?').get(slots[0].id);
+  assert.deepEqual(d, { name: 'A2', categoria: 'GT3' });
+});
+
+test('tandas.js no deja ningún elemento opcional sin proteger (en renombrar no hay botón de vista previa)', () => {
+  const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '../public/js/tandas.js'), 'utf8');
+  assert.match(src, /if \(previewBtn\) previewBtn\.addEventListener/);
+  assert.doesNotMatch(src, /\n\s*previewBtn\.addEventListener/);
+});

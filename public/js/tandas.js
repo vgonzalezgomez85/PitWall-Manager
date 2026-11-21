@@ -53,7 +53,7 @@
       coche: raw.coche == null ? null : String(raw.coche),
       members: raw.members == null ? null : raw.members.map(m => ({ id: m.id || null, name: m.name || '' })),
       confirmed: !!raw.name,
-      open: false,
+      open: MODE === 'rename',
     };
   }
   function padSlots(slots) {
@@ -819,11 +819,11 @@
       previewBox.appendChild(block);
     });
   }
-  previewBtn.addEventListener('click', () => {
-    state.preview = !state.preview;
-    previewBtn.textContent = (state.preview ? I18N.t('client.tandas.ocultar_mangas') : I18N.t('client.tandas.ver_mangas'));
-    if (state.preview) { previewBox.hidden = false; runPreview(); previewBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
-    else previewBox.hidden = true;
+  if (previewBtn) previewBtn.addEventListener('click', () => {
+      state.preview = !state.preview;
+      previewBtn.textContent = (state.preview ? I18N.t('client.tandas.ocultar_mangas') : I18N.t('client.tandas.ver_mangas'));
+      if (state.preview) { previewBox.hidden = false; runPreview(); previewBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+      else previewBox.hidden = true;
   });
   document.querySelectorAll('input[name="empty_lane_mode"]').forEach(r => r.addEventListener('change', () => { if (state.preview) schedulePreview(); }));
 
@@ -872,6 +872,6 @@
     if (e.key === 'Escape' && state.sel) { state.sel = null; render(); }
   });
 
-  previewBtn.textContent = I18N.t('client.tandas.ver_mangas');
+  if (previewBtn) previewBtn.textContent = I18N.t('client.tandas.ver_mangas');
   render();
 })();

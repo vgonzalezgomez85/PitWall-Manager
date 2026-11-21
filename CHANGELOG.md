@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.69.1] — 2026-11-21
+
+### Corregido
+- **Editar una tanda que ya tiene mangas corridas** (modo «solo renombrar») salía **vacía, sin carriles**, por un error del JavaScript de la pantalla nueva de tandas (el botón «Ver cómo quedan las mangas» no existe en ese modo). Ahora salen **todos los participantes** con nombre, categoría y coche (y los miembros en equipos) editables, con los detalles ya abiertos. Detectado con una carrera importada en Windows.
+
 ## [1.69.0] — 2026-11-21
 
 ### Añadido
