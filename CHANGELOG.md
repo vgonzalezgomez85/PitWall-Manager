@@ -13,6 +13,11 @@ sección que toque: **Añadido** (nuevo), **Mejorado** (existente a mejor),
 
 ---
 
+## [1.70.1] — 2026-11-22
+
+### Corregido
+- **Pantalla de tandas, modo «Escribir en el carril»: la lista «Del catálogo» del carril anterior se quedaba abierta** al tocar un carril de otra tanda. Se veían dos listas a la vez y era fácil meter a un piloto en la tanda equivocada. Ahora, al tocar un carril, se cierran las listas de los demás.
+
 ## [1.70.0] — 2026-11-21
 
 ### Añadido

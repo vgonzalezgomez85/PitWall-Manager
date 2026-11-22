@@ -403,7 +403,7 @@
     auxPainters.push(paintAux);
     paintDet(); aux.appendChild(buildAux(ti, pos, occ));
 
-    inp.addEventListener('focus', () => { state.focus = { ti, pos }; state.sugActive = 0; state.sugMoved = false; state.sugHidden = false; paintAux(); });
+    inp.addEventListener('focus', () => { state.focus = { ti, pos }; state.sugActive = 0; state.sugMoved = false; state.sugHidden = false; auxPainters.forEach(p => p()); });
     inp.addEventListener('blur', () => {
       setTimeout(() => {
         if (state.focus && state.focus.ti === ti && state.focus.pos === pos) {
